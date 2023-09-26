@@ -89,6 +89,7 @@ subprojects {
     }
     dependencies {
         implementation platform('com.fasterxml.jackson:jackson-bom:2.15.0')
+        implementation platform('org.eclipse.jetty:jetty-bom:11.0.16')
         implementation platform('io.micrometer:micrometer-bom:1.10.5')
         implementation libs.guava.core
         implementation libs.slf4j.api
@@ -141,19 +142,7 @@ subprojects {
             }
             implementation('net.minidev:json-smart') {
                 version {
-                    require '2.4.11'
-                }
-                because 'CVE from transitive dependencies'
-            }
-            implementation('org.eclipse.jetty:jetty-http') {
-                version {
-                    require '11.0.15'
-                }
-                because 'CVE from transitive dependencies'
-            }
-            implementation('org.eclipse.jetty:jetty-server') {
-                version {
-                    require '11.0.15'
+                    require '2.5.0'
                 }
                 because 'CVE from transitive dependencies'
             }
@@ -168,6 +157,30 @@ subprojects {
                     require '1.1.10.1'
                 }
                 because 'Fixes CVE-2023-35165, CVE-2023-34455, CVE-2023-34453, CVE-2023-34454, CVE-2023-2976'
+            }
+            implementation('com.squareup.okio:okio-jvm') {
+                version {
+                    require '3.5.0'
+                }
+                because 'CVE from transitive dependencies'
+            }
+            implementation('com.charleskorn.kaml:kaml') {
+                version {
+                    require '0.55.0'
+                }
+                because 'CVE from transitive dependencies'
+            }
+            implementation('org.bitbucket.b_c:jose4j') {
+                version {
+                    require '0.9.3'
+                }
+                because 'CVE from transitive dependencies'
+            }
+            implementation('org.scala-lang:scala-library') {
+                version {
+                    require '2.13.12'
+                }
+                because 'CVE from transitive dependencies'
             }
         }
     }
