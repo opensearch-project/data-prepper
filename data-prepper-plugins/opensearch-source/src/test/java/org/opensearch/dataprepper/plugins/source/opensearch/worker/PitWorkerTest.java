@@ -50,6 +50,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -64,7 +65,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker.EXTEND_KEEP_ALIVE_TIME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker.STARTING_KEEP_ALIVE;
-import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.ACKNOWLEDGEMENT_SET_TIMEOUT;
 
 @ExtendWith(MockitoExtension.class)
 public class PitWorkerTest {
@@ -173,7 +174,7 @@ public class PitWorkerTest {
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
         doNothing().when(sourceCoordinator).closePartition(partitionKey,
-                Duration.ZERO, 1);
+                Duration.ZERO, 1, false);
 
 
         final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
@@ -233,7 +234,7 @@ public class PitWorkerTest {
             Consumer<Boolean> consumer = invocation.getArgument(0);
             consumer.accept(true);
             return acknowledgementSet;
-        }).when(acknowledgementSetManager).create(any(Consumer.class), eq(Duration.ofSeconds(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS)));
+        }).when(acknowledgementSetManager).create(any(Consumer.class), eq(ACKNOWLEDGEMENT_SET_TIMEOUT));
         when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(true);
 
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
@@ -272,8 +273,9 @@ public class PitWorkerTest {
         when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ZERO);
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
+        doNothing().when(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
         doNothing().when(sourceCoordinator).closePartition(partitionKey,
-                Duration.ZERO, 1);
+                Duration.ZERO, 1, true);
 
 
         final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
@@ -359,7 +361,7 @@ public class PitWorkerTest {
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
         doNothing().when(sourceCoordinator).closePartition(partitionKey,
-                Duration.ZERO, 1);
+                Duration.ZERO, 1, false);
 
 
         final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
@@ -377,6 +379,7 @@ public class PitWorkerTest {
         verify(searchAccessor, never()).createPit(any(CreatePointInTimeRequest.class));
         verify(searchAccessor, times(2)).searchWithPit(any(SearchPointInTimeRequest.class));
         verify(sourceCoordinator, times(2)).saveProgressStateForPartition(eq(partitionKey), eq(openSearchIndexProgressState));
+        verify(sourceCoordinator, times(0)).updatePartitionForAcknowledgmentWait(anyString(), any(Duration.class));
 
         verify(documentsProcessedCounter, times(3)).increment();
         verify(indicesProcessedCounter).increment();
@@ -407,7 +410,7 @@ public class PitWorkerTest {
 
         verify(searchAccessor, never()).deletePit(any(DeletePointInTimeRequest.class));
         verify(sourceCoordinator).giveUpPartitions();
-        verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt());
+        verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt(), anyBoolean());
 
         verifyNoInteractions(documentsProcessedCounter);
         verifyNoInteractions(indicesProcessedCounter);
@@ -438,8 +441,8 @@ public class PitWorkerTest {
         assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
 
         verify(searchAccessor, never()).deletePit(any(DeletePointInTimeRequest.class));
-        verify(sourceCoordinator).completePartition(partitionKey);
-        verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt());
+        verify(sourceCoordinator).completePartition(partitionKey, false);
+        verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt(), anyBoolean());
 
         verifyNoInteractions(documentsProcessedCounter);
         verifyNoInteractions(indicesProcessedCounter);
