@@ -815,6 +815,20 @@ public class KeyValueProcessorTests {
     }
 
     @Test
+    void testTagsAddedWhenParsingFails() {
+        when(mockConfig.getRecursive()).thenReturn(true);
+        when(mockConfig.getTagsOnFailure()).thenReturn(List.of("tag1", "tag2"));
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("item1=[]");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(0));
+        assertThat(record.getData().getMetadata().hasTags(List.of("tag1", "tag2")), is(true));
+    }
+
+    @Test
     void testShutdownIsReady() {
         assertThat(keyValueProcessor.isReadyForShutdown(), is(true));
     }

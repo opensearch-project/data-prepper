@@ -10,7 +10,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'org.apache.commons:commons-compress:1.21'
+    implementation libs.commons.compress
     implementation 'joda-time:joda-time:2.11.1'
     implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'

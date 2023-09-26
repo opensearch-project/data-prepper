@@ -95,6 +95,9 @@ public class KeyValueProcessorConfig {
     @NotNull
     private boolean recursive = DEFAULT_RECURSIVE;
 
+    @JsonProperty("tags_on_failure")
+    private List<String> tagsOnFailure;
+
     @JsonProperty("overwrite_if_destination_exists")
     private boolean overwriteIfDestinationExists = true;
 
@@ -168,6 +171,10 @@ public class KeyValueProcessorConfig {
 
     public boolean getRecursive() {
         return recursive;
+    }
+
+    public List<String> getTagsOnFailure() {
+        return tagsOnFailure;
     }
 
     public boolean getOverwriteIfDestinationExists() {
