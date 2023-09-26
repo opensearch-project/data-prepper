@@ -118,7 +118,7 @@ class DataFileLoaderTest {
     }
 
     @Test
-    void test_run_loadFile_correctly() {
+    void test_run_loadFile_correctly() throws InterruptedException {
 
         DataFileLoader loader = DataFileLoader.builder()
                 .bucketName(bucketName)
@@ -129,6 +129,9 @@ class DataFileLoaderTest {
                 .build();
 
         loader.run();
+        // Run for a while
+        Thread.sleep(500);
+
         // Should call s3 getObject
         verify(s3Client).getObject(any(GetObjectRequest.class));
 
