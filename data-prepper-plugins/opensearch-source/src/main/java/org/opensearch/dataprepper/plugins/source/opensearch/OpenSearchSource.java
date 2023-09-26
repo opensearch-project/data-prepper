@@ -17,6 +17,8 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSe
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessorStrategy;
 
+import java.util.Objects;
+
 @DataPrepperPlugin(name="opensearch", pluginType = Source.class, pluginConfigurationType = OpenSearchSourceConfiguration.class)
 public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordination {
 
@@ -56,7 +58,9 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
 
     @Override
     public void stop() {
-        openSearchService.stop();
+        if (Objects.nonNull(openSearchService)) {
+            openSearchService.stop();
+        }
     }
 
     @Override
