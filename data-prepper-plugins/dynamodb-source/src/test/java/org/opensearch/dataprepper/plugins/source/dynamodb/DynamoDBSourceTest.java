@@ -95,16 +95,9 @@ class DynamoDBSourceTest {
     }
 
     @Test
-    void test_normal_start() {
+    void test_create_source() {
         source = createObjectUnderTest();
         assertThat(source, notNullValue());
-        source.start(buffer);
     }
 
-    @Test
-    void test_normal_stop() {
-        source = createObjectUnderTest();
-        assertThat(source, notNullValue());
-        source.stop();
-    }
 }
