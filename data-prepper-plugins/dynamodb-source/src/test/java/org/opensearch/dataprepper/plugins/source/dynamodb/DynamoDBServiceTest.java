@@ -143,7 +143,7 @@ class DynamoDBServiceTest {
         // Mock configurations
         lenient().when(exportConfig.getS3Bucket()).thenReturn(bucketName);
         lenient().when(exportConfig.getS3Prefix()).thenReturn(prefix);
-        lenient().when(streamConfig.getStartPosition()).thenReturn(StreamConfig.StartPosition.LATEST);
+        lenient().when(streamConfig.getStartPosition()).thenReturn("LATEST");
         lenient().when(tableConfig.getTableArn()).thenReturn(tableArn);
         lenient().when(tableConfig.getExportConfig()).thenReturn(exportConfig);
         lenient().when(tableConfig.getStreamConfig()).thenReturn(streamConfig);

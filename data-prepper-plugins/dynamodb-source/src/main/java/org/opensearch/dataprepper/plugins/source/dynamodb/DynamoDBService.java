@@ -10,7 +10,6 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.TableConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
@@ -264,7 +263,7 @@ public class DynamoDBService {
             }
         }
 
-        StreamConfig.StartPosition streamStartPosition = null;
+        String streamStartPosition = null;
 
         if (tableConfig.getStreamConfig() != null) {
             // Validate if DynamoDB Stream is turn on or not
@@ -295,7 +294,7 @@ public class DynamoDBService {
                 .streamArn(describeTableResult.table().latestStreamArn())
                 .streamRequired(tableConfig.getStreamConfig() != null)
                 .exportRequired(tableConfig.getExportConfig() != null)
-                .streamStartPosition(streamStartPosition == null ? null : streamStartPosition.name())
+                .streamStartPosition(streamStartPosition)
                 .exportBucket(tableConfig.getExportConfig() == null ? null : tableConfig.getExportConfig().getS3Bucket())
                 .exportPrefix(tableConfig.getExportConfig() == null ? null : tableConfig.getExportConfig().getS3Prefix())
                 .build();

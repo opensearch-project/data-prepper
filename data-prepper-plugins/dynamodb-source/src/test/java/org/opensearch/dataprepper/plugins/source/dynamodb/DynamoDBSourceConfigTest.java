@@ -11,7 +11,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.AwsAuthenticationConfig;
-import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.TableConfig;
 import software.amazon.awssdk.regions.Region;
 
@@ -72,7 +71,7 @@ class DynamoDBSourceConfigTest {
 
         TableConfig streamOnlyConfig = sourceConfiguration.getTableConfigs().get(2);
         assertThat(streamOnlyConfig.getStreamConfig(), notNullValue());
-        assertThat(streamOnlyConfig.getStreamConfig().getStartPosition(), equalTo(StreamConfig.StartPosition.BEGINNING));
+        assertThat(streamOnlyConfig.getStreamConfig().getStartPosition(), equalTo("BEGINNING"));
         assertNull(streamOnlyConfig.getExportConfig());
 
         AwsAuthenticationConfig awsAuthenticationConfig = sourceConfiguration.getAwsAuthenticationConfig();
