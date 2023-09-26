@@ -61,7 +61,7 @@ public class WorkerCommonUtils {
                                               final SourcePartition<OpenSearchIndexProgressState> indexPartition,
                                               final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator) {
         if (openSearchSourceConfiguration.isAcknowledgmentsEnabled()) {
-            sourceCoordinator.updatePartitionForAckWait(indexPartition.getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
+            sourceCoordinator.updatePartitionForAcknowledgmentWait(indexPartition.getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
             acknowledgementSet.complete();
         } else {
             sourceCoordinator.closePartition(

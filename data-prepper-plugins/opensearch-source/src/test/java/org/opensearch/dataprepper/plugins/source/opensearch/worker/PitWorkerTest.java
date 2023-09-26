@@ -273,7 +273,7 @@ public class PitWorkerTest {
         when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ZERO);
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
-        doNothing().when(sourceCoordinator).updatePartitionForAckWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        doNothing().when(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
         doNothing().when(sourceCoordinator).closePartition(partitionKey,
                 Duration.ZERO, 1, true);
 
@@ -379,7 +379,7 @@ public class PitWorkerTest {
         verify(searchAccessor, never()).createPit(any(CreatePointInTimeRequest.class));
         verify(searchAccessor, times(2)).searchWithPit(any(SearchPointInTimeRequest.class));
         verify(sourceCoordinator, times(2)).saveProgressStateForPartition(eq(partitionKey), eq(openSearchIndexProgressState));
-        verify(sourceCoordinator, times(0)).updatePartitionForAckWait(anyString(), any(Duration.class));
+        verify(sourceCoordinator, times(0)).updatePartitionForAcknowledgmentWait(anyString(), any(Duration.class));
 
         verify(documentsProcessedCounter, times(3)).increment();
         verify(indicesProcessedCounter).increment();

@@ -925,7 +925,7 @@ public class LeaseBasedSourceCoordinatorTest {
         doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
 
         final Duration ackTimeout = Duration.ofSeconds(10);
-        createObjectUnderTest().updatePartitionForAckWait(sourcePartition.getPartitionKey(), ackTimeout);
+        createObjectUnderTest().updatePartitionForAcknowledgmentWait(sourcePartition.getPartitionKey(), ackTimeout);
 
         final ArgumentCaptor<Instant> argumentCaptorForPartitionOwnershipTimeout = ArgumentCaptor.forClass(Instant.class);
         verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(argumentCaptorForPartitionOwnershipTimeout.capture());

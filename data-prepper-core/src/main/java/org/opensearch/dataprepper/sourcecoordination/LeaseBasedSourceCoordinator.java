@@ -40,6 +40,10 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     private static final Logger LOG = LoggerFactory.getLogger(LeaseBasedSourceCoordinator.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
+    private static final String COMPLETE_ACTION = "complete";
+    private static final String CLOSE_ACTION = "close";
+    private static final String SAVE_STATE_ACTION = "saveState";
+
     static final String PARTITION_CREATION_SUPPLIER_INVOCATION_COUNT = "partitionCreationSupplierInvocations";
     static final String NO_PARTITIONS_ACQUIRED_COUNT = "noPartitionsAcquired";
     static final String PARTITION_CREATED_COUNT = "partitionsCreatedCount";
@@ -121,9 +125,9 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         this.partitionsGivenUpCounter = pluginMetrics.counter(PARTITION_OWNERSHIP_GIVEN_UP_COUNT);
         this.partitionNotFoundErrorCounter = pluginMetrics.counter(PARTITION_NOT_FOUND_ERROR_COUNT);
         this.partitionNotOwnedErrorCounter = pluginMetrics.counter(PARTITION_NOT_OWNED_ERROR_COUNT);
-        this.saveStatePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, "saveState");
-        this.closePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, "close");
-        this.completePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, "complete");
+        this.saveStatePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, SAVE_STATE_ACTION);
+        this.closePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, CLOSE_ACTION);
+        this.completePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, COMPLETE_ACTION);
     }
 
     @Override
@@ -205,7 +209,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     public void completePartition(final String partitionKey, final Boolean fromAcknowledgmentsCallback) {
         validateIsInitialized();
 
-        final SourcePartitionStoreItem itemToUpdate = fromAcknowledgmentsCallback ? getSourcePartitionStoreItem(partitionKey, "complete") : validateAndGetSourcePartitionStoreItem(partitionKey, "complete");
+        final SourcePartitionStoreItem itemToUpdate = getItemWithAction(partitionKey, COMPLETE_ACTION, fromAcknowledgmentsCallback);
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwner(null);
@@ -232,7 +236,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     public void closePartition(final String partitionKey, final Duration reopenAfter, final int maxClosedCount, final Boolean fromAcknowledgmentsCallback) {
         validateIsInitialized();
 
-        final SourcePartitionStoreItem itemToUpdate = fromAcknowledgmentsCallback ? getSourcePartitionStoreItem(partitionKey, "close") : validateAndGetSourcePartitionStoreItem(partitionKey, "close");
+        final SourcePartitionStoreItem itemToUpdate = getItemWithAction(partitionKey, CLOSE_ACTION, fromAcknowledgmentsCallback);
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwner(null);
@@ -275,7 +279,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     public <S extends T> void saveProgressStateForPartition(final String partitionKey, final S partitionProgressState) {
         validateIsInitialized();
 
-        final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, "save state");
+        final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, SAVE_STATE_ACTION);
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwnershipTimeout(Instant.now().plus(DEFAULT_LEASE_TIMEOUT));
@@ -295,7 +299,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     }
 
     @Override
-    public void updatePartitionForAckWait(final String partitionKey, final Duration ackowledgmentTimeout) {
+    public void updatePartitionForAcknowledgmentWait(final String partitionKey, final Duration ackowledgmentTimeout) {
         validateIsInitialized();
 
         final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, "update for ack wait");
@@ -462,5 +466,11 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         } catch (final JsonProcessingException | PartitionUpdateException e) {
             LOG.warn("There was an error saving global state after creating partitions.", e);
         }
+    }
+
+    private SourcePartitionStoreItem getItemWithAction(final String partitionKey, final String action, final Boolean fromAcknowledgmentsCallback) {
+        // The validation against activePartition in partition manager needs to be skipped when called from acknowledgments callback
+        // because otherwise it will fail the validation since it is actively working on a different partition when ack is received
+        return fromAcknowledgmentsCallback ? getSourcePartitionStoreItem(partitionKey, action) : validateAndGetSourcePartitionStoreItem(partitionKey, action);
     }
 }

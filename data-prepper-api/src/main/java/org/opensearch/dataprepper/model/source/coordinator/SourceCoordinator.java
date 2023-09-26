@@ -105,5 +105,5 @@ public interface SourceCoordinator<T> {
      * @param ackowledgmentTimeout - the amount of time that this partition can be completed by the acknowledgment callback before another instance of Data Prepper
      *                             can pick it up for processing
      */
-    void updatePartitionForAckWait(final String partitionKey, final Duration ackowledgmentTimeout);
+    void updatePartitionForAcknowledgmentWait(final String partitionKey, final Duration ackowledgmentTimeout);
 }

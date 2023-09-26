@@ -155,7 +155,7 @@ public class ScanObjectWorker implements Runnable{
 
             if (endToEndAcknowledgementsEnabled) {
                 deleteObjectRequest.ifPresent(waitingForAcknowledgements::add);
-                sourceCoordinator.updatePartitionForAckWait(objectToProcess.get().getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
+                sourceCoordinator.updatePartitionForAcknowledgmentWait(objectToProcess.get().getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
                 acknowledgementSet.complete();
             } else {
                 sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey(), false);

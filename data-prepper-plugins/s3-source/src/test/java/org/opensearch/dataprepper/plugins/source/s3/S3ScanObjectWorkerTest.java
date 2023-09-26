@@ -193,7 +193,7 @@ class S3ScanObjectWorkerTest {
 
         scanObjectWorker.runWithoutInfiniteLoop();
 
-        verify(sourceCoordinator).updatePartitionForAckWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
         verify(sourceCoordinator).completePartition(partitionKey, true);
         verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, objectKey);
         verify(acknowledgementSet).complete();
@@ -230,7 +230,7 @@ class S3ScanObjectWorkerTest {
         scanObjectWorker.runWithoutInfiniteLoop();
 
         verify(sourceCoordinator).completePartition(partitionKey, false);
-        verify(sourceCoordinator, times(0)).updatePartitionForAckWait(anyString(), any(Duration.class));
+        verify(sourceCoordinator, times(0)).updatePartitionForAcknowledgmentWait(anyString(), any(Duration.class));
         verifyNoInteractions(s3ObjectDeleteWorker);
         verifyNoInteractions(acknowledgementSetManager);
 
