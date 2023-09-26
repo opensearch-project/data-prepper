@@ -85,6 +85,7 @@ class DynamoDBSourceTest {
         lenient().when(sourceConfig.getTableConfigs()).thenReturn(Collections.emptyList());
         lenient().doNothing().when(coordinationStore).initializeStore();
         lenient().when(coordinationStore.tryCreatePartitionItem(anyString(), anyString(), any(SourcePartitionStatus.class), anyLong(), anyString())).thenReturn(true);
+        lenient().when(coordinationStore.tryCreatePartitionItem(anyString(), anyString(), any(SourcePartitionStatus.class), anyLong(), eq(null))).thenReturn(true);
         lenient().when(coordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any(Duration.class))).thenReturn(Optional.empty());
     }
 
