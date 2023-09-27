@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class TopicPartitionCommitTracker {
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TopicPartitionCommitTracker.class);
     private long committedOffset;
     private long committedRecordCount;
     private long initialOffset;

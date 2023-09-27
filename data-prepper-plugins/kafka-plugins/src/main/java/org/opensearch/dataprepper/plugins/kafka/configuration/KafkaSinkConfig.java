@@ -14,10 +14,10 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -73,7 +73,12 @@ public class KafkaSinkConfig implements KafkaProducerConfig{
     @JsonProperty("serde_format")
     private String serdeFormat;
 
+    @JsonProperty("encryption")
+    private EncryptionConfig encryptionConfig;
 
+    @JsonProperty("aws")
+    @Valid
+    private AwsConfig awsConfig;
     @JsonProperty("partition_key")
     @NotNull
     @NotEmpty
@@ -91,8 +96,20 @@ public class KafkaSinkConfig implements KafkaProducerConfig{
         return authConfig;
     }
 
+    @Override
+    public EncryptionConfig getEncryptionConfig() {
+        if (Objects.isNull(encryptionConfig)) {
+            return new EncryptionConfig();
+        }
+        return encryptionConfig;
+    }
+    @Override
+    public AwsConfig getAwsConfig() {
+        return awsConfig;
+    }
 
-    public List<String> getBootStrapServers() {
+
+    public List<String> getBootstrapServers() {
         return bootStrapServers;
     }
 
@@ -123,8 +140,8 @@ public class KafkaSinkConfig implements KafkaProducerConfig{
         this.schemaConfig = schemaConfig;
     }
 
-    public List<TopicConfig> getTopics() {
-        return Collections.singletonList(topic);
+    public TopicConfig getTopic() {
+        return topic;
     }
 
     public void setTopic(TopicConfig topic) {

@@ -34,7 +34,6 @@ import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
@@ -74,7 +73,7 @@ public class KafkaCustomProducerTest {
         final TopicConfig topicConfig = new TopicConfig();
         topicConfig.setName("test-topic");
 
-        when(kafkaSinkConfig.getTopics()).thenReturn(Collections.singletonList(topicConfig));
+        when(kafkaSinkConfig.getTopic()).thenReturn(topicConfig);
         when(kafkaSinkConfig.getSchemaConfig()).thenReturn(mock(SchemaConfig.class));
         when(kafkaSinkConfig.getSchemaConfig().getRegistryURL()).thenReturn("http://localhost:8085/");
         when(kafkaSinkConfig.getPartitionKey()).thenReturn("testkey");

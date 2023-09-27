@@ -106,7 +106,7 @@ class KafkaSourceTest {
         when(topic2.getAutoCommit()).thenReturn(false);
         when(topic1.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
         when(topic2.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
-        when(sourceConfig.getBootStrapServers()).thenReturn(Collections.singletonList("http://localhost:1234"));
+        when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList("http://localhost:1234"));
         when(sourceConfig.getTopics()).thenReturn(Arrays.asList(topic1, topic2));
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);

@@ -14,7 +14,6 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,9 +37,9 @@ public class DLQSink {
     private final DlqProvider dlqProvider;
     private final PluginSetting pluginSetting;
 
-    public DLQSink(final PluginFactory pluginFactory, final KafkaProducerConfig kafkaSinkConfig, final PluginSetting pluginSetting) {
+    public DLQSink(final PluginFactory pluginFactory, final KafkaProducerConfig kafkaProducerConfig, final PluginSetting pluginSetting) {
         this.pluginSetting = pluginSetting;
-        this.dlqProvider = getDlqProvider(pluginFactory, kafkaSinkConfig);
+        this.dlqProvider = getDlqProvider(pluginFactory, kafkaProducerConfig);
     }
 
     public void perform(final Object failedData, final Exception e) {

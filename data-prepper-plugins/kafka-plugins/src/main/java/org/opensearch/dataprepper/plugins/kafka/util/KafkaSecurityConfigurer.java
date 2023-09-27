@@ -9,7 +9,6 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
@@ -47,7 +46,7 @@ import java.util.UUID;
  * * This is static property configure dedicated to authentication related information given in pipeline.yml
  */
 
-public class KafkaConsumerSecurityConfigurer {
+public class KafkaSecurityConfigurer {
 
     private static final String SASL_MECHANISM = "sasl.mechanism";
 
@@ -248,15 +247,15 @@ public class KafkaConsumerSecurityConfigurer {
         }
     }
 
-    public static void setAuthProperties(Properties properties, final KafkaConsumerConfig sourceConfig, final Logger LOG) {
-        final AwsConfig awsConfig = sourceConfig.getAwsConfig();
-        final AuthConfig authConfig = sourceConfig.getAuthConfig();
-        final EncryptionConfig encryptionConfig = sourceConfig.getEncryptionConfig();
+    public static void setAuthProperties(Properties properties, final KafkaConsumerConfig consumerConfig, final Logger LOG) {
+        final AwsConfig awsConfig = consumerConfig.getAwsConfig();
+        final AuthConfig authConfig = consumerConfig.getAuthConfig();
+        final EncryptionConfig encryptionConfig = consumerConfig.getEncryptionConfig();
         final EncryptionType encryptionType = encryptionConfig.getType();
 
         credentialsProvider = DefaultCredentialsProvider.create();
 
-        String bootstrapServers = sourceConfig.getBootStrapServers().iterator().next();
+        String bootstrapServers = String.join(",", consumerConfig.getBootstrapServers());
         AwsIamAuthConfig awsIamAuthConfig = null;
         if (Objects.nonNull(authConfig)) {
             AuthConfig.SaslAuthConfig saslAuthConfig = authConfig.getSaslAuthConfig();
@@ -274,7 +273,7 @@ public class KafkaConsumerSecurityConfigurer {
                     setAwsIamAuthProperties(properties, awsIamAuthConfig, awsConfig);
                     bootstrapServers = getBootStrapServersForMsk(awsIamAuthConfig, awsConfig, LOG);
                 } else if (Objects.nonNull(saslAuthConfig.getOAuthConfig())) {
-                    setOauthProperties(sourceConfig, properties);
+                    setOauthProperties(consumerConfig, properties);
                 } else if (Objects.nonNull(plainTextAuthConfig)) {
                     setPlainTextAuthProperties(properties, plainTextAuthConfig, encryptionType);
                 } else {

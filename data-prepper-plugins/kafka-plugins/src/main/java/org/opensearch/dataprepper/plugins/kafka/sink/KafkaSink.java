@@ -17,7 +17,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
@@ -131,7 +130,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         if (schemaConfig != null) {
             if (schemaConfig.isCreate()) {
                 final RestUtils restUtils = new RestUtils(schemaConfig);
-                final String topic = kafkaSinkConfig.getTopics().get(0).getName();
+                final String topic = kafkaSinkConfig.getTopic().getName();
                 final SchemaService schemaService = new SchemaService.SchemaServiceBuilder()
                         .getRegisterationAndCompatibilityService(topic, kafkaSinkConfig.getSerdeFormat(),
                                 restUtils, schemaConfig).build();
@@ -143,10 +142,10 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     }
 
     private void checkTopicCreationCriteriaAndCreateTopic() {
-        final TopicConfig topic = kafkaSinkConfig.getTopics().get(0);
+        final TopicConfig topic = kafkaSinkConfig.getTopic();
         if (topic.isCreate()) {
-            final TopicService topicService = new TopicService((KafkaProducerConfig) kafkaSinkConfig);
-            topicService.createTopic(kafkaSinkConfig.getTopics().get(0).getName(), topic.getNumberOfPartions(), topic.getReplicationFactor());
+            final TopicService topicService = new TopicService(kafkaSinkConfig);
+            topicService.createTopic(kafkaSinkConfig.getTopic().getName(), topic.getNumberOfPartions(), topic.getReplicationFactor());
             topicService.closeAdminClient();
         }
 

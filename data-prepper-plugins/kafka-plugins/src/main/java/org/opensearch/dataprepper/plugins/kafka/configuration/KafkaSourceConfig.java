@@ -65,7 +65,7 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
         this.topics = topics;
     }
 
-    public List<String> getBootStrapServers() {
+    public List<String> getBootstrapServers() {
         if (Objects.nonNull(bootStrapServers)) {
             return bootStrapServers;
         }

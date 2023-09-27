@@ -1,12 +1,14 @@
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
-public interface KafkaConsumerConfig extends KafkaConnection{
+import java.util.List;
 
-    AwsConfig getAwsConfig();
-
-    EncryptionConfig getEncryptionConfig();
+public interface KafkaConsumerConfig extends KafkaConnectionConfig {
 
     String getClientDnsLookup();
 
     boolean getAcknowledgementsEnabled();
+    
+    SchemaConfig getSchemaConfig();
+
+    List<TopicConfig> getTopics();
 }

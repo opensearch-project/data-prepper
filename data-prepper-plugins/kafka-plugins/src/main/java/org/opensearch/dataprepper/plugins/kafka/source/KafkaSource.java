@@ -44,7 +44,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaConsumerSecurityConfigurer;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
@@ -121,7 +121,7 @@ public class KafkaSource implements Source<Record<Event>> {
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         Properties authProperties = new Properties();
-        KafkaConsumerSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
+        KafkaSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
         sourceConfig.getTopics().forEach(topic -> {
             consumerGroupID = topic.getGroupId();
             KafkaTopicMetrics topicMetrics = new KafkaTopicMetrics(topic.getName(), pluginMetrics);
@@ -179,7 +179,7 @@ public class KafkaSource implements Source<Record<Event>> {
                  return new KafkaConsumer<String, GenericRecord>(consumerProperties);
             case PLAINTEXT:
             default:
-                glueDeserializer = KafkaConsumerSecurityConfigurer.getGlueSerializer(sourceConfig);
+                glueDeserializer = KafkaSecurityConfigurer.getGlueSerializer(sourceConfig);
                 if (Objects.nonNull(glueDeserializer)) {
                     return new KafkaConsumer(consumerProperties, stringDeserializer, glueDeserializer);
                 } else {

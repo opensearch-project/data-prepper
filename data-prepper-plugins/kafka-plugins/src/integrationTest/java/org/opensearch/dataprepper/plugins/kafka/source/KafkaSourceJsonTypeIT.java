@@ -129,7 +129,7 @@ public class KafkaSourceJsonTypeIT {
         when(jsonTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(jsonTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
-        when(sourceConfig.getBootStrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
+        when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
         when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
     }
 

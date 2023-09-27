@@ -130,7 +130,7 @@ public class KafkaSinkPlainTextTypeIT {
         when(topicConfig.getAutoOffsetReset()).thenReturn("earliest");
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
-        when(kafkaSinkConfig.getBootStrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
+        when(kafkaSinkConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     }
 
@@ -142,7 +142,7 @@ public class KafkaSinkPlainTextTypeIT {
         final int numRecords = 1;
         when(topicConfig.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(topicConfig.isCreate()).thenReturn(false);
-        when(kafkaSinkConfig.getTopics()).thenReturn(Collections.singletonList(topicConfig));
+        when(kafkaSinkConfig.getTopic()).thenReturn(topicConfig);
         when(kafkaSinkConfig.getAuthConfig()).thenReturn(authConfig);
         kafkaSink = createObjectUnderTest();
 

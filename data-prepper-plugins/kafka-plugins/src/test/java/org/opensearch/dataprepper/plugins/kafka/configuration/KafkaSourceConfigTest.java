@@ -57,8 +57,8 @@ class KafkaSourceConfigTest {
 
 	@Test
 	void test_bootStrapServers_not_null(){
-		assertThat(kafkaSourceConfig.getBootStrapServers(), notNullValue());
-		String bootstrapServers = kafkaSourceConfig.getBootStrapServers().get(0);
+		assertThat(kafkaSourceConfig.getBootstrapServers(), notNullValue());
+		String bootstrapServers = kafkaSourceConfig.getBootstrapServers().get(0);
 		assertTrue(bootstrapServers.contains("127.0.0.1:9093"));
 	}
 
@@ -76,7 +76,7 @@ class KafkaSourceConfigTest {
 		TopicConfig topicConfig = mock(TopicConfig.class);
 		kafkaSourceConfig.setTopics(Collections.singletonList(topicConfig));
 
-		assertEquals("127.0.0.1:9092", kafkaSourceConfig.getBootStrapServers());
+		assertEquals("127.0.0.1:9092", kafkaSourceConfig.getBootstrapServers());
 		assertEquals(Collections.singletonList(topicConfig), kafkaSourceConfig.getTopics());
         setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsEnabled", true);
 		assertEquals(true, kafkaSourceConfig.getAcknowledgementsEnabled());

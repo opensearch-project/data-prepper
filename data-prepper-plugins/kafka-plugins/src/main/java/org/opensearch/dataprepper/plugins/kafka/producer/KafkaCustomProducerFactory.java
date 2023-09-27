@@ -18,25 +18,24 @@ import java.util.Properties;
 
 public class KafkaCustomProducerFactory {
 
-    public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaSinkConfig, final PluginFactory pluginFactory, final PluginSetting pluginSetting,
+    public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaProducerConfig, final PluginFactory pluginFactory, final PluginSetting pluginSetting,
                                               final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext) {
-        prepareTopicAndSchema(kafkaSinkConfig);
-        Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig);
+        prepareTopicAndSchema(kafkaProducerConfig);
+        Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaProducerConfig);
         properties = Objects.requireNonNull(properties);
         return new KafkaCustomProducer(new org.apache.kafka.clients.producer.KafkaProducer<>(properties),
-            kafkaSinkConfig, new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting),
+            kafkaProducerConfig, new DLQSink(pluginFactory, kafkaProducerConfig, pluginSetting),
             expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null);
     }
-
-    private void prepareTopicAndSchema(final KafkaProducerConfig kafkaSinkConfig) {
-        checkTopicCreationCriteriaAndCreateTopic(kafkaSinkConfig);
-        final SchemaConfig schemaConfig = kafkaSinkConfig.getSchemaConfig();
+    private void prepareTopicAndSchema(final KafkaProducerConfig kafkaProducerConfig) {
+        checkTopicCreationCriteriaAndCreateTopic(kafkaProducerConfig);
+        final SchemaConfig schemaConfig = kafkaProducerConfig.getSchemaConfig();
         if (schemaConfig != null) {
             if (schemaConfig.isCreate()) {
                 final RestUtils restUtils = new RestUtils(schemaConfig);
-                final String topic = kafkaSinkConfig.getTopics().get(0).getName();
+                final String topic = kafkaProducerConfig.getTopic().getName();
                 final SchemaService schemaService = new SchemaService.SchemaServiceBuilder()
-                    .getRegisterationAndCompatibilityService(topic, kafkaSinkConfig.getSerdeFormat(),
+                    .getRegisterationAndCompatibilityService(topic, kafkaProducerConfig.getSerdeFormat(),
                         restUtils, schemaConfig).build();
                 schemaService.registerSchema(topic);
             }
@@ -45,11 +44,11 @@ public class KafkaCustomProducerFactory {
 
     }
 
-    private void checkTopicCreationCriteriaAndCreateTopic(final KafkaProducerConfig kafkaSinkConfig) {
-        final TopicConfig topic = kafkaSinkConfig.getTopics().get(0);
+    private void checkTopicCreationCriteriaAndCreateTopic(final KafkaProducerConfig kafkaProducerConfig) {
+        final TopicConfig topic = kafkaProducerConfig.getTopic();
         if (topic.isCreate()) {
-            final TopicService topicService = new TopicService(kafkaSinkConfig);
-            topicService.createTopic(kafkaSinkConfig.getTopics().get(0).getName(), topic.getNumberOfPartions(), topic.getReplicationFactor());
+            final TopicService topicService = new TopicService(kafkaProducerConfig);
+            topicService.createTopic(kafkaProducerConfig.getTopic().getName(), topic.getNumberOfPartions(), topic.getReplicationFactor());
             topicService.closeAdminClient();
         }
 

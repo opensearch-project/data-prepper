@@ -36,6 +36,8 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.Future;
 
 
 /**
@@ -80,7 +82,7 @@ public class KafkaCustomProducer<T> {
         bufferedEventHandles = new LinkedList<>();
         this.expressionEvaluator = expressionEvaluator;
         this.tagTargetKey = tagTargetKey;
-        this.topicName = ObjectUtils.isEmpty(kafkaProducerConfig.getTopics()) ? null : kafkaProducerConfig.getTopics().get(0).getName();
+        this.topicName = ObjectUtils.isEmpty(kafkaProducerConfig.getTopic()) ? null : kafkaProducerConfig.getTopic().getName();
         this.serdeFormat = ObjectUtils.isEmpty(kafkaProducerConfig.getSerdeFormat()) ? null : kafkaProducerConfig.getSerdeFormat();
         schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
 
@@ -102,7 +104,7 @@ public class KafkaCustomProducer<T> {
                 publishPlaintextMessage(record, key);
             }
         } catch (Exception e) {
-            LOG.error("Error occured while publishing " + e.getMessage());
+            LOG.error("Error occurred while publishing " + e.getMessage());
             releaseEventHandles(false);
         }
 
@@ -113,7 +115,7 @@ public class KafkaCustomProducer<T> {
         try {
             event = addTagsToEvent(event, tagTargetKey);
         } catch (JsonProcessingException e) {
-            LOG.error("error occured while processing tag target key");
+            LOG.error("error occurred while processing tag target key");
         }
         return event;
     }
@@ -132,8 +134,13 @@ public class KafkaCustomProducer<T> {
         send(topicName, key, genericRecord);
     }
 
-    private void send(final String topicName, final String key, final Object record) {
-        producer.send(new ProducerRecord(topicName, key, record), callBack(record));
+    private Future send(final String topicName, String key, final Object record) {
+        key = null;
+        if (Objects.isNull(key)) {
+            return producer.send(new ProducerRecord(topicName, record), callBack(record));
+        }
+
+        return producer.send(new ProducerRecord(topicName, key, record), callBack(record));
     }
 
     private void publishJsonMessage(final Record<Event> record, final String key) throws IOException, ProcessingException {

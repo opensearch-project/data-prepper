@@ -49,8 +49,8 @@ class KafkaSinkConfigTest {
 
     @Test
     void test_bootStrapServers_not_null() {
-        assertThat(kafkaSinkConfig.getBootStrapServers(), notNullValue());
-        List<String> servers = kafkaSinkConfig.getBootStrapServers();
+        assertThat(kafkaSinkConfig.getBootstrapServers(), notNullValue());
+        List<String> servers = kafkaSinkConfig.getBootstrapServers();
         bootstrapServers = servers.stream().
                 flatMap(str -> Arrays.stream(str.split(","))).
                 map(String::trim).
@@ -61,7 +61,7 @@ class KafkaSinkConfigTest {
 
     @Test
     void test_topics_not_null() {
-        assertThat(kafkaSinkConfig.getTopics(), notNullValue());
+        assertThat(kafkaSinkConfig.getTopic(), notNullValue());
     }
 
     @Test

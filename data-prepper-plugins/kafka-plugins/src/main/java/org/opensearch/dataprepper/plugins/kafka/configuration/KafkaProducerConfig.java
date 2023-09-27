@@ -4,11 +4,10 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 
-public interface KafkaProducerConfig extends KafkaConnection {
-    Collection<String> getBootStrapServers();
+public interface KafkaProducerConfig extends KafkaConnectionConfig {
+    Collection<String> getBootstrapServers();
 
     AuthConfig getAuthConfig();
 
@@ -16,13 +15,12 @@ public interface KafkaProducerConfig extends KafkaConnection {
 
     String getSerdeFormat();
 
-    List<TopicConfig> getTopics();
+    TopicConfig getTopic();
 
     KafkaProducerProperties getKafkaProducerProperties();
 
     void setDlqConfig(PluginSetting pluginSetting);
 
     String getPartitionKey();
-
     Optional<PluginModel> getDlq();
 }

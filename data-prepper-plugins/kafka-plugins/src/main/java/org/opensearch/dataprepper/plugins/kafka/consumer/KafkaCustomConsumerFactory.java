@@ -22,7 +22,6 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
@@ -30,7 +29,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaConsumerSecurityConfigurer;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
@@ -57,7 +56,7 @@ public class KafkaCustomConsumerFactory {
                                                              final AcknowledgementSetManager acknowledgementSetManager,
                                                              final AtomicBoolean shutdownInProgress) {
         Properties authProperties = new Properties();
-        KafkaConsumerSecurityConfigurer.setAuthProperties(authProperties, kafkaConsumerConfig, LOG);
+        KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaConsumerConfig, LOG);
         KafkaTopicMetrics topicMetrics = new KafkaTopicMetrics(topic.getName(), pluginMetrics);
         Properties consumerProperties = getConsumerProperties(kafkaConsumerConfig, topic, authProperties);
         MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
@@ -80,7 +79,7 @@ public class KafkaCustomConsumerFactory {
                         break;
                     case PLAINTEXT:
                     default:
-                        final GlueSchemaRegistryKafkaDeserializer glueDeserializer = KafkaConsumerSecurityConfigurer.getGlueSerializer(kafkaConsumerConfig);
+                        final GlueSchemaRegistryKafkaDeserializer glueDeserializer = KafkaSecurityConfigurer.getGlueSerializer(kafkaConsumerConfig);
                         if (Objects.nonNull(glueDeserializer)) {
                             kafkaConsumer = new KafkaConsumer(consumerProperties, stringDeserializer, glueDeserializer);
                         } else {
@@ -95,7 +94,7 @@ public class KafkaCustomConsumerFactory {
         } catch (Exception e) {
             if (e instanceof BrokerNotAvailableException ||
                 e instanceof BrokerEndPointNotAvailableException || e instanceof TimeoutException) {
-                LOG.error("The kafka broker is not available...");
+                LOG.error("The Kafka broker is not available.");
             } else {
                 LOG.error("Failed to setup the Kafka Source Plugin.", e);
             }
@@ -158,15 +157,10 @@ public class KafkaCustomConsumerFactory {
 
         if (schemaConfig.getType() == SchemaRegistryType.AWS_GLUE) {
             return;
+        } else if (schemaConfig.getType() == SchemaRegistryType.CONFLUENT) {
+            setupConfluentSchemaRegistry(schemaConfig, kafkaConsumerConfig, properties, topicConfig);
         }
 
-        /* else schema registry type is Confluent */
-        if (StringUtils.isNotEmpty(schemaConfig.getRegistryURL())) {
-            setPropertiesForSchemaRegistryConnectivity(kafkaConsumerConfig, properties);
-            setPropertiesForSchemaType(kafkaConsumerConfig, properties, topicConfig);
-        } else {
-            throw new RuntimeException("RegistryURL must be specified for confluent schema registry");
-        }
     }
 
     private void setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(Properties properties, final TopicConfig topicConfig) {
@@ -239,5 +233,15 @@ public class KafkaCustomConsumerFactory {
 
     private String getSchemaRegistryUrl(final KafkaConsumerConfig kafkaConsumerConfig) {
         return kafkaConsumerConfig.getSchemaConfig().getRegistryURL();
+    }
+
+    private void setupConfluentSchemaRegistry(final SchemaConfig schemaConfig, final KafkaConsumerConfig kafkaConsumerConfig,
+                                              final Properties properties, final TopicConfig topicConfig) {
+        if (StringUtils.isNotEmpty(schemaConfig.getRegistryURL())) {
+            setPropertiesForSchemaRegistryConnectivity(kafkaConsumerConfig, properties);
+            setPropertiesForSchemaType(kafkaConsumerConfig, properties, topicConfig);
+        } else {
+            throw new RuntimeException("RegistryURL must be specified for confluent schema registry");
+        }
     }
 }

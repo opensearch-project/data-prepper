@@ -132,7 +132,7 @@ public class KafkaSinkJsonTypeIT {
         when(topicConfig.getAutoOffsetReset()).thenReturn("earliest");
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
-        when(kafkaSinkConfig.getBootStrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
+        when(kafkaSinkConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     }
 
@@ -143,7 +143,7 @@ public class KafkaSinkJsonTypeIT {
         final int numRecords = 1;
         when(topicConfig.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(topicConfig.isCreate()).thenReturn(false);
-        when(kafkaSinkConfig.getTopics()).thenReturn(Collections.singletonList(topicConfig));
+        when(kafkaSinkConfig.getTopic()).thenReturn(topicConfig);
         when(kafkaSinkConfig.getAuthConfig()).thenReturn(authConfig);
         kafkaSink = createObjectUnderTest();
 
@@ -205,8 +205,8 @@ public class KafkaSinkJsonTypeIT {
     }
 
     private void configureJasConfForSASLPlainText() {
-        String username = System.getProperty("tests.kafka.authconfig.username");
-        String password = System.getProperty("tests.kafka.authconfig.password");
+        String username = "admin";
+        String password = "admin";
         when(plainTextAuthConfig.getUsername()).thenReturn(username);
         when(plainTextAuthConfig.getPassword()).thenReturn(password);
         when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
@@ -248,11 +248,16 @@ public class KafkaSinkJsonTypeIT {
             ConsumerRecords<String, JsonNode> records = kafkaConsumer.poll(1000);
             if (!records.isEmpty() && records.count() > 0) {
                 for (ConsumerRecord<String, JsonNode> record : records) {
+                    System.out.println("RECORD RETRIEVED");
+                    System.out.println(record);
                     Record<Event> recordEvent = recList.get(recListCounter);
                     String inputJsonStr = recordEvent.getData().toJsonString();
 
                     JsonNode recValue = record.value();
                     String ss = recValue.asText();
+                    System.out.println(ss);
+                    System.out.println(recValue);
+
                     assertThat(ss, CoreMatchers.containsString(inputJsonStr));
                     if (recListCounter + 1 == recList.size()) {
                         isPollNext = false;
