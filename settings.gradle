@@ -21,7 +21,7 @@ dependencyResolutionManagement {
             library('armeria-core', 'com.linecorp.armeria', 'armeria').versionRef('armeria')
             library('armeria-grpc', 'com.linecorp.armeria', 'armeria-grpc').versionRef('armeria')
             library('armeria-junit', 'com.linecorp.armeria', 'armeria-junit5').versionRef('armeria')
-            version('protobuf', '3.21.11')
+            version('protobuf', '3.24.3')
             library('protobuf-core', 'com.google.protobuf', 'protobuf-java').versionRef('protobuf')
             library('protobuf-util', 'com.google.protobuf', 'protobuf-java-util').versionRef('protobuf')
             version('opentelemetry', '0.16.0-alpha')
@@ -37,12 +37,15 @@ dependencyResolutionManagement {
             version('bouncycastle', '1.76')
             library('bouncycastle-bcprov', 'org.bouncycastle', 'bcprov-jdk18on').versionRef('bouncycastle')
             library('bouncycastle-bcpkix', 'org.bouncycastle', 'bcpkix-jdk18on').versionRef('bouncycastle')
-            version('guava', '32.0.1-jre')
+            version('guava', '32.1.2-jre')
             library('guava-core', 'com.google.guava', 'guava').versionRef('guava')
             library('commons-lang3', 'org.apache.commons', 'commons-lang3').version('3.13.0')
             library('commons-io', 'commons-io', 'commons-io').version('2.13.0')
             library('commons-codec', 'commons-codec', 'commons-codec').version('1.16.0')
             library('commons-compress', 'org.apache.commons', 'commons-compress').version('1.24.0')
+            version('hadoop', '3.3.6')
+            library('hadoop-common', 'org.apache.hadoop', 'hadoop-common').versionRef('hadoop')
+            library('hadoop-mapreduce', 'org.apache.hadoop', 'hadoop-mapreduce-client-core').versionRef('hadoop')
         }
         testLibs {
             version('junit', '5.8.2')
@@ -51,6 +54,7 @@ dependencyResolutionManagement {
             version('awaitility', '4.2.0')
             version('spring', '5.3.28')
             version('slf4j', '2.0.6')
+            version('hadoop', '3.3.6')
             library('junit-core', 'org.junit.jupiter', 'junit-jupiter').versionRef('junit')
             library('junit-params', 'org.junit.jupiter', 'junit-jupiter-params').versionRef('junit')
             library('junit-engine', 'org.junit.jupiter', 'junit-jupiter-engine').versionRef('junit')
@@ -64,6 +68,7 @@ dependencyResolutionManagement {
             library('awaitility', 'org.awaitility', 'awaitility').versionRef('awaitility')
             library('spring-test', 'org.springframework', 'spring-test').versionRef('spring')
             library('slf4j-simple', 'org.slf4j', 'slf4j-simple').versionRef('slf4j')
+            library('hadoop-common', 'org.apache.hadoop', 'hadoop-common').versionRef('hadoop')
         }
     }
 }
