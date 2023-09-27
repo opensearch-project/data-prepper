@@ -7,7 +7,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'org.apache.commons:commons-compress:1.21'
+    implementation libs.commons.compress
     implementation project(':data-prepper-plugins:common')
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
