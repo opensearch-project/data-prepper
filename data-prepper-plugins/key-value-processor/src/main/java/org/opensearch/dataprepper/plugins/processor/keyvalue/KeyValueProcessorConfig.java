@@ -29,11 +29,11 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_WHITESPACE = "lenient";
     static final boolean DEFAULT_SKIP_DUPLICATE_VALUES = false;
     static final boolean DEFAULT_REMOVE_BRACKETS = false;
+    static final boolean DEFAULT_RECURSIVE = false;
 
     @NotEmpty
     private String source = DEFAULT_SOURCE;
 
-    @NotEmpty
     private String destination = DEFAULT_DESTINATION;
 
     @JsonProperty("field_delimiter_regex")
@@ -90,6 +90,16 @@ public class KeyValueProcessorConfig {
     @JsonProperty("remove_brackets")
     @NotNull
     private boolean removeBrackets = DEFAULT_REMOVE_BRACKETS;
+
+    @JsonProperty("recursive")
+    @NotNull
+    private boolean recursive = DEFAULT_RECURSIVE;
+
+    @JsonProperty("tags_on_failure")
+    private List<String> tagsOnFailure;
+
+    @JsonProperty("overwrite_if_destination_exists")
+    private boolean overwriteIfDestinationExists = true;
 
     public String getSource() {
         return source;
@@ -157,5 +167,17 @@ public class KeyValueProcessorConfig {
 
     public boolean getRemoveBrackets() {
         return removeBrackets;
+    }
+
+    public boolean getRecursive() {
+        return recursive;
+    }
+
+    public List<String> getTagsOnFailure() {
+        return tagsOnFailure;
+    }
+
+    public boolean getOverwriteIfDestinationExists() {
+        return overwriteIfDestinationExists;
     }
 }

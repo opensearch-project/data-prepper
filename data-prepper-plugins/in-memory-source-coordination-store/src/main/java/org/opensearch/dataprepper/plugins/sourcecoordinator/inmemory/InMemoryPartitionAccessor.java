@@ -85,21 +85,21 @@ public class InMemoryPartitionAccessor {
     }
 
     public Optional<SourcePartitionStoreItem> getNextItem() {
-        final QueuedPartitionsItem nextClosedPartitionItem = closedPartitions.peek();
-
-        if (Objects.nonNull(nextClosedPartitionItem)) {
-            if (nextClosedPartitionItem.sortedTimestamp.isBefore(Instant.now()) && partitionLookup.containsKey(nextClosedPartitionItem.sourceIdentifier)) {
-                closedPartitions.remove();
-                return Optional.ofNullable(partitionLookup.get(nextClosedPartitionItem.sourceIdentifier).get(nextClosedPartitionItem.partitionKey));
-            }
-        }
-
         final QueuedPartitionsItem nextUnassignedPartitionItem = unassignedPartitions.peek();
 
         if (Objects.nonNull(nextUnassignedPartitionItem)) {
             if (partitionLookup.containsKey(nextUnassignedPartitionItem.sourceIdentifier)) {
                 unassignedPartitions.remove();
                 return Optional.ofNullable(partitionLookup.get(nextUnassignedPartitionItem.sourceIdentifier).get(nextUnassignedPartitionItem.partitionKey));
+            }
+        }
+
+        final QueuedPartitionsItem nextClosedPartitionItem = closedPartitions.peek();
+
+        if (Objects.nonNull(nextClosedPartitionItem)) {
+            if (nextClosedPartitionItem.sortedTimestamp.isBefore(Instant.now()) && partitionLookup.containsKey(nextClosedPartitionItem.sourceIdentifier)) {
+                closedPartitions.remove();
+                return Optional.ofNullable(partitionLookup.get(nextClosedPartitionItem.sourceIdentifier).get(nextClosedPartitionItem.partitionKey));
             }
         }
 

@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jdk-alpine
+FROM eclipse-temurin:17-jre-jammy
 ARG PIPELINE_FILEPATH
 ARG CONFIG_FILEPATH
 ARG ARCHIVE_FILE
@@ -9,8 +9,8 @@ ENV ENV_CONFIG_FILEPATH=$CONFIG_FILEPATH
 ENV ENV_PIPELINE_FILEPATH=$PIPELINE_FILEPATH
 
 # Update all packages
-RUN apk update
-RUN apk add --no-cache bash bc
+RUN apt -y update
+RUN apt -y install bash bc
 
 RUN mkdir -p /var/log/data-prepper
 ADD $ARCHIVE_FILE /usr/share

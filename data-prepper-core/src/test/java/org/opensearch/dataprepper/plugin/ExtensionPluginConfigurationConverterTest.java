@@ -9,9 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.parser.model.PipelineExtensions;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.plugins.test.TestExtension;
 import org.opensearch.dataprepper.plugins.test.TestExtensionConfig;
 
@@ -35,61 +33,72 @@ class ExtensionPluginConfigurationConverterTest {
     @Mock
     private Validator validator;
     @Mock
-    private DataPrepperConfiguration dataPrepperConfiguration;
-    @Mock
-    private PipelineExtensions pipelineExtensions;
+    private ExtensionPluginConfigurationResolver extensionPluginConfigurationResolver;
     @Mock
     private ConstraintViolation<Object> constraintViolation;
 
-    private final ObjectMapper objectMapper = new ObjectMapperConfiguration().objectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapperConfiguration().extensionPluginConfigObjectMapper();
     private ExtensionPluginConfigurationConverter objectUnderTest;
 
     @BeforeEach
     void setUp() {
         objectUnderTest = new ExtensionPluginConfigurationConverter(
-                dataPrepperConfiguration, validator, objectMapper);
+                extensionPluginConfigurationResolver, validator, objectMapper);
     }
 
     @Test
     void convert_with_null_extensionConfigurationType_should_throw() {
         assertThrows(NullPointerException.class,
-                () -> objectUnderTest.convert(null, "testKey"));
+                () -> objectUnderTest.convert(true, null, "testKey"));
     }
 
     @Test
     void convert_with_null_rootKey_should_throw() {
         assertThrows(NullPointerException.class,
-                () -> objectUnderTest.convert(TestExtension.class, null));
+                () -> objectUnderTest.convert(true, TestExtension.class, null));
     }
 
     @Test
-    void convert_with_test_extension_with_config() {
+    void convert_with_test_extension_with_config_allowed_in_pipeline_configurations() {
         when(validator.validate(any())).thenReturn(Collections.emptySet());
-        when(dataPrepperConfiguration.getPipelineExtensions()).thenReturn(pipelineExtensions);
         final String rootKey = "test_extension";
         final String testValue = "test_value";
-        when(pipelineExtensions.getExtensionMap()).thenReturn(Map.of(
+        when(extensionPluginConfigurationResolver.getCombinedExtensionMap()).thenReturn(Map.of(
                 rootKey, Map.of("test_attribute", testValue)
         ));
-        final Object testExtensionConfig = objectUnderTest.convert(TestExtensionConfig.class, rootKey);
+        final Object testExtensionConfig = objectUnderTest.convert(true, TestExtensionConfig.class, "/" + rootKey);
+        assertThat(testExtensionConfig, instanceOf(TestExtensionConfig.class));
+        assertThat(((TestExtensionConfig) testExtensionConfig).getTestAttribute(), equalTo(testValue));
+    }
+
+    @Test
+    void convert_with_test_extension_with_config_not_allowed_in_pipeline_configurations() {
+        when(validator.validate(any())).thenReturn(Collections.emptySet());
+        final String rootKey = "test_extension";
+        final String testValue = "test_value";
+        when(extensionPluginConfigurationResolver.getDataPrepperConfigExtensionMap()).thenReturn(Map.of(
+                rootKey, Map.of("test_attribute", testValue)
+        ));
+        final Object testExtensionConfig = objectUnderTest.convert(false, TestExtensionConfig.class, "/" + rootKey);
         assertThat(testExtensionConfig, instanceOf(TestExtensionConfig.class));
         assertThat(((TestExtensionConfig) testExtensionConfig).getTestAttribute(), equalTo(testValue));
     }
 
     @Test
     void convert_with_null_rootKey_value_should_return_null() {
-        when(dataPrepperConfiguration.getPipelineExtensions()).thenReturn(pipelineExtensions);
-        final String rootKey = "test_extension";
-        when(pipelineExtensions.getExtensionMap()).thenReturn(Collections.emptyMap());
-        final Object testExtensionConfig = objectUnderTest.convert(TestExtensionConfig.class, rootKey);
+        final String rootKeyPath = "/test_extension";
+        when(extensionPluginConfigurationResolver.getCombinedExtensionMap()).thenReturn(Collections.emptyMap());
+        final Object testExtensionConfig = objectUnderTest.convert(true, TestExtensionConfig.class, rootKeyPath);
         assertThat(testExtensionConfig, nullValue());
     }
 
     @Test
     void convert_should_throw_exception_when_there_are_constraint_violations() {
-        when(dataPrepperConfiguration.getPipelineExtensions()).thenReturn(pipelineExtensions);
-        final String rootKey = UUID.randomUUID().toString();
-        when(pipelineExtensions.getExtensionMap()).thenReturn(Map.of(rootKey, Collections.emptyMap()));
+        final String firstKey = "first";
+        final String secondKey = "second";
+        final String jsonPointer = String.format("/%s/%s", firstKey, secondKey);
+        when(extensionPluginConfigurationResolver.getCombinedExtensionMap()).thenReturn(
+                Map.of(firstKey, Map.of(secondKey, Collections.emptyMap())));
         final String errorMessage = UUID.randomUUID().toString();
         given(constraintViolation.getMessage()).willReturn(errorMessage);
         final String propertyPathString = UUID.randomUUID().toString();
@@ -101,9 +110,9 @@ class ExtensionPluginConfigurationConverterTest {
                 .willReturn(Collections.singleton(constraintViolation));
 
         final InvalidPluginConfigurationException actualException = assertThrows(InvalidPluginConfigurationException.class,
-                () -> objectUnderTest.convert(TestExtensionConfig.class, rootKey));
+                () -> objectUnderTest.convert(true, TestExtensionConfig.class, jsonPointer));
 
-        assertThat(actualException.getMessage(), containsString(rootKey));
+        assertThat(actualException.getMessage(), containsString(jsonPointer));
         assertThat(actualException.getMessage(), containsString(propertyPathString));
         assertThat(actualException.getMessage(), containsString(errorMessage));
     }

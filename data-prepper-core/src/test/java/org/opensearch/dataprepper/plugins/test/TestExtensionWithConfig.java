@@ -17,7 +17,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@DataPrepperExtensionPlugin(modelType = TestExtensionConfig.class, rootKey = "test_extension")
+@DataPrepperExtensionPlugin(modelType = TestExtensionConfig.class, rootKeyJsonPath = "/test_extension",
+        allowInPipelineConfigurations = true)
 public class TestExtensionWithConfig implements ExtensionPlugin {
     private static final Logger LOG = LoggerFactory.getLogger(TestExtensionWithConfig.class);
     private static final AtomicInteger CONSTRUCTED_COUNT = new AtomicInteger(0);

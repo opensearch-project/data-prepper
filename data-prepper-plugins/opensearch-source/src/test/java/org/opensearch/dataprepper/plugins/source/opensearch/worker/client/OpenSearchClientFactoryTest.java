@@ -125,7 +125,6 @@ public class OpenSearchClientFactoryTest {
     @Test
     void provideOpenSearchClient_with_aws_auth() {
         when(connectionConfiguration.getCertPath()).thenReturn(null);
-        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
         when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
 
         final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);
@@ -187,7 +186,6 @@ public class OpenSearchClientFactoryTest {
     @Test
     void provideOpenSearchClient_with_aws_auth_and_serverless_flag_true() {
         when(connectionConfiguration.getCertPath()).thenReturn(null);
-        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
         when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
 
         final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);

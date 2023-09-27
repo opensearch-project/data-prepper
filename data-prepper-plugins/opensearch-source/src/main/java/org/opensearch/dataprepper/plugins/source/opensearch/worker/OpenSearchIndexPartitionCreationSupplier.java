@@ -76,6 +76,8 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
             return Collections.emptyList();
         }
 
+        LOG.debug("Found {} indices", indicesResponse.valueBody().size());
+
         return indicesResponse.valueBody().stream()
                 .filter(osIndicesRecord -> shouldIndexBeProcessed(osIndicesRecord.index()))
                 .map(indexRecord -> PartitionIdentifier.builder().withPartitionKey(indexRecord.index()).build())
@@ -90,6 +92,8 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
             LOG.error("There was an exception when calling /_cat/indices to create new index partitions", e);
             return Collections.emptyList();
         }
+
+        LOG.debug("Found {} indices", indicesResponse.valueBody().size());
 
         return indicesResponse.valueBody().stream()
                 .filter(esIndicesRecord -> shouldIndexBeProcessed(esIndicesRecord.index()))

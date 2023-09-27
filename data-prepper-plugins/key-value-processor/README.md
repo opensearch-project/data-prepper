@@ -31,7 +31,7 @@ When run, the processor will parse the message into the following output:
 ## Configuration
 * `source` - The field in the message that will be parsed. 
   * Default: `message`
-* `destination` - The field the parsed source will be output to. This will overwrite any preexisting data for that key.
+* `destination` - The field the parsed source will be output to. This will overwrite any preexisting data for that key. If `destination` is set to `null`, the parsed fields will be written to the root of the event.
   * Default: `parsed_message`
 * `field_delimiter_regex` - A regex specifying the delimiter between key/value pairs. Special regex characters such as `[` and `]` must be escaped using `\\`.
   * There is no default.
@@ -49,9 +49,9 @@ When run, the processor will parse the message into the following output:
   * Default: `{}`
   * Example: `default_values` is `{"defaultkey": "defaultvalue"}`. `key1=value1` will parse into `{"key1": "value1", "defaultkey": "defaultvalue"}`
   * If the default key already exists in the message, the value is not changed.
-  * Example: `default_values` is `{"value1": "abc"}`. `key1=value1` will parse into `{"key1": "value1"}`
+  * Example: `default_values` is `{"key1": "abc"}`. `key1=value1` will parse into `{"key1": "value1"}`
   * It should be noted that the include_keys filter will be applied to the message first, and then default keys.
-  * Example: `include_keys` is `["key1"]`, and `default_keys` is `{"key2": "value2"}`. `key1=value1&key2=abc` will parse into `{"key1": "value1", "key2": "value2"}`
+  * Example: `include_keys` is `["key1"]`, and `default_values` is `{"key2": "value2"}`. `key1=value1&key2=abc` will parse into `{"key1": "value1", "key2": "value2"}`
 * `key_value_delimiter_regex` - A regex specifying the delimiter between a key and a value. Special regex characters such as `[` and `]` must be escaped using `\\`.
   * There is no default.
   * Note: This cannot be defined at the same time as `value_split_characters`
@@ -74,8 +74,8 @@ When run, the processor will parse the message into the following output:
 * `transform_key` - Change keys to lowercase, uppercase, or all capitals.
   * Default is an empty string (no transformation)
   * Example: `transform_key` is `lowercase`. `{"Key1=value1"}` will parse into `{"key1": "value1"}`
-  * Example: `transform_key` is `uppercase`. `{"key1=value1"}` will parse into `{"Key1": "value1"}`
-  * Example: `transform_key` is `capitalize`. `{"key1=value1"}` will parse into `{"KEY1": "value1"}`
+  * Example: `transform_key` is `capitalize`. `{"key1=value1"}` will parse into `{"Key1": "value1"}`
+  * Example: `transform_key` is `uppercase`. `{"key1=value1"}` will parse into `{"KEY1": "value1"}`
 * `whitespace` - Specify whether to be lenient or strict with the acceptance of unnecessary whitespace surrounding the configured value-split sequence.
   * Default: `lenient`
   * Example: `whitespace` is `"lenient"`. `{"key1  =  value1"}` will parse into `{"key1  ": "  value1"}`
@@ -88,7 +88,21 @@ When run, the processor will parse the message into the following output:
   * Default: `false`
   * Example: `remove_brackets` is `true`. `{"key1=(value1)"}` will parse into `{"key1": value1}`
   * Example: `remove_brackets` is `false`. `{"key1=(value1)"}` will parse into `{"key1": "(value1)"}`
-  * In the case of a key-value pair with a brackets and a split character, the splitting will take priority over `remove_brackets=true`. `{key1=(value1&value2)}` will parse into `{"key1":"value1","value2)":null}`
+  * In the case of a key-value pair with a brackets and a split character, the splitting will take priority over `remove_brackets=true`. `{"key1=(value1&value2)"}` will parse into `{"key1":"value1","value2)":null}`
+* `recursive` - Specify whether to drill down into values and recursively get more key-value pairs from it. The extra key-value pairs will be stored as subkeys of the root key.
+  * Default: `false`
+  * The levels of recursive parsing must be defined by different brackets for each level: `[]`, `()`, and `<>` in this order.
+  * Example: `recursive` is true. `{"item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=(item1-subitem2-subitem2A=item1-subitem2-subitem2A-value&item1-subitem2-subitem2B=item1-subitem2-subitem2B-value)]&item2=item2-value"}` will parse into `"item1": {"item1-subitem1": "item1-subitem1-value", "item1-subitem2": {"item1-subitem2-subitem2A": "item1-subitem2-subitem2A-value", "item1-subitem2-subitem2B": "item1-subitem2-subitem2B-value"}}`
+  * Example: `recursive` is false. `{"item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=(item1-subitem2-subitem2A=item1-subitem2-subitem2A-value&item1-subitem2-subitem2B=item1-subitem2-subitem2B-value)]&item2=item2-value"}` will parse into `"item1-subitem2": "(item1-subitem2-subitem2A=item1-subitem2-subitem2A-value", "item2": "item2-value","item1": "[item1-subitem1=item1-subitem1-value", "item1-subitem2-subitem2B": "item1-subitem2-subitem2B-value)]"`
+  * Any other configurations specified will only be applied on the OUTER keys.
+  * While `recursive` is `true`, `remove_brackets` cannot also be `true`.
+  * While `recursive` is `true`, `skip_duplicate_values` will always be `true`.
+  * While `recursive` is `true`, `whitespace` will always be `"strict"`.
+* `overwrite_if_destination_exists` - Specify whether to overwrite existing fields if there are key conflicts when writing parsed fields to the event. 
+  * Default: `true` 
+
+* `tags_on_failure` - When a kv operation causes a runtime exception to be thrown within the processor, the operation is safely aborted without crashing the processor, and the event is tagged with the provided tags.
+  * Example: if `tags_on_failure` is set to `["keyvalueprocessor_failure"]`, in the case of a runtime exception, `{"tags": ["keyvalueprocessor_failure"]}` will be added to the event's metadata.
 
 ## Developer Guide
 This plugin is compatible with Java 14. See

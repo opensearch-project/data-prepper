@@ -57,7 +57,6 @@ public class HistogramAggregateAction implements AggregateAction {
     private final String key;
     private final String units;
     private final boolean recordMinMax;
-    private List<Exemplar> exemplarList;
     private Event minEvent;
     private Event maxEvent;
     private double minValue;
@@ -71,7 +70,6 @@ public class HistogramAggregateAction implements AggregateAction {
         this.key = histogramAggregateActionConfig.getKey();
         List<Number> bucketList = histogramAggregateActionConfig.getBuckets();
         this.buckets = new double[bucketList.size()+2];
-        this.exemplarList = new ArrayList<>();
         int bucketIdx = 0;
         this.buckets[bucketIdx++] = -Float.MAX_VALUE;
         for (int i = 0; i < bucketList.size(); i++) {
@@ -197,6 +195,7 @@ public class HistogramAggregateAction implements AggregateAction {
         long startTimeNanos = getTimeNanos(startTime);
         long endTimeNanos = getTimeNanos(endTime);
         String histogramKey = HISTOGRAM_METRIC_NAME + "_key";
+        List<Exemplar> exemplarList = new ArrayList<>();
         exemplarList.add(createExemplar("min", minEvent, minValue));
         exemplarList.add(createExemplar("max", maxEvent, maxValue));
         if (outputFormat.equals(OutputFormat.RAW.toString())) {

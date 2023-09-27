@@ -4,7 +4,6 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -34,8 +33,9 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.BACKOFF_ON_EXCEPTION;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.calculateExponentialBackoffAndJitter;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.completeIndexPartition;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.createAcknowledgmentSet;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
@@ -47,9 +47,6 @@ import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client
 public class PitWorker implements SearchWorker, Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(PitWorker.class);
-
-    private static final int STANDARD_BACKOFF_MILLIS = 30_000;
-    private static final Duration BACKOFF_ON_PIT_LIMIT_REACHED = Duration.ofSeconds(60);
 
     static final String STARTING_KEEP_ALIVE = "15m";
     private static final Duration STARTING_KEEP_ALIVE_DURATION = Duration.ofMinutes(15);
@@ -65,6 +62,8 @@ public class PitWorker implements SearchWorker, Runnable {
 
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
+
+    private int noAvailableIndicesCount = 0;
 
     public PitWorker(final SearchAccessor searchAccessor,
                      final OpenSearchSourceConfiguration openSearchSourceConfiguration,
@@ -90,7 +89,7 @@ public class PitWorker implements SearchWorker, Runnable {
 
                 if (indexPartition.isEmpty()) {
                     try {
-                        Thread.sleep(STANDARD_BACKOFF_MILLIS);
+                        Thread.sleep(calculateExponentialBackoffAndJitter(++noAvailableIndicesCount));
                         continue;
                     } catch (final InterruptedException e) {
                         LOG.info("The PitWorker was interrupted while sleeping after acquiring no indices to process, stopping processing");
@@ -98,37 +97,38 @@ public class PitWorker implements SearchWorker, Runnable {
                     }
                 }
 
+                noAvailableIndicesCount = 0;
+
                 try {
 
-                    final Pair<AcknowledgementSet, CompletableFuture<Boolean>> acknowledgementSet = createAcknowledgmentSet(
+                    final AcknowledgementSet acknowledgementSet = createAcknowledgmentSet(
                             acknowledgementSetManager,
                             openSearchSourceConfiguration,
                             sourceCoordinator,
                             indexPartition.get());
 
-                    openSearchSourcePluginMetrics.getIndexProcessingTimeTimer().record(() -> processIndex(indexPartition.get(), acknowledgementSet.getLeft()));
+                    openSearchSourcePluginMetrics.getIndexProcessingTimeTimer().record(() -> processIndex(indexPartition.get(), acknowledgementSet));
 
-                    completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet.getLeft(), acknowledgementSet.getRight(),
+                    completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet,
                             indexPartition.get(), sourceCoordinator);
 
                     openSearchSourcePluginMetrics.getIndicesProcessedCounter().increment();
-                    LOG.info("Completed processing for index: '{}'", indexPartition.get().getPartitionKey());
                 } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
                     LOG.warn("PitWorker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
                     sourceCoordinator.giveUpPartitions();
                 } catch (final SearchContextLimitException e) {
                     LOG.warn("Received SearchContextLimitExceeded exception for index {}. Giving up index and waiting {} seconds before retrying: {}",
-                            indexPartition.get().getPartitionKey(), BACKOFF_ON_PIT_LIMIT_REACHED.getSeconds(), e.getMessage());
+                            indexPartition.get().getPartitionKey(), BACKOFF_ON_EXCEPTION.getSeconds(), e.getMessage());
                     sourceCoordinator.giveUpPartitions();
                     openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                     try {
-                        Thread.sleep(BACKOFF_ON_PIT_LIMIT_REACHED.toMillis());
+                        Thread.sleep(BACKOFF_ON_EXCEPTION.toMillis());
                     } catch (final InterruptedException ex) {
                         return;
                     }
                 } catch (final IndexNotFoundException e){
                     LOG.warn("{}, marking index as complete and continuing processing", e.getMessage());
-                    sourceCoordinator.completePartition(indexPartition.get().getPartitionKey());
+                    sourceCoordinator.completePartition(indexPartition.get().getPartitionKey(), false);
                 } catch (final RuntimeException e) {
                     LOG.error("Unknown exception while processing index '{}':", indexPartition.get().getPartitionKey(), e);
                     sourceCoordinator.giveUpPartitions();
@@ -138,7 +138,7 @@ public class PitWorker implements SearchWorker, Runnable {
                 LOG.error("Received an exception while trying to get index to process with PIT, backing off and retrying", e);
                 openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                 try {
-                    Thread.sleep(STANDARD_BACKOFF_MILLIS);
+                    Thread.sleep(BACKOFF_ON_EXCEPTION.toMillis());
                 } catch (final InterruptedException ex) {
                     LOG.info("The PitWorker was interrupted before backing off and retrying, stopping processing");
                     return;
