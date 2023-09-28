@@ -4,9 +4,8 @@ package org.opensearch.dataprepper.plugins.source;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.MockedStatic;
-import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -15,20 +14,14 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.source.configuration.DimensionConfig;
 import org.opensearch.dataprepper.plugins.source.configuration.DimensionsListConfig;
-import org.opensearch.dataprepper.plugins.source.configuration.MetricDataQueriesConfig;
 import org.opensearch.dataprepper.plugins.source.configuration.MetricsConfig;
 import org.opensearch.dataprepper.plugins.source.configuration.NamespaceConfig;
-import org.opensearch.dataprepper.plugins.source.configuration.NamespacesListConfig;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchClient;
-import software.amazon.awssdk.services.cloudwatch.model.Dimension;
 import software.amazon.awssdk.services.cloudwatch.model.GetMetricDataRequest;
 import software.amazon.awssdk.services.cloudwatch.model.GetMetricDataResponse;
 import software.amazon.awssdk.services.cloudwatch.model.MetricDataResult;
 import software.amazon.awssdk.services.cloudwatch.model.MetricStat;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -39,8 +32,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,21 +39,13 @@ public class CloudwatchMetricsWorkerTest {
 
     private CloudWatchClient cloudWatchClient;
 
-    private BufferAccumulator<Record<Event>> bufferAccumulator;
-
     private CloudwatchMetricsSourceConfig cloudwatchMetricsSourceConfig;
-
-    private Collection<Dimension> dimensionCollection;
-
-    private NamespacesListConfig namespacesListConfig;
 
     private NamespaceConfig namespaceConfig;
 
     private PluginMetrics pluginMetrics;
 
     private GetMetricDataResponse getMetricDataResponse;
-
-    private MetricDataQueriesConfig metricDataQueriesConfig;
 
     private MetricsConfig metricsConfig;
 
@@ -81,14 +64,10 @@ public class CloudwatchMetricsWorkerTest {
         final String namespaceName = "AWS/S3";
         this.sourceCoordinator = mock(SourceCoordinator.class);
         this.cloudWatchClient = mock(CloudWatchClient.class);
-        this.dimensionCollection = new ArrayList<>();
-        this.dimensionCollection.add(Dimension.builder().name("StorageType").value("StandardStorage").build());
-        this.namespacesListConfig = mock(NamespacesListConfig.class);
         this.namespaceConfig = mock(NamespaceConfig.class);
         when(namespaceConfig.getName()).thenReturn(namespaceName);
-        when(namespacesListConfig.getNamespaceConfig()).thenReturn(namespaceConfig);
         this.cloudwatchMetricsSourceConfig = mock(CloudwatchMetricsSourceConfig.class);
-        this.metricDataQueriesConfig = mock(MetricDataQueriesConfig.class);
+
         this.metricsConfig = mock(MetricsConfig.class);
         DimensionConfig dimensionConfig = mock(DimensionConfig.class);
         when(dimensionConfig.getName()).thenReturn("StorageType");
@@ -97,13 +76,12 @@ public class CloudwatchMetricsWorkerTest {
         when(dimensionsListConfig.getDimensionConfig()).thenReturn(dimensionConfig);
         when(metricsConfig.getName()).thenReturn("test-metric");
         when(metricsConfig.getDimensionsListConfigs()).thenReturn(List.of(dimensionsListConfig));
-        when(metricDataQueriesConfig.getMetricsConfig()).thenReturn(metricsConfig);
+
         when(namespaceConfig.getStartTime()).thenReturn("2023-05-19T18:35:24z");
         when(namespaceConfig.getEndTime()).thenReturn("2023-08-07T18:35:24z");
-        when(namespaceConfig.getMetricDataQueriesConfig()).thenReturn(List.of(metricDataQueriesConfig));
-        when(cloudwatchMetricsSourceConfig.getNamespacesListConfig()).thenReturn(List.of(namespacesListConfig));
+        when(namespaceConfig.getMetricsConfigs()).thenReturn(List.of(metricsConfig));
+        when(cloudwatchMetricsSourceConfig.getNamespaceConfigs()).thenReturn(List.of(namespaceConfig));
         this.getMetricDataResponse = mock(GetMetricDataResponse.class);
-        this.bufferAccumulator = mock(BufferAccumulator.class);
         when(getMetricDataResponse.metricDataResults()).thenReturn(List.of(metricDataResultMock));
         when(cloudWatchClient.getMetricData(any(GetMetricDataRequest.class))).thenReturn(getMetricDataResponse);
     }
@@ -117,8 +95,8 @@ public class CloudwatchMetricsWorkerTest {
         return new BlockingBuffer<>(pluginSetting);
     }
 
-    private CloudwatchMetricsWorker createObjectUnderTest(final BufferAccumulator bufferAccumulator1){
-        return new CloudwatchMetricsWorker(cloudWatchClient,bufferAccumulator1,cloudwatchMetricsSourceConfig,dimensionCollection,pluginMetrics, sourceCoordinator);
+    private CloudwatchMetricsWorker createObjectUnderTest(final Buffer<Record<Event>> buffer){
+        return new CloudwatchMetricsWorker(cloudWatchClient,cloudwatchMetricsSourceConfig,pluginMetrics, sourceCoordinator,buffer);
     }
 
     @Test
@@ -131,14 +109,8 @@ public class CloudwatchMetricsWorkerTest {
 
         given(sourceCoordinator.getNextPartition(any(Function.class))).willReturn(Optional.of(partitionToProcess));
         final BlockingBuffer<Record<Event>> buffer = getBuffer();
-        int recordsToAccumulate = 100;
-        Duration bufferTimeout = Duration.ofSeconds(10);
         final ArgumentCaptor<GetMetricDataRequest> getMetricDataRequestCaptor = ArgumentCaptor.forClass(GetMetricDataRequest.class);
-        try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
-            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
-                    .thenReturn(bufferAccumulator);
-            createObjectUnderTest(bufferAccumulator).run();
-        }
+        createObjectUnderTest(buffer).run();
         verify(cloudWatchClient).getMetricData(getMetricDataRequestCaptor.capture());
         final GetMetricDataRequest getMetricDataRequestCaptorValue = getMetricDataRequestCaptor.getValue();
         assertThat(getMetricDataRequestCaptorValue.endTime().toString(),equalTo("2023-08-07T18:35:24Z"));
@@ -148,8 +120,6 @@ public class CloudwatchMetricsWorkerTest {
         assertThat(metricStat.metric().metricName(),equalTo("test-metric"));
         assertThat(metricStat.metric().dimensions().get(0).name(),equalTo("StorageType"));
         assertThat(metricStat.metric().dimensions().get(0).value(),equalTo("StandardStorage"));
-        verify(bufferAccumulator,times(1)).add(any(Record.class));
-        verify(bufferAccumulator,times(1)).flush();
     }
 
 

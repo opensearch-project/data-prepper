@@ -26,7 +26,8 @@ public class NamespaceConfig {
     private String endTime;
     @JsonProperty("metricDataQueries")
     @NotNull
-    private List<MetricDataQueriesConfig> metricDataQueriesConfig;
+    private List<MetricsConfig> metricsConfigs;
+
     @JsonProperty("metric_names")
     @NotNull
     private List<String> metricNames;
@@ -58,8 +59,8 @@ public class NamespaceConfig {
      * Get List of Metric Data Queries Configuration
      * @return Metric Data Queries Configuration
      */
-    public List<MetricDataQueriesConfig> getMetricDataQueriesConfig() {
-        return metricDataQueriesConfig;
+    public List<MetricsConfig> getMetricsConfigs() {
+        return metricsConfigs;
     }
 
     /**

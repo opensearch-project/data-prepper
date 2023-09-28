@@ -9,42 +9,49 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
-import org.opensearch.dataprepper.plugins.source.configuration.NamespacesListConfig;
+import org.opensearch.dataprepper.plugins.source.configuration.NamespaceConfig;
 
+import java.time.Duration;
 import java.util.List;
 
 public class CloudwatchMetricsSourceConfig {
+
+    static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(10);
 
     @JsonProperty("aws")
     @NotNull
     @Valid
     private AwsAuthenticationOptions awsAuthenticationOptions;
 
-    @JsonProperty("batch_size")
-    private Integer batchSize = 1000;
-
     @JsonProperty("namespaces")
     @NotNull
     @Valid
-    private List<NamespacesListConfig> namespacesListConfig;
+    private List<NamespaceConfig> namespaceConfigs;
+
+    @JsonProperty("buffer_timeout")
+    private Duration bufferTimeout = DEFAULT_BUFFER_TIMEOUT;
+
+    public Duration getBufferTimeout() {
+        return bufferTimeout;
+    }
 
     /**
      * Aws Authentication configuration Options.
+     *
      * @return aws authentication options.
      */
     public AwsAuthenticationOptions getAwsAuthenticationOptions() {
         return awsAuthenticationOptions;
     }
 
-    public Integer getBatchSize() {
-        return batchSize;
-    }
 
     /**
      * Metrics configuration.
+     *
      * @return Metrics config options.
      */
-    public List<NamespacesListConfig> getNamespacesListConfig() {
-        return namespacesListConfig;
+    public List<NamespaceConfig> getNamespaceConfigs() {
+        return namespaceConfigs;
     }
+
 }

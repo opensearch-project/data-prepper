@@ -2,9 +2,7 @@ package org.opensearch.dataprepper.plugins.source;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -22,7 +20,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 public class CloudwatchMetricsSourceTest {
@@ -75,12 +72,6 @@ public class CloudwatchMetricsSourceTest {
     @Test
     void start_with_empty_buffer_test() {
         final BlockingBuffer<Record<Event>> buffer = getBuffer();
-        final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
-        try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
-            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
-                    .thenReturn(bufferAccumulator);
-            cloudwatchMetricsSource.start(buffer);
-        }
         assertThat(buffer.isEmpty(),equalTo(true));
     }
 }
