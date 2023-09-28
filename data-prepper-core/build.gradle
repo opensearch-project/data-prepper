@@ -26,7 +26,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-registry-cloudwatch2'
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     implementation 'software.amazon.awssdk:cloudwatch'
-    implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     implementation platform('org.apache.logging.log4j:log4j-bom:2.20.0')
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'

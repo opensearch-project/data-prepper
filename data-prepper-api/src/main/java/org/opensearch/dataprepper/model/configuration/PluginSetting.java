@@ -14,7 +14,7 @@ public class PluginSetting implements PipelineDescription {
     private static final String UNEXPECTED_ATTRIBUTE_TYPE_MSG = "Unexpected type [%s] for attribute [%s]";
 
     private final String name;
-    private final Map<String, Object> settings;
+    private Map<String, Object> settings;
     private int processWorkers;
     private String pipelineName;
 
@@ -29,6 +29,10 @@ public class PluginSetting implements PipelineDescription {
 
     public Map<String, Object> getSettings() {
         return settings;
+    }
+
+    public void setSettings(final Map<String, Object> settings) {
+        this.settings = settings;
     }
 
     /**
@@ -99,7 +103,7 @@ public class PluginSetting implements PipelineDescription {
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute. If the value is null, null will be returned.
      */
-    public Integer getIntegerOrDefault(final String attribute, final int defaultValue) {
+    public Integer getIntegerOrDefault(final String attribute, final Integer defaultValue) {
         Object object = getAttributeOrDefault(attribute, defaultValue);
         if (object == null) {
             return null;
@@ -218,7 +222,7 @@ public class PluginSetting implements PipelineDescription {
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute
      */
-    public Boolean getBooleanOrDefault(final String attribute, final boolean defaultValue) {
+    public Boolean getBooleanOrDefault(final String attribute, final Boolean defaultValue) {
         Object object = getAttributeOrDefault(attribute, defaultValue);
         if (object == null) {
             return null;
@@ -253,8 +257,7 @@ public class PluginSetting implements PipelineDescription {
         throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
     }
 
-    private <T> void checkObjectType(final String attribute, final Object object, final Class<T> type) {
-        if (object != null && !(type.isAssignableFrom(object.getClass()))){
+    private <T> void checkObjectType(final String attribute, final Object object, final Class<T> type) {if (object != null && !(type.isAssignableFrom(object.getClass()))){
             throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
         }
     }

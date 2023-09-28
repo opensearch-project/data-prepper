@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.FieldSort;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch._types.ScoreSort;
 import org.opensearch.client.opensearch._types.SortOptions;
@@ -65,7 +66,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     private final OpenSearchClient openSearchClient;
     private final SearchContextType searchContextType;
 
-    public OpenSearchAccessor(final OpenSearchClient openSearchClient, final SearchContextType searchContextType) {
+    public OpenSearchAccessor(final OpenSearchClient openSearchClient,
+                              final SearchContextType searchContextType) {
         this.openSearchClient = openSearchClient;
         this.searchContextType = searchContextType;
     }
@@ -110,8 +112,11 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
             builder
                     .pit(Pit.of(pitBuilder -> pitBuilder.id(searchPointInTimeRequest.getPitId()).keepAlive(searchPointInTimeRequest.getKeepAlive())))
                     .size(searchPointInTimeRequest.getPaginationSize())
-                    .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
-                    .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery.queryName("*")))));
+                    .sort(List.of(
+                            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
+                            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSort -> fieldSort.field("_id").order(SortOrder.Asc)))))
+                    )
+                    .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery))));
 
             if (Objects.nonNull(searchPointInTimeRequest.getSearchAfter())) {
                 builder.searchAfter(searchPointInTimeRequest.getSearchAfter());
@@ -144,6 +149,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
         try {
             searchResponse = openSearchClient.search(SearchRequest.of(request -> request
                     .scroll(Time.of(time -> time.time(createScrollRequest.getScrollTime())))
+                    .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
                     .size(createScrollRequest.getSize())
                     .index(createScrollRequest.getIndex())), ObjectNode.class);
         } catch (final OpenSearchException e) {
@@ -210,8 +216,11 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
             builder
                     .index(noSearchContextSearchRequest.getIndex())
                     .size(noSearchContextSearchRequest.getPaginationSize())
-                    .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
-                    .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery.queryName("*")))));
+                    .sort(List.of(
+                            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
+                            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSort -> fieldSort.field("_id").order(SortOrder.Asc)))))
+                    )
+                    .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery))));
 
             if (Objects.nonNull(noSearchContextSearchRequest.getSearchAfter())) {
                 builder.searchAfter(noSearchContextSearchRequest.getSearchAfter());

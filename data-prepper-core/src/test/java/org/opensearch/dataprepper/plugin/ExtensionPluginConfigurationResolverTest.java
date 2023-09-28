@@ -33,7 +33,7 @@ class ExtensionPluginConfigurationResolverTest {
         when(pipelineExtensions.getExtensionMap()).thenReturn(extensionMap);
         when(pipelinesDataFlowModel.getPipelineExtensions()).thenReturn(null);
         objectUnderTest = new ExtensionPluginConfigurationResolver(dataPrepperConfiguration, pipelinesDataFlowModel);
-        assertThat(objectUnderTest.getExtensionMap(), equalTo(extensionMap));
+        assertThat(objectUnderTest.getCombinedExtensionMap(), equalTo(extensionMap));
     }
 
     @Test
@@ -43,7 +43,7 @@ class ExtensionPluginConfigurationResolverTest {
         final Map<String, Object> extensionMap = Map.of("test_extension", Map.of("test_key", "test_value"));
         when(pipelineExtensions.getExtensionMap()).thenReturn(extensionMap);
         objectUnderTest = new ExtensionPluginConfigurationResolver(dataPrepperConfiguration, pipelinesDataFlowModel);
-        assertThat(objectUnderTest.getExtensionMap(), equalTo(extensionMap));
+        assertThat(objectUnderTest.getCombinedExtensionMap(), equalTo(extensionMap));
     }
 
     @Test
@@ -65,6 +65,6 @@ class ExtensionPluginConfigurationResolverTest {
                 "test_extension1", Map.of("test_key2", "test_value2"),
                 "test_extension2", Map.of("test_key1", "test_value1")
         );
-        assertThat(objectUnderTest.getExtensionMap(), equalTo(expectedExtensionMap));
+        assertThat(objectUnderTest.getCombinedExtensionMap(), equalTo(expectedExtensionMap));
     }
 }

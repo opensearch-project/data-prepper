@@ -96,8 +96,8 @@ class ExtensionLoaderTest {
 
         final TestExtensionWithConfig expectedPlugin = mock(TestExtensionWithConfig.class);
         final String expectedPluginName = "test_extension_with_config";
-        when(extensionPluginConfigurationConverter.convert(eq(TestExtensionConfig.class),
-                eq("test_extension"))).thenReturn(testExtensionConfig);
+        when(extensionPluginConfigurationConverter.convert(eq(true), eq(TestExtensionConfig.class),
+                eq("/test_extension"))).thenReturn(testExtensionConfig);
         when(pluginCreator.newPluginInstance(
                 eq(TestExtensionWithConfig.class),
                 any(PluginArgumentsContext.class),

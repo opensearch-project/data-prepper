@@ -1,34 +1,18 @@
-apply plugin: DockerRemoteApiPlugin
-
-
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
 
 
-import com.bmuschko.gradle.docker.DockerRemoteApiPlugin
 import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
 import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
-import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
-import com.bmuschko.gradle.docker.tasks.image.Dockerfile
-import com.bmuschko.gradle.docker.tasks.network.DockerCreateNetwork
-import com.bmuschko.gradle.docker.tasks.network.DockerRemoveNetwork
 
 /**
  * End-to-end test docker network
  */
-task createDataPrepperNetwork(type: DockerCreateNetwork) {
-    networkName = "data_prepper_network"
-}
-
-task removeDataPrepperNetwork(type: DockerRemoveNetwork) {
-    dependsOn createDataPrepperNetwork
-    networkId = createDataPrepperNetwork.getNetworkId()
-}
 
 def BASIC_GROK_PIPELINE_YAML = "basic-grok-e2e-pipeline.yml"
 def PARALLEL_GROK_SUBSTITUTE_PIPELINE_YAML = "parallel-grok-substitute-e2e-pipeline.yml"
@@ -37,15 +21,6 @@ def DATA_PREPPER_CONFIG_YAML = "data_prepper.yml"
 /**
  * DataPrepper Docker tasks
  */
-task createDataPrepperDockerFile(type: Dockerfile) {
-    dependsOn copyDataPrepperJar
-    destFile = project.file('build/docker/Dockerfile')
-    from(dataPrepperBaseImage)
-    workingDir('/app/data-prepper')
-    copyFile("${dataPrepperJarImageFilepath}", '/app/data-prepper/lib')
-    defaultCommand('java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute')
-}
-
 task buildDataPrepperDockerImage(type: DockerBuildImage) {
     dependsOn createDataPrepperDockerFile
     dockerFile  = file('build/docker/Dockerfile')
@@ -84,41 +59,6 @@ def stopDataPrepperDockerContainer(final DockerStartContainer startDataPrepperDo
 def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDockerContainerTask) {
     return tasks.create("remove${stopDataPrepperDockerContainerTask.getName()}", DockerRemoveContainer) {
         targetContainerId stopDataPrepperDockerContainerTask.getContainerId()
-    }
-}
-
-/**
- * OpenSearch Docker tasks
- */
-task pullOpenSearchDockerImage(type: DockerPullImage) {
-    image = "opensearchproject/opensearch:${libs.versions.opensearch.get()}"
-}
-
-task createOpenSearchDockerContainer(type: DockerCreateContainer) {
-    dependsOn createDataPrepperNetwork
-    dependsOn pullOpenSearchDockerImage
-    targetImageId pullOpenSearchDockerImage.image
-    containerName = "node-0.example.com"
-    hostConfig.portBindings = ['9200:9200', '9600:9600']
-    hostConfig.autoRemove = true
-    hostConfig.network = createDataPrepperNetwork.getNetworkName()
-    envVars = ['discovery.type':'single-node']
-}
-
-task startOpenSearchDockerContainer(type: DockerStartContainer) {
-    dependsOn createOpenSearchDockerContainer
-    targetContainerId createOpenSearchDockerContainer.getContainerId()
-
-    doLast {
-        sleep(90*1000)
-    }
-}
-
-task stopOpenSearchDockerContainer(type: DockerStopContainer) {
-    targetContainerId createOpenSearchDockerContainer.getContainerId()
-
-    doLast {
-        sleep(5*1000)
     }
 }
 

@@ -89,6 +89,7 @@ subprojects {
     }
     dependencies {
         implementation platform('com.fasterxml.jackson:jackson-bom:2.15.0')
+        implementation platform('org.eclipse.jetty:jetty-bom:11.0.16')
         implementation platform('io.micrometer:micrometer-bom:1.10.5')
         implementation libs.guava.core
         implementation libs.slf4j.api
@@ -141,19 +142,7 @@ subprojects {
             }
             implementation('net.minidev:json-smart') {
                 version {
-                    require '2.4.11'
-                }
-                because 'CVE from transitive dependencies'
-            }
-            implementation('org.eclipse.jetty:jetty-http') {
-                version {
-                    require '9.4.51.v20230217'
-                }
-                because 'CVE from transitive dependencies'
-            }
-            implementation('org.eclipse.jetty:jetty-server') {
-                version {
-                    require '9.4.51.v20230217'
+                    require '2.5.0'
                 }
                 because 'CVE from transitive dependencies'
             }
@@ -163,28 +152,57 @@ subprojects {
                 }
                 because 'CVE from transitive dependencies'
             }
+            implementation('org.xerial.snappy:snappy-java') {
+                version {
+                    require '1.1.10.1'
+                }
+                because 'Fixes CVE-2023-35165, CVE-2023-34455, CVE-2023-34453, CVE-2023-34454, CVE-2023-2976'
+            }
+            implementation('com.squareup.okio:okio-jvm') {
+                version {
+                    require '3.5.0'
+                }
+                because 'CVE from transitive dependencies'
+            }
+            implementation('com.charleskorn.kaml:kaml') {
+                version {
+                    require '0.55.0'
+                }
+                because 'CVE from transitive dependencies'
+            }
+            implementation('org.bitbucket.b_c:jose4j') {
+                version {
+                    require '0.9.3'
+                }
+                because 'CVE from transitive dependencies'
+            }
+            implementation('org.scala-lang:scala-library') {
+                version {
+                    require '2.13.12'
+                }
+                because 'CVE from transitive dependencies'
+            }
         }
-    }
-    test {
-        useJUnitPlatform()
     }
 
     configurations.all {
         resolutionStrategy.eachDependency { def details ->
             if (details.requested.group == 'io.netty') {
                 if (details.requested.name == 'netty') {
-                    details.useTarget group: 'io.netty', name: 'netty-all', version: '4.1.86.Final'
+                    details.useTarget group: 'io.netty', name: 'netty-all', version: '4.1.96.Final'
                     // replace with your desired version
                 } else if (!details.requested.name.startsWith('netty-tcnative')) {
-                    details.useVersion '4.1.86.Final'
+                    details.useVersion '4.1.96.Final'
                     details.because 'Fixes CVE-2022-41881, CVE-2021-21290 and CVE-2022-41915.'
                 }
             } else if (details.requested.group == 'log4j' && details.requested.name == 'log4j') {
                 details.useTarget group: 'org.apache.logging.log4j', name: 'log4j-1.2-api', version: '2.17.1'
-            } else if (details.requested.group == 'org.xerial.snappy' && details.requested.name == 'snappy-java') {
-                details.useTarget group: 'org.xerial.snappy', name: 'snappy-java', version: '1.1.10.1'
             }
         }
+    }
+
+    test {
+        useJUnitPlatform()
     }
 
     build.dependsOn test

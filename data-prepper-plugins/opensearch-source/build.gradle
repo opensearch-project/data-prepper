@@ -7,6 +7,7 @@ dependencies {
     implementation project(':data-prepper-plugins:buffer-common')
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation 'software.amazon.awssdk:apache-client'
+    implementation 'software.amazon.awssdk:netty-nio-client'
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.2'

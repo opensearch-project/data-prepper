@@ -1,36 +1,36 @@
-FROM gradle:jdk11 as cache
+FROM gradle:jdk17 as cache
 RUN mkdir -p /home/gradle/cache_home
 ENV GRADLE_USER_HOME /home/gradle/cache_home
 COPY analytics-service/build.gradle /home/gradle/src/
 WORKDIR /home/gradle/src
 RUN gradle clean build --daemon
 
-FROM gradle:jdk11 AS build
+FROM gradle:jdk17 AS build
 COPY --from=cache /home/gradle/cache_home /home/gradle/.gradle
 COPY analytics-service /home/gradle/src/
 WORKDIR /home/gradle/src
 RUN gradle bootJar --daemon
 
-RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.0.1/opentelemetry-javaagent-all.jar
+RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.30.0/opentelemetry-javaagent.jar
 
-FROM openjdk:8-jre-alpine
+FROM eclipse-temurin:17-jre-jammy
 
-RUN apk update \
-&& apk upgrade \
+RUN apt-get -y update \
+&& apt-get -y upgrade \
 # add for grpcio
-&& apk add --no-cache g++ \
+&& apt-get -y install g++ \
 # add for grpcio
-&& apk add --no-cache linux-headers \
-&& apk add --no-cache bash \
-&& apk add --no-cache --virtual=build-dependencies unzip \
-&& apk add --no-cache curl \
+&& apt-get -y install linux-generic \
+&& apt-get -y install bash \
+&& apt-get -y install unzip \
+&& apt-get -y install curl \
 # add python3-dev for grpcio
-&& apk add --no-cache python3 python3-dev
+&& apt-get -y install python3 python3-pip python3-dev
 
 RUN mkdir /app
 COPY . /app/
 COPY --from=build /home/gradle/src/build/libs/*.jar /app/spring-boot-application.jar
-COPY --from=build /home/gradle/src/opentelemetry-javaagent-all.jar /app/opentelemetry-javaagent-all.jar
+COPY --from=build /home/gradle/src/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
 
 RUN pip3 install --upgrade pip
 RUN pip3 install -r /app/requirements.txt

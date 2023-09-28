@@ -10,7 +10,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'org.apache.commons:commons-compress:1.21'
+    implementation libs.commons.compress
     implementation 'joda-time:joda-time:2.11.1'
     implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
@@ -19,7 +19,7 @@ dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.21'
     implementation project(':data-prepper-plugins:avro-codecs')
     implementation 'org.apache.avro:avro:1.11.1'
-    implementation 'org.apache.hadoop:hadoop-common:3.3.6'
+    implementation libs.hadoop.common
     implementation 'org.apache.parquet:parquet-avro:1.13.1'
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.8.21'
