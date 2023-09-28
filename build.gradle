@@ -182,6 +182,12 @@ subprojects {
                 }
                 because 'CVE from transitive dependencies'
             }
+            implementation('org.json:json') {
+                version {
+                    require '20230618'
+                }
+                because 'CVE from transitive dependencies'
+            }
         }
     }
 
