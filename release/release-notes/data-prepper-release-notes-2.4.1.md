@@ -1,6 +1,9 @@
-## 2023-08-29 Version 2.4.1
+## 2023-08-28 Version 2.4.1
 
 ---
+
+### Enhancements
+* Add support for fully async acknowledgments in source coordination. ([#3391](https://github.com/opensearch-project/data-prepper/pull/3391))
 
 ### Bug Fixes
 * Fix NullPointerException in S3 scan partition supplier. ([#3323](https://github.com/opensearch-project/data-prepper/pull/3323))
