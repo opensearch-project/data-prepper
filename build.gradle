@@ -89,8 +89,13 @@ subprojects {
     }
     dependencies {
         implementation platform('com.fasterxml.jackson:jackson-bom:2.15.0')
-        implementation platform('org.eclipse.jetty:jetty-bom:9.4.52.v20230823')
         implementation platform('io.micrometer:micrometer-bom:1.10.5')
+        implementation ('org.eclipse.jetty:jetty-bom:11.0.16') {
+            exclude group: 'org.eclipse.jetty', module: 'jetty-http'
+            exclude group: 'org.eclipse.jetty', module: 'jetty-server'
+        }
+        implementation 'org.eclipse.jetty:jetty-http:9.4.52.v20230823'
+        implementation 'org.eclipse.jetty:jetty-server:9.4.52.v20230823'
         implementation libs.guava.core
         implementation libs.slf4j.api
         testImplementation testLibs.bundles.junit
