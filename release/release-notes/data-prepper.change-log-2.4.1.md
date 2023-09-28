@@ -1,4 +1,11 @@
 
+* __Add support for fully async acknowledgments in source coordination (#3384) (#3391)__
+
+  [Taylor Gray](mailto:tylgry@amazon.com) - Thu, 28 Sep 2023 10:53:06 -0500
+
+  EAD -&gt; refs/heads/2.4, refs/remotes/upstream/2.4
+  Signed-off-by: Taylor Gray &lt;tylgry@amazon.com&gt;
+
 * __CVE fixes (#3385) (#3392)__
 
     [Asif Sohail Mohammed](mailto:nsifmoh@amazon.com) - Wed, 27 Sep 2023 22:14:02 +0530
