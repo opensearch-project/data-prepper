@@ -12,7 +12,7 @@ import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@DataPrepperExtensionPlugin(modelType = KafkaClusterConfig.class, rootKey = "kafka_cluster_config")
+@DataPrepperExtensionPlugin(modelType = KafkaClusterConfig.class, rootKeyJsonPath = "/kafka_cluster_config")
 public class KafkaClusterConfigExtension implements ExtensionPlugin {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterConfigExtension.class);
     private DefaultKafkaClusterConfigSupplier defaultKafkaClusterConfigSupplier;
