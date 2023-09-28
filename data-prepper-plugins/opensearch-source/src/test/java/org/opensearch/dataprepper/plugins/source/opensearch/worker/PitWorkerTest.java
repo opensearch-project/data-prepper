@@ -42,6 +42,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -136,7 +137,7 @@ public class PitWorkerTest {
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
         doNothing().when(sourceCoordinator).closePartition(partitionKey,
-                Duration.ZERO, 1);
+                Duration.ZERO, 1, false);
 
 
         final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
@@ -214,7 +215,7 @@ public class PitWorkerTest {
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
         doNothing().when(sourceCoordinator).closePartition(partitionKey,
-                Duration.ZERO, 1);
+                Duration.ZERO, 1, false);
 
 
         final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());

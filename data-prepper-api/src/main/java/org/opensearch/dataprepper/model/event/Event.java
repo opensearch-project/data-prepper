@@ -127,6 +127,7 @@ public interface Event extends Serializable {
      * Returns formatted parts of the input string replaced by their values in the event or the values from the result
      * of a Data Prepper expression
      * @param format input format
+     * @param expressionEvaluator - The expression evaluator that will support formatting from Data Prepper expressions
      * @return returns a string with no formatted parts, returns null if no value is found
      * @throws RuntimeException if the input string is not properly formatted
      * @since 2.1

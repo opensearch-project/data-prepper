@@ -118,7 +118,7 @@ public class NoSearchContextWorkerTest {
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
         doNothing().when(sourceCoordinator).closePartition(partitionKey,
-                Duration.ZERO, 1);
+                Duration.ZERO, 1, false);
 
 
         final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
