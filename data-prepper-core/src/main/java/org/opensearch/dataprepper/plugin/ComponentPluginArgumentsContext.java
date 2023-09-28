@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.opensearch.dataprepper.model.plugin.PluginConfigurationObservable;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
@@ -65,6 +66,11 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         if (builder.acknowledgementSetManager != null) {
             typedArgumentsSuppliers.put(AcknowledgementSetManager.class, () -> builder.acknowledgementSetManager);
         }
+
+        if (builder.pluginConfigurationObservable != null) {
+            typedArgumentsSuppliers.put(PluginConfigurationObservable.class, () -> builder.pluginConfigurationObservable);
+        }
+
         if (builder.sinkContext != null) {
             typedArgumentsSuppliers.put(SinkContext.class, () -> builder.sinkContext);
         }
@@ -118,6 +124,7 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         private BeanFactory beanFactory;
         private EventFactory eventFactory;
         private AcknowledgementSetManager acknowledgementSetManager;
+        private PluginConfigurationObservable pluginConfigurationObservable;
         private SinkContext sinkContext;
 
         Builder withPluginConfiguration(final Object pluginConfiguration) {
@@ -157,6 +164,11 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
 
         Builder withBeanFactory(final BeanFactory beanFactory) {
             this.beanFactory = beanFactory;
+            return this;
+        }
+
+        Builder withPluginConfigurationObservable(final PluginConfigurationObservable pluginConfigurationObservable) {
+            this.pluginConfigurationObservable = pluginConfigurationObservable;
             return this;
         }
 

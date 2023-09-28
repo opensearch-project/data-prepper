@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.opensearch.dataprepper.model.plugin.PluginConfigurationObservable;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -41,6 +42,7 @@ public class DefaultPluginFactory implements PluginFactory {
     private final PluginBeanFactoryProvider pluginBeanFactoryProvider;
     private final DefaultEventFactory eventFactory;
     private final DefaultAcknowledgementSetManager acknowledgementSetManager;
+    private final PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
 
     @Inject
     DefaultPluginFactory(
@@ -49,9 +51,11 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginConfigurationConverter pluginConfigurationConverter,
             final PluginBeanFactoryProvider pluginBeanFactoryProvider,
             final DefaultEventFactory eventFactory,
-            final DefaultAcknowledgementSetManager acknowledgementSetManager
+            final DefaultAcknowledgementSetManager acknowledgementSetManager,
+            final PluginConfigurationObservableFactory pluginConfigurationObservableFactory
     ) {
         Objects.requireNonNull(pluginProviderLoader);
+        Objects.requireNonNull(pluginConfigurationObservableFactory);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
         this.pluginConfigurationConverter = Objects.requireNonNull(pluginConfigurationConverter);
 
@@ -59,6 +63,7 @@ public class DefaultPluginFactory implements PluginFactory {
         this.pluginBeanFactoryProvider = Objects.requireNonNull(pluginBeanFactoryProvider);
         this.eventFactory = Objects.requireNonNull(eventFactory);
         this.acknowledgementSetManager = Objects.requireNonNull(acknowledgementSetManager);
+        this.pluginConfigurationObservableFactory = pluginConfigurationObservableFactory;
 
         if(pluginProviders.isEmpty()) {
             throw new RuntimeException("Data Prepper requires at least one PluginProvider. " +
@@ -113,6 +118,8 @@ public class DefaultPluginFactory implements PluginFactory {
 
         final Class<?> pluginConfigurationType = pluginAnnotation.pluginConfigurationType();
         final Object configuration = pluginConfigurationConverter.convert(pluginConfigurationType, pluginSetting);
+        final PluginConfigurationObservable pluginConfigurationObservable = pluginConfigurationObservableFactory
+                .createDefaultPluginConfigurationObservable(pluginConfigurationConverter, pluginClass, pluginSetting);
 
         return new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
@@ -122,6 +129,7 @@ public class DefaultPluginFactory implements PluginFactory {
                 .withBeanFactory(pluginBeanFactoryProvider.get())
                 .withEventFactory(eventFactory)
                 .withAcknowledgementSetManager(acknowledgementSetManager)
+                .withPluginConfigurationObservable(pluginConfigurationObservable)
                 .withSinkContext(sinkContext)
                 .build();
     }

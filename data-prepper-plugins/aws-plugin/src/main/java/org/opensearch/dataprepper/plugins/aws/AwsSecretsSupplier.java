@@ -93,4 +93,9 @@ public class AwsSecretsSupplier implements SecretsSupplier {
                     secretId));
         }
     }
+
+    @Override
+    public void refresh(String secretId) {
+        // TODO: implement logic
+    }
 }

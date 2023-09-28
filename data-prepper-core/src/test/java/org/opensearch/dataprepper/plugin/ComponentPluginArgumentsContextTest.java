@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
+import org.opensearch.dataprepper.model.plugin.PluginConfigurationObservable;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.junit.jupiter.api.Test;
@@ -110,6 +111,19 @@ class ComponentPluginArgumentsContextTest {
 
         assertThat(objectUnderTest.createArguments(new Class[] { SinkContext.class }),
                 equalTo(new Object[] { sinkContext}));
+    }
+
+    @Test
+    void createArguments_with_single_class_using_plugin_configuration_observable() {
+        final PluginConfigurationObservable pluginConfigurationObservable = mock(PluginConfigurationObservable.class);
+
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
+                .withPluginSetting(pluginSetting)
+                .withPluginConfigurationObservable(pluginConfigurationObservable)
+                .build();
+
+        assertThat(objectUnderTest.createArguments(new Class[] { PluginConfigurationObservable.class }),
+                equalTo(new Object[] { pluginConfigurationObservable }));
     }
 
     @Test
