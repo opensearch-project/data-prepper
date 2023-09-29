@@ -154,9 +154,9 @@ subprojects {
             }
             implementation('org.xerial.snappy:snappy-java') {
                 version {
-                    require '1.1.10.1'
+                    require '1.1.10.5'
                 }
-                because 'Fixes CVE-2023-35165, CVE-2023-34455, CVE-2023-34453, CVE-2023-34454, CVE-2023-2976'
+                because 'Fixes CVE-2023-43642'
             }
             implementation('com.squareup.okio:okio-jvm') {
                 version {
@@ -179,6 +179,12 @@ subprojects {
             implementation('org.scala-lang:scala-library') {
                 version {
                     require '2.13.12'
+                }
+                because 'CVE from transitive dependencies'
+            }
+            implementation('org.json:json') {
+                version {
+                    require '20230618'
                 }
                 because 'CVE from transitive dependencies'
             }
