@@ -11,9 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 @DataPrepperExtensionPlugin(modelType = AwsSecretPluginConfig.class, rootKeyJsonPath = "/aws/secrets",
@@ -21,7 +21,6 @@ import java.util.concurrent.TimeUnit;
 public class AwsSecretPlugin implements ExtensionPlugin {
     static final int PERIOD_IN_SECONDS = 60;
     private static final Logger LOG = LoggerFactory.getLogger(AwsSecretPlugin.class);
-    private static final Random RANDOM = new Random();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private ScheduledExecutorService scheduledExecutorService;
     private PluginConfigPublisher pluginConfigPublisher;
@@ -55,7 +54,7 @@ public class AwsSecretPlugin implements ExtensionPlugin {
             final SecretsRefreshJob secretsRefreshJob = new SecretsRefreshJob(
                     key, secretsSupplier, pluginConfigPublisher);
             final long period = Duration.ofHours(1).toSeconds();
-            final long jitterDelay = RANDOM.nextLong(60);
+            final long jitterDelay = ThreadLocalRandom.current().nextLong(60L);
             scheduledExecutorService.scheduleAtFixedRate(secretsRefreshJob, period + jitterDelay,
                     period, TimeUnit.SECONDS);
         });

@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.aws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -25,6 +26,7 @@ import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -41,6 +43,11 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AwsSecretManagerConfigurationTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
+
+    static {
+        OBJECT_MAPPER.registerModule(new JavaTimeModule());
+    }
+
     private static final Validator VALIDATOR = Validation.byDefaultProvider()
             .configure()
             .messageInterpolator(new ParameterMessageInterpolator())
@@ -60,6 +67,30 @@ class AwsSecretManagerConfigurationTest {
 
     @Captor
     private ArgumentCaptor<AwsCredentialsProvider> awsCredentialsProviderArgumentCaptor;
+
+    @Test
+    void testAwsSecretManagerConfigurationDefault() throws IOException {
+        final InputStream inputStream = AwsSecretPluginConfigTest.class.getResourceAsStream(
+                "/test-aws-secret-manager-configuration-default.yaml");
+        final AwsSecretManagerConfiguration awsSecretManagerConfiguration = OBJECT_MAPPER.readValue(
+                inputStream, AwsSecretManagerConfiguration.class);
+        assertThat(awsSecretManagerConfiguration.getAwsSecretId(), equalTo("test-secret"));
+        assertThat(awsSecretManagerConfiguration.getAwsRegion(), equalTo(Region.US_EAST_1));
+        assertThat(awsSecretManagerConfiguration.getRefreshInterval(), equalTo(Duration.ofHours(1)));
+    }
+
+    @Test
+    void testAwsSecretManagerConfigurationInvalidRefreshInterval() throws IOException {
+        final InputStream inputStream = AwsSecretPluginConfigTest.class.getResourceAsStream(
+                "/test-aws-secret-manager-configuration-invalid-refresh-interval.yaml");
+        final AwsSecretManagerConfiguration awsSecretManagerConfiguration = OBJECT_MAPPER.readValue(
+                inputStream, AwsSecretManagerConfiguration.class);
+        final Set<ConstraintViolation<AwsSecretManagerConfiguration>> violations = VALIDATOR.validate(
+                awsSecretManagerConfiguration);
+        assertThat(violations.size(), equalTo(1));
+        final ConstraintViolation<AwsSecretManagerConfiguration> violation = violations.stream().findFirst().get();
+        assertThat(violation.getMessage(), equalTo("Refresh interval must be at least 1 hour."));
+    }
 
     @Test
     void testCreateGetSecretValueRequest() throws IOException {
