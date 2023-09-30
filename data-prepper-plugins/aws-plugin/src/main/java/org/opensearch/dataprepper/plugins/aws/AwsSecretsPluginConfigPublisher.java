@@ -16,7 +16,7 @@ public class AwsSecretsPluginConfigPublisher implements PluginConfigPublisher {
     }
 
     @Override
-    public void notifyAllConfigurationObservable() {
+    public void notifyAllPluginConfigurationObservable() {
         pluginConfigurationObservableBooleanMap.keySet().forEach(PluginConfigurationObservable::update);
     }
 }

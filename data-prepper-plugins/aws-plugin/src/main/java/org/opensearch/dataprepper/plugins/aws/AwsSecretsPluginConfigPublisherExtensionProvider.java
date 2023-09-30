@@ -15,7 +15,7 @@ public class AwsSecretsPluginConfigPublisherExtensionProvider implements Extensi
 
     @Override
     public Optional<PluginConfigPublisher> provideInstance(final Context context) {
-        return Optional.of(pluginConfigPublisher);
+        return Optional.ofNullable(pluginConfigPublisher);
     }
 
     @Override

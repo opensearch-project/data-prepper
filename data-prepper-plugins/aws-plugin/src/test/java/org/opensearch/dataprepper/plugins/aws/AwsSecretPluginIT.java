@@ -7,14 +7,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
+import org.opensearch.dataprepper.model.plugin.PluginConfigPublisher;
 import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,13 +41,17 @@ class AwsSecretPluginIT {
         objectUnderTest.apply(extensionPoints);
         final ArgumentCaptor<ExtensionProvider> extensionProviderArgumentCaptor =
                 ArgumentCaptor.forClass(ExtensionProvider.class);
-        verify(extensionPoints).addExtensionProvider(extensionProviderArgumentCaptor.capture());
-        final ExtensionProvider actualExtensionProvider = extensionProviderArgumentCaptor.getValue();
-        assertThat(actualExtensionProvider, instanceOf(AwsSecretExtensionProvider.class));
+        verify(extensionPoints, times(2)).addExtensionProvider(extensionProviderArgumentCaptor.capture());
+        final List<ExtensionProvider> actualExtensionProviders = extensionProviderArgumentCaptor.getAllValues();
+        assertThat(actualExtensionProviders.get(0), instanceOf(AwsSecretsPluginConfigValueTranslatorExtensionProvider.class));
         final Optional<PluginConfigValueTranslator> optionalPluginConfigValueTranslator =
-                actualExtensionProvider.provideInstance(context);
+                actualExtensionProviders.get(0).provideInstance(context);
         assertThat(optionalPluginConfigValueTranslator.isPresent(), is(true));
         assertThat(optionalPluginConfigValueTranslator.get(), instanceOf(AwsSecretsPluginConfigValueTranslator.class));
+        assertThat(actualExtensionProviders.get(1), instanceOf(AwsSecretsPluginConfigPublisherExtensionProvider.class));
+        final Optional<PluginConfigPublisher> optionalPluginConfigPublisher =
+                actualExtensionProviders.get(1).provideInstance(context);
+        assertThat(optionalPluginConfigPublisher.isPresent(), is(true));
     }
 
     @Test
@@ -53,11 +60,15 @@ class AwsSecretPluginIT {
         objectUnderTest.apply(extensionPoints);
         final ArgumentCaptor<ExtensionProvider> extensionProviderArgumentCaptor =
                 ArgumentCaptor.forClass(ExtensionProvider.class);
-        verify(extensionPoints).addExtensionProvider(extensionProviderArgumentCaptor.capture());
-        final ExtensionProvider actualExtensionProvider = extensionProviderArgumentCaptor.getValue();
-        assertThat(actualExtensionProvider, instanceOf(AwsSecretExtensionProvider.class));
+        verify(extensionPoints, times(2)).addExtensionProvider(extensionProviderArgumentCaptor.capture());
+        final List<ExtensionProvider> actualExtensionProviders = extensionProviderArgumentCaptor.getAllValues();
+        assertThat(actualExtensionProviders.get(0), instanceOf(AwsSecretsPluginConfigValueTranslatorExtensionProvider.class));
         final Optional<PluginConfigValueTranslator> optionalPluginConfigValueTranslator =
-                actualExtensionProvider.provideInstance(context);
+                actualExtensionProviders.get(0).provideInstance(context);
         assertThat(optionalPluginConfigValueTranslator.isEmpty(), is(true));
+        assertThat(actualExtensionProviders.get(1), instanceOf(AwsSecretsPluginConfigPublisherExtensionProvider.class));
+        final Optional<PluginConfigPublisher> optionalPluginConfigPublisher =
+                actualExtensionProviders.get(1).provideInstance(context);
+        assertThat(optionalPluginConfigPublisher.isEmpty(), is(true));
     }
 }

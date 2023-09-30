@@ -5,10 +5,10 @@ import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
 
 import java.util.Optional;
 
-public class AwsSecretExtensionProvider implements ExtensionProvider<PluginConfigValueTranslator> {
+public class AwsSecretsPluginConfigValueTranslatorExtensionProvider implements ExtensionProvider<PluginConfigValueTranslator> {
     private final PluginConfigValueTranslator pluginConfigValueTranslator;
 
-    AwsSecretExtensionProvider(final PluginConfigValueTranslator pluginConfigValueTranslator) {
+    AwsSecretsPluginConfigValueTranslatorExtensionProvider(final PluginConfigValueTranslator pluginConfigValueTranslator) {
         this.pluginConfigValueTranslator = pluginConfigValueTranslator;
     }
     @Override

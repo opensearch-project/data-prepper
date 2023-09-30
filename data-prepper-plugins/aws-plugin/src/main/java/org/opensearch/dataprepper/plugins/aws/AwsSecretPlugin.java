@@ -10,7 +10,6 @@ import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
@@ -43,7 +42,7 @@ public class AwsSecretPlugin implements ExtensionPlugin {
 
     @Override
     public void apply(final ExtensionPoints extensionPoints) {
-        extensionPoints.addExtensionProvider(new AwsSecretExtensionProvider(pluginConfigValueTranslator));
+        extensionPoints.addExtensionProvider(new AwsSecretsPluginConfigValueTranslatorExtensionProvider(pluginConfigValueTranslator));
         extensionPoints.addExtensionProvider(new AwsSecretsPluginConfigPublisherExtensionProvider(
                 pluginConfigPublisher));
     }
@@ -53,7 +52,7 @@ public class AwsSecretPlugin implements ExtensionPlugin {
         awsSecretPluginConfig.getAwsSecretManagerConfigurationMap().forEach((key, value) -> {
             final SecretsRefreshJob secretsRefreshJob = new SecretsRefreshJob(
                     key, secretsSupplier, pluginConfigPublisher);
-            final long period = Duration.ofHours(1).toSeconds();
+            final long period = value.getRefreshInterval().toSeconds();
             final long jitterDelay = ThreadLocalRandom.current().nextLong(60L);
             scheduledExecutorService.scheduleAtFixedRate(secretsRefreshJob, period + jitterDelay,
                     period, TimeUnit.SECONDS);
