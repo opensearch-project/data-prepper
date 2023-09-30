@@ -60,17 +60,19 @@ public class AwsSecretPlugin implements ExtensionPlugin {
     }
 
     void shutdown() {
-        LOG.info("Shutting down secrets refreshing tasks.");
-        scheduledExecutorService.shutdown();
-        try {
-            if (!scheduledExecutorService.awaitTermination(PERIOD_IN_SECONDS, TimeUnit.SECONDS)) {
-                LOG.warn("Secrets refreshing tasks did not terminate in time, forcing termination");
+        if (scheduledExecutorService != null) {
+            LOG.info("Shutting down secrets refreshing tasks.");
+            scheduledExecutorService.shutdown();
+            try {
+                if (!scheduledExecutorService.awaitTermination(PERIOD_IN_SECONDS, TimeUnit.SECONDS)) {
+                    LOG.warn("Secrets refreshing tasks did not terminate in time, forcing termination");
+                    scheduledExecutorService.shutdownNow();
+                }
+            } catch (InterruptedException ex) {
+                LOG.info("Encountered interruption terminating the secrets refreshing tasks execution, " +
+                        "attempting to force the termination");
                 scheduledExecutorService.shutdownNow();
             }
-        } catch (InterruptedException ex) {
-            LOG.info("Encountered interruption terminating the secrets refreshing tasks execution, " +
-                    "attempting to force the termination");
-            scheduledExecutorService.shutdownNow();
         }
     }
 }
