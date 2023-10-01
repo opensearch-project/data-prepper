@@ -18,6 +18,6 @@ public class SecretsRefreshJob implements Runnable {
     @Override
     public void run() {
         secretsSupplier.refresh(secretConfigId);
-        pluginConfigPublisher.notifyAllPluginConfigurationObservable();
+        pluginConfigPublisher.notifyAllPluginConfigObservable();
     }
 }

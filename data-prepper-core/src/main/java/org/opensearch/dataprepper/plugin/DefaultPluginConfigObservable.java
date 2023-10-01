@@ -2,21 +2,21 @@ package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginConfigSubscriber;
-import org.opensearch.dataprepper.model.plugin.PluginConfigurationObservable;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DefaultPluginConfigurationObservable implements PluginConfigurationObservable {
+public class DefaultPluginConfigObservable implements PluginConfigObservable {
     private final Map<PluginConfigSubscriber, Boolean> pluginConfigSubscriberBooleanMap
             = new ConcurrentHashMap<>();
     private final PluginConfigurationConverter pluginConfigurationConverter;
     private final Class<?> pluginConfigClass;
     private final PluginSetting rawPluginSettings;
 
-    public DefaultPluginConfigurationObservable(final PluginConfigurationConverter pluginConfigurationConverter,
-                                                final Class<?> pluginConfigClass,
-                                                final PluginSetting rawPluginSettings) {
+    public DefaultPluginConfigObservable(final PluginConfigurationConverter pluginConfigurationConverter,
+                                         final Class<?> pluginConfigClass,
+                                         final PluginSetting rawPluginSettings) {
         this.pluginConfigurationConverter = pluginConfigurationConverter;
         this.pluginConfigClass = pluginConfigClass;
         this.rawPluginSettings = rawPluginSettings;

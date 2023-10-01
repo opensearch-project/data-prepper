@@ -9,7 +9,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigPublisher;
-import org.opensearch.dataprepper.model.plugin.PluginConfigurationObservable;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginInvocationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,10 +110,10 @@ class PluginCreator {
 
     private void registerPluginConfigurationObservables(final Object[] constructorArguments) {
         Optional.ofNullable(constructorArguments).ifPresent(arguments -> Arrays.stream(arguments)
-                .filter(arg -> arg instanceof PluginConfigurationObservable)
+                .filter(arg -> arg instanceof PluginConfigObservable)
                 .forEach(arg -> pluginConfigPublishers.forEach(pluginConfigPublisher ->
-                        pluginConfigPublisher.addPluginConfigurationObservable(
-                                (PluginConfigurationObservable) arg)))
+                        pluginConfigPublisher.addPluginConfigObservable(
+                                (PluginConfigObservable) arg)))
         );
     }
 }

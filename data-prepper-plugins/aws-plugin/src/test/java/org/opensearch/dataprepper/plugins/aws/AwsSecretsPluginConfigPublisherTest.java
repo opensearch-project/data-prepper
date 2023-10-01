@@ -1,7 +1,7 @@
 package org.opensearch.dataprepper.plugins.aws;
 
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.model.plugin.PluginConfigurationObservable;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -12,13 +12,13 @@ class AwsSecretsPluginConfigPublisherTest {
 
     @Test
     void testAddPluginConfigurationObservableAndThenNotifyAll() {
-        final PluginConfigurationObservable pluginConfigurationObservable1 = mock(PluginConfigurationObservable.class);
-        final PluginConfigurationObservable pluginConfigurationObservable2 = mock(PluginConfigurationObservable.class);
+        final PluginConfigObservable pluginConfigObservable1 = mock(PluginConfigObservable.class);
+        final PluginConfigObservable pluginConfigObservable2 = mock(PluginConfigObservable.class);
         objectUnderTest = new AwsSecretsPluginConfigPublisher();
-        objectUnderTest.addPluginConfigurationObservable(pluginConfigurationObservable1);
-        objectUnderTest.addPluginConfigurationObservable(pluginConfigurationObservable2);
-        objectUnderTest.notifyAllPluginConfigurationObservable();
-        verify(pluginConfigurationObservable1).update();
-        verify(pluginConfigurationObservable2).update();
+        objectUnderTest.addPluginConfigObservable(pluginConfigObservable1);
+        objectUnderTest.addPluginConfigObservable(pluginConfigObservable2);
+        objectUnderTest.notifyAllPluginConfigObservable();
+        verify(pluginConfigObservable1).update();
+        verify(pluginConfigObservable2).update();
     }
 }

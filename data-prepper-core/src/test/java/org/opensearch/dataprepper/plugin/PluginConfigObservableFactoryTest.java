@@ -3,12 +3,12 @@ package org.opensearch.dataprepper.plugin;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.plugin.PluginConfigurationObservable;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-class PluginConfigurationObservableFactoryTest {
+class PluginConfigObservableFactoryTest {
     @Mock
     private PluginConfigurationConverter pluginConfigurationConverter;
 
@@ -21,8 +21,8 @@ class PluginConfigurationObservableFactoryTest {
 
     @Test
     void testCreateDefaultPluginConfigurationObservableFactory() {
-        assertThat(objectUnderTest.createDefaultPluginConfigurationObservable(
+        assertThat(objectUnderTest.createDefaultPluginConfigObservable(
                 pluginConfigurationConverter, baseClass, pluginSetting),
-                instanceOf(PluginConfigurationObservable.class));
+                instanceOf(PluginConfigObservable.class));
     }
 }

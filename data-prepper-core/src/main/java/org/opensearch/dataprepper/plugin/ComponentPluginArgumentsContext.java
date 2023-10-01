@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
-import org.opensearch.dataprepper.model.plugin.PluginConfigurationObservable;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
@@ -67,8 +67,8 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
             typedArgumentsSuppliers.put(AcknowledgementSetManager.class, () -> builder.acknowledgementSetManager);
         }
 
-        if (builder.pluginConfigurationObservable != null) {
-            typedArgumentsSuppliers.put(PluginConfigurationObservable.class, () -> builder.pluginConfigurationObservable);
+        if (builder.pluginConfigObservable != null) {
+            typedArgumentsSuppliers.put(PluginConfigObservable.class, () -> builder.pluginConfigObservable);
         }
 
         if (builder.sinkContext != null) {
@@ -124,7 +124,7 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         private BeanFactory beanFactory;
         private EventFactory eventFactory;
         private AcknowledgementSetManager acknowledgementSetManager;
-        private PluginConfigurationObservable pluginConfigurationObservable;
+        private PluginConfigObservable pluginConfigObservable;
         private SinkContext sinkContext;
 
         Builder withPluginConfiguration(final Object pluginConfiguration) {
@@ -167,8 +167,8 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
             return this;
         }
 
-        Builder withPluginConfigurationObservable(final PluginConfigurationObservable pluginConfigurationObservable) {
-            this.pluginConfigurationObservable = pluginConfigurationObservable;
+        Builder withPluginConfigurationObservable(final PluginConfigObservable pluginConfigObservable) {
+            this.pluginConfigObservable = pluginConfigObservable;
             return this;
         }
 

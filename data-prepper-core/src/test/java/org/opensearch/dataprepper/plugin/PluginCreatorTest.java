@@ -9,7 +9,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigPublisher;
-import org.opensearch.dataprepper.model.plugin.PluginConfigurationObservable;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginInvocationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -79,13 +79,13 @@ class PluginCreatorTest {
 
     public static class PluginClassWithPluginConfigurationObservableConstructor {
         private PluginSetting pluginSetting;
-        private PluginConfigurationObservable pluginConfigurationObservable;
+        private PluginConfigObservable pluginConfigObservable;
 
         @DataPrepperPluginConstructor
         public PluginClassWithPluginConfigurationObservableConstructor(
-                final PluginSetting pluginSetting, final PluginConfigurationObservable pluginConfigurationObservable) {
+                final PluginSetting pluginSetting, final PluginConfigObservable pluginConfigObservable) {
             this.pluginSetting = pluginSetting;
-            this.pluginConfigurationObservable = pluginConfigurationObservable;
+            this.pluginConfigObservable = pluginConfigObservable;
         }
     }
 
@@ -129,17 +129,17 @@ class PluginCreatorTest {
     void newPluginInstance_should_register_pluginConfigurationObservable() {
         final PluginConfigPublisher pluginConfigPublisher = mock(PluginConfigPublisher.class);
         final PluginCreator objectUnderTest = new PluginCreator(Set.of(pluginConfigPublisher));
-        final PluginConfigurationObservable pluginConfigurationObservable = mock(PluginConfigurationObservable.class);
-        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class, PluginConfigurationObservable.class}))
-                .willReturn(new Object[] { pluginSetting, pluginConfigurationObservable });
+        final PluginConfigObservable pluginConfigObservable = mock(PluginConfigObservable.class);
+        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class, PluginConfigObservable.class}))
+                .willReturn(new Object[] { pluginSetting, pluginConfigObservable});
 
         final PluginClassWithPluginConfigurationObservableConstructor instance = objectUnderTest
                 .newPluginInstance(PluginClassWithPluginConfigurationObservableConstructor.class, pluginConstructionContext, pluginName);
 
-        verify(pluginConfigPublisher).addPluginConfigurationObservable(pluginConfigurationObservable);
+        verify(pluginConfigPublisher).addPluginConfigObservable(pluginConfigObservable);
         assertThat(instance, notNullValue());
         assertThat(instance.pluginSetting, equalTo(pluginSetting));
-        assertThat(instance.pluginConfigurationObservable, equalTo(pluginConfigurationObservable));
+        assertThat(instance.pluginConfigObservable, equalTo(pluginConfigObservable));
     }
 
     @Test

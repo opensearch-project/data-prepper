@@ -1,22 +1,22 @@
 package org.opensearch.dataprepper.plugins.aws;
 
 import org.opensearch.dataprepper.model.plugin.PluginConfigPublisher;
-import org.opensearch.dataprepper.model.plugin.PluginConfigurationObservable;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class AwsSecretsPluginConfigPublisher implements PluginConfigPublisher {
-    private final Map<PluginConfigurationObservable, Boolean> pluginConfigurationObservableBooleanMap
+    private final Map<PluginConfigObservable, Boolean> pluginConfigurationObservableBooleanMap
             = new ConcurrentHashMap<>();
 
     @Override
-    public Boolean addPluginConfigurationObservable(final PluginConfigurationObservable pluginConfigurationObservable) {
-        return pluginConfigurationObservableBooleanMap.put(pluginConfigurationObservable, true);
+    public Boolean addPluginConfigObservable(final PluginConfigObservable pluginConfigObservable) {
+        return pluginConfigurationObservableBooleanMap.put(pluginConfigObservable, true);
     }
 
     @Override
-    public void notifyAllPluginConfigurationObservable() {
-        pluginConfigurationObservableBooleanMap.keySet().forEach(PluginConfigurationObservable::update);
+    public void notifyAllPluginConfigObservable() {
+        pluginConfigurationObservableBooleanMap.keySet().forEach(PluginConfigObservable::update);
     }
 }

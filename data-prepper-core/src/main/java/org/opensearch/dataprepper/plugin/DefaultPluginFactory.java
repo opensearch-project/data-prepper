@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
-import org.opensearch.dataprepper.model.plugin.PluginConfigurationObservable;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -118,8 +118,8 @@ public class DefaultPluginFactory implements PluginFactory {
 
         final Class<?> pluginConfigurationType = pluginAnnotation.pluginConfigurationType();
         final Object configuration = pluginConfigurationConverter.convert(pluginConfigurationType, pluginSetting);
-        final PluginConfigurationObservable pluginConfigurationObservable = pluginConfigurationObservableFactory
-                .createDefaultPluginConfigurationObservable(pluginConfigurationConverter, pluginClass, pluginSetting);
+        final PluginConfigObservable pluginConfigObservable = pluginConfigurationObservableFactory
+                .createDefaultPluginConfigObservable(pluginConfigurationConverter, pluginClass, pluginSetting);
 
         return new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
@@ -129,7 +129,7 @@ public class DefaultPluginFactory implements PluginFactory {
                 .withBeanFactory(pluginBeanFactoryProvider.get())
                 .withEventFactory(eventFactory)
                 .withAcknowledgementSetManager(acknowledgementSetManager)
-                .withPluginConfigurationObservable(pluginConfigurationObservable)
+                .withPluginConfigurationObservable(pluginConfigObservable)
                 .withSinkContext(sinkContext)
                 .build();
     }

@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
-import org.opensearch.dataprepper.model.plugin.PluginConfigurationObservable;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.event.DefaultEventFactory;
@@ -59,7 +59,7 @@ class DefaultPluginFactoryTest {
     private DefaultAcknowledgementSetManager acknowledgementSetManager;
     private DefaultEventFactory eventFactory;
     private PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
-    private PluginConfigurationObservable pluginConfigurationObservable;
+    private PluginConfigObservable pluginConfigObservable;
 
     @BeforeEach
     void setUp() {
@@ -84,11 +84,11 @@ class DefaultPluginFactoryTest {
         beanFactoryProvider = mock(PluginBeanFactoryProvider.class);
         beanFactory = mock(BeanFactory.class);
         pluginConfigurationObservableFactory = mock(PluginConfigurationObservableFactory.class);
-        given(pluginConfigurationObservableFactory.createDefaultPluginConfigurationObservable(
+        given(pluginConfigurationObservableFactory.createDefaultPluginConfigObservable(
                 eq(pluginConfigurationConverter),
                 any(Class.class),
                 any(PluginSetting.class)
-        )).willReturn(pluginConfigurationObservable);
+        )).willReturn(pluginConfigObservable);
     }
 
     private DefaultPluginFactory createObjectUnderTest() {
