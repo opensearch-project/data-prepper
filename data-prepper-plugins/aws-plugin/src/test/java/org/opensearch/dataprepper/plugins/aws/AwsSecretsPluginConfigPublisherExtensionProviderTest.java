@@ -27,12 +27,12 @@ class AwsSecretsPluginConfigPublisherExtensionProviderTest {
     }
 
     @Test
-    void supportedClass_returns_PluginConfigValueTranslator() {
-        assertThat(createObjectUnderTest().supportedClass(), equalTo(AwsSecretsPluginConfigPublisher.class));
+    void supportedClass_returns_PluginConfigPublisher() {
+        assertThat(createObjectUnderTest().supportedClass(), equalTo(PluginConfigPublisher.class));
     }
 
     @Test
-    void provideInstance_returns_the_PluginConfigValueTranslator_from_the_constructor() {
+    void provideInstance_returns_the_PluginConfigPublisher_from_the_constructor() {
         final AwsSecretsPluginConfigPublisherExtensionProvider objectUnderTest = createObjectUnderTest();
 
         final Optional<PluginConfigPublisher> optionalPluginConfigPublisher =
