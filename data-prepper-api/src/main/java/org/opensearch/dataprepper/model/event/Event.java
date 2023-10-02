@@ -74,7 +74,10 @@ public interface Event extends Serializable {
     String toJsonString();
 
     /**
+     * Returns the JsonNode containing the internal representation of the event
      *
+     * @return JsonNode
+     * @since 2.5
      */
     JsonNode getJsonNode();
 
