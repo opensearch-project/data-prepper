@@ -63,7 +63,8 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
 
         final OpenSearchClientFactory openSearchClientFactory = OpenSearchClientFactory.create(awsCredentialsSupplier);
         final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics = OpenSearchSourcePluginMetrics.create(pluginMetrics);
-        final SearchAccessorStrategy searchAccessorStrategy = SearchAccessorStrategy.create(openSearchSourceConfiguration, openSearchClientFactory);
+        final SearchAccessorStrategy searchAccessorStrategy = SearchAccessorStrategy.create(
+                openSearchSourceConfiguration, openSearchClientFactory, pluginConfigObservable);
 
         final SearchAccessor searchAccessor = searchAccessorStrategy.getSearchAccessor();
 

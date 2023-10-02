@@ -10,6 +10,7 @@ import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.InfoResponse;
 import org.opensearch.client.util.MissingRequiredPropertyException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.plugins.source.opensearch.ElasticsearchClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
@@ -39,16 +40,20 @@ public class SearchAccessorStrategy {
 
     private final OpenSearchClientFactory openSearchClientFactory;
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
+    private final PluginConfigObservable pluginConfigObservable;
 
     public static SearchAccessorStrategy create(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
-                                                final OpenSearchClientFactory openSearchClientFactory) {
-        return new SearchAccessorStrategy(openSearchSourceConfiguration, openSearchClientFactory);
+                                                final OpenSearchClientFactory openSearchClientFactory,
+                                                final PluginConfigObservable pluginConfigObservable) {
+        return new SearchAccessorStrategy(openSearchSourceConfiguration, openSearchClientFactory, pluginConfigObservable);
     }
 
     private SearchAccessorStrategy(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
-                                  final OpenSearchClientFactory openSearchClientFactory) {
+                                   final OpenSearchClientFactory openSearchClientFactory,
+                                   final PluginConfigObservable pluginConfigObservable) {
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.openSearchClientFactory = openSearchClientFactory;
+        this.pluginConfigObservable = pluginConfigObservable;
     }
 
     /**
@@ -71,10 +76,15 @@ public class SearchAccessorStrategy {
         ElasticsearchClientRefresher elasticsearchClientRefresher = null;
         try {
             infoResponse = openSearchClientRefresher.get().info();
+            pluginConfigObservable.addPluginConfigSubscriber(newConfig -> openSearchClientRefresher.update(
+                    (OpenSearchSourceConfiguration) newConfig));
         } catch (final MissingRequiredPropertyException e) {
             LOG.info("Detected Elasticsearch cluster. Constructing Elasticsearch client");
             elasticsearchClientRefresher = new ElasticsearchClientRefresher(
                     openSearchClientFactory, openSearchSourceConfiguration);
+            final ElasticsearchClientRefresher finalElasticsearchClientRefresher = elasticsearchClientRefresher;
+            pluginConfigObservable.addPluginConfigSubscriber(
+                    newConfig -> finalElasticsearchClientRefresher.update((OpenSearchSourceConfiguration) newConfig));
         } catch (final IOException | OpenSearchException e) {
             throw new RuntimeException("There was an error looking up the OpenSearch cluster info: ", e);
         }

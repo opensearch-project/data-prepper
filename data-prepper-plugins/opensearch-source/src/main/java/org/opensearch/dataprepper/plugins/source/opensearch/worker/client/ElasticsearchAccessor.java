@@ -27,7 +27,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.ElasticsearchClientRefresher;
+import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
@@ -56,7 +58,7 @@ import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
-public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFactory {
+public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFactory<ElasticsearchClient> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchAccessor.class);
 
@@ -242,7 +244,7 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     }
 
     @Override
-    public Object getClientRefresher() {
+    public PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> getClientRefresher() {
         return elasticsearchClientRefresher;
     }
 

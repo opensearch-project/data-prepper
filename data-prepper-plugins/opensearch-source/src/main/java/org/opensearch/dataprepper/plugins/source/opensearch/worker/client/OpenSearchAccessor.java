@@ -5,6 +5,7 @@
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.FieldSort;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch._types.ScoreSort;
@@ -26,7 +27,9 @@ import org.opensearch.client.opensearch.core.search.Pit;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchClientRefresher;
+import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
@@ -55,7 +58,7 @@ import java.util.stream.Collectors;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
-public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory {
+public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<OpenSearchClient> {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchAccessor.class);
 
@@ -237,7 +240,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     }
 
     @Override
-    public Object getClientRefresher() {
+    public PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> getClientRefresher() {
         return openSearchClientRefresher;
     }
 

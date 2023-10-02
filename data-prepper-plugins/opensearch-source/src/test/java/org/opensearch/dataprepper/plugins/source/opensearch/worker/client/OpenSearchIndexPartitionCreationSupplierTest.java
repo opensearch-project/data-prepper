@@ -20,6 +20,7 @@ import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cat.IndicesResponse;
 import org.opensearch.client.opensearch.cat.OpenSearchCatClient;
 import org.opensearch.client.opensearch.cat.indices.IndicesRecord;
+import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.plugins.source.opensearch.ElasticsearchClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchClientRefresher;
@@ -69,7 +70,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
 
     @Test
     void clusterClientFactory_that_is_not_OpenSearchClientRefresher_throws_IllegalArgumentException() {
-        when(clusterClientFactory.getClientRefresher()).thenReturn(mock(Object.class));
+        when(clusterClientFactory.getClientRefresher()).thenReturn(mock(PluginComponentRefresher.class));
 
         assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
     }

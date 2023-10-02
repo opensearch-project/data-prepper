@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cat.IndicesResponse;
+import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.plugins.source.opensearch.ElasticsearchClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchClientRefresher;
@@ -42,7 +43,7 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.indexParametersConfiguration = openSearchSourceConfiguration.getIndexParametersConfiguration();
 
-        final Object clientRefresher = clusterClientFactory.getClientRefresher();
+        final PluginComponentRefresher clientRefresher = clusterClientFactory.getClientRefresher();
 
         if (clientRefresher instanceof OpenSearchClientRefresher) {
             this.openSearchClientRefresher = (OpenSearchClientRefresher) clientRefresher;
