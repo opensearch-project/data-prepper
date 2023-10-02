@@ -4,14 +4,14 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
-import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.InfoResponse;
 import org.opensearch.client.util.MissingRequiredPropertyException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.plugins.source.opensearch.ElasticsearchClientRefresher;
+import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.slf4j.Logger;
@@ -58,26 +58,28 @@ public class SearchAccessorStrategy {
      */
     public SearchAccessor getSearchAccessor() {
 
-        final OpenSearchClient openSearchClient = openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration);
+        final OpenSearchClientRefresher openSearchClientRefresher = new OpenSearchClientRefresher(
+                openSearchClientFactory, openSearchSourceConfiguration);
 
         if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions()) &&
                 openSearchSourceConfiguration.getAwsAuthenticationOptions().isServerlessCollection()) {
-            return createSearchAccessorForServerlessCollection(openSearchClient);
+            return createSearchAccessorForServerlessCollection(openSearchClientRefresher);
         }
 
         InfoResponse infoResponse = null;
 
-        ElasticsearchClient elasticsearchClient = null;
+        ElasticsearchClientRefresher elasticsearchClientRefresher = null;
         try {
-            infoResponse = openSearchClient.info();
+            infoResponse = openSearchClientRefresher.get().info();
         } catch (final MissingRequiredPropertyException e) {
             LOG.info("Detected Elasticsearch cluster. Constructing Elasticsearch client");
-            elasticsearchClient = openSearchClientFactory.provideElasticSearchClient(openSearchSourceConfiguration);
+            elasticsearchClientRefresher = new ElasticsearchClientRefresher(
+                    openSearchClientFactory, openSearchSourceConfiguration);
         } catch (final IOException | OpenSearchException e) {
             throw new RuntimeException("There was an error looking up the OpenSearch cluster info: ", e);
         }
 
-        final Pair<String, String> distributionAndVersion = getDistributionAndVersionNumber(infoResponse, elasticsearchClient);
+        final Pair<String, String> distributionAndVersion = getDistributionAndVersionNumber(infoResponse, elasticsearchClientRefresher);
 
         final String distribution = distributionAndVersion.getLeft();
         final String versionNumber = distributionAndVersion.getRight();
@@ -100,18 +102,18 @@ public class SearchAccessorStrategy {
             searchContextType = SearchContextType.SCROLL;
         }
 
-        if (Objects.isNull(elasticsearchClient)) {
-            return new OpenSearchAccessor(openSearchClient,
+        if (Objects.isNull(elasticsearchClientRefresher)) {
+            return new OpenSearchAccessor(openSearchClientRefresher,
                     searchContextType);
         }
 
-        return new ElasticsearchAccessor(elasticsearchClient, searchContextType);
+        return new ElasticsearchAccessor(elasticsearchClientRefresher, searchContextType);
     }
 
-    private SearchAccessor createSearchAccessorForServerlessCollection(final OpenSearchClient openSearchClient) {
+    private SearchAccessor createSearchAccessorForServerlessCollection(final OpenSearchClientRefresher openSearchClientRefresher) {
         if (Objects.isNull(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
             LOG.info("Configured with AOS serverless flag as true, defaulting to search_context_type as 'none', which uses search_after");
-            return new OpenSearchAccessor(openSearchClient,
+            return new OpenSearchAccessor(openSearchClientRefresher,
                     SearchContextType.NONE);
         } else {
             if (SearchContextType.POINT_IN_TIME.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType()) ||
@@ -120,7 +122,7 @@ public class SearchAccessorStrategy {
             }
 
             LOG.info("Using search_context_type set in the config: '{}'", openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType().toString().toLowerCase());
-            return new OpenSearchAccessor(openSearchClient,
+            return new OpenSearchAccessor(openSearchClientRefresher,
                     openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType());
         }
     }
@@ -151,13 +153,13 @@ public class SearchAccessorStrategy {
         return actualVersion.compareTo(cutoffVersion) >= 0;
     }
 
-    private Pair<String, String> getDistributionAndVersionNumber(final InfoResponse infoResponseOpenSearch, final ElasticsearchClient elasticsearchClient) {
+    private Pair<String, String> getDistributionAndVersionNumber(final InfoResponse infoResponseOpenSearch, final ElasticsearchClientRefresher elasticsearchClientRefresher) {
         if (Objects.nonNull(infoResponseOpenSearch)) {
             return Pair.of(infoResponseOpenSearch.version().distribution(), infoResponseOpenSearch.version().number());
         }
 
         try {
-            final co.elastic.clients.elasticsearch.core.InfoResponse infoResponseElasticsearch = elasticsearchClient.info();
+            final co.elastic.clients.elasticsearch.core.InfoResponse infoResponseElasticsearch = elasticsearchClientRefresher.get().info();
             return Pair.of(ELASTICSEARCH_DISTRIBUTION + "-" + infoResponseElasticsearch.version().buildFlavor(), infoResponseElasticsearch.version().number());
         } catch (final Exception e) {
             throw new RuntimeException("Unable to call info API using the elasticsearch client", e);

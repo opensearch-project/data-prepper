@@ -6,5 +6,5 @@
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
 public interface ClusterClientFactory {
-    Object getClient();
+    Object getClientRefresher();
 }

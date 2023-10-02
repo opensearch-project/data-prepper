@@ -22,6 +22,7 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,6 +30,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.opensearch.ElasticsearchClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
@@ -69,10 +71,17 @@ import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client
 public class ElasticsearchAccessorTest {
 
     @Mock
+    private ElasticsearchClientRefresher elasticsearchClientRefresher;
+    @Mock
     private ElasticsearchClient elasticSearchClient;
 
     private SearchAccessor createObjectUnderTest() {
-        return new ElasticsearchAccessor(elasticSearchClient, SearchContextType.POINT_IN_TIME);
+        return new ElasticsearchAccessor(elasticsearchClientRefresher, SearchContextType.POINT_IN_TIME);
+    }
+
+    @BeforeEach
+    void setup() {
+        when(elasticsearchClientRefresher.get()).thenReturn(elasticSearchClient);
     }
 
     @Test

@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
@@ -63,8 +64,13 @@ public class OpenSearchSourceTest {
     @Mock
     private SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
 
+    @Mock
+    private PluginConfigObservable pluginConfigObservable;
+
     private OpenSearchSource createObjectUnderTest() {
-        return new OpenSearchSource(openSearchSourceConfiguration, awsCredentialsSupplier, acknowledgementSetManager, pluginMetrics);
+        return new OpenSearchSource(
+                openSearchSourceConfiguration, awsCredentialsSupplier, acknowledgementSetManager,
+                pluginMetrics, pluginConfigObservable);
     }
 
     @Test

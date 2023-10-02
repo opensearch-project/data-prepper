@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.plugins.source.opensearch.ElasticsearchClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
@@ -62,11 +63,11 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     static final String PIT_RESOURCE_LIMIT_ERROR_TYPE = "rejected_execution_exception";
     static final String INDEX_NOT_FOUND_EXCEPTION = "index_not_found_exception";
 
-    private final ElasticsearchClient elasticsearchClient;
+    private final ElasticsearchClientRefresher elasticsearchClientRefresher;
     private final SearchContextType searchContextType;
 
-    public ElasticsearchAccessor(final ElasticsearchClient elasticsearchClient, final SearchContextType searchContextType) {
-        this.elasticsearchClient = elasticsearchClient;
+    public ElasticsearchAccessor(final ElasticsearchClientRefresher elasticsearchClientRefresher, final SearchContextType searchContextType) {
+        this.elasticsearchClientRefresher = elasticsearchClientRefresher;
         this.searchContextType = searchContextType;
     }
 
@@ -80,7 +81,8 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
 
         OpenPointInTimeResponse openPointInTimeResponse;
         try {
-            openPointInTimeResponse = elasticsearchClient.openPointInTime(OpenPointInTimeRequest.of(request -> request
+            openPointInTimeResponse = elasticsearchClientRefresher.get()
+                    .openPointInTime(OpenPointInTimeRequest.of(request -> request
                     .keepAlive(Time.of(time -> time.time(createPointInTimeRequest.getKeepAlive())))
                     .index(createPointInTimeRequest.getIndex())));
         } catch (final ElasticsearchException e) {
@@ -131,7 +133,8 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     @Override
     public void deletePit(final DeletePointInTimeRequest deletePointInTimeRequest) {
         try {
-            final ClosePointInTimeResponse closePointInTimeResponse = elasticsearchClient.closePointInTime(ClosePointInTimeRequest.of(request -> request
+            final ClosePointInTimeResponse closePointInTimeResponse = elasticsearchClientRefresher.get()
+                    .closePointInTime(ClosePointInTimeRequest.of(request -> request
                     .id(deletePointInTimeRequest.getPitId())));
             if (closePointInTimeResponse.succeeded()) {
                 LOG.debug("Successfully deleted point in time id {}", deletePointInTimeRequest.getPitId());
@@ -149,7 +152,8 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
         SearchResponse<ObjectNode> searchResponse;
 
         try {
-            searchResponse = elasticsearchClient.search(SearchRequest.of(request -> request
+            searchResponse = elasticsearchClientRefresher.get()
+                    .search(SearchRequest.of(request -> request
                     .scroll(Time.of(time -> time.time(createScrollRequest.getScrollTime())))
                     .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
                     .size(createScrollRequest.getSize())
@@ -182,7 +186,8 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     public SearchScrollResponse searchWithScroll(final SearchScrollRequest searchScrollRequest) {
         SearchResponse<ObjectNode> searchResponse;
         try {
-            searchResponse = elasticsearchClient.scroll(ScrollRequest.of(request -> request
+            searchResponse = elasticsearchClientRefresher.get()
+                    .scroll(ScrollRequest.of(request -> request
                     .scrollId(searchScrollRequest.getScrollId())
                     .scroll(Time.of(time -> time.time(searchScrollRequest.getScrollTime())))), ObjectNode.class);
         } catch (final ElasticsearchException e) {
@@ -202,7 +207,8 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     @Override
     public void deleteScroll(DeleteScrollRequest deleteScrollRequest) {
         try {
-            final ClearScrollResponse clearScrollResponse = elasticsearchClient.clearScroll(ClearScrollRequest.of(request -> request.scrollId(deleteScrollRequest.getScrollId())));
+            final ClearScrollResponse clearScrollResponse = elasticsearchClientRefresher.get()
+                    .clearScroll(ClearScrollRequest.of(request -> request.scrollId(deleteScrollRequest.getScrollId())));
             if (clearScrollResponse.succeeded()) {
                 LOG.debug("Successfully deleted scroll context with id {}", deleteScrollRequest.getScrollId());
             } else {
@@ -236,14 +242,15 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     }
 
     @Override
-    public Object getClient() {
-        return elasticsearchClient;
+    public Object getClientRefresher() {
+        return elasticsearchClientRefresher;
     }
 
     private SearchWithSearchAfterResults searchWithSearchAfter(final SearchRequest searchRequest) {
 
         try {
-            final SearchResponse<ObjectNode> searchResponse = elasticsearchClient.search(searchRequest, ObjectNode.class);
+            final SearchResponse<ObjectNode> searchResponse = elasticsearchClientRefresher.get()
+                    .search(searchRequest, ObjectNode.class);
 
             final List<Event> documents = getDocumentsFromResponse(searchResponse);
 

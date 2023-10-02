@@ -5,12 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
-import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cat.IndicesResponse;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
+import org.opensearch.dataprepper.plugins.source.opensearch.ElasticsearchClientRefresher;
+import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.OpenSearchIndex;
@@ -33,8 +33,8 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
 
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final IndexParametersConfiguration indexParametersConfiguration;
-    private OpenSearchClient openSearchClient;
-    private ElasticsearchClient elasticsearchClient;
+    private OpenSearchClientRefresher openSearchClientRefresher;
+    private ElasticsearchClientRefresher elasticsearchClientRefresher;
 
 
     public OpenSearchIndexPartitionCreationSupplier(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
@@ -42,15 +42,15 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.indexParametersConfiguration = openSearchSourceConfiguration.getIndexParametersConfiguration();
 
-        final Object client = clusterClientFactory.getClient();
+        final Object clientRefresher = clusterClientFactory.getClientRefresher();
 
-        if (client instanceof OpenSearchClient) {
-            this.openSearchClient = (OpenSearchClient) client;
-        } else if (client instanceof ElasticsearchClient) {
-            this.elasticsearchClient = (ElasticsearchClient) client;
+        if (clientRefresher instanceof OpenSearchClientRefresher) {
+            this.openSearchClientRefresher = (OpenSearchClientRefresher) clientRefresher;
+        } else if (clientRefresher instanceof ElasticsearchClientRefresher) {
+            this.elasticsearchClientRefresher = (ElasticsearchClientRefresher) clientRefresher;
         } else {
             throw new IllegalArgumentException(String.format("ClusterClientFactory provided an invalid client object to the index partition creation supplier. " +
-                    "The client must be of type OpenSearchClient. The client passed is of class %s", client.getClass()));
+                    "The clientRefresher must be of type OpenSearchClientRefresher. The clientRefresher passed is of class %s", clientRefresher.getClass()));
         }
 
     }
@@ -58,9 +58,9 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
     @Override
     public List<PartitionIdentifier> apply(final Map<String, Object> globalStateMap) {
 
-        if (Objects.nonNull(openSearchClient)) {
+        if (Objects.nonNull(openSearchClientRefresher)) {
             return applyForOpenSearchClient(globalStateMap);
-        } else if (Objects.nonNull(elasticsearchClient)) {
+        } else if (Objects.nonNull(elasticsearchClientRefresher)) {
             return applyForElasticSearchClient(globalStateMap);
         }
 
@@ -70,7 +70,7 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
     private List<PartitionIdentifier> applyForOpenSearchClient(final Map<String, Object> globalStateMap) {
         IndicesResponse indicesResponse;
         try {
-            indicesResponse = openSearchClient.cat().indices();
+            indicesResponse = openSearchClientRefresher.get().cat().indices();
         } catch (IOException | OpenSearchException e) {
             LOG.error("There was an exception when calling /_cat/indices to create new index partitions", e);
             return Collections.emptyList();
@@ -87,7 +87,7 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
     private List<PartitionIdentifier> applyForElasticSearchClient(final Map<String, Object> globalStateMap) {
         co.elastic.clients.elasticsearch.cat.IndicesResponse indicesResponse;
         try {
-            indicesResponse = elasticsearchClient.cat().indices();
+            indicesResponse = elasticsearchClientRefresher.get().cat().indices();
         } catch (IOException | ElasticsearchException e) {
             LOG.error("There was an exception when calling /_cat/indices to create new index partitions", e);
             return Collections.emptyList();
