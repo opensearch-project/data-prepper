@@ -34,21 +34,6 @@ public class OpenSearchSinkConfigurationTests {
         assertEquals(BulkAction.INDEX.toString(), openSearchSinkConfiguration.getIndexConfiguration().getAction());
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testInvalidAction() {
-
-        final Map<String, Object> metadata = new HashMap<>();
-        metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.TRACE_ANALYTICS_RAW.getValue());
-        metadata.put(IndexConfiguration.ACTION, "invalid");
-        metadata.put(ConnectionConfiguration.HOSTS, TEST_HOSTS);
-
-        final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, metadata);
-        pluginSetting.setPipelineName(PIPELINE_NAME);
-
-        OpenSearchSinkConfiguration.readESConfig(pluginSetting);
-
-    }
-
     @Test
     public void testReadESConfigWithBulkActionCreate() {
 

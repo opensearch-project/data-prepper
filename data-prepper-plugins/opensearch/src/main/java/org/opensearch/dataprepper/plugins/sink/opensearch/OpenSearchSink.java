@@ -10,15 +10,12 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.apache.commons.lang3.StringUtils;
-import org.opensearch.client.json.JsonpMapper;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
-import org.opensearch.client.opensearch.core.bulk.UpdateOperationData;
-import com.fasterxml.jackson.databind.JsonNode;
 import org.opensearch.client.opensearch.core.bulk.DeleteOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.client.transport.TransportOptions;
@@ -64,13 +61,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.opensearch.client.json.JsonpMapper;
-import org.opensearch.client.json.jackson.JacksonJsonpMapper;
-import org.opensearch.client.json.jsonb.JsonbJsonpMapper;
-import jakarta.json.stream.JsonGenerator;
-
 import java.io.BufferedWriter;
-import java.io.StringWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -86,7 +77,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.Iterator;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
