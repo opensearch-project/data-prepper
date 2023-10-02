@@ -24,6 +24,7 @@ dependencies {
     implementation 'org.eclipse.jetty:jetty-servlet:9.4.51.v20230217'
     implementation 'org.eclipse.jetty:jetty-servlets:9.4.51.v20230217'
     implementation 'org.eclipse.jetty:jetty-client:9.4.51.v20230217'
+    implementation 'org.eclipse.jetty:jetty-bom:9.4.52.v20230823'
     implementation ('io.confluent:kafka-schema-registry:7.5.0') {
         exclude group: 'org.glassfish.jersey.containers', module: 'jersey-container-servlet'
         exclude group: 'org.glassfish.jersey.inject', module: 'jersey-hk2'
