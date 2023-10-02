@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -56,6 +57,7 @@ public class IndexConfiguration {
     public static final int DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = 2;
     public static final long DEFAULT_FLUSH_TIMEOUT = 60_000L;
     public static final String ACTION = "action";
+    public static final String ACTIONS = "actions";
     public static final String S3_AWS_REGION = "s3_aws_region";
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
     public static final String S3_AWS_STS_EXTERNAL_ID = "s3_aws_sts_external_id";
@@ -77,6 +79,7 @@ public class IndexConfiguration {
     private final long flushTimeout;
     private final Optional<String> ismPolicyFile;
     private final String action;
+    private final List<Map<String, Object>> actions;
     private final String s3AwsRegion;
     private final String s3AwsStsRoleArn;
     private final String s3AwsExternalId;
@@ -138,6 +141,7 @@ public class IndexConfiguration {
         this.documentId = documentId;
         this.ismPolicyFile = builder.ismPolicyFile;
         this.action = builder.action;
+        this.actions = builder.actions;
         this.documentRootKey = builder.documentRootKey;
     }
 
@@ -214,7 +218,13 @@ public class IndexConfiguration {
         final String ismPolicyFile = pluginSetting.getStringOrDefault(ISM_POLICY_FILE, null);
         builder = builder.withIsmPolicyFile(ismPolicyFile);
 
-        builder.withAction(pluginSetting.getStringOrDefault(ACTION, BulkAction.INDEX.toString()));
+        List<Map<String, Object>> actionsList = pluginSetting.getTypedListOfMaps(ACTIONS, String.class, Object.class);
+
+        if (actionsList != null) {
+            builder.withActions(actionsList);
+        } else {
+            builder.withAction(pluginSetting.getStringOrDefault(ACTION, BulkAction.INDEX.toString()));
+        }
 
         if ((builder.templateFile != null && builder.templateFile.startsWith(S3_PREFIX))
             || (builder.ismPolicyFile.isPresent() && builder.ismPolicyFile.get().startsWith(S3_PREFIX))) {
@@ -293,6 +303,10 @@ public class IndexConfiguration {
 
     public String getAction() {
         return action;
+    }
+
+    public List<Map<String, Object>> getActions() {
+        return actions;
     }
 
     public String getS3AwsRegion() {
@@ -381,6 +395,7 @@ public class IndexConfiguration {
         private long flushTimeout = DEFAULT_FLUSH_TIMEOUT;
         private Optional<String> ismPolicyFile;
         private String action;
+        private List<Map<String, Object>> actions;
         private String s3AwsRegion;
         private String s3AwsStsRoleArn;
         private String s3AwsStsExternalId;
@@ -469,8 +484,14 @@ public class IndexConfiguration {
         }
 
         public Builder withAction(final String action) {
-            checkArgument(EnumUtils.isValidEnumIgnoreCase(BulkAction.class, action), "action must be one of the following: " +  BulkAction.values());
+            // Removed validation because action may have expresions
             this.action = action;
+            return this;
+        }
+
+        public Builder withActions(final List<Map<String, Object>> actions) {
+            // No validation done here because actions may have expresions
+            this.actions = actions;
             return this;
         }
 

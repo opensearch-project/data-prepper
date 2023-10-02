@@ -119,7 +119,8 @@ public class JacksonEvent implements Event {
         return mapper.valueToTree(data);
     }
 
-    protected JsonNode getJsonNode() {
+    @Override
+    public JsonNode getJsonNode() {
         return jsonNode;
     }
 

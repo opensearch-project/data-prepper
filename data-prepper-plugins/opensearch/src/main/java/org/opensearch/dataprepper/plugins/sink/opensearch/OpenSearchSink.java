@@ -10,11 +10,16 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.apache.commons.lang3.StringUtils;
+import org.opensearch.client.json.JsonpMapper;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.CreateOperation;
+import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
+import org.opensearch.client.opensearch.core.bulk.UpdateOperationData;
+import com.fasterxml.jackson.databind.JsonNode;
+import org.opensearch.client.opensearch.core.bulk.DeleteOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.client.transport.TransportOptions;
 import org.opensearch.common.unit.ByteSizeUnit;
@@ -59,7 +64,13 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.opensearch.client.json.JsonpMapper;
+import org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import org.opensearch.client.json.jsonb.JsonbJsonpMapper;
+import jakarta.json.stream.JsonGenerator;
+
 import java.io.BufferedWriter;
+import java.io.StringWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -67,6 +78,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
@@ -74,6 +86,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.Iterator;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
@@ -81,6 +94,7 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";
+  public static final String INVALID_ACTION_ERRORS = "invalidActionErrors";
   public static final String BULKREQUEST_SIZE_BYTES = "bulkRequestSizeBytes";
   public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "dynamicIndexDroppedEvents";
 
@@ -104,12 +118,14 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String documentId;
   private final String routingField;
   private final String action;
+  private final List<Map<String, Object>> actions;
   private final String documentRootKey;
   private String configuredIndexAlias;
   private final ReentrantLock lock;
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
+  private final Counter invalidActionErrorsCounter;
   private final Counter dynamicIndexDroppedEvents;
   private final DistributionSummary bulkRequestSizeBytesSummary;
   private OpenSearchClient openSearchClient;
@@ -137,6 +153,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.expressionEvaluator = expressionEvaluator;
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
+    invalidActionErrorsCounter = pluginMetrics.counter(INVALID_ACTION_ERRORS);
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
     bulkRequestSizeBytesSummary = pluginMetrics.summary(BULKREQUEST_SIZE_BYTES);
 
@@ -148,6 +165,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.documentId = openSearchSinkConfig.getIndexConfiguration().getDocumentId();
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
+    this.actions = openSearchSinkConfig.getIndexConfiguration().getActions();
     this.documentRootKey = openSearchSinkConfig.getIndexConfiguration().getDocumentRootKey();
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
     this.failedBulkOperationConverter = new FailedBulkOperationConverter(pluginSetting.getPipelineName(), pluginSetting.getName(),
@@ -241,6 +259,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     LOG.info("Initialized OpenSearch sink");
   }
 
+  double getInvalidActionErrorsCount() {
+    return invalidActionErrorsCounter.count();
+  }
+
   @Override
   public boolean isReady() {
     return initialized;
@@ -282,37 +304,75 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
       BulkOperation bulkOperation;
 
-      if (StringUtils.equalsIgnoreCase(action, BulkAction.CREATE.toString())) {
-
-        final CreateOperation.Builder<Object> createOperationBuilder = new CreateOperation.Builder<>()
-                .index(indexName)
-                .document(document);
-
-        docId.ifPresent(createOperationBuilder::id);
-        routing.ifPresent(createOperationBuilder::routing);
-
-        bulkOperation = new BulkOperation.Builder()
-                .create(createOperationBuilder.build())
-                .build();
-
-      } else {
-
-        // Default to "index"
-
-        final IndexOperation.Builder<Object> indexOperationBuilder = new IndexOperation.Builder<>()
-                .index(indexName)
-                .document(document);
-
-        docId.ifPresent(indexOperationBuilder::id);
-        routing.ifPresent(indexOperationBuilder::routing);
-
-        bulkOperation = new BulkOperation.Builder()
-                .index(indexOperationBuilder.build())
-                .build();
-
+      String eventAction = action;
+      if (actions != null) {
+        for (final Map<String, Object> actionEntry: actions) {
+            final String condition = (String)actionEntry.get("when");
+            eventAction = (String)actionEntry.get("type");
+            if (condition != null &&
+                expressionEvaluator.evaluateConditional(condition, event)) {
+                    break;
+            }
+        }
+      }
+      if (eventAction.contains("${")) {
+          eventAction = event.formatString(eventAction, expressionEvaluator);
+      }
+      if (BulkAction.fromOptionValue(eventAction) == null) {
+        LOG.error("Unknown action {}, skipping the event", eventAction);
+        invalidActionErrorsCounter.increment();
+        continue;
       }
 
-      BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle());
+      if (StringUtils.equalsIgnoreCase(eventAction, BulkAction.CREATE.toString())) {
+          final CreateOperation.Builder<Object> createOperationBuilder =
+              new CreateOperation.Builder<>()
+                  .index(indexName)
+                  .document(document);
+          docId.ifPresent(createOperationBuilder::id);
+          routing.ifPresent(createOperationBuilder::routing);
+          bulkOperation = new BulkOperation.Builder()
+                    .create(createOperationBuilder.build())
+                    .build();
+      } else if (StringUtils.equalsIgnoreCase(eventAction, BulkAction.UPDATE.toString()) || StringUtils.equalsIgnoreCase(eventAction, BulkAction.UPSERT.toString())) {
+        try {
+          final UpdateOperation.Builder<Object> updateOperationBuilder = (eventAction.toLowerCase() == BulkAction.UPSERT.toString()) ?
+              new UpdateOperation.Builder<>()
+                  .index(indexName)
+                  .document(event.getJsonNode())
+                  .upsert(event.getJsonNode()) :
+              new UpdateOperation.Builder<>()
+                  .index(indexName)
+                  .document(event.getJsonNode());
+          docId.ifPresent(updateOperationBuilder::id);
+          routing.ifPresent(updateOperationBuilder::routing);
+          bulkOperation = new BulkOperation.Builder()
+                  .update(updateOperationBuilder.build())
+                  .build();
+        } catch (Exception e){
+          bulkOperation = null;
+        }
+      } else if (StringUtils.equalsIgnoreCase(eventAction, BulkAction.DELETE.toString())) {
+          final DeleteOperation.Builder deleteOperationBuilder = new DeleteOperation.Builder()
+                  .index(indexName);
+          docId.ifPresent(deleteOperationBuilder::id);
+          routing.ifPresent(deleteOperationBuilder::routing);
+          bulkOperation = new BulkOperation.Builder()
+                  .delete(deleteOperationBuilder.build())
+                  .build();
+      } else {
+          // Default to "index"
+          final IndexOperation.Builder<Object> indexOperationBuilder = new IndexOperation.Builder<>()
+                  .index(indexName)
+                  .document(document);
+          docId.ifPresent(indexOperationBuilder::id);
+          routing.ifPresent(indexOperationBuilder::routing);
+          bulkOperation = new BulkOperation.Builder()
+                  .index(indexOperationBuilder.build())
+                  .build();
+      }
+
+      BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle(), event.getJsonNode());
       final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
         flushBatch(bulkRequest);

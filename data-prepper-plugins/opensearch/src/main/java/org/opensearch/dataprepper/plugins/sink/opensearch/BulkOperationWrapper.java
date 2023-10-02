@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -19,6 +21,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class BulkOperationWrapper {
     private static final Predicate<BulkOperation> IS_INDEX_OPERATION = BulkOperation::isIndex;
     private static final Predicate<BulkOperation> IS_CREATE_OPERATION = BulkOperation::isCreate;
+    private static final Predicate<BulkOperation> IS_UPDATE_OPERATION = BulkOperation::isUpdate;
+    private static final Predicate<BulkOperation> IS_DELETE_OPERATION = BulkOperation::isDelete;
 
     private static final Map<Predicate<BulkOperation>, Function<BulkOperation, Object>> BULK_OPERATION_TO_DOCUMENT_CONVERTERS = Map.of(
             IS_INDEX_OPERATION, operation -> operation.index().document(),
@@ -27,26 +31,40 @@ public class BulkOperationWrapper {
 
     private static final Map<Predicate<BulkOperation>, Function<BulkOperation, String>> BULK_OPERATION_TO_INDEX_NAME_CONVERTERS = Map.of(
             IS_INDEX_OPERATION, operation -> operation.index().index(),
-            IS_CREATE_OPERATION, operation -> operation.create().index()
+            IS_CREATE_OPERATION, operation -> operation.create().index(),
+            IS_UPDATE_OPERATION, operation -> operation.update().index(),
+            IS_DELETE_OPERATION, operation -> operation.delete().index()
     );
 
     private static final Map<Predicate<BulkOperation>, Function<BulkOperation, String>> BULK_OPERATION_TO_ID_CONVERTERS = Map.of(
             IS_INDEX_OPERATION, operation -> operation.index().id(),
-            IS_CREATE_OPERATION, operation -> operation.create().id()
+            IS_CREATE_OPERATION, operation -> operation.create().id(),
+            IS_UPDATE_OPERATION, operation -> operation.update().id(),
+            IS_DELETE_OPERATION, operation -> operation.delete().id()
     );
 
     private final EventHandle eventHandle;
     private final BulkOperation bulkOperation;
+    private final JsonNode jsonNode;
 
     public BulkOperationWrapper(final BulkOperation bulkOperation) {
         this.bulkOperation = bulkOperation;
         this.eventHandle = null;
+        this.jsonNode = null;
+    }
+
+    public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle, final JsonNode jsonNode) {
+        checkNotNull(bulkOperation);
+        this.bulkOperation = bulkOperation;
+        this.eventHandle = eventHandle;
+        this.jsonNode = jsonNode;
     }
 
     public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle) {
         checkNotNull(bulkOperation);
         this.bulkOperation = bulkOperation;
         this.eventHandle = eventHandle;
+        this.jsonNode = null;
     }
 
     public BulkOperation getBulkOperation() {
@@ -64,6 +82,9 @@ public class BulkOperationWrapper {
     }
 
     public Object getDocument() {
+        if (bulkOperation.isUpdate() || bulkOperation.isDelete()) {
+            return jsonNode;
+        }
         return getValueFromConverter(BULK_OPERATION_TO_DOCUMENT_CONVERTERS);
     }
 

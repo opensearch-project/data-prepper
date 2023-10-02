@@ -5,6 +5,8 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -73,6 +75,10 @@ public class JavaClientAccumulatingUncompressedBulkRequest implements Accumulati
 
         if (anyDocument == null)
             return OPERATION_OVERHEAD;
+
+        if (anyDocument instanceof JsonNode) {
+            return OPERATION_OVERHEAD + ((JsonNode)anyDocument).toString().length();
+        }
 
         if (!(anyDocument instanceof SizedDocument)) {
             throw new IllegalArgumentException("Only SizedDocument is permitted for accumulating bulk requests. " + bulkOperation);
