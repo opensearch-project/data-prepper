@@ -1,4 +1,76 @@
 
+* __Fix CVE-2022-45688, CVE-2023-43642 (#3404) (#3409)__
+
+  [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 29 Sep 2023 13:21:17 -0500
+
+  EAD -&gt; refs/heads/2.4, refs/remotes/upstream/2.4
+  * Fix CVE-2022-45688
+    Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+
+  * Fix CVE-2023-43642
+    Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+
+    ---------
+  Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+  (cherry picked from commit 57ac3b84df3c8d45cb317aad244d9a0c35a49e55)
+  Co-authored-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+
+* __Updated release notes file name (#3403) (#3407)__
+
+  [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 29 Sep 2023 19:15:13 +0530
+
+
+    Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+    (cherry picked from commit b493355774dbeca47b9660cad8aba43c791451ad)
+     Co-authored-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+
+* __2.4.1 release notes (#3398) (#3401)__
+
+  [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 29 Sep 2023 00:58:53 +0530
+
+
+    * 2.4.1 release notes
+     Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+    
+    * Updated release notes
+     Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+    
+    ---------
+     Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+    (cherry picked from commit 9a19b131f020234e7f66cc937731b29649dc517a)
+     Co-authored-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+
+* __2.4.1 change log (#3397) (#3400)__
+
+  [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 29 Sep 2023 00:58:39 +0530
+
+
+    * 2.4.1 change log
+     Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+    
+    * Updated change log
+     Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+    
+    ---------
+     Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+    (cherry picked from commit db8d6cec28110a204e75b7d9fa162bc646aa0b43)
+     Co-authored-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+
+* __2.4.1 version (#3396)__
+
+  [Asif Sohail Mohammed](mailto:nsifmoh@amazon.com) - Fri, 29 Sep 2023 00:06:59 +0530
+
+  Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+
+* __Generated THIRD-PARTY file for 5ef5141 (#3395)__
+
+  [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Thu, 28 Sep 2023 23:15:26 +0530
+
+
+    Signed-off-by: GitHub &lt;noreply@github.com&gt;
+    Co-authored-by: asifsmohammed
+    &lt;asifsmohammed@users.noreply.github.com&gt;
+
 * __Add support for fully async acknowledgments in source coordination (#3384) (#3391)__
 
   [Taylor Gray](mailto:tylgry@amazon.com) - Thu, 28 Sep 2023 10:53:06 -0500

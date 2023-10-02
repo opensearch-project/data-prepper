@@ -1,4 +1,4 @@
-## 2023-08-28 Version 2.4.1
+## 2023-10-02 Version 2.4.1
 
 ---
 
@@ -28,3 +28,4 @@
 * Update armeria to 1.25.2 to fix CVE-2023-32732, CVE-2023-38493. ([#3366](https://github.com/opensearch-project/data-prepper/pull/3366))
 * Fix CVE fixes CVE-2022-36944, WS-2023-0116, CVE-2021-39194, CVE-2023-3635, CVE-2023-36479, CVE-2023-40167. ([#3392](https://github.com/opensearch-project/data-prepper/pull/3392))
 * Update commons-compress to 1.24.0 to fix CVE-2023-42503. ([#3388](https://github.com/opensearch-project/data-prepper/pull/3388))
+* Fix CVE-2022-45688, CVE-2023-43642. ([#3409](https://github.com/opensearch-project/data-prepper/pull/3409))
