@@ -11,7 +11,7 @@ import java.util.Base64;
 import java.util.Properties;
 
 /**
- * * This is static property configurer dedicated to authencation related information given in pipeline.yml
+ * * This is static property configurer dedicated to authentication related information given in pipeline.yml
  */
 
 public class AuthenticationPropertyConfigurer {

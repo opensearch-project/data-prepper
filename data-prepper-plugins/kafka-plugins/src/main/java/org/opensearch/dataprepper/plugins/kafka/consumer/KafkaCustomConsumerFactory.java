@@ -122,7 +122,7 @@ public class KafkaCustomConsumerFactory {
         }
         setConsumerTopicProperties(properties, topicConfig);
         setSchemaRegistryProperties(sourceConfig, properties, topicConfig);
-        LOG.info("Starting consumer with the properties : {}", properties);
+        LOG.debug("Starting consumer with the properties : {}", properties);
         return properties;
     }
 

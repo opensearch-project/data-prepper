@@ -29,7 +29,7 @@ public class TopicService {
             LOG.info(topicName + " created successfully");
 
         } catch (Exception e) {
-            LOG.error("Caught exception creating topic with name: " + topicName, e);
+            LOG.error("Caught exception creating topic with name: {}", topicName, e);
         }
     }
 

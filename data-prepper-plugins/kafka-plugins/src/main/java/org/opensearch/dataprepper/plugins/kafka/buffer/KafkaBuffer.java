@@ -31,6 +31,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaBuffer.class);
+    public static final int INNER_BUFFER_CAPACITY = 1000000;
+    public static final int INNER_BUFFER_BATCH_SIZE = 250000;
     private final KafkaCustomProducer producer;
     private final AbstractBuffer innerBuffer;
     private final ExecutorService executorService;
@@ -42,7 +44,7 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory();
         producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, pluginFactory, pluginSetting,  null, null);
         final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory();
-        innerBuffer = new BlockingBuffer<>(1000000, 250000, pluginSetting.getPipelineName());
+        innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         final List<KafkaCustomConsumer> consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
             innerBuffer, pluginMetrics, acknowledgementSetManager, new AtomicBoolean(false));
         this.executorService = Executors.newFixedThreadPool(consumers.size());
@@ -68,9 +70,6 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
 
     @Override
     public Map.Entry<Collection<T>, CheckpointState> doRead(int timeoutInMillis) {
-        innerBuffer.doRead(timeoutInMillis);
-
-
         return innerBuffer.doRead(timeoutInMillis);
     }
 
@@ -86,6 +85,7 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
 
     @Override
     public boolean isEmpty() {
+        // TODO: check Kafka topic is empty as well.
         return innerBuffer.isEmpty();
     }
 }

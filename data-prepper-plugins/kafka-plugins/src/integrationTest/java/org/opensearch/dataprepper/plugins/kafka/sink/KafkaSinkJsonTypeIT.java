@@ -248,15 +248,11 @@ public class KafkaSinkJsonTypeIT {
             ConsumerRecords<String, JsonNode> records = kafkaConsumer.poll(1000);
             if (!records.isEmpty() && records.count() > 0) {
                 for (ConsumerRecord<String, JsonNode> record : records) {
-                    System.out.println("RECORD RETRIEVED");
-                    System.out.println(record);
                     Record<Event> recordEvent = recList.get(recListCounter);
                     String inputJsonStr = recordEvent.getData().toJsonString();
 
                     JsonNode recValue = record.value();
                     String ss = recValue.asText();
-                    System.out.println(ss);
-                    System.out.println(recValue);
 
                     assertThat(ss, CoreMatchers.containsString(inputJsonStr));
                     if (recListCounter + 1 == recList.size()) {
