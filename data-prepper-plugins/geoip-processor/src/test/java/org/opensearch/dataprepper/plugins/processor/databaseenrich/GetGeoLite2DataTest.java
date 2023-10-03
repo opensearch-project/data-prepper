@@ -65,7 +65,7 @@ class GetGeoLite2DataTest {
         Map<String, Object> geoData = getGeoLite2Data.getGeoData(inetAddress, attributes, tempFolderPath);
         Assertions.assertNotNull(geoData);
         assertThat(geoData.get("country_iso_code"), equalTo("FR"));
-        assertThat(geoData.get("ip"), equalTo("2a02:ec00:0:0:0:0:0:0"));
+        assertThat(geoData.get("ip"), equalTo(IP));
         assertDoesNotThrow(() -> {
             getGeoLite2Data.closeReader();
         });
@@ -89,7 +89,7 @@ class GetGeoLite2DataTest {
         Map<String, Object> geoData = getGeoLite2Data.getGeoData(inetAddress, attributes, tempFolderPath);
         Assertions.assertNotNull(geoData);
         assertThat(geoData.get("country_name"), equalTo("France"));
-        assertThat(geoData.get("ip"), equalTo("2a02:ec00:0:0:0:0:0:0"));
+        assertThat(geoData.get("ip"), equalTo(IP));
         assertDoesNotThrow(() -> {
             getGeoLite2Data.closeReader();
         });
