@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.FieldSort;
 import co.elastic.clients.elasticsearch._types.ScoreSort;
 import co.elastic.clients.elasticsearch._types.SortOptions;
 import co.elastic.clients.elasticsearch._types.SortOrder;
@@ -111,7 +112,10 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
                                 .id(searchPointInTimeRequest.getPitId())
                                 .keepAlive(Time.of(time -> time.time(searchPointInTimeRequest.getKeepAlive())))))
                 .size(searchPointInTimeRequest.getPaginationSize())
-                .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
+                .sort(List.of(
+                        SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
+                        SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSortBuilder -> fieldSortBuilder.field("_id").order(SortOrder.Asc)))))
+                )
                 .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery))));
 
                 if (Objects.nonNull(searchPointInTimeRequest.getSearchAfter())) {
@@ -147,6 +151,7 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
         try {
             searchResponse = elasticsearchClient.search(SearchRequest.of(request -> request
                     .scroll(Time.of(time -> time.time(createScrollRequest.getScrollTime())))
+                    .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
                     .size(createScrollRequest.getSize())
                     .index(createScrollRequest.getIndex())), ObjectNode.class);
         } catch (final ElasticsearchException e) {
@@ -214,7 +219,10 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
             builder
                     .index(noSearchContextSearchRequest.getIndex())
                     .size(noSearchContextSearchRequest.getPaginationSize())
-                    .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
+                    .sort(List.of(
+                            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
+                            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSortBuilder -> fieldSortBuilder.field("_id").order(SortOrder.Asc)))))
+                    )
                     .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery))));
 
             if (Objects.nonNull(noSearchContextSearchRequest.getSearchAfter())) {
