@@ -1,32 +1,18 @@
-apply plugin: DockerRemoteApiPlugin
-
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import com.bmuschko.gradle.docker.DockerRemoteApiPlugin
+
 import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
 import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
-import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
-import com.bmuschko.gradle.docker.tasks.image.Dockerfile
-import com.bmuschko.gradle.docker.tasks.network.DockerCreateNetwork
-import com.bmuschko.gradle.docker.tasks.network.DockerRemoveNetwork
 
 /**
  * End-to-end test docker network
  */
-task createDataPrepperNetwork(type: DockerCreateNetwork) {
-    networkName = "data_prepper_network"
-}
-
-task removeDataPrepperNetwork(type: DockerRemoveNetwork) {
-    dependsOn createDataPrepperNetwork
-    networkId = createDataPrepperNetwork.getNetworkId()
-}
 
 def AGGREGATE_PIPELINE_YAML = "aggregate-e2e-pipeline.yml"
 def LOG_METRICS_PIPELINE_YAML = "log-metrics-pipeline.yml"
@@ -37,27 +23,9 @@ def DATA_PREPPER_CONFIG_STATIC = "data_prepper_static.yml"
  * DataPrepper Docker tasks
  */
 
-task copyTestResources(type: Copy) {
-    from 'src/integrationTest/resources/'
-    into "${project.buildDir}/docker/test-resources"
-}
-
-task createDataPrepperDockerFile(type: Dockerfile) {
-    dependsOn copyDataPrepperJar
-    dependsOn copyTestResources
-    destFile = project.file('build/docker/Dockerfile')
-    from(dataPrepperBaseImage)
-    exposePort(2021)
-    workingDir('/app/data-prepper')
-    copyFile("${dataPrepperJarImageFilepath}", '/app/data-prepper/lib')
-    copyFile('test-resources/default_certificate.pem', '/app/data-prepper/config/default_certificate.pem')
-    copyFile('test-resources/default_private_key.pem', '/app/data-prepper/config/default_private_key.pem')
-    defaultCommand('java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute')
-}
-
 task buildDataPrepperDockerImage(type: DockerBuildImage) {
     dependsOn createDataPrepperDockerFile
-    dockerFile  = file('build/docker/Dockerfile')
+    dockerFile = file('build/docker/Dockerfile')
     images.add('integ-test-pipeline-image')
 }
 
@@ -67,11 +35,16 @@ def createDataPrepperDockerContainer(final String taskBaseName, final String dat
         dependsOn buildDataPrepperDockerImage
         dependsOn createDataPrepperNetwork
         containerName = dataPrepperName
+        exposePorts('tcp', [2021])
         hostConfig.portBindings = [String.format('%d:2021', sourcePort)]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
-        hostConfig.binds = [(project.file("src/integrationTest/resources/${pipelineConfigYAML}").toString()):"/app/data-prepper/pipelines/pipelines.yaml",
-                            "/tmp":"/tmp",
-                            (project.file("src/integrationTest/resources/${dataPrepperConfigYAML}").toString()):"/app/data-prepper/config/data-prepper-config.yaml"]
+        hostConfig.binds = [
+                (project.file("src/integrationTest/resources/${pipelineConfigYAML}").toString())   : "/app/data-prepper/pipelines/pipelines.yaml",
+                "/tmp"                                                                             : "/tmp",
+                (project.file("src/integrationTest/resources/${dataPrepperConfigYAML}").toString()): "/app/data-prepper/config/data-prepper-config.yaml",
+                (project.file('src/integrationTest/resources/default_certificate.pem').toString()) : '/app/data-prepper/config/default_certificate.pem',
+                (project.file('src/integrationTest/resources/default_private_key.pem').toString()): '/app/data-prepper/config/default_private_key.pem'
+        ]
         cmd = ['java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute']
         targetImageId buildDataPrepperDockerImage.getImageId()
     }
@@ -97,41 +70,6 @@ def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDo
 }
 
 /**
- * OpenSearch Docker tasks
- */
-task pullOpenSearchDockerImage(type: DockerPullImage) {
-    image = "opensearchproject/opensearch:${libs.versions.opensearch.get()}"
-}
-
-task createOpenSearchDockerContainer(type: DockerCreateContainer) {
-    dependsOn createDataPrepperNetwork
-    dependsOn pullOpenSearchDockerImage
-    targetImageId pullOpenSearchDockerImage.image
-    containerName = "node-0.example.com"
-    hostConfig.portBindings = ['9200:9200', '9600:9600']
-    hostConfig.autoRemove = true
-    hostConfig.network = createDataPrepperNetwork.getNetworkName()
-    envVars = ['discovery.type':'single-node']
-}
-
-task startOpenSearchDockerContainer(type: DockerStartContainer) {
-    dependsOn createOpenSearchDockerContainer
-    targetContainerId createOpenSearchDockerContainer.getContainerId()
-
-    doLast {
-        sleep(90*1000)
-    }
-}
-
-task stopOpenSearchDockerContainer(type: DockerStopContainer) {
-    targetContainerId createOpenSearchDockerContainer.getContainerId()
-
-    doLast {
-        sleep(5*1000)
-    }
-}
-
-/**
  * End to end test. Spins up OpenSearch and DataPrepper docker containers, then runs the integ test
  * Stops the docker containers when finished
  */
@@ -148,7 +86,7 @@ def createEndToEndTest(final String testName, final String includeTestsMatchPatt
         startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
         // wait for data-preppers to be ready
         doFirst {
-            sleep(15*1000)
+            sleep(15 * 1000)
         }
 
         description = 'Runs the raw span integration tests.'

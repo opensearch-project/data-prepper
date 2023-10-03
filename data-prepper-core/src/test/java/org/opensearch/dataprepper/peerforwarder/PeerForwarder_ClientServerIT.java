@@ -11,6 +11,7 @@ import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.ClosedSessionException;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.server.Server;
+import io.netty.handler.ssl.NotSslRecordException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -326,7 +327,7 @@ class PeerForwarder_ClientServerIT {
                     () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName).get());
 
             assertThat(actualException.getCause(), instanceOf(UnprocessedRequestException.class));
-            assertThat(actualException.getCause().getCause(), instanceOf(SSLHandshakeException.class));
+            assertThat(actualException.getCause().getCause(), instanceOf(NotSslRecordException.class));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());

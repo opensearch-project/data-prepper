@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -30,7 +29,6 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.BACKOFF_ON_EXCEPTION;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.calculateExponentialBackoffAndJitter;
@@ -90,15 +88,15 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
                 noAvailableIndicesCount = 0;
 
                 try {
-                    final Pair<AcknowledgementSet, CompletableFuture<Boolean>> acknowledgementSet = createAcknowledgmentSet(
+                    final AcknowledgementSet acknowledgementSet = createAcknowledgmentSet(
                             acknowledgementSetManager,
                             openSearchSourceConfiguration,
                             sourceCoordinator,
                             indexPartition.get());
 
-                    openSearchSourcePluginMetrics.getIndexProcessingTimeTimer().record(() -> processIndex(indexPartition.get(), acknowledgementSet.getLeft()));
+                    openSearchSourcePluginMetrics.getIndexProcessingTimeTimer().record(() -> processIndex(indexPartition.get(), acknowledgementSet));
 
-                    completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet.getLeft(), acknowledgementSet.getRight(),
+                    completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet,
                             indexPartition.get(), sourceCoordinator);
 
                     openSearchSourcePluginMetrics.getIndicesProcessedCounter().increment();
@@ -108,7 +106,7 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
                     sourceCoordinator.giveUpPartitions();
                 } catch (final IndexNotFoundException e) {
                     LOG.warn("{}, marking index as complete and continuing processing", e.getMessage());
-                    sourceCoordinator.completePartition(indexPartition.get().getPartitionKey());
+                    sourceCoordinator.completePartition(indexPartition.get().getPartitionKey(), false);
                 } catch (final Exception e) {
                     LOG.error("Unknown exception while processing index '{}', moving on to another index:", indexPartition.get().getPartitionKey(), e);
                     sourceCoordinator.giveUpPartitions();
