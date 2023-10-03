@@ -53,15 +53,12 @@ public abstract class RecordConverter {
      * Using partition key plus sort key (if any)
      */
     String getId(Map<String, Object> data) {
-        String result;
         String partitionKey = String.valueOf(data.get(tableInfo.getMetadata().getPartitionKeyAttributeName()));
         if (tableInfo.getMetadata().getSortKeyAttributeName() == null) {
-            result = partitionKey;
-        } else {
-            String sortKey = String.valueOf(data.get(tableInfo.getMetadata().getSortKeyAttributeName()));
-            return partitionKey + "_" + sortKey;
+            return partitionKey;
         }
-        return result.replaceAll("\\s", "_");
+        String sortKey = String.valueOf(data.get(tableInfo.getMetadata().getSortKeyAttributeName()));
+        return partitionKey + "_" + sortKey;
     }
 
     void writeEventsToBuffer(List<Record<Event>> events) throws Exception {

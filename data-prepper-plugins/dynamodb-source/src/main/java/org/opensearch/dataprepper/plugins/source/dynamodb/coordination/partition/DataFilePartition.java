@@ -23,7 +23,7 @@ public class DataFilePartition extends SourcePartition<DataFileProgressState> {
     private final String bucket;
     private final String key;
 
-    private final Optional<DataFileProgressState> state;
+    private final DataFileProgressState state;
 
     public DataFilePartition(SourcePartitionStoreItem sourcePartitionStoreItem) {
         setSourcePartitionStoreItem(sourcePartitionStoreItem);
@@ -39,7 +39,7 @@ public class DataFilePartition extends SourcePartition<DataFileProgressState> {
         this.exportArn = exportArn;
         this.bucket = bucket;
         this.key = key;
-        this.state = state;
+        this.state = state.orElse(null);
     }
 
     @Override
@@ -54,7 +54,10 @@ public class DataFilePartition extends SourcePartition<DataFileProgressState> {
 
     @Override
     public Optional<DataFileProgressState> getProgressState() {
-        return state;
+        if (state != null) {
+            return Optional.of(state);
+        }
+        return Optional.empty();
     }
 
     public String getExportArn() {

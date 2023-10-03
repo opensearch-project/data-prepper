@@ -29,6 +29,8 @@ import java.util.Optional;
 public class ShardConsumerFactory {
     private static final Logger LOG = LoggerFactory.getLogger(ShardManager.class);
 
+    private static final int STREAM_TO_TABLE_OFFSET = "stream/".length();
+
     private final DynamoDbStreamsClient streamsClient;
 
     private final EnhancedSourceCoordinator enhancedSourceCoordinator;
@@ -93,6 +95,6 @@ public class ShardConsumerFactory {
     private String getTableArn(String streamArn) {
         // e.g. Given a stream arn: arn:aws:dynamodb:us-west-2:xxx:table/test-table/stream/2023-07-31T04:59:58.190
         // Returns arn:aws:dynamodb:us-west-2:xxx:table/test-table
-        return streamArn.substring(0, streamArn.lastIndexOf('/') - 7);
+        return streamArn.substring(0, streamArn.lastIndexOf('/') - STREAM_TO_TABLE_OFFSET);
     }
 }

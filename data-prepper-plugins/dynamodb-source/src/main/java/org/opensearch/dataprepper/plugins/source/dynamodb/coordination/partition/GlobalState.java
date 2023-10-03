@@ -21,18 +21,18 @@ public class GlobalState extends SourcePartition<Map<String, Object>> {
 
     private final String stateName;
 
-    private Optional<Map<String, Object>> state;
+    private Map<String, Object> state;
 
     public GlobalState(SourcePartitionStoreItem sourcePartitionStoreItem) {
         setSourcePartitionStoreItem(sourcePartitionStoreItem);
         this.stateName = sourcePartitionStoreItem.getSourcePartitionKey();
-        this.state = convertStringToMap(sourcePartitionStoreItem.getPartitionProgressState());
+        this.state = convertStringToPartitionProgressState(null, sourcePartitionStoreItem.getPartitionProgressState());
 
     }
 
     public GlobalState(String stateName, Optional<Map<String, Object>> state) {
         this.stateName = stateName;
-        this.state = state;
+        this.state = state.orElse(null);
 
     }
 
@@ -48,11 +48,14 @@ public class GlobalState extends SourcePartition<Map<String, Object>> {
 
     @Override
     public Optional<Map<String, Object>> getProgressState() {
-        return state;
+        if (state != null) {
+            return Optional.of(state);
+        }
+        return Optional.empty();
     }
 
     public void setProgressState(Map<String, Object> state) {
-        this.state = Optional.of(state);
+        this.state = state;
     }
 
 

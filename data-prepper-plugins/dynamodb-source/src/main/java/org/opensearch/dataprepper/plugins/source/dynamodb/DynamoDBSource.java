@@ -72,7 +72,7 @@ public class DynamoDBSource implements Source<Record<Event>> {
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
-        LOG.info("Start Processing");
+        LOG.info("Start DynamoDB service");
         dynamoDBService.start(buffer);
     }
 
@@ -84,12 +84,6 @@ public class DynamoDBSource implements Source<Record<Event>> {
             dynamoDBService.shutdown();
         }
 
-    }
-
-
-    @Override
-    public boolean areAcknowledgementsEnabled() {
-        return Source.super.areAcknowledgementsEnabled();
     }
 
 }

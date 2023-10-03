@@ -28,12 +28,19 @@ public class DefaultEnhancedSourceCoordinator implements EnhancedSourceCoordinat
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultEnhancedSourceCoordinator.class);
 
-    //Default time out duration for lease.
+    /**
+     * Default time out duration for lease.
+     */
     private static final Duration DEFAULT_LEASE_TIMEOUT = Duration.ofMinutes(10);
 
-    // Default identifier For global state
+    /**
+     * Default identifier For global state
+     */
     private static final String DEFAULT_GLOBAL_STATE_PARTITION_TYPE = "GLOBAL";
 
+    /**
+     * A backend coordination store
+     */
     private final SourceCoordinationStore coordinationStore;
 
     /**

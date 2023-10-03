@@ -26,16 +26,29 @@ public class ShardConsumer implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ShardConsumer.class);
 
-    // A flag to interrupt the process
+    /**
+     * A flag to interrupt the process
+     */
     private static volatile boolean shouldStop = false;
 
+    /**
+     * Max number of items to return per GetRecords call, maximum 1000.
+     */
     private static final int MAX_GET_RECORD_ITEM_COUNT = 1000;
 
-    // Idle Time between Reads
+    /**
+     * Idle Time between GetRecords Reads
+     */
     private static final int GET_RECORD_INTERVAL_MILLS = 200;
 
+    /**
+     * Default interval to check if export is completed.
+     */
     private static final int DEFAULT_WAIT_FOR_EXPORT_INTERVAL_MILLS = 60_000;
 
+    /**
+     * Default regular checkpoint interval
+     */
     private static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 2 * 60_000;
 
     private final DynamoDbStreamsClient dynamoDbStreamsClient;

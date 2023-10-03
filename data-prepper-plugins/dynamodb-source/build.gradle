@@ -2,8 +2,6 @@ plugins {
     id 'java'
 }
 
-group = 'org.opensearch.dataprepper.plugins.source'
-version = '2.4.0-SNAPSHOT'
 
 repositories {
     mavenCentral()

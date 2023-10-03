@@ -19,12 +19,12 @@ public class StreamPartition extends SourcePartition<StreamProgressState> {
 
     private final String shardId;
 
-    private final Optional<StreamProgressState> state;
+    private final StreamProgressState state;
 
     public StreamPartition(String streamArn, String shardId, Optional<StreamProgressState> state) {
         this.streamArn = streamArn;
         this.shardId = shardId;
-        this.state = state;
+        this.state = state.orElse(null);
     }
 
     public StreamPartition(SourcePartitionStoreItem sourcePartitionStoreItem) {
@@ -48,7 +48,10 @@ public class StreamPartition extends SourcePartition<StreamProgressState> {
 
     @Override
     public Optional<StreamProgressState> getProgressState() {
-        return state;
+        if (state != null) {
+            return Optional.of(state);
+        }
+        return Optional.empty();
     }
 
     public String getStreamArn() {

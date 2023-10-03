@@ -136,7 +136,7 @@ public class DataFileScheduler implements Runnable {
             } else {
                 // The data loader must have already done one last checkpointing.
                 LOG.debug("Data Loader completed with exception");
-                LOG.error(ex.toString());
+                LOG.error("{}", ex);
                 // Release the ownership
                 coordinator.giveUpPartition(dataFilePartition);
             }

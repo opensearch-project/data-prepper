@@ -51,34 +51,20 @@ public abstract class SourcePartition<T> implements Partition<T> {
      * Helper method to convert progress state.
      * This is because the state is currently stored as a String in the coordination store.
      */
-    protected Optional<T> convertStringToPartitionProgressState(Class<T> T, final String serializedPartitionProgressState) {
+    protected T convertStringToPartitionProgressState(Class<T> progressStateClass, final String serializedPartitionProgressState) {
         if (Objects.isNull(serializedPartitionProgressState)) {
-            return Optional.empty();
+            return null;
         }
 
         try {
-            return Optional.of(MAPPER.readValue(serializedPartitionProgressState, T));
+            if (progressStateClass != null) {
+                return MAPPER.readValue(serializedPartitionProgressState, progressStateClass);
+            }
+            return MAPPER.readValue(serializedPartitionProgressState, new TypeReference<>() {
+            });
         } catch (final JsonProcessingException e) {
-            LOG.error("Unable to convert string to partition progress state class {}: {}", T.getName(), e);
-            return Optional.empty();
-        }
-    }
-
-    /**
-     * Helper method to convert progress state to map (for global state)
-     * This is because the state is currently stored as a String in the coordination store.
-     */
-    protected Optional<T> convertStringToMap(final String serializedPartitionProgressState) {
-        if (Objects.isNull(serializedPartitionProgressState)) {
-            return Optional.empty();
-        }
-
-        try {
-            return Optional.of(MAPPER.readValue(serializedPartitionProgressState, new TypeReference<>() {
-            }));
-        } catch (final JsonProcessingException e) {
-            LOG.error("Unable to convert string to map: {}", e);
-            return Optional.empty();
+            LOG.error("Unable to convert string to partition progress state class {}: {}", progressStateClass.getName(), e);
+            return null;
         }
     }
 

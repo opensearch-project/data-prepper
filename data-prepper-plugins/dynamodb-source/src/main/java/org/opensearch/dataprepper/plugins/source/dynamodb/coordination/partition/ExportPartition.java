@@ -25,7 +25,7 @@ public class ExportPartition extends SourcePartition<ExportProgressState> {
 
     private final Instant exportTime;
 
-    private final Optional<ExportProgressState> state;
+    private final ExportProgressState state;
 
     public ExportPartition(SourcePartitionStoreItem sourcePartitionStoreItem) {
         setSourcePartitionStoreItem(sourcePartitionStoreItem);
@@ -39,18 +39,10 @@ public class ExportPartition extends SourcePartition<ExportProgressState> {
     public ExportPartition(String tableArn, Instant exportTime, Optional<ExportProgressState> state) {
         this.tableArn = tableArn;
         this.exportTime = exportTime;
-        this.state = state;
+        this.state = state.orElse(null);
 
     }
-
-    public String getTableArn() {
-        return tableArn;
-    }
-
-    public Instant getExportTime() {
-        return exportTime;
-    }
-
+    
     @Override
     public String getPartitionType() {
         return PARTITION_TYPE;
@@ -63,7 +55,19 @@ public class ExportPartition extends SourcePartition<ExportProgressState> {
 
     @Override
     public Optional<ExportProgressState> getProgressState() {
-        return state;
+        if (state != null) {
+            return Optional.of(state);
+        }
+        return Optional.empty();
+    }
+
+
+    public String getTableArn() {
+        return tableArn;
+    }
+
+    public Instant getExportTime() {
+        return exportTime;
     }
 
 

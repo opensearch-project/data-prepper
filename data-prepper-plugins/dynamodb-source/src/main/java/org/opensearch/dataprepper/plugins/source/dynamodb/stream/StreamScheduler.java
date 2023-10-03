@@ -93,7 +93,7 @@ public class StreamScheduler implements Runnable {
                 LOG.debug("Start creating new stream partitions for Child Shards");
 
                 List<String> childShardIds = shardManager.getChildShardIds(streamPartition.getStreamArn(), streamPartition.getShardId());
-                LOG.debug("Child Ids Retrieved: " + childShardIds);
+                LOG.debug("Child Ids Retrieved: {}", childShardIds);
 
                 createStreamPartitions(streamPartition.getStreamArn(), childShardIds);
                 LOG.debug("Create child shard completed");

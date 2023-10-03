@@ -22,13 +22,19 @@ public class DataFileLoader implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(DataFileLoader.class);
 
-    // A flag to interrupt the process
+    /**
+     * A flag to interrupt the process
+     */
     private static volatile boolean shouldStop = false;
 
-    // Number of lines to be read in a batch
+    /**
+     * Number of lines to be read in a batch
+     */
     private static final int DEFAULT_BATCH_SIZE = 1000;
 
-    // Default checkpoint interval
+    /**
+     * Default regular checkpoint interval
+     */
     private static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 2 * 60_000;
 
     private final String bucketName;

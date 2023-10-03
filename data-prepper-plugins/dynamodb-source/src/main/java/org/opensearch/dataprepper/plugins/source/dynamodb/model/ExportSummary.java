@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/S3DataExport.Output.html#S3DataExport.Output_Manifest
  * </p>
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ExportSummary {
     @JsonProperty("version")
     private String version;
