@@ -1,3 +1,10 @@
+plugins{
+    id 'de.undercouch.download' version '4.1.2'
+}
+apply plugin: 'de.undercouch.download'
+
+import de.undercouch.gradle.tasks.download.Download
+
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
@@ -23,8 +30,75 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation project(':data-prepper-test-common')
 }
+def geoIP2='GeoIP2'
+def geoLite2= 'GeoLite2'
+task downloadFile(type: Download) {
+
+    def urls = [
+            'https://raw.githubusercontent.com/maxmind/MaxMind-DB/main/test-data/GeoIP2-City-Test.mmdb',
+            'https://raw.githubusercontent.com/maxmind/MaxMind-DB/main/test-data/GeoIP2-Country-Test.mmdb',
+            'https://raw.githubusercontent.com/maxmind/MaxMind-DB/main/test-data/GeoLite2-ASN-Test.mmdb'
+    ]
+    def mmdbFileExtension = '.mmdb'
+    def baseDirPath =  'src/test/resources/mmdb-file/geo-lite2/'
+
+    urls.each { url ->
+        src(url)
+        dest(baseDirPath)
+        doLast {
+
+            def testFileName = url.substring(url.lastIndexOf('/') + 1)
+            def testMmdbSubString = testFileName.substring(testFileName.lastIndexOf('-'))
+            def fileName = testFileName.substring(0, testFileName.length() - testMmdbSubString.length())
+
+            if(fileName.contains(geoIP2)) {
+                fileName = fileName.replace(geoIP2, geoLite2)
+            }
+            File sourceFile = file(baseDirPath+testFileName)
+            File destinationFile = file( baseDirPath+fileName+mmdbFileExtension)
+            sourceFile.renameTo(destinationFile)
+
+        }
+
+    }
 
 
+}
+task downloadEnterpriseFile(type: Download) {
+    dependsOn downloadFile
+    def urls = [
+            'https://raw.githubusercontent.com/maxmind/MaxMind-DB/main/test-data/GeoIP2-Enterprise-Test.mmdb'
+    ]
+    def mmdbFileExtension = '.mmdb'
+    def baseDirPath =  'src/test/resources/mmdb-file/geo-enterprise/'
+
+    urls.each { url ->
+        src(url)
+        def testFileName = url.substring(url.lastIndexOf('/') + 1)
+        def testMmdbSubString = testFileName.substring(testFileName.lastIndexOf('-'))
+        def fileName = testFileName.substring(0, testFileName.length() - testMmdbSubString.length())
+
+        dest(baseDirPath+testFileName)
+        doLast {
+            if(fileName.contains(geoIP2)) {
+                fileName = fileName.replace(geoIP2, geoLite2)
+            }
+            File sourceFile = file(baseDirPath+testFileName)
+            File destinationFile = file( baseDirPath+fileName+mmdbFileExtension)
+            sourceFile.renameTo(destinationFile)
+        }
+
+    }
+
+}
+
+/*task processTestResources(type: Copy) {
+    dependsOn  downloadEnterpriseFile
+    from 'src/test/resources' // Source directory containing test resources
+    into 'build/resources/test' // Destination directory for processed test resources
+}*/
+tasks.test.dependsOn 'processTestResources'
+tasks.processTestResources.dependsOn 'downloadEnterpriseFile'
 test {
     useJUnitPlatform()
 }
