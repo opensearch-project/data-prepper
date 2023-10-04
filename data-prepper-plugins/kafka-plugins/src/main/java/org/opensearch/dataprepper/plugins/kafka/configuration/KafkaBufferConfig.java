@@ -2,6 +2,8 @@ package org.opensearch.dataprepper.plugins.kafka.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
@@ -15,8 +17,10 @@ public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConf
     @JsonProperty("bootstrap_servers")
     private List<String> bootStrapServers;
 
-    @JsonProperty("topic")
-    TopicConfig topic;
+    @JsonProperty("topics")
+    @NotNull
+    @Size(min = 1, max = 1, message = "Only one topic currently supported for Kafka buffer")
+    private List<TopicConfig> topics;
 
     @JsonProperty("schema")
     @Valid
@@ -56,17 +60,17 @@ public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConf
 
     @Override
     public String getSerdeFormat() {
-        return topic.getSerdeFormat().toString();
+        return getTopic().getSerdeFormat().toString();
     }
 
     @Override
     public TopicConfig getTopic() {
-        return topic;
+        return topics.get(0);
     }
 
     @Override
     public List<TopicConfig> getTopics() {
-        return Collections.singletonList(topic);
+        return topics;
     }
 
     @Override
