@@ -76,10 +76,6 @@ public class JavaClientAccumulatingUncompressedBulkRequest implements Accumulati
         if (anyDocument == null)
             return OPERATION_OVERHEAD;
 
-        if (anyDocument instanceof JsonNode) {
-            return OPERATION_OVERHEAD + ((JsonNode)anyDocument).toString().length();
-        }
-
         if (!(anyDocument instanceof SizedDocument)) {
             throw new IllegalArgumentException("Only SizedDocument is permitted for accumulating bulk requests. " + bulkOperation);
         }

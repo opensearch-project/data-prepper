@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
@@ -258,6 +259,61 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     return initialized;
   }
 
+  private BulkOperation getBulkOperationForAction(final String action, final SerializedJson document, final String indexName, final JsonNode jsonNode) {
+    BulkOperation bulkOperation;
+    final Optional<String> docId = document.getDocumentId();
+    final Optional<String> routing = document.getRoutingField();
+
+    if (StringUtils.equals(action, BulkAction.CREATE.toString())) {
+       final CreateOperation.Builder<Object> createOperationBuilder =
+         new CreateOperation.Builder<>()
+             .index(indexName)
+             .document(document);
+       docId.ifPresent(createOperationBuilder::id);
+       routing.ifPresent(createOperationBuilder::routing);
+       bulkOperation = new BulkOperation.Builder()
+                           .create(createOperationBuilder.build())
+                           .build();
+       return bulkOperation;
+    }
+    if (StringUtils.equals(action, BulkAction.UPDATE.toString()) ||
+        StringUtils.equals(action, BulkAction.UPSERT.toString())) {
+          final UpdateOperation.Builder<Object> updateOperationBuilder = (action.toLowerCase() == BulkAction.UPSERT.toString()) ?
+              new UpdateOperation.Builder<>()
+                  .index(indexName)
+                  .document(jsonNode)
+                  .upsert(jsonNode) :
+              new UpdateOperation.Builder<>()
+                  .index(indexName)
+                  .document(jsonNode);
+          docId.ifPresent(updateOperationBuilder::id);
+          routing.ifPresent(updateOperationBuilder::routing);
+          bulkOperation = new BulkOperation.Builder()
+                              .update(updateOperationBuilder.build())
+                              .build();
+          return bulkOperation;
+    }
+    if (StringUtils.equals(action, BulkAction.DELETE.toString())) {
+      final DeleteOperation.Builder deleteOperationBuilder =
+        new DeleteOperation.Builder().index(indexName);
+      docId.ifPresent(deleteOperationBuilder::id);
+      routing.ifPresent(deleteOperationBuilder::routing);
+      bulkOperation = new BulkOperation.Builder()
+                          .delete(deleteOperationBuilder.build())
+                          .build();
+      return bulkOperation;
+    }
+    // Default to "index"
+    final IndexOperation.Builder<Object> indexOperationBuilder =
+      new IndexOperation.Builder<>().index(indexName).document(document);
+    docId.ifPresent(indexOperationBuilder::id);
+    routing.ifPresent(indexOperationBuilder::routing);
+    bulkOperation = new BulkOperation.Builder()
+                        .index(indexOperationBuilder.build())
+                        .build();
+    return bulkOperation;
+  }
+
   @Override
   public void doOutput(final Collection<Record<Event>> records) {
     final long threadId = Thread.currentThread().getId();
@@ -274,8 +330,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     for (final Record<Event> record : records) {
       final Event event = record.getData();
       final SerializedJson document = getDocument(event);
-      final Optional<String> docId = document.getDocumentId();
-      final Optional<String> routing = document.getRoutingField();
       String indexName = configuredIndexAlias;
       try {
           indexName = indexManager.getIndexName(event.formatString(indexName, expressionEvaluator));
@@ -291,8 +345,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                   .build()), e);
           continue;
       }
-
-      BulkOperation bulkOperation;
 
       String eventAction = action;
       if (actions != null) {
@@ -314,55 +366,15 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         continue;
       }
 
-      if (StringUtils.equalsIgnoreCase(eventAction, BulkAction.CREATE.toString())) {
-          final CreateOperation.Builder<Object> createOperationBuilder =
-              new CreateOperation.Builder<>()
-                  .index(indexName)
-                  .document(document);
-          docId.ifPresent(createOperationBuilder::id);
-          routing.ifPresent(createOperationBuilder::routing);
-          bulkOperation = new BulkOperation.Builder()
-                    .create(createOperationBuilder.build())
-                    .build();
-      } else if (StringUtils.equalsIgnoreCase(eventAction, BulkAction.UPDATE.toString()) || StringUtils.equalsIgnoreCase(eventAction, BulkAction.UPSERT.toString())) {
-        try {
-          final UpdateOperation.Builder<Object> updateOperationBuilder = (eventAction.toLowerCase() == BulkAction.UPSERT.toString()) ?
-              new UpdateOperation.Builder<>()
-                  .index(indexName)
-                  .document(event.getJsonNode())
-                  .upsert(event.getJsonNode()) :
-              new UpdateOperation.Builder<>()
-                  .index(indexName)
-                  .document(event.getJsonNode());
-          docId.ifPresent(updateOperationBuilder::id);
-          routing.ifPresent(updateOperationBuilder::routing);
-          bulkOperation = new BulkOperation.Builder()
-                  .update(updateOperationBuilder.build())
-                  .build();
-        } catch (Exception e){
-          bulkOperation = null;
-        }
-      } else if (StringUtils.equalsIgnoreCase(eventAction, BulkAction.DELETE.toString())) {
-          final DeleteOperation.Builder deleteOperationBuilder = new DeleteOperation.Builder()
-                  .index(indexName);
-          docId.ifPresent(deleteOperationBuilder::id);
-          routing.ifPresent(deleteOperationBuilder::routing);
-          bulkOperation = new BulkOperation.Builder()
-                  .delete(deleteOperationBuilder.build())
-                  .build();
-      } else {
-          // Default to "index"
-          final IndexOperation.Builder<Object> indexOperationBuilder = new IndexOperation.Builder<>()
-                  .index(indexName)
-                  .document(document);
-          docId.ifPresent(indexOperationBuilder::id);
-          routing.ifPresent(indexOperationBuilder::routing);
-          bulkOperation = new BulkOperation.Builder()
-                  .index(indexOperationBuilder.build())
-                  .build();
+      SerializedJson serializedJsonNode = null;
+      if (StringUtils.equals(action, BulkAction.UPDATE.toString()) ||
+          StringUtils.equals(action, BulkAction.UPSERT.toString()) ||
+          StringUtils.equals(action, BulkAction.DELETE.toString())) {
+            serializedJsonNode = SerializedJson.fromJsonNode(event.getJsonNode(), document);
       }
+      BulkOperation bulkOperation = getBulkOperationForAction(eventAction, document, indexName, event.getJsonNode());
 
-      BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle(), event.getJsonNode());
+      BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle(), serializedJsonNode);
       final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
         flushBatch(bulkRequest);
