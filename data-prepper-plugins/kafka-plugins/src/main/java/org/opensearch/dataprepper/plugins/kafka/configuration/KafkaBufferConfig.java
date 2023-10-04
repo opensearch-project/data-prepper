@@ -32,6 +32,10 @@ public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConf
     @JsonProperty("producer_properties")
     private KafkaProducerProperties kafkaProducerProperties;
 
+    @JsonProperty("aws")
+    @Valid
+    private AwsConfig awsConfig;
+
 
     public List<String> getBootstrapServers() {
         if (Objects.nonNull(bootStrapServers)) {
@@ -77,7 +81,7 @@ public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConf
 
     @Override
     public Optional<PluginModel> getDlq() {
-        // TODO: move DLQ logic to be sink specific (currently, write to DLQ is handled by KafkaCustomConsumer
+        // TODO: move DLQ logic to be sink specific (currently, write to DLQ is handled by KafkaCustomConsumer)
         return Optional.empty();
     }
     @Override
@@ -86,8 +90,7 @@ public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConf
     }
     @Override
     public AwsConfig getAwsConfig() {
-        // TODO: implement MSK support
-        return null;
+        return awsConfig;
     }
 
     @Override

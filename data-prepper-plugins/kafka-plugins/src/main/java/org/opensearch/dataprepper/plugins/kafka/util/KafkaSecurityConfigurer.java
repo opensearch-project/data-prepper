@@ -8,7 +8,9 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConnectionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
@@ -119,7 +121,7 @@ public class KafkaSecurityConfigurer {
         }
     }
 
-    public static void setOauthProperties(final KafkaConsumerConfig kafkaConsumerConfig,
+    public static void setOauthProperties(final KafkaConnectionConfig kafkaConsumerConfig,
                                           final Properties properties) {
         final OAuthConfig oAuthConfig = kafkaConsumerConfig.getAuthConfig().getSaslAuthConfig().getOAuthConfig();
         final String oauthClientId = oAuthConfig.getOauthClientId();
@@ -175,10 +177,18 @@ public class KafkaSecurityConfigurer {
         properties.put(SASL_MECHANISM, "AWS_MSK_IAM");
         properties.put(SASL_CLIENT_CALLBACK_HANDLER_CLASS, "software.amazon.msk.auth.iam.IAMClientCallbackHandler");
         if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
-            properties.put(SASL_JAAS_CONFIG,
-                "software.amazon.msk.auth.iam.IAMLoginModule required " +
-                "awsRoleArn=\"" + awsConfig.getStsRoleArn() +
-                "\" awsStsRegion=\"" + awsConfig.getRegion() + "\";");
+            String baseIamAuthConfig = "software.amazon.msk.auth.iam.IAMLoginModule required " +
+                "awsRoleArn=\"%s\" " +
+                "awsStsRegion=\"%s\"";
+
+            baseIamAuthConfig = String.format(baseIamAuthConfig, awsConfig.getStsRoleArn(), awsConfig.getRegion());
+
+            if (Objects.nonNull(awsConfig.getStsRoleSessionName())) {
+                baseIamAuthConfig += String.format(" awsRoleSessionName=\"%s\"", awsConfig.getStsRoleSessionName());
+            }
+
+            baseIamAuthConfig += ";";
+            properties.put(SASL_JAAS_CONFIG, baseIamAuthConfig);
         } else if (awsIamAuthConfig == AwsIamAuthConfig.DEFAULT) {
             properties.put(SASL_JAAS_CONFIG,
                     "software.amazon.msk.auth.iam.IAMLoginModule required;");
@@ -247,7 +257,7 @@ public class KafkaSecurityConfigurer {
         }
     }
 
-    public static void setAuthProperties(Properties properties, final KafkaConsumerConfig consumerConfig, final Logger LOG) {
+    public static void setAuthProperties(Properties properties, final KafkaConnectionConfig consumerConfig, final Logger LOG) {
         final AwsConfig awsConfig = consumerConfig.getAwsConfig();
         final AuthConfig authConfig = consumerConfig.getAuthConfig();
         final EncryptionConfig encryptionConfig = consumerConfig.getEncryptionConfig();
@@ -255,7 +265,10 @@ public class KafkaSecurityConfigurer {
 
         credentialsProvider = DefaultCredentialsProvider.create();
 
-        String bootstrapServers = String.join(",", consumerConfig.getBootstrapServers());
+        String bootstrapServers = "";
+        if (Objects.nonNull(consumerConfig.getBootstrapServers())) {
+            bootstrapServers = String.join(",", consumerConfig.getBootstrapServers());
+        }
         AwsIamAuthConfig awsIamAuthConfig = null;
         if (Objects.nonNull(authConfig)) {
             AuthConfig.SaslAuthConfig saslAuthConfig = authConfig.getSaslAuthConfig();

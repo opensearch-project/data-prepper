@@ -7,4 +7,5 @@ public interface KafkaConnectionConfig {
     AuthConfig getAuthConfig();
     AwsConfig getAwsConfig();
     EncryptionConfig getEncryptionConfig();
+    SchemaConfig getSchemaConfig();
 }

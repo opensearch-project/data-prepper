@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 
 /**
@@ -145,7 +146,9 @@ public class SinkPropertyConfigurer {
     }
 
     private static void setCommonServerProperties(final Properties properties, final KafkaProducerConfig kafkaSinkConfig) {
-        properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, kafkaSinkConfig.getBootstrapServers());
+        if (Objects.nonNull(kafkaSinkConfig.getBootstrapServers())){
+            properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, kafkaSinkConfig.getBootstrapServers());
+        }
         properties.put(CommonClientConfigs.SESSION_TIMEOUT_MS_CONFIG, SESSION_TIMEOUT_MS_CONFIG);
     }
 
@@ -326,7 +329,7 @@ public class SinkPropertyConfigurer {
     public static Properties getPropertiesForAdminClient(final KafkaProducerConfig kafkaProducerConfig) {
         Properties properties = new Properties();
         setCommonServerProperties(properties, kafkaProducerConfig);
-        setAuthProperties(kafkaProducerConfig, properties);
+        KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, LOG);
         properties.put(TopicConfig.RETENTION_MS_CONFIG,kafkaProducerConfig.getTopic().getRetentionPeriod());
         return properties;
     }

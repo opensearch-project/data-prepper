@@ -42,6 +42,9 @@ public class AwsConfig {
     @JsonProperty("sts_role_arn")
     private String stsRoleArn;
 
+    @JsonProperty("sts_role_session_name")
+    private String stsRoleSessionName;
+
     public AwsMskConfig getAwsMskConfig() {
         return awsMskConfig;
     }
@@ -52,5 +55,9 @@ public class AwsConfig {
 
     public String getStsRoleArn() {
         return stsRoleArn;
+    }
+
+    public String getStsRoleSessionName() {
+        return stsRoleSessionName;
     }
 }
