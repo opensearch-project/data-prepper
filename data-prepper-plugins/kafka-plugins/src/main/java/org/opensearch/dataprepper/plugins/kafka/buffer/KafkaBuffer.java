@@ -27,7 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@DataPrepperPlugin(name = "kafka_buffer", pluginType = Buffer.class, pluginConfigurationType = KafkaBufferConfig.class)
+@DataPrepperPlugin(name = "kafka", pluginType = Buffer.class, pluginConfigurationType = KafkaBufferConfig.class)
 public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaBuffer.class);

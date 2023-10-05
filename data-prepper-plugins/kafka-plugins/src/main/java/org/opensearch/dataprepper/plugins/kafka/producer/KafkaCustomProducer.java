@@ -135,7 +135,6 @@ public class KafkaCustomProducer<T> {
     }
 
     private Future send(final String topicName, String key, final Object record) {
-        key = null;
         if (Objects.isNull(key)) {
             return producer.send(new ProducerRecord(topicName, record), callBack(record));
         }

@@ -42,7 +42,7 @@ public class AwsConfig {
     @JsonProperty("sts_role_arn")
     private String stsRoleArn;
 
-    @JsonProperty("sts_role_session_name")
+    @JsonProperty("role_session_name")
     private String stsRoleSessionName;
 
     public AwsMskConfig getAwsMskConfig() {

@@ -205,8 +205,8 @@ public class KafkaSinkJsonTypeIT {
     }
 
     private void configureJasConfForSASLPlainText() {
-        String username = "admin";
-        String password = "admin";
+        String username = System.getProperty("tests.kafka.authconfig.username");
+        String password = System.getProperty("tests.kafka.authconfig.password");
         when(plainTextAuthConfig.getUsername()).thenReturn(username);
         when(plainTextAuthConfig.getPassword()).thenReturn(password);
         when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
