@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.event.DefaultEventFactory;
@@ -57,6 +58,8 @@ class DefaultPluginFactoryTest {
     private String pipelineName;
     private DefaultAcknowledgementSetManager acknowledgementSetManager;
     private DefaultEventFactory eventFactory;
+    private PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
+    private PluginConfigObservable pluginConfigObservable;
 
     @BeforeEach
     void setUp() {
@@ -80,10 +83,18 @@ class DefaultPluginFactoryTest {
 
         beanFactoryProvider = mock(PluginBeanFactoryProvider.class);
         beanFactory = mock(BeanFactory.class);
+        pluginConfigurationObservableFactory = mock(PluginConfigurationObservableFactory.class);
+        given(pluginConfigurationObservableFactory.createDefaultPluginConfigObservable(
+                eq(pluginConfigurationConverter),
+                any(Class.class),
+                any(PluginSetting.class)
+        )).willReturn(pluginConfigObservable);
     }
 
     private DefaultPluginFactory createObjectUnderTest() {
-        return new DefaultPluginFactory(pluginProviderLoader, pluginCreator, pluginConfigurationConverter, beanFactoryProvider, eventFactory, acknowledgementSetManager);
+        return new DefaultPluginFactory(
+                pluginProviderLoader, pluginCreator, pluginConfigurationConverter, beanFactoryProvider, eventFactory,
+                acknowledgementSetManager, pluginConfigurationObservableFactory);
     }
 
     @Test
@@ -109,6 +120,15 @@ class DefaultPluginFactoryTest {
         given(pluginProviderLoader.getPluginProviders()).willReturn(Collections.emptyList());
 
         assertThrows(RuntimeException.class,
+                this::createObjectUnderTest);
+        verifyNoInteractions(beanFactoryProvider);
+    }
+
+    @Test
+    void constructor_should_throw_if_pluginConfigurationObservableFactory_is_null() {
+        pluginConfigurationObservableFactory = null;
+
+        assertThrows(NullPointerException.class,
                 this::createObjectUnderTest);
         verifyNoInteractions(beanFactoryProvider);
     }
