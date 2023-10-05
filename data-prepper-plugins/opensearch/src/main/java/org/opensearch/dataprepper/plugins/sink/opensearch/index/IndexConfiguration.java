@@ -6,14 +6,17 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.EnumUtils;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3FileReader;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
@@ -163,6 +166,10 @@ public class IndexConfiguration {
     }
 
     public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
+        return readIndexConfig(pluginSetting, null);
+    }
+
+    public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting, final ExpressionEvaluator expressionEvaluator) {
         IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
         final String indexAlias = pluginSetting.getStringOrDefault(INDEX_ALIAS, null);
         if (indexAlias != null) {
@@ -220,9 +227,9 @@ public class IndexConfiguration {
         List<Map<String, Object>> actionsList = pluginSetting.getTypedListOfMaps(ACTIONS, String.class, Object.class);
 
         if (actionsList != null) {
-            builder.withActions(actionsList);
+            builder.withActions(actionsList, expressionEvaluator);
         } else {
-            builder.withAction(pluginSetting.getStringOrDefault(ACTION, BulkAction.INDEX.toString()));
+            builder.withAction(pluginSetting.getStringOrDefault(ACTION, BulkAction.INDEX.toString()), expressionEvaluator);
         }
 
         if ((builder.templateFile != null && builder.templateFile.startsWith(S3_PREFIX))
@@ -482,14 +489,19 @@ public class IndexConfiguration {
             return this;
         }
 
-        public Builder withAction(final String action) {
-            // Removed validation because action may have expresions
+        public Builder withAction(final String action, final ExpressionEvaluator expressionEvaluator) {
+            checkArgument((EnumUtils.isValidEnumIgnoreCase(BulkAction.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + BulkAction.values());
             this.action = action;
             return this;
         }
 
-        public Builder withActions(final List<Map<String, Object>> actions) {
-            // No validation done here because actions may have expresions
+        public Builder withActions(final List<Map<String, Object>> actions, final ExpressionEvaluator expressionEvaluator) {
+            for (final Map<String, Object> actionMap: actions) {
+                String action = (String)actionMap.get("type");
+                if (action != null) {
+                    checkArgument((EnumUtils.isValidEnumIgnoreCase(BulkAction.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + BulkAction.values());
+                }
+            }
             this.actions = actions;
             return this;
         }

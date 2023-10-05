@@ -148,7 +148,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
     bulkRequestSizeBytesSummary = pluginMetrics.summary(BULKREQUEST_SIZE_BYTES);
 
-    this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting);
+    this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting, expressionEvaluator);
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
     this.flushTimeout = openSearchSinkConfig.getIndexConfiguration().getFlushTimeout();
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
