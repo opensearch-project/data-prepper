@@ -825,6 +825,41 @@ public class OpenSearchSinkIT {
     }
 
     @Test
+    public void testBulkActionUpsertWithoutCreate() throws IOException, InterruptedException {
+        final String testIndexAlias = "test-alias-upd2";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
+
+        final String testIdField = "someId";
+        final String testId = "foo";
+        List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson3(testIdField, testId, "name", "value1", "newKey", "newValue")));
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
+        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        List<Map<String, Object>> aList = new ArrayList<>();
+        Map<String, Object> aMap = new HashMap<>();
+        aMap.put("type", BulkAction.UPSERT.toString());
+        aList.add(aMap);
+        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        Map<String, Object> source = retSources.get(0);
+        MatcherAssert.assertThat((String)source.get("name"), equalTo("value1"));
+        MatcherAssert.assertThat((String)source.get("newKey"), equalTo("newValue"));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
+        // verify metrics
+        final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+        MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+        // COUNT
+        Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+    }
+
+    @Test
     public void testBulkActionDeleteWithActions() throws IOException, InterruptedException {
         final String testIndexAlias = "test-alias-upd1";
         final String testTemplateFile = Objects.requireNonNull(
