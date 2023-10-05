@@ -76,7 +76,7 @@ class KafkaSourceConfigTest {
 		TopicConfig topicConfig = mock(TopicConfig.class);
 		kafkaSourceConfig.setTopics(Collections.singletonList(topicConfig));
 
-		assertEquals("127.0.0.1:9092", kafkaSourceConfig.getBootstrapServers());
+		assertEquals(Collections.singletonList("127.0.0.1:9092"), kafkaSourceConfig.getBootstrapServers());
 		assertEquals(Collections.singletonList(topicConfig), kafkaSourceConfig.getTopics());
         setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsEnabled", true);
 		assertEquals(true, kafkaSourceConfig.getAcknowledgementsEnabled());

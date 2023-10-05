@@ -147,7 +147,7 @@ public class SinkPropertyConfigurer {
 
     private static void setCommonServerProperties(final Properties properties, final KafkaProducerConfig kafkaSinkConfig) {
         if (Objects.nonNull(kafkaSinkConfig.getBootstrapServers())){
-            properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, kafkaSinkConfig.getBootstrapServers());
+            properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, String.join(",", kafkaSinkConfig.getBootstrapServers()));
         }
         properties.put(CommonClientConfigs.SESSION_TIMEOUT_MS_CONFIG, SESSION_TIMEOUT_MS_CONFIG);
     }
