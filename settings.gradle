@@ -142,4 +142,4 @@ include 'data-prepper-plugins:http-sink'
 include 'data-prepper-plugins:sns-sink'
 include 'data-prepper-plugins:prometheus-sink'
 include 'data-prepper-plugins:dissect-processor'
-
+include 'data-prepper-plugins:dynamodb-source'
