@@ -3,52 +3,43 @@ package org.opensearch.dataprepper.plugins.aws;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 public class AwsSecretsSupplier implements SecretsSupplier {
+    private static final Logger LOG = LoggerFactory.getLogger(AwsSecretsSupplier.class);
     static final TypeReference<Map<String, String>> MAP_TYPE_REFERENCE = new TypeReference<>() {
     };
 
     private final ObjectMapper objectMapper;
-    private final Map<String, Object> secretIdToValue;
+    private final Map<String, AwsSecretManagerConfiguration> awsSecretManagerConfigurationMap;
+    private final Map<String, SecretsManagerClient> secretsManagerClientMap;
+    private final ConcurrentMap<String, Object> secretIdToValue;
 
     public AwsSecretsSupplier(final AwsSecretPluginConfig awsSecretPluginConfig, final ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
-        secretIdToValue = toSecretMap(awsSecretPluginConfig);
+        awsSecretManagerConfigurationMap = awsSecretPluginConfig
+                .getAwsSecretManagerConfigurationMap();
+        secretsManagerClientMap = toSecretsManagerClientMap(awsSecretPluginConfig);
+        secretIdToValue = toSecretMap(awsSecretManagerConfigurationMap);
     }
 
-    private Map<String, Object> toSecretMap(final AwsSecretPluginConfig awsSecretPluginConfig) {
-        final Map<String, SecretsManagerClient> secretsManagerClientMap = toSecretsManagerClientMap(
-                awsSecretPluginConfig);
-        final Map<String, AwsSecretManagerConfiguration> awsSecretManagerConfigurationMap = awsSecretPluginConfig
-                .getAwsSecretManagerConfigurationMap();
+    private ConcurrentMap<String, Object> toSecretMap(
+            final Map<String, AwsSecretManagerConfiguration> awsSecretManagerConfigurationMap) {
         return secretsManagerClientMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, entry -> {
+                .collect(Collectors.toConcurrentMap(Map.Entry::getKey, entry -> {
                     final String secretConfigurationId = entry.getKey();
                     final AwsSecretManagerConfiguration awsSecretManagerConfiguration =
                             awsSecretManagerConfigurationMap.get(secretConfigurationId);
                     final SecretsManagerClient secretsManagerClient = entry.getValue();
-                    final GetSecretValueRequest getSecretValueRequest = awsSecretManagerConfiguration
-                            .createGetSecretValueRequest();
-                    final GetSecretValueResponse getSecretValueResponse;
-                    try {
-                        getSecretValueResponse = secretsManagerClient.getSecretValue(getSecretValueRequest);
-                    } catch (Exception e) {
-                        throw new RuntimeException(
-                                String.format("Unable to retrieve secret: %s",
-                                        awsSecretManagerConfiguration.getAwsSecretId()), e);
-                    }
-
-                    try {
-                        return objectMapper.readValue(getSecretValueResponse.secretString(), MAP_TYPE_REFERENCE);
-                    } catch (JsonProcessingException e) {
-                        return getSecretValueResponse.secretString();
-                    }
+                    return retrieveSecretsFromSecretManager(awsSecretManagerConfiguration, secretsManagerClient);
                 }));
     }
 
@@ -91,6 +82,39 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException(String.format("Unable to read the value under secretId: %s as string.",
                     secretId));
+        }
+    }
+
+    @Override
+    public void refresh(String secretConfigId) {
+        LOG.info("Retrieving latest secrets in aws:secrets:{}.", secretConfigId);
+        secretIdToValue.compute(secretConfigId, (key, oldValue) -> {
+            final AwsSecretManagerConfiguration awsSecretManagerConfiguration =
+                    awsSecretManagerConfigurationMap.get(key);
+            final SecretsManagerClient secretsManagerClient =
+                    secretsManagerClientMap.get(key);
+            return retrieveSecretsFromSecretManager(awsSecretManagerConfiguration, secretsManagerClient);
+        });
+        LOG.info("Finished retrieving latest secret in aws:secrets:{}.", secretConfigId);
+    }
+
+    private Object retrieveSecretsFromSecretManager(final AwsSecretManagerConfiguration awsSecretManagerConfiguration,
+                                                    final SecretsManagerClient secretsManagerClient) {
+        final GetSecretValueRequest getSecretValueRequest = awsSecretManagerConfiguration
+                .createGetSecretValueRequest();
+        final GetSecretValueResponse getSecretValueResponse;
+        try {
+            getSecretValueResponse = secretsManagerClient.getSecretValue(getSecretValueRequest);
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    String.format("Unable to retrieve secret: %s",
+                            awsSecretManagerConfiguration.getAwsSecretId()), e);
+        }
+
+        try {
+            return objectMapper.readValue(getSecretValueResponse.secretString(), MAP_TYPE_REFERENCE);
+        } catch (JsonProcessingException e) {
+            return getSecretValueResponse.secretString();
         }
     }
 }

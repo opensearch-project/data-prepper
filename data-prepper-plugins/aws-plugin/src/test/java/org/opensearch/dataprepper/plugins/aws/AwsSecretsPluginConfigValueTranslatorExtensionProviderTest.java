@@ -15,15 +15,15 @@ import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 @ExtendWith(MockitoExtension.class)
-class AwsSecretExtensionProviderTest {
+class AwsSecretsPluginConfigValueTranslatorExtensionProviderTest {
     @Mock
     private PluginConfigValueTranslator pluginConfigValueTranslator;
 
     @Mock
     private ExtensionProvider.Context context;
 
-    private AwsSecretExtensionProvider createObjectUnderTest() {
-        return new AwsSecretExtensionProvider(pluginConfigValueTranslator);
+    private AwsSecretsPluginConfigValueTranslatorExtensionProvider createObjectUnderTest() {
+        return new AwsSecretsPluginConfigValueTranslatorExtensionProvider(pluginConfigValueTranslator);
     }
 
     @Test
@@ -33,7 +33,7 @@ class AwsSecretExtensionProviderTest {
 
     @Test
     void provideInstance_returns_the_PluginConfigValueTranslator_from_the_constructor() {
-        final AwsSecretExtensionProvider objectUnderTest = createObjectUnderTest();
+        final AwsSecretsPluginConfigValueTranslatorExtensionProvider objectUnderTest = createObjectUnderTest();
 
         final Optional<PluginConfigValueTranslator> optionalPluginConfigValueTranslator =
                 objectUnderTest.provideInstance(context);
