@@ -21,6 +21,7 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.errors.BrokerNotAvailableException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -82,6 +83,8 @@ import java.util.stream.IntStream;
 @SuppressWarnings("deprecation")
 @DataPrepperPlugin(name = "kafka", pluginType = Source.class, pluginConfigurationType = KafkaSourceConfig.class)
 public class KafkaSource implements Source<Record<Event>> {
+    private static final String NO_RESOLVABLE_URLS_ERROR_MESSAGE = "No resolvable bootstrap urls given in bootstrap.servers";
+    private static final long RETRY_SLEEP_INTERVAL = 30000;
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSource.class);
     private final KafkaSourceConfig sourceConfig;
     private AtomicBoolean shutdownInProgress;
@@ -130,22 +133,25 @@ public class KafkaSource implements Source<Record<Event>> {
                 allTopicExecutorServices.add(executorService);
 
                 IntStream.range(0, numWorkers).forEach(index -> {
-                    switch (schema) {
-                        case JSON:
-                            kafkaConsumer = new KafkaConsumer<String, JsonNode>(consumerProperties);
+                    while (true) {
+                        try {
+                            kafkaConsumer = createKafkaConsumer(schema, consumerProperties);
                             break;
-                        case AVRO:
-                            kafkaConsumer = new KafkaConsumer<String, GenericRecord>(consumerProperties);
-                            break;
-                        case PLAINTEXT:
-                        default:
-                            glueDeserializer = KafkaSourceSecurityConfigurer.getGlueSerializer(sourceConfig);
-                            if (Objects.nonNull(glueDeserializer)) {
-                                kafkaConsumer = new KafkaConsumer(consumerProperties, stringDeserializer, glueDeserializer);
+                        } catch (ConfigException ce) {
+                            if (ce.getMessage().contains(NO_RESOLVABLE_URLS_ERROR_MESSAGE)) {
+                                LOG.warn("Exception while creating Kafka consumer: ", ce);
+                                LOG.warn("Bootstrap URL could not be resolved. Retrying in {} ms...", RETRY_SLEEP_INTERVAL);
+                                try {
+                                    sleep(RETRY_SLEEP_INTERVAL);
+                                } catch (InterruptedException ie) {
+                                    Thread.currentThread().interrupt();
+                                    throw new RuntimeException(ie);
+                                }
                             } else {
-                                kafkaConsumer = new KafkaConsumer<String, String>(consumerProperties);
+                                throw ce;
                             }
-                            break;
+                        }
+
                     }
                     consumer = new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, topicMetrics);
                     allTopicConsumers.add(consumer);
@@ -163,6 +169,23 @@ public class KafkaSource implements Source<Record<Event>> {
             }
             LOG.info("Started Kafka source for topic " + topic.getName());
         });
+    }
+
+    public KafkaConsumer<?, ?> createKafkaConsumer(final MessageFormat schema, final Properties consumerProperties) {
+        switch (schema) {
+            case JSON:
+                return new KafkaConsumer<String, JsonNode>(consumerProperties);
+            case AVRO:
+                 return new KafkaConsumer<String, GenericRecord>(consumerProperties);
+            case PLAINTEXT:
+            default:
+                glueDeserializer = KafkaSourceSecurityConfigurer.getGlueSerializer(sourceConfig);
+                if (Objects.nonNull(glueDeserializer)) {
+                    return new KafkaConsumer(consumerProperties, stringDeserializer, glueDeserializer);
+                } else {
+                    return new KafkaConsumer<String, String>(consumerProperties);
+                }
+        }
     }
 
     @Override
@@ -484,5 +507,9 @@ public class KafkaSource implements Source<Record<Event>> {
             maskedString.append('*');
         }
         return maskedString.append(serverIP.substring(maskedLength)).toString();
+    }
+
+    protected void sleep(final long millis) throws InterruptedException {
+        Thread.sleep(millis);
     }
 }
