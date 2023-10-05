@@ -6,7 +6,7 @@ package org.opensearch.dataprepper.model.plugin;
  *  to implement custom plugin component refreshment logic.
  * @since 2.5
  */
-public interface PluginConfigSubscriber<T> {
+public interface PluginConfigObserver<T> {
     /**
      * Update plugin components with a new pluginConfig.
      *
