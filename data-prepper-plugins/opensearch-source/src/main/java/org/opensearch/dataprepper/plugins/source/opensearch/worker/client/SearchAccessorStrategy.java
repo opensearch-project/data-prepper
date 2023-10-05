@@ -76,14 +76,14 @@ public class SearchAccessorStrategy {
         ElasticsearchClientRefresher elasticsearchClientRefresher = null;
         try {
             infoResponse = openSearchClientRefresher.get().info();
-            pluginConfigObservable.addPluginConfigSubscriber(newConfig -> openSearchClientRefresher.update(
+            pluginConfigObservable.addPluginConfigObserver(newConfig -> openSearchClientRefresher.update(
                     (OpenSearchSourceConfiguration) newConfig));
         } catch (final MissingRequiredPropertyException e) {
             LOG.info("Detected Elasticsearch cluster. Constructing Elasticsearch client");
             elasticsearchClientRefresher = new ElasticsearchClientRefresher(
                     openSearchClientFactory, openSearchSourceConfiguration);
             final ElasticsearchClientRefresher finalElasticsearchClientRefresher = elasticsearchClientRefresher;
-            pluginConfigObservable.addPluginConfigSubscriber(
+            pluginConfigObservable.addPluginConfigObserver(
                     newConfig -> finalElasticsearchClientRefresher.update((OpenSearchSourceConfiguration) newConfig));
         } catch (final IOException | OpenSearchException e) {
             throw new RuntimeException("There was an error looking up the OpenSearch cluster info: ", e);

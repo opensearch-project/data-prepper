@@ -75,7 +75,7 @@ public class SearchAccessStrategyTest {
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
-        verify(pluginConfigObservable).addPluginConfigSubscriber(any());
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
     }
 
     @ParameterizedTest
@@ -104,7 +104,7 @@ public class SearchAccessStrategyTest {
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
-        verify(pluginConfigObservable).addPluginConfigSubscriber(any());
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
     }
 
     @ParameterizedTest
@@ -155,7 +155,7 @@ public class SearchAccessStrategyTest {
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.SCROLL));
-        verify(pluginConfigObservable).addPluginConfigSubscriber(any());
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
     }
 
     @ParameterizedTest
@@ -200,7 +200,7 @@ public class SearchAccessStrategyTest {
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.NONE));
-        verify(pluginConfigObservable).addPluginConfigSubscriber(any());
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
     }
 
     @Test
