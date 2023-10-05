@@ -8,8 +8,6 @@ package org.opensearch.dataprepper.plugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
-import org.opensearch.dataprepper.model.plugin.PluginConfigPublisher;
-import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginInvocationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,22 +17,20 @@ import javax.inject.Named;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Named
 class PluginCreator {
     private static final Logger LOG = LoggerFactory.getLogger(PluginCreator.class);
 
-    private final Set<PluginConfigPublisher> pluginConfigPublishers;
+    private final PluginConfigurationObservableRegister pluginConfigurationObservableRegister;
 
     @Inject
-    PluginCreator(final Set<PluginConfigPublisher> pluginConfigPublishers) {
-        this.pluginConfigPublishers = Collections.unmodifiableSet(pluginConfigPublishers);
+    PluginCreator(final PluginConfigurationObservableRegister pluginConfigurationObservableRegister) {
+        this.pluginConfigurationObservableRegister = pluginConfigurationObservableRegister;
     }
 
     <T> T newPluginInstance(final Class<T> pluginClass,
@@ -48,7 +44,7 @@ class PluginCreator {
 
         final Object[] constructorArguments = pluginArgumentsContext.createArguments(constructor.getParameterTypes());
 
-        registerPluginConfigurationObservables(constructorArguments);
+        pluginConfigurationObservableRegister.registerPluginConfigurationObservables(constructorArguments);
 
         try {
             return (T) constructor.newInstance(constructorArguments);
@@ -111,14 +107,5 @@ class PluginCreator {
             return Optional.of(annotatedConstructors.get(0));
         }
         return Optional.empty();
-    }
-
-    private void registerPluginConfigurationObservables(final Object[] constructorArguments) {
-        Optional.ofNullable(constructorArguments).ifPresent(arguments -> Arrays.stream(arguments)
-                .filter(arg -> arg instanceof PluginConfigObservable)
-                .forEach(arg -> pluginConfigPublishers.forEach(pluginConfigPublisher ->
-                        pluginConfigPublisher.addPluginConfigObservable(
-                                (PluginConfigObservable) arg)))
-        );
     }
 }
