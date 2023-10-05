@@ -9,8 +9,6 @@ import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;

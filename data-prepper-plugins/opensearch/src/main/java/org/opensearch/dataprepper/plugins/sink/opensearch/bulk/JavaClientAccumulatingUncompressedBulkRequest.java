@@ -5,8 +5,6 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
