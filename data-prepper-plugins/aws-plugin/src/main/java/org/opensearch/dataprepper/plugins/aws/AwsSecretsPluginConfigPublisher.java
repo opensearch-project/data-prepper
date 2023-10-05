@@ -11,8 +11,9 @@ public class AwsSecretsPluginConfigPublisher implements PluginConfigPublisher {
             = new ConcurrentHashMap<>();
 
     @Override
-    public Boolean addPluginConfigObservable(final PluginConfigObservable pluginConfigObservable) {
-        return pluginConfigurationObservableBooleanMap.put(pluginConfigObservable, true);
+    public boolean addPluginConfigObservable(final PluginConfigObservable pluginConfigObservable) {
+        pluginConfigurationObservableBooleanMap.put(pluginConfigObservable, true);
+        return true;
     }
 
     @Override

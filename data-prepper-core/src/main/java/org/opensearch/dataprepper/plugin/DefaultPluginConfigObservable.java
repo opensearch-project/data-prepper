@@ -1,14 +1,14 @@
 package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.plugin.PluginConfigSubscriber;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObserver;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultPluginConfigObservable implements PluginConfigObservable {
-    private final Map<PluginConfigSubscriber, Boolean> pluginConfigSubscriberBooleanMap
+    private final Map<PluginConfigObserver, Boolean> pluginConfigObserverBooleanMap
             = new ConcurrentHashMap<>();
     private final PluginConfigurationConverter pluginConfigurationConverter;
     private final Class<?> pluginConfigClass;
@@ -23,25 +23,16 @@ public class DefaultPluginConfigObservable implements PluginConfigObservable {
     }
 
     @Override
-    public Class<?> pluginConfigClass() {
-        return pluginConfigClass;
-    }
-
-    @Override
-    public PluginSetting rawPluginSettings() {
-        return rawPluginSettings;
-    }
-
-    @Override
-    public Boolean addPluginConfigSubscriber(final PluginConfigSubscriber pluginConfigSubscriber) {
-        return pluginConfigSubscriberBooleanMap.put(pluginConfigSubscriber, true);
+    public boolean addPluginConfigObserver(final PluginConfigObserver pluginConfigObserver) {
+        pluginConfigObserverBooleanMap.put(pluginConfigObserver, true);
+        return true;
     }
 
     @Override
     public void update() {
         final Object newPluginConfiguration = pluginConfigurationConverter.convert(
                 pluginConfigClass, rawPluginSettings);
-        pluginConfigSubscriberBooleanMap.keySet().forEach(
-                pluginConfigSubscriber -> pluginConfigSubscriber.update(newPluginConfiguration));
+        pluginConfigObserverBooleanMap.keySet().forEach(
+                pluginConfigObserver -> pluginConfigObserver.update(newPluginConfiguration));
     }
 }

@@ -8,7 +8,7 @@ public interface PluginConfigPublisher {
     /**
      * Onboard a new {@link PluginConfigObservable}.
      */
-    Boolean addPluginConfigObservable(PluginConfigObservable pluginConfigObservable);
+    boolean addPluginConfigObservable(PluginConfigObservable pluginConfigObservable);
 
     /**
      * Notify all {@link PluginConfigObservable} to update.
