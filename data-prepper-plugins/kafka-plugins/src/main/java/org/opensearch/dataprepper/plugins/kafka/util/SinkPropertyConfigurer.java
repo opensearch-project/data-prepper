@@ -128,6 +128,9 @@ public class SinkPropertyConfigurer {
     }
 
     private static void setAuthProperties(final KafkaProducerConfig kafkaSinkConfig, final Properties properties) {
+        if(kafkaSinkConfig.getAuthConfig() == null)
+            return;
+
         if (kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig() != null) {
             final String sslEndpointAlgorithm = kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getSslEndpointAlgorithm();
             if (null != sslEndpointAlgorithm && !sslEndpointAlgorithm.isEmpty() && sslEndpointAlgorithm.equalsIgnoreCase("https")) {

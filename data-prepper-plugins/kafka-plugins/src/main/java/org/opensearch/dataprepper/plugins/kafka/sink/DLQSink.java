@@ -42,7 +42,7 @@ public class DLQSink {
         this.dlqProvider = getDlqProvider(pluginFactory, kafkaProducerConfig);
     }
 
-    public void perform(final Object failedData, final Exception e) {
+    public void perform(final Object failedData, final Throwable e) {
         final DlqWriter dlqWriter = getDlqWriter();
         final DlqObject dlqObject = DlqObject.builder()
                 .withPluginId(randomUUID().toString())

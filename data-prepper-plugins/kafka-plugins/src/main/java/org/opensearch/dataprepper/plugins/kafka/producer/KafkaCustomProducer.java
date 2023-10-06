@@ -96,9 +96,9 @@ public class KafkaCustomProducer<T> {
         Event event = getEvent(record);
         final String key = event.formatString(kafkaProducerConfig.getPartitionKey(), expressionEvaluator);
         try {
-            if (serdeFormat == MessageFormat.JSON.toString()) {
+            if (Objects.equals(serdeFormat, MessageFormat.JSON.toString())) {
                 publishJsonMessage(record, key);
-            } else if (serdeFormat == MessageFormat.AVRO.toString()) {
+            } else if (Objects.equals(serdeFormat, MessageFormat.AVRO.toString())) {
                 publishAvroMessage(record, key);
             } else {
                 publishPlaintextMessage(record, key);
@@ -143,21 +143,12 @@ public class KafkaCustomProducer<T> {
     }
 
     private void publishJsonMessage(final Record<Event> record, final String key) throws IOException, ProcessingException {
-        final JsonNode dataNode = new ObjectMapper().convertValue(record.getData().toJsonString(), JsonNode.class);
-        if (validateJson(topicName, record.getData().toJsonString())) {
+        JsonNode dataNode = record.getData().getJsonNode();
+        try {
             send(topicName, key, dataNode);
-        } else {
-            dlqSink.perform(dataNode, new RuntimeException("Invalid Json"));
         }
-    }
-
-    private Boolean validateJson(final String topicName, final String jsonData) throws IOException, ProcessingException {
-        final String schemaJson = schemaService.getValueToParse(topicName);
-        if (schemaJson != null) {
-            return validateSchema(jsonData, schemaJson);
-
-        } else {
-            return true;
+        catch (Throwable ex) {
+            dlqSink.perform(dataNode, ex);
         }
     }
 
