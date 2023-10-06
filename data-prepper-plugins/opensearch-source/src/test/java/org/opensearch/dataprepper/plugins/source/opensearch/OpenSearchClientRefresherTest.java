@@ -28,22 +28,25 @@ class OpenSearchClientRefresherTest {
     @Mock
     private OpenSearchClient openSearchClient;
 
-    private OpenSearchClientRefresher objectUnderTest;
+    private OpenSearchClientRefresher createObjectUnderTest() {
+        return new OpenSearchClientRefresher(openSearchClientFactory, openSearchSourceConfiguration);
+    }
 
     @BeforeEach
     void setup() {
         when(openSearchClientFactory.provideOpenSearchClient(eq(openSearchSourceConfiguration)))
                 .thenReturn(openSearchClient);
-        objectUnderTest = new OpenSearchClientRefresher(openSearchClientFactory, openSearchSourceConfiguration);
     }
 
     @Test
     void testGet() {
+        final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
     }
 
     @Test
     void testGetAfterUpdateWithBasicAuthUnchanged() {
+        final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
         when(openSearchSourceConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(openSearchSourceConfiguration.getPassword()).thenReturn(TEST_PASSWORD);
         final OpenSearchSourceConfiguration newConfig = mock(OpenSearchSourceConfiguration.class);
@@ -55,6 +58,7 @@ class OpenSearchClientRefresherTest {
 
     @Test
     void testGetAfterUpdateWithUsernameChanged() {
+        final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
         when(openSearchSourceConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         final OpenSearchSourceConfiguration newConfig = mock(OpenSearchSourceConfiguration.class);
         when(newConfig.getUsername()).thenReturn(TEST_USERNAME + "_changed");
@@ -67,6 +71,7 @@ class OpenSearchClientRefresherTest {
 
     @Test
     void testGetAfterUpdateWithPasswordChanged() {
+        final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
         when(openSearchSourceConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(openSearchSourceConfiguration.getPassword()).thenReturn(TEST_PASSWORD);
         final OpenSearchSourceConfiguration newConfig = mock(OpenSearchSourceConfiguration.class);
