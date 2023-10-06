@@ -6,7 +6,7 @@
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
-    implementation 'org.apache.avro:avro:1.11.0'
+    implementation libs.avro.core
     implementation libs.hadoop.common
     implementation(libs.hadoop.mapreduce) {
         exclude group: 'org.apache.hadoop', module: 'hadoop-hdfs-client'
