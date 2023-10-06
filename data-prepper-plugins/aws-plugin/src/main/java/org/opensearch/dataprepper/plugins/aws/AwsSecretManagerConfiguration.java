@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.aws;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.time.DurationMin;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -13,11 +14,12 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 
 public class AwsSecretManagerConfiguration {
-    private static final String DEFAULT_AWS_REGION = "us-east-1";
+    static final String DEFAULT_AWS_REGION = "us-east-1";
     private static final String AWS_IAM_ROLE = "role";
     private static final String AWS_IAM = "iam";
 
@@ -34,12 +36,20 @@ public class AwsSecretManagerConfiguration {
     @Size(min = 20, max = 2048, message = "awsStsRoleArn length should be between 1 and 2048 characters")
     private String awsStsRoleArn;
 
+    @JsonProperty("refresh_interval")
+    @DurationMin(hours = 1L, message = "Refresh interval must be at least 1 hour.")
+    private Duration refreshInterval = Duration.ofHours(1L);
+
     public String getAwsSecretId() {
         return awsSecretId;
     }
 
     public Region getAwsRegion() {
         return Region.of(awsRegion);
+    }
+
+    public Duration getRefreshInterval() {
+        return refreshInterval;
     }
 
     public SecretsManagerClient createSecretManagerClient() {
