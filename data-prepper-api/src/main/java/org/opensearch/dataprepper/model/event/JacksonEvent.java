@@ -119,7 +119,8 @@ public class JacksonEvent implements Event {
         return mapper.valueToTree(data);
     }
 
-    protected JsonNode getJsonNode() {
+    @Override
+    public JsonNode getJsonNode() {
         return jsonNode;
     }
 
@@ -317,6 +318,28 @@ public class JacksonEvent implements Event {
     @Override
     public String formatString(final String format, final ExpressionEvaluator expressionEvaluator) {
         return formatStringInternal(format, expressionEvaluator);
+    }
+
+    public static boolean isValidFormatExpressions(final String format, final ExpressionEvaluator expressionEvaluator) {
+        if (Objects.isNull(expressionEvaluator)) {
+            return false;
+        }
+        int fromIndex = 0;
+        int position = 0;
+        while ((position = format.indexOf("${", fromIndex)) != -1) {
+            int endPosition = format.indexOf("}", position + 1);
+            if (endPosition == -1) {
+                return false;
+            }
+            String name = format.substring(position + 2, endPosition);
+
+            Object val;
+            if (!expressionEvaluator.isValidExpressionStatement(name)) {
+                return false;
+            }
+            fromIndex = endPosition + 1;
+        }
+        return true;
     }
 
     private String formatStringInternal(final String format, final ExpressionEvaluator expressionEvaluator) {
