@@ -5,11 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.EnumUtils;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
@@ -27,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.List;
 import java.util.Objects;
@@ -44,6 +46,7 @@ public class IndexConfiguration {
     public static final String INDEX_TYPE = "index_type";
     public static final String TEMPLATE_TYPE = "template_type";
     public static final String TEMPLATE_FILE = "template_file";
+    public static final String TEMPLATE_CONTENT = "template_content";
     public static final String NUM_SHARDS = "number_of_shards";
     public static final String NUM_REPLICAS = "number_of_replicas";
     public static final String BULK_SIZE = "bulk_size";
@@ -105,7 +108,8 @@ public class IndexConfiguration {
         this.s3Client = builder.s3Client;
 
         determineTemplateType(builder);
-        this.indexTemplate = readIndexTemplate(builder.templateFile, indexType, templateType);
+
+        this.indexTemplate = builder.templateContent != null ? readTemplateContent(builder.templateContent) : readIndexTemplate(builder.templateFile, indexType, templateType);
 
         if (builder.numReplicas > 0) {
             indexTemplate.putIfAbsent(SETTINGS, new HashMap<>());
@@ -187,6 +191,16 @@ public class IndexConfiguration {
         if (templateFile != null) {
             builder = builder.withTemplateFile(templateFile);
         }
+
+        final String templateContent = pluginSetting.getStringOrDefault(TEMPLATE_CONTENT, null);
+        if (templateContent != null) {
+            builder = builder.withTemplateContent(templateContent);
+        }
+
+        if (templateContent != null && templateFile != null) {
+            LOG.warn("Both template_content and template_file are configured. Only template_content will be used");
+        }
+
         builder = builder.withNumShards(pluginSetting.getIntegerOrDefault(NUM_SHARDS, 0));
         builder = builder.withNumReplicas(pluginSetting.getIntegerOrDefault(NUM_REPLICAS, 0));
         final Long batchSize = pluginSetting.getLongOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
@@ -365,6 +379,7 @@ public class IndexConfiguration {
                     templateURL = new File(templateFile).toURI().toURL();
                 }
             }
+
             if (templateURL != null) {
                 return new ObjectMapper().readValue(templateURL, new TypeReference<Map<String, Object>>() {
                 });
@@ -379,6 +394,14 @@ public class IndexConfiguration {
         }
     }
 
+    private Map<String, Object> readTemplateContent(final String templateContent) {
+        try {
+            return OBJECT_MAPPER.readValue(templateContent, new TypeReference<Map<String, Object>>() {});
+        } catch (IOException ex) {
+            throw new InvalidPluginConfigurationException(String.format("template_content is invalid: %s", ex.getMessage()));
+        }
+    }
+
     private URL loadExistingTemplate(TemplateType templateType, String predefinedTemplateName) {
         String resourcePath = templateType == TemplateType.V1 ? predefinedTemplateName : templateType.getTypeName() + "/" + predefinedTemplateName;
         return getClass().getClassLoader()
@@ -390,6 +413,7 @@ public class IndexConfiguration {
         private String indexType;
         private TemplateType templateType;
         private String templateFile;
+        private String templateContent;
         private int numShards;
         private int numReplicas;
         private String routingField;
@@ -434,6 +458,12 @@ public class IndexConfiguration {
         public Builder withTemplateFile(final String templateFile) {
             checkArgument(templateFile != null, "templateFile cannot be null.");
             this.templateFile = templateFile;
+            return this;
+        }
+
+        public Builder withTemplateContent(final String templateContent) {
+            checkArgument(templateContent != null, "templateContent cannot be null.");
+            this.templateContent = templateContent;
             return this;
         }
 
