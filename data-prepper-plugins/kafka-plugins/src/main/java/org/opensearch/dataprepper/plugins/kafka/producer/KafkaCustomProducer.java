@@ -143,7 +143,7 @@ public class KafkaCustomProducer<T> {
     }
 
     private void publishJsonMessage(final Record<Event> record, final String key) throws IOException, ProcessingException {
-        final JsonNode dataNode = new ObjectMapper().convertValue(record.getData().toJsonString(), JsonNode.class);
+        final JsonNode dataNode = record.getData().getJsonNode();
         if (validateJson(topicName, record.getData().toJsonString())) {
             send(topicName, key, dataNode);
         } else {

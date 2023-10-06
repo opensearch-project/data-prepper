@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
+import org.opensearch.dataprepper.plugins.kafka.util.SinkPropertyConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
@@ -167,21 +168,7 @@ public class KafkaCustomConsumerFactory {
         MessageFormat dataFormat = topicConfig.getSerdeFormat();
         schemaType = dataFormat.toString();
         LOG.error("Setting schemaType to {}", schemaType);
-        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-            StringDeserializer.class);
-        switch (dataFormat) {
-            case JSON:
-                properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaSourceJsonDeserializer.class);
-                break;
-            case BYTES:
-                properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
-                break;
-            default:
-            case PLAINTEXT:
-                properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                    StringDeserializer.class);
-                break;
-        }
+        SinkPropertyConfigurer.setPropertiesForDeserializer(properties, schemaType);
     }
 
     private void setPropertiesForSchemaRegistryConnectivity(final KafkaConsumerConfig kafkaConsumerConfig, final Properties properties) {
@@ -209,7 +196,6 @@ public class KafkaCustomConsumerFactory {
     private void setPropertiesForSchemaType(final KafkaConsumerConfig kafkaConsumerConfig, final Properties properties, final TopicConfig topic) {
         Map prop = properties;
         Map<String, String> propertyMap = (Map<String, String>) prop;
-        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
         properties.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, getSchemaRegistryUrl(kafkaConsumerConfig));
         properties.put(KafkaAvroDeserializerConfig.AUTO_REGISTER_SCHEMAS, false);
         final CachedSchemaRegistryClient schemaRegistryClient = new CachedSchemaRegistryClient(properties.getProperty(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG),
@@ -217,17 +203,10 @@ public class KafkaCustomConsumerFactory {
         try {
             schemaType = schemaRegistryClient.getSchemaMetadata(topic.getName() + "-value",
                 kafkaConsumerConfig.getSchemaConfig().getVersion()).getSchemaType();
+            SinkPropertyConfigurer.setPropertiesForDeserializer(properties, schemaType);
         } catch (IOException | RestClientException e) {
             LOG.error("Failed to connect to the schema registry...");
             throw new RuntimeException(e);
-        }
-        if (schemaType.equalsIgnoreCase(MessageFormat.JSON.toString())) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaJsonDeserializer.class);
-        } else if (schemaType.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
-        } else {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                StringDeserializer.class);
         }
     }
 

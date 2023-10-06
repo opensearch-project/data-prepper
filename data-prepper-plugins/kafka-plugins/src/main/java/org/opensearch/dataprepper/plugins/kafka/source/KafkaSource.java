@@ -45,6 +45,7 @@ import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
+import org.opensearch.dataprepper.plugins.kafka.util.SinkPropertyConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
@@ -353,24 +354,12 @@ public class KafkaSource implements Source<Record<Event>> {
     private void setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(Properties properties, final TopicConfig topicConfig) {
         MessageFormat dataFormat = topicConfig.getSerdeFormat();
         schemaType = dataFormat.toString();
-        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-                StringDeserializer.class);
-        switch (dataFormat) {
-            case JSON:
-                properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaSourceJsonDeserializer.class);
-                break;
-            default:
-            case PLAINTEXT:
-                properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                        StringDeserializer.class);
-                break;
-        }
+        SinkPropertyConfigurer.setPropertiesForDeserializer(properties, schemaType);
     }
 
     private void setPropertiesForSchemaType(Properties properties, TopicConfig topic) {
         Map prop = properties;
         Map<String, String> propertyMap = (Map<String, String>) prop;
-        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
         properties.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, getSchemaRegistryUrl());
         properties.put(KafkaAvroDeserializerConfig.AUTO_REGISTER_SCHEMAS, false);
         schemaRegistryClient = new CachedSchemaRegistryClient(properties.getProperty(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG),
@@ -378,17 +367,10 @@ public class KafkaSource implements Source<Record<Event>> {
         try {
             schemaType = schemaRegistryClient.getSchemaMetadata(topic.getName() + "-value",
                     sourceConfig.getSchemaConfig().getVersion()).getSchemaType();
+            SinkPropertyConfigurer.setPropertiesForDeserializer(properties, schemaType);
         } catch (IOException | RestClientException e) {
             LOG.error("Failed to connect to the schema registry...");
             throw new RuntimeException(e);
-        }
-        if (schemaType.equalsIgnoreCase(MessageFormat.JSON.toString())) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaJsonDeserializer.class);
-        } else if (schemaType.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
-        } else {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                    StringDeserializer.class);
         }
     }
 

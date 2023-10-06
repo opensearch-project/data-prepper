@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.kafka.service;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.common.errors.TopicExistsException;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.SinkPropertyConfigurer;
 import org.slf4j.Logger;
@@ -29,7 +30,9 @@ public class TopicService {
             LOG.info(topicName + " created successfully");
 
         } catch (Exception e) {
-            LOG.error("Caught exception creating topic with name: {}", topicName, e);
+            if (!(e.getCause() instanceof TopicExistsException)) {
+                LOG.error("Caught exception creating topic with name: {}", topicName, e);
+            }
         }
     }
 

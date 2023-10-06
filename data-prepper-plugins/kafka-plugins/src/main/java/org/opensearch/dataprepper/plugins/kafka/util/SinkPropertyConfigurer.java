@@ -10,8 +10,16 @@ import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.TopicConfig;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.connect.json.JsonSerializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import io.confluent.kafka.serializers.KafkaJsonDeserializer;
+import io.confluent.kafka.serializers.KafkaJsonSerializer;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
@@ -29,10 +37,6 @@ import java.util.Properties;
 public class SinkPropertyConfigurer {
 
     private static final Logger LOG = LoggerFactory.getLogger(SinkPropertyConfigurer.class);
-
-    private static final String VALUE_SERIALIZER = "value.serializer";
-
-    private static final String KEY_SERIALIZER = "key.serializer";
 
     private static final String SESSION_TIMEOUT_MS_CONFIG = "30000";
 
@@ -114,7 +118,7 @@ public class SinkPropertyConfigurer {
         setCommonServerProperties(properties, kafkaProducerConfig);
 
         setPropertiesForSerializer(properties, kafkaProducerConfig.getSerdeFormat());
-        
+
         if (kafkaProducerConfig.getSchemaConfig() != null) {
             setSchemaProps(kafkaProducerConfig.getSerdeFormat(), kafkaProducerConfig.getSchemaConfig(), properties);
         }
@@ -128,6 +132,9 @@ public class SinkPropertyConfigurer {
     }
 
     private static void setAuthProperties(final KafkaProducerConfig kafkaSinkConfig, final Properties properties) {
+        if (kafkaSinkConfig.getAuthConfig() == null || kafkaSinkConfig.getAuthConfig().getSaslAuthConfig() == null) {
+            return;
+        }
         if (kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig() != null) {
             final String sslEndpointAlgorithm = kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getSslEndpointAlgorithm();
             if (null != sslEndpointAlgorithm && !sslEndpointAlgorithm.isEmpty() && sslEndpointAlgorithm.equalsIgnoreCase("https")) {
@@ -152,15 +159,30 @@ public class SinkPropertyConfigurer {
         properties.put(CommonClientConfigs.SESSION_TIMEOUT_MS_CONFIG, SESSION_TIMEOUT_MS_CONFIG);
     }
 
-    private static void setPropertiesForSerializer(final Properties properties, final String serdeFormat) {
-        properties.put(KEY_SERIALIZER, StringSerializer.class.getName());
-        if (serdeFormat.equalsIgnoreCase(MessageFormat.JSON.toString())) {
-            properties.put(VALUE_SERIALIZER, JsonSerializer.class.getName());
+    public static void setPropertiesForDeserializer(final Properties properties, final String serdeFormat) {
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        Class deserializer = StringDeserializer.class;
+        if (serdeFormat.equalsIgnoreCase(MessageFormat.BYTES.toString())) {
+            deserializer = ByteArrayDeserializer.class;
+        } else if (serdeFormat.equalsIgnoreCase(MessageFormat.JSON.toString())) {
+            deserializer = KafkaJsonDeserializer.class;
         } else if (serdeFormat.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
-            properties.put(VALUE_SERIALIZER, KafkaAvroSerializer.class.getName());
-        } else {
-            properties.put(VALUE_SERIALIZER, StringSerializer.class.getName());
+            deserializer = KafkaAvroDeserializer.class;
         }
+        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, deserializer);
+    }
+
+    private static void setPropertiesForSerializer(final Properties properties, final String serdeFormat) {
+        properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        Class serializer = StringSerializer.class;
+        if (serdeFormat.equalsIgnoreCase(MessageFormat.BYTES.toString())) {
+            serializer = ByteArraySerializer.class;
+        } else if (serdeFormat.equalsIgnoreCase(MessageFormat.JSON.toString())) {
+            serializer = KafkaJsonSerializer.class;
+        } else if (serdeFormat.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
+            serializer = KafkaAvroSerializer.class;
+        }
+        properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, serializer);
     }
 
     private static void validateForRegistryURL(final String serdeFormat, final SchemaConfig schemaConfig) {
