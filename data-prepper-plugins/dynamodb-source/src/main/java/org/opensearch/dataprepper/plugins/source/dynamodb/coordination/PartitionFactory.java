@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.coordination;
 
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
@@ -17,11 +18,11 @@ import java.util.function.Function;
 /**
  * Special partition factory just for this DynamoDB source.
  */
-public class PartitionFactory implements Function<SourcePartitionStoreItem, SourcePartition> {
+public class PartitionFactory implements Function<SourcePartitionStoreItem, EnhancedSourcePartition> {
 
 
     @Override
-    public SourcePartition apply(SourcePartitionStoreItem partitionStoreItem) {
+    public EnhancedSourcePartition apply(SourcePartitionStoreItem partitionStoreItem) {
         String sourceIdentifier = partitionStoreItem.getSourceIdentifier();
         String partitionType = sourceIdentifier.substring(sourceIdentifier.lastIndexOf('|') + 1);
 

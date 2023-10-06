@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition;
 
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.DataFileProgressState;
 
 import java.util.Optional;
@@ -15,7 +15,7 @@ import java.util.Optional;
  * An DataFilePartition represents an export data file needs to be loaded.
  * The source identifier contains keyword 'DATAFILE'
  */
-public class DataFilePartition extends SourcePartition<DataFileProgressState> {
+public class DataFilePartition extends EnhancedSourcePartition<DataFileProgressState> {
 
     public static final String PARTITION_TYPE = "DATAFILE";
 
@@ -26,6 +26,7 @@ public class DataFilePartition extends SourcePartition<DataFileProgressState> {
     private final DataFileProgressState state;
 
     public DataFilePartition(SourcePartitionStoreItem sourcePartitionStoreItem) {
+
         setSourcePartitionStoreItem(sourcePartitionStoreItem);
         String[] keySplits = sourcePartitionStoreItem.getSourcePartitionKey().split("\\|");
         exportArn = keySplits[0];

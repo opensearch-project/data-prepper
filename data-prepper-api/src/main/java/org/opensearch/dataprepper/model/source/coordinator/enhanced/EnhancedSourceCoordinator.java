@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.dynamodb.coordination;
+package org.opensearch.dataprepper.model.source.coordinator.enhanced;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -25,20 +25,20 @@ public interface EnhancedSourceCoordinator {
     /**
      * This method is used to create the partition item in the coordination store.
      *
-     * @param partition A specific partition that extends {@link SourcePartition}
+     * @param partition A specific partition that extends {@link EnhancedSourcePartition}
      * @param <T>       The progress state class
      * @return True if partition is created successfully otherwise false.
      */
-    <T> boolean createPartition(SourcePartition<T> partition);
+    <T> boolean createPartition(EnhancedSourcePartition<T> partition);
 
 
     /**
      * This method is used to acquire a lease on the partition item in the coordination store.
      *
      * @param partitionType The partition type identifier
-     * @return A {@link SourcePartition} instance
+     * @return A {@link EnhancedSourcePartition} instance
      */
-    Optional<SourcePartition> acquireAvailablePartition(String partitionType);
+    Optional<EnhancedSourcePartition> acquireAvailablePartition(String partitionType);
 
     /**
      * This method is used to update progress state for a partition in the coordination store.
@@ -48,7 +48,7 @@ public interface EnhancedSourceCoordinator {
      * @param <T>       The progress state class
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
      */
-    <T> void saveProgressStateForPartition(SourcePartition<T> partition);
+    <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition);
 
     /**
      * This method is used to release the lease of a partition in the coordination store.
@@ -58,7 +58,7 @@ public interface EnhancedSourceCoordinator {
      * @param <T>       The progress state class
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
      */
-    <T> void giveUpPartition(SourcePartition<T> partition);
+    <T> void giveUpPartition(EnhancedSourcePartition<T> partition);
 
     /**
      * This method is used to mark a partition as COMPLETED in the coordination store.
@@ -68,7 +68,7 @@ public interface EnhancedSourceCoordinator {
      * @param <T>       The progress state class
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
      */
-    <T> void completePartition(SourcePartition<T> partition);
+    <T> void completePartition(EnhancedSourcePartition<T> partition);
 
     /**
      * This method is used to mark a partition as CLOSED in the coordination store.
@@ -82,7 +82,7 @@ public interface EnhancedSourceCoordinator {
      * @param <T>            The progress state class
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
      */
-    <T> void closePartition(SourcePartition<T> partition, final Duration reopenAfter, final int maxClosedCount);
+    <T> void closePartition(EnhancedSourcePartition<T> partition, final Duration reopenAfter, final int maxClosedCount);
 
 
     /**
@@ -91,9 +91,9 @@ public interface EnhancedSourceCoordinator {
      * Hence, it's designed to be used as a "Global State" which can be read whenever needed.
      *
      * @param partitionKey A unique key for that partition
-     * @return A {@link SourcePartition} instance
+     * @return A {@link EnhancedSourcePartition} instance
      */
-    Optional<SourcePartition> getPartition(String partitionKey);
+    Optional<EnhancedSourcePartition> getPartition(String partitionKey);
 
     /**
      * This method is to perform initialization for the coordinator

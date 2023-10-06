@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition;
 
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 
 import java.util.Map;
 import java.util.Optional;
@@ -17,7 +17,7 @@ import java.util.Optional;
  * However, you can read and update Global State whenever required.
  * The progress state is a Map object.
  */
-public class GlobalState extends SourcePartition<Map<String, Object>> {
+public class GlobalState extends EnhancedSourcePartition<Map<String, Object>> {
 
     private final String stateName;
 
@@ -27,7 +27,6 @@ public class GlobalState extends SourcePartition<Map<String, Object>> {
         setSourcePartitionStoreItem(sourcePartitionStoreItem);
         this.stateName = sourcePartitionStoreItem.getSourcePartitionKey();
         this.state = convertStringToPartitionProgressState(null, sourcePartitionStoreItem.getPartitionProgressState());
-
     }
 
     public GlobalState(String stateName, Optional<Map<String, Object>> state) {

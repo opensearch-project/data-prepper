@@ -42,15 +42,10 @@ class DynamoDBSourceConfigTest {
                 "      start_position: \"BEGINNING\"  \n" +
                 "aws:\n" +
                 "  region: \"us-west-2\"\n" +
-                "  sts_role_arn: \"arn:aws:iam::123456789012:role/DataPrepperRole\"\n" +
-                "coordinator:\n" +
-                "  dynamodb:\n" +
-                "    table_name: \"coordinator-table\"\n" +
-                "    region: \"us-west-2\"";
+                "  sts_role_arn: \"arn:aws:iam::123456789012:role/DataPrepperRole\"";
         final DynamoDBSourceConfig sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, DynamoDBSourceConfig.class);
 
         assertThat(sourceConfiguration.getAwsAuthenticationConfig(), notNullValue());
-        assertThat(sourceConfiguration.getCoordinationStoreConfig(), notNullValue());
         assertThat(sourceConfiguration.getTableConfigs(), notNullValue());
         assertThat(sourceConfiguration.getTableConfigs().size(), equalTo(3));
 

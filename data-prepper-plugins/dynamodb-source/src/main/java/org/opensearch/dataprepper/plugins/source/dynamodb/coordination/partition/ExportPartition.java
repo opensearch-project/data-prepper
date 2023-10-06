@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition;
 
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.ExportProgressState;
 
 import java.time.Instant;
@@ -18,7 +18,7 @@ import java.util.Optional;
  * Each job maintains the state such as total files/records etc. independently.
  * The source identifier contains keyword 'EXPORT'
  */
-public class ExportPartition extends SourcePartition<ExportProgressState> {
+public class ExportPartition extends EnhancedSourcePartition<ExportProgressState> {
 
     public static final String PARTITION_TYPE = "EXPORT";
     private final String tableArn;

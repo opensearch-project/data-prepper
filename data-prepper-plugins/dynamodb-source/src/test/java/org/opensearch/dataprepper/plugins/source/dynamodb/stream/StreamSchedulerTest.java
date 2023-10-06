@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
@@ -73,10 +73,10 @@ class StreamSchedulerTest {
 
         streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
         // Mock Coordinator methods
-        lenient().when(coordinator.createPartition(any(SourcePartition.class))).thenReturn(true);
-        lenient().doNothing().when(coordinator).completePartition(any(SourcePartition.class));
-        lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(SourcePartition.class));
-        lenient().doNothing().when(coordinator).giveUpPartition(any(SourcePartition.class));
+        lenient().when(coordinator.createPartition(any(EnhancedSourcePartition.class))).thenReturn(true);
+        lenient().doNothing().when(coordinator).completePartition(any(EnhancedSourcePartition.class));
+        lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(EnhancedSourcePartition.class));
+        lenient().doNothing().when(coordinator).giveUpPartition(any(EnhancedSourcePartition.class));
 
         lenient().when(consumerFactory.createConsumer(any(StreamPartition.class))).thenReturn(() -> System.out.println("Hello"));
         lenient().when(shardManager.getChildShardIds(anyString(), anyString())).thenReturn(List.of(shardId));
