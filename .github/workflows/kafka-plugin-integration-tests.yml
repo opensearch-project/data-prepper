@@ -1,0 +1,70 @@
+# This workflow will build a Java project with Gradle
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-gradle
+
+name: Kafka plugin integration tests
+
+on:
+  push:
+    paths:
+      - 'data-prepper-plugins/kafka-plugins/**'
+      - '*gradle*'
+  pull_request:
+    paths:
+      - 'data-prepper-plugins/kafka-plugins/**'
+      - '*gradle*'
+  workflow_dispatch:
+
+
+jobs:
+  integration-tests:
+    strategy:
+      matrix:
+        java: [11]
+        kafka: [2.8.1, 3.5.1]
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+      - name: Checkout Data Prepper
+        uses: actions/checkout@v2
+
+      - name: Run Kafka Docker
+        run: |
+          echo 'KAFKA_VERSION=${{ matrix.kafka }}' > data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/.env
+          docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/zookeeper --env-file  data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/.env up -d
+          sleep 10
+      - name: Wait for Kafka
+        run: |
+          ./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaStartIT
+      - name: Run Kafka integration tests
+        run: |
+          ./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaSourceJsonTypeIT
+
+      - name: Upload Unit Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: data-prepper-kafka-integration-tests-kafka-${{ matrix.kafka }}-java-${{ matrix.java }}
+          path: '**/test-results/**/*.xml'
+
+  publish-test-results:
+    name: "Publish Unit Tests Results"
+    needs: integration-tests
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: test-results
+
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: "test-results/**/*.xml"
