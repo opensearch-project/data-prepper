@@ -61,7 +61,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-public class KafkaSourceCustomConsumerTest {
+public class KafkaCustomConsumerTest {
 
     @Mock
     private KafkaConsumer<String, Object> kafkaConsumer;
@@ -82,7 +82,7 @@ public class KafkaSourceCustomConsumerTest {
     @Mock
     private KafkaTopicMetrics topicMetrics;
 
-    private KafkaSourceCustomConsumer consumer;
+    private KafkaCustomConsumer consumer;
 
     private ConsumerRecords consumerRecords;
 
@@ -144,9 +144,9 @@ public class KafkaSourceCustomConsumerTest {
         when(topicConfig.getName()).thenReturn("topic1");
     }
 
-    public KafkaSourceCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
+    public KafkaCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
-        return new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType, acknowledgementSetManager, topicMetrics);
+        return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType, acknowledgementSetManager, topicMetrics);
     }
 
     private BlockingBuffer<Record<Event>> getBuffer() {

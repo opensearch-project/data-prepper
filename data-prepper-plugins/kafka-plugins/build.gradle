@@ -10,6 +10,7 @@ plugins {
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:buffer-common')
+    implementation project(':data-prepper-plugins:blocking-buffer')
     implementation 'org.apache.kafka:kafka-clients:3.4.0'
     implementation 'org.apache.avro:avro:1.11.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind'

@@ -13,7 +13,7 @@ import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,9 +37,9 @@ public class DLQSink {
     private final DlqProvider dlqProvider;
     private final PluginSetting pluginSetting;
 
-    public DLQSink(final PluginFactory pluginFactory, final KafkaSinkConfig kafkaSinkConfig, final PluginSetting pluginSetting) {
+    public DLQSink(final PluginFactory pluginFactory, final KafkaProducerConfig kafkaProducerConfig, final PluginSetting pluginSetting) {
         this.pluginSetting = pluginSetting;
-        this.dlqProvider = getDlqProvider(pluginFactory, kafkaSinkConfig);
+        this.dlqProvider = getDlqProvider(pluginFactory, kafkaProducerConfig);
     }
 
     public void perform(final Object failedData, final Exception e) {
@@ -61,9 +61,9 @@ public class DLQSink {
         return dlqWriter;
     }
 
-    private DlqProvider getDlqProvider(final PluginFactory pluginFactory, final KafkaSinkConfig kafkaSinkConfig) {
-        kafkaSinkConfig.setDlqConfig(pluginSetting);
-        final Optional<PluginModel> dlq = kafkaSinkConfig.getDlq();
+    private DlqProvider getDlqProvider(final PluginFactory pluginFactory, final KafkaProducerConfig kafkaProducerConfig) {
+        kafkaProducerConfig.setDlqConfig(pluginSetting);
+        final Optional<PluginModel> dlq = kafkaProducerConfig.getDlq();
         if (dlq.isPresent()) {
             final PluginModel dlqPluginModel = dlq.get();
             final PluginSetting dlqPluginSetting = new PluginSetting(dlqPluginModel.getPluginName(), dlqPluginModel.getPluginSettings());

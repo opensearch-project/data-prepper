@@ -57,8 +57,8 @@ class KafkaSourceConfigTest {
 
 	@Test
 	void test_bootStrapServers_not_null(){
-		assertThat(kafkaSourceConfig.getBootStrapServers(), notNullValue());
-		String bootstrapServers = kafkaSourceConfig.getBootStrapServers();
+		assertThat(kafkaSourceConfig.getBootstrapServers(), notNullValue());
+		String bootstrapServers = kafkaSourceConfig.getBootstrapServers().get(0);
 		assertTrue(bootstrapServers.contains("127.0.0.1:9093"));
 	}
 
@@ -71,19 +71,19 @@ class KafkaSourceConfigTest {
 	@Test
 	void test_setters() throws NoSuchFieldException, IllegalAccessException {
 		kafkaSourceConfig = new KafkaSourceConfig();
-        KafkaSourceConfig.EncryptionConfig encryptionConfig = kafkaSourceConfig.getEncryptionConfig();
+        EncryptionConfig encryptionConfig = kafkaSourceConfig.getEncryptionConfig();
 		kafkaSourceConfig.setBootStrapServers(new ArrayList<>(Arrays.asList("127.0.0.1:9092")));
 		TopicConfig topicConfig = mock(TopicConfig.class);
 		kafkaSourceConfig.setTopics(Collections.singletonList(topicConfig));
 
-		assertEquals("127.0.0.1:9092", kafkaSourceConfig.getBootStrapServers());
+		assertEquals(Collections.singletonList("127.0.0.1:9092"), kafkaSourceConfig.getBootstrapServers());
 		assertEquals(Collections.singletonList(topicConfig), kafkaSourceConfig.getTopics());
         setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsEnabled", true);
 		assertEquals(true, kafkaSourceConfig.getAcknowledgementsEnabled());
 		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionConfig().getType());
-        setField(KafkaSourceConfig.EncryptionConfig.class, encryptionConfig, "type", EncryptionType.NONE);
+        setField(EncryptionConfig.class, encryptionConfig, "type", EncryptionType.NONE);
 		assertEquals(EncryptionType.NONE, encryptionConfig.getType());
-        setField(KafkaSourceConfig.EncryptionConfig.class, encryptionConfig, "type", EncryptionType.SSL);
+        setField(EncryptionConfig.class, encryptionConfig, "type", EncryptionType.SSL);
 		assertEquals(EncryptionType.SSL, encryptionConfig.getType());
 	}
 }

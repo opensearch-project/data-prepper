@@ -28,8 +28,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.LogRateLimiter;
@@ -58,9 +58,9 @@ import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCause;
 /**
  * * A utility class which will handle the core Kafka consumer operation.
  */
-public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceListener {
+public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaSourceCustomConsumer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumer.class);
     private static final Long COMMIT_OFFSET_INTERVAL_MS = 300000L;
     private static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 1;
     static final String DEFAULT_KEY = "message";
@@ -89,14 +89,14 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     private long numRecordsCommitted = 0;
     private final LogRateLimiter errLogRateLimiter;
 
-    public KafkaSourceCustomConsumer(final KafkaConsumer consumer,
-                                     final AtomicBoolean shutdownInProgress,
-                                     final Buffer<Record<Event>> buffer,
-                                     final KafkaSourceConfig sourceConfig,
-                                     final TopicConfig topicConfig,
-                                     final String schemaType,
-                                     final AcknowledgementSetManager acknowledgementSetManager,
-                                     KafkaTopicMetrics topicMetrics) {
+    public KafkaCustomConsumer(final KafkaConsumer consumer,
+                               final AtomicBoolean shutdownInProgress,
+                               final Buffer<Record<Event>> buffer,
+                               final KafkaConsumerConfig consumerConfig,
+                               final TopicConfig topicConfig,
+                               final String schemaType,
+                               final AcknowledgementSetManager acknowledgementSetManager,
+                               KafkaTopicMetrics topicMetrics) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
         this.shutdownInProgress = shutdownInProgress;
@@ -109,7 +109,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         this.metricsUpdatedTime = Instant.now().getEpochSecond();
         this.acknowledgedOffsets = new ArrayList<>();
         this.acknowledgementsTimeout = Duration.ofSeconds(Integer.MAX_VALUE);
-        this.acknowledgementsEnabled = sourceConfig.getAcknowledgementsEnabled();
+        this.acknowledgementsEnabled = consumerConfig.getAcknowledgementsEnabled();
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.partitionCommitTrackerMap = new HashMap<>();
         this.partitionsToReset = Collections.synchronizedSet(new HashSet<>());

@@ -25,7 +25,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
 import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
@@ -36,6 +36,8 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.Future;
 
 
 /**
@@ -43,13 +45,13 @@ import java.util.Map;
  * and produce it to a given kafka topic
  */
 
-public class KafkaSinkProducer<T> {
+public class KafkaCustomProducer<T> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaSinkProducer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomProducer.class);
 
     private final Producer<String, T> producer;
 
-    private final KafkaSinkConfig kafkaSinkConfig;
+    private final KafkaProducerConfig kafkaProducerConfig;
 
     private final DLQSink dlqSink;
 
@@ -68,21 +70,21 @@ public class KafkaSinkProducer<T> {
     private final SchemaService schemaService;
 
 
-    public KafkaSinkProducer(final Producer producer,
-                             final KafkaSinkConfig kafkaSinkConfig,
-                             final DLQSink dlqSink,
-                             final ExpressionEvaluator expressionEvaluator,
-                             final String tagTargetKey
+    public KafkaCustomProducer(final Producer producer,
+                               final KafkaProducerConfig kafkaProducerConfig,
+                               final DLQSink dlqSink,
+                               final ExpressionEvaluator expressionEvaluator,
+                               final String tagTargetKey
     ) {
         this.producer = producer;
-        this.kafkaSinkConfig = kafkaSinkConfig;
+        this.kafkaProducerConfig = kafkaProducerConfig;
         this.dlqSink = dlqSink;
         bufferedEventHandles = new LinkedList<>();
         this.expressionEvaluator = expressionEvaluator;
         this.tagTargetKey = tagTargetKey;
-        this.topicName = ObjectUtils.isEmpty(kafkaSinkConfig.getTopic()) ? null : kafkaSinkConfig.getTopic().getName();
-        this.serdeFormat = ObjectUtils.isEmpty(kafkaSinkConfig.getSerdeFormat()) ? null : kafkaSinkConfig.getSerdeFormat();
-        schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaSinkConfig.getSchemaConfig()).build();
+        this.topicName = ObjectUtils.isEmpty(kafkaProducerConfig.getTopic()) ? null : kafkaProducerConfig.getTopic().getName();
+        this.serdeFormat = ObjectUtils.isEmpty(kafkaProducerConfig.getSerdeFormat()) ? null : kafkaProducerConfig.getSerdeFormat();
+        schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
 
 
     }
@@ -92,7 +94,7 @@ public class KafkaSinkProducer<T> {
             bufferedEventHandles.add(record.getData().getEventHandle());
         }
         Event event = getEvent(record);
-        final String key = event.formatString(kafkaSinkConfig.getPartitionKey(), expressionEvaluator);
+        final String key = event.formatString(kafkaProducerConfig.getPartitionKey(), expressionEvaluator);
         try {
             if (serdeFormat == MessageFormat.JSON.toString()) {
                 publishJsonMessage(record, key);
@@ -102,7 +104,7 @@ public class KafkaSinkProducer<T> {
                 publishPlaintextMessage(record, key);
             }
         } catch (Exception e) {
-            LOG.error("Error occured while publishing " + e.getMessage());
+            LOG.error("Error occurred while publishing " + e.getMessage());
             releaseEventHandles(false);
         }
 
@@ -113,7 +115,7 @@ public class KafkaSinkProducer<T> {
         try {
             event = addTagsToEvent(event, tagTargetKey);
         } catch (JsonProcessingException e) {
-            LOG.error("error occured while processing tag target key");
+            LOG.error("error occurred while processing tag target key");
         }
         return event;
     }
@@ -132,8 +134,12 @@ public class KafkaSinkProducer<T> {
         send(topicName, key, genericRecord);
     }
 
-    private void send(final String topicName, final String key, final Object record) {
-        producer.send(new ProducerRecord(topicName, key, record), callBack(record));
+    private Future send(final String topicName, String key, final Object record) {
+        if (Objects.isNull(key)) {
+            return producer.send(new ProducerRecord(topicName, record), callBack(record));
+        }
+
+        return producer.send(new ProducerRecord(topicName, key, record), callBack(record));
     }
 
     private void publishJsonMessage(final Record<Event> record, final String key) throws IOException, ProcessingException {

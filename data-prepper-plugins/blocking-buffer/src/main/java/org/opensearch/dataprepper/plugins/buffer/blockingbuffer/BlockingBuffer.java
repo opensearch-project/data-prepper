@@ -197,7 +197,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     }
 
     @Override
-    protected void postProcess(final Long recordsInBuffer) {
+    public void postProcess(final Long recordsInBuffer) {
         // adding bounds to address race conditions and reporting negative buffer usage
         final Double nonNegativeTotalRecords = recordsInBuffer.doubleValue() < 0 ? 0 : recordsInBuffer.doubleValue();
         final Double boundedTotalRecords = nonNegativeTotalRecords > bufferCapacity ? bufferCapacity : nonNegativeTotalRecords;

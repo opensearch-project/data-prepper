@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
@@ -70,7 +71,7 @@ public class KafkaSourceJsonTypeIT {
     private List<TopicConfig> topicList;
 
     @Mock
-    private KafkaSourceConfig.EncryptionConfig encryptionConfig;
+    private EncryptionConfig encryptionConfig;
 
     @Mock
     private TopicConfig jsonTopic;
@@ -96,7 +97,7 @@ public class KafkaSourceJsonTypeIT {
         pluginMetrics = mock(PluginMetrics.class);
         counter = mock(Counter.class);
         buffer = mock(Buffer.class);
-        encryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
+        encryptionConfig = mock(EncryptionConfig.class);
         receivedRecords = new ArrayList<>();
         ExecutorService executor = Executors.newFixedThreadPool(2);
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
@@ -128,7 +129,7 @@ public class KafkaSourceJsonTypeIT {
         when(jsonTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(jsonTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
-        when(sourceConfig.getBootStrapServers()).thenReturn(bootstrapServers);
+        when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
         when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
     }
 
