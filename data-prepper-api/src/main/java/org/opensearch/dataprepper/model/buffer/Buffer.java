@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.model.buffer;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.record.Record;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
@@ -53,4 +54,6 @@ public interface Buffer<T extends Record<?>> {
     void checkpoint(CheckpointState checkpointState);
 
     boolean isEmpty();
+
+    Duration getDrainTimeout();
 }
