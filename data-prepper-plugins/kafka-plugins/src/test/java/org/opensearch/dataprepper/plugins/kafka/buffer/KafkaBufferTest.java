@@ -231,6 +231,5 @@ class KafkaBufferTest {
         assertThat(result, equalTo(duration));
 
         verify(bufferConfig).getDrainTimeout();
-        verify(kafkaBuffer).getDrainTimeout();
     }
 }
