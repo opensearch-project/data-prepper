@@ -5,7 +5,7 @@
 
 dependencies {
     implementation project(path: ':data-prepper-api')
-    implementation 'org.apache.avro:avro:1.11.1'
+    implementation libs.avro.core
     implementation 'org.apache.parquet:parquet-common:1.13.1'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
