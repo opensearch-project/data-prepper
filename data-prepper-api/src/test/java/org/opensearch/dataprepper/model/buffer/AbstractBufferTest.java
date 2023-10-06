@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 
-import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -258,13 +257,6 @@ public class AbstractBufferTest {
 
         // When/Then
         Assert.assertThrows(NullPointerException.class, () -> abstractBuffer.writeAll(testRecords, 1000));
-    }
-
-    @Test
-    public void testGetDrainTimeout() {
-        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferImpl(testPluginSetting);
-
-        Assert.assertEquals(Duration.ZERO, abstractBuffer.getDrainTimeout());
     }
 
     public static class AbstractBufferImpl extends AbstractBuffer<Record<String>> {

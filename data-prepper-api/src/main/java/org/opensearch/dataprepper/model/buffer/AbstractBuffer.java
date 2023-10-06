@@ -13,7 +13,6 @@ import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 
-import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -180,10 +179,5 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
      */
     public void postProcess(final Long recordsInBuffer) {
 
-    }
-
-    @Override
-    public Duration getDrainTimeout() {
-        return Duration.ZERO;
     }
 }

@@ -12,7 +12,6 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 
-import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -93,8 +92,4 @@ public class TestBuffer implements Buffer<Record<Event>> {
         return buffer.size();
     }
 
-    @Override
-    public Duration getDrainTimeout() {
-        return Duration.ZERO;
-    }
 }

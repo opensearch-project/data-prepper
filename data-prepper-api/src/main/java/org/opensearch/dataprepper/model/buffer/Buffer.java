@@ -55,5 +55,7 @@ public interface Buffer<T extends Record<?>> {
 
     boolean isEmpty();
 
-    Duration getDrainTimeout();
+    default Duration getDrainTimeout() {
+        return Duration.ZERO;
+    }
 }
