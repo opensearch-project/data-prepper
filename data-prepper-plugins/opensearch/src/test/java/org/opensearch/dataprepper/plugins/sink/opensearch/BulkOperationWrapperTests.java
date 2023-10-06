@@ -5,12 +5,15 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.DeleteOperation;
+import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.junit.jupiter.api.Test;
@@ -21,7 +24,6 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
 public class BulkOperationWrapperTests {
@@ -61,12 +63,6 @@ public class BulkOperationWrapperTests {
         assertThat(bulkOperationWrapper.getId(), equalTo(ID));
     }
 
-    @Test
-    public void testGetIdUnsupportedAction() {
-        final BulkOperationWrapper bulkOperationWrapper = createObjectUnderTest(null, getDeleteBulkOperation());
-        assertThrows(UnsupportedOperationException.class, bulkOperationWrapper::getId);
-    }
-
     @ParameterizedTest
     @MethodSource("bulkOperationProvider")
     public void testGetIndex(final BulkOperation bulkOperation) {
@@ -74,23 +70,11 @@ public class BulkOperationWrapperTests {
         assertThat(bulkOperationWrapper.getIndex(), equalTo(INDEX));
     }
 
-    @Test
-    public void testGetIndexUnsupportedAction() {
-        final BulkOperationWrapper bulkOperationWrapper = createObjectUnderTest(null, getDeleteBulkOperation());
-        assertThrows(UnsupportedOperationException.class, bulkOperationWrapper::getIndex);
-    }
-
     @ParameterizedTest
     @MethodSource("bulkOperationProvider")
     public void testGetDocument(final BulkOperation bulkOperation) {
         final BulkOperationWrapper bulkOperationWrapper = createObjectUnderTest(null, bulkOperation);
         assertThat(bulkOperationWrapper.getDocument(), equalTo(DOCUMENT));
-    }
-
-    @Test
-    public void testGetDocumentUnsupportedAction() {
-        final BulkOperationWrapper bulkOperationWrapper = createObjectUnderTest(null, getDeleteBulkOperation());
-        assertThrows(UnsupportedOperationException.class, bulkOperationWrapper::getDocument);
     }
 
     private static Stream<Arguments> bulkOperationProvider() {
@@ -112,10 +96,34 @@ public class BulkOperationWrapperTests {
                 .create(createOperation)
                 .build();
 
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = null;
+        try {
+            jsonNode = objectMapper.readTree("{\"key\":\"value\"}");
+        } catch (Exception e){}
+
+        final UpdateOperation updateOperation = new UpdateOperation.Builder<>()
+                .id(ID)
+                .index(INDEX)
+                .document(DOCUMENT)
+                .build();
+        final BulkOperation updateBulkOperation = (BulkOperation) new BulkOperation.Builder()
+                .update(updateOperation)
+                .build();
+
+        final DeleteOperation deleteOperation = new DeleteOperation.Builder()
+                .id(ID)
+                .index(INDEX)
+                .build();
+        final BulkOperation deleteBulkOperation = (BulkOperation) new BulkOperation.Builder()
+                .delete(deleteOperation)
+                .build();
         return Stream.of(
                 Arguments.of(
                         indexBulkOperation,
-                        createBulkOperation
+                        createBulkOperation,
+                        updateBulkOperation,
+                        deleteBulkOperation
                 )
         );
     }
