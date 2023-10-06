@@ -27,9 +27,7 @@ import org.opensearch.client.opensearch.core.search.Pit;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
-import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchClientRefresher;
-import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
@@ -66,12 +64,12 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
     static final String INDEX_NOT_FOUND_EXCEPTION = "index_not_found_exception";
     static final String SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE = "Trying to create too many scroll contexts";
 
-    private final OpenSearchClientRefresher openSearchClientRefresher;
+    private final ClientRefresher<OpenSearchClient> clientRefresher;
     private final SearchContextType searchContextType;
 
-    public OpenSearchAccessor(final OpenSearchClientRefresher openSearchClientRefresher,
+    public OpenSearchAccessor(final ClientRefresher<OpenSearchClient> clientRefresher,
                               final SearchContextType searchContextType) {
-        this.openSearchClientRefresher = openSearchClientRefresher;
+        this.clientRefresher = clientRefresher;
         this.searchContextType = searchContextType;
     }
 
@@ -84,7 +82,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
     public CreatePointInTimeResponse createPit(final CreatePointInTimeRequest createPointInTimeRequest) {
         CreatePitResponse createPitResponse;
         try {
-            createPitResponse = openSearchClientRefresher.get()
+            createPitResponse = clientRefresher.get()
                     .createPit(CreatePitRequest.of(builder -> builder
                     .targetIndexes(createPointInTimeRequest.getIndex())
                     .keepAlive(new Time.Builder().time(createPointInTimeRequest.getKeepAlive()).build())));
@@ -135,7 +133,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
     @Override
     public void deletePit(final DeletePointInTimeRequest deletePointInTimeRequest) {
         try {
-            final DeletePitResponse deletePitResponse = openSearchClientRefresher.get()
+            final DeletePitResponse deletePitResponse = clientRefresher.get()
                     .deletePit(DeletePitRequest.of(builder -> builder.pitId(Collections.singletonList(deletePointInTimeRequest.getPitId()))));
             if (isPitDeletedSuccessfully(deletePitResponse)) {
                 LOG.debug("Successfully deleted point in time id {}", deletePointInTimeRequest.getPitId());
@@ -152,7 +150,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
 
         SearchResponse<ObjectNode> searchResponse;
         try {
-            searchResponse = openSearchClientRefresher.get()
+            searchResponse = clientRefresher.get()
                     .search(SearchRequest.of(request -> request
                     .scroll(Time.of(time -> time.time(createScrollRequest.getScrollTime())))
                     .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
@@ -185,7 +183,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
     public SearchScrollResponse searchWithScroll(final SearchScrollRequest searchScrollRequest) {
         SearchResponse<ObjectNode> searchResponse;
         try {
-            searchResponse = openSearchClientRefresher.get().scroll(ScrollRequest.of(request -> request
+            searchResponse = clientRefresher.get().scroll(ScrollRequest.of(request -> request
                     .scrollId(searchScrollRequest.getScrollId())
                     .scroll(Time.of(time -> time.time(searchScrollRequest.getScrollTime())))), ObjectNode.class);
         } catch (final OpenSearchException e) {
@@ -205,7 +203,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
     @Override
     public void deleteScroll(final DeleteScrollRequest deleteScrollRequest) {
         try {
-            final ClearScrollResponse clearScrollResponse = openSearchClientRefresher.get()
+            final ClearScrollResponse clearScrollResponse = clientRefresher.get()
                     .clearScroll(ClearScrollRequest.of(request -> request.scrollId(deleteScrollRequest.getScrollId())));
             if (clearScrollResponse.succeeded()) {
                 LOG.debug("Successfully deleted scroll context with id {}", deleteScrollRequest.getScrollId());
@@ -240,8 +238,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
     }
 
     @Override
-    public PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> getClientRefresher() {
-        return openSearchClientRefresher;
+    public ClientRefresher<OpenSearchClient> getClientRefresher() {
+        return clientRefresher;
     }
 
     private boolean isPitDeletedSuccessfully(final DeletePitResponse deletePitResponse) {
@@ -266,7 +264,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
 
     private SearchWithSearchAfterResults searchWithSearchAfter(final SearchRequest searchRequest) {
         try {
-            final SearchResponse<ObjectNode> searchResponse = openSearchClientRefresher.get()
+            final SearchResponse<ObjectNode> searchResponse = clientRefresher.get()
                     .search(searchRequest, ObjectNode.class);
 
             final List<Event> documents = getDocumentsFromResponse(searchResponse);

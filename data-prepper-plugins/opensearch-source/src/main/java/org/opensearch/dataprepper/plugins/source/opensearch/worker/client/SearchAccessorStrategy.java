@@ -4,15 +4,16 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
+import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.InfoResponse;
 import org.opensearch.client.util.MissingRequiredPropertyException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
-import org.opensearch.dataprepper.plugins.source.opensearch.ElasticsearchClientRefresher;
-import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchClientRefresher;
+import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.slf4j.Logger;
@@ -63,26 +64,26 @@ public class SearchAccessorStrategy {
      */
     public SearchAccessor getSearchAccessor() {
 
-        final OpenSearchClientRefresher openSearchClientRefresher = new OpenSearchClientRefresher(
-                openSearchClientFactory, openSearchSourceConfiguration);
+        final ClientRefresher<OpenSearchClient> clientRefresher = new ClientRefresher<>(OpenSearchClient.class,
+                openSearchClientFactory::provideOpenSearchClient, openSearchSourceConfiguration);
 
         if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions()) &&
                 openSearchSourceConfiguration.getAwsAuthenticationOptions().isServerlessCollection()) {
-            return createSearchAccessorForServerlessCollection(openSearchClientRefresher);
+            return createSearchAccessorForServerlessCollection(clientRefresher);
         }
 
         InfoResponse infoResponse = null;
 
-        ElasticsearchClientRefresher elasticsearchClientRefresher = null;
+        ClientRefresher<ElasticsearchClient> elasticsearchClientRefresher = null;
         try {
-            infoResponse = openSearchClientRefresher.get().info();
-            pluginConfigObservable.addPluginConfigObserver(newConfig -> openSearchClientRefresher.update(
+            infoResponse = clientRefresher.get().info();
+            pluginConfigObservable.addPluginConfigObserver(newConfig -> clientRefresher.update(
                     (OpenSearchSourceConfiguration) newConfig));
         } catch (final MissingRequiredPropertyException e) {
             LOG.info("Detected Elasticsearch cluster. Constructing Elasticsearch client");
-            elasticsearchClientRefresher = new ElasticsearchClientRefresher(
-                    openSearchClientFactory, openSearchSourceConfiguration);
-            final ElasticsearchClientRefresher finalElasticsearchClientRefresher = elasticsearchClientRefresher;
+            elasticsearchClientRefresher = new ClientRefresher<>(ElasticsearchClient.class,
+                    openSearchClientFactory::provideElasticSearchClient, openSearchSourceConfiguration);
+            final ClientRefresher<ElasticsearchClient> finalElasticsearchClientRefresher = elasticsearchClientRefresher;
             pluginConfigObservable.addPluginConfigObserver(
                     newConfig -> finalElasticsearchClientRefresher.update((OpenSearchSourceConfiguration) newConfig));
         } catch (final IOException | OpenSearchException e) {
@@ -113,17 +114,17 @@ public class SearchAccessorStrategy {
         }
 
         if (Objects.isNull(elasticsearchClientRefresher)) {
-            return new OpenSearchAccessor(openSearchClientRefresher,
+            return new OpenSearchAccessor(clientRefresher,
                     searchContextType);
         }
 
         return new ElasticsearchAccessor(elasticsearchClientRefresher, searchContextType);
     }
 
-    private SearchAccessor createSearchAccessorForServerlessCollection(final OpenSearchClientRefresher openSearchClientRefresher) {
+    private SearchAccessor createSearchAccessorForServerlessCollection(final ClientRefresher clientRefresher) {
         if (Objects.isNull(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
             LOG.info("Configured with AOS serverless flag as true, defaulting to search_context_type as 'none', which uses search_after");
-            return new OpenSearchAccessor(openSearchClientRefresher,
+            return new OpenSearchAccessor(clientRefresher,
                     SearchContextType.NONE);
         } else {
             if (SearchContextType.POINT_IN_TIME.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType()) ||
@@ -132,7 +133,7 @@ public class SearchAccessorStrategy {
             }
 
             LOG.info("Using search_context_type set in the config: '{}'", openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType().toString().toLowerCase());
-            return new OpenSearchAccessor(openSearchClientRefresher,
+            return new OpenSearchAccessor(clientRefresher,
                     openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType());
         }
     }
@@ -163,7 +164,7 @@ public class SearchAccessorStrategy {
         return actualVersion.compareTo(cutoffVersion) >= 0;
     }
 
-    private Pair<String, String> getDistributionAndVersionNumber(final InfoResponse infoResponseOpenSearch, final ElasticsearchClientRefresher elasticsearchClientRefresher) {
+    private Pair<String, String> getDistributionAndVersionNumber(final InfoResponse infoResponseOpenSearch, final ClientRefresher<ElasticsearchClient> elasticsearchClientRefresher) {
         if (Objects.nonNull(infoResponseOpenSearch)) {
             return Pair.of(infoResponseOpenSearch.version().distribution(), infoResponseOpenSearch.version().number());
         }

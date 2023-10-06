@@ -27,9 +27,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
-import org.opensearch.dataprepper.plugins.source.opensearch.ElasticsearchClientRefresher;
-import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
@@ -65,10 +63,11 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     static final String PIT_RESOURCE_LIMIT_ERROR_TYPE = "rejected_execution_exception";
     static final String INDEX_NOT_FOUND_EXCEPTION = "index_not_found_exception";
 
-    private final ElasticsearchClientRefresher elasticsearchClientRefresher;
+    private final ClientRefresher<ElasticsearchClient> elasticsearchClientRefresher;
     private final SearchContextType searchContextType;
 
-    public ElasticsearchAccessor(final ElasticsearchClientRefresher elasticsearchClientRefresher, final SearchContextType searchContextType) {
+    public ElasticsearchAccessor(final ClientRefresher<ElasticsearchClient> elasticsearchClientRefresher,
+                                 final SearchContextType searchContextType) {
         this.elasticsearchClientRefresher = elasticsearchClientRefresher;
         this.searchContextType = searchContextType;
     }
@@ -244,7 +243,7 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     }
 
     @Override
-    public PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> getClientRefresher() {
+    public ClientRefresher<ElasticsearchClient> getClientRefresher() {
         return elasticsearchClientRefresher;
     }
 

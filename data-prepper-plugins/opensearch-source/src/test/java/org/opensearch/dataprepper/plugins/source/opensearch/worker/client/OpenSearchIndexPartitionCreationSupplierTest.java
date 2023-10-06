@@ -20,10 +20,8 @@ import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cat.IndicesResponse;
 import org.opensearch.client.opensearch.cat.OpenSearchCatClient;
 import org.opensearch.client.opensearch.cat.indices.IndicesRecord;
-import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
-import org.opensearch.dataprepper.plugins.source.opensearch.ElasticsearchClientRefresher;
-import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchClientRefresher;
+import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.OpenSearchIndex;
@@ -53,13 +51,13 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
     private ClusterClientFactory clusterClientFactory;
 
     @Mock
-    private OpenSearchClientRefresher openSearchClientRefresher;
+    private ClientRefresher<OpenSearchClient> opensearchClientRefresher;
 
     @Mock
     private OpenSearchClient openSearchClient;
 
     @Mock
-    private ElasticsearchClientRefresher elasticsearchClientRefresher;
+    private ClientRefresher<ElasticsearchClient> elasticsearchClientRefresher;
 
     @Mock
     private ElasticsearchClient elasticsearchClient;
@@ -69,8 +67,10 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
     }
 
     @Test
-    void clusterClientFactory_that_is_not_OpenSearchClientRefresher_throws_IllegalArgumentException() {
-        when(clusterClientFactory.getClientRefresher()).thenReturn(mock(PluginComponentRefresher.class));
+    void clusterClientFactory_that_is_not_valid_refresher_throws_IllegalArgumentException() {
+        final ClientRefresher clientRefresher = mock(ClientRefresher.class);
+        when(clientRefresher.getComponentClass()).thenReturn(Object.class);
+        when(clusterClientFactory.getClientRefresher()).thenReturn(clientRefresher);
 
         assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
     }
@@ -78,8 +78,9 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
     @ParameterizedTest
     @MethodSource("opensearchCatIndicesExceptions")
     void apply_with_opensearch_client_cat_indices_throws_exception_returns_empty_list(final Class exception) throws IOException {
-        when(openSearchClientRefresher.get()).thenReturn(openSearchClient);
-        when(clusterClientFactory.getClientRefresher()).thenReturn(openSearchClientRefresher);
+        when(opensearchClientRefresher.getComponentClass()).thenReturn(OpenSearchClient.class);
+        when(opensearchClientRefresher.get()).thenReturn(openSearchClient);
+        when(clusterClientFactory.getClientRefresher()).thenReturn(opensearchClientRefresher);
 
         final OpenSearchCatClient openSearchCatClient = mock(OpenSearchCatClient.class);
         when(openSearchCatClient.indices()).thenThrow(exception);
@@ -94,6 +95,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
     @ParameterizedTest
     @MethodSource("elasticsearchCatIndicesExceptions")
     void apply_with_elasticsearch_client_cat_indices_throws_exception_returns_empty_list(final Class exception) throws IOException {
+        when(elasticsearchClientRefresher.getComponentClass()).thenReturn(ElasticsearchClient.class);
         when(elasticsearchClientRefresher.get()).thenReturn(elasticsearchClient);
         when(clusterClientFactory.getClientRefresher()).thenReturn(elasticsearchClientRefresher);
 
@@ -109,8 +111,9 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
 
     @Test
     void apply_with_opensearch_client_with_no_indices_return_empty_list() throws IOException {
-        when(openSearchClientRefresher.get()).thenReturn(openSearchClient);
-        when(clusterClientFactory.getClientRefresher()).thenReturn(openSearchClientRefresher);
+        when(opensearchClientRefresher.getComponentClass()).thenReturn(OpenSearchClient.class);
+        when(opensearchClientRefresher.get()).thenReturn(openSearchClient);
+        when(clusterClientFactory.getClientRefresher()).thenReturn(opensearchClientRefresher);
 
         final OpenSearchCatClient openSearchCatClient = mock(OpenSearchCatClient.class);
         final IndicesResponse indicesResponse = mock(IndicesResponse.class);
@@ -126,6 +129,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
 
     @Test
     void apply_with_elasticsearch_client_with_no_indices_return_empty_list() throws IOException {
+        when(elasticsearchClientRefresher.getComponentClass()).thenReturn(ElasticsearchClient.class);
         when(elasticsearchClientRefresher.get()).thenReturn(elasticsearchClient);
         when(clusterClientFactory.getClientRefresher()).thenReturn(elasticsearchClientRefresher);
 
@@ -143,8 +147,9 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
 
     @Test
     void apply_with_opensearch_client_with_indices_filters_them_correctly() throws IOException {
-        when(openSearchClientRefresher.get()).thenReturn(openSearchClient);
-        when(clusterClientFactory.getClientRefresher()).thenReturn(openSearchClientRefresher);
+        when(opensearchClientRefresher.getComponentClass()).thenReturn(OpenSearchClient.class);
+        when(opensearchClientRefresher.get()).thenReturn(openSearchClient);
+        when(clusterClientFactory.getClientRefresher()).thenReturn(opensearchClientRefresher);
 
         final OpenSearchCatClient openSearchCatClient = mock(OpenSearchCatClient.class);
         final IndicesResponse indicesResponse = mock(IndicesResponse.class);
@@ -199,6 +204,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
 
     @Test
     void apply_with_elasticsearch_client_with_indices_filters_them_correctly() throws IOException {
+        when(elasticsearchClientRefresher.getComponentClass()).thenReturn(ElasticsearchClient.class);
         when(elasticsearchClientRefresher.get()).thenReturn(elasticsearchClient);
         when(clusterClientFactory.getClientRefresher()).thenReturn(elasticsearchClientRefresher);
 

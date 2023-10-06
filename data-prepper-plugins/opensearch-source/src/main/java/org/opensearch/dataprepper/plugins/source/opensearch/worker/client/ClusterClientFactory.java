@@ -5,9 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
-import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
-import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 
 public interface ClusterClientFactory<Client> {
-    PluginComponentRefresher<Client, OpenSearchSourceConfiguration> getClientRefresher();
+    ClientRefresher<Client> getClientRefresher();
 }

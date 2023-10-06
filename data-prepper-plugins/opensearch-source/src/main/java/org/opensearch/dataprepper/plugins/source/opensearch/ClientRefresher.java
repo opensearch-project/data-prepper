@@ -1,29 +1,36 @@
 package org.opensearch.dataprepper.plugins.source.opensearch;
 
-import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchClientFactory;
 
 import java.util.Objects;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Function;
 
-public class OpenSearchClientRefresher
-        implements PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> {
+public class ClientRefresher<Client>
+        implements PluginComponentRefresher<Client, OpenSearchSourceConfiguration> {
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-    private final OpenSearchClientFactory openSearchClientFactory;
+    private final Function<OpenSearchSourceConfiguration, Client> clientFunction;
     private OpenSearchSourceConfiguration existingConfig;
-    private OpenSearchClient currentClient;
+    private final Class<Client> clientClass;
+    private Client currentClient;
 
-    public OpenSearchClientRefresher(final OpenSearchClientFactory openSearchClientFactory,
-                                     final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
-        this.openSearchClientFactory = openSearchClientFactory;
+    public ClientRefresher(final Class<Client> clientClass,
+                           final Function<OpenSearchSourceConfiguration, Client> clientFunction,
+                           final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
+        this.clientClass = clientClass;
+        this.clientFunction = clientFunction;
         existingConfig = openSearchSourceConfiguration;
-        currentClient = openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration);
+        currentClient = clientFunction.apply(openSearchSourceConfiguration);
     }
 
     @Override
-    public OpenSearchClient get() {
+    public Class<Client> getComponentClass() {
+        return clientClass;
+    }
+
+    @Override
+    public Client get() {
         readWriteLock.readLock().lock();
         try {
             return currentClient;
@@ -37,7 +44,7 @@ public class OpenSearchClientRefresher
         if (basicAuthChanged(openSearchSourceConfiguration)) {
             readWriteLock.writeLock().lock();
             try {
-                currentClient = openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration);
+                currentClient = clientFunction.apply(openSearchSourceConfiguration);
                 existingConfig = openSearchSourceConfiguration;
             } finally {
                 readWriteLock.writeLock().unlock();

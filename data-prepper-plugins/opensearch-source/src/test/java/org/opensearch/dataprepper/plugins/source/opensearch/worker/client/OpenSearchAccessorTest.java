@@ -31,7 +31,7 @@ import org.opensearch.client.opensearch.core.pit.DeletePitRequest;
 import org.opensearch.client.opensearch.core.pit.DeletePitResponse;
 import org.opensearch.client.opensearch.core.search.Hit;
 import org.opensearch.client.opensearch.core.search.HitsMetadata;
-import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchClientRefresher;
+import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
@@ -70,17 +70,17 @@ import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client
 public class OpenSearchAccessorTest {
 
     @Mock
-    private OpenSearchClientRefresher openSearchClientRefresher;
+    private ClientRefresher clientRefresher;
     @Mock
     private OpenSearchClient openSearchClient;
 
     private SearchAccessor createObjectUnderTest() {
-        return new OpenSearchAccessor(openSearchClientRefresher, SearchContextType.POINT_IN_TIME);
+        return new OpenSearchAccessor(clientRefresher, SearchContextType.POINT_IN_TIME);
     }
 
     @BeforeEach
     void setup() {
-        when(openSearchClientRefresher.get()).thenReturn(openSearchClient);
+        when(clientRefresher.get()).thenReturn(openSearchClient);
     }
 
     @Test
