@@ -46,6 +46,8 @@ dependencyResolutionManagement {
             version('hadoop', '3.3.6')
             library('hadoop-common', 'org.apache.hadoop', 'hadoop-common').versionRef('hadoop')
             library('hadoop-mapreduce', 'org.apache.hadoop', 'hadoop-mapreduce-client-core').versionRef('hadoop')
+            version('avro', '1.11.3')
+            library('avro-core', 'org.apache.avro', 'avro').versionRef('avro')
         }
         testLibs {
             version('junit', '5.8.2')
