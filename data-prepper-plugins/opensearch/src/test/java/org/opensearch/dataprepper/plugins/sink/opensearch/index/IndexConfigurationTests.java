@@ -275,7 +275,7 @@ public class IndexConfigurationTests {
         final String testIndexAlias = "test";
         IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexAlias(testIndexAlias)
-                .withTemplateContent(getTemplateContent())
+                .withTemplateContent(createTemplateContent())
                 .withBulkSize(10)
                 .build();
 
@@ -283,18 +283,18 @@ public class IndexConfigurationTests {
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
         assertEquals(10, indexConfiguration.getBulkSize());
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
-        assertThat(indexConfiguration.getIndexTemplate(), equalTo(OBJECT_MAPPER.readValue(getTemplateContent(), new TypeReference<>() {})));
+        assertThat(indexConfiguration.getIndexTemplate(), equalTo(OBJECT_MAPPER.readValue(createTemplateContent(), new TypeReference<>() {})));
     }
 
     @Test
     public void readIndexConfigWithTemplateFileAndTemplateContentUsesTemplateContent() throws JsonProcessingException {
-        final PluginSetting pluginSetting = generatePluginSetting("custom", "test", "test-file", getTemplateContent(), null, null, null);
+        final PluginSetting pluginSetting = generatePluginSetting("custom", "test", "test-file", createTemplateContent(), null, null, null);
 
         final IndexConfiguration objectUnderTest = IndexConfiguration.readIndexConfig(pluginSetting);
 
         assertThat(objectUnderTest, notNullValue());
         assertThat(objectUnderTest.getIndexTemplate(), notNullValue());
-        assertThat(objectUnderTest.getIndexTemplate(), equalTo(OBJECT_MAPPER.readValue(getTemplateContent(), new TypeReference<>() {})));
+        assertThat(objectUnderTest.getIndexTemplate(), equalTo(OBJECT_MAPPER.readValue(createTemplateContent(), new TypeReference<>() {})));
     }
 
     @Test
@@ -530,7 +530,7 @@ public class IndexConfigurationTests {
         return metadata;
     }
 
-    private String getTemplateContent() {
+    private String createTemplateContent() {
         return "{\"index_patterns\":[\"test-*\"]," +
                 "\"template\":{\"aliases\":{\"my_test_logs\":{}}," +
                 "\"settings\":{\"number_of_shards\":5,\"number_of_replicas\":2,\"refresh_interval\":-1}," +
