@@ -14,6 +14,9 @@ import java.util.stream.Collectors;
 public enum BulkAction {
 
     CREATE("create"),
+    UPSERT("upsert"),
+    UPDATE("update"),
+    DELETE("delete"),
     INDEX("index");
 
     private static final Map<String, BulkAction> ACTIONS_MAP = Arrays.stream(BulkAction.values())
@@ -34,7 +37,7 @@ public enum BulkAction {
     }
 
     @JsonCreator
-    static BulkAction fromOptionValue(final String option) {
+    public static BulkAction fromOptionValue(final String option) {
         return ACTIONS_MAP.get(option.toLowerCase());
     }
 

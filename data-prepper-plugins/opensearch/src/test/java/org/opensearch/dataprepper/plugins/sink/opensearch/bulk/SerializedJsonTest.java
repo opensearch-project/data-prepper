@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.lang3.RandomStringUtils;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -26,13 +28,32 @@ class SerializedJsonTest {
 
     @Test
     void fromString_returns_SerializedJsonImpl_with_correctValues() {
-	String documentId = RandomStringUtils.randomAlphabetic(10);
-	String routingField = RandomStringUtils.randomAlphabetic(10);
-	SerializedJson serializedJson = SerializedJson.fromStringAndOptionals("{}", documentId, routingField);
-        assertThat(serializedJson, instanceOf(SerializedJsonImpl.class));
+        String documentId = RandomStringUtils.randomAlphabetic(10);
+        String routingField = RandomStringUtils.randomAlphabetic(10);
+        SerializedJson serializedJson = SerializedJson.fromStringAndOptionals("{}", documentId, routingField);
+            assertThat(serializedJson, instanceOf(SerializedJsonImpl.class));
         assertThat(serializedJson.getDocumentId().get(), equalTo(documentId));
         assertThat(serializedJson.getRoutingField().get(), equalTo(routingField));
         assertThat(serializedJson.getSerializedJson(), equalTo("{}".getBytes()));
     }
 
+    @Test
+    void fromString_returns_SerializedJsonNode_with_correctValues() {
+        String documentId = RandomStringUtils.randomAlphabetic(10);
+        String routingField = RandomStringUtils.randomAlphabetic(10);
+        final String jsonString = "{\"key\":\"value\"}";
+        JsonNode jsonNode;
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            jsonNode = objectMapper.readTree(jsonString);
+        } catch (Exception e) {
+            jsonNode = null;
+        }
+        SerializedJson document = SerializedJson.fromStringAndOptionals(jsonString, documentId, routingField);
+        SerializedJson serializedJson = SerializedJson.fromJsonNode(jsonNode, document);
+        assertThat(serializedJson, instanceOf(SerializedJsonNode.class));
+        assertThat(serializedJson.getDocumentId().get(), equalTo(documentId));
+        assertThat(serializedJson.getRoutingField().get(), equalTo(routingField));
+        assertThat(serializedJson.getSerializedJson(), equalTo(jsonString.getBytes()));
+    }
 }

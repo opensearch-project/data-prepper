@@ -46,6 +46,7 @@ public class PluginSettingsTests {
     private static final String TEST_INT_ATTRIBUTE = "int-attribute";
     private static final String TEST_STRING_ATTRIBUTE = "string-attribute";
     private static final String TEST_STRINGLIST_ATTRIBUTE = "list-attribute";
+    private static final String TEST_LIST_OF_MAPS_ATTRIBUTE = "map-list-attribute";
     private static final String TEST_STRINGMAP_ATTRIBUTE = "map-attribute";
     private static final String TEST_STRINGLISTMAP_ATTRIBUTE = "list-map-attribute";
     private static final String TEST_BOOL_ATTRIBUTE = "bool-attribute";
@@ -146,6 +147,16 @@ public class PluginSettingsTests {
         final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS);
 
         assertThat(pluginSetting.getTypedMap(TEST_STRINGMAP_ATTRIBUTE, String.class, String.class), is(equalTo(TEST_STRINGMAP_VALUE)));
+    }
+
+    @Test
+    public void testGetTypedListOfMaps() {
+        final Map<String, String> TEST_SETTINGS_MAP = ImmutableMap.of(TEST_STRING_ATTRIBUTE, TEST_STRING_VALUE);
+        final List<Map<String, String>> TEST_SETTINGS_LIST = List.of(TEST_SETTINGS_MAP);
+        final Map<String, Object> TEST_SETTINGS = ImmutableMap.of(TEST_LIST_OF_MAPS_ATTRIBUTE, TEST_SETTINGS_LIST);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS);
+
+        assertThat(pluginSetting.getTypedListOfMaps(TEST_LIST_OF_MAPS_ATTRIBUTE, String.class, String.class), is(equalTo(List.of(TEST_SETTINGS_MAP))));
     }
 
     @Test
@@ -268,6 +279,20 @@ public class PluginSettingsTests {
         final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_AS_NULL);
 
         assertThat(pluginSetting.getTypedListMap(TEST_STRINGLISTMAP_NULL_ATTRIBUTE, String.class, String.class), nullValue());
+    }
+
+    /**
+     * Request attributes are present with null values, expect nulls to be returned
+     */
+    @Test
+    public void testGetTypedListOfMaps_AsNull() {
+        final String TEST_STRINGLISTOFMAPS_NULL_ATTRIBUTE = "typedlistofmaps-null-attribute";
+        final Map<String, Object> TEST_SETTINGS_AS_NULL = new HashMap<>();
+
+        TEST_SETTINGS_AS_NULL.put(TEST_STRINGLISTOFMAPS_NULL_ATTRIBUTE, null);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_AS_NULL);
+
+        assertThat(pluginSetting.getTypedListOfMaps(TEST_STRINGLISTOFMAPS_NULL_ATTRIBUTE, String.class, String.class), nullValue());
     }
 
     /**

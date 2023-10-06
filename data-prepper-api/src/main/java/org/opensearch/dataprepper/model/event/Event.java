@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.event;
 
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.Serializable;
 import java.util.List;
@@ -71,6 +72,14 @@ public interface Event extends Serializable {
      * @since 1.2
      */
     String toJsonString();
+
+    /**
+     * Returns the JsonNode containing the internal representation of the event
+     *
+     * @return JsonNode
+     * @since 2.5
+     */
+    JsonNode getJsonNode();
 
     /**
      * Gets a serialized Json string of the specific key in the Event
