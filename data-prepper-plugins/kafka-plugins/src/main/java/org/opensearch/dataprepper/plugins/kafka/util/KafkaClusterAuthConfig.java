@@ -9,6 +9,8 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 
+import java.util.Collection;
+
 public interface KafkaClusterAuthConfig {
     AwsConfig getAwsConfig();
 
@@ -16,5 +18,5 @@ public interface KafkaClusterAuthConfig {
 
     EncryptionConfig getEncryptionConfig();
 
-    String getBootStrapServers();
+    Collection<String> getBootstrapServers();
 }

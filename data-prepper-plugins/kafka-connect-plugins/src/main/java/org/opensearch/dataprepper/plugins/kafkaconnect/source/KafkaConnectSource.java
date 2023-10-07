@@ -12,7 +12,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceSecurityConfigurer;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.ConnectorConfig;
 import org.opensearch.dataprepper.plugins.kafkaconnect.extension.KafkaConnectConfig;
 import org.opensearch.dataprepper.plugins.kafkaconnect.extension.KafkaConnectConfigSupplier;
@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 
 /**
@@ -79,7 +80,7 @@ public abstract class KafkaConnectSource implements Source<Record<Object>> {
     }
 
     private void updateConfig(final KafkaClusterConfigSupplier kafkaClusterConfigSupplier) {
-        if (kafkaConnectConfig.getBootStrapServers() == null) {
+        if (kafkaConnectConfig.getBootstrapServers() == null) {
             this.kafkaConnectConfig.setBootstrapServers(kafkaClusterConfigSupplier.getBootStrapServers());
         }
         if (kafkaConnectConfig.getAuthConfig() == null) {
@@ -92,10 +93,12 @@ public abstract class KafkaConnectSource implements Source<Record<Object>> {
             kafkaConnectConfig.setEncryptionConfig(kafkaClusterConfigSupplier.getEncryptionConfig());
         }
         Properties authProperties = new Properties();
-        KafkaSourceSecurityConfigurer.setAuthProperties(authProperties, kafkaConnectConfig, LOG);
+        KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaConnectConfig, LOG);
         this.kafkaConnectConfig.setAuthProperties(authProperties);
         // Update Connector Config
-        this.connectorConfig.setBootstrapServers(kafkaConnectConfig.getBootStrapServers());
+        if (Objects.nonNull(kafkaConnectConfig.getBootstrapServers())) {
+            this.connectorConfig.setBootstrapServers(String.join(",", kafkaConnectConfig.getBootstrapServers()));
+        }
         this.connectorConfig.setAuthProperties(authProperties);
     }
 }

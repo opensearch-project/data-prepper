@@ -518,7 +518,7 @@ public class KafkaSource implements Source<Record<Event>> {
 
     private void updateConfig(final KafkaClusterConfigSupplier kafkaClusterConfigSupplier) {
         if (kafkaClusterConfigSupplier != null) {
-            if (sourceConfig.getBootStrapServers() == null) {
+            if (sourceConfig.getBootstrapServers() == null) {
                 sourceConfig.setBootStrapServers(kafkaClusterConfigSupplier.getBootStrapServers());
             }
             if (sourceConfig.getAuthConfig() == null) {

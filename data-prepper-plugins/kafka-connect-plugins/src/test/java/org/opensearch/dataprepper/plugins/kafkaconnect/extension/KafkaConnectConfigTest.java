@@ -64,7 +64,7 @@ public class KafkaConnectConfigTest {
         assertThat(testConfig.getAuthConfig(), is(authConfig));
         assertThat(testConfig.getAwsConfig(), is(awsConfig));
         assertThat(testConfig.getEncryptionConfig(), is(encryptionConfig));
-        assertThat(testConfig.getBootStrapServers(), is(String.join(",", bootstrapServer)));
+        assertThat(testConfig.getBootstrapServers(), is(bootstrapServer));
         assertThat(testConfig.getConnectorStartTimeout().getSeconds(), is(3L));
         assertThat(testConfig.getConnectStartTimeout().getSeconds(), is(3L));
     }
@@ -108,7 +108,7 @@ public class KafkaConnectConfigTest {
         assertThat(testConfig, notNullValue());
         assertThat(testConfig.getConnectStartTimeout().getSeconds(), is(60L));
         assertThat(testConfig.getConnectorStartTimeout().getSeconds(), is(360L));
-        assertThat(testConfig.getBootStrapServers(), nullValue());
+        assertThat(testConfig.getBootstrapServers(), nullValue());
         WorkerProperties testWorkerProperties = testConfig.getWorkerProperties();
         assertThat(testWorkerProperties, notNullValue());
         Map<String, String> workerProperties = testWorkerProperties.buildKafkaConnectPropertyMap();

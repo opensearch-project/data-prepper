@@ -87,9 +87,9 @@ public class KafkaConnectConfig implements KafkaClusterAuthConfig {
     }
 
     @Override
-    public String getBootStrapServers() {
+    public List<String> getBootstrapServers() {
         if (Objects.nonNull(bootstrapServers)) {
-            return String.join(",", bootstrapServers);
+            return bootstrapServers;
         }
         return null;
     }

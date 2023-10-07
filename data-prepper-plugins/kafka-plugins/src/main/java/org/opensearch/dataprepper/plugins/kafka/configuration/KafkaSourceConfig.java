@@ -9,7 +9,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaClusterAuthConfig;
 
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +18,7 @@ import java.util.Objects;
  * pipelines.yaml
  */
 
-public class KafkaSourceConfig implements KafkaConsumerConfig, KafkaClusterAuthConfig {
+public class KafkaSourceConfig implements KafkaConsumerConfig {
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootStrapServers;
@@ -89,11 +88,19 @@ public class KafkaSourceConfig implements KafkaConsumerConfig, KafkaClusterAuthC
         return authConfig;
     }
 
+    public void setAuthConfig(AuthConfig authConfig) {
+        this.authConfig = authConfig;
+    }
+
     public EncryptionConfig getEncryptionConfig() {
         if (Objects.isNull(encryptionConfig)) {
             return new EncryptionConfig();
         }
         return encryptionConfig;
+    }
+
+    public void setEncryptionConfig(EncryptionConfig encryptionConfig) {
+        this.encryptionConfig = encryptionConfig;
     }
 
     public EncryptionConfig getEncryptionConfigRaw() {
@@ -104,15 +111,7 @@ public class KafkaSourceConfig implements KafkaConsumerConfig, KafkaClusterAuthC
         return awsConfig;
     }
 
-    public void setAuthConfig(AuthConfig authConfig) {
-        this.authConfig = authConfig;
-    }
-
     public void setAwsConfig(AwsConfig awsConfig) {
         this.awsConfig = awsConfig;
-    }
-
-    public void setEncryptionConfig(EncryptionConfig encryptionConfig) {
-        this.encryptionConfig = encryptionConfig;
     }
 }

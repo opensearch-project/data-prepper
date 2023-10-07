@@ -182,7 +182,7 @@ class KafkaSourceTest {
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         when(sourceConfig.getAwsConfig()).thenReturn(null);
         when(sourceConfig.getEncryptionConfigRaw()).thenReturn(null);
-        when(sourceConfig.getBootStrapServers()).thenReturn(null);
+        when(sourceConfig.getBootstrapServers()).thenReturn(null);
         when(kafkaClusterConfigSupplier.getBootStrapServers()).thenReturn(bootstrapServers);
         when(kafkaClusterConfigSupplier.getAuthConfig()).thenReturn(authConfig);
         when(kafkaClusterConfigSupplier.getAwsConfig()).thenReturn(awsConfig);
@@ -207,7 +207,7 @@ class KafkaSourceTest {
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
         when(sourceConfig.getAwsConfig()).thenReturn(awsConfig);
         when(sourceConfig.getEncryptionConfigRaw()).thenReturn(encryptionConfig);
-        when(sourceConfig.getBootStrapServers()).thenReturn(String.join(",", bootstrapServers));
+        when(sourceConfig.getBootstrapServers()).thenReturn(bootstrapServers);
         kafkaSource = createObjectUnderTest();
         verify(sourceConfig, never()).setBootStrapServers(any());
         verify(sourceConfig, never()).setAuthConfig(any());
