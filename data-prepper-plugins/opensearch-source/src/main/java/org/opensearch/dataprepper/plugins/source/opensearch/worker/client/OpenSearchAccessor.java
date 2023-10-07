@@ -27,7 +27,8 @@ import org.opensearch.client.opensearch.core.search.Pit;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
+import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
+import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
@@ -64,10 +65,11 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
     static final String INDEX_NOT_FOUND_EXCEPTION = "index_not_found_exception";
     static final String SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE = "Trying to create too many scroll contexts";
 
-    private final ClientRefresher<OpenSearchClient> clientRefresher;
+    private final PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> clientRefresher;
     private final SearchContextType searchContextType;
 
-    public OpenSearchAccessor(final ClientRefresher<OpenSearchClient> clientRefresher,
+    public OpenSearchAccessor(final PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration>
+                                      clientRefresher,
                               final SearchContextType searchContextType) {
         this.clientRefresher = clientRefresher;
         this.searchContextType = searchContextType;
@@ -238,7 +240,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
     }
 
     @Override
-    public ClientRefresher<OpenSearchClient> getClientRefresher() {
+    public PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> getClientRefresher() {
         return clientRefresher;
     }
 

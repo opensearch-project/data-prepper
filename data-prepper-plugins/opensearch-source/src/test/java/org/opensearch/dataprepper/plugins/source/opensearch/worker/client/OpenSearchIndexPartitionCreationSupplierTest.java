@@ -20,6 +20,7 @@ import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cat.IndicesResponse;
 import org.opensearch.client.opensearch.cat.OpenSearchCatClient;
 import org.opensearch.client.opensearch.cat.indices.IndicesRecord;
+import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
@@ -51,13 +52,13 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
     private ClusterClientFactory clusterClientFactory;
 
     @Mock
-    private ClientRefresher<OpenSearchClient> opensearchClientRefresher;
+    private PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> opensearchClientRefresher;
 
     @Mock
     private OpenSearchClient openSearchClient;
 
     @Mock
-    private ClientRefresher<ElasticsearchClient> elasticsearchClientRefresher;
+    private PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchClientRefresher;
 
     @Mock
     private ElasticsearchClient elasticsearchClient;

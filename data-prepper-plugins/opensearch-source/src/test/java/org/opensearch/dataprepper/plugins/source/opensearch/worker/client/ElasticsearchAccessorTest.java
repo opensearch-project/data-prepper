@@ -30,7 +30,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
+import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
+import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
@@ -71,7 +72,7 @@ import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client
 public class ElasticsearchAccessorTest {
 
     @Mock
-    private ClientRefresher<ElasticsearchClient> elasticsearchClientRefresher;
+    private PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchClientRefresher;
     @Mock
     private ElasticsearchClient elasticSearchClient;
 

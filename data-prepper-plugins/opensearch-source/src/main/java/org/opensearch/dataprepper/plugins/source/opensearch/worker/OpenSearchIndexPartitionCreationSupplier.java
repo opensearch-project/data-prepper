@@ -10,8 +10,8 @@ import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cat.IndicesResponse;
+import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
-import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.OpenSearchIndex;
@@ -34,8 +34,8 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
 
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final IndexParametersConfiguration indexParametersConfiguration;
-    private ClientRefresher<OpenSearchClient> openSearchClientRefresher;
-    private ClientRefresher<ElasticsearchClient> elasticsearchClientRefresher;
+    private PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> openSearchClientRefresher;
+    private PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchClientRefresher;
 
 
     public OpenSearchIndexPartitionCreationSupplier(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
@@ -43,12 +43,15 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.indexParametersConfiguration = openSearchSourceConfiguration.getIndexParametersConfiguration();
 
-        final ClientRefresher clientRefresher = clusterClientFactory.getClientRefresher();
+        final PluginComponentRefresher<?, OpenSearchSourceConfiguration> clientRefresher =
+                clusterClientFactory.getClientRefresher();
 
         if (OpenSearchClient.class.isAssignableFrom(clientRefresher.getComponentClass())) {
-            this.openSearchClientRefresher = (ClientRefresher<OpenSearchClient>) clientRefresher;
+            this.openSearchClientRefresher = (PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration>)
+                    clientRefresher;
         } else if (ElasticsearchClient.class.isAssignableFrom(clientRefresher.getComponentClass())) {
-            this.elasticsearchClientRefresher = (ClientRefresher<ElasticsearchClient>) clientRefresher;
+            this.elasticsearchClientRefresher =
+                    (PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration>) clientRefresher;
         } else {
             throw new IllegalArgumentException(String.format("ClusterClientFactory provided an invalid client object to the index partition creation supplier. " +
                     "The clientRefresher must be of type OpenSearchClientRefresher. The clientRefresher passed is of class %s", clientRefresher.getClass()));

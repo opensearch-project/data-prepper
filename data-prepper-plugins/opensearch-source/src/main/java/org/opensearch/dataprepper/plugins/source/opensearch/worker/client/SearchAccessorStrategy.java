@@ -12,6 +12,7 @@ import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.InfoResponse;
 import org.opensearch.client.util.MissingRequiredPropertyException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
@@ -64,8 +65,9 @@ public class SearchAccessorStrategy {
      */
     public SearchAccessor getSearchAccessor() {
 
-        final ClientRefresher<OpenSearchClient> clientRefresher = new ClientRefresher<>(OpenSearchClient.class,
-                openSearchClientFactory::provideOpenSearchClient, openSearchSourceConfiguration);
+        final PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> clientRefresher =
+                new ClientRefresher<>(OpenSearchClient.class, openSearchClientFactory::provideOpenSearchClient,
+                        openSearchSourceConfiguration);
 
         if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions()) &&
                 openSearchSourceConfiguration.getAwsAuthenticationOptions().isServerlessCollection()) {
@@ -74,7 +76,8 @@ public class SearchAccessorStrategy {
 
         InfoResponse infoResponse = null;
 
-        ClientRefresher<ElasticsearchClient> elasticsearchClientRefresher = null;
+        PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchClientRefresher =
+                null;
         try {
             infoResponse = clientRefresher.get().info();
             pluginConfigObservable.addPluginConfigObserver(newConfig -> clientRefresher.update(
@@ -83,7 +86,8 @@ public class SearchAccessorStrategy {
             LOG.info("Detected Elasticsearch cluster. Constructing Elasticsearch client");
             elasticsearchClientRefresher = new ClientRefresher<>(ElasticsearchClient.class,
                     openSearchClientFactory::provideElasticSearchClient, openSearchSourceConfiguration);
-            final ClientRefresher<ElasticsearchClient> finalElasticsearchClientRefresher = elasticsearchClientRefresher;
+            final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration>
+                    finalElasticsearchClientRefresher = elasticsearchClientRefresher;
             pluginConfigObservable.addPluginConfigObserver(
                     newConfig -> finalElasticsearchClientRefresher.update((OpenSearchSourceConfiguration) newConfig));
         } catch (final IOException | OpenSearchException e) {
@@ -121,7 +125,7 @@ public class SearchAccessorStrategy {
         return new ElasticsearchAccessor(elasticsearchClientRefresher, searchContextType);
     }
 
-    private SearchAccessor createSearchAccessorForServerlessCollection(final ClientRefresher clientRefresher) {
+    private SearchAccessor createSearchAccessorForServerlessCollection(final PluginComponentRefresher clientRefresher) {
         if (Objects.isNull(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
             LOG.info("Configured with AOS serverless flag as true, defaulting to search_context_type as 'none', which uses search_after");
             return new OpenSearchAccessor(clientRefresher,
@@ -164,7 +168,8 @@ public class SearchAccessorStrategy {
         return actualVersion.compareTo(cutoffVersion) >= 0;
     }
 
-    private Pair<String, String> getDistributionAndVersionNumber(final InfoResponse infoResponseOpenSearch, final ClientRefresher<ElasticsearchClient> elasticsearchClientRefresher) {
+    private Pair<String, String> getDistributionAndVersionNumber(final InfoResponse infoResponseOpenSearch,
+                                                                 final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchClientRefresher) {
         if (Objects.nonNull(infoResponseOpenSearch)) {
             return Pair.of(infoResponseOpenSearch.version().distribution(), infoResponseOpenSearch.version().number());
         }
