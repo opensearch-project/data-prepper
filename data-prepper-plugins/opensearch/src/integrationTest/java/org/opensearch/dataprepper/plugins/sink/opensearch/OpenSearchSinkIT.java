@@ -104,6 +104,7 @@ public class OpenSearchSinkIT {
     private static final String PIPELINE_NAME = "integTestPipeline";
     private static final String TEST_CUSTOM_INDEX_POLICY_FILE = "test-custom-index-policy-file.json";
     private static final String TEST_TEMPLATE_V1_FILE = "test-index-template.json";
+    private static final String TEST_TEMPLATE_BULK_FILE = "test-bulk-template.json";
     private static final String TEST_TEMPLATE_V2_FILE = "test-index-template-v2.json";
     private static final String TEST_INDEX_TEMPLATE_V1_FILE = "test-composable-index-template.json";
     private static final String TEST_INDEX_TEMPLATE_V2_FILE = "test-composable-index-template-v2.json";
@@ -641,6 +642,248 @@ public class OpenSearchSinkIT {
     }
 
     @Test
+    public void testBulkActionCreateWithExpression() throws IOException, InterruptedException {
+        final String testIndexAlias = "test-alias";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
+        final String testIdField = "someId";
+        final String testId = "foo";
+        final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
+        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        Event event = (Event)testRecords.get(0).getData();
+        event.getMetadata().setAttribute("action", "create");
+        when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"action\")")).thenReturn(true);
+        when(expressionEvaluator.evaluate("getMetadata(\"action\")", event)).thenReturn(event.getMetadata().getAttribute("action"));
+        pluginSetting.getSettings().put(IndexConfiguration.ACTION, "${getMetadata(\"action\")}");
+        final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
+
+        // verify metrics
+        final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+        MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+        // COUNT
+        Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+    }
+
+    @Test
+    public void testBulkActionCreateWithInvalidExpression() throws IOException, InterruptedException {
+        final String testIndexAlias = "test-alias";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
+        final String testIdField = "someId";
+        final String testId = "foo";
+        final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
+        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        Event event = (Event)testRecords.get(0).getData();
+        event.getMetadata().setAttribute("action", "unknown");
+        when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"action\")")).thenReturn(true);
+        when(expressionEvaluator.evaluate("getMetadata(\"action\")", event)).thenReturn(event.getMetadata().getAttribute("action"));
+        pluginSetting.getSettings().put(IndexConfiguration.ACTION, "${getMetadata(\"action\")}");
+        final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        MatcherAssert.assertThat(retSources.size(), equalTo(0));
+        MatcherAssert.assertThat(sink.getInvalidActionErrorsCount(), equalTo(1.0));
+        sink.shutdown();
+    }
+
+    @Test
+    public void testBulkActionCreateWithActions() throws IOException, InterruptedException {
+        final String testIndexAlias = "test-alias";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
+        final String testIdField = "someId";
+        final String testId = "foo";
+        final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
+
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
+        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        List<Map<String, Object>> aList = new ArrayList<>();
+        Map<String, Object> aMap = new HashMap<>();
+        aMap.put("type", BulkAction.CREATE.toString());
+        aList.add(aMap);
+        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
+
+        // verify metrics
+        final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+        MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+        // COUNT
+        Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+    }
+
+    @Test
+    public void testBulkActionUpdateWithActions() throws IOException, InterruptedException {
+        final String testIndexAlias = "test-alias-upd1";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
+
+        final String testIdField = "someId";
+        final String testId = "foo";
+        List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "name", "value1")));
+
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
+        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        List<Map<String, Object>> aList = new ArrayList<>();
+        Map<String, Object> aMap = new HashMap<>();
+        aMap.put("type", BulkAction.CREATE.toString());
+        aList.add(aMap);
+        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
+
+        // verify metrics
+        final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+        MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+        // COUNT
+        Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+        testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "name", "value2")));
+        aList = new ArrayList<>();
+        aMap = new HashMap<>();
+        aMap.put("type", BulkAction.UPDATE.toString());
+        aList.add(aMap);
+        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        retSources = getSearchResponseDocSources(testIndexAlias);
+
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        Map<String, Object> source = retSources.get(0);
+        MatcherAssert.assertThat((String)source.get("name"), equalTo("value2"));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
+    }
+
+    @Test
+    public void testBulkActionUpsertWithActions() throws IOException, InterruptedException {
+        final String testIndexAlias = "test-alias-upd2";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
+
+        final String testIdField = "someId";
+        final String testId = "foo";
+        List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "name", "value1")));
+
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
+        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        List<Map<String, Object>> aList = new ArrayList<>();
+        Map<String, Object> aMap = new HashMap<>();
+        aMap.put("type", BulkAction.CREATE.toString());
+        aList.add(aMap);
+        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
+
+        // verify metrics
+        final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+        MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+        // COUNT
+        Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+        testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson3(testIdField, testId, "name", "value3", "newKey", "newValue")));
+        aList = new ArrayList<>();
+        aMap = new HashMap<>();
+        aMap.put("type", BulkAction.UPSERT.toString());
+        aList.add(aMap);
+        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        retSources = getSearchResponseDocSources(testIndexAlias);
+
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        Map<String, Object> source = retSources.get(0);
+        MatcherAssert.assertThat((String)source.get("name"), equalTo("value3"));
+        MatcherAssert.assertThat((String)source.get("newKey"), equalTo("newValue"));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
+    }
+
+    @Test
+    public void testBulkActionUpsertWithoutCreate() throws IOException, InterruptedException {
+        final String testIndexAlias = "test-alias-upd2";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
+
+        final String testIdField = "someId";
+        final String testId = "foo";
+        List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson3(testIdField, testId, "name", "value1", "newKey", "newValue")));
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
+        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        List<Map<String, Object>> aList = new ArrayList<>();
+        Map<String, Object> aMap = new HashMap<>();
+        aMap.put("type", BulkAction.UPSERT.toString());
+        aList.add(aMap);
+        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        Map<String, Object> source = retSources.get(0);
+        MatcherAssert.assertThat((String)source.get("name"), equalTo("value1"));
+        MatcherAssert.assertThat((String)source.get("newKey"), equalTo("newValue"));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
+        // verify metrics
+        final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+        MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+        // COUNT
+        Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+    }
+
+    @Test
+    public void testBulkActionDeleteWithActions() throws IOException, InterruptedException {
+        final String testIndexAlias = "test-alias-upd1";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
+
+        final String testIdField = "someId";
+        final String testId = "foo";
+        List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
+
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
+        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        List<Map<String, Object>> aList = new ArrayList<>();
+        Map<String, Object> aMap = new HashMap<>();
+        aMap.put("type", BulkAction.DELETE.toString());
+        aList.add(aMap);
+        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        MatcherAssert.assertThat(retSources.size(), equalTo(0));
+        sink.shutdown();
+    }
+
+    @Test
     @DisabledIf(value = "isES6", disabledReason = TRACE_INGESTION_TEST_DISABLED_REASON)
     public void testEventOutputWithTags() throws IOException, InterruptedException {
         final Event testEvent = JacksonEvent.builder()
@@ -961,6 +1204,27 @@ public class OpenSearchSinkIT {
         );
     }
 
+    private String generateCustomRecordJson2(final String idField, final String documentId, final String key, final String value) throws IOException {
+        return Strings.toString(
+                XContentFactory.jsonBuilder()
+                        .startObject()
+                        .field(idField, documentId)
+                        .field(key, value)
+                        .endObject()
+        );
+    }
+
+    private String generateCustomRecordJson3(final String idField, final String documentId, final String key1, final String value1, final String key2, final String value2) throws IOException {
+        return Strings.toString(
+                XContentFactory.jsonBuilder()
+                        .startObject()
+                        .field(idField, documentId)
+                        .field(key1, value1)
+                        .field(key2, value2)
+                        .endObject()
+        );
+    }
+
     private String readDocFromFile(final String filename) throws IOException {
         final StringBuilder jsonBuilder = new StringBuilder();
         try (final InputStream inputStream = Objects.requireNonNull(
@@ -1089,6 +1353,7 @@ public class OpenSearchSinkIT {
                 .filter(Predicate.not(indexName -> indexName.startsWith(".opendistro_")))
                 .filter(Predicate.not(indexName -> indexName.startsWith(".opensearch-")))
                 .filter(Predicate.not(indexName -> indexName.startsWith(".opensearch_")))
+                .filter(Predicate.not(indexName -> indexName.startsWith(".plugins-ml-config")))
                 .forEach(indexName -> {
                     try {
                         client.performRequest(new Request("DELETE", "/" + indexName));

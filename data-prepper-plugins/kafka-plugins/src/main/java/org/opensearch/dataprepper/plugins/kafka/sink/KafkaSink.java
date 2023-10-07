@@ -20,7 +20,7 @@ import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.producer.KafkaSinkProducer;
+import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
 import org.opensearch.dataprepper.plugins.kafka.service.TopicService;
@@ -111,7 +111,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         }
         try {
             prepareTopicAndSchema();
-            final KafkaSinkProducer producer = createProducer();
+            final KafkaCustomProducer producer = createProducer();
             records.forEach(record -> {
                 producerWorker = new ProducerWorker(producer, record);
                 executorService.submit(producerWorker);
@@ -152,10 +152,10 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     }
 
-    public KafkaSinkProducer createProducer() {
+    public KafkaCustomProducer createProducer() {
         Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig);
         properties = Objects.requireNonNull(properties);
-        return new KafkaSinkProducer(new KafkaProducer<>(properties),
+        return new KafkaCustomProducer(new KafkaProducer<>(properties),
                 kafkaSinkConfig, new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting),
                 expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null);
     }

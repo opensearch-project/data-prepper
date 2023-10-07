@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -24,7 +25,7 @@ import java.util.Optional;
  * pipelines.yaml
  */
 
-public class KafkaSinkConfig {
+public class KafkaSinkConfig implements KafkaProducerConfig{
 
     public static final String DLQ = "dlq";
 
@@ -72,7 +73,12 @@ public class KafkaSinkConfig {
     @JsonProperty("serde_format")
     private String serdeFormat;
 
+    @JsonProperty("encryption")
+    private EncryptionConfig encryptionConfig;
 
+    @JsonProperty("aws")
+    @Valid
+    private AwsConfig awsConfig;
     @JsonProperty("partition_key")
     @NotNull
     @NotEmpty
@@ -90,8 +96,20 @@ public class KafkaSinkConfig {
         return authConfig;
     }
 
+    @Override
+    public EncryptionConfig getEncryptionConfig() {
+        if (Objects.isNull(encryptionConfig)) {
+            return new EncryptionConfig();
+        }
+        return encryptionConfig;
+    }
+    @Override
+    public AwsConfig getAwsConfig() {
+        return awsConfig;
+    }
 
-    public List<String> getBootStrapServers() {
+
+    public List<String> getBootstrapServers() {
         return bootStrapServers;
     }
 

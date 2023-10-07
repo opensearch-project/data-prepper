@@ -18,7 +18,7 @@ dependencies {
     implementation 'software.amazon.awssdk:sts'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.21'
     implementation project(':data-prepper-plugins:avro-codecs')
-    implementation 'org.apache.avro:avro:1.11.1'
+    implementation libs.avro.core
     implementation libs.hadoop.common
     implementation 'org.apache.parquet:parquet-avro:1.13.1'
     implementation 'software.amazon.awssdk:apache-client'

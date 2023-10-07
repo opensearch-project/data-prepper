@@ -5,7 +5,7 @@ log-pipeline:
         - 127.0.0.1:9093
       client_dns_lookup: use_all_dns_ips
       encryption:
-        type: none
+        type: ssl
       topics:
         - name: my-topic-1
           group_id: my-test-group

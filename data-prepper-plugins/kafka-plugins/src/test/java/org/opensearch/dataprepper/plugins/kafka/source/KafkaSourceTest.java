@@ -5,11 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
+import org.apache.kafka.common.config.ConfigException;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
@@ -31,8 +33,11 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Collections;
 import java.util.Objects;
 import java.time.Duration;
 
@@ -110,7 +116,7 @@ class KafkaSourceTest {
         when(topic2.getAutoCommit()).thenReturn(false);
         when(topic1.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
         when(topic2.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
-        when(sourceConfig.getBootStrapServers()).thenReturn("http://localhost:1234");
+        when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList("http://localhost:1234"));
         when(sourceConfig.getTopics()).thenReturn(Arrays.asList(topic1, topic2));
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
@@ -147,6 +153,20 @@ class KafkaSourceTest {
         assertTrue(Objects.nonNull(kafkaSource));
         kafkaSource.start(buffer);
         assertTrue(Objects.nonNull(kafkaSource.getConsumer()));
+    }
+
+    @Test
+    void test_kafkaSource_retry_consumer_create() throws InterruptedException {
+        when(topic1.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+        when(topic2.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+        kafkaSource = spy(createObjectUnderTest());
+        doNothing().when(kafkaSource).sleep(anyLong());
+
+        doThrow(new ConfigException("No resolvable bootstrap urls given in bootstrap.servers"))
+            .doCallRealMethod()
+            .when(kafkaSource)
+            .createKafkaConsumer(any(), any());
+        kafkaSource.start(buffer);
     }
 
     @Test

@@ -185,7 +185,7 @@ public class MskGlueRegistryMultiTypeIT {
         testAvroSchemaName = System.getProperty("tests.kafka.glue_avro_schema_name");
         testMskArn = System.getProperty("tests.msk.arn");
         testMskRegion = System.getProperty("tests.msk.region");
-        when(sourceConfig.getBootStrapServers()).thenReturn(bootstrapServers);
+        when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
         encryptionConfig = mock(EncryptionConfig.class);
         when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
         System.setProperty("software.amazon.awssdk.http.service.impl", "software.amazon.awssdk.http.urlconnection.UrlConnectionSdkHttpService");

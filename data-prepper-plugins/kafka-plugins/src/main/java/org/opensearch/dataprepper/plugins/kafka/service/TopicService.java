@@ -6,7 +6,7 @@ package org.opensearch.dataprepper.plugins.kafka.service;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.SinkPropertyConfigurer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,8 +18,8 @@ public class TopicService {
     private final AdminClient adminClient;
 
 
-    public TopicService(final KafkaSinkConfig sinkConfig) {
-        this.adminClient = AdminClient.create(SinkPropertyConfigurer.getPropertiesForAdmintClient(sinkConfig));
+    public TopicService(final KafkaProducerConfig kafkaProducerConfig) {
+        this.adminClient = AdminClient.create(SinkPropertyConfigurer.getPropertiesForAdminClient(kafkaProducerConfig));
     }
 
     public void createTopic(final String topicName, final Integer numberOfPartitions, final Short replicationFactor) {
@@ -29,7 +29,7 @@ public class TopicService {
             LOG.info(topicName + " created successfully");
 
         } catch (Exception e) {
-            LOG.info(topicName + " Topic already created so using the existing one");
+            LOG.error("Caught exception creating topic with name: {}", topicName, e);
         }
     }
 

@@ -19,7 +19,7 @@ import java.util.Objects;
  * pipelines.yaml
  */
 
-public class KafkaSourceConfig implements KafkaClusterAuthConfig {
+public class KafkaSourceConfig implements KafkaConsumerConfig, KafkaClusterAuthConfig {
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootStrapServers;
@@ -54,7 +54,7 @@ public class KafkaSourceConfig implements KafkaClusterAuthConfig {
         return clientDnsLookup;
     }
 
-    public Boolean getAcknowledgementsEnabled() {
+    public boolean getAcknowledgementsEnabled() {
         return acknowledgementsEnabled;
     }
 
@@ -66,9 +66,9 @@ public class KafkaSourceConfig implements KafkaClusterAuthConfig {
         this.topics = topics;
     }
 
-    public String getBootStrapServers() {
+    public List<String> getBootstrapServers() {
         if (Objects.nonNull(bootStrapServers)) {
-            return String.join(",", bootStrapServers);
+            return bootStrapServers;
         }
         return null;
     }

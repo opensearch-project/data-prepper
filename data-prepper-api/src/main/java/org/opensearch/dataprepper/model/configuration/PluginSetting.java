@@ -158,6 +158,34 @@ public class PluginSetting implements PipelineDescription {
     }
 
     /**
+     * Returns the value of the specified {@literal List<Map<String, String>>}, or {@code defaultValue} if this settings contains no value for
+     * the attribute.
+     *
+     * @param keyType      key type of the Map
+     * @param valueType    value type stored in the Map
+     * @param <K> The key type
+     * @param <V> The value type
+     * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
+     * the attribute
+     */
+    public <K, V> List<Map<K, V>> getTypedListOfMaps(final String attribute, final Class<K> keyType, final Class<V> valueType) {
+        Object object = getAttributeOrDefault(attribute, null);
+        if (object == null) {
+            return null;
+        }
+
+        checkObjectType(attribute, object, List.class);
+
+        for (final Map<K, V> listItem: (List<Map<K, V>>) object) {
+            ((Map<?, ?>) listItem).forEach((key, value) -> {
+                checkObjectType(attribute, key, keyType);
+                checkObjectType(attribute, value, valueType);
+            });
+        }
+        return (List<Map<K, V>>) object;
+    }
+
+    /**
      * Returns the value of the specified {@literal Map<String, String> object}, or {@code defaultValue} if this settings contains no value for
      * the attribute.
      *
