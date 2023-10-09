@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
@@ -70,5 +71,10 @@ class CircuitBreakingBuffer<T extends Record<?>> implements Buffer<T> {
     @Override
     public boolean isEmpty() {
         return buffer.isEmpty();
+    }
+
+    @Override
+    public Duration getDrainTimeout() {
+        return buffer.getDrainTimeout();
     }
 }

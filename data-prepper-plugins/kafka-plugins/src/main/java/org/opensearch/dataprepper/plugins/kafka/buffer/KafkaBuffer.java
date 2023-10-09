@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaBufferConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
@@ -19,6 +20,7 @@ import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFact
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -36,19 +38,23 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private final KafkaCustomProducer producer;
     private final AbstractBuffer innerBuffer;
     private final ExecutorService executorService;
+    private final Duration drainTimeout;
 
     @DataPrepperPluginConstructor
     public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig, final PluginFactory pluginFactory,
                        final AcknowledgementSetManager acknowledgementSetManager, final PluginMetrics pluginMetrics){
         super(pluginSetting);
-        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory();
+        SerializationFactory serializationFactory = new SerializationFactory();
+        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory);
         producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, pluginFactory, pluginSetting,  null, null);
-        final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory();
+        final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory);
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         final List<KafkaCustomConsumer> consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
             innerBuffer, pluginMetrics, acknowledgementSetManager, new AtomicBoolean(false));
         this.executorService = Executors.newFixedThreadPool(consumers.size());
         consumers.forEach(this.executorService::submit);
+
+        this.drainTimeout = kafkaBufferConfig.getDrainTimeout();
     }
 
     @Override
@@ -87,5 +93,10 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     public boolean isEmpty() {
         // TODO: check Kafka topic is empty as well.
         return innerBuffer.isEmpty();
+    }
+
+    @Override
+    public Duration getDrainTimeout() {
+        return drainTimeout;
     }
 }

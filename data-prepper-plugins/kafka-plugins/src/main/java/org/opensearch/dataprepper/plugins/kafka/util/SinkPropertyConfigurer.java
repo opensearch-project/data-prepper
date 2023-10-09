@@ -6,12 +6,9 @@
 package org.opensearch.dataprepper.plugins.kafka.util;
 
 
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.TopicConfig;
-import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.connect.json.JsonSerializer;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
@@ -113,8 +110,6 @@ public class SinkPropertyConfigurer {
 
         setCommonServerProperties(properties, kafkaProducerConfig);
 
-        setPropertiesForSerializer(properties, kafkaProducerConfig.getSerdeFormat());
-        
         if (kafkaProducerConfig.getSchemaConfig() != null) {
             setSchemaProps(kafkaProducerConfig.getSerdeFormat(), kafkaProducerConfig.getSchemaConfig(), properties);
         }
@@ -153,17 +148,6 @@ public class SinkPropertyConfigurer {
             properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, String.join(",", kafkaSinkConfig.getBootstrapServers()));
         }
         properties.put(CommonClientConfigs.SESSION_TIMEOUT_MS_CONFIG, SESSION_TIMEOUT_MS_CONFIG);
-    }
-
-    private static void setPropertiesForSerializer(final Properties properties, final String serdeFormat) {
-        properties.put(KEY_SERIALIZER, StringSerializer.class.getName());
-        if (serdeFormat.equalsIgnoreCase(MessageFormat.JSON.toString())) {
-            properties.put(VALUE_SERIALIZER, JsonSerializer.class.getName());
-        } else if (serdeFormat.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
-            properties.put(VALUE_SERIALIZER, KafkaAvroSerializer.class.getName());
-        } else {
-            properties.put(VALUE_SERIALIZER, StringSerializer.class.getName());
-        }
     }
 
     private static void validateForRegistryURL(final String serdeFormat, final SchemaConfig schemaConfig) {

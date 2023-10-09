@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,6 +31,7 @@ import org.opensearch.client.opensearch.core.pit.DeletePitRequest;
 import org.opensearch.client.opensearch.core.pit.DeletePitResponse;
 import org.opensearch.client.opensearch.core.search.Hit;
 import org.opensearch.client.opensearch.core.search.HitsMetadata;
+import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
@@ -68,10 +70,17 @@ import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client
 public class OpenSearchAccessorTest {
 
     @Mock
+    private ClientRefresher clientRefresher;
+    @Mock
     private OpenSearchClient openSearchClient;
 
     private SearchAccessor createObjectUnderTest() {
-        return new OpenSearchAccessor(openSearchClient, SearchContextType.POINT_IN_TIME);
+        return new OpenSearchAccessor(clientRefresher, SearchContextType.POINT_IN_TIME);
+    }
+
+    @BeforeEach
+    void setup() {
+        when(clientRefresher.get()).thenReturn(openSearchClient);
     }
 
     @Test

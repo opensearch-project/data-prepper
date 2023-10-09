@@ -7,11 +7,13 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
+    private static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(30);
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootStrapServers;
@@ -38,6 +40,9 @@ public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConf
     @JsonProperty("aws")
     @Valid
     private AwsConfig awsConfig;
+
+    @JsonProperty("drain_timeout")
+    private Duration drainTimeout = DEFAULT_DRAIN_TIMEOUT;
 
 
     public List<String> getBootstrapServers() {
@@ -112,5 +117,9 @@ public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConf
     @Override
     public boolean getAcknowledgementsEnabled() {
         return false;
+    }
+
+    public Duration getDrainTimeout() {
+        return drainTimeout;
     }
 }

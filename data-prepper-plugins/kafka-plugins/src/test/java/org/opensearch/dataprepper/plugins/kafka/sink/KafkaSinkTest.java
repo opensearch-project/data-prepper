@@ -57,7 +57,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-public class KafkasinkTest {
+public class KafkaSinkTest {
 
 
     KafkaSink kafkaSink;

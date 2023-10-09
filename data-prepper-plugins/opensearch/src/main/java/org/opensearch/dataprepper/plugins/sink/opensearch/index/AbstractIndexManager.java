@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
+import org.apache.http.HttpStatus;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
@@ -39,6 +40,7 @@ public abstract class AbstractIndexManager implements IndexManager {
             = "Invalid alias name [%s], an index exists with the same name as the alias";
     public static final String INVALID_INDEX_ALIAS_ERROR
             = "invalid_index_name_exception";
+    static final Set<Integer> NO_ISM_HTTP_STATUS = Set.of(HttpStatus.SC_NOT_FOUND, HttpStatus.SC_BAD_REQUEST);
     private static final String TIME_PATTERN_STARTING_SYMBOLS = "%{";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     protected RestHighLevelClient restHighLevelClient;
@@ -178,9 +180,16 @@ public abstract class AbstractIndexManager implements IndexManager {
         final GetClusterSettingsRequest request = new GetClusterSettingsRequest.Builder()
                 .includeDefaults(true)
                 .build();
-        final GetClusterSettingsResponse response = openSearchClient.cluster().getSettings(request);
-        final String enabled = getISMEnabled(response);
-        return enabled != null && enabled.equals("true");
+        try {
+            final GetClusterSettingsResponse response = openSearchClient.cluster().getSettings(request);
+            final String enabled = getISMEnabled(response);
+            return enabled != null && enabled.equals("true");
+        } catch (OpenSearchException ex) {
+            if (NO_ISM_HTTP_STATUS.contains(ex.status())) {
+                return false;
+            }
+            throw ex;
+        }
     }
 
     private String getISMEnabled(final GetClusterSettingsResponse response) {
