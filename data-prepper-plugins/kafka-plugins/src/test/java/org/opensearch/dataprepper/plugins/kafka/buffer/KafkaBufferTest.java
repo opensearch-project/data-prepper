@@ -33,12 +33,15 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeoutException;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -218,5 +221,15 @@ class KafkaBufferTest {
     }
 
 
+    @Test
+    void test_kafkaBuffer_getDrainTimeout() {
+        final Duration duration = Duration.ofMillis(new Random().nextLong());
+        when(bufferConfig.getDrainTimeout()).thenReturn(duration);
+        kafkaBuffer = createObjectUnderTest();
 
+        final Duration result = kafkaBuffer.getDrainTimeout();
+        assertThat(result, equalTo(duration));
+
+        verify(bufferConfig).getDrainTimeout();
+    }
 }

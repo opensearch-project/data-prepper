@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFact
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private final KafkaCustomProducer producer;
     private final AbstractBuffer innerBuffer;
     private final ExecutorService executorService;
+    private final Duration drainTimeout;
 
     @DataPrepperPluginConstructor
     public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig, final PluginFactory pluginFactory,
@@ -49,6 +51,8 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
             innerBuffer, pluginMetrics, acknowledgementSetManager, new AtomicBoolean(false));
         this.executorService = Executors.newFixedThreadPool(consumers.size());
         consumers.forEach(this.executorService::submit);
+
+        this.drainTimeout = kafkaBufferConfig.getDrainTimeout();
     }
 
     @Override
@@ -87,5 +91,10 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     public boolean isEmpty() {
         // TODO: check Kafka topic is empty as well.
         return innerBuffer.isEmpty();
+    }
+
+    @Override
+    public Duration getDrainTimeout() {
+        return drainTimeout;
     }
 }
