@@ -116,7 +116,7 @@ public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConf
 
     @Override
     public boolean getAcknowledgementsEnabled() {
-        return true;
+        return false;
     }
 
     public Duration getDrainTimeout() {
