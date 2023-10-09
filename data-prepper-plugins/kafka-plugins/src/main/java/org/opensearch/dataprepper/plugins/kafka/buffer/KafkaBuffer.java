@@ -46,6 +46,7 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     static final String WRITE = "Write";
     static final String READ = "Read";
     private final KafkaCustomProducer producer;
+    private final List<KafkaCustomConsumer> emptyCheckingConsumers;
     private final AbstractBuffer innerBuffer;
     private final ExecutorService executorService;
     private final Duration drainTimeout;
@@ -69,6 +70,8 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         final PluginMetrics consumerMetrics = PluginMetrics.fromNames(metricPrefixName + READ, pluginSetting.getPipelineName());
         final List<KafkaCustomConsumer> consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
             innerBuffer, consumerMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false);
+        emptyCheckingConsumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
+                innerBuffer, pluginMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false);
         this.executorService = Executors.newFixedThreadPool(consumers.size());
         consumers.forEach(this.executorService::submit);
 
@@ -124,8 +127,11 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
 
     @Override
     public boolean isEmpty() {
+        final boolean areTopicsEmpty = emptyCheckingConsumers.stream()
+                .allMatch(KafkaCustomConsumer::isEmpty);
+
         // TODO: check Kafka topic is empty as well.
-        return innerBuffer.isEmpty();
+        return areTopicsEmpty && innerBuffer.isEmpty();
     }
 
     @Override
