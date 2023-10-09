@@ -25,6 +25,7 @@ import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.errors.BrokerNotAvailableException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.connect.json.JsonDeserializer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -43,7 +44,6 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
@@ -357,7 +357,7 @@ public class KafkaSource implements Source<Record<Event>> {
                 StringDeserializer.class);
         switch (dataFormat) {
             case JSON:
-                properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaSourceJsonDeserializer.class);
+                properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
                 break;
             default:
             case PLAINTEXT:

@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaBufferConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
@@ -41,9 +42,10 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig, final PluginFactory pluginFactory,
                        final AcknowledgementSetManager acknowledgementSetManager, final PluginMetrics pluginMetrics){
         super(pluginSetting);
-        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory();
+        SerializationFactory serializationFactory = new SerializationFactory();
+        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory);
         producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, pluginFactory, pluginSetting,  null, null);
-        final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory();
+        final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory);
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         final List<KafkaCustomConsumer> consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
             innerBuffer, pluginMetrics, acknowledgementSetManager, new AtomicBoolean(false));

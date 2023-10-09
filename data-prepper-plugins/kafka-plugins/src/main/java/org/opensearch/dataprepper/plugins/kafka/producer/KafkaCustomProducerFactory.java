@@ -1,9 +1,13 @@
 package org.opensearch.dataprepper.plugins.kafka.producer;
 
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.common.serialization.Serializer;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.plugins.kafka.common.PlaintextKafkaDataConfig;
+import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
@@ -22,6 +26,12 @@ import java.util.Properties;
 
 public class KafkaCustomProducerFactory {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumerFactory.class);
+    private final SerializationFactory serializationFactory;
+
+    public KafkaCustomProducerFactory(final SerializationFactory serializationFactory) {
+
+        this.serializationFactory = serializationFactory;
+    }
 
     public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaProducerConfig, final PluginFactory pluginFactory, final PluginSetting pluginSetting,
                                               final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext) {
@@ -29,8 +39,13 @@ public class KafkaCustomProducerFactory {
         Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaProducerConfig);
         KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, LOG);
         properties = Objects.requireNonNull(properties);
-        return new KafkaCustomProducer(new org.apache.kafka.clients.producer.KafkaProducer<>(properties),
-            kafkaProducerConfig, new DLQSink(pluginFactory, kafkaProducerConfig, pluginSetting),
+        TopicConfig topic = kafkaProducerConfig.getTopic();
+        Serializer<Object> keyDeserializer = (Serializer<Object>) serializationFactory.getSerializer(PlaintextKafkaDataConfig.plaintextDataConfig(topic));
+        Serializer<Object> valueSerializer = (Serializer<Object>) serializationFactory.getSerializer(topic);
+        final KafkaProducer<Object, Object> producer = new KafkaProducer<>(properties, keyDeserializer, valueSerializer);
+        final DLQSink dlqSink = new DLQSink(pluginFactory, kafkaProducerConfig, pluginSetting);
+        return new KafkaCustomProducer(producer,
+            kafkaProducerConfig, dlqSink,
             expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null);
     }
     private void prepareTopicAndSchema(final KafkaProducerConfig kafkaProducerConfig) {

@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.types.ByteCount;
 
+import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
@@ -18,7 +19,7 @@ import java.time.Duration;
  * * A helper class that helps to read consumer configuration values from
  * pipelines.yaml
  */
-public class TopicConfig {
+public class TopicConfig implements KafkaDataConfig {
     static final boolean DEFAULT_AUTO_COMMIT = false;
     static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
     static final Duration DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(45);
