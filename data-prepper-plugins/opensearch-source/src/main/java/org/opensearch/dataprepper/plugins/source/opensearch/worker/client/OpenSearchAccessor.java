@@ -27,6 +27,8 @@ import org.opensearch.client.opensearch.core.search.Pit;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
+import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
@@ -55,7 +57,7 @@ import java.util.stream.Collectors;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
-public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory {
+public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<OpenSearchClient> {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchAccessor.class);
 
@@ -63,12 +65,13 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     static final String INDEX_NOT_FOUND_EXCEPTION = "index_not_found_exception";
     static final String SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE = "Trying to create too many scroll contexts";
 
-    private final OpenSearchClient openSearchClient;
+    private final PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> clientRefresher;
     private final SearchContextType searchContextType;
 
-    public OpenSearchAccessor(final OpenSearchClient openSearchClient,
+    public OpenSearchAccessor(final PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration>
+                                      clientRefresher,
                               final SearchContextType searchContextType) {
-        this.openSearchClient = openSearchClient;
+        this.clientRefresher = clientRefresher;
         this.searchContextType = searchContextType;
     }
 
@@ -81,7 +84,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     public CreatePointInTimeResponse createPit(final CreatePointInTimeRequest createPointInTimeRequest) {
         CreatePitResponse createPitResponse;
         try {
-            createPitResponse = openSearchClient.createPit(CreatePitRequest.of(builder -> builder
+            createPitResponse = clientRefresher.get()
+                    .createPit(CreatePitRequest.of(builder -> builder
                     .targetIndexes(createPointInTimeRequest.getIndex())
                     .keepAlive(new Time.Builder().time(createPointInTimeRequest.getKeepAlive()).build())));
         } catch (final OpenSearchException e) {
@@ -131,7 +135,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     @Override
     public void deletePit(final DeletePointInTimeRequest deletePointInTimeRequest) {
         try {
-            final DeletePitResponse deletePitResponse = openSearchClient.deletePit(DeletePitRequest.of(builder -> builder.pitId(Collections.singletonList(deletePointInTimeRequest.getPitId()))));
+            final DeletePitResponse deletePitResponse = clientRefresher.get()
+                    .deletePit(DeletePitRequest.of(builder -> builder.pitId(Collections.singletonList(deletePointInTimeRequest.getPitId()))));
             if (isPitDeletedSuccessfully(deletePitResponse)) {
                 LOG.debug("Successfully deleted point in time id {}", deletePointInTimeRequest.getPitId());
             } else {
@@ -147,7 +152,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
 
         SearchResponse<ObjectNode> searchResponse;
         try {
-            searchResponse = openSearchClient.search(SearchRequest.of(request -> request
+            searchResponse = clientRefresher.get()
+                    .search(SearchRequest.of(request -> request
                     .scroll(Time.of(time -> time.time(createScrollRequest.getScrollTime())))
                     .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
                     .size(createScrollRequest.getSize())
@@ -179,7 +185,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     public SearchScrollResponse searchWithScroll(final SearchScrollRequest searchScrollRequest) {
         SearchResponse<ObjectNode> searchResponse;
         try {
-            searchResponse = openSearchClient.scroll(ScrollRequest.of(request -> request
+            searchResponse = clientRefresher.get().scroll(ScrollRequest.of(request -> request
                     .scrollId(searchScrollRequest.getScrollId())
                     .scroll(Time.of(time -> time.time(searchScrollRequest.getScrollTime())))), ObjectNode.class);
         } catch (final OpenSearchException e) {
@@ -199,7 +205,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     @Override
     public void deleteScroll(final DeleteScrollRequest deleteScrollRequest) {
         try {
-            final ClearScrollResponse clearScrollResponse = openSearchClient.clearScroll(ClearScrollRequest.of(request -> request.scrollId(deleteScrollRequest.getScrollId())));
+            final ClearScrollResponse clearScrollResponse = clientRefresher.get()
+                    .clearScroll(ClearScrollRequest.of(request -> request.scrollId(deleteScrollRequest.getScrollId())));
             if (clearScrollResponse.succeeded()) {
                 LOG.debug("Successfully deleted scroll context with id {}", deleteScrollRequest.getScrollId());
             } else {
@@ -233,8 +240,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     }
 
     @Override
-    public Object getClient() {
-        return openSearchClient;
+    public PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> getClientRefresher() {
+        return clientRefresher;
     }
 
     private boolean isPitDeletedSuccessfully(final DeletePitResponse deletePitResponse) {
@@ -259,7 +266,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
 
     private SearchWithSearchAfterResults searchWithSearchAfter(final SearchRequest searchRequest) {
         try {
-            final SearchResponse<ObjectNode> searchResponse = openSearchClient.search(searchRequest, ObjectNode.class);
+            final SearchResponse<ObjectNode> searchResponse = clientRefresher.get()
+                    .search(searchRequest, ObjectNode.class);
 
             final List<Event> documents = getDocumentsFromResponse(searchResponse);
 

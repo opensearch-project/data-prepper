@@ -8,6 +8,13 @@ package org.opensearch.dataprepper.model.plugin;
  */
 public interface PluginComponentRefresher<PluginComponent, PluginConfig> {
     /**
+     * Returns the {@link PluginComponent} class.
+     *
+     * @return {@link PluginComponent} class.
+     */
+    Class<PluginComponent> getComponentClass();
+
+    /**
      * Returns the refreshed {@link PluginComponent}.
      *
      * @return An instance of {@link PluginComponent}.
