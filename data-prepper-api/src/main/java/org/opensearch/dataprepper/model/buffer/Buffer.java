@@ -58,4 +58,7 @@ public interface Buffer<T extends Record<?>> {
     default Duration getDrainTimeout() {
         return Duration.ZERO;
     }
+
+    default void shutdown() {
+    }
 }

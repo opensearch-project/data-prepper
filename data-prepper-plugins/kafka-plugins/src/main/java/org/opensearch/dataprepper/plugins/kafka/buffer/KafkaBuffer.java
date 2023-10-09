@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -32,12 +33,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaBuffer.class);
+    static final long EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT = 30L;
     public static final int INNER_BUFFER_CAPACITY = 1000000;
     public static final int INNER_BUFFER_BATCH_SIZE = 250000;
     private final KafkaCustomProducer producer;
+    private final List<KafkaCustomConsumer> emptyCheckingConsumers;
     private final AbstractBuffer innerBuffer;
     private final ExecutorService executorService;
     private final Duration drainTimeout;
+    private AtomicBoolean shutdownInProgress;
 
     @DataPrepperPluginConstructor
     public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig, final PluginFactory pluginFactory,
@@ -47,8 +51,11 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, pluginFactory, pluginSetting,  null, null);
         final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory();
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
+        this.shutdownInProgress = new AtomicBoolean(false);
         final List<KafkaCustomConsumer> consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
-            innerBuffer, pluginMetrics, acknowledgementSetManager, new AtomicBoolean(false));
+            innerBuffer, pluginMetrics, acknowledgementSetManager, shutdownInProgress);
+        emptyCheckingConsumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
+                innerBuffer, pluginMetrics, acknowledgementSetManager, shutdownInProgress);
         this.executorService = Executors.newFixedThreadPool(consumers.size());
         consumers.forEach(this.executorService::submit);
 
@@ -96,5 +103,25 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     @Override
     public Duration getDrainTimeout() {
         return drainTimeout;
+    }
+
+    @Override
+    public void shutdown() {
+        shutdownInProgress.set(true);
+        executorService.shutdown();
+
+        try {
+            if (executorService.awaitTermination(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT, TimeUnit.SECONDS)) {
+                LOG.info("Successfully waited for consumer task to terminate");
+            } else {
+                LOG.warn("Consumer task did not terminate in time, forcing termination");
+                executorService.shutdownNow();
+            }
+        } catch (final InterruptedException e) {
+            LOG.error("Interrupted while waiting for consumer task to terminate", e);
+            executorService.shutdownNow();
+        }
+
+        innerBuffer.shutdown();
     }
 }
