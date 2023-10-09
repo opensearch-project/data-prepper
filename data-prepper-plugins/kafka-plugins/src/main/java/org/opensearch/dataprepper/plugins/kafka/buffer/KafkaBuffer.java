@@ -37,7 +37,6 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     public static final int INNER_BUFFER_CAPACITY = 1000000;
     public static final int INNER_BUFFER_BATCH_SIZE = 250000;
     private final KafkaCustomProducer producer;
-    private final List<KafkaCustomConsumer> emptyCheckingConsumers;
     private final AbstractBuffer innerBuffer;
     private final ExecutorService executorService;
     private final Duration drainTimeout;
@@ -54,8 +53,6 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         this.shutdownInProgress = new AtomicBoolean(false);
         final List<KafkaCustomConsumer> consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
             innerBuffer, pluginMetrics, acknowledgementSetManager, shutdownInProgress);
-        emptyCheckingConsumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
-                innerBuffer, pluginMetrics, acknowledgementSetManager, shutdownInProgress);
         this.executorService = Executors.newFixedThreadPool(consumers.size());
         consumers.forEach(this.executorService::submit);
 
