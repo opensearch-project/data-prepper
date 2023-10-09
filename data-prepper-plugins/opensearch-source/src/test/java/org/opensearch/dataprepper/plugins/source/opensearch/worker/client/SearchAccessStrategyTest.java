@@ -19,6 +19,7 @@ import org.opensearch.client.opensearch._types.OpenSearchVersionInfo;
 import org.opensearch.client.opensearch.core.InfoResponse;
 import org.opensearch.client.util.MissingRequiredPropertyException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
@@ -30,7 +31,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessorStrategy.OPENSEARCH_DISTRIBUTION;
 
@@ -43,8 +47,12 @@ public class SearchAccessStrategyTest {
     @Mock
     private OpenSearchSourceConfiguration openSearchSourceConfiguration;
 
+    @Mock
+    private PluginConfigObservable pluginConfigObservable;
+
     private SearchAccessorStrategy createObjectUnderTest() {
-        return SearchAccessorStrategy.create(openSearchSourceConfiguration, openSearchClientFactory);
+        return SearchAccessorStrategy.create(
+                openSearchSourceConfiguration, openSearchClientFactory, pluginConfigObservable);
     }
 
     @ParameterizedTest
@@ -67,6 +75,7 @@ public class SearchAccessStrategyTest {
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
     }
 
     @ParameterizedTest
@@ -95,7 +104,7 @@ public class SearchAccessStrategyTest {
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
-
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
     }
 
     @ParameterizedTest
@@ -146,6 +155,7 @@ public class SearchAccessStrategyTest {
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.SCROLL));
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
     }
 
     @ParameterizedTest
@@ -190,6 +200,7 @@ public class SearchAccessStrategyTest {
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.NONE));
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
     }
 
     @Test
@@ -206,6 +217,7 @@ public class SearchAccessStrategyTest {
 
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.NONE));
+        verifyNoInteractions(pluginConfigObservable);
     }
 
     @ParameterizedTest
@@ -241,5 +253,6 @@ public class SearchAccessStrategyTest {
 
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.valueOf(searchContextType)));
+        verifyNoInteractions(pluginConfigObservable);
     }
 }
