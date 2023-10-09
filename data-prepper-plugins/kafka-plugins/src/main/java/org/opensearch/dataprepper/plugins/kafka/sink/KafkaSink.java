@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.kafka.sink;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -17,21 +16,20 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
+import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
 import org.opensearch.dataprepper.plugins.kafka.service.TopicService;
 import org.opensearch.dataprepper.plugins.kafka.util.RestUtils;
-import org.opensearch.dataprepper.plugins.kafka.util.SinkPropertyConfigurer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
-import java.util.Objects;
-import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -48,6 +46,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSink.class);
 
     private final KafkaSinkConfig kafkaSinkConfig;
+    private final KafkaCustomProducerFactory kafkaCustomProducerFactory;
 
     private volatile boolean sinkInitialized;
 
@@ -79,6 +78,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         reentrantLock = new ReentrantLock();
         this.sinkContext = sinkContext;
 
+        SerializationFactory serializationFactory = new SerializationFactory();
+        kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory);
 
     }
 
@@ -153,11 +154,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     }
 
     public KafkaCustomProducer createProducer() {
-        Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig);
-        properties = Objects.requireNonNull(properties);
-        return new KafkaCustomProducer(new KafkaProducer<>(properties),
-                kafkaSinkConfig, new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting),
-                expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null);
+        // TODO: Add the DLQSink here. new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting)
+        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, pluginFactory, pluginSetting, expressionEvaluator, sinkContext);
     }
 
 
