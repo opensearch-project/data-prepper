@@ -25,7 +25,6 @@ dependencies {
         exclude group: 'org.glassfish.jersey.inject', module: 'jersey-hk2'
         exclude group: 'org.glassfish.jersey.ext', module: 'jersey-bean-validation'
     }
-    runtimeOnly 'org.jetbrains.kotlin:kotlin-compiler:1.8.21'
     // Common Debezium Connector
     implementation 'io.debezium:debezium-api:2.3.0.Final'
     implementation 'io.debezium:debezium-core:2.3.0.Final'
