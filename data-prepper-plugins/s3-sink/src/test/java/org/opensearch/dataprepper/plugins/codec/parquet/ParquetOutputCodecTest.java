@@ -121,6 +121,7 @@ public class ParquetOutputCodecTest {
             assertThat(expectedMap, Matchers.equalTo(actualMap));
             index++;
         }
+        outputStream.close();
         tempFile.delete();
     }
 
@@ -224,7 +225,7 @@ public class ParquetOutputCodecTest {
         final File tempFile = new File(tempDirectory, FILE_NAME);
         LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
         objectUnderTest.start(outputStream, createEventRecord(generateRecords(1).get(0)), codecContext);
-
+        outputStream.close();
         final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.writeEvent(eventWithInvalidField, outputStream));
 
         assertThat(actualException.getMessage(), notNullValue());
@@ -252,6 +253,7 @@ public class ParquetOutputCodecTest {
 
         ParquetOutputCodec objectUnderTest = createObjectUnderTest();
         objectUnderTest.start(outputStream, null, codecContext);
+        outputStream.close();
         Optional<Long> actualSizeOptional = objectUnderTest.getSize();
         assertThat(actualSizeOptional, notNullValue());
         assertThat(actualSizeOptional.isPresent(), equalTo(true));
@@ -279,6 +281,7 @@ public class ParquetOutputCodecTest {
             Event event = createEventRecord(record);
             objectUnderTest.writeEvent(event, outputStream);
         }
+        outputStream.close();
 
         Optional<Long> actualSizeOptional = objectUnderTest.getSize();
         assertThat(actualSizeOptional, notNullValue());
@@ -307,7 +310,7 @@ public class ParquetOutputCodecTest {
         }
 
         objectUnderTest.complete(outputStream);
-
+        outputStream.close();
         Optional<Long> actualSizeOptional = objectUnderTest.getSize();
         assertThat(actualSizeOptional, notNullValue());
         assertThat(actualSizeOptional.isPresent(), equalTo(false));
@@ -337,6 +340,7 @@ public class ParquetOutputCodecTest {
         }
 
         objectUnderTest.complete(outputStream);
+        outputStream.close();
 
         tempFile = new File(tempDirectory, FILE_NAME);
         outputStream = LocalFilePositionOutputStream.create(tempFile);
@@ -347,6 +351,7 @@ public class ParquetOutputCodecTest {
             Event event = createEventRecord(record);
             objectUnderTest.writeEvent(event, outputStream);
         }
+        outputStream.close();
 
         Optional<Long> actualSizeOptional = objectUnderTest.getSize();
         assertThat(actualSizeOptional, notNullValue());

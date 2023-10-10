@@ -54,13 +54,13 @@ public class QueuedPartitionsItemTest {
     }
 
     @Test
-    void queued_partitions_item_compares_based_on_sorted_timestamp() {
+    void queued_partitions_item_compares_based_on_sorted_timestamp() throws InterruptedException {
         final InMemoryPartitionAccessor.QueuedPartitionsItem firstItem = new InMemoryPartitionAccessor.QueuedPartitionsItem(
                 UUID.randomUUID().toString(),
                 UUID.randomUUID().toString(),
                 Instant.now()
         );
-
+        Thread.sleep(100);
         final Instant now = Instant.now();
 
         final InMemoryPartitionAccessor.QueuedPartitionsItem secondItem = new InMemoryPartitionAccessor.QueuedPartitionsItem(
@@ -68,7 +68,6 @@ public class QueuedPartitionsItemTest {
                 UUID.randomUUID().toString(),
                 now
         );
-
         final InMemoryPartitionAccessor.QueuedPartitionsItem thirdItem = new InMemoryPartitionAccessor.QueuedPartitionsItem(
                 UUID.randomUUID().toString(),
                 UUID.randomUUID().toString(),
