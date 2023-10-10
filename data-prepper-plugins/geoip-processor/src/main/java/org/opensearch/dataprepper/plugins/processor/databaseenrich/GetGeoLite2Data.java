@@ -182,7 +182,7 @@ public class GetGeoLite2Data implements GetGeoData {
                             enrichData(geoData, ORGANIZATION_NAME, organizationName);
                             break;
                         case NETWORK:
-                            enrichData(geoData, NETWORK, network.toString());
+                            enrichData(geoData, NETWORK,network!=null? network.toString():null);
                             break;
                     }
                 }
@@ -204,7 +204,7 @@ public class GetGeoLite2Data implements GetGeoData {
                 }
 
                 enrichData(geoData, ORGANIZATION_NAME, organizationName);
-                enrichData(geoData, NETWORK, network.toString());
+                enrichData(geoData, NETWORK,network!=null? network.toString():null);
             }
         } catch (Exception ex) {
             throw new EnrichFailedException("Enrichment failed exception" + ex);

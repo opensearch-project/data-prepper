@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -29,6 +30,7 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final PluginMetrics pluginMetrics;
+    private final PluginConfigObservable pluginConfigObservable;
 
     private SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
     private OpenSearchService openSearchService;
@@ -37,11 +39,13 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
     public OpenSearchSource(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                             final AwsCredentialsSupplier awsCredentialsSupplier,
                             final AcknowledgementSetManager acknowledgementSetManager,
-                            final PluginMetrics pluginMetrics) {
+                            final PluginMetrics pluginMetrics,
+                            final PluginConfigObservable pluginConfigObservable) {
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginMetrics = pluginMetrics;
+        this.pluginConfigObservable = pluginConfigObservable;
 
         openSearchSourceConfiguration.validateAwsConfigWithUsernameAndPassword();
     }
@@ -59,7 +63,8 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
 
         final OpenSearchClientFactory openSearchClientFactory = OpenSearchClientFactory.create(awsCredentialsSupplier);
         final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics = OpenSearchSourcePluginMetrics.create(pluginMetrics);
-        final SearchAccessorStrategy searchAccessorStrategy = SearchAccessorStrategy.create(openSearchSourceConfiguration, openSearchClientFactory);
+        final SearchAccessorStrategy searchAccessorStrategy = SearchAccessorStrategy.create(
+                openSearchSourceConfiguration, openSearchClientFactory, pluginConfigObservable);
 
         final SearchAccessor searchAccessor = searchAccessorStrategy.getSearchAccessor();
 

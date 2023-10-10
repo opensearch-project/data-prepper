@@ -266,9 +266,9 @@ public class Pipeline {
      * 6. Stopping the sink ExecutorService
      */
     public synchronized void shutdown() {
-        LOG.info("Pipeline [{}] - Received shutdown signal with processor shutdown timeout {} and sink shutdown timeout {}." +
-                        " Initiating the shutdown process",
-                name, processorShutdownTimeout, sinkShutdownTimeout);
+        LOG.info("Pipeline [{}] - Received shutdown signal with buffer drain timeout {}, processor shutdown timeout {}, " +
+                        "and sink shutdown timeout {}. Initiating the shutdown process",
+                name, buffer.getDrainTimeout(), processorShutdownTimeout, sinkShutdownTimeout);
         try {
             source.stop();
             stopRequested.set(true);
@@ -277,7 +277,7 @@ public class Pipeline {
                     "proceeding with termination of process workers", name, ex);
         }
 
-        shutdownExecutorService(processorExecutorService, processorShutdownTimeout.toMillis(), "processor");
+        shutdownExecutorService(processorExecutorService, buffer.getDrainTimeout().toMillis() + processorShutdownTimeout.toMillis(), "processor");
 
         processorSets.forEach(processorSet -> processorSet.forEach(Processor::shutdown));
         sinks.stream()

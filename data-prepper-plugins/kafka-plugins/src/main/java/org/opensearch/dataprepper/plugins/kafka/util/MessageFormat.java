@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  */
 public enum MessageFormat {
 
-    PLAINTEXT("plaintext"), JSON("json"), AVRO("avro");
+    PLAINTEXT("plaintext"), JSON("json"), AVRO("avro"), BYTES("bytes");
 
     private static final Map<String, MessageFormat> MESSAGE_FORMAT_MAP = Arrays.stream(MessageFormat.values())
             .collect(Collectors.toMap(

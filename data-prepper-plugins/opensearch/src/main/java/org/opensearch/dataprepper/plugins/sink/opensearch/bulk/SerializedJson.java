@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Optional;
@@ -30,5 +31,8 @@ public interface SerializedJson extends SizedDocument {
         return new SerializedJsonImpl(jsonString.getBytes(StandardCharsets.UTF_8), docId, routingField);
     }
 
+    static SerializedJson fromJsonNode(final JsonNode jsonNode, SerializedJson document) {
+        return new SerializedJsonNode(jsonNode, document);
+    }
 }
 

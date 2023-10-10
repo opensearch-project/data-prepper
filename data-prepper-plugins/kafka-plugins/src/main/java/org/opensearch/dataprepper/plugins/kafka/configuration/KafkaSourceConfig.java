@@ -18,22 +18,7 @@ import java.util.Objects;
  * pipelines.yaml
  */
 
-public class KafkaSourceConfig {
-    public class EncryptionConfig {
-        @JsonProperty("type")
-        private EncryptionType type = EncryptionType.SSL;
-
-        @JsonProperty("insecure")
-        private boolean insecure = false;
-
-        public EncryptionType getType() {
-            return type;
-        }
-
-        public boolean getInsecure() {
-            return insecure;
-        }
-    }
+public class KafkaSourceConfig implements KafkaConsumerConfig {
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootStrapServers;
@@ -68,7 +53,7 @@ public class KafkaSourceConfig {
         return clientDnsLookup;
     }
 
-    public Boolean getAcknowledgementsEnabled() {
+    public boolean getAcknowledgementsEnabled() {
         return acknowledgementsEnabled;
     }
 
@@ -80,9 +65,9 @@ public class KafkaSourceConfig {
         this.topics = topics;
     }
 
-    public String getBootStrapServers() {
+    public List<String> getBootstrapServers() {
         if (Objects.nonNull(bootStrapServers)) {
-            return String.join(",", bootStrapServers);
+            return bootStrapServers;
         }
         return null;
     }

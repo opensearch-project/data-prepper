@@ -21,7 +21,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     testImplementation testLibs.junit.vintage
     implementation 'org.apache.parquet:parquet-common:1.13.1'
-    implementation 'org.xerial.snappy:snappy-java:1.1.10.3'
+    implementation 'org.xerial.snappy:snappy-java:1.1.10.5'
     testImplementation project(':data-prepper-plugins:blocking-buffer')
     testImplementation libs.commons.io
     testImplementation testLibs.mockito.inline

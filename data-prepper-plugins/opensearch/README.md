@@ -146,6 +146,28 @@ e.g. [otel-v1-apm-span-index-template.json](https://github.com/opensearch-projec
 - `dlq_file`(optional): A String of absolute file path for DLQ failed output records. Defaults to null.
 If not provided, failed records will be written into the default data-prepper log file (`logs/Data-Prepper.log`). If the `dlq` option is present along with this, an error is thrown.
 
+- `action`(optional): A string indicating the type of action to be performed. Supported values are "create", "update", "upsert", "delete" and "index". Default value is "index". It also be an expression which evaluates to one of the supported values mentioned earlier.
+
+- `actions`(optional): This is an alternative to `action`. `actions` can have multiple actions, each with a condition. The first action for which the condition evaluates to true is picked as the action for an event. The action must be one of the supported values mentioned under `action` field above. Just like in case of `action`, the `type` mentioned in `actions` can be an expression which evaluates to one of the supported values. For example, the following configuration shows different action types for different conditions.
+
+```
+  sink:
+    - opensearch
+        actions:
+          - type: "create"
+             when: "/some_key == CREATE"
+          - type: "index"
+             when: "/some_key == INDEX"
+          - type: "upsert"
+             when: "/some_key == UPSERT"
+          - type: "update"
+             when: "/some_key == UPDATE"
+          - type: "delete"
+             when: "/some_key == DELETE"
+         # default case
+          - type: "index"
+```
+
 - `dlq` (optional): DLQ configurations. See [DLQ](https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/failures-common/src/main/java/org/opensearch/dataprepper/plugins/dlq/README.md) for details. If the `dlq_file` option is present along with this, an error is thrown.
 
 - `max_retries`(optional): A number indicating the maximum number of times OpenSearch Sink should try to push the data to the OpenSearch server before considering it as failure. Defaults to `Integer.MAX_VALUE`.
@@ -274,7 +296,7 @@ if `exclude_keys` is set to ["message", "status"], the document written to OpenS
 * `region` (Optional) : The AWS region to use for credentials. Defaults to [standard SDK behavior to determine the region](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/region-selection.html).
 * `sts_role_arn` (Optional) : The STS role to assume for requests to AWS. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html).
 * `sts_header_overrides` (Optional): A map of header overrides to make when assuming the IAM role for the sink plugin.
-* `serverless` (Optional): A boolean flag to indicate the OpenSearch backend is Amazon OpenSearch Serverless. Default to `false`.
+* `serverless` (Optional): A boolean flag to indicate the OpenSearch backend is Amazon OpenSearch Serverless. Default to `false`. Notice that [ISM policies.](https://opensearch.org/docs/latest/im-plugin/ism/policies/) is not supported in Amazon OpenSearch Serverless and thus any ISM related configuration value has no effect, i.e. `ism_policy_file`. 
 
 ## Metrics
 ### Management Disabled Index Type

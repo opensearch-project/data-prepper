@@ -5,10 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.EnumUtils;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
@@ -25,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -41,6 +44,7 @@ public class IndexConfiguration {
     public static final String INDEX_TYPE = "index_type";
     public static final String TEMPLATE_TYPE = "template_type";
     public static final String TEMPLATE_FILE = "template_file";
+    public static final String TEMPLATE_CONTENT = "template_content";
     public static final String NUM_SHARDS = "number_of_shards";
     public static final String NUM_REPLICAS = "number_of_replicas";
     public static final String BULK_SIZE = "bulk_size";
@@ -56,6 +60,7 @@ public class IndexConfiguration {
     public static final int DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = 2;
     public static final long DEFAULT_FLUSH_TIMEOUT = 60_000L;
     public static final String ACTION = "action";
+    public static final String ACTIONS = "actions";
     public static final String S3_AWS_REGION = "s3_aws_region";
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
     public static final String S3_AWS_STS_EXTERNAL_ID = "s3_aws_sts_external_id";
@@ -77,6 +82,7 @@ public class IndexConfiguration {
     private final long flushTimeout;
     private final Optional<String> ismPolicyFile;
     private final String action;
+    private final List<Map<String, Object>> actions;
     private final String s3AwsRegion;
     private final String s3AwsStsRoleArn;
     private final String s3AwsExternalId;
@@ -100,7 +106,8 @@ public class IndexConfiguration {
         this.s3Client = builder.s3Client;
 
         determineTemplateType(builder);
-        this.indexTemplate = readIndexTemplate(builder.templateFile, indexType, templateType);
+
+        this.indexTemplate = builder.templateContent != null ? readTemplateContent(builder.templateContent) : readIndexTemplate(builder.templateFile, indexType, templateType);
 
         if (builder.numReplicas > 0) {
             indexTemplate.putIfAbsent(SETTINGS, new HashMap<>());
@@ -138,12 +145,8 @@ public class IndexConfiguration {
         this.documentId = documentId;
         this.ismPolicyFile = builder.ismPolicyFile;
         this.action = builder.action;
+        this.actions = builder.actions;
         this.documentRootKey = builder.documentRootKey;
-    }
-
-    private void determineTemplateType(Builder builder) {
-        this.templateType = DistributionVersion.ES6.equals(builder.distributionVersion) ? TemplateType.V1 :
-                (builder.templateType != null ? builder.templateType : TemplateType.V1);
     }
 
     private void determineIndexType(Builder builder) {
@@ -159,7 +162,20 @@ public class IndexConfiguration {
         }
     }
 
+    private void determineTemplateType(Builder builder) {
+        if (builder.serverless) {
+            templateType = TemplateType.INDEX_TEMPLATE;
+        } else {
+            templateType = DistributionVersion.ES6.equals(builder.distributionVersion) ? TemplateType.V1 :
+                    (builder.templateType != null ? builder.templateType : TemplateType.V1);
+        }
+    }
+
     public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
+        return readIndexConfig(pluginSetting, null);
+    }
+
+    public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting, final ExpressionEvaluator expressionEvaluator) {
         IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
         final String indexAlias = pluginSetting.getStringOrDefault(INDEX_ALIAS, null);
         if (indexAlias != null) {
@@ -177,6 +193,16 @@ public class IndexConfiguration {
         if (templateFile != null) {
             builder = builder.withTemplateFile(templateFile);
         }
+
+        final String templateContent = pluginSetting.getStringOrDefault(TEMPLATE_CONTENT, null);
+        if (templateContent != null) {
+            builder = builder.withTemplateContent(templateContent);
+        }
+
+        if (templateContent != null && templateFile != null) {
+            LOG.warn("Both template_content and template_file are configured. Only template_content will be used");
+        }
+
         builder = builder.withNumShards(pluginSetting.getIntegerOrDefault(NUM_SHARDS, 0));
         builder = builder.withNumReplicas(pluginSetting.getIntegerOrDefault(NUM_REPLICAS, 0));
         final Long batchSize = pluginSetting.getLongOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
@@ -214,7 +240,13 @@ public class IndexConfiguration {
         final String ismPolicyFile = pluginSetting.getStringOrDefault(ISM_POLICY_FILE, null);
         builder = builder.withIsmPolicyFile(ismPolicyFile);
 
-        builder.withAction(pluginSetting.getStringOrDefault(ACTION, BulkAction.INDEX.toString()));
+        List<Map<String, Object>> actionsList = pluginSetting.getTypedListOfMaps(ACTIONS, String.class, Object.class);
+
+        if (actionsList != null) {
+            builder.withActions(actionsList, expressionEvaluator);
+        } else {
+            builder.withAction(pluginSetting.getStringOrDefault(ACTION, BulkAction.INDEX.toString()), expressionEvaluator);
+        }
 
         if ((builder.templateFile != null && builder.templateFile.startsWith(S3_PREFIX))
             || (builder.ismPolicyFile.isPresent() && builder.ismPolicyFile.get().startsWith(S3_PREFIX))) {
@@ -295,6 +327,10 @@ public class IndexConfiguration {
         return action;
     }
 
+    public List<Map<String, Object>> getActions() {
+        return actions;
+    }
+
     public String getS3AwsRegion() {
         return s3AwsRegion;
     }
@@ -345,6 +381,7 @@ public class IndexConfiguration {
                     templateURL = new File(templateFile).toURI().toURL();
                 }
             }
+
             if (templateURL != null) {
                 return new ObjectMapper().readValue(templateURL, new TypeReference<Map<String, Object>>() {
                 });
@@ -359,6 +396,14 @@ public class IndexConfiguration {
         }
     }
 
+    private Map<String, Object> readTemplateContent(final String templateContent) {
+        try {
+            return OBJECT_MAPPER.readValue(templateContent, new TypeReference<Map<String, Object>>() {});
+        } catch (IOException ex) {
+            throw new InvalidPluginConfigurationException(String.format("template_content is invalid: %s", ex.getMessage()));
+        }
+    }
+
     private URL loadExistingTemplate(TemplateType templateType, String predefinedTemplateName) {
         String resourcePath = templateType == TemplateType.V1 ? predefinedTemplateName : templateType.getTypeName() + "/" + predefinedTemplateName;
         return getClass().getClassLoader()
@@ -370,6 +415,7 @@ public class IndexConfiguration {
         private String indexType;
         private TemplateType templateType;
         private String templateFile;
+        private String templateContent;
         private int numShards;
         private int numReplicas;
         private String routingField;
@@ -381,6 +427,7 @@ public class IndexConfiguration {
         private long flushTimeout = DEFAULT_FLUSH_TIMEOUT;
         private Optional<String> ismPolicyFile;
         private String action;
+        private List<Map<String, Object>> actions;
         private String s3AwsRegion;
         private String s3AwsStsRoleArn;
         private String s3AwsStsExternalId;
@@ -413,6 +460,12 @@ public class IndexConfiguration {
         public Builder withTemplateFile(final String templateFile) {
             checkArgument(templateFile != null, "templateFile cannot be null.");
             this.templateFile = templateFile;
+            return this;
+        }
+
+        public Builder withTemplateContent(final String templateContent) {
+            checkArgument(templateContent != null, "templateContent cannot be null.");
+            this.templateContent = templateContent;
             return this;
         }
 
@@ -468,9 +521,20 @@ public class IndexConfiguration {
             return this;
         }
 
-        public Builder withAction(final String action) {
-            checkArgument(EnumUtils.isValidEnumIgnoreCase(BulkAction.class, action), "action must be one of the following: " +  BulkAction.values());
+        public Builder withAction(final String action, final ExpressionEvaluator expressionEvaluator) {
+            checkArgument((EnumUtils.isValidEnumIgnoreCase(BulkAction.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + BulkAction.values());
             this.action = action;
+            return this;
+        }
+
+        public Builder withActions(final List<Map<String, Object>> actions, final ExpressionEvaluator expressionEvaluator) {
+            for (final Map<String, Object> actionMap: actions) {
+                String action = (String)actionMap.get("type");
+                if (action != null) {
+                    checkArgument((EnumUtils.isValidEnumIgnoreCase(BulkAction.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + BulkAction.values());
+                }
+            }
+            this.actions = actions;
             return this;
         }
 

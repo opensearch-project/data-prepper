@@ -155,7 +155,7 @@ public class KafkaSinkAvroTypeIT {
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
 
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
-        when(kafkaSinkConfig.getBootStrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
+        when(kafkaSinkConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
 
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 

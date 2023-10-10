@@ -46,6 +46,8 @@ dependencyResolutionManagement {
             version('hadoop', '3.3.6')
             library('hadoop-common', 'org.apache.hadoop', 'hadoop-common').versionRef('hadoop')
             library('hadoop-mapreduce', 'org.apache.hadoop', 'hadoop-mapreduce-client-core').versionRef('hadoop')
+            version('avro', '1.11.3')
+            library('avro-core', 'org.apache.avro', 'avro').versionRef('avro')
         }
         testLibs {
             version('junit', '5.8.2')
@@ -96,7 +98,7 @@ include 'data-prepper-plugins:drop-events-processor'
 include 'data-prepper-plugins:key-value-processor'
 include 'data-prepper-plugins:type-conversion-processor'
 include 'data-prepper-plugins:mutate-event-processors'
-include 'data-prepper-plugins:geoip-processor'
+//include 'data-prepper-plugins:geoip-processor'
 include 'data-prepper-plugins:grok-processor'
 include 'data-prepper-plugins:aggregate-processor'
 include 'data-prepper-plugins:log-generator-source'
@@ -139,7 +141,7 @@ include 'data-prepper-plugins:buffer-common'
 include 'data-prepper-plugins:sqs-source'
 include 'data-prepper-plugins:cloudwatch-logs'
 include 'data-prepper-plugins:http-sink'
-include 'data-prepper-plugins:sns-sink'
+//include 'data-prepper-plugins:sns-sink'
 include 'data-prepper-plugins:prometheus-sink'
 include 'data-prepper-plugins:dissect-processor'
-
+include 'data-prepper-plugins:dynamodb-source'

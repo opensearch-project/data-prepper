@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
@@ -77,7 +78,7 @@ public class KafkaSourceMultipleAuthTypeIT {
     private PlainTextAuthConfig plainTextAuthConfig;
 
     @Mock
-    private KafkaSourceConfig.EncryptionConfig encryptionConfig;
+    private EncryptionConfig encryptionConfig;
 
     private TopicConfig jsonTopic;
     private TopicConfig avroTopic;
@@ -105,7 +106,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         pluginMetrics = mock(PluginMetrics.class);
         counter = mock(Counter.class);
         buffer = mock(Buffer.class);
-        encryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
+        encryptionConfig = mock(EncryptionConfig.class);
         receivedRecords = new ArrayList<>();
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         pipelineDescription = mock(PipelineDescription.class);
@@ -140,7 +141,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         sslBootstrapServers = System.getProperty("tests.kafka.ssl_bootstrap_servers");
         kafkaUsername = System.getProperty("tests.kafka.username");
         kafkaPassword = System.getProperty("tests.kafka.password");
-        when(sourceConfig.getBootStrapServers()).thenReturn(bootstrapServers);
+        when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
         when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
     }
 
@@ -205,7 +206,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
         when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
-        when(sourceConfig.getBootStrapServers()).thenReturn(saslplainBootstrapServers);
+        when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList(saslplainBootstrapServers));
         kafkaSource = createObjectUnderTest();
         
         Properties props = new Properties();
@@ -256,7 +257,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(encryptionConfig.getInsecure()).thenReturn(true);
         when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
         when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(sourceConfig.getBootStrapServers()).thenReturn(sslBootstrapServers);
+        when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList(sslBootstrapServers));
         when(sourceConfig.getTopics()).thenReturn(List.of(plainTextTopic));
         kafkaSource = createObjectUnderTest();
         
@@ -312,7 +313,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(encryptionConfig.getInsecure()).thenReturn(true);
         when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
         when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(sourceConfig.getBootStrapServers()).thenReturn(saslsslBootstrapServers);
+        when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList(saslsslBootstrapServers));
         when(sourceConfig.getTopics()).thenReturn(List.of(plainTextTopic));
         kafkaSource = createObjectUnderTest();
         
