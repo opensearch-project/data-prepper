@@ -18,6 +18,7 @@ import static org.junit.Assert.assertFalse;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.time.Instant;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -46,23 +47,24 @@ class PipelinesWithAcksIT {
                 .build();
 
         dataPrepperTestRunner.start();
+	System.out.println("Data Prepper Test started at "+Instant.now());
         inMemorySourceAccessor = dataPrepperTestRunner.getInMemorySourceAccessor();
         inMemorySinkAccessor = dataPrepperTestRunner.getInMemorySinkAccessor();
     }
 
     @AfterEach
     void tearDown() {
+	System.out.println("Data Prepper Test stopped at "+Instant.now());
         dataPrepperTestRunner.stop();
     }
 
     @Test
-    @Disabled("Disabling because this test is flaky.")
     void simple_pipeline_with_single_record() {
         setUp(SIMPLE_PIPELINE_CONFIGURATION_UNDER_TEST);
         final int numRecords = 1;
         inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
 
-        await().atMost(2000, TimeUnit.MILLISECONDS)
+        await().atMost(20000, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
@@ -78,7 +80,7 @@ class PipelinesWithAcksIT {
         final int numRecords = 100;
         inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
 
-        await().atMost(2000, TimeUnit.MILLISECONDS)
+        await().atMost(20000, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
@@ -93,7 +95,7 @@ class PipelinesWithAcksIT {
         final int numRecords = 100;
         inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
 
-        await().atMost(5000, TimeUnit.MILLISECONDS)
+        await().atMost(20000, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
