@@ -47,6 +47,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -140,6 +143,13 @@ public class HttpSinkService {
             this.certificateProviderFactory = new CertificateProviderFactory(httpSinkConfiguration);
             this.httpClientConnectionManager = new HttpClientSSLConnectionManager()
                     .createHttpClientConnectionManager(httpSinkConfiguration, certificateProviderFactory);
+        }
+        else{
+            try {
+                this.httpClientConnectionManager = new HttpClientSSLConnectionManager().createHttpClientConnectionManagerWithoutValidation();
+            }catch(NoSuchAlgorithmException | KeyStoreException | KeyManagementException ex){
+                LOG.error("Exception while insecure_skip_verify is true ",ex);
+            }
         }
         this.httpAuthOptions = buildAuthHttpSinkObjectsByConfig(httpSinkConfiguration);
         this.httpSinkRecordsSuccessCounter = pluginMetrics.counter(HTTP_SINK_RECORDS_SUCCESS_COUNTER);
