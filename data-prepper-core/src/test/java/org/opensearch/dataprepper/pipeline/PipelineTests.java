@@ -107,7 +107,8 @@ class PipelineTests {
         final TestSink testSink = new TestSink();
         final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
         when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
-        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+        final Buffer buffer = spy(new BlockingBuffer(TEST_PIPELINE_NAME));
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, buffer,
                 Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router, eventFactory, 
                 acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
                 processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
@@ -119,6 +120,7 @@ class PipelineTests {
         testPipeline.shutdown();
         assertThat("Pipeline isStopRequested is expected to be true", testPipeline.isStopRequested(), is(true));
         assertThat("Sink shutdown should be called", testSink.isShutdown, is(true));
+        verify(buffer).shutdown();
     }
 
     @Test

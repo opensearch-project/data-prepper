@@ -201,6 +201,26 @@ public class MultiBufferDecoratorTest {
         verify(secondaryBuffer, times(2)).getDrainTimeout();
     }
 
+    @Test
+    void shutdown_NoSecondaryBuffers_CallsPrimaryBufferShutdown() {
+        createObjectUnderTest(0).shutdown();
+        verify(primaryBuffer).shutdown();
+    }
+
+    @Test
+    void shutdown_OneSecondaryBuffers_CallsPrimaryAndSecondaryBufferShutdown() {
+        createObjectUnderTest(1).shutdown();
+        verify(primaryBuffer).shutdown();
+        verify(secondaryBuffer).shutdown();
+    }
+
+    @Test
+    void shutdown_MultipleSecondaryBuffers_CallsAllBuffersShutdown() {
+        createObjectUnderTest(2).shutdown();
+        verify(primaryBuffer).shutdown();
+        verify(secondaryBuffer, times(2)).shutdown();
+    }
+
     private MultiBufferDecorator createObjectUnderTest(final int secondaryBufferCount) {
         final List<Buffer> secondaryBuffers = IntStream.range(0, secondaryBufferCount)
                 .mapToObj(i -> secondaryBuffer)

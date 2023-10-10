@@ -22,4 +22,10 @@ public class BufferTest {
 
         Assert.assertEquals(Duration.ZERO, buffer.getDrainTimeout());
     }
+
+    @Test
+    public void testShutdown() {
+        final Buffer<Record<Event>> buffer = spy(Buffer.class);
+        buffer.shutdown();
+    }
 }

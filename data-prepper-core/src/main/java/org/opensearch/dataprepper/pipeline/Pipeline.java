@@ -280,6 +280,8 @@ public class Pipeline {
         shutdownExecutorService(processorExecutorService, buffer.getDrainTimeout().toMillis() + processorShutdownTimeout.toMillis(), "processor");
 
         processorSets.forEach(processorSet -> processorSet.forEach(Processor::shutdown));
+        buffer.shutdown();
+
         sinks.stream()
                 .map(DataFlowComponent::getComponent)
                 .forEach(Sink::shutdown);

@@ -64,4 +64,10 @@ public class MultiBufferDecorator<T extends Record<?>> implements Buffer<T> {
                 .map(Buffer::getDrainTimeout)
                 .reduce(Duration.ZERO, Duration::plus);
     }
+
+    @Override
+    public void shutdown() {
+        primaryBuffer.shutdown();
+        secondaryBuffers.forEach(Buffer::shutdown);
+    }
 }
