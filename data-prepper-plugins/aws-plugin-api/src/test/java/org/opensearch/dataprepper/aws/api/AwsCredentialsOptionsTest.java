@@ -10,12 +10,14 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import software.amazon.awssdk.regions.Region;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class AwsCredentialsOptionsTest {
@@ -130,5 +132,22 @@ class AwsCredentialsOptionsTest {
         assertThat(awsCredentialsOptions.getStsHeaderOverrides(), notNullValue());
         assertThat(awsCredentialsOptions.getStsHeaderOverrides().size(), equalTo(stsHeaderOverrides.size()));
         assertThat(awsCredentialsOptions.getStsHeaderOverrides(), equalTo(stsHeaderOverrides));
+    }
+
+    @Test
+    void defaultOptions_returns_with_null_or_empty_values() {
+        AwsCredentialsOptions defaultOptions = AwsCredentialsOptions.defaultOptions();
+
+        assertThat(defaultOptions, notNullValue());
+        assertThat(defaultOptions.getRegion(), nullValue());
+        assertThat(defaultOptions.getStsRoleArn(), nullValue());
+        assertThat(defaultOptions.getStsExternalId(), nullValue());
+        assertThat(defaultOptions.getStsHeaderOverrides(), equalTo(Collections.emptyMap()));
+    }
+
+    @Test
+    void defaultOptions_returns_same_instance_on_multiple_calls() {
+        assertThat(AwsCredentialsOptions.defaultOptions(),
+                sameInstance(AwsCredentialsOptions.defaultOptions()));
     }
 }

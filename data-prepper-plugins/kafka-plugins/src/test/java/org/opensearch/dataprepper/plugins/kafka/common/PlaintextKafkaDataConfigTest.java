@@ -1,8 +1,11 @@
 package org.opensearch.dataprepper.plugins.kafka.common;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+
+import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -22,5 +25,17 @@ class PlaintextKafkaDataConfigTest {
         assertThat(outputDataConfig, notNullValue());
 
         assertThat(outputDataConfig.getSerdeFormat(), equalTo(MessageFormat.PLAINTEXT));
+    }
+
+    @Test
+    void plaintextDataConfig_returns_KafkaDataConfig_with_getEncryptionKeySupplier_returning_from_inner_dataConfig() {
+        KafkaDataConfig inputDataConfig = mock(KafkaDataConfig.class);
+        Supplier<byte[]> keySupplier = mock(Supplier.class);
+        when(inputDataConfig.getEncryptionKeySupplier()).thenReturn(keySupplier);
+
+        KafkaDataConfig outputDataConfig = PlaintextKafkaDataConfig.plaintextDataConfig(inputDataConfig);
+
+        assertThat(outputDataConfig, notNullValue());
+        assertThat(outputDataConfig.getEncryptionKeySupplier(), equalTo(keySupplier));
     }
 }

@@ -21,7 +21,11 @@ import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -45,8 +49,11 @@ public class KafkaBufferIT {
     private PluginFactory pluginFactory;
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
+    @Mock
+    private TopicConfig topicConfig;
 
     private PluginMetrics pluginMetrics;
+    private String bootstrapServersCommaDelimited;
 
     @BeforeEach
     void setUp() {
@@ -57,7 +64,6 @@ public class KafkaBufferIT {
         MessageFormat messageFormat = MessageFormat.JSON;
 
         String topicName = "buffer-" + RandomStringUtils.randomAlphabetic(5);
-        TopicConfig topicConfig = mock(TopicConfig.class);
         when(topicConfig.getName()).thenReturn(topicName);
         when(topicConfig.getGroupId()).thenReturn("buffergroup-" + RandomStringUtils.randomAlphabetic(6));
         when(topicConfig.isCreate()).thenReturn(true);
@@ -76,16 +82,16 @@ public class KafkaBufferIT {
 
         EncryptionConfig encryptionConfig = mock(EncryptionConfig.class);
 
-        String bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
+        bootstrapServersCommaDelimited = System.getProperty("tests.kafka.bootstrap_servers");
 
-        LOG.info("Using Kafka bootstrap servers: {}", bootstrapServers);
+        LOG.info("Using Kafka bootstrap servers: {}", bootstrapServersCommaDelimited);
 
-        when(kafkaBufferConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
+        when(kafkaBufferConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServersCommaDelimited));
         when(kafkaBufferConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
     }
 
     private KafkaBuffer<Record<Event>> createObjectUnderTest() {
-        return new KafkaBuffer<>(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics);
+        return new KafkaBuffer<>(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, null);
     }
 
     @Test
@@ -110,8 +116,40 @@ public class KafkaBufferIT {
         assertThat(onlyResult.getData().toMap(), equalTo(record.getData().toMap()));
     }
 
+    @Test
+    void write_and_read_encrypted() throws TimeoutException, NoSuchAlgorithmException {
+        when(topicConfig.getEncryptionKey()).thenReturn(createAesKey());
+
+        KafkaBuffer<Record<Event>> objectUnderTest = createObjectUnderTest();
+
+        Record<Event> record = createRecord();
+        objectUnderTest.write(record, 1_000);
+
+        Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = objectUnderTest.read(10_000);
+
+        assertThat(readResult, notNullValue());
+        assertThat(readResult.getKey(), notNullValue());
+        assertThat(readResult.getKey().size(), equalTo(1));
+
+        Record<Event> onlyResult = readResult.getKey().stream().iterator().next();
+
+        assertThat(onlyResult, notNullValue());
+        assertThat(onlyResult.getData(), notNullValue());
+        // TODO: The metadata is not included. It needs to be included in the Buffer, though not in the Sink. This may be something we make configurable in the consumer/producer - whether to serialize the metadata or not.
+        //assertThat(onlyResult.getData().getMetadata(), equalTo(record.getData().getMetadata()));
+        assertThat(onlyResult.getData().toMap(), equalTo(record.getData().toMap()));
+    }
+
     private Record<Event> createRecord() {
         Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         return new Record<>(event);
+    }
+
+    private static String createAesKey() throws NoSuchAlgorithmException {
+        KeyGenerator aesKeyGenerator = KeyGenerator.getInstance("AES");
+        aesKeyGenerator.init(256);
+        SecretKey secretKey = aesKeyGenerator.generateKey();
+        byte[] base64Bytes = Base64.getEncoder().encode(secretKey.getEncoded());
+        return new String(base64Bytes);
     }
 }
