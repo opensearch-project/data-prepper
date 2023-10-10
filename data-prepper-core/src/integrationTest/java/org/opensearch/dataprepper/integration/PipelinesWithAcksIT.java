@@ -46,8 +46,8 @@ class PipelinesWithAcksIT {
                 .withPipelinesDirectoryOrFile(configFile)
                 .build();
 
-        dataPrepperTestRunner.start();
 	System.out.println("Data Prepper Test started at "+Instant.now());
+        dataPrepperTestRunner.start();
         inMemorySourceAccessor = dataPrepperTestRunner.getInMemorySourceAccessor();
         inMemorySinkAccessor = dataPrepperTestRunner.getInMemorySinkAccessor();
     }
@@ -165,7 +165,6 @@ class PipelinesWithAcksIT {
     }
 
     @Test
-    @Disabled("Disabling because this test is flaky.")
     void one_pipeline_three_sinks_multiple_records() {
         setUp(ONE_PIPELINE_THREE_SINKS_CONFIGURATION_UNDER_TEST);
         final int numRecords = 100;
