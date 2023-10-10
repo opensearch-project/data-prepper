@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.integration;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Disabled;
 import org.opensearch.dataprepper.test.framework.DataPrepperTestRunner;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
