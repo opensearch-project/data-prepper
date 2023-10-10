@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfig;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfigAdapter;
 import org.opensearch.dataprepper.plugins.kafka.common.PlaintextKafkaDataConfig;
-import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsCredentialsProviderSupplier;
+import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.common.key.KeyFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
@@ -41,8 +41,8 @@ public class KafkaCustomProducerFactory {
 
     public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaProducerConfig, final PluginFactory pluginFactory, final PluginSetting pluginSetting,
                                               final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext) {
-        AwsCredentialsProviderSupplier awsCredentialsProviderSupplier = new AwsCredentialsProviderSupplier(kafkaProducerConfig, awsCredentialsSupplier);
-        KeyFactory keyFactory = new KeyFactory(awsCredentialsProviderSupplier);
+        AwsContext awsContext = new AwsContext(kafkaProducerConfig, awsCredentialsSupplier);
+        KeyFactory keyFactory = new KeyFactory(awsContext);
         prepareTopicAndSchema(kafkaProducerConfig);
         Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaProducerConfig);
         KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, LOG);

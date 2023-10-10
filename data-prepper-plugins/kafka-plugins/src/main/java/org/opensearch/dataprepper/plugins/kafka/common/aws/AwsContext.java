@@ -2,8 +2,10 @@ package org.opensearch.dataprepper.plugins.kafka.common.aws;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConnectionConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
 
 import java.util.function.Supplier;
 
@@ -13,24 +15,31 @@ import java.util.function.Supplier;
  * In general, you can provide the {@link Supplier} into class; just use this class when
  * constructing.
  */
-public class AwsCredentialsProviderSupplier implements Supplier<AwsCredentialsProvider> {
-    private final KafkaConnectionConfig connectionConfig;
+public class AwsContext implements Supplier<AwsCredentialsProvider> {
+    private final AwsConfig awsConfig;
     private final AwsCredentialsSupplier awsCredentialsSupplier;
 
-    public AwsCredentialsProviderSupplier(KafkaConnectionConfig connectionConfig, AwsCredentialsSupplier awsCredentialsSupplier) {
-        this.connectionConfig = connectionConfig;
+    public AwsContext(KafkaConnectionConfig connectionConfig, AwsCredentialsSupplier awsCredentialsSupplier) {
+        awsConfig = connectionConfig.getAwsConfig();
         this.awsCredentialsSupplier = awsCredentialsSupplier;
     }
 
     @Override
     public AwsCredentialsProvider get() {
         final AwsCredentialsOptions credentialsOptions;
-        if(connectionConfig.getAwsConfig() != null) {
-            credentialsOptions = connectionConfig.getAwsConfig().toCredentialsOptions();
+        if(awsConfig != null) {
+            credentialsOptions = awsConfig.toCredentialsOptions();
         } else {
             credentialsOptions = AwsCredentialsOptions.defaultOptions();
         }
 
         return awsCredentialsSupplier.getProvider(credentialsOptions);
+    }
+
+    public Region getRegion() {
+        if(awsConfig != null && awsConfig.getRegion() != null) {
+            return Region.of(awsConfig.getRegion());
+        }
+        return null;
     }
 }

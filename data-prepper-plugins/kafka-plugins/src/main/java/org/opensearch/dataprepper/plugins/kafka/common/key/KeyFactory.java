@@ -1,7 +1,7 @@
 package org.opensearch.dataprepper.plugins.kafka.common.key;
 
+import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 import java.util.List;
 import java.util.function.Supplier;
@@ -9,9 +9,9 @@ import java.util.function.Supplier;
 public class KeyFactory {
     private final List<InnerKeyProvider> orderedKeyProviders;
 
-    public KeyFactory(Supplier<AwsCredentialsProvider> awsCredentialsProviderSupplier) {
+    public KeyFactory(AwsContext awsContext) {
         this(List.of(
-                new KmsKeyProvider(awsCredentialsProviderSupplier),
+                new KmsKeyProvider(awsContext),
                 new UnencryptedKeyProvider()
         ));
     }

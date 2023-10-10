@@ -21,7 +21,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfig;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfigAdapter;
 import org.opensearch.dataprepper.plugins.kafka.common.PlaintextKafkaDataConfig;
-import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsCredentialsProviderSupplier;
+import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.common.key.KeyFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
@@ -73,8 +73,8 @@ public class KafkaCustomConsumerFactory {
 
         final List<KafkaCustomConsumer> consumers = new ArrayList<>();
 
-        AwsCredentialsProviderSupplier awsCredentialsProviderSupplier = new AwsCredentialsProviderSupplier(kafkaConsumerConfig, awsCredentialsSupplier);
-        KeyFactory keyFactory = new KeyFactory(awsCredentialsProviderSupplier);
+        AwsContext awsContext = new AwsContext(kafkaConsumerConfig, awsCredentialsSupplier);
+        KeyFactory keyFactory = new KeyFactory(awsContext);
 
         try {
             final int numWorkers = topic.getWorkers();
