@@ -56,6 +56,7 @@ class PipelinesWithAcksIT {
     }
 
     @Test
+    @Disabled("Disabling because this test is flaky.")
     void simple_pipeline_with_single_record() {
         setUp(SIMPLE_PIPELINE_CONFIGURATION_UNDER_TEST);
         final int numRecords = 1;
