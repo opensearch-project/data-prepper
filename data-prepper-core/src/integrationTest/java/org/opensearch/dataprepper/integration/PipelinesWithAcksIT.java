@@ -45,7 +45,7 @@ class PipelinesWithAcksIT {
                 .withPipelinesDirectoryOrFile(configFile)
                 .build();
 
-	System.out.println("Data Prepper Test started at "+Instant.now());
+	System.out.println("Data Prepper Test with config file "+ configFile + " started at "+Instant.now());
         dataPrepperTestRunner.start();
         inMemorySourceAccessor = dataPrepperTestRunner.getInMemorySourceAccessor();
         inMemorySinkAccessor = dataPrepperTestRunner.getInMemorySinkAccessor();
