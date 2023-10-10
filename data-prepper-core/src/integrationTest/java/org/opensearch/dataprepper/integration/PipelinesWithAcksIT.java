@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.integration;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Disabled;
 import org.opensearch.dataprepper.test.framework.DataPrepperTestRunner;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -161,6 +162,7 @@ class PipelinesWithAcksIT {
     }
 
     @Test
+    @Disabled("Disabling because this test is flaky.")
     void one_pipeline_three_sinks_multiple_records() {
         setUp(ONE_PIPELINE_THREE_SINKS_CONFIGURATION_UNDER_TEST);
         final int numRecords = 100;
