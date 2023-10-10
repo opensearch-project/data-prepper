@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.kafka.buffer;
 
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -42,12 +43,13 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
 
     @DataPrepperPluginConstructor
     public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig, final PluginFactory pluginFactory,
-                       final AcknowledgementSetManager acknowledgementSetManager, final PluginMetrics pluginMetrics){
+                       final AcknowledgementSetManager acknowledgementSetManager, final PluginMetrics pluginMetrics,
+                       final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
         SerializationFactory serializationFactory = new SerializationFactory();
-        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory);
+        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier);
         producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, pluginFactory, pluginSetting,  null, null);
-        final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory);
+        final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory, awsCredentialsSupplier);
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         final List<KafkaCustomConsumer> consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
             innerBuffer, pluginMetrics, acknowledgementSetManager, new AtomicBoolean(false));

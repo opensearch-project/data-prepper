@@ -15,6 +15,7 @@ import java.util.Map;
  * Provides a standard model for requesting AWS credentials.
  */
 public class AwsCredentialsOptions {
+    private static final AwsCredentialsOptions DEFAULT_OPTIONS = new AwsCredentialsOptions();
     private final String stsRoleArn;
     private final String stsExternalId;
     private final Region region;
@@ -27,6 +28,13 @@ public class AwsCredentialsOptions {
         this.stsHeaderOverrides = builder.stsHeaderOverrides != null ? new HashMap<>(builder.stsHeaderOverrides) : Collections.emptyMap();
     }
 
+    private AwsCredentialsOptions() {
+        this.stsRoleArn = null;
+        this.stsExternalId = null;
+        this.region = null;
+        this.stsHeaderOverrides = Collections.emptyMap();
+    }
+
     /**
      * Constructs a new {@link Builder} to build the credentials
      * options.
@@ -35,6 +43,10 @@ public class AwsCredentialsOptions {
      */
     public static Builder builder() {
         return new Builder();
+    }
+
+    public static AwsCredentialsOptions defaultOptions() {
+        return DEFAULT_OPTIONS;
     }
 
     public String getStsRoleArn() {

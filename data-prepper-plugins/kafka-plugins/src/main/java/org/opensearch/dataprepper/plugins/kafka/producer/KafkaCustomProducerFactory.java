@@ -2,11 +2,16 @@ package org.opensearch.dataprepper.plugins.kafka.producer;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.serialization.Serializer;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfig;
+import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfigAdapter;
 import org.opensearch.dataprepper.plugins.kafka.common.PlaintextKafkaDataConfig;
+import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
+import org.opensearch.dataprepper.plugins.kafka.common.key.KeyFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
@@ -27,21 +32,25 @@ import java.util.Properties;
 public class KafkaCustomProducerFactory {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumerFactory.class);
     private final SerializationFactory serializationFactory;
+    private final AwsCredentialsSupplier awsCredentialsSupplier;
 
-    public KafkaCustomProducerFactory(final SerializationFactory serializationFactory) {
-
+    public KafkaCustomProducerFactory(final SerializationFactory serializationFactory, AwsCredentialsSupplier awsCredentialsSupplier) {
         this.serializationFactory = serializationFactory;
+        this.awsCredentialsSupplier = awsCredentialsSupplier;
     }
 
     public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaProducerConfig, final PluginFactory pluginFactory, final PluginSetting pluginSetting,
                                               final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext) {
+        AwsContext awsContext = new AwsContext(kafkaProducerConfig, awsCredentialsSupplier);
+        KeyFactory keyFactory = new KeyFactory(awsContext);
         prepareTopicAndSchema(kafkaProducerConfig);
         Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaProducerConfig);
         KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, LOG);
         properties = Objects.requireNonNull(properties);
         TopicConfig topic = kafkaProducerConfig.getTopic();
-        Serializer<Object> keyDeserializer = (Serializer<Object>) serializationFactory.getSerializer(PlaintextKafkaDataConfig.plaintextDataConfig(topic));
-        Serializer<Object> valueSerializer = (Serializer<Object>) serializationFactory.getSerializer(topic);
+        KafkaDataConfig dataConfig = new KafkaDataConfigAdapter(keyFactory, topic);
+        Serializer<Object> keyDeserializer = (Serializer<Object>) serializationFactory.getSerializer(PlaintextKafkaDataConfig.plaintextDataConfig(dataConfig));
+        Serializer<Object> valueSerializer = (Serializer<Object>) serializationFactory.getSerializer(dataConfig);
         final KafkaProducer<Object, Object> producer = new KafkaProducer<>(properties, keyDeserializer, valueSerializer);
         final DLQSink dlqSink = new DLQSink(pluginFactory, kafkaProducerConfig, pluginSetting);
         return new KafkaCustomProducer(producer,

@@ -9,6 +9,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -101,6 +102,9 @@ class KafkaBufferTest {
     @Mock
     BlockingBuffer<Record<Event>>  blockingBuffer;
 
+    @Mock
+    private AwsCredentialsSupplier awsCredentialsSupplier;
+
     public KafkaBuffer<Record<Event>> createObjectUnderTest() {
 
         try (
@@ -116,7 +120,7 @@ class KafkaBufferTest {
                  })) {
 
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executorService);
-            return new KafkaBuffer<Record<Event>>(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics);
+            return new KafkaBuffer<Record<Event>>(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, awsCredentialsSupplier);
         }
     }
 
