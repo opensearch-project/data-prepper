@@ -1,4 +1,4 @@
-pipeline1:
+three-pipelines-multi-sink-1:
   delay: 2
   source:
     in_memory:
@@ -9,23 +9,23 @@ pipeline1:
         testing_key: PipelinesWithAcksIT
         acknowledgments: true
     - pipeline:
-        name: "pipeline2"
+        name: "three-pipelines-multi-sink-2"
 
-pipeline2:
+three-pipelines-multi-sink-2:
   source:
     pipeline:
-      name: "pipeline1"
+      name: "three-pipelines-multi-sink-1"
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT
         acknowledgments: true
     - pipeline:
-        name: "pipeline3"
+        name: "three-pipelines-multi-sink-3"
 
-pipeline3:
+three-pipelines-multi-sink-3:
   source:
     pipeline:
-      name: "pipeline2"
+      name: "three-pipelines-multi-sink-2"
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT

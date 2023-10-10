@@ -1,4 +1,4 @@
-pipeline1:
+three-pipelines-route-test-1:
   delay: 2
   source:
     in_memory:
@@ -9,27 +9,27 @@ pipeline1:
     - other_route: '/status >= 300 or /status < 200'
   sink:
     - pipeline:
-        name: "pipeline2"
+        name: "three-pipelines-route-test-2"
         routes:
           - 2xx_route
     - pipeline:
-        name: "pipeline3"
+        name: "three-pipelines-route-test-3"
         routes:
           - other_route
 
-pipeline2:
+three-pipelines-route-test-2:
   source:
     pipeline:
-      name: "pipeline1"
+      name: "three-pipelines-route-test-1"
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT
         acknowledgments: true
 
-pipeline3:
+three-pipelines-route-test-3:
   source:
     pipeline:
-      name: "pipeline1"
+      name: "three-pipelines-route-test-1"
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT
