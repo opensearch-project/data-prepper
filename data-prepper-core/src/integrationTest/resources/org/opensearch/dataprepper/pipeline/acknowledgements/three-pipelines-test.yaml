@@ -1,4 +1,4 @@
-pipeline1:
+three-pipelines-test-1:
   delay: 2
   source:
     in_memory:
@@ -6,20 +6,20 @@ pipeline1:
       acknowledgments: true
   sink:
     - pipeline:
-        name: "pipeline2"
+        name: "three-pipelines-test-2"
 
-pipeline2:
+three-pipelines-test-2:
   source:
     pipeline:
-      name: "pipeline1"
+      name: "three-pipelines-test-1"
   sink:
     - pipeline:
-        name: "pipeline3"
+        name: "three-pipelines-test-3"
 
-pipeline3:
+three-pipelines-test-3:
   source:
     pipeline:
-      name: "pipeline2"
+      name: "three-pipelines-test-2"
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT
