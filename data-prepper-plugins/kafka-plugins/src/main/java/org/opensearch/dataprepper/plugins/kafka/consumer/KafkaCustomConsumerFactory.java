@@ -12,12 +12,17 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.BrokerNotAvailableException;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfig;
+import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfigAdapter;
 import org.opensearch.dataprepper.plugins.kafka.common.PlaintextKafkaDataConfig;
+import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
+import org.opensearch.dataprepper.plugins.kafka.common.key.KeyFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
@@ -48,11 +53,12 @@ public class KafkaCustomConsumerFactory {
 
     private final StringDeserializer stringDeserializer = new StringDeserializer();
     private final SerializationFactory serializationFactory;
+    private final AwsCredentialsSupplier awsCredentialsSupplier;
     private String schemaType = MessageFormat.PLAINTEXT.toString();
 
-    public KafkaCustomConsumerFactory(SerializationFactory serializationFactory) {
-
+    public KafkaCustomConsumerFactory(SerializationFactory serializationFactory, AwsCredentialsSupplier awsCredentialsSupplier) {
         this.serializationFactory = serializationFactory;
+        this.awsCredentialsSupplier = awsCredentialsSupplier;
     }
 
     public List<KafkaCustomConsumer> createConsumersForTopic(final KafkaConsumerConfig kafkaConsumerConfig, final TopicConfig topic,
@@ -67,16 +73,20 @@ public class KafkaCustomConsumerFactory {
 
         final List<KafkaCustomConsumer> consumers = new ArrayList<>();
 
+        AwsContext awsContext = new AwsContext(kafkaConsumerConfig, awsCredentialsSupplier);
+        KeyFactory keyFactory = new KeyFactory(awsContext);
+
         try {
             final int numWorkers = topic.getWorkers();
             IntStream.range(0, numWorkers).forEach(index -> {
-                Deserializer<Object> keyDeserializer = (Deserializer<Object>) serializationFactory.getDeserializer(PlaintextKafkaDataConfig.plaintextDataConfig(topic));
+                KafkaDataConfig dataConfig = new KafkaDataConfigAdapter(keyFactory, topic);
+                Deserializer<Object> keyDeserializer = (Deserializer<Object>) serializationFactory.getDeserializer(PlaintextKafkaDataConfig.plaintextDataConfig(dataConfig));
                 Deserializer<Object> valueDeserializer = null;
                 if(schema == MessageFormat.PLAINTEXT) {
                     valueDeserializer = KafkaSecurityConfigurer.getGlueSerializer(kafkaConsumerConfig);
                 }
                 if(valueDeserializer == null) {
-                    valueDeserializer = (Deserializer<Object>) serializationFactory.getDeserializer(topic);
+                    valueDeserializer = (Deserializer<Object>) serializationFactory.getDeserializer(dataConfig);
                 }
                 final KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProperties, keyDeserializer, valueDeserializer);
 

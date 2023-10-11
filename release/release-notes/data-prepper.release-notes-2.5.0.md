@@ -6,7 +6,7 @@
 * Support OpenSearch as source. ([#1985](https://github.com/opensearch-project/data-prepper/issues/1985))
 * Support translate processor. ([#1914](https://github.com/opensearch-project/data-prepper/issues/1914))
 * Support dissect processor. ([#3362](https://github.com/opensearch-project/data-prepper/issues/3362))
-* Support AWS secrets in pipeline and Data Prepper config. ([#2780](https://github.com/opensearch-project/data-prepper/issues/2780))
+* Support AWS secrets in pipeline and Data Prepper config as an experimental feature. ([#2780](https://github.com/opensearch-project/data-prepper/issues/2780))
 
 ### Enhancements
 * Support update, upsert, delete bulk actions in OpenSearch sink. ([#3109](https://github.com/opensearch-project/data-prepper/issues/3109))
@@ -22,6 +22,8 @@
 * Fix exemplar list in Histogram and Count aggregations. ([#3364](https://github.com/opensearch-project/data-prepper/pull/3364))
 
 ### Security
+* Fix CVE-2023-44487, HTTP/2 reset floods. ([#3474](https://github.com/opensearch-project/data-prepper/issues/3474))
+* Fix CVE-2023-4586. ([#3443](https://github.com/opensearch-project/data-prepper/issues/3443))
 * Fix CVE-2023-39410. ([#3430](https://github.com/opensearch-project/data-prepper/issues/3430))
 
 ### Maintenance

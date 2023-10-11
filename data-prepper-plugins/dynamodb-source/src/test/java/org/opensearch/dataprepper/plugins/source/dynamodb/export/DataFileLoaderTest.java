@@ -10,9 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.DataFileProgressState;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -81,10 +81,10 @@ class DataFileLoaderTest {
         when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(generateGzipInputStream(total));
         s3ObjectReader = new S3ObjectReader(s3Client);
 
-        lenient().when(coordinator.createPartition(any(SourcePartition.class))).thenReturn(true);
-        lenient().doNothing().when(coordinator).completePartition(any(SourcePartition.class));
-        lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(SourcePartition.class));
-        lenient().doNothing().when(coordinator).giveUpPartition(any(SourcePartition.class));
+        lenient().when(coordinator.createPartition(any(EnhancedSourcePartition.class))).thenReturn(true);
+        lenient().doNothing().when(coordinator).completePartition(any(EnhancedSourcePartition.class));
+        lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(EnhancedSourcePartition.class));
+        lenient().doNothing().when(coordinator).giveUpPartition(any(EnhancedSourcePartition.class));
 
         lenient().doNothing().when(recordConverter).writeToBuffer(any(List.class));
 

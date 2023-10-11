@@ -9,6 +9,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -38,6 +39,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -46,13 +48,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.kafka.buffer.KafkaBuffer.EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -101,6 +106,9 @@ class KafkaBufferTest {
     @Mock
     BlockingBuffer<Record<Event>>  blockingBuffer;
 
+    @Mock
+    private AwsCredentialsSupplier awsCredentialsSupplier;
+
     public KafkaBuffer<Record<Event>> createObjectUnderTest() {
 
         try (
@@ -116,7 +124,7 @@ class KafkaBufferTest {
                  })) {
 
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executorService);
-            return new KafkaBuffer<Record<Event>>(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics);
+            return new KafkaBuffer<Record<Event>>(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, awsCredentialsSupplier);
         }
     }
 
@@ -231,5 +239,38 @@ class KafkaBufferTest {
         assertThat(result, equalTo(duration));
 
         verify(bufferConfig).getDrainTimeout();
+    }
+
+    @Test
+    public void testShutdown_Successful() throws InterruptedException {
+        kafkaBuffer = createObjectUnderTest();
+        lenient().when(executorService.awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.SECONDS))).thenReturn(true);
+
+        kafkaBuffer.shutdown();
+        verify(executorService).shutdown();
+        verify(executorService).awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    public void testShutdown_Timeout() throws InterruptedException {
+        kafkaBuffer = createObjectUnderTest();
+        lenient().when(executorService.awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.SECONDS))).thenReturn(false);
+
+        kafkaBuffer.shutdown();
+        verify(executorService).shutdown();
+        verify(executorService).awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.SECONDS));
+        verify(executorService).shutdownNow();
+    }
+
+    @Test
+    public void testShutdown_InterruptedException() throws InterruptedException {
+        kafkaBuffer = createObjectUnderTest();
+        lenient().when(executorService.awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.SECONDS)))
+                .thenThrow(new InterruptedException());
+
+        kafkaBuffer.shutdown();
+        verify(executorService).shutdown();
+        verify(executorService).awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.SECONDS));
+        verify(executorService).shutdownNow();
     }
 }

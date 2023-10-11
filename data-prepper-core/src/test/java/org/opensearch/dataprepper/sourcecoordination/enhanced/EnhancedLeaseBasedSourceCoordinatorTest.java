@@ -3,16 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.dynamodb.coordination;
+package org.opensearch.dataprepper.sourcecoordination.enhanced;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -30,19 +33,25 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class DefaultCoordinatorTest {
+class EnhancedLeaseBasedSourceCoordinatorTest {
 
     @Mock
     private SourceCoordinationStore sourceCoordinationStore;
 
     @Mock
+    private SourceCoordinationConfig sourceCoordinationConfig;
+
+    @Mock
     private SourcePartitionStoreItem sourcePartitionStoreItem;
+
+    @Mock
+    private PluginMetrics pluginMetrics;
 
     private String sourceIdentifier;
 
-    private DefaultEnhancedSourceCoordinator coordinator;
+    private EnhancedLeaseBasedSourceCoordinator coordinator;
 
-    private final String DEFAULT_PARTITION_TYPE = "TEST";
+    private static final String DEFAULT_PARTITION_TYPE = "TEST";
 
 
     @BeforeEach
@@ -52,18 +61,18 @@ class DefaultCoordinatorTest {
         lenient().when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceIdentifier + "|" + DEFAULT_PARTITION_TYPE);
     }
 
-    private DefaultEnhancedSourceCoordinator createObjectUnderTest() {
-        DefaultEnhancedSourceCoordinator coordinator = new DefaultEnhancedSourceCoordinator(sourceCoordinationStore, sourceIdentifier, sourcePartitionStoreItem -> new TestPartition(sourcePartitionStoreItem));
+    private EnhancedLeaseBasedSourceCoordinator createObjectUnderTest() {
+        EnhancedLeaseBasedSourceCoordinator coordinator = new EnhancedLeaseBasedSourceCoordinator(sourceCoordinationStore, sourceCoordinationConfig, pluginMetrics, sourceIdentifier, sourcePartitionStoreItem -> new TestEnhancedSourcePartition(sourcePartitionStoreItem));
         return coordinator;
     }
 
 
-    class TestPartition extends SourcePartition<String> {
+    static class TestEnhancedSourcePartition extends EnhancedSourcePartition<String> {
 
         private final String partitionType;
         private final String partitionKey;
 
-        public TestPartition(SourcePartitionStoreItem sourcePartitionStoreItem) {
+        public TestEnhancedSourcePartition(SourcePartitionStoreItem sourcePartitionStoreItem) {
             setSourcePartitionStoreItem(sourcePartitionStoreItem);
 
             String[] split = sourcePartitionStoreItem.getSourceIdentifier().split("\\|");
@@ -75,7 +84,7 @@ class DefaultCoordinatorTest {
             this.partitionKey = sourcePartitionStoreItem.getSourcePartitionKey();
         }
 
-        public TestPartition(boolean isGlobal) {
+        public TestEnhancedSourcePartition(boolean isGlobal) {
             this.partitionType = isGlobal ? null : DEFAULT_PARTITION_TYPE;
             partitionKey = UUID.randomUUID().toString();
         }
@@ -110,12 +119,12 @@ class DefaultCoordinatorTest {
     void test_createPartition() {
         coordinator = createObjectUnderTest();
         // A normal type.
-        TestPartition partition = new TestPartition(false);
+        TestEnhancedSourcePartition partition = new TestEnhancedSourcePartition(false);
         coordinator.createPartition(partition);
         verify(sourceCoordinationStore).tryCreatePartitionItem(eq(sourceIdentifier + "|" + DEFAULT_PARTITION_TYPE), anyString(), eq(SourcePartitionStatus.UNASSIGNED), anyLong(), eq(null));
 
         // GlobalState.
-        TestPartition globalState = new TestPartition(true);
+        TestEnhancedSourcePartition globalState = new TestEnhancedSourcePartition(true);
         coordinator.createPartition(globalState);
         verify(sourceCoordinationStore).tryCreatePartitionItem(eq(sourceIdentifier + "|GLOBAL"), anyString(), eq(null), anyLong(), eq(null));
 
@@ -129,13 +138,13 @@ class DefaultCoordinatorTest {
                 .willReturn(Optional.empty());
         coordinator = createObjectUnderTest();
 
-        Optional<SourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
+        Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
         assertThat(sourcePartition.isPresent(), equalTo(true));
 
-        Optional<SourcePartition> sourcePartition2 = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
+        Optional<EnhancedSourcePartition> sourcePartition2 = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
         assertThat(sourcePartition2.isPresent(), equalTo(true));
 
-        Optional<SourcePartition> sourcePartition3 = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
+        Optional<EnhancedSourcePartition> sourcePartition3 = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
         assertThat(sourcePartition3.isPresent(), equalTo(false));
 
         verify(sourceCoordinationStore, times(3)).tryAcquireAvailablePartition(anyString(), anyString(), any(Duration.class));
@@ -151,9 +160,9 @@ class DefaultCoordinatorTest {
                 .willReturn(Optional.empty());
         coordinator = createObjectUnderTest();
 
-        Optional<SourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
+        Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
         assertThat(sourcePartition.isPresent(), equalTo(true));
-        TestPartition partition = (TestPartition) sourcePartition.get();
+        TestEnhancedSourcePartition partition = (TestEnhancedSourcePartition) sourcePartition.get();
         coordinator.saveProgressStateForPartition(partition);
 
         verify(sourceCoordinationStore).tryAcquireAvailablePartition(anyString(), anyString(), any(Duration.class));
@@ -167,9 +176,9 @@ class DefaultCoordinatorTest {
 
         coordinator = createObjectUnderTest();
 
-        Optional<SourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
+        Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
         assertThat(sourcePartition.isPresent(), equalTo(true));
-        TestPartition partition = (TestPartition) sourcePartition.get();
+        TestEnhancedSourcePartition partition = (TestEnhancedSourcePartition) sourcePartition.get();
 
         coordinator.giveUpPartition(partition);
 
@@ -186,9 +195,9 @@ class DefaultCoordinatorTest {
         given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any())).willReturn(Optional.of(sourcePartitionStoreItem));
         coordinator = createObjectUnderTest();
 
-        Optional<SourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
+        Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
         assertThat(sourcePartition.isPresent(), equalTo(true));
-        TestPartition partition = (TestPartition) sourcePartition.get();
+        TestEnhancedSourcePartition partition = (TestEnhancedSourcePartition) sourcePartition.get();
 
         coordinator.completePartition(partition);
 
@@ -206,9 +215,9 @@ class DefaultCoordinatorTest {
         given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any())).willReturn(Optional.of(sourcePartitionStoreItem));
         coordinator = createObjectUnderTest();
 
-        Optional<SourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
+        Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
         assertThat(sourcePartition.isPresent(), equalTo(true));
-        TestPartition partition = (TestPartition) sourcePartition.get();
+        TestEnhancedSourcePartition partition = (TestEnhancedSourcePartition) sourcePartition.get();
 
         coordinator.closePartition(partition, Duration.ofMinutes(10), 1);
         verify(sourcePartitionStoreItem).setSourcePartitionStatus(SourcePartitionStatus.CLOSED);
@@ -225,7 +234,7 @@ class DefaultCoordinatorTest {
         String partitionKey = UUID.randomUUID().toString();
         given(sourceCoordinationStore.getSourcePartitionItem(eq(sourceIdentifier + "|GLOBAL"), eq(partitionKey))).willReturn(Optional.of(sourcePartitionStoreItem));
         coordinator = createObjectUnderTest();
-        Optional<SourcePartition> sourcePartition = coordinator.getPartition(partitionKey);
+        Optional<EnhancedSourcePartition> sourcePartition = coordinator.getPartition(partitionKey);
         assertThat(sourcePartition.isPresent(), equalTo(true));
     }
 }

@@ -75,6 +75,12 @@ class CircuitBreakingBufferTest {
         assertThat(result, equalTo(duration));
     }
 
+    @Test
+    void shutdown_calls_buffer_shutdown() {
+        createObjectUnderTest().shutdown();
+        verify(buffer).shutdown();
+    }
+
     @Nested
     class NoCircuitBreakerChecks {
         @AfterEach

@@ -9,8 +9,6 @@ repositories {
 
 dependencies {
     implementation project(path: ':data-prepper-api')
-    implementation project(path: ':data-prepper-core')
-    implementation project(path: ':data-prepper-plugins:dynamodb-source-coordination-store')
 
     implementation libs.armeria.core
     implementation 'io.micrometer:micrometer-core'

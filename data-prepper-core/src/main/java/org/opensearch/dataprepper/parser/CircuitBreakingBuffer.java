@@ -77,4 +77,9 @@ class CircuitBreakingBuffer<T extends Record<?>> implements Buffer<T> {
     public Duration getDrainTimeout() {
         return buffer.getDrainTimeout();
     }
+
+    @Override
+    public void shutdown() {
+        buffer.shutdown();
+    }
 }

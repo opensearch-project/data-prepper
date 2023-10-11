@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition;
 
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.EmptyProgressState;
 
 import java.util.Optional;
@@ -17,7 +17,7 @@ import java.util.Optional;
  * The downside is that after initialization, changes to configuration will be ignored.
  * The source identifier contains keyword 'INIT'
  */
-public class InitPartition extends SourcePartition<EmptyProgressState> {
+public class InitPartition extends EnhancedSourcePartition<EmptyProgressState> {
     public static final String PARTITION_TYPE = "INIT";
 
     private static final String DEFAULT_PARTITION_KEY = "GLOBAL";

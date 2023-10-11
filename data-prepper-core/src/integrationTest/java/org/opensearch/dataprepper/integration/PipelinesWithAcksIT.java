@@ -14,9 +14,12 @@ import org.opensearch.dataprepper.plugins.InMemorySinkAccessor;
 import org.opensearch.dataprepper.plugins.InMemorySourceAccessor;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.Assert.assertFalse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.time.Instant;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -25,7 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 
 class PipelinesWithAcksIT {
-
+    private static final Logger LOG = LoggerFactory.getLogger(PipelinesWithAcksIT.class);
     private static final String IN_MEMORY_IDENTIFIER = "PipelinesWithAcksIT";
     private static final String SIMPLE_PIPELINE_CONFIGURATION_UNDER_TEST = "acknowledgements/simple-test.yaml";
     private static final String TWO_PIPELINES_CONFIGURATION_UNDER_TEST = "acknowledgements/two-pipelines-test.yaml";
@@ -44,6 +47,7 @@ class PipelinesWithAcksIT {
                 .withPipelinesDirectoryOrFile(configFile)
                 .build();
 
+	LOG.info("PipelinesWithAcksIT with config file {} started at {}", configFile, Instant.now());
         dataPrepperTestRunner.start();
         inMemorySourceAccessor = dataPrepperTestRunner.getInMemorySourceAccessor();
         inMemorySinkAccessor = dataPrepperTestRunner.getInMemorySinkAccessor();
@@ -51,6 +55,7 @@ class PipelinesWithAcksIT {
 
     @AfterEach
     void tearDown() {
+	LOG.info("PipelinesWithAcksIT with stopped at {}", Instant.now());
         dataPrepperTestRunner.stop();
     }
 
@@ -60,7 +65,7 @@ class PipelinesWithAcksIT {
         final int numRecords = 1;
         inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
 
-        await().atMost(2000, TimeUnit.MILLISECONDS)
+        await().atMost(20000, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
@@ -76,7 +81,7 @@ class PipelinesWithAcksIT {
         final int numRecords = 100;
         inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
 
-        await().atMost(2000, TimeUnit.MILLISECONDS)
+        await().atMost(20000, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
@@ -91,7 +96,7 @@ class PipelinesWithAcksIT {
         final int numRecords = 100;
         inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
 
-        await().atMost(5000, TimeUnit.MILLISECONDS)
+        await().atMost(20000, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));

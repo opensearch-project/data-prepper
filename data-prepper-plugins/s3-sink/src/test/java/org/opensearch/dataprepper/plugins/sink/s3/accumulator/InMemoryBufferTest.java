@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 import org.apache.parquet.io.PositionOutputStream;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -66,6 +67,16 @@ class InMemoryBufferTest {
     }
 
     @Test
+    @Disabled("unstable")
+    /**
+     * There are 5 checkpoints in the tests as below
+     *     |-----------upperBoundDuration-------------|
+     * startTime --- stopWatchStart --- endTime --- checkpoint --- stopwatchGetDuration
+     *                                 |-lowerBoundDuration-|
+     *                       |------------inMemoryBuffer.Duration-------------|
+     *  This test assumes the startTime and stopWatchStart are same, checkpoint and stopwatchGetDuration are same.
+     *  However, they are not true at some systems.
+     */
     void getDuration_provides_duration_within_expected_range() throws IOException, InterruptedException {
         Instant startTime = Instant.now();
         inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);

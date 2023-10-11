@@ -9,9 +9,15 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
+import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
+import org.opensearch.dataprepper.sourcecoordination.enhanced.EnhancedLeaseBasedSourceCoordinator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.function.Function;
 
 /**
  * A factory class that will create the {@link SourceCoordinator} implementation based on the
@@ -48,5 +54,23 @@ public class SourceCoordinatorFactory {
         LOG.info("Creating LeaseBasedSourceCoordinator with coordination store {} for sub-pipeline {}",
                 sourceCoordinationConfig.getSourceCoordinationStoreConfig().getName(), subPipelineName);
         return new LeaseBasedSourceCoordinator<T>(clazz, sourceCoordinationStore, sourceCoordinationConfig, new PartitionManager<>(), subPipelineName, sourceCoordinatorMetrics);
+    }
+
+    public EnhancedSourceCoordinator provideEnhancedSourceCoordinator(final Function<SourcePartitionStoreItem, EnhancedSourcePartition> partitionFactory,
+                                                                      final String subPipelineName) {
+        if (sourceCoordinationConfig == null
+                || sourceCoordinationConfig.getSourceCoordinationStoreConfig() == null
+                || sourceCoordinationConfig.getSourceCoordinationStoreConfig().getName() == null) {
+            return null;
+        }
+
+        final SourceCoordinationStore sourceCoordinationStore =
+                pluginFactory.loadPlugin(SourceCoordinationStore.class, sourceCoordinationConfig.getSourceCoordinationStoreConfig());
+
+        final PluginMetrics sourceCoordinatorMetrics = PluginMetrics.fromNames(SOURCE_COORDINATOR_PLUGIN_NAME_FOR_METRICS, subPipelineName);
+
+        LOG.info("Creating EnhancedLeaseBasedSourceCoordinator with coordination store {} for sub-pipeline {}",
+                sourceCoordinationConfig.getSourceCoordinationStoreConfig().getName(), subPipelineName);
+        return new EnhancedLeaseBasedSourceCoordinator(sourceCoordinationStore, sourceCoordinationConfig, sourceCoordinatorMetrics, subPipelineName, partitionFactory);
     }
 }

@@ -3,12 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.dynamodb.coordination;
+package org.opensearch.dataprepper.sourcecoordination.enhanced;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.InitPartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,9 +27,9 @@ import java.util.function.Function;
 /**
  * An implemetation of {@link EnhancedSourceCoordinator} backend by {@link SourceCoordinationStore}
  */
-public class DefaultEnhancedSourceCoordinator implements EnhancedSourceCoordinator {
+public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordinator {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DefaultEnhancedSourceCoordinator.class);
+    private static final Logger LOG = LoggerFactory.getLogger(EnhancedLeaseBasedSourceCoordinator.class);
 
     /**
      * Default time out duration for lease.
@@ -51,9 +54,11 @@ public class DefaultEnhancedSourceCoordinator implements EnhancedSourceCoordinat
 
     /**
      * In order to support different types of partitions.
-     * A custom factory is required to map a {@link SourcePartitionStoreItem} to a {@link SourcePartition}
+     * A custom factory is required to map a {@link SourcePartitionStoreItem} to a {@link EnhancedSourcePartition}
      */
-    private final Function<SourcePartitionStoreItem, SourcePartition> partitionFactory;
+    private final Function<SourcePartitionStoreItem, EnhancedSourcePartition> partitionFactory;
+
+    private final PluginMetrics pluginMetrics;
 
     /**
      * Use host name of the node as the default ownerId
@@ -70,21 +75,26 @@ public class DefaultEnhancedSourceCoordinator implements EnhancedSourceCoordinat
     }
 
 
-    public DefaultEnhancedSourceCoordinator(final SourceCoordinationStore coordinationStore, String sourceIdentifier, Function<SourcePartitionStoreItem, SourcePartition> partitionFactory) {
+    public EnhancedLeaseBasedSourceCoordinator(final SourceCoordinationStore coordinationStore,
+                                               final SourceCoordinationConfig sourceCoordinationConfig,
+                                               final PluginMetrics pluginMetrics,
+                                               final String sourceIdentifier,
+                                               final Function<SourcePartitionStoreItem, EnhancedSourcePartition> partitionFactory) {
         this.coordinationStore = coordinationStore;
-        this.sourceIdentifier = sourceIdentifier;
+        this.sourceIdentifier = Objects.nonNull(sourceCoordinationConfig.getPartitionPrefix()) ?
+                sourceCoordinationConfig.getPartitionPrefix() + "|" + sourceIdentifier :
+                sourceIdentifier;
+        this.pluginMetrics = pluginMetrics;
         this.partitionFactory = partitionFactory;
-
     }
 
     @Override
     public void initialize() {
         coordinationStore.initializeStore();
-        createPartition(new InitPartition());
     }
 
     @Override
-    public <T> boolean createPartition(SourcePartition<T> partition) {
+    public <T> boolean createPartition(EnhancedSourcePartition<T> partition) {
         String partitionType = partition.getPartitionType() == null ? DEFAULT_GLOBAL_STATE_PARTITION_TYPE : partition.getPartitionType();
         // Don't need the status for Global state which is not for lease.
         SourcePartitionStatus status = partition.getPartitionType() == null ? null : SourcePartitionStatus.UNASSIGNED;
@@ -102,7 +112,7 @@ public class DefaultEnhancedSourceCoordinator implements EnhancedSourceCoordinat
 
 
     @Override
-    public Optional<SourcePartition> acquireAvailablePartition(String partitionType) {
+    public Optional<EnhancedSourcePartition> acquireAvailablePartition(String partitionType) {
         // Not available for global state.
         Objects.nonNull(partitionType);
         LOG.debug("Try to acquire an available {} partition", partitionType);
@@ -117,7 +127,7 @@ public class DefaultEnhancedSourceCoordinator implements EnhancedSourceCoordinat
 
 
     @Override
-    public <T> void saveProgressStateForPartition(SourcePartition<T> partition) {
+    public <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition) {
         String partitionType = partition.getPartitionType() == null ? DEFAULT_GLOBAL_STATE_PARTITION_TYPE : partition.getPartitionType();
         LOG.debug("Try to save progress for partition {} (Type {})", partition.getPartitionKey(), partitionType);
 
@@ -139,7 +149,7 @@ public class DefaultEnhancedSourceCoordinator implements EnhancedSourceCoordinat
     }
 
     @Override
-    public <T> void giveUpPartition(SourcePartition<T> partition) {
+    public <T> void giveUpPartition(EnhancedSourcePartition<T> partition) {
         Objects.nonNull(partition.getPartitionType());
 
         LOG.debug("Try to give up the ownership for partition {} (Type {})", partition.getPartitionKey(), partition.getPartitionType());
@@ -162,7 +172,7 @@ public class DefaultEnhancedSourceCoordinator implements EnhancedSourceCoordinat
     }
 
     @Override
-    public <T> void completePartition(SourcePartition<T> partition) {
+    public <T> void completePartition(EnhancedSourcePartition<T> partition) {
         Objects.nonNull(partition.getPartitionType());
 
         LOG.debug("Try to complete partition {} (Type {})", partition.getPartitionKey(), partition.getPartitionType());
@@ -185,7 +195,7 @@ public class DefaultEnhancedSourceCoordinator implements EnhancedSourceCoordinat
     }
 
     @Override
-    public <T> void closePartition(SourcePartition<T> partition, final Duration reopenAfter, final int maxClosedCount) {
+    public <T> void closePartition(EnhancedSourcePartition<T> partition, final Duration reopenAfter, final int maxClosedCount) {
 
         Objects.nonNull(partition.getPartitionType());
 
@@ -217,7 +227,7 @@ public class DefaultEnhancedSourceCoordinator implements EnhancedSourceCoordinat
 
 
     @Override
-    public Optional<SourcePartition> getPartition(String partitionKey) {
+    public Optional<EnhancedSourcePartition> getPartition(String partitionKey) {
         // Default to Global State only.
         final Optional<SourcePartitionStoreItem> sourceItem = coordinationStore.getSourcePartitionItem(this.sourceIdentifier + "|" + DEFAULT_GLOBAL_STATE_PARTITION_TYPE, partitionKey);
         if (!sourceItem.isPresent()) {

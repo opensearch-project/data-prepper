@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.slf4j.Logger;
@@ -36,7 +36,7 @@ public class StreamScheduler implements Runnable {
     private final ShardManager shardManager;
 
 
-    public StreamScheduler(EnhancedSourceCoordinator coordinator, ShardConsumerFactory consumerFactory, ShardManager shardManager) {
+    public StreamScheduler(final EnhancedSourceCoordinator coordinator, final ShardConsumerFactory consumerFactory, final ShardManager shardManager) {
         this.coordinator = coordinator;
         this.shardManager = shardManager;
         this.consumerFactory = consumerFactory;
@@ -62,7 +62,7 @@ public class StreamScheduler implements Runnable {
         LOG.debug("Stream Scheduler start to run...");
         while (!Thread.interrupted()) {
             if (numOfWorkers.get() < MAX_JOB_COUNT) {
-                final Optional<SourcePartition> sourcePartition = coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
+                final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
                 if (sourcePartition.isPresent()) {
                     StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
                     processStreamPartition(streamPartition);

@@ -19,21 +19,26 @@ import static org.mockito.Mockito.when;
 class SerializationFactoryTest {
     @Mock
     private MessageFormatSerializationFactory messageFormatSerializationFactory;
+    @Mock
+    private EncryptionSerializationFactory encryptionSerializationFactory;
 
     @Mock
     private KafkaDataConfig kafkaDataConfig;
 
     private SerializationFactory createObjectUnderTest() {
-        return new SerializationFactory(messageFormatSerializationFactory);
+        return new SerializationFactory(messageFormatSerializationFactory, encryptionSerializationFactory);
     }
 
     @ParameterizedTest
     @EnumSource(MessageFormat.class)
-    void getDeserializer_returns_result_of_getDeserializer(MessageFormat serdeFormat) {
+    void getDeserializer_returns_result_of_EncryptionSerializationFactory_from_MessageFormatSerializationFactory(MessageFormat serdeFormat) {
+        Deserializer innerDeserializer = mock(Deserializer.class);
         Deserializer deserializer = mock(Deserializer.class);
         when(kafkaDataConfig.getSerdeFormat()).thenReturn(serdeFormat);
 
         when(messageFormatSerializationFactory.getDeserializer(serdeFormat))
+                .thenReturn(innerDeserializer);
+        when(encryptionSerializationFactory.getDeserializer(kafkaDataConfig, innerDeserializer))
                 .thenReturn(deserializer);
 
         assertThat(createObjectUnderTest().getDeserializer(kafkaDataConfig),
@@ -42,11 +47,14 @@ class SerializationFactoryTest {
 
     @ParameterizedTest
     @EnumSource(MessageFormat.class)
-    void getSerializer_returns_result_of_getSerializer(MessageFormat serdeFormat) {
+    void getSerializer_returns_result_of_EncryptionSerializationFactory_from_MessageFormatSerializationFactory(MessageFormat serdeFormat) {
+        Serializer innerSerializer = mock(Serializer.class);
         Serializer serializer = mock(Serializer.class);
         when(kafkaDataConfig.getSerdeFormat()).thenReturn(serdeFormat);
 
         when(messageFormatSerializationFactory.getSerializer(serdeFormat))
+                .thenReturn(innerSerializer);
+        when(encryptionSerializationFactory.getSerializer(kafkaDataConfig, innerSerializer))
                 .thenReturn(serializer);
 
         assertThat(createObjectUnderTest().getSerializer(kafkaDataConfig),

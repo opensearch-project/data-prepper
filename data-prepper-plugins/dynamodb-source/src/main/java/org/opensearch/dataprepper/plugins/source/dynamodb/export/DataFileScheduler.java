@@ -7,8 +7,8 @@ package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.LoadStatus;
@@ -78,7 +78,7 @@ public class DataFileScheduler implements Runnable {
 
         while (!Thread.interrupted()) {
             if (numOfWorkers.get() < MAX_JOB_COUNT) {
-                final Optional<SourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
+                final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
 
                 if (sourcePartition.isPresent()) {
                     DataFilePartition dataFilePartition = (DataFilePartition) sourcePartition.get();
@@ -151,7 +151,7 @@ public class DataFileScheduler implements Runnable {
         // Unlimited retries
         // The state be out of dated when updating.
         while (true) {
-            Optional<SourcePartition> globalPartition = coordinator.getPartition(exportArn);
+            Optional<EnhancedSourcePartition> globalPartition = coordinator.getPartition(exportArn);
             if (globalPartition.isEmpty()) {
                 LOG.error("Failed to get load status for " + exportArn);
                 return;

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.dynamodb.coordination;
+package org.opensearch.dataprepper.model.source.coordinator.enhanced;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -17,7 +17,7 @@ import java.util.Optional;
 
 /**
  * <p>
- * A base definition of a {@link Partition} in the coordination store.
+ * A base definition of a {@link EnhancedPartition} in the coordination store.
  * All partitions must extend this.
  * </p>
  * We store the {SourcePartitionStoreItem} in the partition.
@@ -30,40 +30,38 @@ import java.util.Optional;
  *
  * @param <T> The progress state class
  */
-public abstract class SourcePartition<T> implements Partition<T> {
+public abstract class EnhancedSourcePartition<T> implements EnhancedPartition<T> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DefaultEnhancedSourceCoordinator.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Logger LOG = LoggerFactory.getLogger(EnhancedSourcePartition.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private SourcePartitionStoreItem sourcePartitionStoreItem;
 
-    protected SourcePartitionStoreItem getSourcePartitionStoreItem() {
+    public SourcePartitionStoreItem getSourcePartitionStoreItem() {
         return sourcePartitionStoreItem;
     }
 
-
-    protected void setSourcePartitionStoreItem(SourcePartitionStoreItem sourcePartitionStoreItem) {
+    public void setSourcePartitionStoreItem(SourcePartitionStoreItem sourcePartitionStoreItem) {
         this.sourcePartitionStoreItem = sourcePartitionStoreItem;
     }
-
 
     /**
      * Helper method to convert progress state.
      * This is because the state is currently stored as a String in the coordination store.
      */
-    protected T convertStringToPartitionProgressState(Class<T> progressStateClass, final String serializedPartitionProgressState) {
+    public T convertStringToPartitionProgressState(Class<T> progressStateClass, final String serializedPartitionProgressState) {
         if (Objects.isNull(serializedPartitionProgressState)) {
             return null;
         }
 
         try {
             if (progressStateClass != null) {
-                return MAPPER.readValue(serializedPartitionProgressState, progressStateClass);
+                return objectMapper.readValue(serializedPartitionProgressState, progressStateClass);
             }
-            return MAPPER.readValue(serializedPartitionProgressState, new TypeReference<>() {
+            return objectMapper.readValue(serializedPartitionProgressState, new TypeReference<>() {
             });
         } catch (final JsonProcessingException e) {
-            LOG.error("Unable to convert string to partition progress state class {}: {}", progressStateClass.getName(), e);
+            LOG.error("Unable to convert string to partition progress state class {}: ", progressStateClass != null ? progressStateClass.getName() : null, e);
             return null;
         }
     }
@@ -72,14 +70,14 @@ public abstract class SourcePartition<T> implements Partition<T> {
      * Helper method to convert progress state to String
      * This is because the state is currently stored as a String in the coordination store.
      */
-    protected String convertPartitionProgressStatetoString(Optional<T> partitionProgressState) {
+    public String convertPartitionProgressStatetoString(Optional<T> partitionProgressState) {
         if (partitionProgressState.isEmpty()) {
             return null;
         }
         try {
-            return MAPPER.writeValueAsString(partitionProgressState.get());
+            return objectMapper.writeValueAsString(partitionProgressState.get());
         } catch (final JsonProcessingException e) {
-            LOG.error("Unable to convert partition progress state class to string: {}", e);
+            LOG.error("Unable to convert partition progress state class to string: ", e);
             return null;
         }
     }

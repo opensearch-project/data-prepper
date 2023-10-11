@@ -10,16 +10,15 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.types.ByteCount;
-
-import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
+
 /**
  * * A helper class that helps to read consumer configuration values from
  * pipelines.yaml
  */
-public class TopicConfig implements KafkaDataConfig {
+public class TopicConfig {
     static final boolean DEFAULT_AUTO_COMMIT = false;
     static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
     static final Duration DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(45);
@@ -126,6 +125,12 @@ public class TopicConfig implements KafkaDataConfig {
     @JsonProperty("retention_period")
     private Long retentionPeriod=DEFAULT_RETENTION_PERIOD;
 
+    @JsonProperty("encryption_key")
+    private String encryptionKey;
+
+    @JsonProperty("kms_key_id")
+    private String kmsKeyId;
+
     public Long getRetentionPeriod() {
         return retentionPeriod;
     }
@@ -140,6 +145,14 @@ public class TopicConfig implements KafkaDataConfig {
 
     public MessageFormat getSerdeFormat() {
         return serdeFormat;
+    }
+
+    public String getEncryptionKey() {
+        return encryptionKey;
+    }
+
+    public String getKmsKeyId() {
+        return kmsKeyId;
     }
 
     public Boolean getAutoCommit() {
@@ -269,5 +282,4 @@ public class TopicConfig implements KafkaDataConfig {
     public Short getReplicationFactor() {
         return replicationFactor;
     }
-
 }

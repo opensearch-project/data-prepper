@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.kafka.sink;
 
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -69,7 +70,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     @DataPrepperPluginConstructor
     public KafkaSink(final PluginSetting pluginSetting, final KafkaSinkConfig kafkaSinkConfig, final PluginFactory pluginFactory,
-                     final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext) {
+                     final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext,
+                     AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
         this.pluginSetting = pluginSetting;
         this.kafkaSinkConfig = kafkaSinkConfig;
@@ -79,7 +81,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         this.sinkContext = sinkContext;
 
         SerializationFactory serializationFactory = new SerializationFactory();
-        kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory);
+        kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier);
 
     }
 

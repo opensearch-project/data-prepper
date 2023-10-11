@@ -9,8 +9,8 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
@@ -39,7 +39,9 @@ public class ShardConsumerFactory {
 
     private final Buffer<Record<Event>> buffer;
 
-    public ShardConsumerFactory(EnhancedSourceCoordinator enhancedSourceCoordinator, DynamoDbStreamsClient streamsClient, PluginMetrics pluginMetrics, ShardManager shardManager, Buffer<Record<Event>> buffer) {
+    public ShardConsumerFactory(final EnhancedSourceCoordinator enhancedSourceCoordinator,
+                                final DynamoDbStreamsClient streamsClient, final PluginMetrics pluginMetrics,
+                                final ShardManager shardManager, final Buffer<Record<Event>> buffer) {
         this.streamsClient = streamsClient;
         this.enhancedSourceCoordinator = enhancedSourceCoordinator;
         this.pluginMetrics = pluginMetrics;
