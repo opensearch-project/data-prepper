@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
@@ -16,9 +16,9 @@ import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.CreateOperation;
-import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
 import org.opensearch.client.opensearch.core.bulk.DeleteOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
+import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
 import org.opensearch.client.transport.TransportOptions;
 import org.opensearch.common.unit.ByteSizeUnit;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
@@ -32,6 +32,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.opensearch.dataprepper.model.failures.DlqObject;
+import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
@@ -41,7 +42,6 @@ import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
-import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkApiWrapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkApiWrapperFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWriter;
@@ -262,7 +262,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     final Optional<String> docId = document.getDocumentId();
     final Optional<String> routing = document.getRoutingField();
 
-    if (StringUtils.equals(action, BulkAction.CREATE.toString())) {
+    if (StringUtils.equals(action, OpenSearchBulkActions.CREATE.toString())) {
        final CreateOperation.Builder<Object> createOperationBuilder =
          new CreateOperation.Builder<>()
              .index(indexName)
@@ -274,9 +274,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                            .build();
        return bulkOperation;
     }
-    if (StringUtils.equals(action, BulkAction.UPDATE.toString()) ||
-        StringUtils.equals(action, BulkAction.UPSERT.toString())) {
-          final UpdateOperation.Builder<Object> updateOperationBuilder = (action.toLowerCase() == BulkAction.UPSERT.toString()) ?
+    if (StringUtils.equals(action, OpenSearchBulkActions.UPDATE.toString()) ||
+        StringUtils.equals(action, OpenSearchBulkActions.UPSERT.toString())) {
+          final UpdateOperation.Builder<Object> updateOperationBuilder = (action.toLowerCase() == OpenSearchBulkActions.UPSERT.toString()) ?
               new UpdateOperation.Builder<>()
                   .index(indexName)
                   .document(jsonNode)
@@ -291,7 +291,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                               .build();
           return bulkOperation;
     }
-    if (StringUtils.equals(action, BulkAction.DELETE.toString())) {
+    if (StringUtils.equals(action, OpenSearchBulkActions.DELETE.toString())) {
       final DeleteOperation.Builder deleteOperationBuilder =
         new DeleteOperation.Builder().index(indexName);
       docId.ifPresent(deleteOperationBuilder::id);
@@ -358,16 +358,16 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       if (eventAction.contains("${")) {
           eventAction = event.formatString(eventAction, expressionEvaluator);
       }
-      if (BulkAction.fromOptionValue(eventAction) == null) {
+      if (OpenSearchBulkActions.fromOptionValue(eventAction) == null) {
         LOG.error("Unknown action {}, skipping the event", eventAction);
         invalidActionErrorsCounter.increment();
         continue;
       }
 
       SerializedJson serializedJsonNode = null;
-      if (StringUtils.equals(action, BulkAction.UPDATE.toString()) ||
-          StringUtils.equals(action, BulkAction.UPSERT.toString()) ||
-          StringUtils.equals(action, BulkAction.DELETE.toString())) {
+      if (StringUtils.equals(action, OpenSearchBulkActions.UPDATE.toString()) ||
+          StringUtils.equals(action, OpenSearchBulkActions.UPSERT.toString()) ||
+          StringUtils.equals(action, OpenSearchBulkActions.DELETE.toString())) {
             serializedJsonNode = SerializedJson.fromJsonNode(event.getJsonNode(), document);
       }
       BulkOperation bulkOperation = getBulkOperationForAction(eventAction, document, indexName, event.getJsonNode());

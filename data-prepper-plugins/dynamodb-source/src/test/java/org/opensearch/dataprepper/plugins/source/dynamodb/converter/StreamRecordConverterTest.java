@@ -86,15 +86,6 @@ class StreamRecordConverterTest {
     @Test
     void test_writeToBuffer() throws Exception {
 
-//        final String pk1 = UUID.randomUUID().toString();
-//        final String sk1 = UUID.randomUUID().toString();
-//        final String pk2 = UUID.randomUUID().toString();
-//        final String sk2 = UUID.randomUUID().toString();
-
-
-//        final String data = " $ion_1_0 {Item:{PK:\"" + pk1 + "\",SK:\"" + sk1 + "\"}}\n" +
-//                " $ion_1_0 {Item:{PK:\"" + pk2 + "\",SK:\"" + sk2 + "\"}}\n";
-
         final Random random = new Random();
 
         int numberOfRecords = random.nextInt(10);
@@ -108,11 +99,6 @@ class StreamRecordConverterTest {
 
 
         recordConverter.writeToBuffer(data);
-
-//        System.out.println(writeRequestArgumentCaptor.capture());
-//        System.out.println(writeRequestArgumentCaptor.getValue());
-
-//        assertThat(awsAuthenticationConfig.getAwsRegion(), equalTo(Region.US_WEST_2));
         assertThat(writeRequestArgumentCaptor.getValue().size(), equalTo(numberOfRecords));
         verify(changeEventSuccessCounter).increment(anyDouble());
 

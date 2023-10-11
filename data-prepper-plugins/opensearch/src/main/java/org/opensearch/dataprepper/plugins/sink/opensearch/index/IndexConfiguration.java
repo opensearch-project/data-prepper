@@ -11,9 +11,9 @@ import org.apache.commons.lang3.EnumUtils;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
-import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3FileReader;
@@ -245,7 +245,7 @@ public class IndexConfiguration {
         if (actionsList != null) {
             builder.withActions(actionsList, expressionEvaluator);
         } else {
-            builder.withAction(pluginSetting.getStringOrDefault(ACTION, BulkAction.INDEX.toString()), expressionEvaluator);
+            builder.withAction(pluginSetting.getStringOrDefault(ACTION, OpenSearchBulkActions.INDEX.toString()), expressionEvaluator);
         }
 
         if ((builder.templateFile != null && builder.templateFile.startsWith(S3_PREFIX))
@@ -522,7 +522,7 @@ public class IndexConfiguration {
         }
 
         public Builder withAction(final String action, final ExpressionEvaluator expressionEvaluator) {
-            checkArgument((EnumUtils.isValidEnumIgnoreCase(BulkAction.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + BulkAction.values());
+            checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + OpenSearchBulkActions.values());
             this.action = action;
             return this;
         }
@@ -531,7 +531,7 @@ public class IndexConfiguration {
             for (final Map<String, Object> actionMap: actions) {
                 String action = (String)actionMap.get("type");
                 if (action != null) {
-                    checkArgument((EnumUtils.isValidEnumIgnoreCase(BulkAction.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + BulkAction.values());
+                    checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + OpenSearchBulkActions.values());
                 }
             }
             this.actions = actions;

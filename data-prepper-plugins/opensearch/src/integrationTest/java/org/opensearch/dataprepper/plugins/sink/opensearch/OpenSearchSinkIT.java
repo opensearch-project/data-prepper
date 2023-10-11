@@ -42,10 +42,10 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
@@ -615,7 +615,7 @@ public class OpenSearchSinkIT {
     }
 
     @Test
-    public void testBulkActionCreate() throws IOException, InterruptedException {
+    public void testOpenSearchBulkActionsCreate() throws IOException, InterruptedException {
         final String testIndexAlias = "test-alias";
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
@@ -624,7 +624,7 @@ public class OpenSearchSinkIT {
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
         final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
-        pluginSetting.getSettings().put(IndexConfiguration.ACTION, BulkAction.CREATE.toString());
+        pluginSetting.getSettings().put(IndexConfiguration.ACTION, OpenSearchBulkActions.CREATE.toString());
         final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -642,7 +642,7 @@ public class OpenSearchSinkIT {
     }
 
     @Test
-    public void testBulkActionCreateWithExpression() throws IOException, InterruptedException {
+    public void testOpenSearchBulkActionsCreateWithExpression() throws IOException, InterruptedException {
         final String testIndexAlias = "test-alias";
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
@@ -673,7 +673,7 @@ public class OpenSearchSinkIT {
     }
 
     @Test
-    public void testBulkActionCreateWithInvalidExpression() throws IOException, InterruptedException {
+    public void testOpenSearchBulkActionsCreateWithInvalidExpression() throws IOException, InterruptedException {
         final String testIndexAlias = "test-alias";
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
@@ -708,7 +708,7 @@ public class OpenSearchSinkIT {
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
-        aMap.put("type", BulkAction.CREATE.toString());
+        aMap.put("type", OpenSearchBulkActions.CREATE.toString());
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
@@ -741,7 +741,7 @@ public class OpenSearchSinkIT {
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
-        aMap.put("type", BulkAction.CREATE.toString());
+        aMap.put("type", OpenSearchBulkActions.CREATE.toString());
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
@@ -761,7 +761,7 @@ public class OpenSearchSinkIT {
         testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "name", "value2")));
         aList = new ArrayList<>();
         aMap = new HashMap<>();
-        aMap.put("type", BulkAction.UPDATE.toString());
+        aMap.put("type", OpenSearchBulkActions.UPDATE.toString());
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         sink = createObjectUnderTest(pluginSetting, true);
@@ -789,7 +789,7 @@ public class OpenSearchSinkIT {
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
-        aMap.put("type", BulkAction.CREATE.toString());
+        aMap.put("type", OpenSearchBulkActions.CREATE.toString());
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
@@ -809,7 +809,7 @@ public class OpenSearchSinkIT {
         testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson3(testIdField, testId, "name", "value3", "newKey", "newValue")));
         aList = new ArrayList<>();
         aMap = new HashMap<>();
-        aMap.put("type", BulkAction.UPSERT.toString());
+        aMap.put("type", OpenSearchBulkActions.UPSERT.toString());
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         sink = createObjectUnderTest(pluginSetting, true);
@@ -837,7 +837,7 @@ public class OpenSearchSinkIT {
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
-        aMap.put("type", BulkAction.UPSERT.toString());
+        aMap.put("type", OpenSearchBulkActions.UPSERT.toString());
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
@@ -873,7 +873,7 @@ public class OpenSearchSinkIT {
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
-        aMap.put("type", BulkAction.DELETE.toString());
+        aMap.put("type", OpenSearchBulkActions.DELETE.toString());
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
