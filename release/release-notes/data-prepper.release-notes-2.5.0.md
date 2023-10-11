@@ -23,6 +23,7 @@
 
 ### Security
 * Fix CVE-2023-44487, HTTP/2 reset floods. ([#3474](https://github.com/opensearch-project/data-prepper/issues/3474))
+* Fix CVE-2023-4586. ([#3443](https://github.com/opensearch-project/data-prepper/issues/3443))
 * Fix CVE-2023-39410. ([#3430](https://github.com/opensearch-project/data-prepper/issues/3430))
 
 ### Maintenance
