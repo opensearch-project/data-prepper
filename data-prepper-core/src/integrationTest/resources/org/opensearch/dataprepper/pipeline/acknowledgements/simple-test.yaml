@@ -1,4 +1,4 @@
-simple-pipeline:
+simple-pipeline-test:
   delay: 10
   source:
     in_memory:

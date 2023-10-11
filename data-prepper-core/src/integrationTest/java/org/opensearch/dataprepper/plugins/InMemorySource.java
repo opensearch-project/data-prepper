@@ -115,7 +115,7 @@ public class InMemorySource implements Source<Record<Event>> {
                 try {
                     final List<Record<Event>> records = inMemorySourceAccessor.read(testingKey);
                     if (records.size() == 0) {
-                        Thread.sleep(1000);
+                        Thread.sleep(50);
                         continue;
                     }
                     AcknowledgementSet ackSet =
