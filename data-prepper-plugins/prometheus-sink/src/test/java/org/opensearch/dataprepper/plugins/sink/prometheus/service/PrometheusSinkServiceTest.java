@@ -17,6 +17,7 @@ import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -114,7 +115,7 @@ public class PrometheusSinkServiceTest {
         this.closeableHttpResponse = mock(CloseableHttpResponse.class);
         this.prometheusSinkRecordsSuccessCounter = mock(Counter.class);
         this.prometheusSinkRecordsFailedCounter = mock(Counter.class);
-        lenient().when(httpClientBuilder.setConnectionManager(null)).thenReturn(httpClientBuilder);
+        lenient().when(httpClientBuilder.setConnectionManager(Mockito.any())).thenReturn(httpClientBuilder);
         lenient().when(httpClientBuilder.addResponseInterceptorLast(any(FailedHttpResponseInterceptor.class))).thenReturn(httpClientBuilder);
         lenient().when(httpClientBuilder.build()).thenReturn(closeableHttpClient);
         lenient().when(closeableHttpClient.execute(any(ClassicHttpRequest.class),any(HttpClientContext.class))).thenReturn(closeableHttpResponse);

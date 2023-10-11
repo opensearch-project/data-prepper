@@ -50,6 +50,9 @@ import org.xerial.snappy.Snappy;
 
 import java.io.IOException;
 
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -129,6 +132,13 @@ public class PrometheusSinkService {
                     prometheusSinkConfiguration.getSslKeyFile());
             this.httpClientConnectionManager = new HttpClientSSLConnectionManager()
                     .createHttpClientConnectionManager(prometheusSinkConfiguration, certificateProviderFactory);
+        }
+        else{
+            try {
+                this.httpClientConnectionManager = new HttpClientSSLConnectionManager().createHttpClientConnectionManagerWithoutValidation();
+            }catch(NoSuchAlgorithmException | KeyStoreException | KeyManagementException ex){
+                LOG.error("Exception while insecure_skip_verify is true ",ex);
+            }
         }
         this.prometheusSinkRecordsSuccessCounter = pluginMetrics.counter(PROMETHEUS_SINK_RECORDS_SUCCESS_COUNTER);
         this.prometheusSinkRecordsFailedCounter = pluginMetrics.counter(PROMETHEUS_SINK_RECORDS_FAILED_COUNTER);

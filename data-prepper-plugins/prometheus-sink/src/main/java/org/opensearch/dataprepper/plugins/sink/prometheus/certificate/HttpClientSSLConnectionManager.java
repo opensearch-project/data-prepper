@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.prometheus.certificate;
 import org.apache.hc.client5.http.config.TlsConfig;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
 import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
 import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactoryBuilder;
 import org.apache.hc.client5.http.ssl.TrustAllStrategy;
@@ -15,7 +16,6 @@ import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.apache.hc.core5.ssl.SSLContexts;
 import org.apache.hc.core5.ssl.TrustStrategy;
 import org.apache.hc.core5.util.Timeout;
-import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.s3.CertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 
@@ -23,7 +23,10 @@ import javax.net.ssl.SSLContext;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyManagementException;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 
@@ -76,6 +79,19 @@ public class HttpClientSSLConnectionManager {
             return SSLContexts.custom().loadTrustMaterial(null, trustStrategy).build();
         } catch (Exception ex) {
             throw new RuntimeException(ex.getMessage(), ex);
+        }
+    }
+
+    public HttpClientConnectionManager createHttpClientConnectionManagerWithoutValidation()  throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+        {
+            return PoolingHttpClientConnectionManagerBuilder.create()
+                    .setSSLSocketFactory(SSLConnectionSocketFactoryBuilder.create()
+                            .setSslContext(SSLContextBuilder.create()
+                                    .loadTrustMaterial(TrustAllStrategy.INSTANCE)
+                                    .build())
+                            .setHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+                            .build())
+                    .build();
         }
     }
 }
