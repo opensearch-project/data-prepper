@@ -93,55 +93,55 @@ subprojects {
             dependencies {
                 implementation('org.eclipse.jetty:jetty-http') {
                     version {
-                        strictly '9.4.52.v20230823'
+                        strictly '9.4.53.v20231009'
                     }
                     because 'CVE from transitive dependencies, please use 9.x version for kafka connect plugin.'
                 }
                 implementation('org.eclipse.jetty:jetty-server') {
                     version {
-                        strictly '9.4.52.v20230823'
+                        strictly '9.4.53.v20231009'
                     }
                     because 'CVE from transitive dependencies, please use 9.x version for kafka connect plugin.'
                 }
                 implementation('org.eclipse.jetty:jetty-servlet') {
                     version {
-                        strictly '9.4.52.v20230823'
+                        strictly '9.4.53.v20231009'
                     }
                     because 'CVE from transitive dependencies, please use 9.x version for kafka connect plugin.'
                 }
                 implementation('org.eclipse.jetty:jetty-servlets') {
                     version {
-                        strictly '9.4.52.v20230823'
+                        strictly '9.4.53.v20231009'
                     }
                     because 'CVE from transitive dependencies, please use 9.x version for kafka connect plugin.'
                 }
                 implementation('org.eclipse.jetty:jetty-client') {
                     version {
-                        strictly '9.4.52.v20230823'
+                        strictly '9.4.53.v20231009'
                     }
                     because 'CVE from transitive dependencies, please use 9.x version for kafka connect plugin.'
                 }
                 implementation('org.eclipse.jetty:jetty-util') {
                     version {
-                        strictly '9.4.52.v20230823'
+                        strictly '9.4.53.v20231009'
                     }
                     because 'CVE from transitive dependencies, please use 9.x version for kafka connect plugin.'
                 }
                 implementation('org.eclipse.jetty:jetty-util-ajax') {
                     version {
-                        strictly '9.4.52.v20230823'
+                        strictly '9.4.53.v20231009'
                     }
                     because 'CVE from transitive dependencies, please use 9.x version for kafka connect plugin.'
                 }
                 implementation('org.eclipse.jetty:jetty-io') {
                     version {
-                        strictly '9.4.52.v20230823'
+                        strictly '9.4.53.v20231009'
                     }
                     because 'CVE from transitive dependencies, please use 9.x version for kafka connect plugin.'
                 }
                 implementation('org.eclipse.jetty.http2:http2-hpack') {
                     version {
-                        strictly '9.4.52.v20230823'
+                        strictly '9.4.53.v20231009'
                     }
                     because 'CVE from transitive dependencies, please use 9.x version for kafka connect plugin.'
                 }
@@ -211,13 +211,13 @@ subprojects {
             }
             implementation('org.eclipse.jetty:http2-common') {
                 version {
-                    require '11.0.17'
+                    require '9.4.53.v20231009'
                 }
                 because 'Fixes CVE-2023-44487'
             }
             implementation('org.eclipse.jetty:http2-server') {
                 version {
-                    require '11.0.17'
+                    require '9.4.53.v20231009'
                 }
                 because 'Fixes CVE-2023-44487'
             }
