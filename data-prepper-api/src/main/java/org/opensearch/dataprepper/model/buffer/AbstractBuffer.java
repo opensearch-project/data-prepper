@@ -177,7 +177,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
      *
      * @param recordsInBuffer the current number of records in the buffer
      */
-    protected void postProcess(final Long recordsInBuffer) {
+    public void postProcess(final Long recordsInBuffer) {
 
     }
 }

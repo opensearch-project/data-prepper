@@ -10,8 +10,10 @@ plugins {
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:buffer-common')
+    implementation project(':data-prepper-plugins:blocking-buffer')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation 'org.apache.kafka:kafka-clients:3.4.0'
-    implementation 'org.apache.avro:avro:1.11.0'
+    implementation libs.avro.core
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
     implementation libs.commons.lang3
@@ -20,10 +22,11 @@ dependencies {
     implementation 'io.confluent:kafka-avro-serializer:7.3.3'
     implementation 'io.confluent:kafka-schema-registry-client:7.3.3'
     implementation 'io.confluent:kafka-schema-registry:7.3.3:tests'
+    implementation 'software.amazon.awssdk:sts'
+    implementation 'software.amazon.awssdk:auth'
+    implementation 'software.amazon.awssdk:kafka'
+    implementation 'software.amazon.awssdk:kms'
     implementation 'software.amazon.msk:aws-msk-iam-auth:1.1.6'
-    implementation 'software.amazon.awssdk:sts:2.20.103'
-    implementation 'software.amazon.awssdk:auth:2.20.103'
-    implementation 'software.amazon.awssdk:kafka:2.20.103'
     implementation 'software.amazon.glue:schema-registry-serde:1.1.15'
     implementation 'com.amazonaws:aws-java-sdk-glue:1.12.506'
     implementation 'io.confluent:kafka-json-schema-serializer:7.4.0'

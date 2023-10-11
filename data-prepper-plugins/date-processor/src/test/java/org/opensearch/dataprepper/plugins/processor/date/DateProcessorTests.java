@@ -353,7 +353,8 @@ class DateProcessorTests {
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        ZonedDateTime actualZonedDateTime =  record.getData().get(TIMESTAMP_KEY, ZonedDateTime.class);
+        //The timezone from 'record' instance is UTC instead of local one. We need convert it to local.
+        ZonedDateTime actualZonedDateTime =  record.getData().get(TIMESTAMP_KEY, ZonedDateTime.class).withZoneSameInstant(mockDateProcessorConfig.getSourceZoneId());
         ZonedDateTime expectedZonedDatetime = expectedDateTime.minus(10, ChronoUnit.YEARS).atZone(mockDateProcessorConfig.getSourceZoneId()).truncatedTo(ChronoUnit.SECONDS);
 
         Assertions.assertTrue(actualZonedDateTime.toLocalDate().isEqual(expectedZonedDatetime.toLocalDate()));
@@ -380,7 +381,8 @@ class DateProcessorTests {
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        ZonedDateTime actualZonedDateTime =  record.getData().get(TIMESTAMP_KEY, ZonedDateTime.class);
+        //The timezone from record is UTC instead of local one. We need convert it to local.
+        ZonedDateTime actualZonedDateTime =  record.getData().get(TIMESTAMP_KEY, ZonedDateTime.class).withZoneSameInstant(mockDateProcessorConfig.getSourceZoneId());
         ZonedDateTime expectedZonedDatetime = expectedDateTime.atZone(mockDateProcessorConfig.getSourceZoneId()).truncatedTo(ChronoUnit.SECONDS);
 
         Assertions.assertTrue(actualZonedDateTime.toLocalDate().isEqual(expectedZonedDatetime.toLocalDate()));

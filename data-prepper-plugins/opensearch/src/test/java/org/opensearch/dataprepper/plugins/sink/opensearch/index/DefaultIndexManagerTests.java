@@ -5,9 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
+import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.opensearch.client.ResponseException;
@@ -328,6 +331,21 @@ public class DefaultIndexManagerTests {
         defaultIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
         when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("false");
+        assertEquals(false, defaultIndexManager.checkISMEnabled());
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getIndexAlias();
+        verify(openSearchClient).cluster();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {HttpStatus.SC_NOT_FOUND, HttpStatus.SC_BAD_REQUEST})
+    void checkISMEnabled_FalseWhenOpenSearchExceptionStatusNonRetryable(final int statusCode) throws IOException {
+        defaultIndexManager = indexManagerFactory.getIndexManager(
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+        when(openSearchException.status()).thenReturn(statusCode);
+        when(openSearchClusterClient.getSettings(any(GetClusterSettingsRequest.class))).thenThrow(openSearchException);
         assertEquals(false, defaultIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();

@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 
+import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.List;
@@ -34,7 +35,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class MultiBufferDecoratorTest {
-    private static final int TIMEOUT_MILLIS = new Random().nextInt(1000000) + 1;
+    private static final Random RANDOM = new Random();
+    private static final int TIMEOUT_MILLIS = RANDOM.nextInt(1000000) + 1;
 
     @Mock
     private Buffer primaryBuffer;
@@ -152,6 +154,71 @@ public class MultiBufferDecoratorTest {
 
         verify(primaryBuffer).isEmpty();
         verify(secondaryBuffer, times(2)).isEmpty();
+    }
+
+    @Test
+    void getDrainTimeout_NoSecondaryBuffers_ReturnsPrimaryBufferValue() {
+        final Duration primaryBufferDrainTimeout = Duration.ofMillis(RANDOM.nextLong());
+        when(primaryBuffer.getDrainTimeout()).thenReturn(primaryBufferDrainTimeout);
+        final MultiBufferDecorator multiBufferDecorator = createObjectUnderTest(0);
+
+        final Duration result = multiBufferDecorator.getDrainTimeout();
+        assertThat(result, equalTo(primaryBufferDrainTimeout));
+
+        verify(primaryBuffer).getDrainTimeout();
+    }
+
+    @Test
+    void getDrainTimeout_OneSecondaryBuffer_ReturnsSumOfDurations() {
+        final Duration primaryBufferDrainTimeout = Duration.ofMillis(RANDOM.nextLong());
+        when(primaryBuffer.getDrainTimeout()).thenReturn(primaryBufferDrainTimeout);
+        final Duration secondaryBufferDrainTimeout = Duration.ofMillis(RANDOM.nextLong());
+        when(secondaryBuffer.getDrainTimeout()).thenReturn(secondaryBufferDrainTimeout);
+        final MultiBufferDecorator multiBufferDecorator = createObjectUnderTest(1);
+
+        final Duration result = multiBufferDecorator.getDrainTimeout();
+        assertThat(result, equalTo(primaryBufferDrainTimeout.plus(secondaryBufferDrainTimeout)));
+
+        verify(primaryBuffer).getDrainTimeout();
+        verify(secondaryBuffer).getDrainTimeout();
+    }
+
+    @Test
+    void getDrainTimeout_MultipleSecondaryBuffers_ReturnsSumOfDurations() {
+        final Duration primaryBufferDrainTimeout = Duration.ofMillis(RANDOM.nextLong());
+        when(primaryBuffer.getDrainTimeout()).thenReturn(primaryBufferDrainTimeout);
+        final Duration secondaryBufferDrainTimeout1 = Duration.ofMillis(RANDOM.nextLong());
+        final Duration secondaryBufferDrainTimeout2 = Duration.ofMillis(RANDOM.nextLong());
+        when(secondaryBuffer.getDrainTimeout())
+                .thenReturn(secondaryBufferDrainTimeout1)
+                .thenReturn(secondaryBufferDrainTimeout2);
+        final MultiBufferDecorator multiBufferDecorator = createObjectUnderTest(2);
+
+        final Duration result = multiBufferDecorator.getDrainTimeout();
+        assertThat(result, equalTo(primaryBufferDrainTimeout.plus(secondaryBufferDrainTimeout1).plus(secondaryBufferDrainTimeout2)));
+
+        verify(primaryBuffer).getDrainTimeout();
+        verify(secondaryBuffer, times(2)).getDrainTimeout();
+    }
+
+    @Test
+    void shutdown_NoSecondaryBuffers_CallsPrimaryBufferShutdown() {
+        createObjectUnderTest(0).shutdown();
+        verify(primaryBuffer).shutdown();
+    }
+
+    @Test
+    void shutdown_OneSecondaryBuffers_CallsPrimaryAndSecondaryBufferShutdown() {
+        createObjectUnderTest(1).shutdown();
+        verify(primaryBuffer).shutdown();
+        verify(secondaryBuffer).shutdown();
+    }
+
+    @Test
+    void shutdown_MultipleSecondaryBuffers_CallsAllBuffersShutdown() {
+        createObjectUnderTest(2).shutdown();
+        verify(primaryBuffer).shutdown();
+        verify(secondaryBuffer, times(2)).shutdown();
     }
 
     private MultiBufferDecorator createObjectUnderTest(final int secondaryBufferCount) {

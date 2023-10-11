@@ -7,7 +7,37 @@ This source allows Data Prepper to use Kafka as source. This source reads record
 For usage and configuration, please refer to the documentation [here] (https://opensearch.org/docs/2.9/data-prepper/pipelines/configuration/sources/sources/kafka-source).
 
 
-## Integration Tests
+## Developer guide
+
+### Integration tests
+
+#### Run Kafka
+
+You can run Kafka 3.5.1 using the KRaft protocol.
+
+```
+docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/kraft up -d
+```
+
+To run Kafka 2.8.1, you must run using Zookeeper.
+
+```
+docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/zookeeper up -d
+```
+
+#### Run tests
+
+Not all integration tests currently work with Docker. But, you can run the following.
+
+```
+./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaSourceJsonTypeIT
+```
+
+See the Old integration tests section to run other tests. However, these are more involved.
+
+### Old integration tests
+
+**NOTE** We are trying to move away from these.
 
 Before running the integration tests, make sure Kafka server is started
 1. Start Zookeeper
@@ -17,7 +47,7 @@ bin/zookeeper-server-start.sh config/zookeeper.properties
 2. Start Kafka Server with the following configuration
 Configuration in config/server.properties
 ```
-isteners=SASL_SSL://localhost:9093,PLAINTEXT://localhost:9092,SSL://localhost:9094,SASL_PLAINTEXT://localhost:9095
+listeners=SASL_SSL://localhost:9093,PLAINTEXT://localhost:9092,SSL://localhost:9094,SASL_PLAINTEXT://localhost:9095
 security.inter.broker.protocol=SASL_SSL
 sasl.mechanism.inter.broker.protocol=PLAIN
 sasl.enabled.mechanisms=PLAIN
@@ -60,10 +90,3 @@ bin/kafka-server-start.sh config/server.properties
 ./gradlew     data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=<msk-bootstrap-servers> -Dtests.kafka.glue_registry_name=<glue-registry-name> -Dtests.kafka.glue_avro_schema_name=<glue-registry-avro-schema-name> -Dtests.kafka.glue_json_schema_name=<glue-registry-json-schema-name> -Dtests.msk.region=<msk-region> -Dtests.msk.arn=<msk-arn>  --tests "*TestAvroRecordConsumer*" 
 
 ```
-
-## Developer Guide
-
-This plugin is compatible with Java 11. See
-
-- [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
-- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)

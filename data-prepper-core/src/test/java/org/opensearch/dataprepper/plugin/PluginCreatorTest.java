@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginInvocationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,12 +23,14 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 class PluginCreatorTest {
 
     private PluginSetting pluginSetting;
     private String pluginName;
     private ComponentPluginArgumentsContext pluginConstructionContext;
+    private PluginConfigurationObservableRegister pluginConfigurationObservableRegister;
 
     public static class ValidPluginClass {
         private final PluginSetting pluginSetting;
@@ -72,6 +75,18 @@ class PluginCreatorTest {
         }
     }
 
+    public static class PluginClassWithPluginConfigurationObservableConstructor {
+        private PluginSetting pluginSetting;
+        private PluginConfigObservable pluginConfigObservable;
+
+        @DataPrepperPluginConstructor
+        public PluginClassWithPluginConfigurationObservableConstructor(
+                final PluginSetting pluginSetting, final PluginConfigObservable pluginConfigObservable) {
+            this.pluginSetting = pluginSetting;
+            this.pluginConfigObservable = pluginConfigObservable;
+        }
+    }
+
     public static class InvalidPluginClassDueToMultipleAnnotatedConstructors {
         @DataPrepperPluginConstructor
         public InvalidPluginClassDueToMultipleAnnotatedConstructors() {}
@@ -87,10 +102,12 @@ class PluginCreatorTest {
         pluginName = UUID.randomUUID().toString();
 
         pluginConstructionContext = mock(ComponentPluginArgumentsContext.class);
+
+        pluginConfigurationObservableRegister = mock(PluginConfigurationObservableRegister.class);
     }
 
     private PluginCreator createObjectUnderTest() {
-        return new PluginCreator();
+        return new PluginCreator(pluginConfigurationObservableRegister);
     }
 
     @Test
@@ -106,6 +123,23 @@ class PluginCreatorTest {
         assertThat(instance, notNullValue());
         assertThat(instance.pluginSetting, equalTo(pluginSetting));
         assertThat(instance.alternatePluginConfig, equalTo(alternatePluginConfig));
+    }
+
+    @Test
+    void newPluginInstance_should_register_pluginConfigurationObservable() {
+        final PluginCreator objectUnderTest = new PluginCreator(pluginConfigurationObservableRegister);
+        final PluginConfigObservable pluginConfigObservable = mock(PluginConfigObservable.class);
+        final Object[] constructorArgs = new Object[] { pluginSetting, pluginConfigObservable };
+        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class, PluginConfigObservable.class}))
+                .willReturn(constructorArgs);
+
+        final PluginClassWithPluginConfigurationObservableConstructor instance = objectUnderTest
+                .newPluginInstance(PluginClassWithPluginConfigurationObservableConstructor.class, pluginConstructionContext, pluginName);
+
+        verify(pluginConfigurationObservableRegister).registerPluginConfigurationObservables(constructorArgs);
+        assertThat(instance, notNullValue());
+        assertThat(instance.pluginSetting, equalTo(pluginSetting));
+        assertThat(instance.pluginConfigObservable, equalTo(pluginConfigObservable));
     }
 
     @Test

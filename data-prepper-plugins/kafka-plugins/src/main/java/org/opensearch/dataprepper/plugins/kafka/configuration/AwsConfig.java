@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.kafka.configuration;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 
 public class AwsConfig {
 
@@ -42,6 +43,9 @@ public class AwsConfig {
     @JsonProperty("sts_role_arn")
     private String stsRoleArn;
 
+    @JsonProperty("role_session_name")
+    private String stsRoleSessionName;
+
     public AwsMskConfig getAwsMskConfig() {
         return awsMskConfig;
     }
@@ -52,5 +56,16 @@ public class AwsConfig {
 
     public String getStsRoleArn() {
         return stsRoleArn;
+    }
+
+    public String getStsRoleSessionName() {
+        return stsRoleSessionName;
+    }
+
+    public AwsCredentialsOptions toCredentialsOptions() {
+        return AwsCredentialsOptions.builder()
+                .withRegion(region)
+                .withStsRoleArn(stsRoleArn)
+                .build();
     }
 }

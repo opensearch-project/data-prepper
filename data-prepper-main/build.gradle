@@ -18,6 +18,7 @@ dependencies {
     implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
+    testImplementation 'commons-io:commons-io:2.14.0'
 }
 
 jar {

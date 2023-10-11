@@ -10,10 +10,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.types.ByteCount;
-
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
+
 /**
  * * A helper class that helps to read consumer configuration values from
  * pipelines.yaml
@@ -125,6 +125,12 @@ public class TopicConfig {
     @JsonProperty("retention_period")
     private Long retentionPeriod=DEFAULT_RETENTION_PERIOD;
 
+    @JsonProperty("encryption_key")
+    private String encryptionKey;
+
+    @JsonProperty("kms_key_id")
+    private String kmsKeyId;
+
     public Long getRetentionPeriod() {
         return retentionPeriod;
     }
@@ -139,6 +145,14 @@ public class TopicConfig {
 
     public MessageFormat getSerdeFormat() {
         return serdeFormat;
+    }
+
+    public String getEncryptionKey() {
+        return encryptionKey;
+    }
+
+    public String getKmsKeyId() {
+        return kmsKeyId;
     }
 
     public Boolean getAutoCommit() {
@@ -268,5 +282,4 @@ public class TopicConfig {
     public Short getReplicationFactor() {
         return replicationFactor;
     }
-
 }

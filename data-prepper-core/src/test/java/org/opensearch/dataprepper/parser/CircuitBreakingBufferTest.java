@@ -19,10 +19,12 @@ import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -62,6 +64,21 @@ class CircuitBreakingBufferTest {
     void constructor_should_throw_with_null_circuitBreaker() {
         circuitBreaker = null;
         assertThrows(NullPointerException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void getDrainTimeout_returns_buffer_drain_timeout() {
+        final Duration duration = Duration.ofMillis(new Random().nextLong());
+        when(buffer.getDrainTimeout()).thenReturn(duration);
+
+        final Duration result = createObjectUnderTest().getDrainTimeout();
+        assertThat(result, equalTo(duration));
+    }
+
+    @Test
+    void shutdown_calls_buffer_shutdown() {
+        createObjectUnderTest().shutdown();
+        verify(buffer).shutdown();
     }
 
     @Nested

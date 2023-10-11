@@ -24,6 +24,7 @@ import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -95,6 +96,9 @@ public class KafkaSinkAvroTypeIT {
     @Mock
     private ExpressionEvaluator evaluator;
 
+    @Mock
+    private AwsCredentialsSupplier awsCredentialsSupplier;
+
     private AuthConfig authConfig;
     private AuthConfig.SaslAuthConfig saslAuthConfig;
     private PlainTextAuthConfig plainTextAuthConfig;
@@ -102,7 +106,7 @@ public class KafkaSinkAvroTypeIT {
 
 
     public KafkaSink createObjectUnderTest() {
-        return new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactory, evaluator, sinkContext);
+        return new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactory, evaluator, sinkContext, awsCredentialsSupplier);
     }
 
     @BeforeEach
@@ -155,7 +159,7 @@ public class KafkaSinkAvroTypeIT {
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
 
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
-        when(kafkaSinkConfig.getBootStrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
+        when(kafkaSinkConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
 
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 

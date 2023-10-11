@@ -16,10 +16,10 @@ import org.opensearch.dataprepper.model.record.Record;
 public class ProducerWorker implements Runnable {
 
     private final Record<Event> record;
-    private final KafkaSinkProducer producer;
+    private final KafkaCustomProducer producer;
 
 
-    public ProducerWorker(final KafkaSinkProducer producer,
+    public ProducerWorker(final KafkaCustomProducer producer,
                           final Record<Event> record) {
         this.record = record;
         this.producer = producer;

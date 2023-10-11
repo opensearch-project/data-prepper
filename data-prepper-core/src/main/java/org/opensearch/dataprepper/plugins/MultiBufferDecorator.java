@@ -9,10 +9,12 @@ import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Stream;
 
 /**
  * Buffer decorator created for pipelines that make use of multiple buffers, such as PeerForwarder-enabled pipelines. The decorator
@@ -54,5 +56,18 @@ public class MultiBufferDecorator<T extends Record<?>> implements Buffer<T> {
         return primaryBuffer.isEmpty() && secondaryBuffers.stream()
                 .map(Buffer::isEmpty)
                 .allMatch(result -> result == true);
+    }
+
+    @Override
+    public Duration getDrainTimeout() {
+        return Stream.concat(Stream.of(primaryBuffer), secondaryBuffers.stream())
+                .map(Buffer::getDrainTimeout)
+                .reduce(Duration.ZERO, Duration::plus);
+    }
+
+    @Override
+    public void shutdown() {
+        primaryBuffer.shutdown();
+        secondaryBuffers.forEach(Buffer::shutdown);
     }
 }
