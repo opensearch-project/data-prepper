@@ -17,6 +17,7 @@ import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
@@ -50,6 +51,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+
 
 public class HttpSinkServiceTest {
 
@@ -116,7 +118,7 @@ public class HttpSinkServiceTest {
     private CloseableHttpResponse closeableHttpResponse;
 
     @BeforeEach
-    void setup() throws IOException {
+    void setup() throws Exception {
         this.codec = mock(OutputCodec.class);
         this.pluginMetrics = mock(PluginMetrics.class);
         this.httpSinkConfiguration = objectMapper.readValue(SINK_YAML,HttpSinkConfiguration.class);
@@ -131,13 +133,12 @@ public class HttpSinkServiceTest {
         this.closeableHttpResponse = mock(CloseableHttpResponse.class);
         this.bufferFactory = new InMemoryBufferFactory();
 
-        lenient().when(httpClientBuilder.setConnectionManager(null)).thenReturn(httpClientBuilder);
+        lenient().when(httpClientBuilder.setConnectionManager(Mockito.any())).thenReturn(httpClientBuilder);
         lenient().when(httpClientBuilder.addResponseInterceptorLast(any(FailedHttpResponseInterceptor.class))).thenReturn(httpClientBuilder);
         lenient().when(httpClientBuilder.build()).thenReturn(closeableHttpClient);
         lenient().when(closeableHttpClient.execute(any(ClassicHttpRequest.class),any(HttpClientContext.class))).thenReturn(closeableHttpResponse);
         when(pluginMetrics.counter(HttpSinkService.HTTP_SINK_RECORDS_SUCCESS_COUNTER)).thenReturn(httpSinkRecordsSuccessCounter);
         when(pluginMetrics.counter(HttpSinkService.HTTP_SINK_RECORDS_FAILED_COUNTER)).thenReturn(httpSinkRecordsFailedCounter);
-
     }
 
     HttpSinkService createObjectUnderTest(final int eventCount,final HttpSinkConfiguration httpSinkConfig) throws NoSuchFieldException, IllegalAccessException {
