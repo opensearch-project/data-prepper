@@ -27,6 +27,9 @@ configurations.all {
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
         if (details.requested.group == 'org.yaml') {
             details.useVersion '2.0'
+        } else if (details.requested.group == 'org.apache.tomcat.embed') {
+            details.useVersion '10.1.14'
+            details.because('Fixes CVE-2023-44487')
         }
     }
 }
