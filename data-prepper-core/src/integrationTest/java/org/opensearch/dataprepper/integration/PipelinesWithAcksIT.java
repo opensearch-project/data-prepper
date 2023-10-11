@@ -14,6 +14,8 @@ import org.opensearch.dataprepper.plugins.InMemorySinkAccessor;
 import org.opensearch.dataprepper.plugins.InMemorySourceAccessor;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.Assert.assertFalse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -26,7 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 
 class PipelinesWithAcksIT {
-
+    private static final Logger LOG = LoggerFactory.getLogger(PipelinesWithAcksIT.class);
     private static final String IN_MEMORY_IDENTIFIER = "PipelinesWithAcksIT";
     private static final String SIMPLE_PIPELINE_CONFIGURATION_UNDER_TEST = "acknowledgements/simple-test.yaml";
     private static final String TWO_PIPELINES_CONFIGURATION_UNDER_TEST = "acknowledgements/two-pipelines-test.yaml";
@@ -45,7 +47,7 @@ class PipelinesWithAcksIT {
                 .withPipelinesDirectoryOrFile(configFile)
                 .build();
 
-	System.out.println("Data Prepper Test with config file "+ configFile + " started at "+Instant.now());
+	LOG.info("PipelinesWithAcksIT with config file {} started at {}", configFile, Instant.now());
         dataPrepperTestRunner.start();
         inMemorySourceAccessor = dataPrepperTestRunner.getInMemorySourceAccessor();
         inMemorySinkAccessor = dataPrepperTestRunner.getInMemorySinkAccessor();
@@ -53,7 +55,7 @@ class PipelinesWithAcksIT {
 
     @AfterEach
     void tearDown() {
-	System.out.println("Data Prepper Test stopped at "+Instant.now());
+	LOG.info("PipelinesWithAcksIT with stopped at {}", Instant.now());
         dataPrepperTestRunner.stop();
     }
 
