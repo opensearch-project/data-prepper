@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.slf4j.Logger;
@@ -87,7 +87,7 @@ public class StreamCheckpointer {
     }
 
     public boolean isExportDone() {
-        Optional<SourcePartition> globalPartition = coordinator.getPartition(streamPartition.getStreamArn());
+        Optional<EnhancedSourcePartition> globalPartition = coordinator.getPartition(streamPartition.getStreamArn());
         return globalPartition.isPresent();
     }
 

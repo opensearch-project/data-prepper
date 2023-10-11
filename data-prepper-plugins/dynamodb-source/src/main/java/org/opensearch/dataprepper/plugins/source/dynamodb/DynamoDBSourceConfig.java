@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.source.dynamodb;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.AwsAuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.TableConfig;
 
@@ -28,11 +27,6 @@ public class DynamoDBSourceConfig {
     @Valid
     private AwsAuthenticationConfig awsAuthenticationConfig;
 
-    
-    @JsonProperty("coordinator")
-    private PluginModel coordinationStoreConfig;
-
-
     public DynamoDBSourceConfig() {
     }
 
@@ -44,9 +38,4 @@ public class DynamoDBSourceConfig {
     public AwsAuthenticationConfig getAwsAuthenticationConfig() {
         return awsAuthenticationConfig;
     }
-
-    public PluginModel getCoordinationStoreConfig() {
-        return coordinationStoreConfig;
-    }
-
 }

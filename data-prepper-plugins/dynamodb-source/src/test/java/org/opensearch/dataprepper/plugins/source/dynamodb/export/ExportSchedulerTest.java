@@ -13,8 +13,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.ExportSummary;
@@ -55,6 +55,7 @@ class ExportSchedulerTest {
 
     @Mock
     private EnhancedSourceCoordinator coordinator;
+
     @Mock
     private DynamoDbClient dynamoDBClient;
 
@@ -117,9 +118,9 @@ class ExportSchedulerTest {
         lenient().when(summary.getManifestFilesS3Key()).thenReturn(manifestKey);
         lenient().when(manifestFileReader.parseDataFile(anyString(), anyString())).thenReturn(Map.of("Key1", 100, "Key2", 200));
 
-        lenient().when(coordinator.createPartition(any(SourcePartition.class))).thenReturn(true);
-        lenient().doNothing().when(coordinator).completePartition(any(SourcePartition.class));
-        lenient().doNothing().when(coordinator).giveUpPartition(any(SourcePartition.class));
+        lenient().when(coordinator.createPartition(any(EnhancedSourcePartition.class))).thenReturn(true);
+        lenient().doNothing().when(coordinator).completePartition(any(EnhancedSourcePartition.class));
+        lenient().doNothing().when(coordinator).giveUpPartition(any(EnhancedSourcePartition.class));
 
     }
 
@@ -156,9 +157,9 @@ class ExportSchedulerTest {
         verify(dynamoDBClient, times(2)).describeExport(any(DescribeExportRequest.class));
 
         // Create 2 data file partitions + 1 global state
-        verify(coordinator, times(3)).createPartition(any(SourcePartition.class));
+        verify(coordinator, times(3)).createPartition(any(EnhancedSourcePartition.class));
         // Complete the export partition
-        verify(coordinator).completePartition(any(SourcePartition.class));
+        verify(coordinator).completePartition(any(EnhancedSourcePartition.class));
         verify(exportJobSuccess).increment();
         verify(exportFilesTotal).increment(2);
         verify(exportRecordsTotal).increment(300);

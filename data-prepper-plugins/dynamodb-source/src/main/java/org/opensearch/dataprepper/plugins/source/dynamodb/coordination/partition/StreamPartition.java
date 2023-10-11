@@ -6,12 +6,12 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition;
 
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 
 import java.util.Optional;
 
-public class StreamPartition extends SourcePartition<StreamProgressState> {
+public class StreamPartition extends EnhancedSourcePartition<StreamProgressState> {
 
     public static final String PARTITION_TYPE = "STREAM";
 

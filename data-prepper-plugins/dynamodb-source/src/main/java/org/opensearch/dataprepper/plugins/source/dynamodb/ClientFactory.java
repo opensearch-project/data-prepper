@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 public class ClientFactory {
 
     private final AwsCredentialsProvider awsCredentialsProvider;
+    private final AwsAuthenticationConfig awsAuthenticationConfig;
 
     public ClientFactory(AwsCredentialsSupplier awsCredentialsSupplier, AwsAuthenticationConfig awsAuthenticationConfig) {
         awsCredentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
@@ -24,18 +25,21 @@ public class ClientFactory {
                 .withStsExternalId(awsAuthenticationConfig.getAwsStsExternalId())
                 .withStsHeaderOverrides(awsAuthenticationConfig.getAwsStsHeaderOverrides())
                 .build());
+        this.awsAuthenticationConfig = awsAuthenticationConfig;
     }
 
 
     public DynamoDbStreamsClient buildDynamoDbStreamClient() {
         return DynamoDbStreamsClient.builder()
                 .credentialsProvider(awsCredentialsProvider)
+                .region(awsAuthenticationConfig.getAwsRegion())
                 .build();
     }
 
 
     public DynamoDbClient buildDynamoDBClient() {
         return DynamoDbClient.builder()
+                .region(awsAuthenticationConfig.getAwsRegion())
                 .credentialsProvider(awsCredentialsProvider)
                 .build();
     }

@@ -15,11 +15,11 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.ExportConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.TableConfig;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.InitPartition;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.ContinuousBackupsDescription;
@@ -196,10 +196,10 @@ class DynamoDBServiceTest {
         // Acquire the init partition
         verify(coordinator).acquireAvailablePartition(eq(InitPartition.PARTITION_TYPE));
         // Complete the init partition
-        verify(coordinator).completePartition(any(SourcePartition.class));
+        verify(coordinator).completePartition(any(EnhancedSourcePartition.class));
 
         // Should create 1 export partition + 1 stream partition + 1 global table state
-        verify(coordinator, times(3)).createPartition(any(SourcePartition.class));
+        verify(coordinator, times(3)).createPartition(any(EnhancedSourcePartition.class));
     }
 
     @Test

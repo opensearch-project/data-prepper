@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.DataFileProgressState;
 import org.slf4j.Logger;

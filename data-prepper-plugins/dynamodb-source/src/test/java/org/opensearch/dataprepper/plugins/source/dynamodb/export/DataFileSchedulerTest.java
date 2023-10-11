@@ -12,8 +12,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.DataFileProgressState;
@@ -39,6 +39,7 @@ class DataFileSchedulerTest {
 
     @Mock
     private EnhancedSourceCoordinator coordinator;
+
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -100,9 +101,9 @@ class DataFileSchedulerTest {
 
         given(pluginMetrics.counter(EXPORT_FILE_SUCCESS_COUNT)).willReturn(exportFileSuccess);
 
-        lenient().when(coordinator.createPartition(any(SourcePartition.class))).thenReturn(true);
-        lenient().doNothing().when(coordinator).completePartition(any(SourcePartition.class));
-        lenient().doNothing().when(coordinator).giveUpPartition(any(SourcePartition.class));
+        lenient().when(coordinator.createPartition(any(EnhancedSourcePartition.class))).thenReturn(true);
+        lenient().doNothing().when(coordinator).completePartition(any(EnhancedSourcePartition.class));
+        lenient().doNothing().when(coordinator).giveUpPartition(any(EnhancedSourcePartition.class));
 
         lenient().when(loaderFactory.createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class))).thenReturn(() -> System.out.println("Hello"));
 

@@ -9,28 +9,31 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.processor.Processor;
-import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
 import org.opensearch.dataprepper.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.pipeline.common.TestProcessor;
 import org.opensearch.dataprepper.pipeline.router.Router;
+import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
 import org.opensearch.dataprepper.pipeline.router.RouterGetRecordStrategy;
 import org.opensearch.dataprepper.plugins.TestSink;
 import org.opensearch.dataprepper.plugins.TestSource;
 import org.opensearch.dataprepper.plugins.TestSourceWithCoordination;
+import org.opensearch.dataprepper.plugins.TestSourceWithEnhancedCoordination;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
-import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
-import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 
 import java.time.Duration;
@@ -48,13 +51,13 @@ import java.util.stream.IntStream;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
@@ -325,6 +328,30 @@ class PipelineTests {
         } catch (final InterruptedException e) {
             verify((UsesSourceCoordination)sourceSpy).getPartitionProgressStateClass();
             verify((UsesSourceCoordination)sourceSpy).setSourceCoordinator(sourceCoordinator);
+        }
+    }
+
+    @Test
+    void testExecuteOnSourceWithRequiredEnhancedSourceCoordination_sets_enhanced_source_coordinator() {
+        final Source<Record<String>> testSource = new TestSourceWithEnhancedCoordination();
+        final Source<Record<String>> sourceSpy = spy(testSource);
+
+        final Sink<Record<String>> testSink = new TestSink();
+        final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
+
+        final EnhancedSourceCoordinator sourceCoordinator = mock(EnhancedSourceCoordinator.class);
+        given(sourceCoordinatorFactory.provideEnhancedSourceCoordinator(((TestSourceWithEnhancedCoordination)testSource).getPartitionFactory(), UUID.randomUUID().toString())).willReturn(sourceCoordinator);
+        when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
+        try {
+            testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+                    Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router, eventFactory,
+                    acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
+                    processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+            testPipeline.execute();
+            Thread.sleep(TEST_READ_BATCH_TIMEOUT);
+        } catch (final InterruptedException e) {
+            verify((UsesEnhancedSourceCoordination)sourceSpy).getPartitionFactory();
+            verify((UsesEnhancedSourceCoordination)sourceSpy).setEnhancedSourceCoordinator(sourceCoordinator);
         }
     }
 

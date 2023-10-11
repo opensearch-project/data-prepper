@@ -10,9 +10,9 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.TableConfig;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.InitPartition;
@@ -131,7 +131,7 @@ public class DynamoDBService {
     public void init() {
         LOG.info("Start initialize DynamoDB service");
 
-        final Optional<SourcePartition> initPartition = coordinator.acquireAvailablePartition(InitPartition.PARTITION_TYPE);
+        final Optional<EnhancedSourcePartition> initPartition = coordinator.acquireAvailablePartition(InitPartition.PARTITION_TYPE);
         if (initPartition.isEmpty()) {
             // Already initialized. Do nothing.
             return;
