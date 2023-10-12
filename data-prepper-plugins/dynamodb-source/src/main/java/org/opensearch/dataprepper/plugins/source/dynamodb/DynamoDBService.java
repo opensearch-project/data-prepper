@@ -102,7 +102,7 @@ public class DynamoDBService {
         Runnable fileLoaderScheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics);
 
         ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, shardManager, buffer);
-        Runnable streamScheduler = new StreamScheduler(coordinator, consumerFactory, shardManager);
+        Runnable streamScheduler = new StreamScheduler(coordinator, consumerFactory, shardManager, pluginMetrics);
 
         // May consider start or shutdown the scheduler on demand
         // Currently, event after the exports are done, the related scheduler will not be shutdown

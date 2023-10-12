@@ -38,8 +38,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.CHANGE_EVENT_ERROR_COUNT;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.CHANGE_EVENT_SUCCESS_COUNT;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.CHANGE_EVENTS_PROCESSING_ERROR_COUNT;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.CHANGE_EVENTS_PROCESSED_COUNT;
 
 @ExtendWith(MockitoExtension.class)
 class StreamRecordConverterTest {
@@ -77,8 +77,8 @@ class StreamRecordConverterTest {
 
         tableInfo = new TableInfo(tableArn, metadata);
 
-        given(pluginMetrics.counter(CHANGE_EVENT_SUCCESS_COUNT)).willReturn(changeEventSuccessCounter);
-        given(pluginMetrics.counter(CHANGE_EVENT_ERROR_COUNT)).willReturn(changeEventErrorCounter);
+        given(pluginMetrics.counter(CHANGE_EVENTS_PROCESSED_COUNT)).willReturn(changeEventSuccessCounter);
+        given(pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT)).willReturn(changeEventErrorCounter);
 
     }
 

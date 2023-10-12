@@ -43,8 +43,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.export.ExportScheduler.EXPORT_FILES_TOTAL_COUNT;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.export.ExportScheduler.EXPORT_JOB_ERROR_COUNT;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.export.ExportScheduler.EXPORT_S3_OBJECTS_TOTAL_COUNT;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.export.ExportScheduler.EXPORT_JOB_FAILURE_COUNT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.export.ExportScheduler.EXPORT_JOB_SUCCESS_COUNT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.export.ExportScheduler.EXPORT_RECORDS_TOTAL_COUNT;
 
@@ -108,8 +108,8 @@ class ExportSchedulerTest {
         when(exportPartition.getProgressState()).thenReturn(Optional.of(state));
 
         given(pluginMetrics.counter(EXPORT_JOB_SUCCESS_COUNT)).willReturn(exportJobSuccess);
-        given(pluginMetrics.counter(EXPORT_JOB_ERROR_COUNT)).willReturn(exportJobErrors);
-        given(pluginMetrics.counter(EXPORT_FILES_TOTAL_COUNT)).willReturn(exportFilesTotal);
+        given(pluginMetrics.counter(EXPORT_JOB_FAILURE_COUNT)).willReturn(exportJobErrors);
+        given(pluginMetrics.counter(EXPORT_S3_OBJECTS_TOTAL_COUNT)).willReturn(exportFilesTotal);
         given(pluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT)).willReturn(exportRecordsTotal);
 
         ExportSummary summary = mock(ExportSummary.class);
