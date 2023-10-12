@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.kafka.common.key;
 
 import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KmsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
@@ -18,12 +19,13 @@ class KmsKeyProvider implements InnerKeyProvider {
 
     @Override
     public boolean supportsConfiguration(TopicConfig topicConfig) {
-        return topicConfig.getKmsKeyId() != null;
+        return topicConfig.getKmsConfig() != null && topicConfig.getKmsConfig().getKeyId() != null;
     }
 
     @Override
     public byte[] apply(TopicConfig topicConfig) {
-        String kmsKeyId = topicConfig.getKmsKeyId();
+        KmsConfig kmsConfig = topicConfig.getKmsConfig();
+        String kmsKeyId = kmsConfig.getKeyId();
 
         AwsCredentialsProvider awsCredentialsProvider = awsContext.get();
 
@@ -36,6 +38,7 @@ class KmsKeyProvider implements InnerKeyProvider {
         DecryptResponse decryptResponse = kmsClient.decrypt(builder -> builder
                 .keyId(kmsKeyId)
                 .ciphertextBlob(SdkBytes.fromByteArray(decodedEncryptionKey))
+                .encryptionContext(kmsConfig.getEncryptionContext())
         );
 
         return decryptResponse.plaintext().asByteArray();

@@ -128,8 +128,8 @@ public class TopicConfig {
     @JsonProperty("encryption_key")
     private String encryptionKey;
 
-    @JsonProperty("kms_key_id")
-    private String kmsKeyId;
+    @JsonProperty("kms")
+    private KmsConfig kmsConfig;
 
     public Long getRetentionPeriod() {
         return retentionPeriod;
@@ -151,8 +151,8 @@ public class TopicConfig {
         return encryptionKey;
     }
 
-    public String getKmsKeyId() {
-        return kmsKeyId;
+    public KmsConfig getKmsConfig() {
+        return kmsConfig;
     }
 
     public Boolean getAutoCommit() {
