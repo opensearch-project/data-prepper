@@ -1,0 +1,13 @@
+log-pipeline:
+  source:
+    mysql:
+      hostname: localhost
+      credentials:
+        plaintext:
+          username: debezium
+          password: dbz
+      tables:
+        - topic_prefix: prefix1
+          table: inventory.customers
+  sink:
+    - noop:

@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
@@ -80,6 +81,9 @@ public class KafkaSourceMultipleAuthTypeIT {
     @Mock
     private EncryptionConfig encryptionConfig;
 
+    @Mock
+    private KafkaClusterConfigSupplier kafkaClusterConfigSupplier;
+
     private TopicConfig jsonTopic;
     private TopicConfig avroTopic;
 
@@ -97,7 +101,7 @@ public class KafkaSourceMultipleAuthTypeIT {
     private String kafkaPassword;
 
     public KafkaSource createObjectUnderTest() {
-        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription);
+        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, kafkaClusterConfigSupplier);
     }
 
     @BeforeEach

@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +79,9 @@ public class KafkaSourceJsonTypeIT {
     private EncryptionConfig encryptionConfig;
 
     @Mock
+    private KafkaClusterConfigSupplier kafkaClusterConfigSupplier;
+
+    @Mock
     private TopicConfig jsonTopic;
 
     private KafkaSource kafkaSource;
@@ -92,7 +96,7 @@ public class KafkaSourceJsonTypeIT {
     private String testGroup;
 
     public KafkaSource createObjectUnderTest() {
-        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription);
+        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, kafkaClusterConfigSupplier);
     }
 
     @BeforeEach

@@ -88,6 +88,10 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
         return authConfig;
     }
 
+    public void setAuthConfig(AuthConfig authConfig) {
+        this.authConfig = authConfig;
+    }
+
     public EncryptionConfig getEncryptionConfig() {
         if (Objects.isNull(encryptionConfig)) {
             return new EncryptionConfig();
@@ -95,11 +99,19 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
         return encryptionConfig;
     }
 
+    public void setEncryptionConfig(EncryptionConfig encryptionConfig) {
+        this.encryptionConfig = encryptionConfig;
+    }
+
+    public EncryptionConfig getEncryptionConfigRaw() {
+        return encryptionConfig;
+    }
+
     public AwsConfig getAwsConfig() {
         return awsConfig;
     }
 
-    public void setAuthConfig(AuthConfig authConfig) {
-        this.authConfig = authConfig;
+    public void setAwsConfig(AwsConfig awsConfig) {
+        this.awsConfig = awsConfig;
     }
 }
