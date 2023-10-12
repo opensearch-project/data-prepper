@@ -11,6 +11,7 @@ ENV ENV_PIPELINE_FILEPATH=$PIPELINE_FILEPATH
 # Update all packages
 RUN apt -y update
 RUN apt -y install bash bc
+RUN apt -y full-upgrade
 
 RUN mkdir -p /var/log/data-prepper
 ADD $ARCHIVE_FILE /usr/share
