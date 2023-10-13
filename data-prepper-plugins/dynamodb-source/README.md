@@ -55,7 +55,7 @@ source:
 
 ### Stream Configurations
 
-* start_position (Optional):  start position of the stream, can be either BEGINNING or LATEST. If export is required,
+* start_position (Optional):  start position of the stream, can be either TRIM_HORIZON or LATEST. If export is required,
   this value will be ignored and set to LATEST by default. This is useful if customer don’t want to run initial export,
   so they can
   choose either from the beginning of the stream (up to 24 hours) or from latest (from the time point when pipeline is

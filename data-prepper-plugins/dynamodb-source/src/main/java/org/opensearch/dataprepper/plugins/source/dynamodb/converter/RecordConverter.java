@@ -9,12 +9,20 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.COMPOSITE_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TABLE_NAME_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.SORT_KEY_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.STREAM_EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 
 /**
  * Base Record Processor definition.
@@ -23,16 +31,7 @@ import java.util.Map;
  */
 public abstract class RecordConverter {
 
-
-    private static final String KEYS_TAG_NAME = "_id";
-
-    private static final String EVENT_TIMESTAMP_TAG_NAME = "ts";
-
-    private static final String EVENT_OP_TAG_NAME = "op";
-
-    private static final String EVENT_SOURCE_TAG_NAME = "source";
-
-    private static final String DEFAULT_ACTION = "index";
+    private static final String DEFAULT_ACTION = OpenSearchBulkActions.INDEX.toString();
 
     private static final int DEFAULT_WRITE_TIMEOUT_MILLIS = 60_000;
 
@@ -61,11 +60,19 @@ public abstract class RecordConverter {
         return partitionKey + "_" + sortKey;
     }
 
+    String getPartitionKey(final Map<String, Object> data) {
+        return String.valueOf(data.get(tableInfo.getMetadata().getPartitionKeyAttributeName()));
+    }
+
+    String getSortKey(final Map<String, Object> data) {
+        return String.valueOf(data.get(tableInfo.getMetadata().getSortKeyAttributeName()));
+    }
+
     void writeEventsToBuffer(List<Record<Event>> events) throws Exception {
         buffer.writeAll(events, DEFAULT_WRITE_TIMEOUT_MILLIS);
     }
 
-    public Record<Event> convertToEvent(Map<String, Object> data, Instant eventCreationTime, String action) {
+    public Record<Event> convertToEvent(Map<String, Object> data, Instant eventCreationTime, String streamEventName) {
         Event event;
         event = JacksonEvent.builder()
                 .withEventType(getEventType())
@@ -73,20 +80,38 @@ public abstract class RecordConverter {
                 .build();
         EventMetadata eventMetadata = event.getMetadata();
 
-        eventMetadata.setAttribute(EVENT_SOURCE_TAG_NAME, tableInfo.getTableArn());
+        eventMetadata.setAttribute(EVENT_TABLE_NAME_METADATA_ATTRIBUTE, tableInfo.getTableName());
         if (eventCreationTime != null) {
-            eventMetadata.setAttribute(EVENT_TIMESTAMP_TAG_NAME, eventCreationTime.toEpochMilli());
+            eventMetadata.setAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreationTime.toEpochMilli());
         }
 
-        eventMetadata.setAttribute(EVENT_OP_TAG_NAME, action);
-        eventMetadata.setAttribute(KEYS_TAG_NAME, getId(data));
+        eventMetadata.setAttribute(STREAM_EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, mapStreamEventNameToBulkAction(streamEventName));
+        eventMetadata.setAttribute(COMPOSITE_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE, getId(data));
+        eventMetadata.setAttribute(PARTITION_KEY_METADATA_ATTRIBUTE, getPartitionKey(data));
+        eventMetadata.setAttribute(SORT_KEY_METADATA_ATTRIBUTE, getSortKey(data));
 
         return new Record<>(event);
     }
 
     public Record<Event> convertToEvent(Map<String, Object> data) {
-        return convertToEvent(data, null, DEFAULT_ACTION);
+        return convertToEvent(data, null, null);
     }
 
+    private String mapStreamEventNameToBulkAction(final String streamEventName) {
+        if (streamEventName == null) {
+            return DEFAULT_ACTION;
+        }
+
+        switch (streamEventName) {
+            case "INSERT":
+                return OpenSearchBulkActions.CREATE.toString();
+            case "MODIFY":
+                return OpenSearchBulkActions.UPSERT.toString();
+            case "REMOVE":
+                return OpenSearchBulkActions.DELETE.toString();
+            default:
+                return DEFAULT_ACTION;
+        }
+    }
 
 }

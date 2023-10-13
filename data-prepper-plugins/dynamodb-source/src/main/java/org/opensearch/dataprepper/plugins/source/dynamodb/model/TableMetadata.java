@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.model;
 
+import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamStartPosition;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,7 +24,7 @@ public class TableMetadata {
 
     private final String sortKeyAttributeName;
 
-    private final String streamStartPosition;
+    private final StreamStartPosition streamStartPosition;
 
     private final String streamArn;
 
@@ -68,7 +70,7 @@ public class TableMetadata {
 
         private String exportPrefix;
 
-        private String streamStartPosition;
+        private StreamStartPosition streamStartPosition;
 
 
         public Builder partitionKeyAttributeName(String partitionKeyAttributeName) {
@@ -106,7 +108,7 @@ public class TableMetadata {
             return this;
         }
 
-        public Builder streamStartPosition(String streamStartPosition) {
+        public Builder streamStartPosition(StreamStartPosition streamStartPosition) {
             this.streamStartPosition = streamStartPosition;
             return this;
         }
@@ -160,7 +162,7 @@ public class TableMetadata {
         return exportRequired;
     }
 
-    public String getStreamStartPosition() {
+    public StreamStartPosition getStreamStartPosition() {
         return streamStartPosition;
     }
 

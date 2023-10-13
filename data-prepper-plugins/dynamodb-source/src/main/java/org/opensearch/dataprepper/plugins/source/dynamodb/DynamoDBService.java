@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamStartPosition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.TableConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
@@ -161,8 +162,8 @@ public class DynamoDBService {
 
             if (tableInfo.getMetadata().isStreamRequired()) {
                 List<String> shardIds;
-                // start position by default is beginning if not provided.
-                if (tableInfo.getMetadata().isExportRequired() || "LATEST".equals(tableInfo.getMetadata().getStreamStartPosition())) {
+                // start position by default is TRIM_HORIZON if not provided.
+                if (tableInfo.getMetadata().isExportRequired() || String.valueOf(StreamStartPosition.LATEST).equals(tableInfo.getMetadata().getStreamStartPosition())) {
                     // For a continued data extraction process that involves both export and stream
                     // The export must be completed and loaded before stream can start.
                     // Moreover, there should not be any gaps between the export time and the time start reading the stream
@@ -263,7 +264,7 @@ public class DynamoDBService {
             }
         }
 
-        String streamStartPosition = null;
+        StreamStartPosition streamStartPosition = null;
 
         if (tableConfig.getStreamConfig() != null) {
             // Validate if DynamoDB Stream is turn on or not

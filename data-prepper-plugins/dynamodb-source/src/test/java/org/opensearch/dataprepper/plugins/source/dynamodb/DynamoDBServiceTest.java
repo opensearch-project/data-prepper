@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.ExportConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
+import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamStartPosition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.TableConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.InitPartition;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -143,7 +144,7 @@ class DynamoDBServiceTest {
         // Mock configurations
         lenient().when(exportConfig.getS3Bucket()).thenReturn(bucketName);
         lenient().when(exportConfig.getS3Prefix()).thenReturn(prefix);
-        lenient().when(streamConfig.getStartPosition()).thenReturn("LATEST");
+        lenient().when(streamConfig.getStartPosition()).thenReturn(StreamStartPosition.LATEST);
         lenient().when(tableConfig.getTableArn()).thenReturn(tableArn);
         lenient().when(tableConfig.getExportConfig()).thenReturn(exportConfig);
         lenient().when(tableConfig.getStreamConfig()).thenReturn(streamConfig);
