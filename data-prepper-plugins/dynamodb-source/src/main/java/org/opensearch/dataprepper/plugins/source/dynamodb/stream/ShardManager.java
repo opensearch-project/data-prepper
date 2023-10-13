@@ -28,7 +28,7 @@ public class ShardManager {
     private static final Logger LOG = LoggerFactory.getLogger(ShardManager.class);
 
     /**
-     * Max number of items to return per GetRecords call, maximum 1000.
+     * Max number of shards to return in the DescribeStream API call, maximum 100.
      */
     private static final int MAX_SHARD_COUNT = 100;
 
