@@ -92,7 +92,7 @@ public class ExportScheduler implements Runnable {
 
     @Override
     public void run() {
-        LOG.debug("Start running Export Scheduler");
+        LOG.info("Start running Export Scheduler");
         while (!Thread.interrupted()) {
             // Does not have limit on max leases
             // As most of the time it's just to wait
@@ -121,7 +121,7 @@ public class ExportScheduler implements Runnable {
             }
 
         }
-        LOG.debug("Export scheduler interrupted, looks like shutdown has triggered");
+        LOG.warn("Export scheduler interrupted, looks like shutdown has triggered");
         executor.shutdownNow();
 
     }
@@ -173,7 +173,7 @@ public class ExportScheduler implements Runnable {
 
 
     private void createDataFilePartitions(String exportArn, String bucketName, Map<String, Integer> dataFileInfo) {
-        LOG.debug("Totally {} data files generated for export {}", dataFileInfo.size(), exportArn);
+        LOG.info("Totally {} data files generated for export {}", dataFileInfo.size(), exportArn);
         AtomicInteger totalRecords = new AtomicInteger();
         AtomicInteger totalFiles = new AtomicInteger();
         dataFileInfo.forEach((key, size) -> {
@@ -225,7 +225,7 @@ public class ExportScheduler implements Runnable {
 
             String status = exportTaskManager.checkExportStatus(exportArn);
             if (!"IN_PROGRESS".equals(status)) {
-                LOG.debug("Export {} is completed with final status {}", exportArn, status);
+                LOG.info("Export {} is completed with final status {}", exportArn, status);
                 return status;
             }
             LOG.debug("Export {} is still running in progress, sleep and recheck later", exportArn);
@@ -243,19 +243,19 @@ public class ExportScheduler implements Runnable {
         ExportProgressState state = exportPartition.getProgressState().get();
         // Check the progress state
         if (state.getExportArn() != null) {
-            LOG.debug("Export Job has already submitted for table {} with export time {}", exportPartition.getTableArn(), exportPartition.getExportTime());
+            LOG.info("Export Job has already submitted for table {} with export time {}", exportPartition.getTableArn(), exportPartition.getExportTime());
             // Export job already submitted
             return state.getExportArn();
         }
 
-        LOG.debug("Try to submit a new export job for table {} with export time {}", exportPartition.getTableArn(), exportPartition.getExportTime());
+        LOG.info("Try to submit a new export job for table {} with export time {}", exportPartition.getTableArn(), exportPartition.getExportTime());
         // submit a new export request
         String exportArn = exportTaskManager.submitExportJob(exportPartition.getTableArn(), state.getBucket(), state.getPrefix(), exportPartition.getExportTime());
 
         // Update state with export Arn in the coordination table.
         // So that it won't be submitted again after a restart.
         if (exportArn != null) {
-            LOG.debug("Export arn is " + exportArn);
+            LOG.info("Export arn is " + exportArn);
             state.setExportArn(exportArn);
             enhancedSourceCoordinator.saveProgressStateForPartition(exportPartition);
         }

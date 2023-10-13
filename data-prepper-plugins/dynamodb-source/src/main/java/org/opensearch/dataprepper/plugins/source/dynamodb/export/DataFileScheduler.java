@@ -31,8 +31,15 @@ public class DataFileScheduler implements Runnable {
 
     private final AtomicInteger numOfWorkers = new AtomicInteger(0);
 
-    private static final int MAX_JOB_COUNT = 2;
-    private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 30_000;
+    /**
+     * Maximum concurrent data loader per node
+     */
+    private static final int MAX_JOB_COUNT = 4;
+
+    /**
+     * Default interval to acquire a lease from coordination store
+     */
+    private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 15_000;
 
     static final String EXPORT_FILE_SUCCESS_COUNT = "exportFileSuccess";
 
@@ -74,7 +81,7 @@ public class DataFileScheduler implements Runnable {
 
     @Override
     public void run() {
-        LOG.debug("Start running Data file Scheduler");
+        LOG.info("Start running Data File Scheduler");
 
         while (!Thread.interrupted()) {
             if (numOfWorkers.get() < MAX_JOB_COUNT) {
@@ -93,7 +100,7 @@ public class DataFileScheduler implements Runnable {
             }
 
         }
-        LOG.debug("Data file scheduler is interrupted, Stop all data file loaders...");
+        LOG.warn("Data file scheduler is interrupted, Stop all data file loaders...");
         // Cannot call executor.shutdownNow() here
         // Otherwise the final checkpoint will fail due to SDK interruption.
         executor.shutdown();

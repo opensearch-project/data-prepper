@@ -7,10 +7,10 @@ package org.opensearch.dataprepper.sourcecoordination.enhanced;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
-import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,7 +118,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         LOG.debug("Try to acquire an available {} partition", partitionType);
         Optional<SourcePartitionStoreItem> sourceItem = coordinationStore.tryAcquireAvailablePartition(this.sourceIdentifier + "|" + partitionType, hostName, DEFAULT_LEASE_TIMEOUT);
         if (sourceItem.isEmpty()) {
-            LOG.info("Partition owner {} failed to acquire a partition, no available {} partitions now", hostName, partitionType);
+            LOG.debug("Partition owner {} failed to acquire a partition, no available {} partitions now", hostName, partitionType);
             return Optional.empty();
         }
 
@@ -145,7 +145,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         updateItem.setPartitionProgressState(partition.convertPartitionProgressStatetoString(partition.getProgressState()));
 
         coordinationStore.tryUpdateSourcePartitionItem(updateItem);
-        LOG.info("Progress for for partition {} (Type {}) was saved", partition.getPartitionKey(), partitionType);
+        LOG.debug("Progress for for partition {} (Type {}) was saved", partition.getPartitionKey(), partitionType);
     }
 
     @Override
@@ -167,7 +167,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
 
         // Throws UpdateException if update failed.
         coordinationStore.tryUpdateSourcePartitionItem(updateItem);
-        LOG.info("Partition key {} was given up by owner {}", partition.getPartitionKey(), hostName);
+        LOG.debug("Partition key {} was given up by owner {}", partition.getPartitionKey(), hostName);
 
     }
 

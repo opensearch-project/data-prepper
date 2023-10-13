@@ -39,7 +39,7 @@ public class ShardConsumer implements Runnable {
     /**
      * Idle Time between GetRecords Reads
      */
-    private static final int GET_RECORD_INTERVAL_MILLS = 200;
+    private static final int GET_RECORD_INTERVAL_MILLS = 300;
 
     /**
      * Default interval to check if export is completed.
@@ -131,7 +131,7 @@ public class ShardConsumer implements Runnable {
 
     @Override
     public void run() {
-        LOG.debug("Shard Consumer start to run...");
+        LOG.info("Shard Consumer start to run...");
 
         long lastCheckpointTime = System.currentTimeMillis();
         String sequenceNumber = "";

@@ -94,7 +94,7 @@ class StreamSchedulerTest {
         executor.submit(scheduler);
 
         // Need to run a while
-        Thread.sleep(500);
+        Thread.sleep(2000);
         // Should acquire the stream partition
         verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
         // Should start a new consumer

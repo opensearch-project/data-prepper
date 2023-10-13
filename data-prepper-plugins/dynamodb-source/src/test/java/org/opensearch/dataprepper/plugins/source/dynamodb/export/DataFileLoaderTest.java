@@ -130,7 +130,7 @@ class DataFileLoaderTest {
 
         loader.run();
         // Run for a while
-        Thread.sleep(500);
+        Thread.sleep(1000);
 
         // Should call s3 getObject
         verify(s3Client).getObject(any(GetObjectRequest.class));

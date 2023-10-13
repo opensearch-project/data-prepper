@@ -60,7 +60,7 @@ public class ManifestFileReader {
     }
 
     public Map<String, Integer> parseDataFile(String bucket, String key) {
-        LOG.debug("Try to read the manifest data file");
+        LOG.info("Try to read the manifest data file");
 
         Map<String, Integer> result = new HashMap<>();
         InputStream object = objectReader.readFile(bucket, key);
@@ -72,12 +72,12 @@ public class ManifestFileReader {
                 // An example line as below:
                 // {"itemCount":46331,"md5Checksum":"a0k21IY3eelgr2PuWJLjJw==","etag":"51f9f394903c5d682321c6211aae8b6a-1","dataFileS3Key":"test-table-export/AWSDynamoDB/01692350182719-6de2c037/data/fpgzwz7ome3s7a5gqn2mu3ogtq.json.gz"}
                 Map<String, String> map = MAPPER.readValue(line, MAP_TYPE_REFERENCE);
-                LOG.debug("Get a file {} with item count {}", map.get(DATA_FILE_S3_KEY), map.get(DATA_FILE_ITEM_COUNT_KEY));
+                LOG.info("Export data file: {} with item count {}", map.get(DATA_FILE_S3_KEY), map.get(DATA_FILE_ITEM_COUNT_KEY));
                 result.put(map.get(DATA_FILE_S3_KEY), Integer.valueOf(map.get(DATA_FILE_ITEM_COUNT_KEY)));
 
             }
         } catch (IOException e) {
-            LOG.error("IO Exception due to " + e.getMessage());
+            LOG.error("IO Exception due to {}", e.getMessage());
         }
 
         return result;

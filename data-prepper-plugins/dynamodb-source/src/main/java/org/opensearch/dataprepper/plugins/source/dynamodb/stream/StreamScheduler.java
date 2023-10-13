@@ -26,8 +26,20 @@ import java.util.function.BiConsumer;
 public class StreamScheduler implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(StreamScheduler.class);
 
-    private static final int MAX_JOB_COUNT = 50;
-    private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 30_000;
+    /**
+     * Max number of shards each node can handle in parallel
+     */
+    private static final int MAX_JOB_COUNT = 250;
+
+    /**
+     * Default interval to acquire a lease from coordination store
+     */
+    private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 15_000;
+
+    /**
+     * Add a delay of getting child shards when the parent finished.
+     */
+    private static final int DELAY_TO_GET_CHILD_SHARDS_MILLIS = 1_500;
 
     private final AtomicInteger numOfWorkers = new AtomicInteger(0);
     private final EnhancedSourceCoordinator coordinator;
@@ -59,7 +71,7 @@ public class StreamScheduler implements Runnable {
 
     @Override
     public void run() {
-        LOG.debug("Stream Scheduler start to run...");
+        LOG.info("Start running Stream Scheduler");
         while (!Thread.interrupted()) {
             if (numOfWorkers.get() < MAX_JOB_COUNT) {
                 final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
@@ -77,7 +89,7 @@ public class StreamScheduler implements Runnable {
             }
         }
         // Should Stop
-        LOG.debug("Stream Scheduler is interrupted, looks like shutdown has triggered");
+        LOG.warn("Stream Scheduler is interrupted, looks like shutdown has triggered");
 
         // Cannot call executor.shutdownNow() here
         // Otherwise the final checkpoint will fail due to SDK interruption.
@@ -89,14 +101,20 @@ public class StreamScheduler implements Runnable {
         return (v, ex) -> {
             numOfWorkers.decrementAndGet();
             if (ex == null) {
-                LOG.debug("Shard consumer is completed");
+                LOG.info("Shard consumer for {} is completed", streamPartition.getShardId());
                 LOG.debug("Start creating new stream partitions for Child Shards");
 
+                try {
+                    // Add a delay as the Child shards may not be ready yet.
+                    Thread.sleep(DELAY_TO_GET_CHILD_SHARDS_MILLIS);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
                 List<String> childShardIds = shardManager.getChildShardIds(streamPartition.getStreamArn(), streamPartition.getShardId());
-                LOG.debug("Child Ids Retrieved: {}", childShardIds);
+                LOG.info("{} child shards for {} have been found", childShardIds.size(), streamPartition.getShardId());
 
                 createStreamPartitions(streamPartition.getStreamArn(), childShardIds);
-                LOG.debug("Create child shard completed");
+                LOG.info("Creation of all child shards partitions is completed");
                 // Finally mask the partition as completed.
                 coordinator.completePartition(streamPartition);
 
