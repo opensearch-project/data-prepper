@@ -28,6 +28,7 @@ dependencies {
     implementation 'software.amazon.awssdk:arns'
     implementation 'io.micrometer:micrometer-core'
     implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:opensearchserverless'
     implementation libs.commons.lang3
     implementation 'software.amazon.awssdk:apache-client'
     testImplementation testLibs.junit.vintage
@@ -71,7 +72,6 @@ task integrationTest(type: Test) {
         includeTestsMatching '*Test'
     }
 }
-
 
 jacocoTestReport {
     dependsOn test
