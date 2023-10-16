@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.obfuscation;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,6 +35,10 @@ public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Recor
 
     private static final String COMMON_PATTERN_REGEX = "^%\\{([A-Z_0-9]+)}$";
     private static final Logger LOG = LoggerFactory.getLogger(ObfuscationProcessor.class);
+
+    private final ExpressionEvaluator expressionEvaluator;
+    private final ObfuscationProcessorConfig obfuscationProcessorConfig;
+
     private final String source;
     private final String target;
 
@@ -41,13 +47,20 @@ public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Recor
 
 
     @DataPrepperPluginConstructor
-    public ObfuscationProcessor(final PluginMetrics pluginMetrics, final ObfuscationProcessorConfig config, final PluginFactory pluginFactory) {
+    public ObfuscationProcessor(final PluginMetrics pluginMetrics,
+                                final ObfuscationProcessorConfig config,
+                                final PluginFactory pluginFactory,
+                                final ExpressionEvaluator expressionEvaluator) {
         // No special metrics generate by this processor.
         super(pluginMetrics);
 
         this.source = config.getSource();
         this.target = config.getTarget();
         this.patterns = new ArrayList<>();
+        this.expressionEvaluator = expressionEvaluator;
+        this.obfuscationProcessorConfig = config;
+
+        config.validateObfuscateWhen(expressionEvaluator);
 
         final PluginModel actionPlugin = config.getAction();
         if (actionPlugin == null) {
@@ -93,6 +106,10 @@ public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Recor
 
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
+
+            if (Objects.nonNull(obfuscationProcessorConfig.getObfuscateWhen()) && !expressionEvaluator.evaluateConditional(obfuscationProcessorConfig.getObfuscateWhen(), recordEvent)) {
+                continue;
+            }
 
             if (!recordEvent.containsKey(source)) {
                 continue;
