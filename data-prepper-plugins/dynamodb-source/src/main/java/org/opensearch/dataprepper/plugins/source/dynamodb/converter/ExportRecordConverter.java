@@ -26,8 +26,8 @@ public class ExportRecordConverter extends RecordConverter {
 
     private static final String ITEM_KEY = "Item";
 
-    static final String EXPORT_RECORD_SUCCESS_COUNT = "exportRecordSuccess";
-    static final String EXPORT_RECORD_ERROR_COUNT = "exportRecordErrors";
+    static final String EXPORT_RECORDS_PROCESSED_COUNT = "exportRecordsProcessed";
+    static final String EXPORT_RECORDS_PROCESSING_ERROR_COUNT = "exportRecordProcessingErrors";
 
 
     IonObjectMapper MAPPER = new IonObjectMapper();
@@ -40,8 +40,8 @@ public class ExportRecordConverter extends RecordConverter {
     public ExportRecordConverter(Buffer<Record<Event>> buffer, TableInfo tableInfo, PluginMetrics pluginMetrics) {
         super(buffer, tableInfo);
         this.pluginMetrics = pluginMetrics;
-        this.exportRecordSuccessCounter = pluginMetrics.counter(EXPORT_RECORD_SUCCESS_COUNT);
-        this.exportRecordErrorCounter = pluginMetrics.counter(EXPORT_RECORD_ERROR_COUNT);
+        this.exportRecordSuccessCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT);
+        this.exportRecordErrorCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSING_ERROR_COUNT);
 
     }
 

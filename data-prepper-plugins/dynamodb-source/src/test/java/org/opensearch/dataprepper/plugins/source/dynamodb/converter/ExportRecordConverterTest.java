@@ -33,8 +33,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.EXPORT_RECORD_ERROR_COUNT;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.EXPORT_RECORD_SUCCESS_COUNT;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.EXPORT_RECORDS_PROCESSING_ERROR_COUNT;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.EXPORT_RECORDS_PROCESSED_COUNT;
 
 @ExtendWith(MockitoExtension.class)
 class ExportRecordConverterTest {
@@ -73,8 +73,8 @@ class ExportRecordConverterTest {
 
         tableInfo = new TableInfo(tableArn, metadata);
 
-        given(pluginMetrics.counter(EXPORT_RECORD_SUCCESS_COUNT)).willReturn(exportRecordSuccess);
-        given(pluginMetrics.counter(EXPORT_RECORD_ERROR_COUNT)).willReturn(exportRecordErrors);
+        given(pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT)).willReturn(exportRecordSuccess);
+        given(pluginMetrics.counter(EXPORT_RECORDS_PROCESSING_ERROR_COUNT)).willReturn(exportRecordErrors);
 
     }
 

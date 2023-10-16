@@ -51,8 +51,8 @@ public class ExportScheduler implements Runnable {
     private static final String FAILED_STATUS = "Failed";
 
     static final String EXPORT_JOB_SUCCESS_COUNT = "exportJobSuccess";
-    static final String EXPORT_JOB_ERROR_COUNT = "exportJobErrors";
-    static final String EXPORT_FILES_TOTAL_COUNT = "exportFilesTotal";
+    static final String EXPORT_JOB_FAILURE_COUNT = "exportJobFailure";
+    static final String EXPORT_S3_OBJECTS_TOTAL_COUNT = "exportS3ObjectsTotal";
     static final String EXPORT_RECORDS_TOTAL_COUNT = "exportRecordsTotal";
 
     private final PluginMetrics pluginMetrics;
@@ -68,9 +68,9 @@ public class ExportScheduler implements Runnable {
     private final ExportTaskManager exportTaskManager;
 
     private final Counter exportJobSuccessCounter;
-    private final Counter exportJobErrorCounter;
+    private final Counter exportJobFailureCounter;
 
-    private final Counter exportFilesTotalCounter;
+    private final Counter exportS3ObjectsTotalCounter;
     private final Counter exportRecordsTotalCounter;
 
     public ExportScheduler(EnhancedSourceCoordinator enhancedSourceCoordinator, DynamoDbClient dynamoDBClient, ManifestFileReader manifestFileReader, PluginMetrics pluginMetrics) {
@@ -83,8 +83,8 @@ public class ExportScheduler implements Runnable {
         executor = Executors.newCachedThreadPool();
 
         exportJobSuccessCounter = pluginMetrics.counter(EXPORT_JOB_SUCCESS_COUNT);
-        exportJobErrorCounter = pluginMetrics.counter(EXPORT_JOB_ERROR_COUNT);
-        exportFilesTotalCounter = pluginMetrics.counter(EXPORT_FILES_TOTAL_COUNT);
+        exportJobFailureCounter = pluginMetrics.counter(EXPORT_JOB_FAILURE_COUNT);
+        exportS3ObjectsTotalCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_TOTAL_COUNT);
         exportRecordsTotalCounter = pluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT);
 
 
@@ -92,8 +92,8 @@ public class ExportScheduler implements Runnable {
 
     @Override
     public void run() {
-        LOG.info("Start running Export Scheduler");
-        while (!Thread.interrupted()) {
+        LOG.debug("Start running Export Scheduler");
+        while (!Thread.currentThread().isInterrupted()) {
             // Does not have limit on max leases
             // As most of the time it's just to wait
             final Optional<EnhancedSourcePartition> sourcePartition = enhancedSourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE);
@@ -186,7 +186,7 @@ public class ExportScheduler implements Runnable {
             enhancedSourceCoordinator.createPartition(partition);
         });
 
-        exportFilesTotalCounter.increment(totalFiles.get());
+        exportS3ObjectsTotalCounter.increment(totalFiles.get());
         exportRecordsTotalCounter.increment(totalRecords.get());
 
         // Currently, we need to maintain a global state to track the overall progress.
@@ -197,7 +197,7 @@ public class ExportScheduler implements Runnable {
 
 
     private void closeExportPartitionWithError(ExportPartition exportPartition) {
-        exportJobErrorCounter.increment(1);
+        exportJobFailureCounter.increment(1);
         ExportProgressState exportProgressState = exportPartition.getProgressState().get();
         // Clear current Arn, so that a new export can be submitted.
         exportProgressState.setExportArn(null);

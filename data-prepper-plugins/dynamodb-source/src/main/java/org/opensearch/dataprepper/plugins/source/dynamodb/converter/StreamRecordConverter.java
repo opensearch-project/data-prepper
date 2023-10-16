@@ -26,8 +26,8 @@ public class StreamRecordConverter extends RecordConverter {
     private static final Logger LOG = LoggerFactory.getLogger(StreamRecordConverter.class);
 
 
-    static final String CHANGE_EVENT_SUCCESS_COUNT = "changeEventSuccess";
-    static final String CHANGE_EVENT_ERROR_COUNT = "changeEventErrors";
+    static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
+    static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -42,8 +42,8 @@ public class StreamRecordConverter extends RecordConverter {
     public StreamRecordConverter(Buffer<Record<Event>> buffer, TableInfo tableInfo, PluginMetrics pluginMetrics) {
         super(buffer, tableInfo);
         this.pluginMetrics = pluginMetrics;
-        this.changeEventSuccessCounter = pluginMetrics.counter(CHANGE_EVENT_SUCCESS_COUNT);
-        this.changeEventErrorCounter = pluginMetrics.counter(CHANGE_EVENT_ERROR_COUNT);
+        this.changeEventSuccessCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSED_COUNT);
+        this.changeEventErrorCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT);
     }
 
     @Override

@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
@@ -18,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
 /**
@@ -41,20 +43,28 @@ public class StreamScheduler implements Runnable {
      */
     private static final int DELAY_TO_GET_CHILD_SHARDS_MILLIS = 1_500;
 
+    static final String ACTIVE_CHANGE_EVENT_CONSUMERS = "activeChangeEventConsumers";
+
     private final AtomicInteger numOfWorkers = new AtomicInteger(0);
     private final EnhancedSourceCoordinator coordinator;
     private final ShardConsumerFactory consumerFactory;
     private final ExecutorService executor;
     private final ShardManager shardManager;
+    private final PluginMetrics pluginMetrics;
+    private final AtomicLong activeChangeEventConsumers;
 
 
-    public StreamScheduler(final EnhancedSourceCoordinator coordinator, final ShardConsumerFactory consumerFactory, final ShardManager shardManager) {
+    public StreamScheduler(final EnhancedSourceCoordinator coordinator,
+                           final ShardConsumerFactory consumerFactory,
+                           final ShardManager shardManager,
+                           final PluginMetrics pluginMetrics) {
         this.coordinator = coordinator;
         this.shardManager = shardManager;
         this.consumerFactory = consumerFactory;
+        this.pluginMetrics = pluginMetrics;
 
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
-
+        activeChangeEventConsumers = pluginMetrics.gauge(ACTIVE_CHANGE_EVENT_CONSUMERS, new AtomicLong());
     }
 
     private void processStreamPartition(StreamPartition streamPartition) {
@@ -71,13 +81,15 @@ public class StreamScheduler implements Runnable {
 
     @Override
     public void run() {
-        LOG.info("Start running Stream Scheduler");
-        while (!Thread.interrupted()) {
+        LOG.debug("Stream Scheduler start to run...");
+        while (!Thread.currentThread().isInterrupted()) {
             if (numOfWorkers.get() < MAX_JOB_COUNT) {
                 final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
                 if (sourcePartition.isPresent()) {
+                    activeChangeEventConsumers.incrementAndGet();
                     StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
                     processStreamPartition(streamPartition);
+                    activeChangeEventConsumers.decrementAndGet();
                 }
             }
 

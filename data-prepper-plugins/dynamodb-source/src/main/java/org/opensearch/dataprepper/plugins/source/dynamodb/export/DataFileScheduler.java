@@ -22,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
 
@@ -41,7 +42,8 @@ public class DataFileScheduler implements Runnable {
      */
     private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 15_000;
 
-    static final String EXPORT_FILE_SUCCESS_COUNT = "exportFileSuccess";
+    static final String EXPORT_S3_OBJECTS_PROCESSED_COUNT = "exportS3ObjectsProcessed";
+    static final String ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE = "activeExportS3ObjectConsumers";
 
 
     private final EnhancedSourceCoordinator coordinator;
@@ -54,6 +56,7 @@ public class DataFileScheduler implements Runnable {
 
 
     private final Counter exportFileSuccessCounter;
+    private final AtomicLong activeExportS3ObjectConsumersGauge;
 
 
     public DataFileScheduler(EnhancedSourceCoordinator coordinator, DataFileLoaderFactory loaderFactory, PluginMetrics pluginMetrics) {
@@ -64,7 +67,8 @@ public class DataFileScheduler implements Runnable {
 
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
 
-        this.exportFileSuccessCounter = pluginMetrics.counter(EXPORT_FILE_SUCCESS_COUNT);
+        this.exportFileSuccessCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT);
+        this.activeExportS3ObjectConsumersGauge = pluginMetrics.gauge(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE, new AtomicLong());
     }
 
     private void processDataFilePartition(DataFilePartition dataFilePartition) {
@@ -83,13 +87,15 @@ public class DataFileScheduler implements Runnable {
     public void run() {
         LOG.info("Start running Data File Scheduler");
 
-        while (!Thread.interrupted()) {
+        while (!Thread.currentThread().isInterrupted()) {
             if (numOfWorkers.get() < MAX_JOB_COUNT) {
                 final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
 
                 if (sourcePartition.isPresent()) {
+                    activeExportS3ObjectConsumersGauge.incrementAndGet();
                     DataFilePartition dataFilePartition = (DataFilePartition) sourcePartition.get();
                     processDataFilePartition(dataFilePartition);
+                    activeExportS3ObjectConsumersGauge.decrementAndGet();
                 }
             }
             try {

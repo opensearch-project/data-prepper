@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 
 public class MetadataKeyAttributes {
-     static final String COMPOSITE_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE = "_id";
+     static final String PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE = "primary_key";
 
      static final String PARTITION_KEY_METADATA_ATTRIBUTE = "partition_key";
 

@@ -25,14 +25,21 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFileScheduler.EXPORT_FILE_SUCCESS_COUNT;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFileScheduler.ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFileScheduler.EXPORT_S3_OBJECTS_PROCESSED_COUNT;
 
 @ExtendWith(MockitoExtension.class)
 class DataFileSchedulerTest {
@@ -51,6 +58,9 @@ class DataFileSchedulerTest {
 
     @Mock
     private Counter exportFileSuccess;
+
+    @Mock
+    private AtomicLong activeExportS3ObjectConsumers;
 
     @Mock
     private DataFileLoaderFactory loaderFactory;
@@ -77,8 +87,6 @@ class DataFileSchedulerTest {
         DataFileProgressState state = new DataFileProgressState();
         state.setLoaded(0);
         state.setTotal(100);
-//        lenient().when(dataFilePartition.getProgressState()).thenReturn(Optional.of(state));
-
         dataFilePartition = new DataFilePartition(exportArn, bucketName, manifestKey, Optional.of(state));
 
         // Mock Global Table Info
@@ -90,7 +98,7 @@ class DataFileSchedulerTest {
                 .sortKeyAttributeName("SK")
                 .streamArn(streamArn)
                 .build();
-//        Map<String, Object> tableState = metadata;
+
         lenient().when(tableInfoGlobalState.getProgressState()).thenReturn(Optional.of(metadata.toMap()));
 
 
@@ -99,7 +107,8 @@ class DataFileSchedulerTest {
         lenient().when(coordinator.getPartition(exportArn)).thenReturn(Optional.of(exportInfoGlobalState));
         lenient().when(exportInfoGlobalState.getProgressState()).thenReturn(Optional.of(loadStatus.toMap()));
 
-        given(pluginMetrics.counter(EXPORT_FILE_SUCCESS_COUNT)).willReturn(exportFileSuccess);
+        given(pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT)).willReturn(exportFileSuccess);
+        given(pluginMetrics.gauge(eq(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE), any(AtomicLong.class))).willReturn(activeExportS3ObjectConsumers);
 
         lenient().when(coordinator.createPartition(any(EnhancedSourcePartition.class))).thenReturn(true);
         lenient().doNothing().when(coordinator).completePartition(any(EnhancedSourcePartition.class));
@@ -115,11 +124,12 @@ class DataFileSchedulerTest {
 
         scheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics);
 
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        executor.submit(scheduler);
-
-        // Run for a while
-        Thread.sleep(500);
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> scheduler.run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
 
         // Should acquire data file partition
         verify(coordinator).acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
@@ -136,7 +146,7 @@ class DataFileSchedulerTest {
         // Should update metrics.
         verify(exportFileSuccess).increment();
 
-        executor.shutdownNow();
+        executorService.shutdownNow();
 
 
     }
