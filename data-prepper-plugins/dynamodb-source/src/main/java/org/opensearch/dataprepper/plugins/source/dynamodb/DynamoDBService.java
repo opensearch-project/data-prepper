@@ -130,15 +130,15 @@ public class DynamoDBService {
      * Future optimization can be done to accept configuration changes
      */
     public void init() {
-        LOG.info("Start initialize DynamoDB service");
+        LOG.info("Try to initialize DynamoDB service");
 
         final Optional<EnhancedSourcePartition> initPartition = coordinator.acquireAvailablePartition(InitPartition.PARTITION_TYPE);
         if (initPartition.isEmpty()) {
             // Already initialized. Do nothing.
+            LOG.info("DynamoDB service is already initialized.");
             return;
         }
-
-        LOG.info("Start validating table configurations");
+        LOG.info("Start initialization process");
         List<TableInfo> tableInfos;
         try {
             tableInfos = tableConfigs.stream().map(this::getTableInfo).collect(Collectors.toList());

@@ -120,7 +120,7 @@ public class DataFileLoader implements Runnable {
 
     @Override
     public void run() {
-        LOG.debug("Read export data from s3://" + bucketName + "/" + key + " with start line " + startLine);
+        LOG.info("Start loading s3://{}/{} with start line {}", bucketName, key, startLine);
         long lastCheckpointTime = System.currentTimeMillis();
         List<String> lines = new ArrayList<>();
 
@@ -171,12 +171,12 @@ public class DataFileLoader implements Runnable {
 
             lines.clear();
             reader.close();
-            LOG.debug("Data Loader completed successfully");
+            LOG.info("Complete loading s3://{}/{}", bucketName, key);
         } catch (Exception e) {
             checkpointer.checkpoint(lineCount);
-            throw new RuntimeException("Data Loader completed with Exception: " + e.getMessage());
+            String errorMessage = String.format("Loading of s3://{}/{} completed with Exception: {}", bucketName, key, e.getMessage());
+            throw new RuntimeException(errorMessage);
         }
-
     }
 
     /**

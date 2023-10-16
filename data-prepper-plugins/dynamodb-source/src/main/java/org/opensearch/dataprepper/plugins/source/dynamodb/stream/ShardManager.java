@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.dynamodb.model.Shard;
 import software.amazon.awssdk.services.dynamodb.model.ShardIteratorType;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,32 +27,42 @@ public class ShardManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(ShardManager.class);
 
+    /**
+     * Max number of shards to return in the DescribeStream API call, maximum 100.
+     */
+    private static final int MAX_SHARD_COUNT = 100;
+
     private final DynamoDbStreamsClient streamsClient;
 
     public ShardManager(DynamoDbStreamsClient streamsClient) {
         this.streamsClient = streamsClient;
     }
 
-
     private List<Shard> listShards(String streamArn) {
+        LOG.info("Start getting all shards from {}", streamArn);
+        long startTime = System.currentTimeMillis();
         // Get all the shard IDs from the stream.
-        List<Shard> shards;
+        List<Shard> shards = new ArrayList<>();
         String lastEvaluatedShardId = null;
         do {
             DescribeStreamRequest req = DescribeStreamRequest.builder()
                     .streamArn(streamArn)
+                    .limit(MAX_SHARD_COUNT)
                     .exclusiveStartShardId(lastEvaluatedShardId)
                     .build();
 
             DescribeStreamResponse describeStreamResult = streamsClient.describeStream(req);
-            shards = describeStreamResult.streamDescription().shards();
+            shards.addAll(describeStreamResult.streamDescription().shards());
 
             // If LastEvaluatedShardId is set,
             // at least one more page of shard IDs to retrieve
             lastEvaluatedShardId = describeStreamResult.streamDescription().lastEvaluatedShardId();
+
+
         } while (lastEvaluatedShardId != null);
 
-        LOG.debug("Stream {} has {} shards found", streamArn, shards.size());
+        long endTime = System.currentTimeMillis();
+        LOG.info("Stream {} has {} shards found, took {} milliseconds", streamArn, shards.size(), endTime - startTime);
         return shards;
     }
 
@@ -151,7 +162,7 @@ public class ShardManager {
                 .filter(shard -> shard.parentShardId() == null || !childIds.contains(shard.parentShardId()))
                 .map(shard -> shard.shardId())
                 .collect(Collectors.toList());
-
+        LOG.info("Found {} root shards for {}", rootIds.size(), streamArn);
         return rootIds;
     }
 
