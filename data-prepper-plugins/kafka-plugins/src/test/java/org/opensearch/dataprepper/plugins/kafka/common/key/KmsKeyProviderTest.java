@@ -83,8 +83,8 @@ class KmsKeyProviderTest {
             kmsKeyId = UUID.randomUUID().toString();
             region = mock(Region.class);
 
-            when(awsContext.get()).thenReturn(awsCredentialsProvider);
-            when(awsContext.getRegion()).thenReturn(region);
+            when(awsContext.getOrDefault(kmsConfig)).thenReturn(awsCredentialsProvider);
+            when(awsContext.getRegionOrDefault(kmsConfig)).thenReturn(region);
 
             encryptionKey = UUID.randomUUID().toString();
             String base64EncryptionKey = Base64.getEncoder().encodeToString(encryptionKey.getBytes());
