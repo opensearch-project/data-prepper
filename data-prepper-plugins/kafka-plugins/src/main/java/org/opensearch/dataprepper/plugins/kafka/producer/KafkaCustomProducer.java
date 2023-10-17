@@ -89,7 +89,7 @@ public class KafkaCustomProducer<T> {
 
     public void produceRawData(final byte[] bytes, final String key) {
         try {
-            send(topicName, "", bytes);
+            send(topicName, key, bytes).get();
         } catch (Exception e) {
             LOG.error("Error occurred while publishing " + e.getMessage());
         }
