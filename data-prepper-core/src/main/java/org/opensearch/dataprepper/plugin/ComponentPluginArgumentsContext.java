@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -22,6 +23,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
@@ -31,6 +33,7 @@ import java.util.function.Supplier;
 class ComponentPluginArgumentsContext implements PluginArgumentsContext {
     private static final String UNABLE_TO_CREATE_PLUGIN_PARAMETER = "Unable to create an argument for required plugin parameter type: ";
     private final Map<Class<?>, Supplier<Object>> typedArgumentsSuppliers;
+    private Map<Class<?>, Supplier<Object>> optionalArgumentsSuppliers;
 
     @Nullable
     private final BeanFactory beanFactory;
@@ -42,6 +45,7 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         beanFactory = builder.beanFactory;
 
         typedArgumentsSuppliers = new HashMap<>();
+        optionalArgumentsSuppliers = new HashMap<>();
 
         typedArgumentsSuppliers.put(PluginSetting.class, () -> builder.pluginSetting);
 
@@ -77,7 +81,13 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
     }
 
     @Override
-    public Object[] createArguments(final Class<?>[] parameterTypes) {
+    public Object[] createArguments(final Class<?>[] parameterTypes, Optional<Object> optionalArgument) {
+        if (optionalArgument.isPresent()) {
+            if (optionalArgument.get() instanceof ByteDecoder) {
+                ByteDecoder byteDecoder = (ByteDecoder) optionalArgument.get();
+                optionalArgumentsSuppliers.put(ByteDecoder.class, () -> byteDecoder);
+            }
+        }
         return Arrays.stream(parameterTypes)
                 .map(this::getRequiredArgumentSupplier)
                 .map(Supplier::get)
@@ -87,11 +97,11 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
     private Supplier<Object> getRequiredArgumentSupplier(final Class<?> parameterType) {
         if(typedArgumentsSuppliers.containsKey(parameterType)) {
             return typedArgumentsSuppliers.get(parameterType);
-        }
-        else if (beanFactory != null) {
+        } else if(optionalArgumentsSuppliers.containsKey(parameterType)) {
+            return optionalArgumentsSuppliers.get(parameterType);
+        } else if (beanFactory != null) {
             return createBeanSupplier(parameterType, beanFactory);
-        }
-        else {
+        } else {
             throw new InvalidPluginDefinitionException(UNABLE_TO_CREATE_PLUGIN_PARAMETER + parameterType);
         }
     }

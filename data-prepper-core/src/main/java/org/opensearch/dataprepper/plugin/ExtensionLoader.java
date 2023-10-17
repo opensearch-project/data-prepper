@@ -14,6 +14,7 @@ import javax.inject.Named;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Named
@@ -37,7 +38,7 @@ public class ExtensionLoader {
                 .stream()
                 .map(extensionClass -> {
                     final PluginArgumentsContext pluginArgumentsContext = getConstructionContext(extensionClass);
-                    return pluginCreator.newPluginInstance(extensionClass, pluginArgumentsContext, convertClassToName(extensionClass));
+                    return pluginCreator.newPluginInstance(extensionClass, pluginArgumentsContext, null, convertClassToName(extensionClass));
                 })
                 .collect(Collectors.toList());
     }
@@ -74,7 +75,7 @@ public class ExtensionLoader {
 
     protected static class NoArgumentsArgumentsContext implements PluginArgumentsContext {
         @Override
-        public Object[] createArguments(final Class<?>[] parameterTypes) {
+        public Object[] createArguments(final Class<?>[] parameterTypes, Optional<Object> arg) {
             if(parameterTypes.length != 0) {
                 throw new InvalidPluginDefinitionException("No arguments are permitted for extensions constructors.");
             }
@@ -90,7 +91,7 @@ public class ExtensionLoader {
         }
 
         @Override
-        public Object[] createArguments(Class<?>[] parameterTypes) {
+        public Object[] createArguments(Class<?>[] parameterTypes, Optional<Object> arg) {
             if (parameterTypes.length != 1 && (Objects.nonNull(extensionPluginConfiguration) &&
                     !parameterTypes[0].equals(extensionPluginConfiguration.getClass()))) {
                 throw new InvalidPluginDefinitionException(String.format(

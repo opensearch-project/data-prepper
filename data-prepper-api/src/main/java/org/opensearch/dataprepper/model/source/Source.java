@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.source;
 
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 
 /**
  * Data Prepper source interface. Source acts as receiver of the events that flow
@@ -34,5 +35,9 @@ public interface Source<T extends Record<?>> {
      */
     default boolean areAcknowledgementsEnabled() {
         return false;
+    }
+
+    default ByteDecoder getDecoder() {
+        return null;
     }
 }

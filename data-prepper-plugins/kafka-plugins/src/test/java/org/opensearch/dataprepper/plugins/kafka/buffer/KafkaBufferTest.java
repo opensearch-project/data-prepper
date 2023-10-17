@@ -124,7 +124,7 @@ class KafkaBufferTest {
                  })) {
 
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executorService);
-            return new KafkaBuffer<Record<Event>>(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, awsCredentialsSupplier);
+            return new KafkaBuffer<Record<Event>>(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, null, awsCredentialsSupplier);
         }
     }
 

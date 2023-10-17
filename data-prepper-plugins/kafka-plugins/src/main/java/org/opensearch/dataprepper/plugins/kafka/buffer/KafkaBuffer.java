@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.kafka.buffer;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -43,24 +44,36 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private final ExecutorService executorService;
     private final Duration drainTimeout;
     private AtomicBoolean shutdownInProgress;
+    private ByteDecoder byteDecoder;
 
     @DataPrepperPluginConstructor
     public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig, final PluginFactory pluginFactory,
                        final AcknowledgementSetManager acknowledgementSetManager, final PluginMetrics pluginMetrics,
-                       final AwsCredentialsSupplier awsCredentialsSupplier) {
+                       final ByteDecoder byteDecoder, final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
         SerializationFactory serializationFactory = new SerializationFactory();
         final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier);
+        this.byteDecoder = byteDecoder;
         producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, pluginFactory, pluginSetting,  null, null);
         final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory, awsCredentialsSupplier);
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         this.shutdownInProgress = new AtomicBoolean(false);
         final List<KafkaCustomConsumer> consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
-            innerBuffer, pluginMetrics, acknowledgementSetManager, shutdownInProgress);
+            innerBuffer, pluginMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress);
         this.executorService = Executors.newFixedThreadPool(consumers.size());
         consumers.forEach(this.executorService::submit);
 
         this.drainTimeout = kafkaBufferConfig.getDrainTimeout();
+    }
+
+    @Override
+    public void writeBytes(final byte[] bytes, final String key, int timeoutInMillis) throws Exception {
+        try {
+            producer.produceRawData(bytes, key);
+        } catch (final Exception e) {
+            LOG.error(e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -71,6 +84,11 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
             LOG.error(e.getMessage(), e);
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public boolean isByteBuffer() {
+        return true;
     }
 
     @Override

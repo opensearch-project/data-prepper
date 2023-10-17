@@ -29,6 +29,19 @@ public interface PluginFactory {
     <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting);
 
     /**
+     * Loads a new instance of a plugin.
+     *
+     * @param baseClass The class type that the plugin is supporting.
+     * @param pluginSetting The {@link PluginSetting} to configure this plugin
+     * @param argument generic object that can be used as argument in the construction of the new object
+     * @param <T> The type
+     * @return A new instance of your plugin, configured
+     * @since 2.6
+     */
+    <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting, Object argument);
+
+    /**
+    /**
      * Loads a new instance of a plugin with SinkContext.
      *
      * @param baseClass The class type that the plugin is supporting.

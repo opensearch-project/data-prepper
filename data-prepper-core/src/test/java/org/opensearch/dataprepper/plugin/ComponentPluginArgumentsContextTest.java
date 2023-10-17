@@ -21,6 +21,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 
 import java.util.Map;
+import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -60,7 +61,7 @@ class ComponentPluginArgumentsContextTest {
                 .build();
 
         final Class<?>[] parameterTypes = {String.class};
-        assertThrows(InvalidPluginDefinitionException.class, () -> objectUnderTest.createArguments(parameterTypes));
+        assertThrows(InvalidPluginDefinitionException.class, () -> objectUnderTest.createArguments(parameterTypes, Optional.empty()));
     }
 
     @Test
@@ -70,7 +71,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPluginSetting(pluginSetting)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class }),
+        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class }, Optional.empty()),
                 equalTo(new Object[] { testPluginConfiguration}));
     }
 
@@ -82,7 +83,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPluginSetting(pluginSetting)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { PluginSetting.class }),
+        assertThat(objectUnderTest.createArguments(new Class[] { PluginSetting.class }, Optional.empty()),
                 equalTo(new Object[] { pluginSetting}));
     }
 
@@ -96,7 +97,7 @@ class ComponentPluginArgumentsContextTest {
                 .withBeanFactory(beanFactory)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { Object.class }),
+        assertThat(objectUnderTest.createArguments(new Class[] { Object.class }, Optional.empty()),
                 equalTo(new Object[] {mock}));
     }
 
@@ -109,7 +110,7 @@ class ComponentPluginArgumentsContextTest {
                 .withSinkContext(sinkContext)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { SinkContext.class }),
+        assertThat(objectUnderTest.createArguments(new Class[] { SinkContext.class }, Optional.empty()),
                 equalTo(new Object[] { sinkContext}));
     }
 
@@ -122,7 +123,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPluginConfigurationObservable(pluginConfigObservable)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { PluginConfigObservable.class }),
+        assertThat(objectUnderTest.createArguments(new Class[] { PluginConfigObservable.class }, Optional.empty()),
                 equalTo(new Object[] {pluginConfigObservable}));
     }
 
@@ -137,7 +138,7 @@ class ComponentPluginArgumentsContextTest {
 
         final InvalidPluginDefinitionException throwable = assertThrows(
                 InvalidPluginDefinitionException.class,
-                () -> objectUnderTest.createArguments(new Class[]{Object.class})
+                () -> objectUnderTest.createArguments(new Class[]{Object.class}, Optional.empty())
         );
         assertTrue(throwable.getCause() instanceof BeansException);
     }
@@ -153,7 +154,7 @@ class ComponentPluginArgumentsContextTest {
                 .withBeanFactory(beanFactory)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class, Object.class }),
+        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class, Object.class }, Optional.empty()),
                 equalTo(new Object[] {testPluginConfiguration, pluginSetting, mock}));
     }
 
@@ -164,7 +165,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPluginSetting(pluginSetting)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class }),
+        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class }, Optional.empty()),
                 equalTo(new Object[] { testPluginConfiguration, pluginSetting }));
     }
 
@@ -175,7 +176,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPluginSetting(pluginSetting)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { PluginSetting.class, TestPluginConfiguration.class }),
+        assertThat(objectUnderTest.createArguments(new Class[] { PluginSetting.class, TestPluginConfiguration.class }, Optional.empty()),
                 equalTo(new Object[] { pluginSetting, testPluginConfiguration }));
     }
 
@@ -187,7 +188,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPipelineDescription(pluginSetting)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class, PipelineDescription.class}),
+        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class, PipelineDescription.class}, Optional.empty()),
                 equalTo(new Object[] { testPluginConfiguration, pluginSetting, pluginSetting }));
     }
 
@@ -199,7 +200,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPluginFactory(pluginFactory)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { PluginFactory.class }),
+        assertThat(objectUnderTest.createArguments(new Class[] { PluginFactory.class }, Optional.empty()),
                 equalTo(new Object[] { pluginFactory }));
     }
 
@@ -215,7 +216,7 @@ class ComponentPluginArgumentsContextTest {
         try(final MockedStatic<PluginMetrics> pluginMetricsMockedStatic = mockStatic(PluginMetrics.class)) {
             pluginMetricsMockedStatic.when(() -> PluginMetrics.fromPluginSetting(pluginSetting))
                     .thenReturn(pluginMetrics);
-            arguments = objectUnderTest.createArguments(new Class[]{PluginSetting.class, PluginMetrics.class});
+            arguments = objectUnderTest.createArguments(new Class[]{PluginSetting.class, PluginMetrics.class}, Optional.empty());
         }
         assertThat(arguments,
                 equalTo(new Object[] { pluginSetting, pluginMetrics }));

@@ -85,8 +85,14 @@ public class KafkaCustomProducer<T> {
         this.topicName = ObjectUtils.isEmpty(kafkaProducerConfig.getTopic()) ? null : kafkaProducerConfig.getTopic().getName();
         this.serdeFormat = ObjectUtils.isEmpty(kafkaProducerConfig.getSerdeFormat()) ? null : kafkaProducerConfig.getSerdeFormat();
         schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
+    }
 
-
+    public void produceRawData(final byte[] bytes, final String key) {
+        try {
+            send(topicName, "", bytes);
+        } catch (Exception e) {
+            LOG.error("Error occurred while publishing " + e.getMessage());
+        }
     }
 
     public void produceRecords(final Record<Event> record) {

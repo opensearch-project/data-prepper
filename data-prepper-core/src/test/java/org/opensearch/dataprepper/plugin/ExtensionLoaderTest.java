@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -77,6 +78,7 @@ class ExtensionLoaderTest {
         when(pluginCreator.newPluginInstance(
                 eq(pluginClass),
                 any(PluginArgumentsContext.class),
+                any(),
                 startsWith("extension_plugin")))
                 .thenReturn(expectedPlugin);
 
@@ -101,13 +103,14 @@ class ExtensionLoaderTest {
         when(pluginCreator.newPluginInstance(
                 eq(TestExtensionWithConfig.class),
                 any(PluginArgumentsContext.class),
+                any(),
                 eq(expectedPluginName)))
                 .thenReturn(expectedPlugin);
 
         final List<? extends ExtensionPlugin> extensionPlugins = createObjectUnderTest().loadExtensions();
 
         verify(pluginCreator).newPluginInstance(eq(TestExtensionWithConfig.class),
-                pluginArgumentsContextArgumentCaptor.capture(), eq(expectedPluginName));
+                pluginArgumentsContextArgumentCaptor.capture(), any(), eq(expectedPluginName));
         assertThat(pluginArgumentsContextArgumentCaptor.getValue(), instanceOf(
                 ExtensionLoader.SingleConfigArgumentArgumentsContext.class));
         assertThat(extensionPlugins, notNullValue());
@@ -131,6 +134,7 @@ class ExtensionLoaderTest {
             when(pluginCreator.newPluginInstance(
                     eq(pluginClass),
                     any(PluginArgumentsContext.class),
+                    any(),
                     eq(expectedPluginName)))
                     .thenReturn(extensionPlugin);
 
@@ -159,6 +163,7 @@ class ExtensionLoaderTest {
         when(pluginCreator.newPluginInstance(
                 any(Class.class),
                 any(PluginArgumentsContext.class),
+                any(),
                 anyString()))
                 .thenReturn(mock(ExtensionPlugin.class));
 
@@ -169,12 +174,13 @@ class ExtensionLoaderTest {
         verify(pluginCreator).newPluginInstance(
                 eq(pluginClass),
                 contextArgumentCaptor.capture(),
+                any(),
                 anyString());
 
         final PluginArgumentsContext actualPluginArgumentsContext = contextArgumentCaptor.getValue();
 
         final Class[] inputClasses = {String.class};
-        assertThrows(InvalidPluginDefinitionException.class, () -> actualPluginArgumentsContext.createArguments(inputClasses));
+        assertThrows(InvalidPluginDefinitionException.class, () -> actualPluginArgumentsContext.createArguments(inputClasses, Optional.empty()));
     }
 
     @Test
@@ -186,6 +192,7 @@ class ExtensionLoaderTest {
         when(pluginCreator.newPluginInstance(
                 any(Class.class),
                 any(PluginArgumentsContext.class),
+                any(),
                 anyString()))
                 .thenReturn(mock(ExtensionPlugin.class));
 
@@ -196,11 +203,12 @@ class ExtensionLoaderTest {
         verify(pluginCreator).newPluginInstance(
                 eq(pluginClass),
                 contextArgumentCaptor.capture(),
+                any(),
                 anyString());
 
         final PluginArgumentsContext actualPluginArgumentsContext = contextArgumentCaptor.getValue();
 
-        final Object[] arguments = actualPluginArgumentsContext.createArguments(new Class[]{});
+        final Object[] arguments = actualPluginArgumentsContext.createArguments(new Class[]{}, Optional.empty());
         assertThat(arguments, notNullValue());
         assertThat(arguments.length, equalTo(0));
     }
