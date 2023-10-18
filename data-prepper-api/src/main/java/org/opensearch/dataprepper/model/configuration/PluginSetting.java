@@ -94,18 +94,6 @@ public class PluginSetting implements PipelineDescription {
         return settings == null ? defaultValue : settings.getOrDefault(attribute, defaultValue);
     }
 
-    public <T> T getTypedAttribute(final String attribute, final Class<T> type) {
-        Object object = getAttributeOrDefault(attribute, Collections.emptyList());
-        if (object == null) {
-            return null;
-        }
-
-        checkObjectForListType(attribute, object, type);
-        return (T)object;
-
-    }
-
-
     /**
      * Returns the value of the specified attribute as integer, or {@code defaultValue} if this settings contains no
      * value for the attribute.

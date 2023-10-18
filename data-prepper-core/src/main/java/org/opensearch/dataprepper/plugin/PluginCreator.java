@@ -35,15 +35,15 @@ class PluginCreator {
 
     <T> T newPluginInstance(final Class<T> pluginClass,
                             final PluginArgumentsContext pluginArgumentsContext,
-                            final Object argument,
-                            final String pluginName) {
+                            final String pluginName,
+                            final Object... args) {
         Objects.requireNonNull(pluginClass);
         Objects.requireNonNull(pluginArgumentsContext);
         Objects.requireNonNull(pluginName);
 
         final Constructor<?> constructor = getConstructor(pluginClass, pluginName);
 
-        final Object[] constructorArguments = pluginArgumentsContext.createArguments(constructor.getParameterTypes(), argument == null ? Optional.empty() : Optional.of(argument));
+        final Object[] constructorArguments = pluginArgumentsContext.createArguments(constructor.getParameterTypes(), args);
 
         pluginConfigurationObservableRegister.registerPluginConfigurationObservables(constructorArguments);
 

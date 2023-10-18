@@ -115,11 +115,11 @@ class PluginCreatorTest {
     void newPluginInstance_should_create_new_instance_from_annotated_constructor() {
 
         final AlternatePluginConfig alternatePluginConfig = mock(AlternatePluginConfig.class);
-        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class, AlternatePluginConfig.class}, Optional.empty()))
+        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class, AlternatePluginConfig.class}))
                 .willReturn(new Object[] { pluginSetting, alternatePluginConfig });
 
         final PluginClassWithMultipleConstructors instance = createObjectUnderTest()
-                .newPluginInstance(PluginClassWithMultipleConstructors.class, pluginConstructionContext, null, pluginName);
+                .newPluginInstance(PluginClassWithMultipleConstructors.class, pluginConstructionContext, pluginName);
 
         assertThat(instance, notNullValue());
         assertThat(instance.pluginSetting, equalTo(pluginSetting));
@@ -131,11 +131,11 @@ class PluginCreatorTest {
         final PluginCreator objectUnderTest = new PluginCreator(pluginConfigurationObservableRegister);
         final PluginConfigObservable pluginConfigObservable = mock(PluginConfigObservable.class);
         final Object[] constructorArgs = new Object[] { pluginSetting, pluginConfigObservable };
-        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class, PluginConfigObservable.class}, Optional.empty()))
+        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class, PluginConfigObservable.class}))
                 .willReturn(constructorArgs);
 
         final PluginClassWithPluginConfigurationObservableConstructor instance = objectUnderTest
-                .newPluginInstance(PluginClassWithPluginConfigurationObservableConstructor.class, pluginConstructionContext, null, pluginName);
+                .newPluginInstance(PluginClassWithPluginConfigurationObservableConstructor.class, pluginConstructionContext, pluginName);
 
         verify(pluginConfigurationObservableRegister).registerPluginConfigurationObservables(constructorArgs);
         assertThat(instance, notNullValue());
@@ -145,10 +145,10 @@ class PluginCreatorTest {
 
     @Test
     void newPluginInstance_should_create_new_instance_from_PluginSetting_if_the_constructor() {
-        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}, Optional.empty()))
+        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}))
                 .willReturn(new Object[] { pluginSetting });
 
-        final ValidPluginClass instance = createObjectUnderTest().newPluginInstance(ValidPluginClass.class, pluginConstructionContext, null, pluginName);
+        final ValidPluginClass instance = createObjectUnderTest().newPluginInstance(ValidPluginClass.class, pluginConstructionContext, pluginName);
 
         assertThat(instance, notNullValue());
         assertThat(instance.pluginSetting, equalTo(pluginSetting));
@@ -156,10 +156,10 @@ class PluginCreatorTest {
 
     @Test
     void newPluginInstance_should_create_new_instance_using_default_constructor_if_available() {
-        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}, Optional.empty()))
+        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}))
                 .willReturn(new Object[] { pluginSetting });
 
-        final PluginClassWithoutConstructor instance = createObjectUnderTest().newPluginInstance(PluginClassWithoutConstructor.class, pluginConstructionContext, null, pluginName);
+        final PluginClassWithoutConstructor instance = createObjectUnderTest().newPluginInstance(PluginClassWithoutConstructor.class, pluginConstructionContext, pluginName);
 
         assertThat(instance, notNullValue());
     }
@@ -174,16 +174,16 @@ class PluginCreatorTest {
 
         final PluginCreator objectUnderTest = createObjectUnderTest();
         assertThrows(InvalidPluginDefinitionException.class,
-                () -> objectUnderTest.newPluginInstance(invalidPluginClass, pluginConstructionContext, null, pluginName));
+                () -> objectUnderTest.newPluginInstance(invalidPluginClass, pluginConstructionContext, pluginName));
     }
 
     @Test
     void newPluginInstance_should_throw_if_plugin_throws_in_constructor() {
-        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}, Optional.empty()))
+        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}))
                 .willReturn(new Object[] { pluginSetting });
 
         final PluginCreator objectUnderTest = createObjectUnderTest();
         assertThrows(PluginInvocationException.class,
-                () -> objectUnderTest.newPluginInstance(AlwaysThrowingPluginClass.class, pluginConstructionContext, null, pluginName));
+                () -> objectUnderTest.newPluginInstance(AlwaysThrowingPluginClass.class, pluginConstructionContext, pluginName));
     }
 }

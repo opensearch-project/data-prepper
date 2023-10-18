@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.plugin;
 
-import java.util.Optional;
-
 interface PluginArgumentsContext {
-    Object[] createArguments(final Class<?>[] parameterTypes, final Optional<Object> optionalArgument);
+    Object[] createArguments(final Class<?>[] parameterTypes, final Object ... args);
 }

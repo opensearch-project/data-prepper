@@ -12,7 +12,7 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.util.function.Consumer;
 
-public interface ByteDecoder extends Serializable{
+public interface ByteDecoder extends Serializable {
     /**
      * Parses an {@link InputStream}. Implementors should call the {@link Consumer} for each
      * {@link Record} loaded from the {@link InputStream}.
@@ -23,6 +23,4 @@ public interface ByteDecoder extends Serializable{
      */
     void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException;
     
-   // ByteDecoder getDecoder();
-
 }

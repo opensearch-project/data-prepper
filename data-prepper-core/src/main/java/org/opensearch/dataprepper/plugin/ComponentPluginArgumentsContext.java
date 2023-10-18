@@ -33,7 +33,6 @@ import java.util.function.Supplier;
 class ComponentPluginArgumentsContext implements PluginArgumentsContext {
     private static final String UNABLE_TO_CREATE_PLUGIN_PARAMETER = "Unable to create an argument for required plugin parameter type: ";
     private final Map<Class<?>, Supplier<Object>> typedArgumentsSuppliers;
-    private Map<Class<?>, Supplier<Object>> optionalArgumentsSuppliers;
 
     @Nullable
     private final BeanFactory beanFactory;
@@ -45,7 +44,6 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         beanFactory = builder.beanFactory;
 
         typedArgumentsSuppliers = new HashMap<>();
-        optionalArgumentsSuppliers = new HashMap<>();
 
         typedArgumentsSuppliers.put(PluginSetting.class, () -> builder.pluginSetting);
 
@@ -81,20 +79,23 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
     }
 
     @Override
-    public Object[] createArguments(final Class<?>[] parameterTypes, Optional<Object> optionalArgument) {
-        if (optionalArgument.isPresent()) {
-            if (optionalArgument.get() instanceof ByteDecoder) {
-                ByteDecoder byteDecoder = (ByteDecoder) optionalArgument.get();
+    public Object[] createArguments(final Class<?>[] parameterTypes, final Object ... args) {
+        Map<Class<?>, Supplier<Object>> optionalArgumentsSuppliers = new HashMap<>();
+        Boolean byteDecoderInitialized = false;
+        for (final Object arg: args) {
+            if (arg instanceof ByteDecoder && !byteDecoderInitialized) {
+                ByteDecoder byteDecoder = (ByteDecoder) arg;
+                byteDecoderInitialized = true;
                 optionalArgumentsSuppliers.put(ByteDecoder.class, () -> byteDecoder);
             }
         }
         return Arrays.stream(parameterTypes)
-                .map(this::getRequiredArgumentSupplier)
+                .map((parameterType) -> getRequiredArgumentSupplier(parameterType, optionalArgumentsSuppliers))
                 .map(Supplier::get)
                 .toArray();
     }
 
-    private Supplier<Object> getRequiredArgumentSupplier(final Class<?> parameterType) {
+    private Supplier<Object> getRequiredArgumentSupplier(final Class<?> parameterType, Map<Class<?>, Supplier<Object>> optionalArgumentsSuppliers) {
         if(typedArgumentsSuppliers.containsKey(parameterType)) {
             return typedArgumentsSuppliers.get(parameterType);
         } else if(optionalArgumentsSuppliers.containsKey(parameterType)) {

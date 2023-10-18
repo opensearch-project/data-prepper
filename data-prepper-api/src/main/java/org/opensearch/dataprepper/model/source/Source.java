@@ -7,13 +7,13 @@ package org.opensearch.dataprepper.model.source;
 
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.codec.ByteDecoder;
+import org.opensearch.dataprepper.model.codec.HasByteDecoder;
 
 /**
  * Data Prepper source interface. Source acts as receiver of the events that flow
  * through the transformation pipeline.
  */
-public interface Source<T extends Record<?>> {
+public interface Source<T extends Record<?>> extends HasByteDecoder {
 
     /**
      * Notifies the source to start writing the records into the buffer
@@ -37,7 +37,4 @@ public interface Source<T extends Record<?>> {
         return false;
     }
 
-    default ByteDecoder getDecoder() {
-        return null;
-    }
 }

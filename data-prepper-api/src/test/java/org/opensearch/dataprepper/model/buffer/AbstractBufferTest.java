@@ -169,6 +169,13 @@ public class AbstractBufferTest {
     }
 
     @Test
+    public void testWriteBytes() throws TimeoutException {
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferTimeoutImpl(testPluginSetting);
+        byte[] bytes = new byte[2];
+        Assert.assertThrows(RuntimeException.class, () -> abstractBuffer.writeBytes(bytes, "", 10));
+    }
+
+    @Test
     public void testWriteTimeoutMetric() throws TimeoutException {
         // Given
         final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferTimeoutImpl(testPluginSetting);

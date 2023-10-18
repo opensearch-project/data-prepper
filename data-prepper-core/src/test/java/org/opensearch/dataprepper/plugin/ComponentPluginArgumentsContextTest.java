@@ -61,7 +61,7 @@ class ComponentPluginArgumentsContextTest {
                 .build();
 
         final Class<?>[] parameterTypes = {String.class};
-        assertThrows(InvalidPluginDefinitionException.class, () -> objectUnderTest.createArguments(parameterTypes, Optional.empty()));
+        assertThrows(InvalidPluginDefinitionException.class, () -> objectUnderTest.createArguments(parameterTypes));
     }
 
     @Test
@@ -71,7 +71,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPluginSetting(pluginSetting)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class }, Optional.empty()),
+        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class }),
                 equalTo(new Object[] { testPluginConfiguration}));
     }
 
@@ -83,7 +83,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPluginSetting(pluginSetting)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { PluginSetting.class }, Optional.empty()),
+        assertThat(objectUnderTest.createArguments(new Class[] { PluginSetting.class }),
                 equalTo(new Object[] { pluginSetting}));
     }
 
@@ -97,7 +97,7 @@ class ComponentPluginArgumentsContextTest {
                 .withBeanFactory(beanFactory)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { Object.class }, Optional.empty()),
+        assertThat(objectUnderTest.createArguments(new Class[] { Object.class }),
                 equalTo(new Object[] {mock}));
     }
 
@@ -110,7 +110,7 @@ class ComponentPluginArgumentsContextTest {
                 .withSinkContext(sinkContext)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { SinkContext.class }, Optional.empty()),
+        assertThat(objectUnderTest.createArguments(new Class[] { SinkContext.class }),
                 equalTo(new Object[] { sinkContext}));
     }
 
@@ -123,7 +123,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPluginConfigurationObservable(pluginConfigObservable)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { PluginConfigObservable.class }, Optional.empty()),
+        assertThat(objectUnderTest.createArguments(new Class[] { PluginConfigObservable.class }),
                 equalTo(new Object[] {pluginConfigObservable}));
     }
 
@@ -138,7 +138,7 @@ class ComponentPluginArgumentsContextTest {
 
         final InvalidPluginDefinitionException throwable = assertThrows(
                 InvalidPluginDefinitionException.class,
-                () -> objectUnderTest.createArguments(new Class[]{Object.class}, Optional.empty())
+                () -> objectUnderTest.createArguments(new Class[]{Object.class})
         );
         assertTrue(throwable.getCause() instanceof BeansException);
     }
@@ -154,7 +154,7 @@ class ComponentPluginArgumentsContextTest {
                 .withBeanFactory(beanFactory)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class, Object.class }, Optional.empty()),
+        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class, Object.class }),
                 equalTo(new Object[] {testPluginConfiguration, pluginSetting, mock}));
     }
 
@@ -165,7 +165,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPluginSetting(pluginSetting)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class }, Optional.empty()),
+        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class }),
                 equalTo(new Object[] { testPluginConfiguration, pluginSetting }));
     }
 
@@ -176,7 +176,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPluginSetting(pluginSetting)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { PluginSetting.class, TestPluginConfiguration.class }, Optional.empty()),
+        assertThat(objectUnderTest.createArguments(new Class[] { PluginSetting.class, TestPluginConfiguration.class }),
                 equalTo(new Object[] { pluginSetting, testPluginConfiguration }));
     }
 
@@ -188,7 +188,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPipelineDescription(pluginSetting)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class, PipelineDescription.class}, Optional.empty()),
+        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class, PipelineDescription.class}),
                 equalTo(new Object[] { testPluginConfiguration, pluginSetting, pluginSetting }));
     }
 
@@ -200,7 +200,7 @@ class ComponentPluginArgumentsContextTest {
                 .withPluginFactory(pluginFactory)
                 .build();
 
-        assertThat(objectUnderTest.createArguments(new Class[] { PluginFactory.class }, Optional.empty()),
+        assertThat(objectUnderTest.createArguments(new Class[] { PluginFactory.class }),
                 equalTo(new Object[] { pluginFactory }));
     }
 
@@ -216,7 +216,7 @@ class ComponentPluginArgumentsContextTest {
         try(final MockedStatic<PluginMetrics> pluginMetricsMockedStatic = mockStatic(PluginMetrics.class)) {
             pluginMetricsMockedStatic.when(() -> PluginMetrics.fromPluginSetting(pluginSetting))
                     .thenReturn(pluginMetrics);
-            arguments = objectUnderTest.createArguments(new Class[]{PluginSetting.class, PluginMetrics.class}, Optional.empty());
+            arguments = objectUnderTest.createArguments(new Class[]{PluginSetting.class, PluginMetrics.class});
         }
         assertThat(arguments,
                 equalTo(new Object[] { pluginSetting, pluginMetrics }));

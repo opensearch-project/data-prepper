@@ -28,4 +28,21 @@ public class BufferTest {
         final Buffer<Record<Event>> buffer = spy(Buffer.class);
         buffer.shutdown();
     }
+
+    @Test
+    public void testIsByteBuffer() {
+        final Buffer<Record<Event>> buffer = spy(Buffer.class);
+
+        Assert.assertEquals(false, buffer.isByteBuffer());
+    }
+
+    @Test
+    public void testWriteBytes() {
+        final Buffer<Record<Event>> buffer = spy(Buffer.class);
+
+        byte[] bytes = new byte[2];
+        Assert.assertThrows(RuntimeException.class, () -> buffer.writeBytes(bytes, "", 10));
+
+    }
+
 }

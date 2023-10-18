@@ -91,7 +91,7 @@ public class KafkaCustomProducer<T> {
         try {
             send(topicName, key, bytes).get();
         } catch (Exception e) {
-            LOG.error("Error occurred while publishing " + e.getMessage());
+            LOG.error("Error occurred while publishing {}", e.getMessage());
         }
     }
 
@@ -110,7 +110,7 @@ public class KafkaCustomProducer<T> {
                 publishPlaintextMessage(record, key);
             }
         } catch (Exception e) {
-            LOG.error("Error occurred while publishing " + e.getMessage());
+            LOG.error("Error occurred while publishing {}", e.getMessage());
             releaseEventHandles(false);
         }
 

@@ -24,12 +24,6 @@ public class JsonDecoder implements ByteDecoder {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final JsonFactory jsonFactory = new JsonFactory();
 
-    /*
-    public ByteDecoder getDecoder() {
-        return this;
-    }
-    */
-
     public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
         Objects.requireNonNull(inputStream);
         Objects.requireNonNull(eventConsumer);

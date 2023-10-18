@@ -72,23 +72,13 @@ public class DefaultPluginFactory implements PluginFactory {
     }
 
     @Override
-    public <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting, final Object argument) {
+    public <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting, final Object ... args) {
         final String pluginName = pluginSetting.getName();
         final Class<? extends T> pluginClass = getPluginClass(baseClass, pluginName);
 
         final ComponentPluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass, null);
 
-        return pluginCreator.newPluginInstance(pluginClass, constructionContext, argument, pluginName);
-    }
-
-    @Override
-    public <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting) {
-        final String pluginName = pluginSetting.getName();
-        final Class<? extends T> pluginClass = getPluginClass(baseClass, pluginName);
-
-        final ComponentPluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass, null);
-
-        return pluginCreator.newPluginInstance(pluginClass, constructionContext, null, pluginName);
+        return pluginCreator.newPluginInstance(pluginClass, constructionContext, pluginName, args);
     }
 
     @Override
@@ -98,7 +88,7 @@ public class DefaultPluginFactory implements PluginFactory {
 
         final ComponentPluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass, sinkContext);
 
-        return pluginCreator.newPluginInstance(pluginClass, constructionContext, null, pluginName);
+        return pluginCreator.newPluginInstance(pluginClass, constructionContext, pluginName);
     }
 
     @Override
@@ -118,7 +108,7 @@ public class DefaultPluginFactory implements PluginFactory {
 
         final List<T> plugins = new ArrayList<>(numberOfInstances);
         for (int i = 0; i < numberOfInstances; i++) {
-            plugins.add(pluginCreator.newPluginInstance(pluginClass, constructionContext, null, pluginName));
+            plugins.add(pluginCreator.newPluginInstance(pluginClass, constructionContext, pluginName));
         }
         return plugins;
     }
