@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        java: [11, 17]
+        java: [11, 17, 21]
       fail-fast: false
 
     runs-on: ubuntu-latest
