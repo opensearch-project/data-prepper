@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.kafka.common.aws;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AwsCredentialsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConnectionConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -15,7 +16,7 @@ import java.util.function.Supplier;
  * In general, you can provide the {@link Supplier} into class; just use this class when
  * constructing.
  */
-public class AwsContext implements Supplier<AwsCredentialsProvider> {
+public class AwsContext {
     private final AwsConfig awsConfig;
     private final AwsCredentialsSupplier awsCredentialsSupplier;
 
@@ -24,8 +25,25 @@ public class AwsContext implements Supplier<AwsCredentialsProvider> {
         this.awsCredentialsSupplier = awsCredentialsSupplier;
     }
 
-    @Override
-    public AwsCredentialsProvider get() {
+    public AwsCredentialsProvider getOrDefault(AwsCredentialsConfig awsCredentialsConfig) {
+        if(awsCredentialsConfig == null || awsCredentialsConfig.getStsRoleArn() == null) {
+            return getDefault();
+        }
+
+        return getFromOptions(awsCredentialsConfig.toCredentialsOptions());
+    }
+
+    public Region getRegionOrDefault(AwsCredentialsConfig awsCredentialsConfig) {
+        if(awsCredentialsConfig != null && awsCredentialsConfig.getRegion() != null) {
+            return Region.of(awsCredentialsConfig.getRegion());
+        }
+        if(awsConfig != null && awsConfig.getRegion() != null) {
+            return Region.of(awsConfig.getRegion());
+        }
+        return null;
+    }
+
+    private AwsCredentialsProvider getDefault() {
         final AwsCredentialsOptions credentialsOptions;
         if(awsConfig != null) {
             credentialsOptions = awsConfig.toCredentialsOptions();
@@ -33,13 +51,10 @@ public class AwsContext implements Supplier<AwsCredentialsProvider> {
             credentialsOptions = AwsCredentialsOptions.defaultOptions();
         }
 
-        return awsCredentialsSupplier.getProvider(credentialsOptions);
+        return getFromOptions(credentialsOptions);
     }
 
-    public Region getRegion() {
-        if(awsConfig != null && awsConfig.getRegion() != null) {
-            return Region.of(awsConfig.getRegion());
-        }
-        return null;
+    private AwsCredentialsProvider getFromOptions(AwsCredentialsOptions awsCredentialsOptions) {
+        return awsCredentialsSupplier.getProvider(awsCredentialsOptions);
     }
 }

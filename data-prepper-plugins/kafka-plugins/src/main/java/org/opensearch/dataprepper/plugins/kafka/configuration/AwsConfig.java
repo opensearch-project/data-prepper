@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 
-public class AwsConfig {
+public class AwsConfig implements AwsCredentialsConfig {
 
     public static class AwsMskConfig {
         @Valid
@@ -50,10 +50,12 @@ public class AwsConfig {
         return awsMskConfig;
     }
 
+    @Override
     public String getRegion() {
         return region;
     }
 
+    @Override
     public String getStsRoleArn() {
         return stsRoleArn;
     }
@@ -62,6 +64,7 @@ public class AwsConfig {
         return stsRoleSessionName;
     }
 
+    @Override
     public AwsCredentialsOptions toCredentialsOptions() {
         return AwsCredentialsOptions.builder()
                 .withRegion(region)

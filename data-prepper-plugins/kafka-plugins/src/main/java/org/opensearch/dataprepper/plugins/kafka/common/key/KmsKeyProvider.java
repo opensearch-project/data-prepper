@@ -27,11 +27,11 @@ class KmsKeyProvider implements InnerKeyProvider {
         KmsConfig kmsConfig = topicConfig.getKmsConfig();
         String kmsKeyId = kmsConfig.getKeyId();
 
-        AwsCredentialsProvider awsCredentialsProvider = awsContext.get();
+        AwsCredentialsProvider awsCredentialsProvider = awsContext.getOrDefault(kmsConfig);
 
         KmsClient kmsClient = KmsClient.builder()
                 .credentialsProvider(awsCredentialsProvider)
-                .region(awsContext.getRegion())
+                .region(awsContext.getRegionOrDefault(kmsConfig))
                 .build();
 
         byte[] decodedEncryptionKey = Base64.getDecoder().decode(topicConfig.getEncryptionKey());
