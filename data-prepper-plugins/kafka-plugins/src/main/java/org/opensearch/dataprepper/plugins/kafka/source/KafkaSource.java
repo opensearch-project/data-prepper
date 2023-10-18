@@ -10,8 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
-import io.confluent.kafka.serializers.KafkaJsonDeserializer;
+import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
 import kafka.common.BrokerEndPointNotAvailableException;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.StringUtils;
@@ -285,9 +284,9 @@ public class KafkaSource implements Source<Record<Event>> {
         Map prop = properties;
         Map<String, String> propertyMap = (Map<String, String>) prop;
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
-        properties.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, getSchemaRegistryUrl());
-        properties.put(KafkaAvroDeserializerConfig.AUTO_REGISTER_SCHEMAS, false);
-        schemaRegistryClient = new CachedSchemaRegistryClient(properties.getProperty(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG),
+        properties.put("schema.registry.url", getSchemaRegistryUrl());
+        properties.put("auto.register.schemas", false);
+        schemaRegistryClient = new CachedSchemaRegistryClient(getSchemaRegistryUrl(),
                 100, propertyMap);
         try {
             schemaType = schemaRegistryClient.getSchemaMetadata(topic.getName() + "-value",
@@ -297,7 +296,8 @@ public class KafkaSource implements Source<Record<Event>> {
             throw new RuntimeException(e);
         }
         if (schemaType.equalsIgnoreCase(MessageFormat.JSON.toString())) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaJsonDeserializer.class);
+            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaJsonSchemaDeserializer.class);
+	    properties.put("json.value.type", "com.fasterxml.jackson.databind.JsonNode");
         } else if (schemaType.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
             properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
         } else {
@@ -336,7 +336,7 @@ public class KafkaSource implements Source<Record<Event>> {
         if ("USER_INFO".equalsIgnoreCase(sourceConfig.getSchemaConfig().getBasicAuthCredentialsSource())
                 && authConfig.getSaslAuthConfig().getPlainTextAuthConfig() != null) {
             String schemaBasicAuthUserInfo = schemaRegistryApiKey.concat(":").concat(schemaRegistryApiSecret);
-            properties.put("schema.registry.basic.auth.user.info", schemaBasicAuthUserInfo);
+            properties.put("basic.auth.user.info", schemaBasicAuthUserInfo);
             properties.put("basic.auth.credentials.source", "USER_INFO");
         }
 

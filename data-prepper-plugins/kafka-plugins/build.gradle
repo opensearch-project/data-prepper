@@ -86,6 +86,11 @@ task integrationTest(type: Test) {
 
     classpath = sourceSets.integrationTest.runtimeClasspath
     systemProperty 'tests.kafka.bootstrap_servers', System.getProperty('tests.kafka.bootstrap_servers')
+    systemProperty 'tests.kafka.topic_name', System.getProperty('tests.kafka.topic_name')
+    systemProperty 'tests.kafka.json_topic_name', System.getProperty('tests.kafka.json_topic_name')
+    systemProperty 'tests.kafka.avro_topic_name', System.getProperty('tests.kafka.avro_topic_name')
+    systemProperty 'tests.kafka.schema_registry_url', System.getProperty('tests.kafka.schema_registry_url')
+    systemProperty 'tests.kafka.schema_registry_userinfo', System.getProperty('tests.kafka.schema_registry_userinfo')
     systemProperty 'tests.kafka.saslssl_bootstrap_servers', System.getProperty('tests.kafka.saslssl_bootstrap_servers')
     systemProperty 'tests.kafka.ssl_bootstrap_servers', System.getProperty('tests.kafka.ssl_bootstrap_servers')
     systemProperty 'tests.kafka.saslplain_bootstrap_servers', System.getProperty('tests.kafka.saslplain_bootstrap_servers')
