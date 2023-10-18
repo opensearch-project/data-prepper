@@ -32,8 +32,8 @@ dependencies {
     implementation 'software.amazon.awssdk:apache-client'
     testImplementation testLibs.junit.vintage
     testImplementation libs.commons.io
-    testImplementation 'net.bytebuddy:byte-buddy:1.14.7'
-    testImplementation 'net.bytebuddy:byte-buddy-agent:1.14.7'
+    testImplementation 'net.bytebuddy:byte-buddy:1.14.8'
+    testImplementation 'net.bytebuddy:byte-buddy-agent:1.14.8'
     testImplementation testLibs.slf4j.simple
 }
 
