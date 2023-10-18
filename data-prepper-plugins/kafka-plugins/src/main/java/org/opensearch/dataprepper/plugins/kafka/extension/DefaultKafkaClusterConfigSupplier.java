@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 
 import java.util.List;
+import java.util.Objects;
 
 public class DefaultKafkaClusterConfigSupplier implements KafkaClusterConfigSupplier {
     private final KafkaClusterConfig kafkaClusterConfig;
@@ -19,21 +20,21 @@ public class DefaultKafkaClusterConfigSupplier implements KafkaClusterConfigSupp
 
     @Override
     public List<String> getBootStrapServers() {
-        return kafkaClusterConfig.getBootStrapServers();
+        return Objects.nonNull(kafkaClusterConfig) ? kafkaClusterConfig.getBootStrapServers() : null;
     }
 
     @Override
     public AuthConfig getAuthConfig() {
-        return kafkaClusterConfig.getAuthConfig();
+        return Objects.nonNull(kafkaClusterConfig) ? kafkaClusterConfig.getAuthConfig() : null;
     }
 
     @Override
     public AwsConfig getAwsConfig() {
-        return kafkaClusterConfig.getAwsConfig();
+        return Objects.nonNull(kafkaClusterConfig) ? kafkaClusterConfig.getAwsConfig() : null;
     }
 
     @Override
     public EncryptionConfig getEncryptionConfig() {
-        return kafkaClusterConfig.getEncryptionConfig();
+        return Objects.nonNull(kafkaClusterConfig) ? kafkaClusterConfig.getEncryptionConfig() : null;
     }
 }
