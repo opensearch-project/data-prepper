@@ -14,22 +14,23 @@ import org.opensearch.dataprepper.plugin.TestPluginConfiguration;
  * Used for integration testing the plugin framework.
  * TODO: Move this into the org.opensearch.dataprepper.plugin package once alternate packages are supported per #379.
  */
-@DataPrepperPlugin(name = "test_plugin", pluginType = TestPluggableInterface.class, pluginConfigurationType = TestPluginConfiguration.class)
-public class TestPlugin implements TestPluggableInterface {
+@DataPrepperPlugin(name = "test_object_plugin", pluginType = TestPluggableInterface.class, pluginConfigurationType = TestPluginConfiguration.class)
+public class TestObjectPlugin implements TestPluggableInterface {
     private final TestPluginConfiguration configuration;
-    private final Object obj;
+    private final Object object;
 
     @DataPrepperPluginConstructor
-    public TestPlugin(final TestPluginConfiguration configuration) {
+    public TestObjectPlugin(final TestPluginConfiguration configuration, Object obj) {
         this.configuration = configuration;
-        this.obj = null;
-    }
+        this.object = obj;
 
+    }
     public TestPluginConfiguration getConfiguration() {
         return configuration;
     }
 
     public Object getObject() {
-        return obj;
+        return object;
     }
 }
+

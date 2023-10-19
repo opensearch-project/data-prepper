@@ -26,7 +26,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -175,7 +174,7 @@ class ExtensionLoaderTest {
         final PluginArgumentsContext actualPluginArgumentsContext = contextArgumentCaptor.getValue();
 
         final Class[] inputClasses = {String.class};
-        assertThrows(InvalidPluginDefinitionException.class, () -> actualPluginArgumentsContext.createArguments(inputClasses, Optional.empty()));
+        assertThrows(InvalidPluginDefinitionException.class, () -> actualPluginArgumentsContext.createArguments(inputClasses));
     }
 
     @Test
@@ -201,7 +200,7 @@ class ExtensionLoaderTest {
 
         final PluginArgumentsContext actualPluginArgumentsContext = contextArgumentCaptor.getValue();
 
-        final Object[] arguments = actualPluginArgumentsContext.createArguments(new Class[]{}, Optional.empty());
+        final Object[] arguments = actualPluginArgumentsContext.createArguments(new Class[]{});
         assertThat(arguments, notNullValue());
         assertThat(arguments.length, equalTo(0));
     }

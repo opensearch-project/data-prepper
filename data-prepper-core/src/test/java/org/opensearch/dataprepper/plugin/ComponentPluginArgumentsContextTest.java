@@ -158,6 +158,19 @@ class ComponentPluginArgumentsContextTest {
     }
 
     @Test
+    void createArguments_with_multiple_supplier_sources_with_varargs() {
+        final Object mock = mock(Object.class);
+
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
+                .withPluginSetting(pluginSetting)
+                .withPluginConfiguration(testPluginConfiguration)
+                .build();
+
+        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class, Object.class}, mock),
+                equalTo(new Object[] {testPluginConfiguration, pluginSetting, mock}));
+    }
+
+    @Test
     void createArguments_with_two_classes() {
         final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
                 .withPluginConfiguration(testPluginConfiguration)

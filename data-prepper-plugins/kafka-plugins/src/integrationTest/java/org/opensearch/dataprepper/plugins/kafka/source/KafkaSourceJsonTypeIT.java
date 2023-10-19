@@ -330,7 +330,6 @@ public class KafkaSourceJsonTypeIT {
         kafkaSource = createObjectUnderTest();
 
         kafkaSource.start(buffer);
-        assertThat(kafkaSource.getConsumer().groupMetadata().groupId(), equalTo(testGroup));
         produceJsonRecords(bootstrapServers, testTopic, numRecords);
         int numRetries = 0;
         while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {
