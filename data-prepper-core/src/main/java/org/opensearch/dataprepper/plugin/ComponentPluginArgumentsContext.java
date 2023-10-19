@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -80,16 +79,16 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
     @Override
     public Object[] createArguments(final Class<?>[] parameterTypes, final Object ... args) {
         Map<Class<?>, Supplier<Object>> optionalArgumentsSuppliers = new HashMap<>();
-        Boolean byteDecoderInitialized = false;
         for (final Object arg: args) {
-            if (arg instanceof ByteDecoder && !byteDecoderInitialized) {
-                ByteDecoder byteDecoder = (ByteDecoder) arg;
-                byteDecoderInitialized = true;
-                optionalArgumentsSuppliers.put(ByteDecoder.class, () -> byteDecoder);
+            if (Objects.nonNull(arg)) {
+                optionalArgumentsSuppliers.put(arg.getClass(), () -> arg);
+                for (final Class interfaceClass: arg.getClass().getInterfaces()) {
+                    optionalArgumentsSuppliers.put(interfaceClass, () -> arg);
+                }
             }
         }
         return Arrays.stream(parameterTypes)
-                .map((parameterType) -> getRequiredArgumentSupplier(parameterType, optionalArgumentsSuppliers))
+                .map(parameterType -> getRequiredArgumentSupplier(parameterType, optionalArgumentsSuppliers))
                 .map(Supplier::get)
                 .toArray();
     }
