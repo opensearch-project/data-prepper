@@ -91,7 +91,7 @@ public class KafkaBufferIT {
     }
 
     private KafkaBuffer<Record<Event>> createObjectUnderTest() {
-        return new KafkaBuffer<>(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, null);
+        return new KafkaBuffer<>(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, null, null);
     }
 
     @Test
