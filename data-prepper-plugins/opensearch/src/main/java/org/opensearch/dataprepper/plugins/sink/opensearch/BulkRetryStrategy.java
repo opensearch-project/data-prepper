@@ -238,6 +238,13 @@ public final class BulkRetryStrategy {
         if (doRetry) {
             if (retryCount % 5 == 0) {
                 LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", retryCount, e);
+                if (Objects.isNull(e)) {
+                    for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
+                        if (Objects.nonNull(bulkItemResponse.error())) {
+                            LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.error());
+                        }
+                    }
+                }
             }
             bulkRequestNumberOfRetries.increment();
             return new BulkOperationRequestResponse(bulkRequestForRetry, bulkResponse);
@@ -248,7 +255,13 @@ public final class BulkRetryStrategy {
     }
 
     private void handleFailures(final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest, final BulkResponse bulkResponse, final Throwable failure) {
+        LOG.warn("Bulk Operation Failed.", failure);
         if (Objects.isNull(failure)) {
+            for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
+                if (Objects.nonNull(bulkItemResponse.error())) {
+                    LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.error());
+                }
+            }
             handleFailures(bulkRequest, bulkResponse.items());
         } else {
             handleFailures(bulkRequest, failure);
