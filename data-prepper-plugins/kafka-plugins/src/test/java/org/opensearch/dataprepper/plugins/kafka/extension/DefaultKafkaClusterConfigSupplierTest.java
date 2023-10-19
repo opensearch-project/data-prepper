@@ -30,7 +30,7 @@ public class DefaultKafkaClusterConfigSupplierTest {
     }
 
     @Test
-    void test_getters() {
+    void testGetters() {
         final List<String> bootstrapServers = List.of("localhost:9092");
         final AuthConfig authConfig = mock(AuthConfig.class);
         final AwsConfig awsConfig = mock(AwsConfig.class);
@@ -44,5 +44,15 @@ public class DefaultKafkaClusterConfigSupplierTest {
         assertThat(defaultKafkaClusterConfigSupplier.getAuthConfig(), equalTo(authConfig));
         assertThat(defaultKafkaClusterConfigSupplier.getAwsConfig(), equalTo(awsConfig));
         assertThat(defaultKafkaClusterConfigSupplier.getEncryptionConfig(), equalTo(encryptionConfig));
+    }
+
+    @Test
+    void testGettersWithNullClusterConfig() {
+        DefaultKafkaClusterConfigSupplier defaultKafkaClusterConfigSupplier = 
+		new DefaultKafkaClusterConfigSupplier(null);
+        assertThat(defaultKafkaClusterConfigSupplier.getBootStrapServers(), equalTo(null));
+        assertThat(defaultKafkaClusterConfigSupplier.getAuthConfig(), equalTo(null));
+        assertThat(defaultKafkaClusterConfigSupplier.getAwsConfig(), equalTo(null));
+        assertThat(defaultKafkaClusterConfigSupplier.getEncryptionConfig(), equalTo(null));
     }
 }
