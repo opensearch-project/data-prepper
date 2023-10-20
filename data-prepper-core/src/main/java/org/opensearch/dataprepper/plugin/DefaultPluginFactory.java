@@ -72,13 +72,13 @@ public class DefaultPluginFactory implements PluginFactory {
     }
 
     @Override
-    public <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting) {
+    public <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting, final Object ... args) {
         final String pluginName = pluginSetting.getName();
         final Class<? extends T> pluginClass = getPluginClass(baseClass, pluginName);
 
         final ComponentPluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass, null);
 
-        return pluginCreator.newPluginInstance(pluginClass, constructionContext, pluginName);
+        return pluginCreator.newPluginInstance(pluginClass, constructionContext, pluginName, args);
     }
 
     @Override

@@ -42,6 +42,11 @@ public class MultiBufferDecorator<T extends Record<?>> implements Buffer<T> {
     }
 
     @Override
+    public void writeBytes(final byte[] bytes, final String key, int timeoutInMillis) throws Exception {
+        primaryBuffer.writeBytes(bytes, key, timeoutInMillis);
+    }
+
+    @Override
     public Map.Entry<Collection<T>, CheckpointState> read(final int timeoutInMillis) {
         return primaryBuffer.read(timeoutInMillis);
     }
@@ -49,6 +54,11 @@ public class MultiBufferDecorator<T extends Record<?>> implements Buffer<T> {
     @Override
     public void checkpoint(final CheckpointState checkpointState) {
         primaryBuffer.checkpoint(checkpointState);
+    }
+
+    @Override
+    public boolean isByteBuffer() {
+        return primaryBuffer.isByteBuffer();
     }
 
     @Override

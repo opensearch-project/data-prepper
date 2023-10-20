@@ -138,7 +138,7 @@ public class KafkaSource implements Source<Record<Event>> {
                         }
 
                     }
-                    consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, topicMetrics);
+                    consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, null, topicMetrics);
                     allTopicConsumers.add(consumer);
 
                     executorService.submit(consumer);

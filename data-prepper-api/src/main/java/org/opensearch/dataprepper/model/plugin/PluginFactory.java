@@ -26,8 +26,9 @@ public interface PluginFactory {
      * @return A new instance of your plugin, configured
      * @since 1.2
      */
-    <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting);
+    <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting, final Object ... args);
 
+    /**
     /**
      * Loads a new instance of a plugin with SinkContext.
      *

@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfig;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfigAdapter;
 import org.opensearch.dataprepper.plugins.kafka.common.PlaintextKafkaDataConfig;
@@ -64,6 +65,7 @@ public class KafkaCustomConsumerFactory {
     public List<KafkaCustomConsumer> createConsumersForTopic(final KafkaConsumerConfig kafkaConsumerConfig, final TopicConfig topic,
                                                              final Buffer<Record<Event>> buffer, final PluginMetrics pluginMetrics,
                                                              final AcknowledgementSetManager acknowledgementSetManager,
+                                                             final ByteDecoder byteDecoder,
                                                              final AtomicBoolean shutdownInProgress) {
         Properties authProperties = new Properties();
         KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaConsumerConfig, LOG);
@@ -91,7 +93,7 @@ public class KafkaCustomConsumerFactory {
                 final KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProperties, keyDeserializer, valueDeserializer);
 
                 consumers.add(new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, kafkaConsumerConfig, topic,
-                    schemaType, acknowledgementSetManager, topicMetrics));
+                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics));
 
             });
         } catch (Exception e) {

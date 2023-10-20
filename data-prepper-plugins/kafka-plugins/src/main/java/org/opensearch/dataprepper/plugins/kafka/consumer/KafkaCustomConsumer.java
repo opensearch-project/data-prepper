@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
@@ -38,6 +39,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.glue.model.AccessDeniedException;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -88,6 +91,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final AtomicInteger numberOfAcksPending;
     private long numRecordsCommitted = 0;
     private final LogRateLimiter errLogRateLimiter;
+    private final ByteDecoder byteDecoder;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -96,12 +100,14 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final TopicConfig topicConfig,
                                final String schemaType,
                                final AcknowledgementSetManager acknowledgementSetManager,
+                               final ByteDecoder byteDecoder,
                                KafkaTopicMetrics topicMetrics) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
         this.shutdownInProgress = shutdownInProgress;
         this.consumer = consumer;
         this.buffer = buffer;
+        this.byteDecoder = byteDecoder;
         this.topicMetrics = topicMetrics;
         this.topicMetrics.register(consumer);
         this.offsetsToCommit = new HashMap<>();
@@ -392,6 +398,31 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         return new Record<Event>(event);
     }
 
+    private void processRecord(final AcknowledgementSet acknowledgementSet, final Record<Event> record) {
+        // Always add record to acknowledgementSet before adding to
+        // buffer because another thread may take and process
+        // buffer contents before the event record is added
+        // to acknowledgement set
+        if (acknowledgementSet != null) {
+            acknowledgementSet.add(record.getData());
+        }
+        while (true) {
+            try {
+                bufferAccumulator.add(record);
+                break;
+            } catch (Exception e) {
+                if (e instanceof SizeOverflowException) {
+                    topicMetrics.getNumberOfBufferSizeOverflows().increment();
+                } else {
+                    LOG.debug("Error while adding record to buffer, retrying ", e);
+                }
+                try {
+                    Thread.sleep(100);
+                } catch (Exception ex) {} // ignore the exception because it only means the thread slept for shorter time
+            }
+        }
+    }
+
     private <T> void iterateRecordPartitions(ConsumerRecords<String, T> records, final AcknowledgementSet acknowledgementSet,
                                              Map<TopicPartition, CommitOffsetRange> offsets) throws Exception {
         for (TopicPartition topicPartition : records.partitions()) {
@@ -405,23 +436,15 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
             List<ConsumerRecord<String, T>> partitionRecords = records.records(topicPartition);
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
-                Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
-                if (record != null) {
-                    // Always add record to acknowledgementSet before adding to
-                    // buffer because another thread may take and process
-                    // buffer contents before the event record is added
-                    // to acknowledgement set
-                    if (acknowledgementSet != null) {
-                        acknowledgementSet.add(record.getData());
-                    }
-                    while (true) {
-                        try {
-                            bufferAccumulator.add(record);
-                            break;
-                        } catch (SizeOverflowException e) {
-                            topicMetrics.getNumberOfBufferSizeOverflows().increment();
-                            Thread.sleep(100);
-                        }
+                if (schema == MessageFormat.BYTES && byteDecoder != null) {
+                    InputStream inputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
+                    byteDecoder.parse(inputStream, (record) -> {
+                        processRecord(acknowledgementSet, record);
+                    });
+                } else {
+                    Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
+                    if (record != null) {
+                        processRecord(acknowledgementSet, record);
                     }
                 }
             }

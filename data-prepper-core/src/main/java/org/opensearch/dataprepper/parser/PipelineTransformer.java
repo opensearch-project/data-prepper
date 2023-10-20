@@ -114,10 +114,8 @@ public class PipelineTransformer {
             final Source source = pipelineSource.orElseGet(() ->
                     pluginFactory.loadPlugin(Source.class, sourceSetting));
 
-
-
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
-            final Buffer pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, pipelineConfiguration.getBufferPluginSetting());
+            final Buffer pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, pipelineConfiguration.getBufferPluginSetting(), source.getDecoder());
 
             LOG.info("Building processors for the pipeline [{}]", pipelineName);
             final int processorThreads = pipelineConfiguration.getWorkers();

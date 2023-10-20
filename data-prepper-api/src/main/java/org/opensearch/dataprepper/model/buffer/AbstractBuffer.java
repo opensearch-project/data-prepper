@@ -112,6 +112,11 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         }
     }
 
+    @Override
+    public void writeBytes(final byte[] bytes, final String key, int timeoutInMillis) throws Exception {
+        throw new RuntimeException("not supported");
+    }
+
     /**
      * Records egress and time elapsed metrics, while calling the doRead function to
      * do the actual read
