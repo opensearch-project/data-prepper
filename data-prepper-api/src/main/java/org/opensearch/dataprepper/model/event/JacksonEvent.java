@@ -354,12 +354,18 @@ public class JacksonEvent implements Event {
             result += format.substring(fromIndex, position);
             String name = format.substring(position + 2, endPosition);
 
-            Object val;
-            if (Objects.nonNull(expressionEvaluator) && expressionEvaluator.isValidExpressionStatement(name)) {
-                val = expressionEvaluator.evaluate(name, this);
-            } else {
+            Object val = null;
+
+            try {
                 val = this.get(name, Object.class);
-                if (val == null) {
+            } catch (final Exception e) {
+                LOG.debug("Received exception using Event key for formatting, now checking for Data Prepper expression: {}", e.getMessage());
+            }
+
+            if (val == null) {
+                if (Objects.nonNull(expressionEvaluator) && expressionEvaluator.isValidExpressionStatement(name)) {
+                    val = expressionEvaluator.evaluate(name, this);
+                } else {
                     throw new EventKeyNotFoundException(String.format("The key %s could not be found in the Event when formatting", name));
                 }
             }
