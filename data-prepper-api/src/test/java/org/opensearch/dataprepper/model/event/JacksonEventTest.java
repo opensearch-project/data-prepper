@@ -31,7 +31,12 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
 
@@ -550,14 +555,16 @@ public class JacksonEventTest {
     }
 
     @Test
-    public void testBuild_withFormatStringWithExpressionEvaluator() {
+    public void formatString_with_expression_evaluator_catches_exception_when_Event_get_throws_exception() {
 
         final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
         final String expressionStatement = UUID.randomUUID().toString();
+        final String invalidKeyExpression = "getMetadata(\"metadata-key\")";
+        final String invalidKeyExpressionResult = UUID.randomUUID().toString();
         final String expressionEvaluationResult = UUID.randomUUID().toString();
 
-        final String formatString = "${foo}-${" + expressionStatement + "}-test-string";
-        final String finalString = "bar-" + expressionEvaluationResult + "-test-string";
+        final String formatString = "${" + invalidKeyExpression + "}-${" + expressionStatement + "}-test-string";
+        final String finalString = invalidKeyExpressionResult + "-" + expressionEvaluationResult + "-test-string";
 
         event = JacksonEvent.builder()
                 .withEventType(eventType)
@@ -569,6 +576,35 @@ public class JacksonEventTest {
 
         when(expressionEvaluator.isValidExpressionStatement("foo")).thenReturn(false);
         when(expressionEvaluator.isValidExpressionStatement(expressionStatement)).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement(invalidKeyExpression)).thenReturn(true);
+        when(expressionEvaluator.evaluate(invalidKeyExpression, event)).thenReturn(invalidKeyExpressionResult);
+        when(expressionEvaluator.evaluate(expressionStatement, event)).thenReturn(expressionEvaluationResult);
+
+        assertThat(event.formatString(formatString, expressionEvaluator), is(equalTo(finalString)));
+    }
+
+    @Test
+    public void testBuild_withFormatStringWithExpressionEvaluator() {
+
+        final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+        final String expressionStatement = UUID.randomUUID().toString();
+        final String expressionEvaluationResult = UUID.randomUUID().toString();
+        final String eventKey = "foo";
+
+        final String formatString = "${" + eventKey + "}-${" + expressionStatement + "}-test-string";
+        final String finalString = "bar-" + expressionEvaluationResult + "-test-string";
+
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+
+        final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
+
+        verify(expressionEvaluator, times(0)).isValidExpressionStatement(eventKey);
+        when(expressionEvaluator.isValidExpressionStatement(expressionStatement)).thenReturn(true);
+        verify(expressionEvaluator, never()).evaluate(eq("foo"), any(Event.class));
         when(expressionEvaluator.evaluate(expressionStatement, event)).thenReturn(expressionEvaluationResult);
 
         assertThat(event.formatString(formatString, expressionEvaluator), is(equalTo(finalString)));
