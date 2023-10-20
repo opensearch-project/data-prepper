@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -47,7 +47,7 @@ class ShardConsumerFactoryTest {
 
 
     @Mock
-    private Buffer<Record<Event>> buffer;
+    private BufferAccumulator<Record<Event>> bufferAccumulator;
 
     @Mock
     private GlobalState tableInfoGlobalState;
@@ -88,7 +88,7 @@ class ShardConsumerFactoryTest {
     @Test
     public void test_create_shardConsumer_correctly() {
 
-        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, shardManager, buffer);
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, shardManager, bufferAccumulator);
 
         Runnable consumer = consumerFactory.createConsumer(streamPartition);
 

@@ -8,8 +8,8 @@ package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.dataformat.ion.IonObjectMapper;
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class ExportRecordConverter extends RecordConverter {
 
@@ -37,8 +36,8 @@ public class ExportRecordConverter extends RecordConverter {
     private final Counter exportRecordSuccessCounter;
     private final Counter exportRecordErrorCounter;
 
-    public ExportRecordConverter(Buffer<Record<Event>> buffer, TableInfo tableInfo, PluginMetrics pluginMetrics) {
-        super(buffer, tableInfo);
+    public ExportRecordConverter(final BufferAccumulator<Record<Event>> bufferAccumulator, TableInfo tableInfo, PluginMetrics pluginMetrics) {
+        super(bufferAccumulator, tableInfo);
         this.pluginMetrics = pluginMetrics;
         this.exportRecordSuccessCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT);
         this.exportRecordErrorCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSING_ERROR_COUNT);
@@ -60,21 +59,26 @@ public class ExportRecordConverter extends RecordConverter {
     }
 
     public void writeToBuffer(List<String> lines) {
-        List<Map<String, Object>> data = lines.stream()
-                .map(this::convertToMap)
-                .map(d -> (Map<String, Object>) d.get(ITEM_KEY))
-                .collect(Collectors.toList());
 
-        List<Record<Event>> events = data.stream().map(this::convertToEvent).collect(Collectors.toList());
+        int eventCount = 0;
+        for (String line : lines) {
+            Map data = (Map<String, Object>) convertToMap(line).get(ITEM_KEY);
+            try {
+                addToBuffer(data);
+                eventCount++;
+            } catch (Exception e) {
+                // will this cause too many logs?
+                LOG.error("Failed to add event to buffer due to {}", e.getMessage());
+            }
+        }
 
         try {
-            writeEventsToBuffer(events);
-            exportRecordSuccessCounter.increment(events.size());
+            flushBuffer();
+            exportRecordSuccessCounter.increment(eventCount);
         } catch (Exception e) {
-            LOG.error("Failed to write {} events to buffer due to {}", events.size(), e.getMessage());
-            exportRecordErrorCounter.increment(events.size());
+            LOG.error("Failed to write {} events to buffer due to {}", eventCount, e.getMessage());
+            exportRecordErrorCounter.increment(eventCount);
         }
     }
-
 
 }

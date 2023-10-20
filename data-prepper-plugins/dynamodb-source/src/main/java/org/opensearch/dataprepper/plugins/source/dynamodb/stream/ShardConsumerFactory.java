@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -37,16 +37,17 @@ public class ShardConsumerFactory {
     private final PluginMetrics pluginMetrics;
     private final ShardManager shardManager;
 
-    private final Buffer<Record<Event>> buffer;
+    private final BufferAccumulator<Record<Event>> bufferAccumulator;
 
     public ShardConsumerFactory(final EnhancedSourceCoordinator enhancedSourceCoordinator,
                                 final DynamoDbStreamsClient streamsClient, final PluginMetrics pluginMetrics,
-                                final ShardManager shardManager, final Buffer<Record<Event>> buffer) {
+                                final ShardManager shardManager,
+                                final BufferAccumulator<Record<Event>> bufferAccumulator) {
         this.streamsClient = streamsClient;
         this.enhancedSourceCoordinator = enhancedSourceCoordinator;
         this.pluginMetrics = pluginMetrics;
         this.shardManager = shardManager;
-        this.buffer = buffer;
+        this.bufferAccumulator = bufferAccumulator;
 
     }
 
@@ -77,7 +78,7 @@ public class ShardConsumerFactory {
         StreamCheckpointer checkpointer = new StreamCheckpointer(enhancedSourceCoordinator, streamPartition);
         String tableArn = getTableArn(streamPartition.getStreamArn());
         TableInfo tableInfo = getTableInfo(tableArn);
-        StreamRecordConverter recordConverter = new StreamRecordConverter(buffer, tableInfo, pluginMetrics);
+        StreamRecordConverter recordConverter = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
 
         ShardConsumer shardConsumer = ShardConsumer.builder(streamsClient)
                 .recordConverter(recordConverter)

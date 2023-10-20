@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -43,8 +43,7 @@ class DataFileLoaderFactoryTest {
     private DataFilePartition dataFilePartition;
 
     @Mock
-    private Buffer<Record<Event>> buffer;
-
+    private BufferAccumulator<Record<Event>> bufferAccumulator;
 
     private TableInfo tableInfo;
 
@@ -86,7 +85,7 @@ class DataFileLoaderFactoryTest {
     @Test
     void test_createDataFileLoader() {
 
-        DataFileLoaderFactory loaderFactory = new DataFileLoaderFactory(coordinator, s3Client, pluginMetrics, buffer);
+        DataFileLoaderFactory loaderFactory = new DataFileLoaderFactory(coordinator, s3Client, pluginMetrics, bufferAccumulator);
         Runnable loader = loaderFactory.createDataFileLoader(dataFilePartition, tableInfo);
         assertThat(loader, notNullValue());
 
