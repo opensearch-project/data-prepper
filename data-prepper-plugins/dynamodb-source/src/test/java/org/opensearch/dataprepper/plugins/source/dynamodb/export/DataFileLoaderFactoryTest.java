@@ -45,7 +45,6 @@ class DataFileLoaderFactoryTest {
     @Mock
     private Buffer<Record<Event>> buffer;
 
-
     private TableInfo tableInfo;
 
     private final String tableName = UUID.randomUUID().toString();

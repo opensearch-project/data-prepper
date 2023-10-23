@@ -35,7 +35,7 @@ public class DataFileScheduler implements Runnable {
     /**
      * Maximum concurrent data loader per node
      */
-    private static final int MAX_JOB_COUNT = 4;
+    private static final int MAX_JOB_COUNT = 3;
 
     /**
      * Default interval to acquire a lease from coordination store
@@ -85,7 +85,7 @@ public class DataFileScheduler implements Runnable {
 
     @Override
     public void run() {
-        LOG.info("Start running Data File Scheduler");
+        LOG.debug("Start running Data File Scheduler");
 
         while (!Thread.currentThread().isInterrupted()) {
             if (numOfWorkers.get() < MAX_JOB_COUNT) {
