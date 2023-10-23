@@ -297,6 +297,12 @@ if `exclude_keys` is set to ["message", "status"], the document written to OpenS
 * `sts_role_arn` (Optional) : The STS role to assume for requests to AWS. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html).
 * `sts_header_overrides` (Optional): A map of header overrides to make when assuming the IAM role for the sink plugin.
 * `serverless` (Optional): A boolean flag to indicate the OpenSearch backend is Amazon OpenSearch Serverless. Default to `false`. Notice that [ISM policies.](https://opensearch.org/docs/latest/im-plugin/ism/policies/) is not supported in Amazon OpenSearch Serverless and thus any ISM related configuration value has no effect, i.e. `ism_policy_file`. 
+* `serverless_options` (Optional): Additional options you can specify when using serverless.
+
+#### <a name="serverless_configuration">Serverless Configuration</a>
+* `network_policy_name` (Optional): The serverless network policy name being used. If both `collection_name` and `vpce_id` are specified, then this network policy will be attempted to be created or update. On the managed OpenSearch Ingestion Service, the `collection_name` and `vpce_id` fields are automatically set.
+* `collection_name` (Optional): The serverless collection name.
+* `vpce_id` (Optional): The VPCE ID connected to Amazon OpenSearch Serverless.
 
 ## Metrics
 ### Management Disabled Index Type

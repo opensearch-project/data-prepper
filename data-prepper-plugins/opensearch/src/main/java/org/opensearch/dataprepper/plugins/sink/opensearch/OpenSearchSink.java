@@ -61,6 +61,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.opensearchserverless.OpenSearchServerlessClient;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -242,6 +243,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             maxRetries,
             bulkRequestSupplier,
             pluginSetting);
+
+    // Attempt to update the serverless network policy if required argument are given.
+    maybeUpdateServerlessNetworkPolicy();
 
     objectMapper = new ObjectMapper();
     this.initialized = true;
@@ -504,5 +508,22 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public void shutdown() {
     super.shutdown();
     closeFiles();
+  }
+
+  private void maybeUpdateServerlessNetworkPolicy() {
+    final ConnectionConfiguration connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
+    LOG.info(connectionConfiguration.toString());
+    if (connectionConfiguration.isServerless() &&
+        !StringUtils.isBlank(connectionConfiguration.getServerlessNetworkPolicyName()) &&
+        !StringUtils.isBlank(connectionConfiguration.getServerlessCollectionName()) &&
+        !StringUtils.isBlank(connectionConfiguration.getServerlessVpceId())
+    ) {
+      final OpenSearchServerlessClient openSearchServerlessClient = connectionConfiguration.createOpenSearchServerlessClient(awsCredentialsSupplier);
+      final ServerlessNetworkPolicyUpdater networkPolicyUpdater = new ServerlessNetworkPolicyUpdater(openSearchServerlessClient);
+      networkPolicyUpdater.updateNetworkPolicy(
+          connectionConfiguration.getServerlessNetworkPolicyName(),
+          connectionConfiguration.getServerlessCollectionName(),
+          connectionConfiguration.getServerlessVpceId());
+    }
   }
 }
