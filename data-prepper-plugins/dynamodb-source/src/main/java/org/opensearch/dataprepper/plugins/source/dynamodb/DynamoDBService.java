@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb;
 
-import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
@@ -100,15 +99,13 @@ public class DynamoDBService {
     public void start(Buffer<Record<Event>> buffer) {
 
         LOG.info("Start running DynamoDB service");
-        final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-
         ManifestFileReader manifestFileReader = new ManifestFileReader(new S3ObjectReader(s3Client));
         Runnable exportScheduler = new ExportScheduler(coordinator, dynamoDbClient, manifestFileReader, pluginMetrics);
 
-        DataFileLoaderFactory loaderFactory = new DataFileLoaderFactory(coordinator, s3Client, pluginMetrics, bufferAccumulator);
+        DataFileLoaderFactory loaderFactory = new DataFileLoaderFactory(coordinator, s3Client, pluginMetrics, buffer);
         Runnable fileLoaderScheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics);
 
-        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, shardManager, bufferAccumulator);
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, shardManager, buffer);
         Runnable streamScheduler = new StreamScheduler(coordinator, consumerFactory, shardManager, pluginMetrics);
 
         // May consider start or shutdown the scheduler on demand
