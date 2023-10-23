@@ -74,6 +74,9 @@ public class DynamicIndexManagerTests {
     @Mock
     private TemplateStrategy templateStrategy;
 
+    @Mock
+    private OpenSearchException openSearchException;
+
     static final String EVENT_TYPE = "event";
 
     @BeforeEach
@@ -195,8 +198,8 @@ public class DynamicIndexManagerTests {
         innerIndexManager = mock(IndexManager.class);
         when(mockIndexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy, expectedIndexAlias)).thenReturn(innerIndexManager);
-        doThrow(new OpenSearchException(new RuntimeException()))
-                .doThrow(new OpenSearchException(new RuntimeException()))
+        doThrow(openSearchException)
+                .doThrow(openSearchException)
                 .doNothing()
                 .when(innerIndexManager).setupIndex();
         when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
@@ -216,8 +219,8 @@ public class DynamicIndexManagerTests {
         innerIndexManager = mock(IndexManager.class);
         when(mockIndexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy, expectedIndexAlias)).thenReturn(innerIndexManager);
-        doThrow(new OpenSearchException(new RuntimeException()))
-                .doThrow(new OpenSearchException(new RuntimeException()))
+        doThrow(openSearchException)
+                .doThrow(openSearchException)
                 .doThrow(new RuntimeException())
                 .when(innerIndexManager).setupIndex();
         when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
