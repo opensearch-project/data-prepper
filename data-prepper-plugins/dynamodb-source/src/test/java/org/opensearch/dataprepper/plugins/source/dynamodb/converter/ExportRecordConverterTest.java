@@ -107,10 +107,7 @@ class ExportRecordConverterTest {
         List<String> data = generateData(numberOfRecords);
         ExportRecordConverter recordConverter = new ExportRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
 
-        doNothing().when(bufferAccumulator).add(any(Record.class));
-        doNothing().when(bufferAccumulator).flush();
         recordConverter.writeToBuffer(data);
-
         verify(bufferAccumulator, times(numberOfRecords)).add(any(Record.class));
         verify(exportRecordSuccess).increment(anyDouble());
 
@@ -128,10 +125,9 @@ class ExportRecordConverterTest {
 
         ExportRecordConverter recordConverter = new ExportRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
         doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
-        doNothing().when(bufferAccumulator).flush();
+//        doNothing().when(bufferAccumulator).flush();
 
         recordConverter.writeToBuffer(List.of(line));
-
         verify(bufferAccumulator).add(any(Record.class));
         verify(bufferAccumulator).flush();
         assertThat(recordArgumentCaptor.getValue().getData(), notNullValue());

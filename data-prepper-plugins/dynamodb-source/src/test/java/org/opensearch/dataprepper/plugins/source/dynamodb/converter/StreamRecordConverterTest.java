@@ -101,8 +101,6 @@ class StreamRecordConverterTest {
         List<software.amazon.awssdk.services.dynamodb.model.Record> records = buildRecords(numberOfRecords);
 
         StreamRecordConverter recordConverter = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
-        doNothing().when(bufferAccumulator).add(any(Record.class));
-        doNothing().when(bufferAccumulator).flush();
 
         recordConverter.writeToBuffer(records);
         verify(bufferAccumulator, times(numberOfRecords)).add(any(Record.class));
@@ -121,7 +119,6 @@ class StreamRecordConverterTest {
         software.amazon.awssdk.services.dynamodb.model.Record record = records.get(0);
         StreamRecordConverter recordConverter = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
         doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
-        doNothing().when(bufferAccumulator).flush();
 
         recordConverter.writeToBuffer(records);
 
