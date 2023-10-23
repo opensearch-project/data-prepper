@@ -13,7 +13,7 @@ const DEFAULT_ORGANIZATION = 'opensearch-project'
  * Creates the IAM resources necessary for GitHub to access roles within
  * this account.
  */
-export class GitHubStack extends Stack {
+export class GitHubAccessStack extends Stack {
   readonly gitHubActionsTestingRole: Role;
 
   constructor(scope: Construct, id: string, props?: StackProps) {

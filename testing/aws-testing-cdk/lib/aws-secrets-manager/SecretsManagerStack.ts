@@ -16,7 +16,6 @@ export class SecretsManagerStack extends Stack {
     this.openSearchSinkSecrets = new Secret(this, 'OpenSearchSinkSecrets', {
       secretName: 'opensearch-sink-basic-credentials',
       secretObjectValue: {
-        // TODO: pass in secret values as args?
         username: SecretValue.unsafePlainText('admin'),
         password: SecretValue.unsafePlainText('admin'),
       }
