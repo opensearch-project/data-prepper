@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        java: [11, 17]
+        java: [11, 17, 21]
         otelVersion: ['0.9.0-alpha', '0.16.0-alpha']
       fail-fast: false
 
