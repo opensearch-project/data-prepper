@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.otel.codec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
+import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
@@ -19,6 +20,9 @@ import io.opentelemetry.proto.logs.v1.ResourceLogs;
 import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
+import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
+import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
@@ -26,6 +30,7 @@ import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Status;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.log.JacksonOtelLog;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.metric.Bucket;
@@ -34,6 +39,12 @@ import org.opensearch.dataprepper.model.metric.DefaultExemplar;
 import org.opensearch.dataprepper.model.metric.DefaultQuantile;
 import org.opensearch.dataprepper.model.metric.Exemplar;
 import org.opensearch.dataprepper.model.metric.Quantile;
+import org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram;
+import org.opensearch.dataprepper.model.metric.JacksonGauge;
+import org.opensearch.dataprepper.model.metric.JacksonHistogram;
+import org.opensearch.dataprepper.model.metric.JacksonSum;
+import org.opensearch.dataprepper.model.metric.JacksonSummary;
+import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.trace.DefaultLink;
 import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
 import org.slf4j.Logger;
@@ -57,6 +68,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -67,6 +79,7 @@ import java.util.stream.Stream;
 public class OTelProtoCodec {
 
     private static final Logger LOG = LoggerFactory.getLogger(OTelProtoCodec.class);
+    public static final int DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE = 10;
 
     private static final ObjectMapper OBJECT_MAPPER =  new ObjectMapper();
     private static final long NANO_MULTIPLIER = 1_000 * 1_000 * 1_000;
@@ -147,6 +160,7 @@ public class OTelProtoCodec {
     }
 
     public static class OTelProtoDecoder {
+
         public List<Span> parseExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest) {
             return exportTraceServiceRequest.getResourceSpansList().stream()
                     .flatMap(rs -> parseResourceSpans(rs).stream()).collect(Collectors.toList());
@@ -445,6 +459,268 @@ public class OTelProtoCodec {
                             && !keyValue.getValue().getStringValue().isEmpty()
             ).findFirst().map(i -> i.getValue().getStringValue());
         }
+
+        public Collection<Record<? extends Metric>> parseExportMetricsServiceRequest(
+                            final ExportMetricsServiceRequest request,
+                            AtomicInteger droppedCounter,
+                            final Integer exponentialHistogramMaxAllowedScale,
+                            final boolean calculateHistogramBuckets,
+                            final boolean calculateExponentialHistogramBuckets,
+                            final boolean flattenAttributes) {
+            Collection<Record<? extends Metric>> recordsOut = new ArrayList<>();
+            for (ResourceMetrics rs : request.getResourceMetricsList()) {
+                final String schemaUrl = rs.getSchemaUrl();
+                final Map<String, Object> resourceAttributes = OTelProtoCodec.getResourceAttributes(rs.getResource());
+                final String serviceName = OTelProtoCodec.getServiceName(rs.getResource()).orElse(null);
+
+                for (InstrumentationLibraryMetrics is : rs.getInstrumentationLibraryMetricsList()) {
+                    final Map<String, Object> ils = OTelProtoCodec.getInstrumentationLibraryAttributes(is.getInstrumentationLibrary());
+                    recordsOut.addAll(processMetricsList(is.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl, droppedCounter, exponentialHistogramMaxAllowedScale, calculateHistogramBuckets, calculateExponentialHistogramBuckets, flattenAttributes));
+                }
+
+                for (ScopeMetrics sm : rs.getScopeMetricsList()) {
+                    final Map<String, Object> ils = OTelProtoCodec.getInstrumentationScopeAttributes(sm.getScope());
+                    recordsOut.addAll(processMetricsList(sm.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl, droppedCounter, exponentialHistogramMaxAllowedScale, calculateHistogramBuckets, calculateExponentialHistogramBuckets, flattenAttributes));
+                }
+            }
+            return recordsOut;
+        }
+
+        private List<? extends Record<? extends Metric>> processMetricsList(
+                    final List<io.opentelemetry.proto.metrics.v1.Metric> metricsList,
+                    final String serviceName,
+                    final Map<String, Object> ils,
+                    final Map<String, Object> resourceAttributes,
+                    final String schemaUrl,
+                    AtomicInteger droppedCounter,
+                    final Integer exponentialHistogramMaxAllowedScale,
+                    final boolean calculateHistogramBuckets,
+                    final boolean calculateExponentialHistogramBuckets,
+                    final boolean flattenAttributes) {
+            List<Record<? extends Metric>> recordsOut = new ArrayList<>();
+            for (io.opentelemetry.proto.metrics.v1.Metric metric : metricsList) {
+                try {
+                    if (metric.hasGauge()) {
+                        recordsOut.addAll(mapGauge(metric, serviceName, ils, resourceAttributes, schemaUrl, flattenAttributes));
+                    } else if (metric.hasSum()) {
+                        recordsOut.addAll(mapSum(metric, serviceName, ils, resourceAttributes, schemaUrl, flattenAttributes));
+                    } else if (metric.hasSummary()) {
+                        recordsOut.addAll(mapSummary(metric, serviceName, ils, resourceAttributes, schemaUrl, flattenAttributes));
+                    } else if (metric.hasHistogram()) {
+                        recordsOut.addAll(mapHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl, calculateHistogramBuckets, flattenAttributes));
+                    } else if (metric.hasExponentialHistogram()) {
+                        recordsOut.addAll(mapExponentialHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl, exponentialHistogramMaxAllowedScale, calculateExponentialHistogramBuckets, flattenAttributes));
+                    }
+                } catch (Exception e) {
+                    LOG.warn("Error while processing metrics", e);
+                    droppedCounter.incrementAndGet();
+                }
+            }
+            return recordsOut;
+        }
+
+        private List<? extends Record<? extends Metric>> mapGauge(
+                                         io.opentelemetry.proto.metrics.v1.Metric metric,
+                                         String serviceName,
+                                         final Map<String, Object> ils,
+                                         final Map<String, Object> resourceAttributes,
+                                         final String schemaUrl,
+                                         final boolean flattenAttributes) {
+            return metric.getGauge().getDataPointsList().stream()
+                .map(dp -> JacksonGauge.builder()
+                        .withUnit(metric.getUnit())
+                        .withName(metric.getName())
+                        .withDescription(metric.getDescription())
+                        .withStartTime(OTelProtoCodec.getStartTimeISO8601(dp))
+                        .withTime(OTelProtoCodec.getTimeISO8601(dp))
+                        .withServiceName(serviceName)
+                        .withValue(OTelProtoCodec.getValueAsDouble(dp))
+                        .withAttributes(OTelProtoCodec.mergeAllAttributes(
+                                Arrays.asList(
+                                        OTelProtoCodec.convertKeysOfDataPointAttributes(dp),
+                                        resourceAttributes,
+                                        ils
+                                )
+                        ))
+                        .withSchemaUrl(schemaUrl)
+                        .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
+                        .withFlags(dp.getFlags())
+                        .build(flattenAttributes))
+                .map(Record::new)
+                .collect(Collectors.toList());
+        }
+
+        private List<? extends Record<? extends Metric>> mapSum(
+                                     final io.opentelemetry.proto.metrics.v1.Metric metric,
+                                     final String serviceName,
+                                     final Map<String, Object> ils,
+                                     final Map<String, Object> resourceAttributes,
+                                     final String schemaUrl,
+                                     final boolean flattenAttributes) {
+            return metric.getSum().getDataPointsList().stream()
+                .map(dp -> JacksonSum.builder()
+                        .withUnit(metric.getUnit())
+                        .withName(metric.getName())
+                        .withDescription(metric.getDescription())
+                        .withStartTime(OTelProtoCodec.getStartTimeISO8601(dp))
+                        .withTime(OTelProtoCodec.getTimeISO8601(dp))
+                        .withServiceName(serviceName)
+                        .withIsMonotonic(metric.getSum().getIsMonotonic())
+                        .withValue(OTelProtoCodec.getValueAsDouble(dp))
+                        .withAggregationTemporality(metric.getSum().getAggregationTemporality().toString())
+                        .withAttributes(OTelProtoCodec.mergeAllAttributes(
+                                Arrays.asList(
+                                        OTelProtoCodec.convertKeysOfDataPointAttributes(dp),
+                                        resourceAttributes,
+                                        ils
+                                )
+                        ))
+                        .withSchemaUrl(schemaUrl)
+                        .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
+                        .withFlags(dp.getFlags())
+                        .build(flattenAttributes))
+                .map(Record::new)
+                .collect(Collectors.toList());
+        }
+
+        private List<? extends Record<? extends Metric>> mapSummary(
+                                             final io.opentelemetry.proto.metrics.v1.Metric metric,
+                                             final String serviceName,
+                                             final Map<String, Object> ils,
+                                             final Map<String, Object> resourceAttributes,
+                                             final String schemaUrl,
+                                             final boolean flattenAttributes) {
+            return metric.getSummary().getDataPointsList().stream()
+                .map(dp -> JacksonSummary.builder()
+                        .withUnit(metric.getUnit())
+                        .withName(metric.getName())
+                        .withDescription(metric.getDescription())
+                        .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                        .withTime(OTelProtoCodec.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
+                        .withServiceName(serviceName)
+                        .withCount(dp.getCount())
+                        .withSum(dp.getSum())
+                        .withQuantiles(OTelProtoCodec.getQuantileValues(dp.getQuantileValuesList()))
+                        .withQuantilesValueCount(dp.getQuantileValuesCount())
+                        .withAttributes(OTelProtoCodec.mergeAllAttributes(
+                                Arrays.asList(
+                                        OTelProtoCodec.unpackKeyValueList(dp.getAttributesList()),
+                                        resourceAttributes,
+                                        ils
+                                )
+                        ))
+                        .withSchemaUrl(schemaUrl)
+                        .withFlags(dp.getFlags())
+                        .build(flattenAttributes))
+                .map(Record::new)
+                .collect(Collectors.toList());
+        }
+
+        private List<? extends Record<? extends Metric>> mapHistogram(
+                                                 final io.opentelemetry.proto.metrics.v1.Metric metric,
+                                                 final String serviceName,
+                                                 final Map<String, Object> ils,
+                                                 final Map<String, Object> resourceAttributes,
+                                                 final String schemaUrl,
+                                                 final boolean calculateHistogramBuckets,
+                                                 final boolean flattenAttributes) {
+            return metric.getHistogram().getDataPointsList().stream()
+                .map(dp -> {
+                    JacksonHistogram.Builder builder = JacksonHistogram.builder()
+                            .withUnit(metric.getUnit())
+                            .withName(metric.getName())
+                            .withDescription(metric.getDescription())
+                            .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                            .withTime(OTelProtoCodec.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
+                            .withServiceName(serviceName)
+                            .withSum(dp.getSum())
+                            .withCount(dp.getCount())
+                            .withBucketCount(dp.getBucketCountsCount())
+                            .withExplicitBoundsCount(dp.getExplicitBoundsCount())
+                            .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
+                            .withBucketCountsList(dp.getBucketCountsList())
+                            .withExplicitBoundsList(dp.getExplicitBoundsList())
+                            .withAttributes(OTelProtoCodec.mergeAllAttributes(
+                                    Arrays.asList(
+                                            OTelProtoCodec.unpackKeyValueList(dp.getAttributesList()),
+                                            resourceAttributes,
+                                            ils
+                                    )
+                            ))
+                            .withSchemaUrl(schemaUrl)
+                            .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
+                            .withFlags(dp.getFlags());
+                    if (calculateHistogramBuckets) {
+                        builder.withBuckets(OTelProtoCodec.createBuckets(dp.getBucketCountsList(), dp.getExplicitBoundsList()));
+                    }
+                    JacksonHistogram jh = builder.build(flattenAttributes);
+                    return jh;
+
+                })
+                .map(Record::new)
+                .collect(Collectors.toList());
+        }
+
+        private List<? extends Record<? extends Metric>> mapExponentialHistogram(
+                                            final io.opentelemetry.proto.metrics.v1.Metric metric,
+                                            final String serviceName, 
+                                            final Map<String, Object> ils,
+                                            final Map<String, Object> resourceAttributes,
+                                            final String schemaUrl,
+                                            final Integer exponentialHistogramMaxAllowedScale,
+                                            final boolean calculateExponentialHistogramBuckets,
+                                            final boolean flattenAttributes) {
+            return metric.getExponentialHistogram()
+                .getDataPointsList()
+                .stream()
+                .filter(dp -> {
+                    if (calculateExponentialHistogramBuckets &&
+                            exponentialHistogramMaxAllowedScale < Math.abs(dp.getScale())){
+                        LOG.error("Exponential histogram can not be processed since its scale of {} is bigger than the configured max of {}.", dp.getScale(), exponentialHistogramMaxAllowedScale);
+                        return false;
+                    } else {
+                        return true;
+                    }
+                })
+                .map(dp -> {
+                    JacksonExponentialHistogram.Builder builder = JacksonExponentialHistogram.builder()
+                            .withUnit(metric.getUnit())
+                            .withName(metric.getName())
+                            .withDescription(metric.getDescription())
+                            .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                            .withTime(OTelProtoCodec.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
+                            .withServiceName(serviceName)
+                            .withSum(dp.getSum())
+                            .withCount(dp.getCount())
+                            .withZeroCount(dp.getZeroCount())
+                            .withScale(dp.getScale())
+                            .withPositive(dp.getPositive().getBucketCountsList())
+                            .withPositiveOffset(dp.getPositive().getOffset())
+                            .withNegative(dp.getNegative().getBucketCountsList())
+                            .withNegativeOffset(dp.getNegative().getOffset())
+                            .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
+                            .withAttributes(OTelProtoCodec.mergeAllAttributes(
+                                    Arrays.asList(
+                                            OTelProtoCodec.unpackKeyValueList(dp.getAttributesList()),
+                                            resourceAttributes,
+                                            ils
+                                    )
+                            ))
+                            .withSchemaUrl(schemaUrl)
+                            .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
+                            .withFlags(dp.getFlags());
+
+                    if (calculateExponentialHistogramBuckets) {
+                        builder.withPositiveBuckets(OTelProtoCodec.createExponentialBuckets(dp.getPositive(), dp.getScale()));
+                        builder.withNegativeBuckets(OTelProtoCodec.createExponentialBuckets(dp.getNegative(), dp.getScale()));
+                    }
+
+                    return builder.build(flattenAttributes);
+                })
+                .map(Record::new)
+                .collect(Collectors.toList());
+        }
+
     }
 
     public static class OTelProtoEncoder {

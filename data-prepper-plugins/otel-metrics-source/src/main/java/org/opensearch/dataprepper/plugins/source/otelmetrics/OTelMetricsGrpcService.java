@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.exceptions.RequestCancelledException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,13 +38,16 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     private final Counter successRequestsCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
+    private final ByteDecoder byteDecoder;
 
 
     public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
                                   Buffer<Record<ExportMetricsServiceRequest>> buffer,
+                                  final ByteDecoder byteDecoder,
                                   final PluginMetrics pluginMetrics) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
+        this.byteDecoder = byteDecoder;
 
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
@@ -70,7 +74,11 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
 
     private void processRequest(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
         try {
-            buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
+            if (buffer.isByteBuffer()) {
+                buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
+            } else {
+                buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
+            }
         } catch (Exception e) {
             if (ServiceRequestContext.current().isTimedOut()) {
                 LOG.warn("Exception writing to buffer but request already timed out.", e);
