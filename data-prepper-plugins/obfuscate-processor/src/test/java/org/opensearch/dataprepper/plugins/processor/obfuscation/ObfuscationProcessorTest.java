@@ -32,6 +32,7 @@ import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -75,12 +76,13 @@ class ObfuscationProcessorTest {
 
     @BeforeEach
     void setup() {
-        final ObfuscationProcessorConfig defaultConfig = new ObfuscationProcessorConfig("message", null, null, null);
+        final ObfuscationProcessorConfig defaultConfig = new ObfuscationProcessorConfig("message", null, null, null, null);
         lenient().when(mockConfig.getSource()).thenReturn(defaultConfig.getSource());
         lenient().when(mockConfig.getAction()).thenReturn(defaultConfig.getAction());
         lenient().when(mockConfig.getPatterns()).thenReturn(defaultConfig.getPatterns());
         lenient().when(mockConfig.getTarget()).thenReturn(defaultConfig.getTarget());
         lenient().when(mockConfig.getObfuscateWhen()).thenReturn(null);
+        lenient().when(mockConfig.getTagsOnMatchFailure()).thenReturn(List.of(UUID.randomUUID().toString()));
         obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
     }
 
@@ -93,10 +95,29 @@ class ObfuscationProcessorTest {
 
         final ObfuscationProcessor objectUnderTest = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
 
+        final Map<String, Object> expectedEventMap = record.getData().toMap();
         final List<Record<Event>> editedRecords = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.size(), equalTo(1));
-        assertThat(editedRecords.get(0), equalTo(record));
+        assertThat(editedRecords.get(0).getData().toMap(), equalTo(expectedEventMap));
+    }
+
+    @Test
+    void event_is_tagged_with_match_failure_tags_when_it_does_not_match_any_patterns() {
+        final Record<Event> record = createRecord(UUID.randomUUID().toString());
+
+        when(mockConfig.getPatterns()).thenReturn(List.of(UUID.randomUUID().toString()));
+
+        final ObfuscationProcessor objectUnderTest = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
+
+        final Map<String, Object> expectedEventMap = record.getData().toMap();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.size(), equalTo(1));
+        assertThat(editedRecords.get(0).getData().toMap(), equalTo(expectedEventMap));
+        assertThat(editedRecords.get(0).getData().getMetadata().getTags(), notNullValue());
+        assertThat(editedRecords.get(0).getData().getMetadata().getTags().size(), equalTo(1));
+        assertThat(editedRecords.get(0).getData().getMetadata().getTags().contains(mockConfig.getTagsOnMatchFailure().get(0)), equalTo(true));
     }
 
 

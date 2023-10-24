@@ -31,17 +31,20 @@ public class ObfuscationProcessorConfig {
     private PluginModel action;
 
     @JsonProperty("obfuscate_when")
-    @NotEmpty
     private String obfuscateWhen;
+
+    @JsonProperty("tags_on_match_failure")
+    private List<String> tagsOnMatchFailure;
 
     public ObfuscationProcessorConfig() {
     }
 
-    public ObfuscationProcessorConfig(String source, List<String> patterns, String target, PluginModel action) {
+    public ObfuscationProcessorConfig(String source, List<String> patterns, String target, PluginModel action, List<String> tagsOnMatchFailure) {
         this.source = source;
         this.patterns = patterns;
         this.target = target;
         this.action = action;
+        this.tagsOnMatchFailure = tagsOnMatchFailure;
     }
 
     public String getSource() {
@@ -62,6 +65,10 @@ public class ObfuscationProcessorConfig {
 
     public String getObfuscateWhen() {
         return obfuscateWhen;
+    }
+
+    public List<String> getTagsOnMatchFailure() {
+        return tagsOnMatchFailure;
     }
 
     void validateObfuscateWhen(final ExpressionEvaluator expressionEvaluator) {
