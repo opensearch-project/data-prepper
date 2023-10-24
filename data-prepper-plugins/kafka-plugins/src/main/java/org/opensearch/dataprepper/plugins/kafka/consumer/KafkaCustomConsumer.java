@@ -531,7 +531,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         return Objects.isNull(offset) ? "-" : offset.toString();
     }
 
-    public boolean isEmpty() {
+    public boolean isTopicEmpty() {
         final List<PartitionInfo> partitions = consumer.partitionsFor(topicName);
         final List<TopicPartition> topicPartitions = partitions.stream()
                 .map(partitionInfo -> new TopicPartition(topicName, partitionInfo.partition()))
@@ -543,8 +543,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         for (TopicPartition topicPartition : topicPartitions) {
             final OffsetAndMetadata offsetAndMetadata = committedOffsets.get(topicPartition);
             final Long endOffset = endOffsets.get(topicPartition);
-            LOG.info("Partition {} offsets: endOffset: {}, committedOffset: {}",
-                    topicPartition, endOffset, Objects.isNull(offsetAndMetadata) ? "-" : offsetAndMetadata.offset());
 
             // If there is data in the partition
             if (endOffset != 0L) {

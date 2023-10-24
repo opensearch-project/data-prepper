@@ -128,9 +128,8 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     @Override
     public boolean isEmpty() {
         final boolean areTopicsEmpty = emptyCheckingConsumers.stream()
-                .allMatch(KafkaCustomConsumer::isEmpty);
+                .allMatch(KafkaCustomConsumer::isTopicEmpty);
 
-        // TODO: check Kafka topic is empty as well.
         return areTopicsEmpty && innerBuffer.isEmpty();
     }
 

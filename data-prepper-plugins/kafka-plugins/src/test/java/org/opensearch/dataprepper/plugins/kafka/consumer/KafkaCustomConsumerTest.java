@@ -14,6 +14,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.junit.jupiter.api.Assertions;
@@ -42,25 +43,37 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class KafkaCustomConsumerTest {
+    private static final String TOPIC_NAME = "topic1";
+    private static final Random RANDOM = new Random();
 
     @Mock
     private KafkaConsumer<String, Object> kafkaConsumer;
@@ -80,6 +93,9 @@ public class KafkaCustomConsumerTest {
 
     @Mock
     private KafkaTopicConsumerMetrics topicMetrics;
+    private PartitionInfo partitionInfo;
+    @Mock
+    private OffsetAndMetadata offsetAndMetadata;
 
     private KafkaCustomConsumer consumer;
 
@@ -140,7 +156,7 @@ public class KafkaCustomConsumerTest {
         sourceConfig = mock(KafkaConsumerConfig.class);
         buffer = getBuffer();
         shutdownInProgress = new AtomicBoolean(false);
-        when(topicConfig.getName()).thenReturn("topic1");
+        when(topicConfig.getName()).thenReturn(TOPIC_NAME);
     }
 
     public KafkaCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
@@ -452,6 +468,146 @@ public class KafkaCustomConsumerTest {
             Assertions.assertEquals(topicPartition.topic(), topic);
             Assertions.assertEquals(103L, offsetAndMetadata.offset());
         });
+    }
+
+    @Test
+    public void isTopicEmpty_OnePartition_IsEmpty() {
+        final Long offset = RANDOM.nextLong();
+        final List<TopicPartition> topicPartitions = buildTopicPartitions(1);
+
+        consumer = createObjectUnderTest("json", true);
+        when(kafkaConsumer.partitionsFor(TOPIC_NAME)).thenReturn(List.of(partitionInfo));
+        when(partitionInfo.partition()).thenReturn(0);
+        when(kafkaConsumer.committed(anySet())).thenReturn(getTopicPartitionToMap(topicPartitions, offsetAndMetadata));
+        when(kafkaConsumer.endOffsets(anyCollection())).thenReturn(getTopicPartitionToMap(topicPartitions, offset));
+        when(offsetAndMetadata.offset()).thenReturn(offset);
+
+        assertThat(consumer.isTopicEmpty(), equalTo(true));
+
+        verify(kafkaConsumer).partitionsFor(TOPIC_NAME);
+        verify(kafkaConsumer).committed(new HashSet<>(topicPartitions));
+        verify(kafkaConsumer).endOffsets(topicPartitions);
+        verify(partitionInfo).partition();
+        verify(offsetAndMetadata).offset();
+    }
+
+    @Test
+    public void isTopicEmpty_OnePartition_PartitionNeverHadData() {
+        final Long offset = 0L;
+        final List<TopicPartition> topicPartitions = buildTopicPartitions(1);
+
+        consumer = createObjectUnderTest("json", true);
+        when(kafkaConsumer.partitionsFor(TOPIC_NAME)).thenReturn(List.of(partitionInfo));
+        when(partitionInfo.partition()).thenReturn(0);
+        when(kafkaConsumer.committed(anySet())).thenReturn(getTopicPartitionToMap(topicPartitions, offsetAndMetadata));
+        when(kafkaConsumer.endOffsets(anyCollection())).thenReturn(getTopicPartitionToMap(topicPartitions, offset));
+        when(offsetAndMetadata.offset()).thenReturn(offset - 1);
+
+        assertThat(consumer.isTopicEmpty(), equalTo(true));
+
+        verify(kafkaConsumer).partitionsFor(TOPIC_NAME);
+        verify(kafkaConsumer).committed(new HashSet<>(topicPartitions));
+        verify(kafkaConsumer).endOffsets(topicPartitions);
+        verify(partitionInfo).partition();
+    }
+
+    @Test
+    public void isTopicEmpty_OnePartition_IsNotEmpty() {
+        final Long offset = RANDOM.nextLong();
+        final List<TopicPartition> topicPartitions = buildTopicPartitions(1);
+
+        consumer = createObjectUnderTest("json", true);
+        when(kafkaConsumer.partitionsFor(TOPIC_NAME)).thenReturn(List.of(partitionInfo));
+        when(partitionInfo.partition()).thenReturn(0);
+        when(kafkaConsumer.committed(anySet())).thenReturn(getTopicPartitionToMap(topicPartitions, offsetAndMetadata));
+        when(kafkaConsumer.endOffsets(anyCollection())).thenReturn(getTopicPartitionToMap(topicPartitions, offset));
+        when(offsetAndMetadata.offset()).thenReturn(offset - 1);
+
+        assertThat(consumer.isTopicEmpty(), equalTo(false));
+
+        verify(kafkaConsumer).partitionsFor(TOPIC_NAME);
+        verify(kafkaConsumer).committed(new HashSet<>(topicPartitions));
+        verify(kafkaConsumer).endOffsets(topicPartitions);
+        verify(partitionInfo).partition();
+        verify(offsetAndMetadata).offset();
+    }
+
+    @Test
+    public void isTopicEmpty_OnePartition_NoCommittedPartition() {
+        final Long offset = RANDOM.nextLong();
+        final List<TopicPartition> topicPartitions = buildTopicPartitions(1);
+
+        consumer = createObjectUnderTest("json", true);
+        when(kafkaConsumer.partitionsFor(TOPIC_NAME)).thenReturn(List.of(partitionInfo));
+        when(partitionInfo.partition()).thenReturn(0);
+        when(kafkaConsumer.committed(anySet())).thenReturn(Collections.emptyMap());
+        when(kafkaConsumer.endOffsets(anyCollection())).thenReturn(getTopicPartitionToMap(topicPartitions, offset));
+
+        assertThat(consumer.isTopicEmpty(), equalTo(false));
+
+        verify(kafkaConsumer).partitionsFor(TOPIC_NAME);
+        verify(kafkaConsumer).committed(new HashSet<>(topicPartitions));
+        verify(kafkaConsumer).endOffsets(topicPartitions);
+        verify(partitionInfo).partition();
+    }
+
+    @Test
+    public void isTopicEmpty_MultiplePartitions_AllEmpty() {
+        final Long offset1 = RANDOM.nextLong();
+        final Long offset2 = RANDOM.nextLong();
+        final List<TopicPartition> topicPartitions = buildTopicPartitions(2);
+
+        consumer = createObjectUnderTest("json", true);
+        when(kafkaConsumer.partitionsFor(TOPIC_NAME)).thenReturn(List.of(partitionInfo, partitionInfo));
+        when(partitionInfo.partition()).thenReturn(0).thenReturn(1);
+        when(kafkaConsumer.committed(anySet())).thenReturn(getTopicPartitionToMap(topicPartitions, offsetAndMetadata));
+        final Map<TopicPartition, Long> endOffsets = getTopicPartitionToMap(topicPartitions, offset1);
+        endOffsets.put(topicPartitions.get(1), offset2);
+        when(kafkaConsumer.endOffsets(anyCollection())).thenReturn(endOffsets);
+        when(offsetAndMetadata.offset()).thenReturn(offset1).thenReturn(offset2);
+
+        assertThat(consumer.isTopicEmpty(), equalTo(true));
+
+        verify(kafkaConsumer).partitionsFor(TOPIC_NAME);
+        verify(kafkaConsumer).committed(new HashSet<>(topicPartitions));
+        verify(kafkaConsumer).endOffsets(topicPartitions);
+        verify(partitionInfo, times(2)).partition();
+        verify(offsetAndMetadata, times(2)).offset();
+    }
+
+    @Test
+    public void isTopicEmpty_MultiplePartitions_OneNotEmpty() {
+        final Long offset1 = RANDOM.nextLong();
+        final Long offset2 = RANDOM.nextLong();
+        final List<TopicPartition> topicPartitions = buildTopicPartitions(2);
+
+        consumer = createObjectUnderTest("json", true);
+        when(kafkaConsumer.partitionsFor(TOPIC_NAME)).thenReturn(List.of(partitionInfo, partitionInfo));
+        when(partitionInfo.partition()).thenReturn(0).thenReturn(1);
+        when(kafkaConsumer.committed(anySet())).thenReturn(getTopicPartitionToMap(topicPartitions, offsetAndMetadata));
+        final Map<TopicPartition, Long> endOffsets = getTopicPartitionToMap(topicPartitions, offset1);
+        endOffsets.put(topicPartitions.get(1), offset2);
+        when(kafkaConsumer.endOffsets(anyCollection())).thenReturn(endOffsets);
+        when(offsetAndMetadata.offset()).thenReturn(offset1).thenReturn(offset2 - 1);
+
+        assertThat(consumer.isTopicEmpty(), equalTo(false));
+
+        verify(kafkaConsumer).partitionsFor(TOPIC_NAME);
+        verify(kafkaConsumer).committed(new HashSet<>(topicPartitions));
+        verify(kafkaConsumer).endOffsets(topicPartitions);
+        verify(partitionInfo, times(2)).partition();
+        verify(offsetAndMetadata, times(2)).offset();
+    }
+
+    private List<TopicPartition> buildTopicPartitions(final int partitionCount) {
+        return IntStream.range(0, partitionCount)
+                .mapToObj(i -> new TopicPartition(TOPIC_NAME, i))
+                .collect(Collectors.toList());
+    }
+
+    private <T> Map<TopicPartition, T> getTopicPartitionToMap(final List<TopicPartition> topicPartitions, final T value) {
+        return topicPartitions.stream()
+                .collect(Collectors.toMap(i -> i, i -> value));
     }
 
     private ConsumerRecords createPlainTextRecords(String topic, final long startOffset) {
