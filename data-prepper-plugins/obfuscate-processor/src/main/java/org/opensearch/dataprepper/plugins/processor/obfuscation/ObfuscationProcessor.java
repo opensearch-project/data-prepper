@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -107,7 +106,7 @@ public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Recor
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            if (Objects.nonNull(obfuscationProcessorConfig.getObfuscateWhen()) && !expressionEvaluator.evaluateConditional(obfuscationProcessorConfig.getObfuscateWhen(), recordEvent)) {
+            if (obfuscationProcessorConfig.getObfuscateWhen() != null && !expressionEvaluator.evaluateConditional(obfuscationProcessorConfig.getObfuscateWhen(), recordEvent)) {
                 continue;
             }
 

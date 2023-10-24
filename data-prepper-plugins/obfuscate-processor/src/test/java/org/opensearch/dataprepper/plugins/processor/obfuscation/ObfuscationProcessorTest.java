@@ -103,9 +103,12 @@ class ObfuscationProcessorTest {
     }
 
     @Test
-    void event_is_tagged_with_match_failure_tags_when_it_does_not_match_any_patterns() {
+    void event_is_tagged_with_match_failure_tags_when_it_does_not_match_any_patterns_and_when_condition_is_true() {
         final Record<Event> record = createRecord(UUID.randomUUID().toString());
 
+        final String expression = UUID.randomUUID().toString();
+        when(mockConfig.getObfuscateWhen()).thenReturn(expression);
+        when(expressionEvaluator.evaluateConditional(expression, record.getData())).thenReturn(true);
         when(mockConfig.getPatterns()).thenReturn(List.of(UUID.randomUUID().toString()));
 
         final ObfuscationProcessor objectUnderTest = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
