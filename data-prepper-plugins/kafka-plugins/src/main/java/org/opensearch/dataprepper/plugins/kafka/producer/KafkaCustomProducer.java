@@ -96,7 +96,7 @@ public class KafkaCustomProducer<T> {
     }
 
     public void produceRecords(final Record<Event> record) {
-        if (record.getData().getEventHandle() != null) {
+        if (record.getData().getEventHandle().getAcknowledgementSet() != null) {
             bufferedEventHandles.add(record.getData().getEventHandle());
         }
         Event event = getEvent(record);

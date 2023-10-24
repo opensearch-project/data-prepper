@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.EventFactory;
@@ -391,6 +392,7 @@ class PipelineTests {
         private List<Record> records;
         private List<DataFlowComponent<Sink>> dataFlowComponents;
         private Source mockSource;
+        private AcknowledgementSet acknowledgementSet;
 
         @BeforeEach
         void setUp() {
@@ -427,7 +429,9 @@ class PipelineTests {
                 Record rec = records.get(0);
                 event = mock(JacksonEvent.class);
                 eventHandle = mock(EventHandle.class);
+                acknowledgementSet = mock(AcknowledgementSet.class);
                 when(event.getEventHandle()).thenReturn(eventHandle);
+                when(eventHandle.getAcknowledgementSet()).thenReturn(acknowledgementSet);
                 when(rec.getData()).thenReturn(event);
                 routerCopyRecordStrategy.getRecord(rec);
                 routerCopyRecordStrategy.getRecord(rec);

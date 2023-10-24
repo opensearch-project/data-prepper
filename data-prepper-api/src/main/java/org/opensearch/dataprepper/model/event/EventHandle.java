@@ -5,6 +5,9 @@
 
 package org.opensearch.dataprepper.model.event;
 
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import java.time.Instant;
+
 public interface EventHandle {
     /**
      * releases event handle
@@ -14,4 +17,46 @@ public interface EventHandle {
      * @since 2.2
      */
     void release(boolean result);
+
+    /**
+     * sets acknowledgement set
+     *
+     * @param acknowledgementSet acknowledgementSet to be set in the event handle
+     * @since 2.6
+     */
+    void setAcknowledgementSet(final AcknowledgementSet acknowledgementSet);
+
+    /**
+     * gets acknowledgement set
+     *
+     * @return returns acknowledgementSet from the event handle
+     * @since 2.6
+     */
+    AcknowledgementSet getAcknowledgementSet();
+
+    /**
+     * sets external origination time
+     *
+     * @param externalOriginationTime externalOriginationTime to be set in the event handle
+     * @since 2.6
+     */
+    void setExternalOriginationTime(final Instant externalOriginationTime);
+
+    /**
+     * gets external origination time
+     *
+     * @return returns externalOriginationTime from the event handle. This can be null if it is never set.
+     * @since 2.6
+     */
+    Instant getExternalOriginationTime();
+
+    /**
+     * gets internal origination time
+     *
+     * @return returns internalOriginationTime from the event handle.
+     * @since 2.6
+     */
+    Instant getInternalOriginationTime();
+
+    
 }

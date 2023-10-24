@@ -45,7 +45,6 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventMetadata;
-import org.opensearch.dataprepper.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 
@@ -103,8 +102,8 @@ public class RouterCopyRecordStrategyTests {
         Iterator iter = recordsIn.iterator();
         while (iter.hasNext()) {
             Record r = (Record) iter.next();
-            DefaultEventHandle handle = new DefaultEventHandle(acknowledgementSet1);
-            ((JacksonEvent)r.getData()).setEventHandle(handle);
+            EventHandle handle = ((JacksonEvent)r.getData()).getEventHandle();
+            handle.setAcknowledgementSet(acknowledgementSet1);
             eventHandles.add(handle);
         }
     }
@@ -243,7 +242,7 @@ public class RouterCopyRecordStrategyTests {
         try {
             doAnswer((i) -> {
                 JacksonEvent e1 = (JacksonEvent) i.getArgument(0);
-                e1.setEventHandle(new DefaultEventHandle(acknowledgementSet1));
+                e1.getEventHandle().setAcknowledgementSet(acknowledgementSet1);
                 return null;
             }).when(acknowledgementSet1).add(any(JacksonEvent.class));
         } catch (Exception e){}
@@ -281,7 +280,7 @@ public class RouterCopyRecordStrategyTests {
         try {
             doAnswer((i) -> {
                 JacksonEvent e1 = (JacksonEvent) i.getArgument(0);
-                e1.setEventHandle(new DefaultEventHandle(acknowledgementSet1));
+                e1.getEventHandle().setAcknowledgementSet(acknowledgementSet1);
                 return null;
             }).when(acknowledgementSet1).add(any(JacksonEvent.class));
         } catch (Exception e){}

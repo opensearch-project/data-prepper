@@ -127,7 +127,7 @@ public class S3SinkService {
                     int count = currentBuffer.getEventCount() + 1;
                     currentBuffer.setEventCount(count);
 
-                    if (event.getEventHandle() != null) {
+                    if (event.getEventHandle().getAcknowledgementSet() != null) {
                         bufferedEventHandles.add(event.getEventHandle());
                     }
                 } catch (Exception ex) {

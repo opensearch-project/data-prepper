@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.acknowledgements;
 
-import org.opensearch.dataprepper.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
@@ -53,8 +52,8 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         lock.lock();
         try {
             if (event instanceof JacksonEvent) {
-                EventHandle eventHandle = new DefaultEventHandle(this);
-                ((JacksonEvent) event).setEventHandle(eventHandle);
+                EventHandle eventHandle = event.getEventHandle();
+                eventHandle.setAcknowledgementSet(this);
                 pendingAcknowledgments.put(eventHandle, new AtomicInteger(1));
             }
         } finally {

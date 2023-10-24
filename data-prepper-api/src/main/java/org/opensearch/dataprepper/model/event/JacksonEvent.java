@@ -91,18 +91,21 @@ public class JacksonEvent implements Event {
         }
 
         this.jsonNode = getInitialJsonNode(builder.data);
+        this.eventHandle = new DefaultEventHandle(eventMetadata.getTimeReceived());
     }
 
     protected JacksonEvent(final JacksonEvent otherEvent) {
         this.jsonNode = otherEvent.jsonNode.deepCopy();
         this.eventMetadata = DefaultEventMetadata.fromEventMetadata(otherEvent.eventMetadata);
+        this.eventHandle = new DefaultEventHandle(eventMetadata.getTimeReceived());
     }
 
     public static Event fromMessage(String message) {
-        return JacksonEvent.builder()
+        JacksonEvent event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
                 .withData(Collections.singletonMap(MESSAGE_KEY, message))
                 .build();
+        return event;
     }
 
     private JsonNode getInitialJsonNode(final Object data) {
@@ -152,7 +155,7 @@ public class JacksonEvent implements Event {
         }
     }
 
-    public void setEventHandle(EventHandle handle) {
+    private void setEventHandle(EventHandle handle) {
         this.eventHandle = handle;
     }
 

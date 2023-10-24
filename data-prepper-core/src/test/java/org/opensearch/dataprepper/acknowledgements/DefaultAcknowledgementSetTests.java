@@ -11,8 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.event.DefaultEventHandle;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 
 import java.time.Duration;
 import java.util.concurrent.ExecutorService;
@@ -24,7 +25,6 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
@@ -34,7 +34,12 @@ class DefaultAcknowledgementSetTests {
     private DefaultAcknowledgementSet defaultAcknowledgementSet;
     @Mock
     private JacksonEvent event;
+    @Mock
+    private JacksonEvent event2;
+    @Mock
     private DefaultEventHandle handle;
+    @Mock
+    private DefaultEventHandle handle2;
 
     private ExecutorService executor;
     private Boolean acknowledgementSetResult;
@@ -78,12 +83,21 @@ class DefaultAcknowledgementSetTests {
         callbackInterrupted = new AtomicBoolean(false);
 
         event = mock(JacksonEvent.class);
-        
-        doAnswer((i) -> {
-            handle = i.getArgument(0);
+        handle = mock(DefaultEventHandle.class);
+        lenient().doAnswer(a -> {
+            AcknowledgementSet acknowledgementSet = a.getArgument(0);
+            lenient().when(handle.getAcknowledgementSet()).thenReturn(acknowledgementSet);
             return null;
-        }).when(event).setEventHandle(any());
+        }).when(handle).setAcknowledgementSet(any(AcknowledgementSet.class));
         lenient().when(event.getEventHandle()).thenReturn(handle);
+        event2 = mock(JacksonEvent.class);
+        lenient().doAnswer(a -> {
+            AcknowledgementSet acknowledgementSet = a.getArgument(0);
+            lenient().when(handle2.getAcknowledgementSet()).thenReturn(acknowledgementSet);
+            return null;
+        }).when(handle2).setAcknowledgementSet(any(AcknowledgementSet.class));
+        handle2 = mock(DefaultEventHandle.class);
+        lenient().when(event2.getEventHandle()).thenReturn(handle2);
     }
 
     @Test
@@ -115,7 +129,6 @@ class DefaultAcknowledgementSetTests {
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
         DefaultAcknowledgementSet secondAcknowledgementSet = createObjectUnderTest();
-        DefaultEventHandle handle2 = new DefaultEventHandle(secondAcknowledgementSet);
         defaultAcknowledgementSet.acquire(handle2);
         assertThat(invalidAcquiresCounter, equalTo(1));
     }
@@ -125,7 +138,6 @@ class DefaultAcknowledgementSetTests {
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
         DefaultAcknowledgementSet secondAcknowledgementSet = createObjectUnderTest();
-        DefaultEventHandle handle2 = new DefaultEventHandle(secondAcknowledgementSet);
         assertThat(defaultAcknowledgementSet.release(handle2, true), equalTo(false));
         assertThat(invalidReleasesCounter, equalTo(1));
     }
@@ -170,6 +182,11 @@ class DefaultAcknowledgementSetTests {
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
         assertThat(handle, not(equalTo(null)));
+        lenient().doAnswer(a -> {
+            AcknowledgementSet acknowledgementSet = a.getArgument(0);
+            lenient().when(handle.getAcknowledgementSet()).thenReturn(acknowledgementSet);
+            return null;
+        }).when(handle).setAcknowledgementSet(any(AcknowledgementSet.class));
         assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
         defaultAcknowledgementSet.acquire(handle);
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(false));
@@ -198,6 +215,11 @@ class DefaultAcknowledgementSetTests {
         );
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
+        lenient().doAnswer(a -> {
+            AcknowledgementSet acknowledgementSet = a.getArgument(0);
+            lenient().when(handle.getAcknowledgementSet()).thenReturn(acknowledgementSet);
+            return null;
+        }).when(handle).setAcknowledgementSet(any(AcknowledgementSet.class));
         assertThat(handle, not(equalTo(null)));
         assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(true));

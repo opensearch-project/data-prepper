@@ -104,7 +104,7 @@ public class CloudWatchLogsService {
     }
 
     private void addToBuffer(final Record<Event> log, final String logString) {
-        if (log.getData().getEventHandle() != null) {
+        if (log.getData().getEventHandle().getAcknowledgementSet() != null) {
             bufferedEventHandles.add(log.getData().getEventHandle());
         }
         buffer.writeEvent(logString.getBytes(StandardCharsets.UTF_8));

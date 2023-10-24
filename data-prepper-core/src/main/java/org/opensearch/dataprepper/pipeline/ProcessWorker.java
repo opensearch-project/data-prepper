@@ -97,7 +97,7 @@ public class ProcessWorker implements Runnable {
         // For each event in the input events list that is not present in the output events, send positive acknowledgement, if acknowledgements are enabled for it
         inputEvents.forEach(event -> {
             EventHandle eventHandle = event.getEventHandle();
-            if (Objects.nonNull(eventHandle) && !outputEventsSet.contains(event)) {
+            if (Objects.nonNull(eventHandle) && eventHandle.getAcknowledgementSet() != null && !outputEventsSet.contains(event)) {
                 eventHandle.release(true);
             } else if (acknowledgementsEnabled && Objects.isNull(eventHandle)) {
                 invalidEventHandlesCounter.increment();
