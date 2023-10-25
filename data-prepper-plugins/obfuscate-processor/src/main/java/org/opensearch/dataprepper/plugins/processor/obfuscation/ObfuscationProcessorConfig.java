@@ -8,7 +8,9 @@ package org.opensearch.dataprepper.plugins.processor.obfuscation;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
 import java.util.List;
 
@@ -28,14 +30,21 @@ public class ObfuscationProcessorConfig {
     @JsonProperty("action")
     private PluginModel action;
 
+    @JsonProperty("obfuscate_when")
+    private String obfuscateWhen;
+
+    @JsonProperty("tags_on_match_failure")
+    private List<String> tagsOnMatchFailure;
+
     public ObfuscationProcessorConfig() {
     }
 
-    public ObfuscationProcessorConfig(String source, List<String> patterns, String target, PluginModel action) {
+    public ObfuscationProcessorConfig(String source, List<String> patterns, String target, PluginModel action, List<String> tagsOnMatchFailure) {
         this.source = source;
         this.patterns = patterns;
         this.target = target;
         this.action = action;
+        this.tagsOnMatchFailure = tagsOnMatchFailure;
     }
 
     public String getSource() {
@@ -52,5 +61,19 @@ public class ObfuscationProcessorConfig {
 
     public PluginModel getAction() {
         return action;
+    }
+
+    public String getObfuscateWhen() {
+        return obfuscateWhen;
+    }
+
+    public List<String> getTagsOnMatchFailure() {
+        return tagsOnMatchFailure;
+    }
+
+    void validateObfuscateWhen(final ExpressionEvaluator expressionEvaluator) {
+        if (obfuscateWhen != null && !expressionEvaluator.isValidExpressionStatement(obfuscateWhen)) {
+            throw new InvalidPluginConfigurationException(String.format("obfuscate_when value %s is not a valid Data Prepper expression statement", obfuscateWhen));
+        }
     }
 }
