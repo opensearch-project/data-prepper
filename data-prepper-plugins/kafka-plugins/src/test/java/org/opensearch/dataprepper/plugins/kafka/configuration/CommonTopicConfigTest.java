@@ -5,13 +5,14 @@
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.mockito.Mock;
+import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.kafka.source.KafkaSourceConfig;
 import org.yaml.snakeyaml.Yaml;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -26,13 +27,9 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import org.opensearch.dataprepper.model.types.ByteCount;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
-class TopicConfigTest {
-
-    @Mock
+class CommonTopicConfigTest {
     TopicConfig topicConfig;
 
     private static final String YAML_FILE_WITH_CONSUMER_CONFIG = "sample-pipelines.yaml";
@@ -42,7 +39,6 @@ class TopicConfigTest {
     @BeforeEach
     void setUp(TestInfo testInfo) throws IOException {
         String fileName = testInfo.getTags().stream().findFirst().orElse("");
-        topicConfig = new TopicConfig();
         Yaml yaml = new Yaml();
         FileReader fileReader = new FileReader(getClass().getClassLoader().getResource(fileName).getFile());
         Object data = yaml.load(fileReader);
@@ -56,7 +52,7 @@ class TopicConfigTest {
             String json = mapper.writeValueAsString(kafkaConfigMap);
             Reader reader = new StringReader(json);
             KafkaSourceConfig kafkaSourceConfig = mapper.readValue(reader, KafkaSourceConfig.class);
-            List<TopicConfig> topicConfigList = kafkaSourceConfig.getTopics();
+            List<? extends ConsumerTopicConfig> topicConfigList = kafkaSourceConfig.getTopics();
             topicConfig = topicConfigList.get(0);
         }
     }
@@ -72,21 +68,20 @@ class TopicConfigTest {
     void testConfigValues_default() {
         assertEquals("my-topic-2", topicConfig.getName());
         assertEquals("my-test-group", topicConfig.getGroupId());
-        assertEquals(TopicConfig.DEFAULT_AUTO_COMMIT, topicConfig.getAutoCommit());
-        assertEquals(TopicConfig.DEFAULT_COMMIT_INTERVAL, topicConfig.getCommitInterval());
-        assertEquals(TopicConfig.DEFAULT_SESSION_TIMEOUT, topicConfig.getSessionTimeOut());
-        assertEquals(TopicConfig.DEFAULT_AUTO_OFFSET_RESET, topicConfig.getAutoOffsetReset());
-        assertEquals(TopicConfig.DEFAULT_THREAD_WAITING_TIME, topicConfig.getThreadWaitingTime());
-        assertEquals(ByteCount.parse(TopicConfig.DEFAULT_FETCH_MAX_BYTES).getBytes(), topicConfig.getFetchMaxBytes());
-        assertEquals(TopicConfig.DEFAULT_FETCH_MAX_WAIT, topicConfig.getFetchMaxWait());
-        assertEquals(ByteCount.parse(TopicConfig.DEFAULT_FETCH_MIN_BYTES).getBytes(), topicConfig.getFetchMinBytes());
-        assertEquals(TopicConfig.DEFAULT_RETRY_BACKOFF, topicConfig.getRetryBackoff());
-        assertEquals(TopicConfig.DEFAULT_RECONNECT_BACKOFF, topicConfig.getReconnectBackoff());
-        assertEquals(TopicConfig.DEFAULT_MAX_POLL_INTERVAL, topicConfig.getMaxPollInterval());
-        assertEquals(TopicConfig.DEFAULT_CONSUMER_MAX_POLL_RECORDS, topicConfig.getConsumerMaxPollRecords());
-        assertEquals(TopicConfig.DEFAULT_NUM_OF_WORKERS, topicConfig.getWorkers());
-        assertEquals(TopicConfig.DEFAULT_HEART_BEAT_INTERVAL_DURATION, topicConfig.getHeartBeatInterval());
-        assertEquals(ByteCount.parse(TopicConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES).getBytes(), topicConfig.getMaxPartitionFetchBytes());
+        assertEquals(CommonTopicConfig.DEFAULT_AUTO_COMMIT, topicConfig.getAutoCommit());
+        assertEquals(CommonTopicConfig.DEFAULT_SESSION_TIMEOUT, topicConfig.getSessionTimeOut());
+        assertEquals(CommonTopicConfig.DEFAULT_AUTO_OFFSET_RESET, topicConfig.getAutoOffsetReset());
+        assertEquals(CommonTopicConfig.DEFAULT_THREAD_WAITING_TIME, topicConfig.getThreadWaitingTime());
+        assertEquals(ByteCount.parse(CommonTopicConfig.DEFAULT_FETCH_MAX_BYTES).getBytes(), topicConfig.getFetchMaxBytes());
+        assertEquals(CommonTopicConfig.DEFAULT_FETCH_MAX_WAIT, topicConfig.getFetchMaxWait());
+        assertEquals(ByteCount.parse(CommonTopicConfig.DEFAULT_FETCH_MIN_BYTES).getBytes(), topicConfig.getFetchMinBytes());
+        assertEquals(CommonTopicConfig.DEFAULT_RETRY_BACKOFF, topicConfig.getRetryBackoff());
+        assertEquals(CommonTopicConfig.DEFAULT_RECONNECT_BACKOFF, topicConfig.getReconnectBackoff());
+        assertEquals(CommonTopicConfig.DEFAULT_MAX_POLL_INTERVAL, topicConfig.getMaxPollInterval());
+        assertEquals(CommonTopicConfig.DEFAULT_CONSUMER_MAX_POLL_RECORDS, topicConfig.getConsumerMaxPollRecords());
+        assertEquals(CommonTopicConfig.DEFAULT_NUM_OF_WORKERS, topicConfig.getWorkers());
+        assertEquals(CommonTopicConfig.DEFAULT_HEART_BEAT_INTERVAL_DURATION, topicConfig.getHeartBeatInterval());
+        assertEquals(ByteCount.parse(CommonTopicConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES).getBytes(), topicConfig.getMaxPartitionFetchBytes());
     }
 
     @Test
@@ -94,7 +89,6 @@ class TopicConfigTest {
     void testConfigValues_from_yaml() {
         assertEquals("my-topic-1", topicConfig.getName());
         assertEquals(false, topicConfig.getAutoCommit());
-        assertEquals(Duration.ofSeconds(5), topicConfig.getCommitInterval());
         assertEquals(45000, topicConfig.getSessionTimeOut().toMillis());
         assertEquals("earliest", topicConfig.getAutoOffsetReset());
         assertEquals(Duration.ofSeconds(1), topicConfig.getThreadWaitingTime());
@@ -106,7 +100,7 @@ class TopicConfigTest {
         assertEquals(500L, topicConfig.getConsumerMaxPollRecords().longValue());
         assertEquals(5, topicConfig.getWorkers().intValue());
         assertEquals(Duration.ofSeconds(3), topicConfig.getHeartBeatInterval());
-        assertEquals(10*ByteCount.parse(TopicConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES).getBytes(), topicConfig.getMaxPartitionFetchBytes());
+        assertEquals(10*ByteCount.parse(CommonTopicConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES).getBytes(), topicConfig.getMaxPartitionFetchBytes());
     }
 
     @Test
@@ -114,7 +108,6 @@ class TopicConfigTest {
     void testConfigValues_from_yaml_not_null() {
         assertNotNull(topicConfig.getName());
         assertNotNull(topicConfig.getAutoCommit());
-        assertNotNull(topicConfig.getCommitInterval());
         assertNotNull(topicConfig.getSessionTimeOut());
         assertNotNull(topicConfig.getAutoOffsetReset());
         assertNotNull(topicConfig.getThreadWaitingTime());
@@ -131,11 +124,11 @@ class TopicConfigTest {
     @Test
     @Tag(YAML_FILE_WITH_CONSUMER_CONFIG)
     void TestInvalidConfigValues() throws NoSuchFieldException, IllegalAccessException {
-        setField(TopicConfig.class, topicConfig, "fetchMaxBytes", "60mb");
+        setField(CommonTopicConfig.class, topicConfig, "fetchMaxBytes", "60mb");
         assertThrows(RuntimeException.class, () -> topicConfig.getFetchMaxBytes());
-        setField(TopicConfig.class, topicConfig, "fetchMaxBytes", "0b");
+        setField(CommonTopicConfig.class, topicConfig, "fetchMaxBytes", "0b");
         assertThrows(RuntimeException.class, () -> topicConfig.getFetchMaxBytes());
-        setField(TopicConfig.class, topicConfig, "fetchMinBytes", "0b");
+        setField(CommonTopicConfig.class, topicConfig, "fetchMinBytes", "0b");
         assertThrows(RuntimeException.class, () -> topicConfig.getFetchMinBytes());
     }
 

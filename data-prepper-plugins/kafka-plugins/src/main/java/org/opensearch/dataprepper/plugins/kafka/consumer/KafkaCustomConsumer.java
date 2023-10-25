@@ -24,14 +24,14 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.codec.ByteDecoder;
+import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.LogRateLimiter;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
@@ -72,7 +72,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private KafkaConsumer consumer= null;
     private AtomicBoolean shutdownInProgress;
     private final String topicName;
-    private final TopicConfig topicConfig;
+    private final ConsumerTopicConfig topicConfig;
     private MessageFormat schema;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final Buffer<Record<Event>> buffer;
@@ -97,7 +97,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final AtomicBoolean shutdownInProgress,
                                final Buffer<Record<Event>> buffer,
                                final KafkaConsumerConfig consumerConfig,
-                               final TopicConfig topicConfig,
+                               final ConsumerTopicConfig topicConfig,
                                final String schemaType,
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final ByteDecoder byteDecoder,

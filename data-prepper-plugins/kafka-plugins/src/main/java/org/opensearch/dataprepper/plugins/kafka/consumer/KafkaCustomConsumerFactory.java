@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafka.consumer;
 
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
@@ -26,6 +31,7 @@ import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.common.key.KeyFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
@@ -62,7 +68,7 @@ public class KafkaCustomConsumerFactory {
         this.awsCredentialsSupplier = awsCredentialsSupplier;
     }
 
-    public List<KafkaCustomConsumer> createConsumersForTopic(final KafkaConsumerConfig kafkaConsumerConfig, final TopicConfig topic,
+    public List<KafkaCustomConsumer> createConsumersForTopic(final KafkaConsumerConfig kafkaConsumerConfig, final ConsumerTopicConfig topic,
                                                              final Buffer<Record<Event>> buffer, final PluginMetrics pluginMetrics,
                                                              final AcknowledgementSetManager acknowledgementSetManager,
                                                              final ByteDecoder byteDecoder,
@@ -109,7 +115,7 @@ public class KafkaCustomConsumerFactory {
         return consumers;
     }
 
-    private Properties getConsumerProperties(final KafkaConsumerConfig sourceConfig, final TopicConfig topicConfig, final Properties authProperties) {
+    private Properties getConsumerProperties(final KafkaConsumerConfig sourceConfig, final ConsumerTopicConfig topicConfig, final Properties authProperties) {
         Properties properties = (Properties)authProperties.clone();
         if (StringUtils.isNotEmpty(sourceConfig.getClientDnsLookup())) {
             ClientDNSLookupType dnsLookupType = ClientDNSLookupType.getDnsLookupType(sourceConfig.getClientDnsLookup());
@@ -131,7 +137,7 @@ public class KafkaCustomConsumerFactory {
         return properties;
     }
 
-    private void setConsumerTopicProperties(final Properties properties, final TopicConfig topicConfig) {
+    private void setConsumerTopicProperties(final Properties properties, final ConsumerTopicConfig topicConfig) {
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, topicConfig.getGroupId());
         properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, (int)topicConfig.getMaxPartitionFetchBytes());
         properties.put(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, ((Long)topicConfig.getRetryBackoff().toMillis()).intValue());

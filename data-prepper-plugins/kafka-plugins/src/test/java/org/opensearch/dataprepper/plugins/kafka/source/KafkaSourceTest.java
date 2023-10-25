@@ -6,23 +6,6 @@
 package org.opensearch.dataprepper.plugins.kafka.source;
 
 import org.apache.kafka.common.config.ConfigException;
-import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.configuration.PipelineDescription;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
-import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
-import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,23 +14,36 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
+import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.Collections;
-import java.util.Objects;
-import java.time.Duration;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -73,7 +69,7 @@ class KafkaSourceTest {
     private PipelineDescription pipelineDescription;
 
     @Mock
-    TopicConfig topic1, topic2;
+    ConsumerTopicConfig topic1, topic2;
 
     @Mock
     private Buffer<Record<Event>> buffer;
@@ -117,7 +113,7 @@ class KafkaSourceTest {
         when(topic1.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
         when(topic2.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
         when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList("http://localhost:1234"));
-        when(sourceConfig.getTopics()).thenReturn(Arrays.asList(topic1, topic2));
+        when(sourceConfig.getTopics()).thenReturn((List) List.of(topic1, topic2));
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
         when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);

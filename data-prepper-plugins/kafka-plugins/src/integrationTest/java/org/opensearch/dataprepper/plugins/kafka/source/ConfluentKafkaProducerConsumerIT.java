@@ -5,49 +5,45 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
+import io.micrometer.core.instrument.Counter;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.model.configuration.PipelineDescription;
-
-import static org.mockito.Mockito.when;
-import org.mockito.Mock;
-import static org.mockito.Mockito.mock;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.awaitility.Awaitility.await;
-
-import io.micrometer.core.instrument.Counter;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.Iterator;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.kafka.common.errors.SerializationException;
-import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class ConfluentKafkaProducerConsumerIT {
     @Mock
@@ -78,7 +74,7 @@ public class ConfluentKafkaProducerConsumerIT {
     private PlainTextAuthConfig plainTextAuthConfig;
 
     private KafkaSource kafkaSource;
-    private TopicConfig topicConfig;
+    private ConsumerTopicConfig topicConfig;
     private Counter counter;
     private List<Record> receivedRecords;
 
@@ -129,7 +125,7 @@ public class ConfluentKafkaProducerConsumerIT {
         topicName = System.getProperty("tests.kafka.topic_name");
         username = System.getProperty("tests.kafka.username");
         password = System.getProperty("tests.kafka.password");
-        topicConfig = mock(TopicConfig.class);
+        topicConfig = mock(ConsumerTopicConfig.class);
         when(topicConfig.getName()).thenReturn(topicName);
         when(topicConfig.getGroupId()).thenReturn("testGroupConf");
         when(topicConfig.getWorkers()).thenReturn(1);
@@ -147,7 +143,7 @@ public class ConfluentKafkaProducerConsumerIT {
         when(topicConfig.getFetchMaxWait()).thenReturn(500);
         when(topicConfig.getMaxPartitionFetchBytes()).thenReturn(1024L*1024);
         when(topicConfig.getReconnectBackoff()).thenReturn(Duration.ofSeconds(10));
-        when(sourceConfig.getTopics()).thenReturn(List.of(topicConfig));
+        when(sourceConfig.getTopics()).thenReturn((List) List.of(topicConfig));
         when(sourceConfig.getBootstrapServers()).thenReturn(List.of(bootstrapServers));
         encryptionConfig = mock(EncryptionConfig.class);
         when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);

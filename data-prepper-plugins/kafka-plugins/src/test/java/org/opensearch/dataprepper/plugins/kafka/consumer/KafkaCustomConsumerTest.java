@@ -32,9 +32,9 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
@@ -50,7 +50,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.awaitility.Awaitility.await;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -71,13 +70,13 @@ public class KafkaCustomConsumerTest {
     private Buffer<Record<Event>> buffer;
 
     @Mock
-    private KafkaSourceConfig sourceConfig;
+    private KafkaConsumerConfig sourceConfig;
 
     private ExecutorService callbackExecutor;
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
-    private TopicConfig topicConfig;
+    private ConsumerTopicConfig topicConfig;
 
     @Mock
     private KafkaTopicMetrics topicMetrics;
@@ -115,7 +114,7 @@ public class KafkaCustomConsumerTest {
         counter = mock(Counter.class);
         posCounter = mock(Counter.class);
         negCounter = mock(Counter.class);
-        topicConfig = mock(TopicConfig.class);
+        topicConfig = mock(ConsumerTopicConfig.class);
         when(topicMetrics.getNumberOfPositiveAcknowledgements()).thenReturn(posCounter);
         when(topicMetrics.getNumberOfNegativeAcknowledgements()).thenReturn(negCounter);
         when(topicMetrics.getNumberOfRecordsCommitted()).thenReturn(counter);
@@ -138,7 +137,7 @@ public class KafkaCustomConsumerTest {
         callbackExecutor = Executors.newFixedThreadPool(2); 
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(callbackExecutor, Duration.ofMillis(2000));
 
-        sourceConfig = mock(KafkaSourceConfig.class);
+        sourceConfig = mock(KafkaConsumerConfig.class);
         buffer = getBuffer();
         shutdownInProgress = new AtomicBoolean(false);
         when(topicConfig.getName()).thenReturn("topic1");

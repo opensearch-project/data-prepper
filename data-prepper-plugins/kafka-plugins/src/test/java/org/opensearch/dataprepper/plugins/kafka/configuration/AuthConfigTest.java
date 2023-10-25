@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
@@ -11,6 +16,7 @@ import static org.mockito.Mockito.when;
 import static org.hamcrest.Matchers.equalTo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.kafka.source.KafkaSourceConfig;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;

@@ -30,7 +30,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
@@ -204,7 +204,7 @@ public class KafkaSource implements Source<Record<Event>> {
     }
 
     private long calculateLongestThreadWaitingTime() {
-        List<TopicConfig> topicsList = sourceConfig.getTopics();
+        List<? extends ConsumerTopicConfig> topicsList = sourceConfig.getTopics();
         return topicsList.stream().
                 map(
                         topics -> topics.getThreadWaitingTime().toSeconds()
@@ -217,7 +217,7 @@ public class KafkaSource implements Source<Record<Event>> {
         return kafkaConsumer;
     }
 
-    private Properties getConsumerProperties(final TopicConfig topicConfig, final Properties authProperties) {
+    private Properties getConsumerProperties(final ConsumerTopicConfig topicConfig, final Properties authProperties) {
         Properties properties = (Properties) authProperties.clone();
         if (StringUtils.isNotEmpty(sourceConfig.getClientDnsLookup())) {
             ClientDNSLookupType dnsLookupType = ClientDNSLookupType.getDnsLookupType(sourceConfig.getClientDnsLookup());
@@ -306,7 +306,7 @@ public class KafkaSource implements Source<Record<Event>> {
         }
     }
 
-    private void setConsumerTopicProperties(Properties properties, TopicConfig topicConfig) {
+    private void setConsumerTopicProperties(Properties properties, ConsumerTopicConfig topicConfig) {
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupID);
         properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, (int) topicConfig.getMaxPartitionFetchBytes());
         properties.put(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, ((Long) topicConfig.getRetryBackoff().toMillis()).intValue());

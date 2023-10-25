@@ -3,12 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.kafka.configuration;
+package org.opensearch.dataprepper.plugins.kafka.source;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 
 import java.util.List;
 import java.util.Objects;
@@ -26,7 +32,7 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
     @JsonProperty("topics")
     @NotNull
     @Size(min = 1, max = 10, message = "The number of Topics should be between 1 and 10")
-    private List<TopicConfig> topics;
+    private List<SourceTopicConfig> topics;
 
     @JsonProperty("schema")
     @Valid
@@ -57,11 +63,11 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
         return acknowledgementsEnabled;
     }
 
-    public List<TopicConfig> getTopics() {
+    public List<? extends ConsumerTopicConfig> getTopics() {
         return topics;
     }
 
-    public void setTopics(List<TopicConfig> topics) {
+    public void setTopics(List<SourceTopicConfig> topics) {
         this.topics = topics;
     }
 

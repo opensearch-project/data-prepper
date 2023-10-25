@@ -26,9 +26,7 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.yaml.snakeyaml.Yaml;
@@ -198,7 +196,7 @@ public class KafkaSinkTest {
     @Test
     public void doOutputTestForAutoTopicCreate() {
 
-        TopicConfig topicConfig = mock(TopicConfig.class);
+        SinkTopicConfig topicConfig = mock(SinkTopicConfig.class);
         when(topicConfig.isCreate()).thenReturn(true);
 
         SchemaConfig schemaConfig = mock(SchemaConfig.class);

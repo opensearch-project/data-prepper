@@ -1,10 +1,18 @@
-package org.opensearch.dataprepper.plugins.kafka.configuration;
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.opensearch.dataprepper.plugins.kafka.source;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
@@ -27,7 +35,7 @@ import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setFie
 class KafkaSourceConfigTest {
 
 	@Mock
-	KafkaSourceConfig kafkaSourceConfig;
+    KafkaSourceConfig kafkaSourceConfig;
 
 	List<String> bootstrapServers;
 
@@ -73,14 +81,14 @@ class KafkaSourceConfigTest {
 		kafkaSourceConfig = new KafkaSourceConfig();
         EncryptionConfig encryptionConfig = kafkaSourceConfig.getEncryptionConfig();
 		kafkaSourceConfig.setBootStrapServers(new ArrayList<>(Arrays.asList("127.0.0.1:9092")));
-		TopicConfig topicConfig = mock(TopicConfig.class);
+		SourceTopicConfig topicConfig = mock(SourceTopicConfig.class);
 		kafkaSourceConfig.setTopics(Collections.singletonList(topicConfig));
 
 		assertEquals(Collections.singletonList("127.0.0.1:9092"), kafkaSourceConfig.getBootstrapServers());
 		assertEquals(Collections.singletonList(topicConfig), kafkaSourceConfig.getTopics());
         setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsEnabled", true);
 		assertEquals(true, kafkaSourceConfig.getAcknowledgementsEnabled());
-		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionConfig().getType());
+		Assertions.assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionConfig().getType());
         setField(EncryptionConfig.class, encryptionConfig, "type", EncryptionType.NONE);
 		assertEquals(EncryptionType.NONE, encryptionConfig.getType());
         setField(EncryptionConfig.class, encryptionConfig, "type", EncryptionType.SSL);

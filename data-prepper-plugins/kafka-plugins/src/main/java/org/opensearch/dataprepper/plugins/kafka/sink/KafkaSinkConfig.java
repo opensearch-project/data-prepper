@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.kafka.configuration;
+package org.opensearch.dataprepper.plugins.kafka.sink;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
@@ -13,6 +13,13 @@ import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.ObjectUtils;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
+import org.opensearch.dataprepper.plugins.kafka.configuration.ProducerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,8 +31,7 @@ import java.util.Optional;
  * * A helper class that helps to read user configuration values from
  * pipelines.yaml
  */
-
-public class KafkaSinkConfig implements KafkaProducerConfig{
+public class KafkaSinkConfig implements KafkaProducerConfig {
 
     public static final String DLQ = "dlq";
 
@@ -61,7 +67,7 @@ public class KafkaSinkConfig implements KafkaProducerConfig{
 
 
     @JsonProperty("topic")
-    TopicConfig topic;
+    SinkTopicConfig topic;
 
     @JsonProperty("authentication")
     private AuthConfig authConfig;
@@ -140,11 +146,11 @@ public class KafkaSinkConfig implements KafkaProducerConfig{
         this.schemaConfig = schemaConfig;
     }
 
-    public TopicConfig getTopic() {
+    public ProducerTopicConfig getTopic() {
         return topic;
     }
 
-    public void setTopic(TopicConfig topic) {
+    public void setTopic(SinkTopicConfig topic) {
         this.topic = topic;
     }
 

@@ -34,9 +34,8 @@ import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.ProducerTopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
@@ -63,7 +62,7 @@ public class KafkaSinkJsonTypeIT {
     private KafkaSinkConfig kafkaSinkConfig;
 
     @Mock
-    private TopicConfig topicConfig;
+    private ProducerTopicConfig topicConfig;
 
     private KafkaSink kafkaSink;
 
@@ -126,7 +125,7 @@ public class KafkaSinkJsonTypeIT {
         final String testGroup = "TestGroup_" + RandomStringUtils.randomAlphabetic(5);
         testTopic = "TestTopic_" + RandomStringUtils.randomAlphabetic(5);
 
-        topicConfig = mock(TopicConfig.class);
+        topicConfig = mock(ProducerTopicConfig.class);
         when(topicConfig.getName()).thenReturn(testTopic);
         when(topicConfig.getGroupId()).thenReturn(testGroup);
         when(topicConfig.getWorkers()).thenReturn(1);
@@ -223,9 +222,6 @@ public class KafkaSinkJsonTypeIT {
     }
 
     private void consumeTestMessages(List<Record<Event>> recList) {
-
-        props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
-                topicConfig.getCommitInterval().toSecondsPart());
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
                 topicConfig.getAutoOffsetReset());
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
