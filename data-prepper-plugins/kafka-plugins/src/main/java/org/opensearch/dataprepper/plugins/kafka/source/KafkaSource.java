@@ -117,6 +117,7 @@ public class KafkaSource implements Source<Record<Event>> {
                 int numWorkers = topic.getWorkers();
                 executorService = Executors.newFixedThreadPool(numWorkers);
                 allTopicExecutorServices.add(executorService);
+                final TopicEmptinessMetadata topicEmptinessMetadata = new TopicEmptinessMetadata();
 
                 IntStream.range(0, numWorkers).forEach(index -> {
                     while (true) {
@@ -140,7 +141,7 @@ public class KafkaSource implements Source<Record<Event>> {
 
                     }
                     consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType,
-                            acknowledgementSetManager, null, topicMetrics, new TopicEmptinessMetadata());
+                            acknowledgementSetManager, null, topicMetrics, topicEmptinessMetadata);
                     allTopicConsumers.add(consumer);
 
                     executorService.submit(consumer);
