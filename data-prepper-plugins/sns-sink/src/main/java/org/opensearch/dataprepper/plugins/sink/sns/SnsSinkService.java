@@ -121,9 +121,7 @@ public class SnsSinkService {
             for (Record<Event> record : records) {
                 final Event event = record.getData();
                 processRecordsList.add(event);
-                if (event.getEventHandle().getAcknowledgementSet() != null) {
-                    bufferedEventHandles.add(event.getEventHandle());
-                }
+                bufferedEventHandles.add(event.getEventHandle());
                 if (snsSinkConfig.getBatchSize() == processRecordsList.size()) {
                     processRecords();
                     processRecordsList.clear();

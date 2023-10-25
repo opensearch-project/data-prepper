@@ -67,8 +67,6 @@ public class KafkaCustomProducerTest {
     @BeforeEach
     public void setUp() {
         event = (JacksonEvent) JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        DefaultEventHandle defaultEventHandle = mock(DefaultEventHandle.class);
-        event.setEventHandle(defaultEventHandle);
         record = new Record<>(event);
         final TopicConfig topicConfig = new TopicConfig();
         topicConfig.setName("test-topic");

@@ -155,10 +155,6 @@ public class JacksonEvent implements Event {
         }
     }
 
-    private void setEventHandle(EventHandle handle) {
-        this.eventHandle = handle;
-    }
-
     @Override
     public EventHandle getEventHandle() {
         return eventHandle;
