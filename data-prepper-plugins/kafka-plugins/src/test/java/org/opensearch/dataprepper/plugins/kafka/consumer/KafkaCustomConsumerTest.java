@@ -67,6 +67,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -476,6 +477,12 @@ public class KafkaCustomConsumerTest {
         final List<TopicPartition> topicPartitions = buildTopicPartitions(1);
 
         consumer = createObjectUnderTest("json", true);
+
+        // Reset the static variables
+        KafkaCustomConsumer.topicEmptyCheckingOwnerThreadId = null;
+        KafkaCustomConsumer.lastIsEmptyCheckTime = 0;
+        KafkaCustomConsumer.TOPIC_PARTITION_TO_IS_EMPTY.clear();
+
         when(kafkaConsumer.partitionsFor(TOPIC_NAME)).thenReturn(List.of(partitionInfo));
         when(partitionInfo.partition()).thenReturn(0);
         when(kafkaConsumer.committed(anySet())).thenReturn(getTopicPartitionToMap(topicPartitions, offsetAndMetadata));
@@ -497,6 +504,12 @@ public class KafkaCustomConsumerTest {
         final List<TopicPartition> topicPartitions = buildTopicPartitions(1);
 
         consumer = createObjectUnderTest("json", true);
+
+        // Reset the static variables
+        KafkaCustomConsumer.topicEmptyCheckingOwnerThreadId = null;
+        KafkaCustomConsumer.lastIsEmptyCheckTime = 0;
+        KafkaCustomConsumer.TOPIC_PARTITION_TO_IS_EMPTY.clear();
+
         when(kafkaConsumer.partitionsFor(TOPIC_NAME)).thenReturn(List.of(partitionInfo));
         when(partitionInfo.partition()).thenReturn(0);
         when(kafkaConsumer.committed(anySet())).thenReturn(getTopicPartitionToMap(topicPartitions, offsetAndMetadata));
@@ -517,6 +530,12 @@ public class KafkaCustomConsumerTest {
         final List<TopicPartition> topicPartitions = buildTopicPartitions(1);
 
         consumer = createObjectUnderTest("json", true);
+
+        // Reset the static variables
+        KafkaCustomConsumer.topicEmptyCheckingOwnerThreadId = null;
+        KafkaCustomConsumer.lastIsEmptyCheckTime = 0;
+        KafkaCustomConsumer.TOPIC_PARTITION_TO_IS_EMPTY.clear();
+
         when(kafkaConsumer.partitionsFor(TOPIC_NAME)).thenReturn(List.of(partitionInfo));
         when(partitionInfo.partition()).thenReturn(0);
         when(kafkaConsumer.committed(anySet())).thenReturn(getTopicPartitionToMap(topicPartitions, offsetAndMetadata));
@@ -538,6 +557,12 @@ public class KafkaCustomConsumerTest {
         final List<TopicPartition> topicPartitions = buildTopicPartitions(1);
 
         consumer = createObjectUnderTest("json", true);
+
+        // Reset the static variables
+        KafkaCustomConsumer.topicEmptyCheckingOwnerThreadId = null;
+        KafkaCustomConsumer.lastIsEmptyCheckTime = 0;
+        KafkaCustomConsumer.TOPIC_PARTITION_TO_IS_EMPTY.clear();
+
         when(kafkaConsumer.partitionsFor(TOPIC_NAME)).thenReturn(List.of(partitionInfo));
         when(partitionInfo.partition()).thenReturn(0);
         when(kafkaConsumer.committed(anySet())).thenReturn(Collections.emptyMap());
@@ -558,6 +583,12 @@ public class KafkaCustomConsumerTest {
         final List<TopicPartition> topicPartitions = buildTopicPartitions(2);
 
         consumer = createObjectUnderTest("json", true);
+
+        // Reset the static variables
+        KafkaCustomConsumer.topicEmptyCheckingOwnerThreadId = null;
+        KafkaCustomConsumer.lastIsEmptyCheckTime = 0;
+        KafkaCustomConsumer.TOPIC_PARTITION_TO_IS_EMPTY.clear();
+
         when(kafkaConsumer.partitionsFor(TOPIC_NAME)).thenReturn(List.of(partitionInfo, partitionInfo));
         when(partitionInfo.partition()).thenReturn(0).thenReturn(1);
         when(kafkaConsumer.committed(anySet())).thenReturn(getTopicPartitionToMap(topicPartitions, offsetAndMetadata));
@@ -582,6 +613,12 @@ public class KafkaCustomConsumerTest {
         final List<TopicPartition> topicPartitions = buildTopicPartitions(2);
 
         consumer = createObjectUnderTest("json", true);
+
+        // Reset the static variables
+        KafkaCustomConsumer.topicEmptyCheckingOwnerThreadId = null;
+        KafkaCustomConsumer.lastIsEmptyCheckTime = 0;
+        KafkaCustomConsumer.TOPIC_PARTITION_TO_IS_EMPTY.clear();
+
         when(kafkaConsumer.partitionsFor(TOPIC_NAME)).thenReturn(List.of(partitionInfo, partitionInfo));
         when(partitionInfo.partition()).thenReturn(0).thenReturn(1);
         when(kafkaConsumer.committed(anySet())).thenReturn(getTopicPartitionToMap(topicPartitions, offsetAndMetadata));
@@ -597,6 +634,34 @@ public class KafkaCustomConsumerTest {
         verify(kafkaConsumer).endOffsets(topicPartitions);
         verify(partitionInfo, times(2)).partition();
         verify(offsetAndMetadata, times(2)).offset();
+    }
+
+    @Test
+    public void isTopicEmpty_NonCheckerThread_ShortCircuits() {
+        consumer = createObjectUnderTest("json", true);
+
+        // Reset the static variables
+        KafkaCustomConsumer.topicEmptyCheckingOwnerThreadId = Thread.currentThread().getId() - 1;
+        KafkaCustomConsumer.lastIsEmptyCheckTime = 0;
+        KafkaCustomConsumer.TOPIC_PARTITION_TO_IS_EMPTY.clear();
+
+        assertThat(consumer.isTopicEmpty(), equalTo(true));
+
+        verifyNoInteractions(kafkaConsumer);
+    }
+
+    @Test
+    public void isTopicEmpty_CheckedWithinDelay_ShortCircuits() {
+        consumer = createObjectUnderTest("json", true);
+
+        // Reset the static variables
+        KafkaCustomConsumer.topicEmptyCheckingOwnerThreadId = null;
+        KafkaCustomConsumer.lastIsEmptyCheckTime = System.currentTimeMillis();
+        KafkaCustomConsumer.TOPIC_PARTITION_TO_IS_EMPTY.clear();
+
+        assertThat(consumer.isTopicEmpty(), equalTo(true));
+
+        verifyNoInteractions(kafkaConsumer);
     }
 
     private List<TopicPartition> buildTopicPartitions(final int partitionCount) {

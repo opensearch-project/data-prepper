@@ -70,9 +70,9 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private static final Long COMMIT_OFFSET_INTERVAL_MS = 300000L;
     private static final long IS_EMPTY_CHECK_INTERVAL_MS = 60000L;
     private static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 1;
-    private static final ConcurrentHashMap<TopicPartition, Boolean> TOPIC_PARTITION_TO_IS_EMPTY = new ConcurrentHashMap<>();
-    private static Long topicEmptyCheckingOwnerThreadId = null;
-    private static long lastIsEmptyCheckTime = 0;
+    static final ConcurrentHashMap<TopicPartition, Boolean> TOPIC_PARTITION_TO_IS_EMPTY = new ConcurrentHashMap<>();
+    static Long topicEmptyCheckingOwnerThreadId = null;
+    static long lastIsEmptyCheckTime = 0;
     static final String DEFAULT_KEY = "message";
 
     private volatile long lastCommitTime;
@@ -557,8 +557,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         for (TopicPartition topicPartition : topicPartitions) {
             final OffsetAndMetadata offsetAndMetadata = committedOffsets.get(topicPartition);
             final Long endOffset = endOffsets.get(topicPartition);
-            LOG.info("Partition {} offsets: endOffset: {}, committedOffset: {}",
-                    topicPartition, endOffset, Objects.isNull(offsetAndMetadata) ? "-" : offsetAndMetadata.offset());
             TOPIC_PARTITION_TO_IS_EMPTY.put(topicPartition, true);
 
             // If there is data in the partition
