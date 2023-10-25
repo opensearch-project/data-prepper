@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.model.event;
 
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
