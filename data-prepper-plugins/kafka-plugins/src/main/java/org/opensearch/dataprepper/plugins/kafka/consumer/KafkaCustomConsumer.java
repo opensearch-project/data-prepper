@@ -54,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -68,6 +69,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumer.class);
     private static final Long COMMIT_OFFSET_INTERVAL_MS = 300000L;
     private static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 1;
+    private static final ConcurrentHashMap<TopicPartition, Boolean> TOPIC_PARTITION_TO_IS_EMPTY = new ConcurrentHashMap<>();
+    private static Long topicEmptyCheckingOwnerThreadId = null;
     static final String DEFAULT_KEY = "message";
 
     private volatile long lastCommitTime;
@@ -531,7 +534,16 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         return Objects.isNull(offset) ? "-" : offset.toString();
     }
 
-    public boolean isTopicEmpty() {
+    public synchronized boolean isTopicEmpty() {
+        final long currentThreadId = Thread.currentThread().getId();
+        if (Objects.isNull(topicEmptyCheckingOwnerThreadId)) {
+            topicEmptyCheckingOwnerThreadId = currentThreadId;
+        }
+
+        if (currentThreadId != topicEmptyCheckingOwnerThreadId) {
+            return TOPIC_PARTITION_TO_IS_EMPTY.values().stream().allMatch(isEmpty -> isEmpty);
+        }
+
         final List<PartitionInfo> partitions = consumer.partitionsFor(topicName);
         final List<TopicPartition> topicPartitions = partitions.stream()
                 .map(partitionInfo -> new TopicPartition(topicName, partitionInfo.partition()))
@@ -548,16 +560,18 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             if (endOffset != 0L) {
                 // If there is no committed offset for the partition
                 if (Objects.isNull(offsetAndMetadata)) {
-                    return false;
+                    TOPIC_PARTITION_TO_IS_EMPTY.put(topicPartition, false);
                 }
 
                 // If the committed offset is behind the end offset
                 if (offsetAndMetadata.offset() < endOffset) {
-                    return false;
+                    TOPIC_PARTITION_TO_IS_EMPTY.put(topicPartition, false);
                 }
             }
+
+            TOPIC_PARTITION_TO_IS_EMPTY.put(topicPartition, true);
         }
 
-        return true;
+        return TOPIC_PARTITION_TO_IS_EMPTY.values().stream().allMatch(isEmpty -> isEmpty);
     }
 }
