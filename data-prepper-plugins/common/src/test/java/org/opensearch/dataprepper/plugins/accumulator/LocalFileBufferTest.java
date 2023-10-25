@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.equalTo;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @ExtendWith(MockitoExtension.class)
 class LocalFileBufferTest {
+    public static final int MAX_EVENTS = 55;
 
     public static final String KEY = UUID.randomUUID().toString() + ".log";
     public static final String PREFIX = "local";
@@ -35,6 +37,21 @@ class LocalFileBufferTest {
     void setUp() throws IOException {
         tempFile = File.createTempFile(PREFIX, SUFFIX);
         localFileBuffer = new LocalFileBuffer(tempFile);
+    }
+
+    @Test
+    void test_with_write_events_into_buffer() throws IOException {
+        int i = 0;
+        while (localFileBuffer.getEventCount() < MAX_EVENTS) {
+            localFileBuffer.getOutputStream().write(generateByteArray());
+            localFileBuffer.setEventCount(++i);
+        }
+        assertThat(localFileBuffer.getSize(), greaterThan(1l));
+        assertThat(localFileBuffer.getEventCount(), equalTo(55));
+        assertThat(localFileBuffer.getDuration(), equalTo(0L));
+        localFileBuffer.flushAndCloseStream();
+        localFileBuffer.removeTemporaryFile();
+        assertFalse(tempFile.exists(), "The temp file has not been deleted.");
     }
 
     @Test
