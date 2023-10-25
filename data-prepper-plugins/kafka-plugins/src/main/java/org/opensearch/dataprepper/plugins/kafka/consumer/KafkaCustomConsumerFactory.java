@@ -100,7 +100,7 @@ public class KafkaCustomConsumerFactory {
                 final KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProperties, keyDeserializer, valueDeserializer);
 
                 consumers.add(new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, kafkaConsumerConfig, topic,
-                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics));
+                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, new TopicEmptinessMetadata()));
 
             });
         } catch (Exception e) {

@@ -54,7 +54,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -68,11 +67,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumer.class);
     private static final Long COMMIT_OFFSET_INTERVAL_MS = 300000L;
-    private static final long IS_EMPTY_CHECK_INTERVAL_MS = 60000L;
     private static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 1;
-    static final ConcurrentHashMap<TopicPartition, Boolean> TOPIC_PARTITION_TO_IS_EMPTY = new ConcurrentHashMap<>();
-    static Long topicEmptyCheckingOwnerThreadId = null;
-    static long lastIsEmptyCheckTime = 0;
     static final String DEFAULT_KEY = "message";
 
     private volatile long lastCommitTime;
@@ -99,6 +94,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private long numRecordsCommitted = 0;
     private final LogRateLimiter errLogRateLimiter;
     private final ByteDecoder byteDecoder;
+    private final TopicEmptinessMetadata topicEmptinessMetadata;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -108,7 +104,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final String schemaType,
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final ByteDecoder byteDecoder,
-                               final KafkaTopicConsumerMetrics topicMetrics) {
+                               final KafkaTopicConsumerMetrics topicMetrics,
+                               final TopicEmptinessMetadata topicEmptinessMetadata) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
         this.shutdownInProgress = shutdownInProgress;
@@ -132,6 +129,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.lastCommitTime = System.currentTimeMillis();
         this.numberOfAcksPending = new AtomicInteger(0);
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
+        this.topicEmptinessMetadata = topicEmptinessMetadata;
     }
 
     KafkaTopicConsumerMetrics getTopicMetrics() {
@@ -538,12 +536,13 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
     public synchronized boolean isTopicEmpty() {
         final long currentThreadId = Thread.currentThread().getId();
-        if (Objects.isNull(topicEmptyCheckingOwnerThreadId)) {
-            topicEmptyCheckingOwnerThreadId = currentThreadId;
+        if (Objects.isNull(topicEmptinessMetadata.getTopicEmptyCheckingOwnerThreadId())) {
+            topicEmptinessMetadata.setTopicEmptyCheckingOwnerThreadId(currentThreadId);
         }
 
-        if (currentThreadId != topicEmptyCheckingOwnerThreadId || System.currentTimeMillis() < lastIsEmptyCheckTime + IS_EMPTY_CHECK_INTERVAL_MS) {
-            return TOPIC_PARTITION_TO_IS_EMPTY.values().stream().allMatch(isEmpty -> isEmpty);
+        if (currentThreadId != topicEmptinessMetadata.getTopicEmptyCheckingOwnerThreadId() ||
+                topicEmptinessMetadata.isCheckDurationExceeded(System.currentTimeMillis())) {
+            return topicEmptinessMetadata.isTopicEmpty();
         }
 
         final List<PartitionInfo> partitions = consumer.partitionsFor(topicName);
@@ -557,18 +556,18 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         for (TopicPartition topicPartition : topicPartitions) {
             final OffsetAndMetadata offsetAndMetadata = committedOffsets.get(topicPartition);
             final Long endOffset = endOffsets.get(topicPartition);
-            TOPIC_PARTITION_TO_IS_EMPTY.put(topicPartition, true);
+            topicEmptinessMetadata.updateTopicEmptinessStatus(topicPartition, true);
 
             // If there is data in the partition
             if (endOffset != 0L) {
                 // If there is no committed offset for the partition or the committed offset is behind the end offset
                 if (Objects.isNull(offsetAndMetadata) || offsetAndMetadata.offset() < endOffset) {
-                    TOPIC_PARTITION_TO_IS_EMPTY.put(topicPartition, false);
+                    topicEmptinessMetadata.updateTopicEmptinessStatus(topicPartition, false);
                 }
             }
         }
 
-        lastIsEmptyCheckTime = System.currentTimeMillis();
-        return TOPIC_PARTITION_TO_IS_EMPTY.values().stream().allMatch(isEmpty -> isEmpty);
+        topicEmptinessMetadata.setLastIsEmptyCheckTime(System.currentTimeMillis());
+        return topicEmptinessMetadata.isTopicEmpty();
     }
 }
