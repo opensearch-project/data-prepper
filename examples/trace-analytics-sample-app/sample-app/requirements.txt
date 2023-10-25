@@ -7,4 +7,4 @@ opentelemetry-instrumentation-requests==0.41b0
 opentelemetry-sdk==1.20.0
 protobuf==3.20.3
 urllib3==2.0.7
-werkzeug==2.2.3
+werkzeug==3.0.1
