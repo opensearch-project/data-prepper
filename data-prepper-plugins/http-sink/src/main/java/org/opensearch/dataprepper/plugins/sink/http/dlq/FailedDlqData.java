@@ -4,52 +4,56 @@
  */
 package org.opensearch.dataprepper.plugins.sink.http.dlq;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.opensearch.dataprepper.plugins.sink.http.HttpEndPointResponse;
-
 public class FailedDlqData {
 
-    private final HttpEndPointResponse endPointResponse;
-    @JsonIgnore
-    private final String bufferData;
+    private String url;
+
+    private int status;
+
+    private String message;
 
     public FailedDlqData(final Builder builder) {
-        this.endPointResponse = builder.endPointResponse;
-        this.bufferData = builder.bufferData;
+        this.status = builder.status;
+        this.message = builder.message;
+        this.url = builder.url;
     }
 
-    public HttpEndPointResponse getEndPointResponse() {
-        return endPointResponse;
+    public String getUrl() {
+        return url;
     }
 
-    public String getBufferData() {
-        return bufferData;
+    public int getStatus() {
+        return status;
+    }
+
+    public String getMessage() {
+        return message;
     }
 
     public static Builder builder() {
         return new Builder();
     }
-    @Override
-    public String toString() {
-        return "{" +
-                "endPointResponse=" + endPointResponse +
-                ", bufferData='" + bufferData + '\'' +
-                '}';
-    }
 
     public static class Builder {
 
-        private HttpEndPointResponse endPointResponse;
+        private String url;
 
-        private String bufferData;
+        private int status;
 
-        public Builder withEndPointResponses(HttpEndPointResponse endPointResponses) {
-            this.endPointResponse = endPointResponses;
+        private String message;
+
+        public Builder withUrl(String url) {
+            this.url = url;
             return this;
         }
 
-        public Builder withBufferData(String bufferData) {
-            this.bufferData = bufferData;
+        public Builder withStatus(int status) {
+            this.status = status;
+            return this;
+        }
+
+        public Builder withMessage(String message) {
+            this.message = message;
             return this;
         }
 

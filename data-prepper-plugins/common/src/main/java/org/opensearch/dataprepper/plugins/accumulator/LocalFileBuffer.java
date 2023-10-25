@@ -71,18 +71,6 @@ public class LocalFileBuffer implements Buffer {
     }
 
     /**
-     * write byte array to output stream.
-     * @param bytes byte array.
-     * @throws IOException while writing to output stream fails.
-     */
-    @Override
-    public void writeEvent(byte[] bytes) throws IOException {
-        outputStream.write(bytes);
-        outputStream.write(System.lineSeparator().getBytes());
-        eventCount++;
-    }
-
-    /**
      * Flushing the buffered data into the output stream.
      */
     protected void flushAndCloseStream(){
@@ -105,5 +93,15 @@ public class LocalFileBuffer implements Buffer {
                 LOG.error("Unable to delete Local file {}", localFile, e);
             }
         }
+    }
+
+    @Override
+    public OutputStream getOutputStream() {
+        return outputStream;
+    }
+
+    @Override
+    public void setEventCount(int eventCount) {
+        this.eventCount = eventCount;
     }
 }

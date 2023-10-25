@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.http.certificate;
 import org.apache.hc.client5.http.config.TlsConfig;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
 import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
 import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactoryBuilder;
 import org.apache.hc.client5.http.ssl.TrustAllStrategy;
@@ -15,14 +16,18 @@ import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.apache.hc.core5.ssl.SSLContexts;
 import org.apache.hc.core5.ssl.TrustStrategy;
 import org.apache.hc.core5.util.Timeout;
-import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyManagementException;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 
@@ -32,6 +37,8 @@ import java.security.cert.CertificateFactory;
  */
 public class HttpClientSSLConnectionManager {
 
+    private static final Logger LOG = LoggerFactory.getLogger(HttpClientSSLConnectionManager.class);
+
     /**
      * This method creates HttpClientConnectionManager for SSL certs authentication
      * @param sinkConfiguration HttpSinkConfiguration
@@ -40,10 +47,8 @@ public class HttpClientSSLConnectionManager {
      */
     public HttpClientConnectionManager createHttpClientConnectionManager(final HttpSinkConfiguration sinkConfiguration,
                                                                          final CertificateProviderFactory providerFactory){
-        final CertificateProvider certificateProvider = providerFactory.getCertificateProvider();
-        final org.opensearch.dataprepper.plugins.certificate.model.Certificate certificate = certificateProvider.getCertificate();
         final SSLContext sslContext = sinkConfiguration.getSslCertificateFile() != null ?
-                getCAStrategy(new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))) : getTrustAllStrategy();
+                getCAStrategy(new ByteArrayInputStream(providerFactory.getCertificateProvider().getCertificate().getCertificate().getBytes(StandardCharsets.UTF_8))) : getTrustAllStrategy();
         SSLConnectionSocketFactory sslSocketFactory = SSLConnectionSocketFactoryBuilder.create()
                 .setSslContext(sslContext)
                 .build();
@@ -78,6 +83,19 @@ public class HttpClientSSLConnectionManager {
             return SSLContexts.custom().loadTrustMaterial(null, trustStrategy).build();
         } catch (Exception ex) {
             throw new RuntimeException(ex.getMessage(), ex);
+        }
+    }
+
+    public HttpClientConnectionManager createHttpClientConnectionManagerWithoutValidation()  throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+        {
+            return PoolingHttpClientConnectionManagerBuilder.create()
+                    .setSSLSocketFactory(SSLConnectionSocketFactoryBuilder.create()
+                            .setSslContext(SSLContextBuilder.create()
+                                    .loadTrustMaterial(TrustAllStrategy.INSTANCE)
+                                    .build())
+                            .setHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+                            .build())
+                    .build();
         }
     }
 }
