@@ -5,12 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
-
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.slf4j.Logger;
@@ -79,15 +79,20 @@ public class ShardConsumer implements Runnable {
 
     private boolean waitForExport;
 
+    private final AcknowledgementSet acknowledgementSet;
+
+    private final Duration shardAcknowledgmentTimeout;
+
     private ShardConsumer(Builder builder) {
         this.dynamoDbStreamsClient = builder.dynamoDbStreamsClient;
         this.checkpointer = builder.checkpointer;
         this.shardIterator = builder.shardIterator;
         this.startTime = builder.startTime;
         this.waitForExport = builder.waitForExport;
-
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(builder.buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
         recordConverter = new StreamRecordConverter(bufferAccumulator, builder.tableInfo, builder.pluginMetrics);
+        this.acknowledgementSet = builder.acknowledgementSet;
+        this.shardAcknowledgmentTimeout = builder.dataFileAcknowledgmentTimeout;
     }
 
     public static Builder builder(final DynamoDbStreamsClient dynamoDbStreamsClient, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
@@ -113,6 +118,9 @@ public class ShardConsumer implements Runnable {
         private Instant startTime;
 
         private boolean waitForExport;
+
+        private AcknowledgementSet acknowledgementSet;
+        private Duration dataFileAcknowledgmentTimeout;
 
         public Builder(final DynamoDbStreamsClient dynamoDbStreamsClient, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
             this.dynamoDbStreamsClient = dynamoDbStreamsClient;
@@ -145,6 +153,16 @@ public class ShardConsumer implements Runnable {
             return this;
         }
 
+        public Builder acknowledgmentSet(AcknowledgementSet acknowledgementSet) {
+            this.acknowledgementSet = acknowledgementSet;
+            return this;
+        }
+
+        public Builder acknowledgmentSetTimeout(Duration dataFileAcknowledgmentTimeout) {
+            this.dataFileAcknowledgmentTimeout = dataFileAcknowledgmentTimeout;
+            return this;
+        }
+
         public ShardConsumer build() {
             return new ShardConsumer(this);
         }
@@ -154,7 +172,7 @@ public class ShardConsumer implements Runnable {
 
     @Override
     public void run() {
-        LOG.info("Shard Consumer start to run...");
+        LOG.debug("Shard Consumer start to run...");
 
         long lastCheckpointTime = System.currentTimeMillis();
         String sequenceNumber = "";
@@ -162,7 +180,7 @@ public class ShardConsumer implements Runnable {
         while (!shouldStop) {
             if (shardIterator == null) {
                 // End of Shard
-                LOG.debug("Reach end of shard");
+                LOG.debug("Reached end of shard");
                 checkpointer.checkpoint(sequenceNumber);
                 break;
             }
@@ -211,7 +229,7 @@ public class ShardConsumer implements Runnable {
                 } else {
                     records = response.records();
                 }
-                recordConverter.writeToBuffer(records);
+                recordConverter.writeToBuffer(acknowledgementSet, records);
             }
             try {
                 // Idle between get records call.
@@ -219,6 +237,11 @@ public class ShardConsumer implements Runnable {
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        if (acknowledgementSet != null) {
+            checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
+            acknowledgementSet.complete();
         }
 
         // interrupted

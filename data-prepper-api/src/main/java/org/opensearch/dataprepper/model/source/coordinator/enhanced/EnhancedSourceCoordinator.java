@@ -46,9 +46,10 @@ public interface EnhancedSourceCoordinator {
      *
      * @param partition The partition to be updated.
      * @param <T>       The progress state class
+     * @param ownershipTimeoutRenewal The amount of time to update ownership of the partition before another instance can acquire it.
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
      */
-    <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition);
+    <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition, Duration ownershipTimeoutRenewal);
 
     /**
      * This method is used to release the lease of a partition in the coordination store.

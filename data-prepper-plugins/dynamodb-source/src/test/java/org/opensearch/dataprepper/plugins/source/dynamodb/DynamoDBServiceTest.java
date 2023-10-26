@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
@@ -102,6 +103,9 @@ class DynamoDBServiceTest {
     @Mock
     private Buffer<Record<Event>> buffer;
 
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+
     private DynamoDBService dynamoDBService;
 
     private Collection<KeySchemaElement> keySchema;
@@ -162,7 +166,7 @@ class DynamoDBServiceTest {
     }
 
     private DynamoDBService createObjectUnderTest() {
-        DynamoDBService objectUnderTest = new DynamoDBService(coordinator, clientFactory, sourceConfig, pluginMetrics);
+        DynamoDBService objectUnderTest = new DynamoDBService(coordinator, clientFactory, sourceConfig, pluginMetrics, acknowledgementSetManager);
         return objectUnderTest;
     }
 

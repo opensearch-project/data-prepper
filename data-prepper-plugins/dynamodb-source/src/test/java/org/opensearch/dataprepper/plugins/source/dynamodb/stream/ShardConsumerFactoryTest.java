@@ -90,7 +90,7 @@ class ShardConsumerFactoryTest {
 
         ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, shardManager, buffer);
 
-        Runnable consumer = consumerFactory.createConsumer(streamPartition);
+        Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
 
         assertThat(consumer, notNullValue());
     }

@@ -129,9 +129,8 @@ public class ShardManager {
                     .shardIteratorType(ShardIteratorType.AFTER_SEQUENCE_NUMBER)
                     .sequenceNumber(sequenceNumber)
                     .build();
-
         } else {
-            LOG.debug("Get Shard Iterator from beginning (TRIM_HORIZON)");
+            LOG.info("Get Shard Iterator from beginning (TRIM_HORIZON) for shard {}", shardId);
             getShardIteratorRequest = GetShardIteratorRequest.builder()
                     .shardId(shardId)
                     .streamArn(streamArn)
