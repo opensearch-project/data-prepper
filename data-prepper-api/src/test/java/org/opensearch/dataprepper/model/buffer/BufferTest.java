@@ -41,7 +41,7 @@ public class BufferTest {
         final Buffer<Record<Event>> buffer = spy(Buffer.class);
 
         byte[] bytes = new byte[2];
-        Assert.assertThrows(RuntimeException.class, () -> buffer.writeBytes(bytes, "", 10));
+        Assert.assertThrows(UnsupportedOperationException.class, () -> buffer.writeBytes(bytes, "", 10));
 
     }
 

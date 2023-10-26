@@ -53,6 +53,13 @@ class CircuitBreakingBuffer<T extends Record<?>> implements Buffer<T> {
         buffer.writeAll(records, timeoutInMillis);
     }
 
+    @Override
+    public void writeBytes(byte[] bytes, String key, int timeoutInMillis) throws Exception {
+        checkBreaker();
+
+        buffer.writeBytes(bytes, key, timeoutInMillis);
+    }
+
     private void checkBreaker() throws TimeoutException {
         if(circuitBreaker.isOpen())
             throw new TimeoutException("Circuit breaker is open. Unable to write to buffer.");
@@ -71,6 +78,11 @@ class CircuitBreakingBuffer<T extends Record<?>> implements Buffer<T> {
     @Override
     public boolean isEmpty() {
         return buffer.isEmpty();
+    }
+
+    @Override
+    public boolean isByteBuffer() {
+        return buffer.isByteBuffer();
     }
 
     @Override
