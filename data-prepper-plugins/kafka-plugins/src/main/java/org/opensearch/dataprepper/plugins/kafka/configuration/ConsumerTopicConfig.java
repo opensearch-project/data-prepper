@@ -14,5 +14,15 @@ import java.time.Duration;
 public interface ConsumerTopicConfig extends TopicConfig {
     KafkaKeyMode getKafkaKeyMode();
 
+    Boolean getAutoCommit();
+
     Duration getCommitInterval();
+
+    long getMaxPartitionFetchBytes();
+
+    long getFetchMaxBytes();
+
+    Integer getFetchMaxWait();
+
+    long getFetchMinBytes();
 }

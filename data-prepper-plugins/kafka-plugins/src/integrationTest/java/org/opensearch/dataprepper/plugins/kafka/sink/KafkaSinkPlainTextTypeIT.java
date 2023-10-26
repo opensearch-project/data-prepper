@@ -129,7 +129,6 @@ public class KafkaSinkPlainTextTypeIT {
         when(topicConfig.getWorkers()).thenReturn(1);
         when(topicConfig.getSessionTimeOut()).thenReturn(Duration.ofSeconds(45));
         when(topicConfig.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
-        when(topicConfig.getAutoCommit()).thenReturn(false);
         when(topicConfig.getAutoOffsetReset()).thenReturn("earliest");
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
@@ -222,8 +221,6 @@ public class KafkaSinkPlainTextTypeIT {
     private void consumeTestMessages(List<Record<Event>> recList) {
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
                 topicConfig.getAutoOffsetReset());
-        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
-                topicConfig.getAutoCommit());
         props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
                 topicConfig.getConsumerMaxPollRecords());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, topicConfig.getGroupId());

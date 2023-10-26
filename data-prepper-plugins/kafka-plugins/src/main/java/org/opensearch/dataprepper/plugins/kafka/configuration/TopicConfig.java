@@ -23,21 +23,11 @@ public interface TopicConfig {
 
     KmsConfig getKmsConfig();
 
-    Boolean getAutoCommit();
-
     Duration getSessionTimeOut();
 
     String getAutoOffsetReset();
 
     Duration getThreadWaitingTime();
-
-    long getMaxPartitionFetchBytes();
-
-    long getFetchMaxBytes();
-
-    Integer getFetchMaxWait();
-
-    long getFetchMinBytes();
 
     Duration getRetryBackoff();
 
