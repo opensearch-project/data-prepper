@@ -39,7 +39,6 @@ import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
@@ -89,7 +88,6 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.Matchers.closeTo;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createContentParser;
@@ -115,7 +113,6 @@ public class OpenSearchSinkIT {
     private static final String TRACE_INGESTION_TEST_DISABLED_REASON = "Trace ingestion is not supported for ES 6";
 
     private RestClient client;
-    private EventHandle eventHandle;
     private SinkContext sinkContext;
     private String testTagsTargetKey;
 
@@ -152,10 +149,11 @@ public class OpenSearchSinkIT {
         expressionEvaluator = mock(ExpressionEvaluator.class);
         when(expressionEvaluator.isValidExpressionStatement(any(String.class))).thenReturn(false);
 
-        eventHandle = mock(EventHandle.class);
+        /*
         lenient().doAnswer(a -> {
             return null;
         }).when(eventHandle).release(any(Boolean.class));
+        */
     }
 
     @BeforeEach
@@ -890,7 +888,6 @@ public class OpenSearchSinkIT {
                 .withData("{\"log\": \"foobar\"}")
                 .withEventType("event")
                 .build();
-        ((JacksonEvent)testEvent).setEventHandle(eventHandle);
         List<String> tagsList = List.of("tag1", "tag2");
         testEvent.getMetadata().addTags(tagsList);
 
@@ -920,7 +917,6 @@ public class OpenSearchSinkIT {
                 .withData("{\"log\": \"foobar\"}")
                 .withEventType("event")
                 .build();
-        ((JacksonEvent) testEvent).setEventHandle(eventHandle);
 
         final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
@@ -948,7 +944,6 @@ public class OpenSearchSinkIT {
                 .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
                 .withEventType("event")
                 .build();
-        ((JacksonEvent) testEvent).setEventHandle(eventHandle);
         testEvent.put(testDocumentIdField, expectedId);
 
         final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
@@ -974,7 +969,6 @@ public class OpenSearchSinkIT {
                 .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
                 .withEventType("event")
                 .build();
-        ((JacksonEvent) testEvent).setEventHandle(eventHandle);
         testEvent.put(testRoutingField, expectedRoutingField);
 
         final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
@@ -1003,7 +997,6 @@ public class OpenSearchSinkIT {
                 .withData(dataMap)
                 .withEventType("event")
                 .build();
-        ((JacksonEvent) testEvent).setEventHandle(eventHandle);
         testEvent.put(testIndex, testIndexName);
 
         Map<String, Object> expectedMap = testEvent.toMap();
@@ -1037,7 +1030,6 @@ public class OpenSearchSinkIT {
                 .withData(dataMap)
                 .withEventType("event")
                 .build();
-        ((JacksonEvent) testEvent).setEventHandle(eventHandle);
         testEvent.put(testIndex, testIndexName);
 
         Map<String, Object> expectedMap = testEvent.toMap();
@@ -1067,7 +1059,6 @@ public class OpenSearchSinkIT {
                 .withData(dataMap)
                 .withEventType("event")
                 .build();
-        ((JacksonEvent) testEvent).setEventHandle(eventHandle);
 
         Map<String, Object> expectedMap = testEvent.toMap();
 
@@ -1370,7 +1361,6 @@ public class OpenSearchSinkIT {
                     .withEventType(EventType.TRACE.toString())
                     .withData(objectMapper.readValue(jsonString, Map.class)).build());
             JacksonEvent event = (JacksonEvent) record.getData();
-            event.setEventHandle(eventHandle);
             return record;
         } catch (final JsonProcessingException e) {
             throw new RuntimeException(e);

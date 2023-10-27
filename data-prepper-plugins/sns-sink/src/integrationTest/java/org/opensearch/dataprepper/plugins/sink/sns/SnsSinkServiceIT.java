@@ -17,7 +17,6 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -129,7 +128,6 @@ public class SnsSinkServiceIT {
 
     private static Record<Event> createRecord() {
         final JacksonEvent event = JacksonLog.builder().withData("[{\"name\":\"test\"}]").build();
-        event.setEventHandle(mock(EventHandle.class));
         return new Record<>(event);
     }
 

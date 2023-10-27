@@ -51,6 +51,7 @@ public class DefaultEventHandle implements EventHandle, Serializable {
 
     @Override
     public void release(boolean result) {
+        System.out.println("======release called==="+result);
         AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
         if (acknowledgementSet != null) {
             acknowledgementSet.release(this, result);
