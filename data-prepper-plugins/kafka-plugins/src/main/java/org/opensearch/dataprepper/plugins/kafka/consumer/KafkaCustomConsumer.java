@@ -541,7 +541,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         }
 
         if (currentThreadId != topicEmptinessMetadata.getTopicEmptyCheckingOwnerThreadId() ||
-                topicEmptinessMetadata.isCheckDurationExceeded(System.currentTimeMillis())) {
+                topicEmptinessMetadata.isWithinCheckInterval(System.currentTimeMillis())) {
             return topicEmptinessMetadata.isTopicEmpty();
         }
 

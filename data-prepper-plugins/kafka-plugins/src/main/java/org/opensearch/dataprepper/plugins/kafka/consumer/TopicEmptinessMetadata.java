@@ -9,7 +9,7 @@ import org.apache.kafka.common.TopicPartition;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TopicEmptinessMetadata {
-    private static final long IS_EMPTY_CHECK_INTERVAL_MS = 60000L;
+    static final long IS_EMPTY_CHECK_INTERVAL_MS = 60000L;
 
     private long lastIsEmptyCheckTime;
     private Long topicEmptyCheckingOwnerThreadId;
@@ -41,11 +41,15 @@ public class TopicEmptinessMetadata {
         return this.topicEmptyCheckingOwnerThreadId;
     }
 
+    public ConcurrentHashMap<TopicPartition, Boolean> getTopicPartitionToIsEmpty() {
+        return this.topicPartitionToIsEmpty;
+    }
+
     public boolean isTopicEmpty() {
         return topicPartitionToIsEmpty.values().stream().allMatch(isEmpty -> isEmpty);
     }
 
-    public boolean isCheckDurationExceeded(final long epochTimestamp) {
+    public boolean isWithinCheckInterval(final long epochTimestamp) {
         return epochTimestamp < lastIsEmptyCheckTime + IS_EMPTY_CHECK_INTERVAL_MS;
     }
 }
