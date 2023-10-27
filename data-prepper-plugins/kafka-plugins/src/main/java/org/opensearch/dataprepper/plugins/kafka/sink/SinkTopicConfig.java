@@ -8,10 +8,10 @@ package org.opensearch.dataprepper.plugins.kafka.sink;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.opensearch.dataprepper.plugins.kafka.configuration.CommonTopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KmsConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ProducerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
-public class SinkTopicConfig extends CommonTopicConfig implements ProducerTopicConfig {
+public class SinkTopicConfig extends CommonTopicConfig implements TopicProducerConfig {
     private static final Integer DEFAULT_NUM_OF_PARTITIONS = 1;
     private static final Short DEFAULT_REPLICATION_FACTOR = 1;
     private static final Long DEFAULT_RETENTION_PERIOD = 604800000L;

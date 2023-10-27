@@ -26,7 +26,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
@@ -127,8 +127,8 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
     private PlainTextAuthConfig plainTextAuthConfig;
 
     private KafkaSource kafkaSource;
-    private ConsumerTopicConfig jsonTopicConfig;
-    private ConsumerTopicConfig avroTopicConfig;
+    private TopicConsumerConfig jsonTopicConfig;
+    private TopicConsumerConfig avroTopicConfig;
     private Counter counter;
     private List<Record> receivedRecords;
 
@@ -192,7 +192,7 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
         username = System.getProperty("tests.kafka.username");
         password = System.getProperty("tests.kafka.password");
 
-        jsonTopicConfig = mock(ConsumerTopicConfig.class);
+        jsonTopicConfig = mock(TopicConsumerConfig.class);
         jsonTopicName = System.getProperty("tests.kafka.json_topic_name");
         when(jsonTopicConfig.getName()).thenReturn(jsonTopicName);
         when(jsonTopicConfig.getGroupId()).thenReturn("testGroupConf");
@@ -206,7 +206,7 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
         when(jsonTopicConfig.getConsumerMaxPollRecords()).thenReturn(100);
         when(jsonTopicConfig.getMaxPollInterval()).thenReturn(Duration.ofSeconds(15));
 
-        avroTopicConfig = mock(ConsumerTopicConfig.class);
+        avroTopicConfig = mock(TopicConsumerConfig.class);
         avroTopicName = System.getProperty("tests.kafka.avro_topic_name");
         when(avroTopicConfig.getName()).thenReturn(avroTopicName);
         when(avroTopicConfig.getGroupId()).thenReturn("testGroupConf");

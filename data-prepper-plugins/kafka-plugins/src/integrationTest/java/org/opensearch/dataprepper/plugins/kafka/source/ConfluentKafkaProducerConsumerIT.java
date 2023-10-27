@@ -21,7 +21,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
@@ -74,7 +74,7 @@ public class ConfluentKafkaProducerConsumerIT {
     private PlainTextAuthConfig plainTextAuthConfig;
 
     private KafkaSource kafkaSource;
-    private ConsumerTopicConfig topicConfig;
+    private TopicConsumerConfig topicConfig;
     private Counter counter;
     private List<Record> receivedRecords;
 
@@ -125,7 +125,7 @@ public class ConfluentKafkaProducerConsumerIT {
         topicName = System.getProperty("tests.kafka.topic_name");
         username = System.getProperty("tests.kafka.username");
         password = System.getProperty("tests.kafka.password");
-        topicConfig = mock(ConsumerTopicConfig.class);
+        topicConfig = mock(TopicConsumerConfig.class);
         when(topicConfig.getName()).thenReturn(topicName);
         when(topicConfig.getGroupId()).thenReturn("testGroupConf");
         when(topicConfig.getWorkers()).thenReturn(1);

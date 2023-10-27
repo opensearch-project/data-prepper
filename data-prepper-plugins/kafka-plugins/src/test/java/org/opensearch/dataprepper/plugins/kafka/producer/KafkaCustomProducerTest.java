@@ -27,7 +27,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ProducerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
 
@@ -69,7 +69,7 @@ public class KafkaCustomProducerTest {
         DefaultEventHandle defaultEventHandle = mock(DefaultEventHandle.class);
         event.setEventHandle(defaultEventHandle);
         record = new Record<>(event);
-        final ProducerTopicConfig topicConfig = mock(ProducerTopicConfig.class);
+        final TopicProducerConfig topicConfig = mock(TopicProducerConfig.class);
         when(topicConfig.getName()).thenReturn("test-topic");
 
         when(kafkaSinkConfig.getTopic()).thenReturn(topicConfig);

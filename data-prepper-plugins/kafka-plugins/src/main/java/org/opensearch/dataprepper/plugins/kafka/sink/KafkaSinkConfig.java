@@ -18,7 +18,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ProducerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 
 import java.util.LinkedHashMap;
@@ -146,7 +146,7 @@ public class KafkaSinkConfig implements KafkaProducerConfig {
         this.schemaConfig = schemaConfig;
     }
 
-    public ProducerTopicConfig getTopic() {
+    public TopicProducerConfig getTopic() {
         return topic;
     }
 

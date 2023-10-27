@@ -20,7 +20,7 @@ public interface KafkaProducerConfig extends KafkaConnectionConfig {
 
     String getSerdeFormat();
 
-    ProducerTopicConfig getTopic();
+    TopicProducerConfig getTopic();
 
     KafkaProducerProperties getKafkaProducerProperties();
 

@@ -18,7 +18,7 @@ import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ProducerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
@@ -144,7 +144,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     }
 
     private void checkTopicCreationCriteriaAndCreateTopic() {
-        final ProducerTopicConfig topic = kafkaSinkConfig.getTopic();
+        final TopicProducerConfig topic = kafkaSinkConfig.getTopic();
         if (topic.isCreateTopic()) {
             final TopicService topicService = new TopicService(kafkaSinkConfig);
             topicService.createTopic(kafkaSinkConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor());

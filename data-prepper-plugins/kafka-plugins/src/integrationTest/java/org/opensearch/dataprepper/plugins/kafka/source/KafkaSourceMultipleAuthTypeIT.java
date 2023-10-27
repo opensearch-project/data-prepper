@@ -23,7 +23,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
@@ -67,7 +67,7 @@ public class KafkaSourceMultipleAuthTypeIT {
     private List<TopicConfig> topicList;
 
     @Mock
-    private ConsumerTopicConfig plainTextTopic;
+    private TopicConsumerConfig plainTextTopic;
 
     @Mock
     private AuthConfig authConfig;
@@ -128,7 +128,7 @@ public class KafkaSourceMultipleAuthTypeIT {
 
         final String testGroup = "TestGroup_"+RandomStringUtils.randomAlphabetic(6);
         final String testTopic = "TestTopic_"+RandomStringUtils.randomAlphabetic(5);
-        plainTextTopic = mock(ConsumerTopicConfig.class);
+        plainTextTopic = mock(TopicConsumerConfig.class);
         when(plainTextTopic.getName()).thenReturn(testTopic);
         when(plainTextTopic.getGroupId()).thenReturn(testGroup);
         when(plainTextTopic.getWorkers()).thenReturn(1);

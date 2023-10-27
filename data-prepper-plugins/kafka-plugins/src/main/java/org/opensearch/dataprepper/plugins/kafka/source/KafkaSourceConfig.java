@@ -11,7 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
@@ -63,7 +63,7 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
         return acknowledgementsEnabled;
     }
 
-    public List<? extends ConsumerTopicConfig> getTopics() {
+    public List<? extends TopicConsumerConfig> getTopics() {
         return topics;
     }
 

@@ -49,7 +49,7 @@ class CommonTopicConfigTest {
             String json = mapper.writeValueAsString(kafkaConfigMap);
             Reader reader = new StringReader(json);
             KafkaSourceConfig kafkaSourceConfig = mapper.readValue(reader, KafkaSourceConfig.class);
-            List<? extends ConsumerTopicConfig> topicConfigList = kafkaSourceConfig.getTopics();
+            List<? extends TopicConsumerConfig> topicConfigList = kafkaSourceConfig.getTopics();
             topicConfig = topicConfigList.get(0);
         }
     }

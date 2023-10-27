@@ -22,7 +22,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
@@ -69,7 +69,7 @@ class KafkaSourceTest {
     private PipelineDescription pipelineDescription;
 
     @Mock
-    ConsumerTopicConfig topic1, topic2;
+    TopicConsumerConfig topic1, topic2;
 
     @Mock
     private Buffer<Record<Event>> buffer;

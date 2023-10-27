@@ -19,7 +19,7 @@ import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.common.key.KeyFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ProducerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
@@ -81,7 +81,7 @@ public class KafkaCustomProducerFactory {
     }
 
     private void checkTopicCreationCriteriaAndCreateTopic(final KafkaProducerConfig kafkaProducerConfig) {
-        final ProducerTopicConfig topic = kafkaProducerConfig.getTopic();
+        final TopicProducerConfig topic = kafkaProducerConfig.getTopic();
         if (!topic.isCreateTopic()) {
             final TopicService topicService = new TopicService(kafkaProducerConfig);
             topicService.createTopic(kafkaProducerConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor());

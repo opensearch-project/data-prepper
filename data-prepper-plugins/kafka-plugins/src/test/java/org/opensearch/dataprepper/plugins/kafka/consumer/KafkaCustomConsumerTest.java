@@ -32,7 +32,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
@@ -76,7 +76,7 @@ public class KafkaCustomConsumerTest {
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
-    private ConsumerTopicConfig topicConfig;
+    private TopicConsumerConfig topicConfig;
 
     @Mock
     private KafkaTopicMetrics topicMetrics;
@@ -114,7 +114,7 @@ public class KafkaCustomConsumerTest {
         counter = mock(Counter.class);
         posCounter = mock(Counter.class);
         negCounter = mock(Counter.class);
-        topicConfig = mock(ConsumerTopicConfig.class);
+        topicConfig = mock(TopicConsumerConfig.class);
         when(topicMetrics.getNumberOfPositiveAcknowledgements()).thenReturn(posCounter);
         when(topicMetrics.getNumberOfNegativeAcknowledgements()).thenReturn(negCounter);
         when(topicMetrics.getNumberOfRecordsCommitted()).thenReturn(counter);

@@ -11,7 +11,7 @@ import java.time.Duration;
  * An extension of the {@link TopicConfig} specifically for
  * consumers from Kafka topics.
  */
-public interface ConsumerTopicConfig extends TopicConfig {
+public interface TopicConsumerConfig extends TopicConfig {
     KafkaKeyMode getKafkaKeyMode();
 
     Boolean getAutoCommit();

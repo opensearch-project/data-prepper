@@ -33,7 +33,7 @@ import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ProducerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
@@ -60,7 +60,7 @@ public class KafkaSinkPlainTextTypeIT {
     private KafkaSinkConfig kafkaSinkConfig;
 
     @Mock
-    private ProducerTopicConfig topicConfig;
+    private TopicProducerConfig topicConfig;
 
     private KafkaSink kafkaSink;
 
@@ -123,7 +123,7 @@ public class KafkaSinkPlainTextTypeIT {
         final String testGroup = "TestGroup_" + RandomStringUtils.randomAlphabetic(5);
         testTopic = "TestTopic_" + RandomStringUtils.randomAlphabetic(5);
 
-        topicConfig = mock(ProducerTopicConfig.class);
+        topicConfig = mock(TopicProducerConfig.class);
         when(topicConfig.getName()).thenReturn(testTopic);
         when(topicConfig.getGroupId()).thenReturn(testGroup);
         when(topicConfig.getWorkers()).thenReturn(1);

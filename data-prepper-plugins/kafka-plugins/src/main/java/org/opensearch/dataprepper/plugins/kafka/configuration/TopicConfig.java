@@ -11,7 +11,7 @@ import java.time.Duration;
 
 /**
  * Represents a topic configuration to use throughout the code. See the
- * {@link ConsumerTopicConfig} and {@link ProducerTopicConfig} for configurations
+ * {@link TopicConsumerConfig} and {@link TopicProducerConfig} for configurations
  * which are specific for those use-cases.
  */
 public interface TopicConfig {

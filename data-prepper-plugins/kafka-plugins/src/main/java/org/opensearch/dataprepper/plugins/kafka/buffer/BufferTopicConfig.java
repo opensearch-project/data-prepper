@@ -10,15 +10,15 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.kafka.configuration.CommonTopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KmsConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ProducerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
 
-class BufferTopicConfig extends CommonTopicConfig implements ProducerTopicConfig, ConsumerTopicConfig {
+class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig, TopicConsumerConfig {
     static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
     private static final Integer DEFAULT_NUM_OF_PARTITIONS = 1;
     private static final Short DEFAULT_REPLICATION_FACTOR = 1;

@@ -9,7 +9,7 @@ package org.opensearch.dataprepper.plugins.kafka.configuration;
  * An extension of the {@link TopicConfig} specifically for
  * producers to Kafka topics.
  */
-public interface ProducerTopicConfig extends TopicConfig {
+public interface TopicProducerConfig extends TopicConfig {
     Integer getNumberOfPartitions();
     Short getReplicationFactor();
     Long getRetentionPeriod();

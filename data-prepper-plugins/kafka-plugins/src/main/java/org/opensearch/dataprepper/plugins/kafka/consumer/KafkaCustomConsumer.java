@@ -29,7 +29,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
@@ -72,7 +72,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private KafkaConsumer consumer= null;
     private AtomicBoolean shutdownInProgress;
     private final String topicName;
-    private final ConsumerTopicConfig topicConfig;
+    private final TopicConsumerConfig topicConfig;
     private MessageFormat schema;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final Buffer<Record<Event>> buffer;
@@ -97,7 +97,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final AtomicBoolean shutdownInProgress,
                                final Buffer<Record<Event>> buffer,
                                final KafkaConsumerConfig consumerConfig,
-                               final ConsumerTopicConfig topicConfig,
+                               final TopicConsumerConfig topicConfig,
                                final String schemaType,
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final ByteDecoder byteDecoder,

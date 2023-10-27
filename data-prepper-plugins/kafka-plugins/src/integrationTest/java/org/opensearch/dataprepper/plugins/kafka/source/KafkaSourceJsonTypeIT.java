@@ -25,7 +25,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerTopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
@@ -82,7 +82,7 @@ public class KafkaSourceJsonTypeIT {
     private KafkaClusterConfigSupplier kafkaClusterConfigSupplier;
 
     @Mock
-    private ConsumerTopicConfig jsonTopic;
+    private TopicConsumerConfig jsonTopic;
 
     private KafkaSource kafkaSource;
 
@@ -126,7 +126,7 @@ public class KafkaSourceJsonTypeIT {
         testKey = RandomStringUtils.randomAlphabetic(5);
         testGroup = "TestGroup_" + RandomStringUtils.randomAlphabetic(6);
         testTopic = "TestJsonTopic_" + RandomStringUtils.randomAlphabetic(5);
-        jsonTopic = mock(ConsumerTopicConfig.class);
+        jsonTopic = mock(TopicConsumerConfig.class);
         when(jsonTopic.getName()).thenReturn(testTopic);
         when(jsonTopic.getGroupId()).thenReturn(testGroup);
         when(jsonTopic.getWorkers()).thenReturn(1);
