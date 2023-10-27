@@ -86,7 +86,7 @@ public abstract class RecordConverter {
         String sortKey = getAttributeValue(keys, tableInfo.getMetadata().getSortKeyAttributeName());
         if (sortKey != null) {
             eventMetadata.setAttribute(SORT_KEY_METADATA_ATTRIBUTE, sortKey);
-            eventMetadata.setAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE, partitionKey + "_" + sortKey);
+            eventMetadata.setAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE, partitionKey + "|" + sortKey);
         } else {
             eventMetadata.setAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE, partitionKey);
         }

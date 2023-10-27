@@ -94,32 +94,41 @@ public class ExportScheduler implements Runnable {
     public void run() {
         LOG.debug("Start running Export Scheduler");
         while (!Thread.currentThread().isInterrupted()) {
-            // Does not have limit on max leases
-            // As most of the time it's just to wait
-            final Optional<EnhancedSourcePartition> sourcePartition = enhancedSourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE);
-
-            if (sourcePartition.isPresent()) {
-
-                ExportPartition exportPartition = (ExportPartition) sourcePartition.get();
-                LOG.debug("Acquired an export partition: " + exportPartition.getPartitionKey());
-
-                String exportArn = getOrCreateExportArn(exportPartition);
-
-                if (exportArn == null) {
-                    closeExportPartitionWithError(exportPartition);
-                } else {
-                    CompletableFuture<String> checkStatus = CompletableFuture.supplyAsync(() -> checkExportStatus(exportPartition), executor);
-                    checkStatus.whenComplete(completeExport(exportPartition));
-                }
-
-            }
             try {
-                Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
-            } catch (final InterruptedException e) {
-                LOG.info("InterruptedException occurred");
-                break;
-            }
+                // Does not have limit on max leases
+                // As most of the time it's just to wait
+                final Optional<EnhancedSourcePartition> sourcePartition = enhancedSourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE);
 
+                if (sourcePartition.isPresent()) {
+
+                    ExportPartition exportPartition = (ExportPartition) sourcePartition.get();
+                    LOG.debug("Acquired an export partition: " + exportPartition.getPartitionKey());
+
+                    String exportArn = getOrCreateExportArn(exportPartition);
+
+                    if (exportArn == null) {
+                        closeExportPartitionWithError(exportPartition);
+                    } else {
+                        CompletableFuture<String> checkStatus = CompletableFuture.supplyAsync(() -> checkExportStatus(exportPartition), executor);
+                        checkStatus.whenComplete(completeExport(exportPartition));
+                    }
+
+                }
+                try {
+                    Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException e) {
+                    LOG.info("The ExportScheduler was interrupted while waiting to retry, stopping processing");
+                    break;
+                }
+            } catch (final Exception e) {
+                LOG.error("Received an exception during export from DynamoDB to S3, backing off and retrying", e);
+                try {
+                    Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException ex) {
+                    LOG.info("The ExportScheduler was interrupted while waiting to retry, stopping processing");
+                    break;
+                }
+            }
         }
         LOG.warn("Export scheduler interrupted, looks like shutdown has triggered");
         executor.shutdownNow();

@@ -88,23 +88,32 @@ public class DataFileScheduler implements Runnable {
         LOG.debug("Start running Data File Scheduler");
 
         while (!Thread.currentThread().isInterrupted()) {
-            if (numOfWorkers.get() < MAX_JOB_COUNT) {
-                final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
+            try {
+                if (numOfWorkers.get() < MAX_JOB_COUNT) {
+                    final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
 
-                if (sourcePartition.isPresent()) {
-                    activeExportS3ObjectConsumersGauge.incrementAndGet();
-                    DataFilePartition dataFilePartition = (DataFilePartition) sourcePartition.get();
-                    processDataFilePartition(dataFilePartition);
-                    activeExportS3ObjectConsumersGauge.decrementAndGet();
+                    if (sourcePartition.isPresent()) {
+                        activeExportS3ObjectConsumersGauge.incrementAndGet();
+                        DataFilePartition dataFilePartition = (DataFilePartition) sourcePartition.get();
+                        processDataFilePartition(dataFilePartition);
+                        activeExportS3ObjectConsumersGauge.decrementAndGet();
+                    }
+                }
+                try {
+                    Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException e) {
+                    LOG.info("The DataFileScheduler was interrupted while waiting to retry, stopping processing");
+                    break;
+                }
+            } catch (final Exception e) {
+                LOG.error("Received an exception while processing an S3 data file, backing off and retrying", e);
+                try {
+                    Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException ex) {
+                    LOG.info("The DataFileScheduler was interrupted while waiting to retry, stopping processing");
+                    break;
                 }
             }
-            try {
-                Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
-            } catch (final InterruptedException e) {
-                LOG.info("InterruptedException occurred");
-                break;
-            }
-
         }
         LOG.warn("Data file scheduler is interrupted, Stop all data file loaders...");
         // Cannot call executor.shutdownNow() here

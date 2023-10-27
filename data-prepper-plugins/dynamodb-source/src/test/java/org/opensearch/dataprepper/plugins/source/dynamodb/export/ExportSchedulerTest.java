@@ -33,7 +33,11 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -43,10 +47,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.export.ExportScheduler.EXPORT_S3_OBJECTS_TOTAL_COUNT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.export.ExportScheduler.EXPORT_JOB_FAILURE_COUNT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.export.ExportScheduler.EXPORT_JOB_SUCCESS_COUNT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.export.ExportScheduler.EXPORT_RECORDS_TOTAL_COUNT;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.export.ExportScheduler.EXPORT_S3_OBJECTS_TOTAL_COUNT;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -99,19 +103,6 @@ class ExportSchedulerTest {
     @BeforeEach
     void setup() {
 
-        when(exportPartition.getTableArn()).thenReturn(tableArn);
-        when(exportPartition.getExportTime()).thenReturn(exportTime);
-
-        ExportProgressState state = new ExportProgressState();
-        state.setBucket(bucketName);
-        state.setPrefix(prefix);
-        when(exportPartition.getProgressState()).thenReturn(Optional.of(state));
-
-        given(pluginMetrics.counter(EXPORT_JOB_SUCCESS_COUNT)).willReturn(exportJobSuccess);
-        given(pluginMetrics.counter(EXPORT_JOB_FAILURE_COUNT)).willReturn(exportJobErrors);
-        given(pluginMetrics.counter(EXPORT_S3_OBJECTS_TOTAL_COUNT)).willReturn(exportFilesTotal);
-        given(pluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT)).willReturn(exportRecordsTotal);
-
         ExportSummary summary = mock(ExportSummary.class);
         lenient().when(manifestFileReader.parseSummaryFile(anyString(), anyString())).thenReturn(summary);
         lenient().when(summary.getS3Bucket()).thenReturn(bucketName);
@@ -127,6 +118,19 @@ class ExportSchedulerTest {
 
     @Test
     public void test_run_exportJob_correctly() throws InterruptedException {
+        when(exportPartition.getTableArn()).thenReturn(tableArn);
+        when(exportPartition.getExportTime()).thenReturn(exportTime);
+
+        ExportProgressState state = new ExportProgressState();
+        state.setBucket(bucketName);
+        state.setPrefix(prefix);
+        when(exportPartition.getProgressState()).thenReturn(Optional.of(state));
+
+        given(pluginMetrics.counter(EXPORT_JOB_SUCCESS_COUNT)).willReturn(exportJobSuccess);
+        given(pluginMetrics.counter(EXPORT_JOB_FAILURE_COUNT)).willReturn(exportJobErrors);
+        given(pluginMetrics.counter(EXPORT_S3_OBJECTS_TOTAL_COUNT)).willReturn(exportFilesTotal);
+        given(pluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT)).willReturn(exportRecordsTotal);
+
         given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).willReturn(Optional.of(exportPartition)).willReturn(Optional.empty());
 
         // Set up mock behavior
@@ -167,6 +171,21 @@ class ExportSchedulerTest {
 
         executor.shutdownNow();
 
+    }
+
+    @Test
+    void run_catches_exception_and_retries_when_exception_is_thrown_during_processing() throws InterruptedException {
+        given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
+
+        scheduler = new ExportScheduler(coordinator, dynamoDBClient, manifestFileReader, pluginMetrics);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> scheduler.run());
+        Thread.sleep(100);
+        assertThat(future.isDone(), equalTo(false));
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
     }
 
 }

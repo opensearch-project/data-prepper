@@ -40,7 +40,6 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamScheduler.ACTIVE_CHANGE_EVENT_CONSUMERS;
 
 @ExtendWith(MockitoExtension.class)
-@Disabled
 class StreamSchedulerTest {
 
     @Mock
@@ -104,6 +103,7 @@ class StreamSchedulerTest {
 
 
     @Test
+    @Disabled
     public void test_normal_run() throws InterruptedException {
         given(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willReturn(Optional.of(streamPartition)).willReturn(Optional.empty());
 
@@ -127,5 +127,20 @@ class StreamSchedulerTest {
         verify(coordinator).completePartition(any(StreamPartition.class));
 
         executorService.shutdownNow();
+    }
+
+    @Test
+    void run_catches_exception_and_retries_when_exception_is_thrown_during_processing() throws InterruptedException {
+        given(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
+
+        scheduler = new StreamScheduler(coordinator, consumerFactory, shardManager, pluginMetrics);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> scheduler.run());
+        Thread.sleep(100);
+        assertThat(future.isDone(), equalTo(false));
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
     }
 }
