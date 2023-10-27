@@ -69,7 +69,7 @@ public class KafkaBufferIT {
         String topicName = "buffer-" + RandomStringUtils.randomAlphabetic(5);
         when(topicConfig.getName()).thenReturn(topicName);
         when(topicConfig.getGroupId()).thenReturn("buffergroup-" + RandomStringUtils.randomAlphabetic(6));
-        when(topicConfig.isCreate()).thenReturn(true);
+        when(topicConfig.isCreateTopic()).thenReturn(true);
         when(topicConfig.getSerdeFormat()).thenReturn(messageFormat);
         when(topicConfig.getWorkers()).thenReturn(1);
         when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));

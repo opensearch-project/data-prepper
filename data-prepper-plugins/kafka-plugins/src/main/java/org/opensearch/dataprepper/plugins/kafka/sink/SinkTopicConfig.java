@@ -28,8 +28,8 @@ public class SinkTopicConfig extends CommonTopicConfig implements ProducerTopicC
     @JsonProperty("retention_period")
     private Long retentionPeriod = DEFAULT_RETENTION_PERIOD;
 
-    @JsonProperty("is_topic_create")
-    private Boolean isTopicCreate = Boolean.FALSE;
+    @JsonProperty("create_topic")
+    private boolean isCreateTopic = false;
 
     @Override
     public MessageFormat getSerdeFormat() {
@@ -62,7 +62,7 @@ public class SinkTopicConfig extends CommonTopicConfig implements ProducerTopicC
     }
 
     @Override
-    public Boolean isCreate() {
-        return isTopicCreate;
+    public boolean isCreateTopic() {
+        return isCreateTopic;
     }
 }

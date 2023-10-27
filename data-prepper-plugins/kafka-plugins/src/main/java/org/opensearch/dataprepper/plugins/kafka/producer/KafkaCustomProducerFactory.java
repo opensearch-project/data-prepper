@@ -82,7 +82,7 @@ public class KafkaCustomProducerFactory {
 
     private void checkTopicCreationCriteriaAndCreateTopic(final KafkaProducerConfig kafkaProducerConfig) {
         final ProducerTopicConfig topic = kafkaProducerConfig.getTopic();
-        if (!topic.isCreate()) {
+        if (!topic.isCreateTopic()) {
             final TopicService topicService = new TopicService(kafkaProducerConfig);
             topicService.createTopic(kafkaProducerConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor());
             topicService.closeAdminClient();

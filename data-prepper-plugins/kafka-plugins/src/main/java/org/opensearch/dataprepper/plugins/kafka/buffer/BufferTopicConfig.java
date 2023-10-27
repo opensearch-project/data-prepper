@@ -50,8 +50,8 @@ class BufferTopicConfig extends CommonTopicConfig implements ProducerTopicConfig
     @JsonProperty("retention_period")
     private Long retentionPeriod = DEFAULT_RETENTION_PERIOD;
 
-    @JsonProperty("is_topic_create")
-    private Boolean isTopicCreate = Boolean.FALSE;
+    @JsonProperty("create_topic")
+    private boolean isCreateTopic = false;
 
     @JsonProperty("auto_commit")
     private Boolean autoCommit = DEFAULT_AUTO_COMMIT;
@@ -111,8 +111,8 @@ class BufferTopicConfig extends CommonTopicConfig implements ProducerTopicConfig
     }
 
     @Override
-    public Boolean isCreate() {
-        return isTopicCreate;
+    public boolean isCreateTopic() {
+        return isCreateTopic;
     }
 
     @Override

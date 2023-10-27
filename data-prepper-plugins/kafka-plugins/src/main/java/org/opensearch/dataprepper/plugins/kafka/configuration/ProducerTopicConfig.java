@@ -13,5 +13,5 @@ public interface ProducerTopicConfig extends TopicConfig {
     Integer getNumberOfPartitions();
     Short getReplicationFactor();
     Long getRetentionPeriod();
-    Boolean isCreate();
+    boolean isCreateTopic();
 }

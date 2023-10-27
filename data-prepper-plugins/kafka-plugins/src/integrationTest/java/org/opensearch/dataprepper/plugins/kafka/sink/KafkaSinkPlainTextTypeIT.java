@@ -143,7 +143,7 @@ public class KafkaSinkPlainTextTypeIT {
 
         final int numRecords = 1;
         when(topicConfig.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(topicConfig.isCreate()).thenReturn(false);
+        when(topicConfig.isCreateTopic()).thenReturn(false);
         when(kafkaSinkConfig.getTopic()).thenReturn(topicConfig);
         when(kafkaSinkConfig.getAuthConfig()).thenReturn(authConfig);
         kafkaSink = createObjectUnderTest();

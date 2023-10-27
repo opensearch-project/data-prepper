@@ -197,7 +197,7 @@ public class KafkaSinkTest {
     public void doOutputTestForAutoTopicCreate() {
 
         SinkTopicConfig topicConfig = mock(SinkTopicConfig.class);
-        when(topicConfig.isCreate()).thenReturn(true);
+        when(topicConfig.isCreateTopic()).thenReturn(true);
 
         SchemaConfig schemaConfig = mock(SchemaConfig.class);
         when(schemaConfig.isCreate()).thenReturn(true);

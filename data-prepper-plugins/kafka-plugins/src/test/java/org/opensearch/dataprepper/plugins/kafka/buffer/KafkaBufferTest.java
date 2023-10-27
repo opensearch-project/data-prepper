@@ -139,7 +139,7 @@ class KafkaBufferTest {
         pluginMetrics = mock(PluginMetrics.class);
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         when(topic1.getName()).thenReturn("topic1");
-        when(topic1.isCreate()).thenReturn(true);
+        when(topic1.isCreateTopic()).thenReturn(true);
 
         when(topic1.getWorkers()).thenReturn(2);
         when(topic1.getCommitInterval()).thenReturn(Duration.ofSeconds(1));
