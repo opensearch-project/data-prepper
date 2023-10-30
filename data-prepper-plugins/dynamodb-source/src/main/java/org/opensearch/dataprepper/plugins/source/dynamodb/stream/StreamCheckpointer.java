@@ -32,15 +32,12 @@ public class StreamCheckpointer {
 
     private void setSequenceNumber(String sequenceNumber) {
         // Must only update progress if sequence number is not empty
-        // A blank sequence number means the current sequence number in the progress state has not changed
+        // A blank sequence number means the current sequence number in the progress state has not changed, do nothing
         if (sequenceNumber != null && !sequenceNumber.isEmpty()) {
             Optional<StreamProgressState> progressState = streamPartition.getProgressState();
             if (progressState.isPresent()) {
                 progressState.get().setSequenceNumber(sequenceNumber);
-            } else {
-
             }
-
         }
     }
 

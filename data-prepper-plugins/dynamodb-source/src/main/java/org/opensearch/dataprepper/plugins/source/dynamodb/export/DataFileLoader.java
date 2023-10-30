@@ -5,12 +5,21 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter;
+import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
@@ -37,30 +46,37 @@ public class DataFileLoader implements Runnable {
      */
     private static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 2 * 60_000;
 
+    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
+    static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+
     private final String bucketName;
 
     private final String key;
 
     private final ExportRecordConverter recordConverter;
 
-    private final S3ObjectReader s3ObjectReader;
+    private final S3ObjectReader objectReader;
 
     private final DataFileCheckpointer checkpointer;
 
-    // Start Line is the checkpoint
+    /**
+     * Start Line is the checkpoint
+     */
     private final int startLine;
 
     private DataFileLoader(Builder builder) {
-        this.s3ObjectReader = builder.s3ObjectReader;
-        this.recordConverter = builder.recordConverter;
+        this.objectReader = builder.objectReader;
         this.bucketName = builder.bucketName;
         this.key = builder.key;
         this.checkpointer = builder.checkpointer;
         this.startLine = builder.startLine;
+
+        final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(builder.buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
+        recordConverter = new ExportRecordConverter(bufferAccumulator, builder.tableInfo, builder.pluginMetrics);
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public static Builder builder(final S3ObjectReader s3ObjectReader, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
+        return new Builder(s3ObjectReader, pluginMetrics, buffer);
     }
 
 
@@ -69,9 +85,14 @@ public class DataFileLoader implements Runnable {
      */
     static class Builder {
 
-        private S3ObjectReader s3ObjectReader;
+        private final S3ObjectReader objectReader;
 
-        private ExportRecordConverter recordConverter;
+        private final PluginMetrics pluginMetrics;
+
+        private final Buffer<Record<Event>> buffer;
+
+        private TableInfo tableInfo;
+
 
         private DataFileCheckpointer checkpointer;
 
@@ -81,13 +102,14 @@ public class DataFileLoader implements Runnable {
 
         private int startLine;
 
-        public Builder s3ObjectReader(S3ObjectReader s3ObjectReader) {
-            this.s3ObjectReader = s3ObjectReader;
-            return this;
+        public Builder(final S3ObjectReader objectReader, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
+            this.objectReader = objectReader;
+            this.pluginMetrics = pluginMetrics;
+            this.buffer = buffer;
         }
 
-        public Builder recordConverter(ExportRecordConverter recordConverter) {
-            this.recordConverter = recordConverter;
+        public Builder tableInfo(TableInfo tableInfo) {
+            this.tableInfo = tableInfo;
             return this;
         }
 
@@ -128,7 +150,9 @@ public class DataFileLoader implements Runnable {
         int lineCount = 0;
         int lastLineProcessed = 0;
 
-        try (GZIPInputStream gzipInputStream = new GZIPInputStream(s3ObjectReader.readFile(bucketName, key))) {
+        try {
+            InputStream inputStream = objectReader.readFile(bucketName, key);
+            GZIPInputStream gzipInputStream = new GZIPInputStream(inputStream);
             BufferedReader reader = new BufferedReader(new InputStreamReader(gzipInputStream));
 
             String line;
@@ -170,11 +194,15 @@ public class DataFileLoader implements Runnable {
             }
 
             lines.clear();
+
             reader.close();
+            gzipInputStream.close();
+            inputStream.close();
             LOG.info("Complete loading s3://{}/{}", bucketName, key);
-        } catch (Exception e) {
+        } catch (IOException e) {
             checkpointer.checkpoint(lineCount);
-            String errorMessage = String.format("Loading of s3://{}/{} completed with Exception: {}", bucketName, key, e.getMessage());
+
+            String errorMessage = String.format("Loading of s3://%s/%s completed with Exception: %S", bucketName, key, e.getMessage());
             throw new RuntimeException(errorMessage);
         }
     }

@@ -5,25 +5,19 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 
-import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import software.amazon.awssdk.services.s3.S3Client;
-
-import java.time.Duration;
 
 /**
  * Factory class for DataFileLoader thread.
  */
 public class DataFileLoaderFactory {
-    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
-    static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
 
     private final EnhancedSourceCoordinator coordinator;
 
@@ -39,17 +33,14 @@ public class DataFileLoaderFactory {
     }
 
     public Runnable createDataFileLoader(DataFilePartition dataFilePartition, TableInfo tableInfo) {
-        final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-        ExportRecordConverter recordProcessor = new ExportRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
 
         DataFileCheckpointer checkpointer = new DataFileCheckpointer(coordinator, dataFilePartition);
 
         // Start a data loader thread.
-        DataFileLoader loader = DataFileLoader.builder()
-                .s3ObjectReader(objectReader)
+        DataFileLoader loader = DataFileLoader.builder(objectReader, pluginMetrics, buffer)
                 .bucketName(dataFilePartition.getBucket())
                 .key(dataFilePartition.getKey())
-                .recordConverter(recordProcessor)
+                .tableInfo(tableInfo)
                 .checkpointer(checkpointer)
                 .startLine(dataFilePartition.getProgressState().get().getLoaded())
                 .build();

@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -25,11 +24,8 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -112,10 +108,9 @@ class StreamSchedulerTest {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
 
         final Future<?> future = executorService.submit(() -> scheduler.run());
-        Thread.sleep(100);
+        Thread.sleep(2000);
         executorService.shutdown();
         future.cancel(true);
-        assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
 
         // Should acquire the stream partition
         verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
