@@ -15,7 +15,7 @@ import java.time.Duration;
  * which are specific for those use-cases.
  */
 public interface TopicConfig {
-    String getGroupId();
+    String getName();
 
     MessageFormat getSerdeFormat();
 
@@ -23,23 +23,7 @@ public interface TopicConfig {
 
     KmsConfig getKmsConfig();
 
-    Duration getSessionTimeOut();
-
-    String getAutoOffsetReset();
-
-    Duration getThreadWaitingTime();
-
     Duration getRetryBackoff();
 
     Duration getReconnectBackoff();
-
-    Duration getMaxPollInterval();
-
-    Integer getConsumerMaxPollRecords();
-
-    Integer getWorkers();
-
-    Duration getHeartBeatInterval();
-
-    String getName();
 }

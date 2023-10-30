@@ -28,6 +28,14 @@ class BufferTopicConfigTest {
         assertThat(objectUnderTest.getFetchMinBytes(), equalTo(BufferTopicConfig.DEFAULT_FETCH_MIN_BYTES.getBytes()));
         assertThat(objectUnderTest.getFetchMaxBytes(), equalTo(BufferTopicConfig.DEFAULT_FETCH_MAX_BYTES.getBytes()));
         assertThat(objectUnderTest.getMaxPartitionFetchBytes(), equalTo(BufferTopicConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES.getBytes()));
+
+        assertThat(objectUnderTest.getSessionTimeOut(), equalTo(BufferTopicConfig.DEFAULT_SESSION_TIMEOUT));
+        assertThat(objectUnderTest.getAutoOffsetReset(), equalTo(BufferTopicConfig.DEFAULT_AUTO_OFFSET_RESET));
+        assertThat(objectUnderTest.getThreadWaitingTime(), equalTo(BufferTopicConfig.DEFAULT_THREAD_WAITING_TIME));
+        assertThat(objectUnderTest.getMaxPollInterval(), equalTo(BufferTopicConfig.DEFAULT_MAX_POLL_INTERVAL));
+        assertThat(objectUnderTest.getConsumerMaxPollRecords(), equalTo(BufferTopicConfig.DEFAULT_CONSUMER_MAX_POLL_RECORDS));
+        assertThat(objectUnderTest.getWorkers(), equalTo(BufferTopicConfig.DEFAULT_NUM_OF_WORKERS));
+        assertThat(objectUnderTest.getHeartBeatInterval(), equalTo(BufferTopicConfig.DEFAULT_HEART_BEAT_INTERVAL_DURATION));
     }
 
     @Test

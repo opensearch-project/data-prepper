@@ -38,7 +38,6 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfi
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -122,17 +121,10 @@ public class KafkaSinkJsonTypeIT {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON.toString());
         when(kafkaSinkConfig.getPartitionKey()).thenReturn("test-${name}");
 
-        final String testGroup = "TestGroup_" + RandomStringUtils.randomAlphabetic(5);
         testTopic = "TestTopic_" + RandomStringUtils.randomAlphabetic(5);
 
         topicConfig = mock(TopicProducerConfig.class);
         when(topicConfig.getName()).thenReturn(testTopic);
-        when(topicConfig.getGroupId()).thenReturn(testGroup);
-        when(topicConfig.getWorkers()).thenReturn(1);
-        when(topicConfig.getSessionTimeOut()).thenReturn(Duration.ofSeconds(45));
-        when(topicConfig.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
-        when(topicConfig.getAutoOffsetReset()).thenReturn("earliest");
-        when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
         when(kafkaSinkConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -143,7 +135,6 @@ public class KafkaSinkJsonTypeIT {
         configureJasConfForSASLPlainText();
 
         final int numRecords = 1;
-        when(topicConfig.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(topicConfig.isCreateTopic()).thenReturn(false);
         when(kafkaSinkConfig.getTopic()).thenReturn(topicConfig);
         when(kafkaSinkConfig.getAuthConfig()).thenReturn(authConfig);
@@ -221,11 +212,8 @@ public class KafkaSinkJsonTypeIT {
     }
 
     private void consumeTestMessages(List<Record<Event>> recList) {
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-                topicConfig.getAutoOffsetReset());
-        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
-                topicConfig.getConsumerMaxPollRecords());
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, topicConfig.getGroupId());
+        final String testGroup = "TestGroup_" + RandomStringUtils.randomAlphabetic(5);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, testGroup);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
                 StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,

@@ -14,7 +14,11 @@ import java.time.Duration;
 public interface TopicConsumerConfig extends TopicConfig {
     KafkaKeyMode getKafkaKeyMode();
 
+    String getGroupId();
+
     Boolean getAutoCommit();
+
+    String getAutoOffsetReset();
 
     Duration getCommitInterval();
 
@@ -25,4 +29,16 @@ public interface TopicConsumerConfig extends TopicConfig {
     Integer getFetchMaxWait();
 
     long getFetchMinBytes();
+
+    Duration getThreadWaitingTime();
+
+    Duration getSessionTimeOut();
+
+    Duration getHeartBeatInterval();
+
+    Duration getMaxPollInterval();
+
+    Integer getConsumerMaxPollRecords();
+
+    Integer getWorkers();
 }

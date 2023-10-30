@@ -64,43 +64,21 @@ class CommonTopicConfigTest {
     @Tag(YAML_FILE_WITH_MISSING_CONSUMER_CONFIG)
     void testConfigValues_default() {
         assertEquals("my-topic-2", topicConfig.getName());
-        assertEquals("my-test-group", topicConfig.getGroupId());
-        assertEquals(CommonTopicConfig.DEFAULT_SESSION_TIMEOUT, topicConfig.getSessionTimeOut());
-        assertEquals(CommonTopicConfig.DEFAULT_AUTO_OFFSET_RESET, topicConfig.getAutoOffsetReset());
-        assertEquals(CommonTopicConfig.DEFAULT_THREAD_WAITING_TIME, topicConfig.getThreadWaitingTime());
         assertEquals(CommonTopicConfig.DEFAULT_RETRY_BACKOFF, topicConfig.getRetryBackoff());
         assertEquals(CommonTopicConfig.DEFAULT_RECONNECT_BACKOFF, topicConfig.getReconnectBackoff());
-        assertEquals(CommonTopicConfig.DEFAULT_MAX_POLL_INTERVAL, topicConfig.getMaxPollInterval());
-        assertEquals(CommonTopicConfig.DEFAULT_CONSUMER_MAX_POLL_RECORDS, topicConfig.getConsumerMaxPollRecords());
-        assertEquals(CommonTopicConfig.DEFAULT_NUM_OF_WORKERS, topicConfig.getWorkers());
-        assertEquals(CommonTopicConfig.DEFAULT_HEART_BEAT_INTERVAL_DURATION, topicConfig.getHeartBeatInterval());
     }
 
     @Test
     @Tag(YAML_FILE_WITH_CONSUMER_CONFIG)
     void testConfigValues_from_yaml() {
         assertEquals("my-topic-1", topicConfig.getName());
-        assertEquals(45000, topicConfig.getSessionTimeOut().toMillis());
-        assertEquals("earliest", topicConfig.getAutoOffsetReset());
-        assertEquals(Duration.ofSeconds(1), topicConfig.getThreadWaitingTime());
         assertEquals(Duration.ofSeconds(100), topicConfig.getRetryBackoff());
-        assertEquals(Duration.ofSeconds(300), topicConfig.getMaxPollInterval());
-        assertEquals(500L, topicConfig.getConsumerMaxPollRecords().longValue());
-        assertEquals(5, topicConfig.getWorkers().intValue());
-        assertEquals(Duration.ofSeconds(3), topicConfig.getHeartBeatInterval());
     }
 
     @Test
     @Tag(YAML_FILE_WITH_CONSUMER_CONFIG)
     void testConfigValues_from_yaml_not_null() {
         assertNotNull(topicConfig.getName());
-        assertNotNull(topicConfig.getSessionTimeOut());
-        assertNotNull(topicConfig.getAutoOffsetReset());
-        assertNotNull(topicConfig.getThreadWaitingTime());
         assertNotNull(topicConfig.getRetryBackoff());
-        assertNotNull(topicConfig.getMaxPollInterval());
-        assertNotNull(topicConfig.getConsumerMaxPollRecords());
-        assertNotNull(topicConfig.getWorkers());
-        assertNotNull(topicConfig.getHeartBeatInterval());
     }
 }

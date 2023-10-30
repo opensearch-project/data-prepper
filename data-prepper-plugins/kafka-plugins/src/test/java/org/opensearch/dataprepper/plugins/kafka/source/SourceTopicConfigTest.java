@@ -28,6 +28,14 @@ class SourceTopicConfigTest {
         assertThat(objectUnderTest.getFetchMinBytes(), equalTo(ByteCount.parse(SourceTopicConfig.DEFAULT_FETCH_MIN_BYTES).getBytes()));
         assertThat(objectUnderTest.getFetchMaxBytes(), equalTo(ByteCount.parse(SourceTopicConfig.DEFAULT_FETCH_MAX_BYTES).getBytes()));
         assertThat(objectUnderTest.getMaxPartitionFetchBytes(), equalTo(ByteCount.parse(SourceTopicConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES).getBytes()));
+
+        assertThat(objectUnderTest.getSessionTimeOut(), equalTo(SourceTopicConfig.DEFAULT_SESSION_TIMEOUT));
+        assertThat(objectUnderTest.getAutoOffsetReset(), equalTo(SourceTopicConfig.DEFAULT_AUTO_OFFSET_RESET));
+        assertThat(objectUnderTest.getThreadWaitingTime(), equalTo(SourceTopicConfig.DEFAULT_THREAD_WAITING_TIME));
+        assertThat(objectUnderTest.getMaxPollInterval(), equalTo(SourceTopicConfig.DEFAULT_MAX_POLL_INTERVAL));
+        assertThat(objectUnderTest.getConsumerMaxPollRecords(), equalTo(SourceTopicConfig.DEFAULT_CONSUMER_MAX_POLL_RECORDS));
+        assertThat(objectUnderTest.getWorkers(), equalTo(SourceTopicConfig.DEFAULT_NUM_OF_WORKERS));
+        assertThat(objectUnderTest.getHeartBeatInterval(), equalTo(SourceTopicConfig.DEFAULT_HEART_BEAT_INTERVAL_DURATION));
     }
 
     @Test
