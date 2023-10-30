@@ -9,7 +9,6 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.function.Consumer;
 
 /**

@@ -22,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.acknowledgements.ExpiryItem;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.NotificationSourceOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.OnErrorOption;
@@ -107,6 +108,7 @@ class SqsWorkerTest {
 
         SqsOptions sqsOptions = mock(SqsOptions.class);
         when(sqsOptions.getSqsUrl()).thenReturn("https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue");
+        when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(12));
 
         when(s3SourceConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(s3SourceConfig.getSqsOptions()).thenReturn(sqsOptions);
@@ -215,6 +217,8 @@ class SqsWorkerTest {
             verifyNoInteractions(sqsMessagesDeletedCounter);
             assertThat(actualDelay, lessThanOrEqualTo(Duration.ofHours(1).plus(Duration.ofSeconds(5))));
             assertThat(actualDelay, greaterThanOrEqualTo(Duration.ofHours(1).minus(Duration.ofSeconds(5))));
+
+            verify(acknowledgementSetManager).addExpiryMonitor(any(ExpiryItem.class));
         }
 
         @ParameterizedTest

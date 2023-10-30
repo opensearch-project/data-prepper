@@ -42,7 +42,6 @@ public class DefaultAcknowledgementSetManager implements AcknowledgementSetManag
         acknowledgementSetMonitorThread.start();
         pluginMetrics = PluginMetrics.fromNames("acknowledgementSetManager", "acknowledgements");
         metrics = new DefaultAcknowledgementSetMetrics(pluginMetrics);
-
     }
 
     public AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout) {
@@ -75,6 +74,9 @@ public class DefaultAcknowledgementSetManager implements AcknowledgementSetManag
 
     public void shutdown() {
         acknowledgementSetMonitorThread.stop();
+        if (Objects.nonNull(expiryMonitor)) {
+            expiryMonitor.shutdown();
+        }
     }
 
     /**

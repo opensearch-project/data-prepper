@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -55,7 +56,6 @@ public class SqsWorker implements Runnable {
     static final String SQS_MESSAGES_DELETE_FAILED_METRIC_NAME = "sqsMessagesDeleteFailed";
     static final String SQS_MESSAGE_DELAY_METRIC_NAME = "sqsMessageDelay";
     static final String ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
-    static final long VISIBILITY_TIMEOUT_INCREASE_BUFFER = 15L;
 
     private final S3SourceConfig s3SourceConfig;
     private final SqsClient sqsClient;
@@ -343,10 +343,10 @@ public class SqsWorker implements Runnable {
                 .build();
     }
 
-    private ExpiryItem getExpiryItem(final Message message, final Instant expirationTime, final AcknowledgementSet acknowledgementSet) {
+    @VisibleForTesting
+    ExpiryItem getExpiryItem(final Message message, final Instant expirationTime, final AcknowledgementSet acknowledgementSet) {
         final long visibilityTimeoutSeconds = sqsOptions.getVisibilityTimeout().getSeconds();
-        return new ExpiryItem(message.messageId(), expirationTime.minusSeconds(visibilityTimeoutSeconds), visibilityTimeoutSeconds, expirationTime,
-                getExpiryCallback(message), acknowledgementSet);
+        return new ExpiryItem(message.messageId(), visibilityTimeoutSeconds, expirationTime, getExpiryCallback(message), acknowledgementSet);
     }
 
     private Consumer<ExpiryItem> getExpiryCallback(final Message message) {

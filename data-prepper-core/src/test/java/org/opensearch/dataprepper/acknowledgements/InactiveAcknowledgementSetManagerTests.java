@@ -31,6 +31,12 @@ public class InactiveAcknowledgementSetManagerTests {
     }
 
     @Test
+    void testAddExpiryMonitorAPI() {
+        assertThat(acknowledgementSetManager, notNullValue());
+        assertThrows(UnsupportedOperationException.class, () -> acknowledgementSetManager.addExpiryMonitor(null));
+    }
+
+    @Test
     void testEventAcquireAPI() {
         assertThat(acknowledgementSetManager, notNullValue());
         Event event = mock(Event.class);
