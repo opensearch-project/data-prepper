@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.acknowledgements;
 
+import org.opensearch.dataprepper.model.acknowledgements.ExpiryItem;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -24,6 +25,11 @@ public class InactiveAcknowledgementSetManager implements AcknowledgementSetMana
     
     public AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout) {
         throw new UnsupportedOperationException("create operation not supported");
+    }
+
+    @Override
+    public void addExpiryMonitor(final ExpiryItem expiryItem) {
+        throw new UnsupportedOperationException("add expiry monitor operation not supported");
     }
 
     public void acquireEventReference(final Event event) {

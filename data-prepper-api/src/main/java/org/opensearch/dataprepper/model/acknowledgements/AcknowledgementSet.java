@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.model.acknowledgements;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
+import java.time.Instant;
+
 /**
  * AcknowledgmentSet keeps track of set of events that
  * belong to the batch of events that a source creates.
@@ -58,4 +60,10 @@ public interface AcknowledgementSet {
       * initial events are going through the pipeline line.
      */
     public void complete();
+
+    Instant getExpiryTime();
+
+    void setExpiryTime(final Instant expiryTime);
+
+    boolean isDone();
 }

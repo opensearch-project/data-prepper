@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.function.Consumer;
 
 /**
@@ -29,6 +30,8 @@ public interface AcknowledgementSetManager {
      * @since 2.2
      */
     AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout);
+
+    void addExpiryMonitor(final ExpiryItem expiryItem);
 
     /**
      * Releases an event's reference
