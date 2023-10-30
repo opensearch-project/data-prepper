@@ -217,17 +217,18 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
     indexManager.setupIndex();
 
+    boolean requireAlias = indexManager.checkISMEnabled();
     final boolean isEstimateBulkSizeUsingCompression = openSearchSinkConfig.getIndexConfiguration().isEstimateBulkSizeUsingCompression();
     final boolean isRequestCompressionEnabled = openSearchSinkConfig.getConnectionConfiguration().isRequestCompressionEnabled();
     if (isEstimateBulkSizeUsingCompression && isRequestCompressionEnabled) {
       final int maxLocalCompressionsForEstimation = openSearchSinkConfig.getIndexConfiguration().getMaxLocalCompressionsForEstimation();
-      bulkRequestSupplier = () -> new JavaClientAccumulatingCompressedBulkRequest(new BulkRequest.Builder(), bulkSize, maxLocalCompressionsForEstimation);
+      bulkRequestSupplier = () -> new JavaClientAccumulatingCompressedBulkRequest(new BulkRequest.Builder().requireAlias(requireAlias), bulkSize, maxLocalCompressionsForEstimation);
     } else if (isEstimateBulkSizeUsingCompression) {
       LOG.warn("Estimate bulk request size using compression was enabled but request compression is disabled. " +
               "Estimating bulk request size without compression.");
-      bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+      bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder().requireAlias(requireAlias));
     } else {
-      bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+      bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder().requireAlias(requireAlias));
     }
 
     final int maxRetries = openSearchSinkConfig.getRetryConfiguration().getMaxRetries();

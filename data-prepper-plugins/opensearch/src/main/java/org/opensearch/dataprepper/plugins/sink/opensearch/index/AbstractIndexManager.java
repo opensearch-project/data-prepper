@@ -176,7 +176,7 @@ public abstract class AbstractIndexManager implements IndexManager {
         return LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(UTC_ZONE_ID);
     }
 
-    final boolean checkISMEnabled() throws IOException {
+    public final boolean checkISMEnabled() throws IOException {
         final GetClusterSettingsRequest request = new GetClusterSettingsRequest.Builder()
                 .includeDefaults(true)
                 .build();
