@@ -19,22 +19,6 @@ public interface EventHandle {
     void release(boolean result);
 
     /**
-     * sets acknowledgement set
-     *
-     * @param acknowledgementSet acknowledgementSet to be set in the event handle
-     * @since 2.6
-     */
-    void setAcknowledgementSet(final AcknowledgementSet acknowledgementSet);
-
-    /**
-     * gets acknowledgement set
-     *
-     * @return returns acknowledgementSet from the event handle
-     * @since 2.6
-     */
-    AcknowledgementSet getAcknowledgementSet();
-
-    /**
      * sets external origination time
      *
      * @param externalOriginationTime externalOriginationTime to be set in the event handle

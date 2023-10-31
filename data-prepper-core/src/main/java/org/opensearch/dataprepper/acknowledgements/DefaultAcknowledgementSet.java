@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.acknowledgements;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.InternalEventHandle;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,8 +55,11 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         try {
             if (event instanceof JacksonEvent) {
                 EventHandle eventHandle = event.getEventHandle();
-                eventHandle.setAcknowledgementSet(this);
-                pendingAcknowledgments.put(eventHandle, new AtomicInteger(1));
+                if (eventHandle instanceof DefaultEventHandle) {
+                    InternalEventHandle internalEventHandle = (InternalEventHandle)(DefaultEventHandle)eventHandle;
+                    internalEventHandle.setAcknowledgementSet(this);
+                    pendingAcknowledgments.put(eventHandle, new AtomicInteger(1));
+                }
             }
         } finally {
             lock.unlock();

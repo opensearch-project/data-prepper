@@ -13,6 +13,8 @@ import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
+import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.pipeline.common.FutureHelperResult;
 import org.slf4j.Logger;
@@ -97,10 +99,15 @@ public class ProcessWorker implements Runnable {
         // For each event in the input events list that is not present in the output events, send positive acknowledgement, if acknowledgements are enabled for it
         inputEvents.forEach(event -> {
             EventHandle eventHandle = event.getEventHandle();
-            if (Objects.nonNull(eventHandle) && eventHandle.getAcknowledgementSet() != null && !outputEventsSet.contains(event)) {
-                eventHandle.release(true);
-            } else if (acknowledgementsEnabled && Objects.isNull(eventHandle)) {
-                invalidEventHandlesCounter.increment();
+            if (eventHandle != null && eventHandle instanceof DefaultEventHandle) {
+                InternalEventHandle internalEventHandle = (InternalEventHandle)(DefaultEventHandle)eventHandle;
+                if (internalEventHandle.getAcknowledgementSet() != null && !outputEventsSet.contains(event)) {
+                    eventHandle.release(true);
+                } else if (acknowledgementsEnabled) {
+                    invalidEventHandlesCounter.increment();
+                }
+            } else if (eventHandle != null) {
+                throw new RuntimeException("Unexpected EventHandle");
             }
         });
     }

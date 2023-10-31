@@ -65,7 +65,7 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
         }
         if (referencedRecords.contains(record) || ((routedRecords != null) && routedRecords.contains(record))) {
             EventHandle eventHandle = ((JacksonEvent)record.getData()).getEventHandle();
-            if (eventHandle != null && eventHandle.getAcknowledgementSet() != null) {
+            if (eventHandle != null && eventHandle instanceof DefaultEventHandle) {
                 acknowledgementSetManager.acquireEventReference(eventHandle);
             }
         } else if (!referencedRecords.contains(record)) {

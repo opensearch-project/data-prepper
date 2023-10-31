@@ -101,11 +101,10 @@ public class JacksonEvent implements Event {
     }
 
     public static Event fromMessage(String message) {
-        JacksonEvent event = JacksonEvent.builder()
+        return JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
                 .withData(Collections.singletonMap(MESSAGE_KEY, message))
                 .build();
-        return event;
     }
 
     private JsonNode getInitialJsonNode(final Object data) {

@@ -11,7 +11,7 @@ import java.lang.ref.WeakReference;
 import java.time.Instant;
 import java.io.Serializable;
 
-public class DefaultEventHandle implements EventHandle, Serializable {
+public class DefaultEventHandle implements EventHandle, InternalEventHandle, Serializable {
     private Instant externalOriginationTime;
     private final Instant internalOriginationTime;
     private WeakReference<AcknowledgementSet> acknowledgementSetRef;
@@ -51,7 +51,6 @@ public class DefaultEventHandle implements EventHandle, Serializable {
 
     @Override
     public void release(boolean result) {
-        System.out.println("======release called==="+result);
         AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
         if (acknowledgementSet != null) {
             acknowledgementSet.release(this, result);

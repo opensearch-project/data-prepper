@@ -149,11 +149,6 @@ public class OpenSearchSinkIT {
         expressionEvaluator = mock(ExpressionEvaluator.class);
         when(expressionEvaluator.isValidExpressionStatement(any(String.class))).thenReturn(false);
 
-        /*
-        lenient().doAnswer(a -> {
-            return null;
-        }).when(eventHandle).release(any(Boolean.class));
-        */
     }
 
     @BeforeEach

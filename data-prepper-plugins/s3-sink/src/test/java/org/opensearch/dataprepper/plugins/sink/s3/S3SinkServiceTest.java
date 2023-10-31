@@ -386,8 +386,6 @@ class S3SinkServiceTest {
         }
         s3SinkService.output(records);
 
-        //final List<EventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
-
         for (EventHandle eventHandle : eventHandles) {
             verify(acknowledgementSet).release(eventHandle, true);
         }
@@ -452,13 +450,11 @@ class S3SinkServiceTest {
         final List<EventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
 
         for (EventHandle eventHandle : eventHandles) {
-            System.out.println("==1====EventHandle=="+eventHandle+"==="+acknowledgementSet);
             eventHandle.setAcknowledgementSet(acknowledgementSet);
         }
         s3SinkService.output(records);
 
         for (EventHandle eventHandle : eventHandles) {
-            System.out.println("==2====EventHandle=="+eventHandle+"==="+acknowledgementSet);
             verify(acknowledgementSet).release(eventHandle, false);
         }
     }

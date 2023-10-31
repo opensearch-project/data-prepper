@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.acknowledgements;
 
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,20 +38,20 @@ class DefaultAcknowledgementSetManagerTests {
     @Mock
     JacksonEvent event3;
 
-    EventHandle eventHandle1;
-    EventHandle eventHandle2;
-    EventHandle eventHandle3;
+    DefaultEventHandle eventHandle1;
+    DefaultEventHandle eventHandle2;
+    DefaultEventHandle eventHandle3;
     Boolean result;
 
     @BeforeEach
     void setup() {
         callbackExecutor = Executors.newFixedThreadPool(2);
         event1 = mock(JacksonEvent.class);
-        eventHandle1 = mock(EventHandle.class);
+        eventHandle1 = mock(DefaultEventHandle.class);
         lenient().when(event1.getEventHandle()).thenReturn(eventHandle1);
 
         event2 = mock(JacksonEvent.class);
-        eventHandle2 = mock(EventHandle.class);
+        eventHandle2 = mock(DefaultEventHandle.class);
         lenient().when(event2.getEventHandle()).thenReturn(eventHandle2);
 
         acknowledgementSetManager = createObjectUnderTest();
@@ -91,7 +91,7 @@ class DefaultAcknowledgementSetManagerTests {
     @Test
     void testMultipleAcknowledgementSets() {
         event3 = mock(JacksonEvent.class);
-        eventHandle3 = mock(EventHandle.class);
+        eventHandle3 = mock(DefaultEventHandle.class);
         lenient().when(event3.getEventHandle()).thenReturn(eventHandle3);
 
         AcknowledgementSet acknowledgementSet2 = acknowledgementSetManager.create((flag) -> { result = flag; }, TEST_TIMEOUT);

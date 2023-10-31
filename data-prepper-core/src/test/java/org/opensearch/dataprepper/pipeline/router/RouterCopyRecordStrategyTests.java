@@ -42,7 +42,7 @@ import static org.junit.Assert.assertFalse;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -66,7 +66,7 @@ public class RouterCopyRecordStrategyTests {
 
     private JacksonEvent event;
 
-    private Map<EventHandle, Integer> handleRefCount;
+    private Map<DefaultEventHandle, Integer> handleRefCount;
 
     private static class TestComponent {
     }
@@ -79,11 +79,11 @@ public class RouterCopyRecordStrategyTests {
         acknowledgementSet1 = mock(AcknowledgementSet.class);
         try {
             lenient().doAnswer((i) -> {
-                EventHandle handle = (EventHandle) i.getArgument(0);
+                DefaultEventHandle handle = (DefaultEventHandle) i.getArgument(0);
                 int v = handleRefCount.getOrDefault(handle, 0);
                 handleRefCount.put(handle, v+1);
                 return null;
-            }).when(acknowledgementSetManager).acquireEventReference(any(EventHandle.class));
+            }).when(acknowledgementSetManager).acquireEventReference(any(DefaultEventHandle.class));
         } catch (Exception e){}
         mockRecordsIn = IntStream.range(0, 10)
                 .mapToObj(i -> mock(Record.class))
@@ -98,11 +98,11 @@ public class RouterCopyRecordStrategyTests {
                 .collect(Collectors.toList());
     }
 
-    private void attachEventHandlesToRecordsIn(List<EventHandle> eventHandles) {
+    private void attachEventHandlesToRecordsIn(List<DefaultEventHandle> eventHandles) {
         Iterator iter = recordsIn.iterator();
         while (iter.hasNext()) {
             Record r = (Record) iter.next();
-            EventHandle handle = ((JacksonEvent)r.getData()).getEventHandle();
+            DefaultEventHandle handle = (DefaultEventHandle)((JacksonEvent)r.getData()).getEventHandle();
             handle.setAcknowledgementSet(acknowledgementSet1);
             eventHandles.add(handle);
         }
@@ -186,10 +186,10 @@ public class RouterCopyRecordStrategyTests {
             = Collections.singletonList(dataFlowComponent);
 
         final RouterCopyRecordStrategy getRecordStrategy = createObjectUnderTest(dataFlowComponents);
-        List<EventHandle> eventHandles = new ArrayList<>();
+        List<DefaultEventHandle> eventHandles = new ArrayList<>();
         attachEventHandlesToRecordsIn(eventHandles);
         Record firstRecord = recordsIn.iterator().next();
-        EventHandle firstHandle = ((Event)firstRecord.getData()).getEventHandle();
+        DefaultEventHandle firstHandle = (DefaultEventHandle)((Event)firstRecord.getData()).getEventHandle();
         Record recordOut = getRecordStrategy.getRecord(firstRecord);
         assertThat(recordOut, sameInstance(firstRecord));
         assertTrue(getRecordStrategy.getReferencedRecords().contains(firstRecord));
@@ -208,7 +208,7 @@ public class RouterCopyRecordStrategyTests {
             = Collections.singletonList(dataFlowComponent);
 
         final RouterCopyRecordStrategy getRecordStrategy = createObjectUnderTest(dataFlowComponents);
-        List<EventHandle> eventHandles = new ArrayList<>();
+        List<DefaultEventHandle> eventHandles = new ArrayList<>();
         attachEventHandlesToRecordsIn(eventHandles);
         Collection<Record> recordsOut = getRecordStrategy.getAllRecords(recordsIn);
         assertThat(recordsOut.size(), equalTo(recordsIn.size()));
@@ -237,12 +237,12 @@ public class RouterCopyRecordStrategyTests {
         }
 
         final RouterCopyRecordStrategy getRecordStrategy = createObjectUnderTest(dataFlowComponents);
-        List<EventHandle> eventHandles = new ArrayList<>();
+        List<DefaultEventHandle> eventHandles = new ArrayList<>();
         attachEventHandlesToRecordsIn(eventHandles);
         try {
             doAnswer((i) -> {
                 JacksonEvent e1 = (JacksonEvent) i.getArgument(0);
-                e1.getEventHandle().setAcknowledgementSet(acknowledgementSet1);
+                ((DefaultEventHandle)e1.getEventHandle()).setAcknowledgementSet(acknowledgementSet1);
                 return null;
             }).when(acknowledgementSet1).add(any(JacksonEvent.class));
         } catch (Exception e){}
@@ -253,14 +253,14 @@ public class RouterCopyRecordStrategyTests {
         when(eventBuilder.build()).thenReturn(JacksonEvent.fromEvent(event));
         when(eventFactory.eventBuilder(EventBuilder.class)).thenReturn(eventBuilder);
         Record firstRecord = recordsIn.iterator().next();
-        EventHandle firstHandle = ((Event)firstRecord.getData()).getEventHandle();
+        DefaultEventHandle firstHandle = (DefaultEventHandle)((Event)firstRecord.getData()).getEventHandle();
         Record recordOut = getRecordStrategy.getRecord(firstRecord);
         assertThat(recordOut, sameInstance(firstRecord));
         assertTrue(getRecordStrategy.getReferencedRecords().contains(firstRecord));
         recordOut = getRecordStrategy.getRecord(firstRecord);
         assertThat(recordOut, not(sameInstance(firstRecord)));
         assertFalse(handleRefCount.containsKey(firstHandle));
-        EventHandle newHandle = ((JacksonEvent)recordOut.getData()).getEventHandle();
+        DefaultEventHandle newHandle = (DefaultEventHandle)((JacksonEvent)recordOut.getData()).getEventHandle();
         assertTrue(getRecordStrategy.getReferencedRecords().contains(recordOut));
         assertThat(newHandle, not(equalTo(null)));
         assertFalse(handleRefCount.containsKey(newHandle));
@@ -275,12 +275,12 @@ public class RouterCopyRecordStrategyTests {
         }
 
         final RouterCopyRecordStrategy getRecordStrategy = createObjectUnderTest(dataFlowComponents);
-        List<EventHandle> eventHandles = new ArrayList<>();
+        List<DefaultEventHandle> eventHandles = new ArrayList<>();
         attachEventHandlesToRecordsIn(eventHandles);
         try {
             doAnswer((i) -> {
                 JacksonEvent e1 = (JacksonEvent) i.getArgument(0);
-                e1.getEventHandle().setAcknowledgementSet(acknowledgementSet1);
+                ((DefaultEventHandle)e1.getEventHandle()).setAcknowledgementSet(acknowledgementSet1);
                 return null;
             }).when(acknowledgementSet1).add(any(JacksonEvent.class));
         } catch (Exception e){}
