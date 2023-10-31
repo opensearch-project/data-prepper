@@ -21,11 +21,7 @@ import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import org.opensearch.client.opensearch.cluster.OpenSearchClusterClient;
-import org.opensearch.client.opensearch.indices.CreateIndexRequest;
-import org.opensearch.client.opensearch.indices.ExistsRequest;
-import org.opensearch.client.opensearch.indices.GetTemplateRequest;
-import org.opensearch.client.opensearch.indices.GetTemplateResponse;
-import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
+import org.opensearch.client.opensearch.indices.*;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
@@ -311,6 +307,51 @@ public class DefaultIndexManagerTests {
         verify(indexConfiguration).getIndexAlias();
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
+    }
+
+    @Test
+    void isIndexAlias_True() throws IOException {
+        defaultIndexManager = indexManagerFactory.getIndexManager(
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(true));
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("true");
+        assertEquals(true, defaultIndexManager.isIndexAlias());
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getIndexAlias();
+        verify(openSearchClient).indices();
+        verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
+        verify(openSearchClient).cluster();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
+    }
+
+    @Test
+    void isIndexAlias_False_NoAlias() throws IOException {
+        defaultIndexManager = indexManagerFactory.getIndexManager(
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(false));
+        assertEquals(false, defaultIndexManager.isIndexAlias());
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getIndexAlias();
+        verify(openSearchClient).indices();
+        verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
+    }
+
+    @Test
+    void isIndexAlias_False_NoISM() throws IOException {
+        defaultIndexManager = indexManagerFactory.getIndexManager(
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(true));
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("false");
+        assertEquals(false, defaultIndexManager.isIndexAlias());
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getIndexAlias();
+        verify(openSearchClient).indices();
+        verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
+        verify(openSearchClient).cluster();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
     }
 
     @Test

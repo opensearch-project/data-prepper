@@ -14,6 +14,8 @@ import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import org.opensearch.client.opensearch.indices.CreateIndexRequest;
+import org.opensearch.client.opensearch.indices.ExistsAliasRequest;
+import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
 import org.slf4j.Logger;
@@ -50,6 +52,7 @@ public abstract class AbstractIndexManager implements IndexManager {
     protected IsmPolicyManagementStrategy ismPolicyManagementStrategy;
     private final TemplateStrategy templateStrategy;
     protected String indexPrefix;
+    private Boolean isIndexAlias;
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractIndexManager.class);
 
@@ -110,6 +113,10 @@ public abstract class AbstractIndexManager implements IndexManager {
         final DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
         final String suffix = (dateFormatter != null) ? dateFormatter.format(getCurrentUtcTime()) : "";
         return indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "") + suffix;
+    }
+
+    private void initalizeIsIndexAlias(final String indexAlias) {
+
     }
 
     private void initializeIndexPrefixAndSuffix(final String indexAlias){
@@ -176,7 +183,18 @@ public abstract class AbstractIndexManager implements IndexManager {
         return LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(UTC_ZONE_ID);
     }
 
-    public final boolean checkISMEnabled() throws IOException {
+    @Override
+    public boolean isIndexAlias() throws IOException {
+        if (isIndexAlias == null) {
+            String indexAlias = getIndexName(null);
+            ExistsAliasRequest request = new ExistsAliasRequest.Builder().name(indexAlias).build();
+            BooleanResponse response = openSearchClient.indices().existsAlias(request);
+            isIndexAlias = response.value() && checkISMEnabled();
+        }
+        return isIndexAlias;
+    }
+
+    final boolean checkISMEnabled() throws IOException {
         final GetClusterSettingsRequest request = new GetClusterSettingsRequest.Builder()
                 .includeDefaults(true)
                 .build();

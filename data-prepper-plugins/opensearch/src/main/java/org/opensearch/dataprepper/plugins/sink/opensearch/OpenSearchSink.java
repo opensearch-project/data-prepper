@@ -217,7 +217,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
     indexManager.setupIndex();
 
-    boolean requireAlias = indexManager.checkISMEnabled();
+    boolean requireAlias = indexManager.isIndexAlias();
     final boolean isEstimateBulkSizeUsingCompression = openSearchSinkConfig.getIndexConfiguration().isEstimateBulkSizeUsingCompression();
     final boolean isRequestCompressionEnabled = openSearchSinkConfig.getConnectionConfiguration().isRequestCompressionEnabled();
     if (isEstimateBulkSizeUsingCompression && isRequestCompressionEnabled) {
