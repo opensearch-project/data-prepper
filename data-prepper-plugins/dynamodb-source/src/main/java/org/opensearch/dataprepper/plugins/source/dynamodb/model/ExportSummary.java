@@ -57,7 +57,7 @@ public class ExportSummary {
     private long billedSizeBytes;
 
     @JsonProperty("itemCount")
-    private int itemCount;
+    private long itemCount;
 
     @JsonProperty("outputFormat")
     private String outputFormat;
@@ -115,7 +115,7 @@ public class ExportSummary {
         return billedSizeBytes;
     }
 
-    public int getItemCount() {
+    public long getItemCount() {
         return itemCount;
     }
 

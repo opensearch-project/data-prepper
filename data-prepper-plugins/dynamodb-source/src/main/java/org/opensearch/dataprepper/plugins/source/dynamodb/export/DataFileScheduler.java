@@ -63,8 +63,6 @@ public class DataFileScheduler implements Runnable {
         this.coordinator = coordinator;
         this.pluginMetrics = pluginMetrics;
         this.loaderFactory = loaderFactory;
-
-
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
 
         this.exportFileSuccessCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT);
@@ -76,7 +74,7 @@ public class DataFileScheduler implements Runnable {
         String tableArn = getTableArn(exportArn);
 
         TableInfo tableInfo = getTableInfo(tableArn);
-
+        
         Runnable loader = loaderFactory.createDataFileLoader(dataFilePartition, tableInfo);
         CompletableFuture runLoader = CompletableFuture.runAsync(loader, executor);
         runLoader.whenComplete(completeDataLoader(dataFilePartition));
@@ -166,6 +164,17 @@ public class DataFileScheduler implements Runnable {
         };
     }
 
+    /**
+     * There is a global state with sourcePartitionKey the export Arn,
+     * to track the number of files are processed. <br/>
+     * Each time, load of a data file is completed,
+     * The state must be updated.<br/>
+     * Note that the state may be updated since multiple threads are updating the same state.
+     * Retry is required.
+     *
+     * @param exportArn Export Arn.
+     * @param loaded    Number records Loaded.
+     */
     private void updateState(String exportArn, int loaded) {
 
         String streamArn = getStreamArn(exportArn);

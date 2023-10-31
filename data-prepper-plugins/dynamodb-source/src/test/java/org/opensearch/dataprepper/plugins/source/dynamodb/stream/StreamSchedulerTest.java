@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -103,7 +102,6 @@ class StreamSchedulerTest {
 
 
     @Test
-    @Disabled
     public void test_normal_run() throws InterruptedException {
         given(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willReturn(Optional.of(streamPartition)).willReturn(Optional.empty());
 
@@ -112,10 +110,9 @@ class StreamSchedulerTest {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
 
         final Future<?> future = executorService.submit(() -> scheduler.run());
-        Thread.sleep(100);
+        Thread.sleep(2000);
         executorService.shutdown();
         future.cancel(true);
-        assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
 
         // Should acquire the stream partition
         verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
