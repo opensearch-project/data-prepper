@@ -26,9 +26,9 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
 
 import java.io.IOException;
@@ -47,13 +47,12 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-
 public class KafkaCustomProducerTest {
 
     private KafkaCustomProducer producer;
 
     @Mock
-    private KafkaSinkConfig kafkaSinkConfig;
+    private KafkaProducerConfig kafkaSinkConfig;
 
     private Record<Event> record;
 
@@ -70,8 +69,8 @@ public class KafkaCustomProducerTest {
         DefaultEventHandle defaultEventHandle = mock(DefaultEventHandle.class);
         event.setEventHandle(defaultEventHandle);
         record = new Record<>(event);
-        final TopicConfig topicConfig = new TopicConfig();
-        topicConfig.setName("test-topic");
+        final TopicProducerConfig topicConfig = mock(TopicProducerConfig.class);
+        when(topicConfig.getName()).thenReturn("test-topic");
 
         when(kafkaSinkConfig.getTopic()).thenReturn(topicConfig);
         when(kafkaSinkConfig.getSchemaConfig()).thenReturn(mock(SchemaConfig.class));

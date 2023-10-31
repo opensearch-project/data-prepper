@@ -3,11 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.kafka.configuration;
+package org.opensearch.dataprepper.plugins.kafka.sink;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -35,7 +37,7 @@ class KafkaSinkConfigTest {
         kafkaSinkConfig = new KafkaSinkConfig();
         kafkaSinkConfig.setBootStrapServers(Arrays.asList("127.0.0.1:9093"));
         kafkaSinkConfig.setAuthConfig(mock(AuthConfig.class));
-        kafkaSinkConfig.setTopic(mock(TopicConfig.class));
+        kafkaSinkConfig.setTopic(mock(SinkTopicConfig.class));
         kafkaSinkConfig.setSchemaConfig((mock(SchemaConfig.class)));
         kafkaSinkConfig.setThreadWaitTime(10L);
         // kafkaSinkConfig.setSerdeFormat("JSON");

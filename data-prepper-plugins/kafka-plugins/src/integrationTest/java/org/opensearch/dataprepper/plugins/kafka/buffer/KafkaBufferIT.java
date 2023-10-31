@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafka.buffer;
 
 import org.apache.commons.lang3.RandomStringUtils;
@@ -15,8 +20,6 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaBufferConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +53,7 @@ public class KafkaBufferIT {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
     @Mock
-    private TopicConfig topicConfig;
+    private BufferTopicConfig topicConfig;
 
     private PluginMetrics pluginMetrics;
     private String bootstrapServersCommaDelimited;
@@ -66,7 +69,7 @@ public class KafkaBufferIT {
         String topicName = "buffer-" + RandomStringUtils.randomAlphabetic(5);
         when(topicConfig.getName()).thenReturn(topicName);
         when(topicConfig.getGroupId()).thenReturn("buffergroup-" + RandomStringUtils.randomAlphabetic(6));
-        when(topicConfig.isCreate()).thenReturn(true);
+        when(topicConfig.isCreateTopic()).thenReturn(true);
         when(topicConfig.getSerdeFormat()).thenReturn(messageFormat);
         when(topicConfig.getWorkers()).thenReturn(1);
         when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));

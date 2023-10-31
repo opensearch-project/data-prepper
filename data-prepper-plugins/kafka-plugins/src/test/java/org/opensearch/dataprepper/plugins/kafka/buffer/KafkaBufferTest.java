@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafka.buffer;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -22,9 +27,7 @@ import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaBufferConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
@@ -83,7 +86,7 @@ class KafkaBufferTest {
     private PluginFactory pluginFactory;
 
     @Mock
-    TopicConfig topic1;
+    BufferTopicConfig topic1;
     @Mock
     AuthConfig authConfig;
     @Mock
@@ -136,7 +139,7 @@ class KafkaBufferTest {
         pluginMetrics = mock(PluginMetrics.class);
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         when(topic1.getName()).thenReturn("topic1");
-        when(topic1.isCreate()).thenReturn(true);
+        when(topic1.isCreateTopic()).thenReturn(true);
 
         when(topic1.getWorkers()).thenReturn(2);
         when(topic1.getCommitInterval()).thenReturn(Duration.ofSeconds(1));

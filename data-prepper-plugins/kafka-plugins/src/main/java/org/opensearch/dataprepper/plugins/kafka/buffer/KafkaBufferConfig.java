@@ -1,4 +1,9 @@
-package org.opensearch.dataprepper.plugins.kafka.configuration;
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.opensearch.dataprepper.plugins.kafka.buffer;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
@@ -6,13 +11,21 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
+class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     private static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(30);
 
     @JsonProperty("bootstrap_servers")
@@ -21,11 +34,7 @@ public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConf
     @JsonProperty("topics")
     @NotNull
     @Size(min = 1, max = 1, message = "Only one topic currently supported for Kafka buffer")
-    private List<TopicConfig> topics;
-
-    @JsonProperty("schema")
-    @Valid
-    private SchemaConfig schemaConfig;
+    private List<BufferTopicConfig> topics;
 
     @Valid
     @JsonProperty("authentication")
@@ -59,7 +68,7 @@ public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConf
 
     @Override
     public SchemaConfig getSchemaConfig() {
-        return schemaConfig;
+        return null;
     }
 
     @Override
@@ -68,12 +77,12 @@ public class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConf
     }
 
     @Override
-    public TopicConfig getTopic() {
+    public BufferTopicConfig getTopic() {
         return topics.get(0);
     }
 
     @Override
-    public List<TopicConfig> getTopics() {
+    public List<? extends TopicConsumerConfig> getTopics() {
         return topics;
     }
 

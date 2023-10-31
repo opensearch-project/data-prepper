@@ -25,10 +25,10 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
@@ -82,7 +82,7 @@ public class KafkaSourceJsonTypeIT {
     private KafkaClusterConfigSupplier kafkaClusterConfigSupplier;
 
     @Mock
-    private TopicConfig jsonTopic;
+    private TopicConsumerConfig jsonTopic;
 
     private KafkaSource kafkaSource;
 
@@ -126,7 +126,7 @@ public class KafkaSourceJsonTypeIT {
         testKey = RandomStringUtils.randomAlphabetic(5);
         testGroup = "TestGroup_" + RandomStringUtils.randomAlphabetic(6);
         testTopic = "TestJsonTopic_" + RandomStringUtils.randomAlphabetic(5);
-        jsonTopic = mock(TopicConfig.class);
+        jsonTopic = mock(TopicConsumerConfig.class);
         when(jsonTopic.getName()).thenReturn(testTopic);
         when(jsonTopic.getGroupId()).thenReturn(testGroup);
         when(jsonTopic.getWorkers()).thenReturn(1);
@@ -182,7 +182,7 @@ public class KafkaSourceJsonTypeIT {
         when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
-        when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
+        when(sourceConfig.getTopics()).thenReturn((List) List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
 
@@ -214,7 +214,7 @@ public class KafkaSourceJsonTypeIT {
         when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.DISCARD);
-        when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
+        when(sourceConfig.getTopics()).thenReturn((List) List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(true);
         kafkaSource = createObjectUnderTest();
@@ -264,7 +264,7 @@ public class KafkaSourceJsonTypeIT {
         when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.DISCARD);
-        when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
+        when(sourceConfig.getTopics()).thenReturn((List) List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
 
@@ -294,7 +294,7 @@ public class KafkaSourceJsonTypeIT {
         when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
-        when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
+        when(sourceConfig.getTopics()).thenReturn((List) List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
 
@@ -325,7 +325,7 @@ public class KafkaSourceJsonTypeIT {
         when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_METADATA);
-        when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
+        when(sourceConfig.getTopics()).thenReturn((List) List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
 
