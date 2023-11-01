@@ -13,7 +13,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
@@ -185,7 +184,6 @@ class GeoIPProcessorTest {
     private static Record<Event> createRecord() {
         String json = "{\"peer\": {\"ip\": \"136.226.242.205\", \"host\": \"example.org\" }, \"status\": \"success\"}";
         final JacksonEvent event = JacksonLog.builder().withData(json).build();
-        event.setEventHandle(mock(EventHandle.class));
         return new Record<>(event);
     }
 }

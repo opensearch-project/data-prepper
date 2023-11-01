@@ -21,7 +21,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.opensearch.dataprepper.event.DefaultEventHandle;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -66,8 +65,6 @@ public class KafkaCustomProducerTest {
     @BeforeEach
     public void setUp() {
         event = (JacksonEvent) JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        DefaultEventHandle defaultEventHandle = mock(DefaultEventHandle.class);
-        event.setEventHandle(defaultEventHandle);
         record = new Record<>(event);
         final TopicProducerConfig topicConfig = mock(TopicProducerConfig.class);
         when(topicConfig.getName()).thenReturn("test-topic");

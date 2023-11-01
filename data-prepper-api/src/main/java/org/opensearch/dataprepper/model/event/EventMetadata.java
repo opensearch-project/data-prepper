@@ -32,6 +32,20 @@ public interface EventMetadata extends Serializable {
     Instant getTimeReceived();
 
     /**
+     * Returns the external origination time of the event
+     * @return the external origination time
+     * @since 2.6
+     */
+    Instant getExternalOriginationTime();
+
+    /**
+     * Sets the external origination time of the event
+     * @param externalOriginationTime the external origination time
+     * @since 2.6
+     */
+    void setExternalOriginationTime(Instant externalOriginationTime);
+
+    /**
      * Returns the attributes
      * @return a map of attributes
      * @since 1.2

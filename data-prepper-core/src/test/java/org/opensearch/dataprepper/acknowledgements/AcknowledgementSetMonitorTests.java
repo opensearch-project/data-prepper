@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.acknowledgements;
 
-import org.opensearch.dataprepper.event.DefaultEventHandle;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;

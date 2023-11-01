@@ -179,9 +179,7 @@ public class HttpSinkService {
                     int count = currentBuffer.getEventCount() +1;
                     currentBuffer.setEventCount(count);
 
-                    if(event.getEventHandle() != null) {
-                        bufferedEventHandles.add(event.getEventHandle());
-                    }
+                    bufferedEventHandles.add(event.getEventHandle());
                     if (ThresholdValidator.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
                         codec.complete(outputStream);
                         final HttpEndPointResponse failedHttpEndPointResponses = pushToEndPoint(getCurrentBufferData(currentBuffer));
