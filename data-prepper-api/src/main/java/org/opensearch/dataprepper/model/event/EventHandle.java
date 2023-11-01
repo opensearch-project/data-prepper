@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.model.event;
 
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import java.time.Instant;
 
 public interface EventHandle {
