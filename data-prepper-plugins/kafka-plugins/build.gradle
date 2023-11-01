@@ -46,11 +46,11 @@ dependencies {
     testImplementation 'io.confluent:kafka-schema-registry:7.4.0'
     testImplementation testLibs.junit.vintage
     testImplementation 'org.apache.kafka:kafka-clients:3.4.0:test'
-    testImplementation 'org.apache.kafka:connect-json:3.4.0'
+    testImplementation 'org.apache.kafka:connect-json:7.5.1-ce'
     testImplementation('com.kjetland:mbknor-jackson-jsonschema_2.13:1.0.39')
     implementation project(':data-prepper-plugins:failures-common')
     testImplementation group: 'org.powermock', name: 'powermock-api-mockito2', version: '2.0.9'
-    implementation 'org.apache.kafka:connect-json:3.4.0'
+    implementation 'org.apache.kafka:connect-json:7.5.1-ce'
     implementation 'com.github.fge:json-schema-validator:2.2.14'
     implementation 'commons-collections:commons-collections:3.2.2'
     implementation 'software.amazon.awssdk:s3'
