@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
@@ -135,6 +136,10 @@ class S3SinkServiceTest {
         lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED)).
                 thenReturn(numberOfRecordsFailedCounter);
         lenient().when(pluginMetrics.summary(S3SinkService.S3_OBJECTS_SIZE)).thenReturn(s3ObjectSizeSummary);
+    }
+
+    private DefaultEventHandle castToDefaultHandle(EventHandle eventHandle) {
+        return (DefaultEventHandle)eventHandle;
     }
 
     private S3SinkService createObjectUnderTest() {
@@ -380,8 +385,8 @@ class S3SinkServiceTest {
         doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Collection<Record<Event>> records = generateRandomStringEventRecord();
-        final List<EventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
-        for (EventHandle eventHandle : eventHandles) {
+        final List<DefaultEventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
+        for (DefaultEventHandle eventHandle : eventHandles) {
             eventHandle.setAcknowledgementSet(acknowledgementSet);
         }
         s3SinkService.output(records);
@@ -406,8 +411,8 @@ class S3SinkServiceTest {
         doNothing().when(codec).writeEvent(event1, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Collection<Record<Event>> records = generateRandomStringEventRecord();
-        final List<EventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
-        for (EventHandle eventHandle : eventHandles) {
+        final List<DefaultEventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
+        for (DefaultEventHandle eventHandle : eventHandles) {
             eventHandle.setAcknowledgementSet(acknowledgementSet);
         }
 
@@ -417,9 +422,9 @@ class S3SinkServiceTest {
         }
 
         final Collection<Record<Event>> records2 = generateRandomStringEventRecord();
-        final List<EventHandle> eventHandles2 = records2.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
+        final List<DefaultEventHandle> eventHandles2 = records2.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
 
-        for (EventHandle eventHandle : eventHandles2) {
+        for (DefaultEventHandle eventHandle : eventHandles2) {
             eventHandle.setAcknowledgementSet(acknowledgementSet);
         }
 
@@ -447,9 +452,9 @@ class S3SinkServiceTest {
         doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final List<Record<Event>> records = generateEventRecords(1);
-        final List<EventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
+        final List<DefaultEventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
 
-        for (EventHandle eventHandle : eventHandles) {
+        for (DefaultEventHandle eventHandle : eventHandles) {
             eventHandle.setAcknowledgementSet(acknowledgementSet);
         }
         s3SinkService.output(records);
@@ -473,8 +478,8 @@ class S3SinkServiceTest {
         doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Collection<Record<Event>> records = generateRandomStringEventRecord();
-        final List<EventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
-        for (EventHandle eventHandle : eventHandles) {
+        final List<DefaultEventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
+        for (DefaultEventHandle eventHandle : eventHandles) {
             eventHandle.setAcknowledgementSet(acknowledgementSet);
         }
         s3SinkService.output(records);
@@ -482,8 +487,8 @@ class S3SinkServiceTest {
             verify(acknowledgementSet).release(eventHandle, true);
         }
         final Collection<Record<Event>> records2 = generateRandomStringEventRecord();
-        final List<EventHandle> eventHandles2 = records2.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
-        for (EventHandle eventHandle : eventHandles2) {
+        final List<DefaultEventHandle> eventHandles2 = records2.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
+        for (DefaultEventHandle eventHandle : eventHandles2) {
             eventHandle.setAcknowledgementSet(acknowledgementSet);
         }
         s3SinkService.output(records2);
@@ -509,8 +514,8 @@ class S3SinkServiceTest {
         List<Record<Event>> records = generateEventRecords(2);
         Event event1 = records.get(0).getData();
         Event event2 = records.get(1).getData();
-        EventHandle eventHandle1 = event1.getEventHandle();
-        EventHandle eventHandle2 = event2.getEventHandle();
+        DefaultEventHandle eventHandle1 = (DefaultEventHandle)event1.getEventHandle();
+        DefaultEventHandle eventHandle2 = (DefaultEventHandle)event2.getEventHandle();
         eventHandle1.setAcknowledgementSet(acknowledgementSet);
         eventHandle2.setAcknowledgementSet(acknowledgementSet);
 
@@ -545,8 +550,8 @@ class S3SinkServiceTest {
         doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final List<Record<Event>> records = generateEventRecords(1);
-        final List<EventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
-        for (EventHandle eventHandle : eventHandles) {
+        final List<DefaultEventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
+        for (DefaultEventHandle eventHandle : eventHandles) {
             eventHandle.setAcknowledgementSet(acknowledgementSet);
         }
         s3SinkService.output(records);
@@ -555,9 +560,9 @@ class S3SinkServiceTest {
         }
 
         final List<Record<Event>> records2 = generateEventRecords(1);
-        final List<EventHandle> eventHandles2 = records2.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
+        final List<DefaultEventHandle> eventHandles2 = records2.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
 
-        for (EventHandle eventHandle : eventHandles2) {
+        for (DefaultEventHandle eventHandle : eventHandles2) {
             eventHandle.setAcknowledgementSet(acknowledgementSet);
         }
         s3SinkService.output(records2);
