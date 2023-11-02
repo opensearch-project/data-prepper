@@ -34,6 +34,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.BACKOFF_ON_EXCEPTION;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.DEFAULT_CHECKPOINT_INTERVAL_MILLS;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.calculateExponentialBackoffAndJitter;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.completeIndexPartition;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.createAcknowledgmentSet;
@@ -145,6 +146,8 @@ public class ScrollWorker implements SearchWorker {
     private void processIndex(final SourcePartition<OpenSearchIndexProgressState> openSearchIndexPartition,
                               final AcknowledgementSet acknowledgementSet) {
         final String indexName = openSearchIndexPartition.getPartitionKey();
+        long lastCheckpointTime = System.currentTimeMillis();
+
         LOG.info("Started processing for index: '{}'", indexName);
 
         final Integer batchSize = openSearchSourceConfiguration.getSearchConfiguration().getBatchSize();
@@ -168,7 +171,12 @@ public class ScrollWorker implements SearchWorker {
                             .build());
 
                     writeDocumentsToBuffer(searchScrollResponse.getDocuments(), acknowledgementSet);
-                    sourceCoordinator.saveProgressStateForPartition(indexName, null);
+
+                    if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
+                        LOG.debug("Renew ownership of index {}", indexName);
+                        sourceCoordinator.saveProgressStateForPartition(indexName, null);
+                        lastCheckpointTime = System.currentTimeMillis();
+                    }
                 } catch (final Exception e) {
                     deleteScroll(createScrollResponse.getScrollId());
                     throw e;

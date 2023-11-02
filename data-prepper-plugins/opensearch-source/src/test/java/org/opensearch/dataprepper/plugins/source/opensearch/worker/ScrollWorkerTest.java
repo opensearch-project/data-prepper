@@ -191,7 +191,7 @@ public class ScrollWorkerTest {
         assertThat(createScrollRequest.getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
 
         verify(searchAccessor, times(2)).searchWithScroll(any(SearchScrollRequest.class));
-        verify(sourceCoordinator, times(2)).saveProgressStateForPartition(eq(partitionKey), eq(null));
+        verify(sourceCoordinator, times(0)).saveProgressStateForPartition(eq(partitionKey), eq(null));
 
         final List<SearchScrollRequest> searchScrollRequests = searchScrollRequestArgumentCaptor.getAllValues();
         assertThat(searchScrollRequests.size(), equalTo(2));
@@ -286,7 +286,7 @@ public class ScrollWorkerTest {
         assertThat(createScrollRequest.getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
 
         verify(searchAccessor, times(2)).searchWithScroll(any(SearchScrollRequest.class));
-        verify(sourceCoordinator, times(2)).saveProgressStateForPartition(eq(partitionKey), eq(null));
+        verify(sourceCoordinator, times(0)).saveProgressStateForPartition(eq(partitionKey), eq(null));
 
         final List<SearchScrollRequest> searchScrollRequests = searchScrollRequestArgumentCaptor.getAllValues();
         assertThat(searchScrollRequests.size(), equalTo(2));

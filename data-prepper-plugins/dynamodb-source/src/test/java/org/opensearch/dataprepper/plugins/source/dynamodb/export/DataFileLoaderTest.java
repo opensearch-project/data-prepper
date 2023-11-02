@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 
-import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
@@ -18,8 +18,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.DataFileProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
@@ -41,14 +40,12 @@ import java.util.UUID;
 import java.util.zip.GZIPOutputStream;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFileLoader.BUFFER_TIMEOUT;
@@ -56,9 +53,6 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFile
 
 @ExtendWith(MockitoExtension.class)
 class DataFileLoaderTest {
-
-    @Mock
-    private EnhancedSourceCoordinator coordinator;
 
     @Mock
     private S3Client s3Client;
@@ -73,12 +67,13 @@ class DataFileLoaderTest {
     private BufferAccumulator<Record<Event>> bufferAccumulator;
 
     @Mock
-    private Counter testCounter;
+    private ExportRecordConverter exportRecordConverter;
+
+    @Mock
+    private DataFileCheckpointer checkpointer;
 
 
     private S3ObjectReader objectReader;
-
-    private DataFileCheckpointer checkpointer;
 
     private DataFilePartition dataFilePartition;
 
@@ -93,7 +88,6 @@ class DataFileLoaderTest {
 
     private final String manifestKey = UUID.randomUUID().toString();
     private final String bucketName = UUID.randomUUID().toString();
-    private final String prefix = UUID.randomUUID().toString();
 
     private final String exportArn = tableArn + "/export/01693291918297-bfeccbea";
 
@@ -102,7 +96,7 @@ class DataFileLoaderTest {
     private final int total = random.nextInt(10);
 
     @BeforeEach
-    void setup() throws Exception {
+    void setup() {
 
         DataFileProgressState state = new DataFileProgressState();
         state.setLoaded(0);
@@ -120,18 +114,6 @@ class DataFileLoaderTest {
 
         when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(generateGzipInputStream(total));
         objectReader = new S3ObjectReader(s3Client);
-
-        lenient().when(coordinator.createPartition(any(EnhancedSourcePartition.class))).thenReturn(true);
-        lenient().doNothing().when(coordinator).completePartition(any(EnhancedSourcePartition.class));
-        lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(EnhancedSourcePartition.class), eq(null));
-        lenient().doNothing().when(coordinator).giveUpPartition(any(EnhancedSourcePartition.class));
-
-        doNothing().when(bufferAccumulator).add(any(Record.class));
-        doNothing().when(bufferAccumulator).flush();
-        checkpointer = new DataFileCheckpointer(coordinator, dataFilePartition);
-
-        given(pluginMetrics.counter(anyString())).willReturn(testCounter);
-
     }
 
     private ResponseInputStream<GetObjectResponse> generateGzipInputStream(int numberOfRecords) {
@@ -166,10 +148,13 @@ class DataFileLoaderTest {
     }
 
     @Test
-    void test_run_loadFile_correctly() throws Exception {
+    void test_run_loadFile_correctly() {
         DataFileLoader loader;
         try (
-                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class);
+                final MockedConstruction<ExportRecordConverter> recordConverterMockedConstruction = mockConstruction(ExportRecordConverter.class, (mock, context) -> {
+            exportRecordConverter = mock;
+        })) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
             loader = DataFileLoader.builder(objectReader, pluginMetrics, buffer)
                     .bucketName(bucketName)
@@ -184,23 +169,24 @@ class DataFileLoaderTest {
         // Should call s3 getObject
         verify(s3Client).getObject(any(GetObjectRequest.class));
 
-        // Should write to buffer
-        verify(bufferAccumulator, times(total)).add(any(Record.class));
-        verify(bufferAccumulator).flush();
+        verify(exportRecordConverter).writeToBuffer(eq(null), anyList());
 
-        // Should do one last checkpoint when done.
-        verify(coordinator).saveProgressStateForPartition(any(DataFilePartition.class), eq(null));
+        verify(checkpointer).checkpoint(total);
+        verify(checkpointer, never()).updateDatafileForAcknowledgmentWait(any(Duration.class));
     }
 
     @Test
-    void run_loadFile_with_acknowledgments_processes_correctly() throws Exception {
+    void run_loadFile_with_acknowledgments_processes_correctly() {
 
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         final Duration acknowledgmentTimeout = Duration.ofSeconds(30);
 
         DataFileLoader loader;
         try (
-                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class);
+                final MockedConstruction<ExportRecordConverter> recordConverterMockedConstruction = mockConstruction(ExportRecordConverter.class, (mock, context) -> {
+                    exportRecordConverter = mock;
+                })) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
             loader = DataFileLoader.builder(objectReader, pluginMetrics, buffer)
                     .bucketName(bucketName)
@@ -217,12 +203,11 @@ class DataFileLoaderTest {
         // Should call s3 getObject
         verify(s3Client).getObject(any(GetObjectRequest.class));
 
-        // Should write to buffer
-        verify(bufferAccumulator, times(total)).add(any(Record.class));
-        verify(bufferAccumulator).flush();
+        verify(exportRecordConverter).writeToBuffer(eq(acknowledgementSet), anyList());
 
-        // Should do one last checkpoint when done.
-        verify(coordinator).saveProgressStateForPartition(any(DataFilePartition.class), eq(null));
+        verify(checkpointer).checkpoint(total);
+        verify(checkpointer).updateDatafileForAcknowledgmentWait(acknowledgmentTimeout);
+
 
         verify(acknowledgementSet).complete();
     }

@@ -259,7 +259,7 @@ public final class BulkRetryStrategy {
         if (failure == null) {
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if (Objects.nonNull(bulkItemResponse.error())) {
-                    LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.error());
+                    LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.error().reason());
                 }
             }
             handleFailures(bulkRequest, bulkResponse.items());

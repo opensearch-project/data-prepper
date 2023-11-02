@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
 /**
@@ -30,7 +31,8 @@ import java.util.function.BiConsumer;
  */
 class S3ObjectWorker implements S3ObjectHandler {
     private static final Logger LOG = LoggerFactory.getLogger(S3ObjectWorker.class);
-    static final int RECORDS_TO_ACCUMULATE_TO_SAVE_STATE = 10_000;
+    private static final long DEFAULT_CHECKPOINT_INTERVAL_MILLS = 5 * 60_000;
+
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
 
@@ -83,6 +85,7 @@ class S3ObjectWorker implements S3ObjectHandler {
         final long totalBytesRead;
 
         LOG.info("Read S3 object: {}", s3ObjectReference);
+        AtomicLong lastCheckpointTime = new AtomicLong(System.currentTimeMillis());
 
         final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference, bucketOwnerProvider, s3ObjectPluginMetrics);
 
@@ -104,9 +107,11 @@ class S3ObjectWorker implements S3ObjectHandler {
                         acknowledgementSet.add(record.getData());
                     }
                     bufferAccumulator.add(record);
-                    int recordsWrittenAfterLastSaveState = bufferAccumulator.getTotalWritten() - saveStateCounter.get() * RECORDS_TO_ACCUMULATE_TO_SAVE_STATE;
-                    // Saving state to renew source coordination ownership for every 10,000 records, ownership time is 10 minutes
-                    if (recordsWrittenAfterLastSaveState >= RECORDS_TO_ACCUMULATE_TO_SAVE_STATE && sourceCoordinator != null && partitionKey != null) {
+
+                    if (sourceCoordinator != null && partitionKey != null &&
+                            (System.currentTimeMillis() - lastCheckpointTime.get() > DEFAULT_CHECKPOINT_INTERVAL_MILLS)) {
+                        LOG.debug("Renew partition ownership for the object {}", partitionKey);
+                        lastCheckpointTime.set(System.currentTimeMillis());
                         sourceCoordinator.saveProgressStateForPartition(partitionKey, null);
                         saveStateCounter.getAndIncrement();
                     }

@@ -512,7 +512,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private void maybeUpdateServerlessNetworkPolicy() {
     final ConnectionConfiguration connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
-    LOG.info(connectionConfiguration.toString());
     if (connectionConfiguration.isServerless() &&
         !StringUtils.isBlank(connectionConfiguration.getServerlessNetworkPolicyName()) &&
         !StringUtils.isBlank(connectionConfiguration.getServerlessCollectionName()) &&
