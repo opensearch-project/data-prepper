@@ -104,6 +104,7 @@ public final class BulkRetryStrategy {
     private final String pluginName;
     private final String pipelineName;
     private final ObjectMapper objectMapper;
+    private final OpenSearchSink sink;
 
     private final Counter sentDocumentsCounter;
     private final Counter sentDocumentsOnFirstAttemptCounter;
@@ -133,12 +134,13 @@ public final class BulkRetryStrategy {
         }
     }
 
-    public BulkRetryStrategy(final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction,
+    public BulkRetryStrategy(final OpenSearchSink sink, final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction,
                              final BiConsumer<List<FailedBulkOperation>, Throwable> logFailure,
                              final PluginMetrics pluginMetrics,
                              final int maxRetries,
                              final Supplier<AccumulatingBulkRequest> bulkRequestSupplier,
                              final PluginSetting pluginSetting) {
+        this.sink = sink;
         this.requestFunction = requestFunction;
         this.logFailure = logFailure;
         this.pluginMetrics = pluginMetrics;
