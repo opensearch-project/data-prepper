@@ -1,5 +1,8 @@
 {
   "version": 1,
+  "settings": {
+    "plugins.index_state_management.rollover_alias": "otel-v1-apm-span"
+  },
   "mappings": {
     "date_detection": false,
     "dynamic_templates": [
