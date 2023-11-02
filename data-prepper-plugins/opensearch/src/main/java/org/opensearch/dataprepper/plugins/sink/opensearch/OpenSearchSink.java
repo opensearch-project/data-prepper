@@ -236,8 +236,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                     .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
                     .build());
     bulkApiWrapper = BulkApiWrapperFactory.getWrapper(openSearchSinkConfig.getIndexConfiguration(), filteringOpenSearchClient);
-    bulkRetryStrategy = new BulkRetryStrategy(this,
-            bulkRequest -> bulkApiWrapper.bulk(bulkRequest.getRequest()),
+    bulkRetryStrategy = new BulkRetryStrategy(bulkRequest -> bulkApiWrapper.bulk(bulkRequest.getRequest()),
             this::logFailureForBulkRequests,
             pluginMetrics,
             maxRetries,
