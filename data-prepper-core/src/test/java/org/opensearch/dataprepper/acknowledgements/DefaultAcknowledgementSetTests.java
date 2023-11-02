@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.acknowledgements;
 
 import org.awaitility.Awaitility;
+import static org.awaitility.Awaitility.await;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,7 +17,7 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 
 import java.time.Duration;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -41,7 +42,9 @@ class DefaultAcknowledgementSetTests {
     @Mock
     private DefaultEventHandle handle2;
 
-    private ExecutorService executor;
+    private double currentRatio;
+
+    private ScheduledExecutorService executor;
     private Boolean acknowledgementSetResult;
     private final Duration TEST_TIMEOUT = Duration.ofMillis(5000);
     private AtomicBoolean callbackInterrupted;
@@ -76,7 +79,7 @@ class DefaultAcknowledgementSetTests {
 
     @BeforeEach
     void setupEvent() {
-        executor = Executors.newFixedThreadPool(MAX_THREADS);
+        executor = Executors.newScheduledThreadPool(MAX_THREADS);
 
         acknowledgementSetResult = null;
         defaultAcknowledgementSet = createObjectUnderTest();
@@ -231,5 +234,47 @@ class DefaultAcknowledgementSetTests {
                 .pollDelay(Duration.ofMillis(500))
                 .until(() -> callbackInterrupted.get());
         assertThat(callbackInterrupted.get(), equalTo(true));
+    }
+
+    @Test
+    void testDefaultAcknowledgementSetWithProgressCheck() throws Exception {
+        defaultAcknowledgementSet = createObjectUnderTestWithCallback(
+            (flag) -> {
+                acknowledgementSetResult = flag;
+            }        
+        );
+        defaultAcknowledgementSet.addProgressCheck(
+            (ratio) -> {
+                currentRatio = ratio;
+            },
+            Duration.ofSeconds(1)
+        );
+        defaultAcknowledgementSet.add(event);
+        defaultAcknowledgementSet.add(event2);
+        defaultAcknowledgementSet.complete();
+        lenient().doAnswer(a -> {
+            AcknowledgementSet acknowledgementSet = a.getArgument(0);
+            lenient().when(handle.getAcknowledgementSet()).thenReturn(acknowledgementSet);
+            return null;
+        }).when(handle).setAcknowledgementSet(any(AcknowledgementSet.class));
+        assertThat(handle, not(equalTo(null)));
+        assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
+        await().atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> {
+                    assertThat(currentRatio, equalTo(1.0));
+                });
+        assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(false));
+        await().atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> {
+                    assertThat(currentRatio, equalTo(0.5));
+                });
+        assertThat(defaultAcknowledgementSet.release(handle2, true), equalTo(true));
+        Awaitility.waitAtMost(Duration.ofSeconds(10))
+                .pollDelay(Duration.ofMillis(500))
+                .until(() -> defaultAcknowledgementSet.isDone());
+        await().atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> {
+                    assertThat(acknowledgementSetResult, equalTo(true));
+                });
     }
 }

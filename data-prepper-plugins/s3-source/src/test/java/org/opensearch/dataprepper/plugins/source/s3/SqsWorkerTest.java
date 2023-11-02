@@ -91,6 +91,7 @@ class SqsWorkerTest {
     private Timer sqsMessageDelayTimer;
     private AcknowledgementSetManager acknowledgementSetManager;
     private AcknowledgementSet acknowledgementSet;
+    private SqsOptions sqsOptions;
 
     @BeforeEach
     void setUp() {
@@ -105,7 +106,7 @@ class SqsWorkerTest {
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
 
-        SqsOptions sqsOptions = mock(SqsOptions.class);
+        sqsOptions = mock(SqsOptions.class);
         when(sqsOptions.getSqsUrl()).thenReturn("https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue");
 
         when(s3SourceConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
@@ -211,6 +212,42 @@ class SqsWorkerTest {
             assertThat(messagesProcessed, equalTo(1));
             verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
             verify(acknowledgementSetManager).create(any(), any(Duration.class));
+            verify(sqsMessagesReceivedCounter).increment(1);
+            verifyNoInteractions(sqsMessagesDeletedCounter);
+            assertThat(actualDelay, lessThanOrEqualTo(Duration.ofHours(1).plus(Duration.ofSeconds(5))));
+            assertThat(actualDelay, greaterThanOrEqualTo(Duration.ofHours(1).minus(Duration.ofSeconds(5))));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"ObjectCreated:Put", "ObjectCreated:Post", "ObjectCreated:Copy", "ObjectCreated:CompleteMultipartUpload"})
+        void processSqsMessages_should_return_number_of_messages_processed_with_acknowledgements_and_progress_check(final String eventName) throws IOException {
+            when(sqsOptions.getExtendVisibilityTimeout()).thenReturn(true);
+            when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(6));
+            when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
+            when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
+            sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
+            Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
+            final Message message = mock(Message.class);
+            when(message.body()).thenReturn(createEventNotification(eventName, startTime));
+            final String testReceiptHandle = UUID.randomUUID().toString();
+            when(message.messageId()).thenReturn(testReceiptHandle);
+            when(message.receiptHandle()).thenReturn(testReceiptHandle);
+
+            final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
+            when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
+            when(receiveMessageResponse.messages()).thenReturn(Collections.singletonList(message));
+
+            final int messagesProcessed = sqsWorker.processSqsMessages();
+            final ArgumentCaptor<DeleteMessageBatchRequest> deleteMessageBatchRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteMessageBatchRequest.class);
+
+            final ArgumentCaptor<Duration> durationArgumentCaptor = ArgumentCaptor.forClass(Duration.class);
+            verify(sqsMessageDelayTimer).record(durationArgumentCaptor.capture());
+            Duration actualDelay = durationArgumentCaptor.getValue();
+
+            assertThat(messagesProcessed, equalTo(1));
+            verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+            verify(acknowledgementSetManager).create(any(), any(Duration.class));
+            verify(acknowledgementSet).addProgressCheck(any(), any(Duration.class));
             verify(sqsMessagesReceivedCounter).increment(1);
             verifyNoInteractions(sqsMessagesDeletedCounter);
             assertThat(actualDelay, lessThanOrEqualTo(Duration.ofHours(1).plus(Duration.ofSeconds(5))));
