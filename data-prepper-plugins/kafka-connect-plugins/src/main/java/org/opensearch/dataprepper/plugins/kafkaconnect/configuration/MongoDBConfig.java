@@ -50,13 +50,41 @@ public class MongoDBConfig extends ConnectorConfig {
         }).collect(Collectors.toList());
     }
 
+    public String getSnapshotMode() {
+        return this.snapshotMode;
+    }
+
+    public CredentialsConfig getCredentialsConfig() {
+        return this.credentialsConfig;
+    }
+
+    public String getHostname() {
+        return this.hostname;
+    }
+
+    public String getPort() {
+        return this.port;
+    }
+
+    public Boolean getSSLEnabled() {
+        return this.ssl;
+    }
+
+    public Boolean getSSLInvalidHostAllowed() {
+        return this.sslInvalidHostAllowed;
+    }
+
+    public List<CollectionConfig> getCollections() {
+        return this.collections;
+    }
+
     private Map<String, String> buildConfig(final CollectionConfig collection) {
         Map<String, String> config = new HashMap<>();
         config.put("connector.class", CONNECTOR_CLASS);
         config.put("mongodb.connection.string", String.format(MONGODB_CONNECTION_STRING_FORMAT, hostname, port));
         config.put("mongodb.user", credentialsConfig.getUsername());
         config.put("mongodb.password", credentialsConfig.getPassword());
-        config.put("snapshot.mode", snapshotMode);
+        config.put("snapshot.mode", "never");
         config.put("snapshot.fetch.size", snapshotFetchSize);
         config.put("topic.prefix", collection.getTopicPrefix());
         config.put("collection.include.list", collection.getCollectionName());
@@ -71,7 +99,7 @@ public class MongoDBConfig extends ConnectorConfig {
         return config;
     }
 
-    private static class CollectionConfig {
+    public static class CollectionConfig {
         @JsonProperty("topic_prefix")
         @NotNull
         private String topicPrefix;

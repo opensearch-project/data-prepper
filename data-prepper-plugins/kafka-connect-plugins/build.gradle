@@ -12,6 +12,7 @@ configurations.all {
 }
 
 dependencies {
+    implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:kafka-plugins')
     implementation 'org.apache.kafka:connect-runtime:3.5.1'
