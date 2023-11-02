@@ -5,56 +5,52 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.micrometer.core.instrument.Counter;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.model.configuration.PipelineDescription;
-import org.apache.avro.Schema;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
-import static org.mockito.Mockito.when;
-import org.mockito.Mock;
-import static org.mockito.Mockito.mock;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.awaitility.Awaitility.await;
-import org.apache.commons.lang3.RandomStringUtils;
-
-import io.micrometer.core.instrument.Counter;
-import java.util.List;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import java.time.Duration;
-
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericData;
-import org.apache.kafka.common.errors.SerializationException;
-import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
     public static class AvroRecord {
@@ -131,8 +127,8 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
     private PlainTextAuthConfig plainTextAuthConfig;
 
     private KafkaSource kafkaSource;
-    private TopicConfig jsonTopicConfig;
-    private TopicConfig avroTopicConfig;
+    private TopicConsumerConfig jsonTopicConfig;
+    private TopicConsumerConfig avroTopicConfig;
     private Counter counter;
     private List<Record> receivedRecords;
 
@@ -196,7 +192,7 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
         username = System.getProperty("tests.kafka.username");
         password = System.getProperty("tests.kafka.password");
 
-        jsonTopicConfig = mock(TopicConfig.class);
+        jsonTopicConfig = mock(TopicConsumerConfig.class);
         jsonTopicName = System.getProperty("tests.kafka.json_topic_name");
         when(jsonTopicConfig.getName()).thenReturn(jsonTopicName);
         when(jsonTopicConfig.getGroupId()).thenReturn("testGroupConf");
@@ -210,7 +206,7 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
         when(jsonTopicConfig.getConsumerMaxPollRecords()).thenReturn(100);
         when(jsonTopicConfig.getMaxPollInterval()).thenReturn(Duration.ofSeconds(15));
 
-        avroTopicConfig = mock(TopicConfig.class);
+        avroTopicConfig = mock(TopicConsumerConfig.class);
         avroTopicName = System.getProperty("tests.kafka.avro_topic_name");
         when(avroTopicConfig.getName()).thenReturn(avroTopicName);
         when(avroTopicConfig.getGroupId()).thenReturn("testGroupConf");
@@ -229,14 +225,14 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
         when(jsonSourceConfig.getAuthConfig()).thenReturn(authConfig);
         when(jsonSourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(jsonSourceConfig.getSchemaConfig()).thenReturn(schemaConfig);
-        when(jsonSourceConfig.getTopics()).thenReturn(List.of(jsonTopicConfig));
+        when(jsonSourceConfig.getTopics()).thenReturn((List) List.of(jsonTopicConfig));
         when(jsonSourceConfig.getBootstrapServers()).thenReturn(List.of(bootstrapServers));
         when(jsonSourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
 
         when(avroSourceConfig.getAuthConfig()).thenReturn(authConfig);
         when(avroSourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(avroSourceConfig.getSchemaConfig()).thenReturn(schemaConfig);
-        when(avroSourceConfig.getTopics()).thenReturn(List.of(avroTopicConfig));
+        when(avroSourceConfig.getTopics()).thenReturn((List) List.of(avroTopicConfig));
         when(avroSourceConfig.getBootstrapServers()).thenReturn(List.of(bootstrapServers));
         when(avroSourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
 

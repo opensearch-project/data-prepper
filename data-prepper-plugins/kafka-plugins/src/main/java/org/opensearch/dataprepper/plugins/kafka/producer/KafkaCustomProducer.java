@@ -96,9 +96,7 @@ public class KafkaCustomProducer<T> {
     }
 
     public void produceRecords(final Record<Event> record) {
-        if (record.getData().getEventHandle() != null) {
-            bufferedEventHandles.add(record.getData().getEventHandle());
-        }
+        bufferedEventHandles.add(record.getData().getEventHandle());
         Event event = getEvent(record);
         final String key = event.formatString(kafkaProducerConfig.getPartitionKey(), expressionEvaluator);
         try {

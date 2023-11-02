@@ -10,18 +10,17 @@
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions
  * and limitations under the License.
  */
-package org.opensearch.dataprepper.plugins.sink;
+package org.opensearch.dataprepper.plugins.sink.http;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import org.apache.hc.core5.http.HttpRequest;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.EntityDetails;
-import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.NameValuePair;
-import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.http.HttpRequestInterceptor;
-import org.apache.hc.core5.http.io.entity.BasicHttpEntity;
 import org.apache.hc.core5.http.message.BasicHeader;
 import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hc.core5.net.URIBuilder;
@@ -146,6 +145,8 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
         requestBuilder.rawQueryParameters(nvpToMapParams(uriBuilder.getQueryParams()));
         requestBuilder.headers(headerArrayToMap(request.getHeaders()));
 
+        AWSCredentials credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
+
         ExecutionAttributes attributes = new ExecutionAttributes();
         attributes.putAttribute(AwsSignerExecutionAttribute.AWS_CREDENTIALS, awsCredentialsProvider.resolveCredentials());
         attributes.putAttribute(AwsSignerExecutionAttribute.SERVICE_SIGNING_NAME, service);
@@ -156,16 +157,6 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
 
         // Now copy everything back
         request.setHeaders(mapToHeaderArray(signedRequest.headers()));
-        if (request instanceof ClassicHttpRequest) {
-            ClassicHttpRequest classicHttpRequest =
-                    (ClassicHttpRequest) request;
-            if (classicHttpRequest.getEntity() != null) {
-                HttpEntity basicHttpEntity = new BasicHttpEntity(signedRequest.contentStreamProvider()
-                        .orElseThrow(() -> new IllegalStateException("There must be content"))
-                        .newStream(), ContentType.APPLICATION_JSON);
-                classicHttpRequest.setEntity(basicHttpEntity);
-            }
-        }
     }
 
     private URI buildUri(final HttpContext context, URIBuilder uriBuilder) throws IOException {

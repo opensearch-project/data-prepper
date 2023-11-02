@@ -83,21 +83,32 @@ public class StreamScheduler implements Runnable {
     public void run() {
         LOG.debug("Stream Scheduler start to run...");
         while (!Thread.currentThread().isInterrupted()) {
-            if (numOfWorkers.get() < MAX_JOB_COUNT) {
-                final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
-                if (sourcePartition.isPresent()) {
-                    activeChangeEventConsumers.incrementAndGet();
-                    StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
-                    processStreamPartition(streamPartition);
-                    activeChangeEventConsumers.decrementAndGet();
-                }
-            }
-
             try {
-                Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
-            } catch (final InterruptedException e) {
-                LOG.info("InterruptedException occurred");
-                break;
+
+                if (numOfWorkers.get() < MAX_JOB_COUNT) {
+                    final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
+                    if (sourcePartition.isPresent()) {
+                        activeChangeEventConsumers.incrementAndGet();
+                        StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
+                        processStreamPartition(streamPartition);
+                        activeChangeEventConsumers.decrementAndGet();
+                    }
+                }
+
+                try {
+                    Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException e) {
+                    LOG.info("InterruptedException occurred");
+                    break;
+                }
+            } catch (final Exception e) {
+                LOG.error("Received an exception while trying to get an S3 data file to process, backing off and retrying", e);
+                try {
+                    Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException ex) {
+                    LOG.info("The StreamScheduler was interrupted while waiting to retry, stopping processing");
+                    break;
+                }
             }
         }
         // Should Stop

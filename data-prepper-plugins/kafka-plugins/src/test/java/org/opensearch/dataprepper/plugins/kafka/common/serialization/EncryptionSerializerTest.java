@@ -16,7 +16,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,5 +55,13 @@ class EncryptionSerializerTest {
 
         assertThat(createObjectUnderTest().serialize(topicName, input),
                 equalTo(encryptedData));
+    }
+
+    @Test
+    void serialize_returns_null_and_does_not_call_cipher_if_input_is_null() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
+        assertThat(createObjectUnderTest().serialize(topicName, null),
+                nullValue());
+
+        verifyNoInteractions(cipher);
     }
 }

@@ -42,12 +42,6 @@ import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTi
 
 public class JacksonEventTest {
 
-    class TestEventHandle implements EventHandle {
-        @Override
-        public void release(boolean result) {
-        }
-    }
-
     private Event event;
 
     private String eventType;
@@ -398,6 +392,8 @@ public class JacksonEventTest {
                 .build();
 
         assertThat(event.getMetadata().getEventType(), is(equalTo(eventType)));
+        assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(notNullValue()));
     }
 
     @Test
@@ -411,6 +407,8 @@ public class JacksonEventTest {
                 .build();
 
         assertThat(event.getMetadata().getTimeReceived(), is(equalTo(now)));
+        assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(equalTo(now)));
     }
 
     @Test
@@ -422,6 +420,8 @@ public class JacksonEventTest {
 
         assertThat(event, is(notNullValue()));
         assertThat(event.get("message", String.class), is(equalTo(message)));
+        assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(notNullValue()));
     }
 
     @Test
@@ -678,6 +678,8 @@ public class JacksonEventTest {
 
         assertThat(createdEvent, notNullValue());
         assertThat(createdEvent, not(sameInstance(originalEvent)));
+        assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(notNullValue()));
 
         assertThat(createdEvent.toMap(), equalTo(dataObject));
         assertThat(createdEvent.getJsonNode(), not(sameInstance(originalEvent.getJsonNode())));
@@ -705,19 +707,6 @@ public class JacksonEventTest {
 
         assertThat(createdEvent.getMetadata(), notNullValue());
         assertThat(createdEvent.getMetadata(), equalTo(eventMetadata));
-    }
-
-    @Test
-    void testEventHandleGetAndSet() {
-        EventHandle testEventHandle = new TestEventHandle();
-        final String jsonString = "{\"foo\": \"bar\"}";
-
-        final JacksonEvent event = JacksonEvent.builder()
-                .withEventType(eventType)
-                .withData(jsonString)
-                .build();
-        event.setEventHandle(testEventHandle);
-        assertThat(event.getEventHandle(), equalTo(testEventHandle));
     }
 
     @Test

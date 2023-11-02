@@ -24,6 +24,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anEmptyMap;
@@ -78,6 +79,16 @@ public class DefaultEventMetadataTest {
         final Instant timeReceived = eventMetadata.getTimeReceived();
         assertThat(timeReceived, is(notNullValue()));
         assertThat(timeReceived, is(equalTo(testTimeReceived)));
+    }
+
+    @Test
+    public void testExternalOriginationTime() {
+        Instant externalOriginationTime = eventMetadata.getExternalOriginationTime();
+        assertThat(externalOriginationTime, is(nullValue()));
+        Instant now = Instant.now();
+        eventMetadata.setExternalOriginationTime(now);
+        externalOriginationTime = eventMetadata.getExternalOriginationTime();
+        assertThat(externalOriginationTime, is(equalTo(now)));
     }
 
     @Test

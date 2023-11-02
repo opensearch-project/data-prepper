@@ -49,7 +49,7 @@ public interface Buffer<T extends Record<?>> {
      * @throws RuntimeException Other exceptions
      */
     default void writeBytes(final byte[] bytes, final String key, int timeoutInMillis) throws Exception {
-        throw new RuntimeException("Not supported");
+        throw new UnsupportedOperationException("This buffer type does not support bytes.");
     }
 
     /**

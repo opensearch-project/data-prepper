@@ -11,6 +11,8 @@ import software.amazon.awssdk.regions.Region;
 import java.util.Map;
 
 public class AwsAuthenticationOptions {
+
+    private static final String DEFAULT_SERVICE_NAME = "execute-api";
     @JsonProperty("region")
     @Size(min = 1, message = "Region cannot be empty string")
     private String awsRegion;
@@ -27,6 +29,10 @@ public class AwsAuthenticationOptions {
     @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
     private Map<String, String> awsStsHeaderOverrides;
 
+    @JsonProperty("service_name")
+    @Size(min = 1, message = "Service Name cannot be empty")
+    private String serviceName = DEFAULT_SERVICE_NAME;
+
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
     }
@@ -41,5 +47,9 @@ public class AwsAuthenticationOptions {
 
     public Map<String, String> getAwsStsHeaderOverrides() {
         return awsStsHeaderOverrides;
+    }
+
+    public String getServiceName() {
+        return serviceName;
     }
 }

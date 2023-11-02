@@ -151,5 +151,20 @@ class DataFileSchedulerTest {
 
     }
 
+    @Test
+    void run_catches_exception_and_retries_when_exception_is_thrown_during_processing() throws InterruptedException {
+        given(coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
+
+        scheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> scheduler.run());
+        Thread.sleep(100);
+        assertThat(future.isDone(), equalTo(false));
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
+    }
+
 
 }

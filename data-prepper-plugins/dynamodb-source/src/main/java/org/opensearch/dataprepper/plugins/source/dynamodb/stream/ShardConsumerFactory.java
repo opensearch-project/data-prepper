@@ -5,13 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
-import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
@@ -21,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -33,8 +30,6 @@ public class ShardConsumerFactory {
 
     private static final int STREAM_TO_TABLE_OFFSET = "stream/".length();
 
-    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
-    static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
 
     private final DynamoDbStreamsClient streamsClient;
 
@@ -83,12 +78,9 @@ public class ShardConsumerFactory {
         StreamCheckpointer checkpointer = new StreamCheckpointer(enhancedSourceCoordinator, streamPartition);
         String tableArn = getTableArn(streamPartition.getStreamArn());
         TableInfo tableInfo = getTableInfo(tableArn);
-        final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
 
-        StreamRecordConverter recordConverter = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
-
-        ShardConsumer shardConsumer = ShardConsumer.builder(streamsClient)
-                .recordConverter(recordConverter)
+        ShardConsumer shardConsumer = ShardConsumer.builder(streamsClient, pluginMetrics, buffer)
+                .tableInfo(tableInfo)
                 .checkpointer(checkpointer)
                 .shardIterator(shardIter)
                 .startTime(startTime)

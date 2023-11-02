@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.accumulator;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * A buffer can hold data before flushing it any Sink.
@@ -21,5 +22,8 @@ public interface Buffer {
     long getDuration();
 
     byte[] getSinkBufferData() throws IOException;
-    void writeEvent(byte[] bytes) throws IOException;
+
+    OutputStream getOutputStream();
+
+    void setEventCount(int eventCount);
 }

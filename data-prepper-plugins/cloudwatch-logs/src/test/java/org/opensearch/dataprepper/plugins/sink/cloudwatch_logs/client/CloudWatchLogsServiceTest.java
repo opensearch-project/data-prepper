@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer.Buffer;
@@ -62,8 +61,6 @@ class CloudWatchLogsServiceTest {
         final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage");
-            final EventHandle mockEventHandle = mock(EventHandle.class);
-            mockJacksonEvent.setEventHandle(mockEventHandle);
             returnCollection.add(new Record<>(mockJacksonEvent));
         }
 
@@ -74,8 +71,6 @@ class CloudWatchLogsServiceTest {
         final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
         for (int i = 0; i < thresholdConfig.getBatchSize(); i++) {
             JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage");
-            final EventHandle mockEventHandle = mock(EventHandle.class);
-            mockJacksonEvent.setEventHandle(mockEventHandle);
             returnCollection.add(new Record<>(mockJacksonEvent));
         }
 
@@ -86,8 +81,6 @@ class CloudWatchLogsServiceTest {
         final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
         for (int i = 0; i < thresholdConfig.getBatchSize() * 2; i++) {
             JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("a".repeat((int) (thresholdConfig.getMaxRequestSizeBytes()/24)));
-            final EventHandle mockEventHandle = mock(EventHandle.class);
-            mockJacksonEvent.setEventHandle(mockEventHandle);
             returnCollection.add(new Record<>(mockJacksonEvent));
         }
 
@@ -98,8 +91,6 @@ class CloudWatchLogsServiceTest {
         final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
         for (int i = 0; i < thresholdConfig.getBatchSize(); i++) {
             JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage".repeat((int) thresholdConfig.getMaxEventSizeBytes()));
-            final EventHandle mockEventHandle = mock(EventHandle.class);
-            mockJacksonEvent.setEventHandle(mockEventHandle);
             returnCollection.add(new Record<>(mockJacksonEvent));
         }
 
