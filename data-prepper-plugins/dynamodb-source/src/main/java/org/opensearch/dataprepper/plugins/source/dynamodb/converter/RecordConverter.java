@@ -91,10 +91,10 @@ public abstract class RecordConverter {
         } else {
             eventMetadata.setAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE, partitionKey);
         }
-        bufferAccumulator.add(new Record<>(event));
         if (acknowledgementSet != null) {
             acknowledgementSet.add(event);
         }
+        bufferAccumulator.add(new Record<>(event));
     }
 
     public void addToBuffer(final AcknowledgementSet acknowledgementSet, Map<String, Object> data) throws Exception {

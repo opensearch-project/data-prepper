@@ -135,7 +135,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
                     callbackFuture = executor.submit(() -> callback.accept(this.result));
                     return true;
                 } else if (pendingAcknowledgments.size() == 0) {
-                    LOG.warn("Acknowledgement set is not completed. Delaying callback until it is completed");
+                    LOG.debug("Acknowledgement set is not completed. Delaying callback until it is completed");
                 }
             }
         } finally {

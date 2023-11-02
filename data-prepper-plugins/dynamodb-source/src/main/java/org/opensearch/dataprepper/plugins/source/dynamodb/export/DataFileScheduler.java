@@ -226,9 +226,9 @@ public class DataFileScheduler implements Runnable {
 
             GlobalState globalState = (GlobalState) globalPartition.get();
             LoadStatus loadStatus = LoadStatus.fromMap(globalState.getProgressState().get());
+            loadStatus.setLoadedFiles(loadStatus.getLoadedFiles() + 1);
             LOG.info("Current status: total {} loaded {}", loadStatus.getTotalFiles(), loadStatus.getLoadedFiles());
 
-            loadStatus.setLoadedFiles(loadStatus.getLoadedFiles() + 1);
             loadStatus.setLoadedRecords(loadStatus.getLoadedRecords() + loaded);
             globalState.setProgressState(loadStatus.toMap());
 
