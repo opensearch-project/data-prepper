@@ -121,7 +121,6 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
                     callbackFuture = null;
                     LOG.warn("AcknowledgementSet expired");
                 }
-                System.out.println("=======EXPIRED=======");
                 metrics.increment(DefaultAcknowledgementSetMetrics.EXPIRED_METRIC_NAME);
                 return true;
             }
