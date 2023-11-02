@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -70,7 +71,7 @@ public abstract class RecordConverter {
      * @param eventName               Event name
      * @throws Exception Exception if failed to write to buffer.
      */
-    public void addToBuffer(Map<String, Object> data, Map<String, Object> keys, long eventCreationTimeMillis, String eventName) throws Exception {
+    public void addToBuffer(final AcknowledgementSet acknowledgementSet, Map<String, Object> data, Map<String, Object> keys, long eventCreationTimeMillis, String eventName) throws Exception {
         Event event = JacksonEvent.builder()
                 .withEventType(getEventType())
                 .withData(data)
@@ -90,13 +91,16 @@ public abstract class RecordConverter {
         } else {
             eventMetadata.setAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE, partitionKey);
         }
+        if (acknowledgementSet != null) {
+            acknowledgementSet.add(event);
+        }
         bufferAccumulator.add(new Record<>(event));
     }
 
-    public void addToBuffer(Map<String, Object> data) throws Exception {
+    public void addToBuffer(final AcknowledgementSet acknowledgementSet, Map<String, Object> data) throws Exception {
         // Export data doesn't have an event timestamp
         // Default to current timestamp when the event is added to buffer
-        addToBuffer(data, data, System.currentTimeMillis(), null);
+        addToBuffer(acknowledgementSet, data, data, System.currentTimeMillis(), null);
     }
 
     private String mapStreamEventNameToBulkAction(final String streamEventName) {

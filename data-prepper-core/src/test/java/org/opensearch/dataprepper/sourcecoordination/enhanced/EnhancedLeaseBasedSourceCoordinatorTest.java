@@ -163,7 +163,7 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
         Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
         assertThat(sourcePartition.isPresent(), equalTo(true));
         TestEnhancedSourcePartition partition = (TestEnhancedSourcePartition) sourcePartition.get();
-        coordinator.saveProgressStateForPartition(partition);
+        coordinator.saveProgressStateForPartition(partition, null);
 
         verify(sourceCoordinationStore).tryAcquireAvailablePartition(anyString(), anyString(), any(Duration.class));
         verify(sourceCoordinationStore).tryUpdateSourcePartitionItem(any(SourcePartitionStoreItem.class));

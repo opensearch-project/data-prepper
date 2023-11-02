@@ -14,6 +14,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -31,6 +32,7 @@ import software.amazon.awssdk.services.dynamodb.model.Record;
 import software.amazon.awssdk.services.dynamodb.model.StreamRecord;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +45,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -96,7 +100,7 @@ class ShardConsumerTest {
 
     private final Random random = new Random();
 
-    private final int total = random.nextInt(10);
+    private final int total = random.nextInt(10) + 1;
 
 
     @BeforeEach
@@ -121,7 +125,7 @@ class ShardConsumerTest {
 
         lenient().when(coordinator.createPartition(any(EnhancedSourcePartition.class))).thenReturn(true);
         lenient().doNothing().when(coordinator).completePartition(any(EnhancedSourcePartition.class));
-        lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(EnhancedSourcePartition.class));
+        lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(EnhancedSourcePartition.class), eq(null));
         lenient().doNothing().when(coordinator).giveUpPartition(any(EnhancedSourcePartition.class));
 
         doNothing().when(bufferAccumulator).add(any(org.opensearch.dataprepper.model.record.Record.class));
@@ -164,9 +168,44 @@ class ShardConsumerTest {
         // Should write to buffer
         verify(bufferAccumulator, times(total)).add(any(org.opensearch.dataprepper.model.record.Record.class));
         verify(bufferAccumulator).flush();
+        // Should complete the consumer as reach to end of shard
+        verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(null));
+    }
+
+    @Test
+    void test_run_shardConsumer_with_acknowledgments_correctly() throws Exception {
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        final Duration acknowledgmentTimeout = Duration.ofSeconds(30);
+
+        ShardConsumer shardConsumer;
+        try (
+                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)
+        ) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, buffer)
+                    .shardIterator(shardIterator)
+                    .checkpointer(checkpointer)
+                    .tableInfo(tableInfo)
+                    .startTime(null)
+                    .acknowledgmentSetTimeout(acknowledgmentTimeout)
+                    .acknowledgmentSet(acknowledgementSet)
+                    .waitForExport(false)
+                    .build();
+        }
+
+        shardConsumer.run();
+
+        // Should call GetRecords
+        verify(dynamoDbStreamsClient).getRecords(any(GetRecordsRequest.class));
+
+        // Should write to buffer
+        verify(bufferAccumulator, times(total)).add(any(org.opensearch.dataprepper.model.record.Record.class));
+        verify(bufferAccumulator).flush();
 
         // Should complete the consumer as reach to end of shard
-        verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class));
+        verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(null));
+
+        verify(acknowledgementSet).complete();
     }
 
     /**

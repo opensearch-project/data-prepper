@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.Dat
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -47,7 +48,7 @@ public class DataFileCheckpointer {
     public void checkpoint(int lineNumber) {
         LOG.debug("Checkpoint data file " + dataFilePartition.getKey() + " with line number " + lineNumber);
         setProgressState(lineNumber);
-        enhancedSourceCoordinator.saveProgressStateForPartition(dataFilePartition);
+        enhancedSourceCoordinator.saveProgressStateForPartition(dataFilePartition, null);
     }
 
     /**
@@ -74,5 +75,8 @@ public class DataFileCheckpointer {
         enhancedSourceCoordinator.giveUpPartition(dataFilePartition);
     }
 
+    public void updateDatafileForAcknowledgmentWait(final Duration acknowledgmentSetTimeout) {
+        enhancedSourceCoordinator.saveProgressStateForPartition(dataFilePartition, acknowledgmentSetTimeout);
+    }
 
 }

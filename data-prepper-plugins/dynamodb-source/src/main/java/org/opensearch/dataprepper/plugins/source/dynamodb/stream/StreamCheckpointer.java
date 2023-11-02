@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.Str
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -48,12 +49,10 @@ public class StreamCheckpointer {
      *
      * @param sequenceNumber The last sequence number
      */
-
     public void checkpoint(String sequenceNumber) {
         LOG.debug("Checkpoint shard " + streamPartition.getShardId() + " with sequenceNumber " + sequenceNumber);
         setSequenceNumber(sequenceNumber);
-        coordinator.saveProgressStateForPartition(streamPartition);
-
+        coordinator.saveProgressStateForPartition(streamPartition, null);
     }
 
     /**
@@ -88,4 +87,7 @@ public class StreamCheckpointer {
         return globalPartition.isPresent();
     }
 
+    public void updateShardForAcknowledgmentWait(final Duration acknowledgmentSetTimeout) {
+        coordinator.saveProgressStateForPartition(streamPartition, acknowledgmentSetTimeout);
+    }
 }

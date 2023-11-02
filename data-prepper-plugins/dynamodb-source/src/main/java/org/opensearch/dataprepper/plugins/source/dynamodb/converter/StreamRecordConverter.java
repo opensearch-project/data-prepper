@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.slf4j.Logger;
@@ -53,7 +54,7 @@ public class StreamRecordConverter extends RecordConverter {
     }
 
 
-    public void writeToBuffer(List<Record> records) {
+    public void writeToBuffer(final AcknowledgementSet acknowledgementSet, List<Record> records) {
 
         int eventCount = 0;
         for (Record record : records) {
@@ -63,7 +64,7 @@ public class StreamRecordConverter extends RecordConverter {
             Map<String, Object> keys = convertKeys(record.dynamodb().keys());
 
             try {
-                addToBuffer(data, keys, record.dynamodb().approximateCreationDateTime().toEpochMilli(), record.eventNameAsString());
+                addToBuffer(acknowledgementSet, data, keys, record.dynamodb().approximateCreationDateTime().toEpochMilli(), record.eventNameAsString());
                 eventCount++;
             } catch (Exception e) {
                 // will this cause too many logs?

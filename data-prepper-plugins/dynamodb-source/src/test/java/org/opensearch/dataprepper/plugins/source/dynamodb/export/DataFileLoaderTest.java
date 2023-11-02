@@ -14,6 +14,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -33,6 +34,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
@@ -40,9 +42,11 @@ import java.util.zip.GZIPOutputStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -67,7 +71,6 @@ class DataFileLoaderTest {
 
     @Mock
     private BufferAccumulator<Record<Event>> bufferAccumulator;
-
 
     @Mock
     private Counter testCounter;
@@ -120,7 +123,7 @@ class DataFileLoaderTest {
 
         lenient().when(coordinator.createPartition(any(EnhancedSourcePartition.class))).thenReturn(true);
         lenient().doNothing().when(coordinator).completePartition(any(EnhancedSourcePartition.class));
-        lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(EnhancedSourcePartition.class));
+        lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(EnhancedSourcePartition.class), eq(null));
         lenient().doNothing().when(coordinator).giveUpPartition(any(EnhancedSourcePartition.class));
 
         doNothing().when(bufferAccumulator).add(any(Record.class));
@@ -166,8 +169,7 @@ class DataFileLoaderTest {
     void test_run_loadFile_correctly() throws Exception {
         DataFileLoader loader;
         try (
-                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)
-        ) {
+                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
             loader = DataFileLoader.builder(objectReader, pluginMetrics, buffer)
                     .bucketName(bucketName)
@@ -187,8 +189,42 @@ class DataFileLoaderTest {
         verify(bufferAccumulator).flush();
 
         // Should do one last checkpoint when done.
-        verify(coordinator).saveProgressStateForPartition(any(DataFilePartition.class));
+        verify(coordinator).saveProgressStateForPartition(any(DataFilePartition.class), eq(null));
+    }
 
+    @Test
+    void run_loadFile_with_acknowledgments_processes_correctly() throws Exception {
+
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        final Duration acknowledgmentTimeout = Duration.ofSeconds(30);
+
+        DataFileLoader loader;
+        try (
+                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+            loader = DataFileLoader.builder(objectReader, pluginMetrics, buffer)
+                    .bucketName(bucketName)
+                    .key(manifestKey)
+                    .checkpointer(checkpointer)
+                    .tableInfo(tableInfo)
+                    .acknowledgmentSet(acknowledgementSet)
+                    .acknowledgmentSetTimeout(acknowledgmentTimeout)
+                    .build();
+        }
+
+        loader.run();
+
+        // Should call s3 getObject
+        verify(s3Client).getObject(any(GetObjectRequest.class));
+
+        // Should write to buffer
+        verify(bufferAccumulator, times(total)).add(any(Record.class));
+        verify(bufferAccumulator).flush();
+
+        // Should do one last checkpoint when done.
+        verify(coordinator).saveProgressStateForPartition(any(DataFilePartition.class), eq(null));
+
+        verify(acknowledgementSet).complete();
     }
 
 }

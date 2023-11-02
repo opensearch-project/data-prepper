@@ -31,6 +31,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
@@ -107,7 +108,7 @@ class ExportRecordConverterTest {
         List<String> data = generateData(numberOfRecords);
         ExportRecordConverter recordConverter = new ExportRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
 
-        recordConverter.writeToBuffer(data);
+        recordConverter.writeToBuffer(null, data);
         verify(bufferAccumulator, times(numberOfRecords)).add(any(Record.class));
         verify(exportRecordSuccess).increment(anyDouble());
 
@@ -127,7 +128,7 @@ class ExportRecordConverterTest {
         doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
 //        doNothing().when(bufferAccumulator).flush();
 
-        recordConverter.writeToBuffer(List.of(line));
+        recordConverter.writeToBuffer(eq(null), List.of(line));
         verify(bufferAccumulator).add(any(Record.class));
         verify(bufferAccumulator).flush();
         assertThat(recordArgumentCaptor.getValue().getData(), notNullValue());

@@ -102,7 +102,7 @@ class StreamRecordConverterTest {
 
         StreamRecordConverter recordConverter = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
 
-        recordConverter.writeToBuffer(records);
+        recordConverter.writeToBuffer(null, records);
         verify(bufferAccumulator, times(numberOfRecords)).add(any(Record.class));
         verify(bufferAccumulator).flush();
         verify(changeEventSuccessCounter).increment(anyDouble());
@@ -120,7 +120,7 @@ class StreamRecordConverterTest {
         StreamRecordConverter recordConverter = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
         doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
 
-        recordConverter.writeToBuffer(records);
+        recordConverter.writeToBuffer(null, records);
 
         verify(bufferAccumulator).add(any(Record.class));
         verify(bufferAccumulator).flush();
