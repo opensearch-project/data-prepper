@@ -312,7 +312,7 @@ class SqsWorkerIT {
         
         lenient().doAnswer((val) -> {
             if (val.getArgument(0) != null) {
-                delCount.getAndAdd((int)(double)val.getArgument(0));
+                deletedCount += (double)val.getArgument(0);
             }
             return null;
         }).when(deletedCounter).increment(any(Double.class));
@@ -360,7 +360,7 @@ class SqsWorkerIT {
         await().atMost(Duration.ofSeconds(20))
                 .untilAsserted(() -> {
                     assertThat(visibilityTimeoutChangedCount, greaterThanOrEqualTo((double)numberOfObjectsToWrite));
-                    assertThat(delCount.get(), equalTo(numberOfObjectsToWrite));
+                    assertThat(deletedCount, equalTo((double)numberOfObjectsToWrite));
                     assertThat(ackCallbackCount, equalTo((double)numberOfObjectsToWrite));
                 });
     }
@@ -387,7 +387,6 @@ class SqsWorkerIT {
         lenient().doAnswer((val) -> {
             if (val.getArgument(0) != null) {
                 deletedCount += (double)val.getArgument(0);
-                delCount.getAndAdd((int)(double)val.getArgument(0));
             }
             return null;
         }).when(deletedCounter).increment(any(Double.class));
@@ -429,7 +428,7 @@ class SqsWorkerIT {
         await().atMost(Duration.ofSeconds(10))
                 .untilAsserted(() -> {
                     assertThat(visibilityTimeoutChangedCount, greaterThanOrEqualTo((double)numberOfObjectsToWrite));
-                    assertThat(delCount.get(), equalTo(0));
+                    assertThat(deletedCount, equalTo(0.0));
                     assertThat(ackCallbackCount, equalTo(0.0));
                 });
 
