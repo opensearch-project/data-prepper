@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
@@ -59,6 +60,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPI
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapperFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
+import org.opensearch.dataprepper.plugins.sink.LatencyMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.opensearchserverless.OpenSearchServerlessClient;
@@ -91,6 +93,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   private static final int INITIALIZE_RETRY_WAIT_TIME_MS = 5000;
   private final AwsCredentialsSupplier awsCredentialsSupplier;
+  private final LatencyMetrics latencyMetrics;
 
   private DlqWriter dlqWriter;
   private BufferedWriter dlqFileWriter;
@@ -141,6 +144,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.awsCredentialsSupplier = awsCredentialsSupplier;
     this.sinkContext = sinkContext != null ? sinkContext : new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
     this.expressionEvaluator = expressionEvaluator;
+    this.latencyMetrics = new LatencyMetrics(pluginMetrics);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     invalidActionErrorsCounter = pluginMetrics.counter(INVALID_ACTION_ERRORS);
@@ -316,6 +320,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     return bulkOperation;
   }
 
+  public void updateLatencyMetrics(final EventHandle eventHandle) {
+    latencyMetrics.update(eventHandle);
+  }
+
   @Override
   public void doOutput(final Collection<Record<Event>> records) {
     final long threadId = Thread.currentThread().getId();
@@ -376,7 +384,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       }
       BulkOperation bulkOperation = getBulkOperationForAction(eventAction, document, indexName, event.getJsonNode());
 
-      BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle(), serializedJsonNode);
+      BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(this, bulkOperation, event.getEventHandle(), serializedJsonNode);
       final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
         flushBatch(bulkRequest);
@@ -449,6 +457,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         try {
           dlqFileWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
                   BulkOperationWriter.dlqObjectToString(dlqObject), message));
+          updateLatencyMetrics(dlqObject.getEventHandle());
           dlqObject.releaseEventHandle(true);
         } catch (final IOException e) {
         LOG.error("Failed to write a document to the DLQ", e);
@@ -459,6 +468,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       try {
         dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginSetting.getName());
         dlqObjects.forEach((dlqObject) -> {
+          updateLatencyMetrics(dlqObject.getEventHandle());
           dlqObject.releaseEventHandle(true);
         });
       } catch (final IOException e) {
