@@ -34,4 +34,6 @@ public interface ExpressionEvaluator {
     }
 
     Boolean isValidExpressionStatement(final String statement);
+
+    Boolean isValidFormatExpressions(final String format);
 }

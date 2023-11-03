@@ -12,6 +12,8 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
@@ -49,6 +51,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.AWS_OPTION;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_ROOT_KEY;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_VERSION_EXPRESSION;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.SERVERLESS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.TEMPLATE_TYPE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
@@ -471,6 +474,41 @@ public class IndexConfigurationTests {
         metadata.put(DOCUMENT_ROOT_KEY, "");
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         assertThrows(IllegalArgumentException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"${key}", "${getMetadata(\"key\")}"})
+    public void testReadIndexConfig_withValidDocumentVersionExpression(final String versionExpression) {
+
+        final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
+        when(expressionEvaluator.isValidFormatExpressions(versionExpression)).thenReturn(true);
+
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
+        metadata.put(DOCUMENT_VERSION_EXPRESSION, versionExpression);
+
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting, expressionEvaluator);
+
+        assertThat(indexConfiguration, notNullValue());
+        assertThat(indexConfiguration.getVersionExpression(), equalTo(versionExpression));
+    }
+
+    @Test
+    public void testReadIndexConfig_withInvalidDocumentVersionExpression_throws_InvalidPluginConfigurationException() {
+        final String versionExpression = UUID.randomUUID().toString();
+
+        final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
+        when(expressionEvaluator.isValidFormatExpressions(versionExpression)).thenReturn(false);
+
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
+        metadata.put(DOCUMENT_VERSION_EXPRESSION, versionExpression);
+
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+
+        assertThrows(InvalidPluginConfigurationException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting, expressionEvaluator));
     }
 
     @Test

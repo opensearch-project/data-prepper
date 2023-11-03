@@ -318,29 +318,6 @@ public class JacksonEvent implements Event {
         return formatStringInternal(format, expressionEvaluator);
     }
 
-    public static boolean isValidFormatExpressions(final String format, final ExpressionEvaluator expressionEvaluator) {
-        if (Objects.isNull(expressionEvaluator)) {
-            return false;
-        }
-
-        int fromIndex = 0;
-        int position = 0;
-        while ((position = format.indexOf("${", fromIndex)) != -1) {
-            int endPosition = format.indexOf("}", position + 1);
-            if (endPosition == -1) {
-                return false;
-            }
-            String name = format.substring(position + 2, endPosition);
-
-            Object val;
-            if (!expressionEvaluator.isValidExpressionStatement(name)) {
-                return false;
-            }
-            fromIndex = endPosition + 1;
-        }
-        return true;
-    }
-
     private String formatStringInternal(final String format, final ExpressionEvaluator expressionEvaluator) {
         int fromIndex = 0;
         String result = "";
@@ -362,7 +339,7 @@ public class JacksonEvent implements Event {
             }
 
             if (val == null) {
-                if (Objects.nonNull(expressionEvaluator) && expressionEvaluator.isValidExpressionStatement(name)) {
+                if (expressionEvaluator != null && expressionEvaluator.isValidExpressionStatement(name)) {
                     val = expressionEvaluator.evaluate(name, this);
                 } else {
                     throw new EventKeyNotFoundException(String.format("The key %s could not be found in the Event when formatting", name));

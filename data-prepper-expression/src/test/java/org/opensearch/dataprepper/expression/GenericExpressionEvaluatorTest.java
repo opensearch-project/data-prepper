@@ -5,16 +5,18 @@
 
 package org.opensearch.dataprepper.expression;
 
-import org.opensearch.dataprepper.model.event.Event;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.event.Event;
 
-import java.util.UUID;
 import java.util.Random;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -117,6 +119,17 @@ class GenericExpressionEvaluatorTest {
         final boolean result = statementEvaluator.isValidExpressionStatement(statement);
 
         assertThat(result, equalTo(false));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "abc-${/foo, false",
+            "abc-${/foo}, true",
+            "abc-${getMetadata(\"key\")}, true",
+            "abc-${getXYZ(\"key\")}, true"
+    })
+    void isValidFormatExpressionsReturnsCorrectResult(final String format, final Boolean expectedResult) {
+        assertThat(statementEvaluator.isValidFormatExpressions(format), equalTo(expectedResult));
     }
 
 }

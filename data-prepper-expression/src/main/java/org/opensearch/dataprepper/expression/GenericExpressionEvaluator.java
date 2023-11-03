@@ -52,4 +52,27 @@ class GenericExpressionEvaluator implements ExpressionEvaluator {
             return false;
         }
     }
+
+    @Override
+    public Boolean isValidFormatExpressions(final String format) {
+        int fromIndex = 0;
+        int position = 0;
+        while ((position = format.indexOf("${", fromIndex)) != -1) {
+            int endPosition = format.indexOf("}", position + 1);
+            if (endPosition == -1) {
+                return false;
+            }
+            String name = format.substring(position + 2, endPosition);
+
+            Object val;
+            // We only check the expression if it matches (.*) to mitigate the issue with the antlr logger ()
+            // These can't be keys because (, ) is invalid for keys, so we attempt to validate the expression. All expressions currently
+            // contain a function ( ) so this will detect them to validate against.
+            if (name.matches("(.*)") && !isValidExpressionStatement(name)) {
+                return false;
+            }
+            fromIndex = endPosition + 1;
+        }
+        return true;
+    }
 }
