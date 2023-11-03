@@ -12,9 +12,11 @@ public class MetadataKeyAttributes {
 
     static final String SORT_KEY_METADATA_ATTRIBUTE = "sort_key";
 
-    static final String EVENT_TIMESTAMP_METADATA_ATTRIBUTE = "ts";
+    static final String EVENT_TIMESTAMP_METADATA_ATTRIBUTE = "ddb_ts";
 
     static final String EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE = "op";
+
+    static final String DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE = "ddb_op";
 
     static final String EVENT_TABLE_NAME_METADATA_ATTRIBUTE = "table_name";
 }
