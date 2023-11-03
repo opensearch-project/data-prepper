@@ -11,6 +11,7 @@ import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
+import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink;
 import org.opensearch.rest.RestStatus;
 import java.util.Map;
 import java.util.UUID;
@@ -37,12 +38,14 @@ public class FailedBulkOperationConverterTest {
     private String errorReason;
     private Throwable failure;
     private String failureMessage;
+    private OpenSearchSink sink;
 
     private FailedBulkOperationConverter converter;
 
     @BeforeEach
     public void setup() {
         generateRandomDocument();
+        sink = mock(OpenSearchSink.class);
         testIndex = UUID.randomUUID().toString();
         testId = UUID.randomUUID().toString();
         pipelineName = UUID.randomUUID().toString();
@@ -82,7 +85,7 @@ public class FailedBulkOperationConverterTest {
     public void testConvertToDlqObject() {
 
         final FailedBulkOperation testData = FailedBulkOperation.builder()
-            .withBulkOperation(new BulkOperationWrapper(bulkOperation))
+            .withBulkOperation(new BulkOperationWrapper(sink, bulkOperation))
             .withBulkResponseItem(bulkResponseItem)
             .withFailure(failure)
             .build();
@@ -98,7 +101,7 @@ public class FailedBulkOperationConverterTest {
         when(bulkOperation.isCreate()).thenReturn(true);
 
         final FailedBulkOperation testData = FailedBulkOperation.builder()
-                .withBulkOperation(new BulkOperationWrapper(bulkOperation))
+                .withBulkOperation(new BulkOperationWrapper(sink, bulkOperation))
                 .withBulkResponseItem(bulkResponseItem)
                 .withFailure(failure)
                 .build();
@@ -111,7 +114,7 @@ public class FailedBulkOperationConverterTest {
     @Test
     public void testConvertToDlqObjectWithOnlyFailure() {
         final FailedBulkOperation testData = FailedBulkOperation.builder()
-            .withBulkOperation(new BulkOperationWrapper(bulkOperation))
+            .withBulkOperation(new BulkOperationWrapper(sink, bulkOperation))
             .withFailure(failure)
             .build();
 
@@ -124,7 +127,7 @@ public class FailedBulkOperationConverterTest {
     public void testConvertToDlqObjectWithOnlyBulkResponseItem() {
 
         final FailedBulkOperation testData = FailedBulkOperation.builder()
-            .withBulkOperation(new BulkOperationWrapper(bulkOperation))
+            .withBulkOperation(new BulkOperationWrapper(sink, bulkOperation))
             .withBulkResponseItem(bulkResponseItem)
             .build();
 
