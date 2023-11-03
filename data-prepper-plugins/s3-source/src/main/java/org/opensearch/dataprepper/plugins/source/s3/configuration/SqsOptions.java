@@ -16,7 +16,7 @@ import java.time.Duration;
 
 public class SqsOptions {
     private static final int DEFAULT_MAXIMUM_MESSAGES = 10;
-    private static final Boolean DEFAULT_EXTEND_VISIBILITY_TIMEOUT = false;
+    private static final Boolean DEFAULT_VISIBILITY_DUPLICATE_PROTECTION = false;
     private static final Duration DEFAULT_VISIBILITY_TIMEOUT_SECONDS = Duration.ofSeconds(30);
     private static final Duration DEFAULT_MAX_VISIBILITY_TIMEOUT_EXTENSION = Duration.ofSeconds(1800); // 30 minutes
     private static final Duration DEFAULT_WAIT_TIME_SECONDS = Duration.ofSeconds(20);
@@ -36,8 +36,8 @@ public class SqsOptions {
     @DurationMax(seconds = 43200)
     private Duration visibilityTimeout = DEFAULT_VISIBILITY_TIMEOUT_SECONDS;
 
-    @JsonProperty("extend_visibility_timeout")
-    private Boolean extendVisibilityTimeout = DEFAULT_EXTEND_VISIBILITY_TIMEOUT;
+    @JsonProperty("visibility_duplication_protection")
+    private Boolean visibilityDuplicateProtection = DEFAULT_VISIBILITY_DUPLICATE_PROTECTION;
 
     @JsonProperty("max_visibility_timeout_extension")
     @DurationMin(seconds = 30)
@@ -69,8 +69,8 @@ public class SqsOptions {
         return maxVisibilityTimeoutExtension;
     }
 
-    public Boolean getExtendVisibilityTimeout() {
-        return extendVisibilityTimeout;
+    public Boolean getVisibilityDuplicateProtection() {
+        return visibilityDuplicateProtection;
     }
 
     public Duration getWaitTime() {

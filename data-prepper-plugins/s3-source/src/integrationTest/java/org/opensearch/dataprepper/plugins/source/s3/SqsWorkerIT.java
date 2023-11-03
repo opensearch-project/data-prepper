@@ -345,7 +345,7 @@ class SqsWorkerIT {
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(6));
         when(sqsOptions.getMaxVisibilityTimeoutExtension()).thenReturn(Duration.ofSeconds(60));
-        when(sqsOptions.getExtendVisibilityTimeout()).thenReturn(true);
+        when(sqsOptions.getVisibilityDuplicateProtection()).thenReturn(true);
         acknowledgementSetManager = new  DefaultAcknowledgementSetManager(executor);
         final SqsWorker objectUnderTest = createObjectUnderTest();
         final int sqsMessagesProcessed = objectUnderTest.processSqsMessages();
@@ -420,7 +420,7 @@ class SqsWorkerIT {
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(6));
         when(sqsOptions.getMaxVisibilityTimeoutExtension()).thenReturn(Duration.ofSeconds(60));
-        when(sqsOptions.getExtendVisibilityTimeout()).thenReturn(true);
+        when(sqsOptions.getVisibilityDuplicateProtection()).thenReturn(true);
         acknowledgementSetManager = new  DefaultAcknowledgementSetManager(executor);
         final SqsWorker objectUnderTest = createObjectUnderTest();
         final int sqsMessagesProcessed = objectUnderTest.processSqsMessages();

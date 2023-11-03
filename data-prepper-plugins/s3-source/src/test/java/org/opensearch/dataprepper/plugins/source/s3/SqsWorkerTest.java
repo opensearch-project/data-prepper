@@ -221,7 +221,7 @@ class SqsWorkerTest {
         @ParameterizedTest
         @ValueSource(strings = {"ObjectCreated:Put", "ObjectCreated:Post", "ObjectCreated:Copy", "ObjectCreated:CompleteMultipartUpload"})
         void processSqsMessages_should_return_number_of_messages_processed_with_acknowledgements_and_progress_check(final String eventName) throws IOException {
-            when(sqsOptions.getExtendVisibilityTimeout()).thenReturn(true);
+            when(sqsOptions.getVisibilityDuplicateProtection()).thenReturn(true);
             when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(6));
             when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
             when(s3SourceConfig.getAcknowledgements()).thenReturn(true);

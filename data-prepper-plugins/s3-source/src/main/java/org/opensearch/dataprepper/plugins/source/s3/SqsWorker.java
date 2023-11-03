@@ -239,15 +239,15 @@ public class SqsWorker implements Runnable {
             final int progressCheckInterval = visibilityTimeout/2 - 1;
             if (endToEndAcknowledgementsEnabled) {
                 int expiryTimeout = visibilityTimeout - 2;
-                final boolean extendedVisibilityTimeoutEnabled = sqsOptions.getExtendVisibilityTimeout();
-                if (extendedVisibilityTimeoutEnabled) {
+                final boolean visibilityDuplicateProtectionEnabled = sqsOptions.getVisibilityDuplicateProtection();
+                if (visibilityDuplicateProtectionEnabled) {
                     expiryTimeout = maxVisibilityTimeout;
                 }
                 acknowledgementSet = acknowledgementSetManager.create(
                     (result) -> {
                         acknowledgementSetCallbackCounter.increment();
                         // Delete only if this is positive acknowledgement
-                        if (extendedVisibilityTimeoutEnabled) {
+                        if (visibilityDuplicateProtectionEnabled) {
                             parsedMessageVisibilityTimesMap.remove(parsedMessage);
                         }
                         if (result == true) {
@@ -255,7 +255,7 @@ public class SqsWorker implements Runnable {
                         }
                     },
                     Duration.ofSeconds(expiryTimeout));
-                if (extendedVisibilityTimeoutEnabled) {
+                if (visibilityDuplicateProtectionEnabled) {
                     acknowledgementSet.addProgressCheck(
                         (ratio) -> {
                             final int newVisibilityTimeoutSeconds = visibilityTimeout;
