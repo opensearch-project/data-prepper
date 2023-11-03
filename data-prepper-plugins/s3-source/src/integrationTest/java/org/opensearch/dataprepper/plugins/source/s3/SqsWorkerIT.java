@@ -261,7 +261,7 @@ class SqsWorkerIT {
                 this.notify();
             }
             try {
-                Thread.sleep(4000);
+                Thread.sleep(2000);
             } catch (Exception e){}
 
             return null;
@@ -339,7 +339,7 @@ class SqsWorkerIT {
                 events.add(event);
             }
             try {
-                Thread.sleep(4000);
+                Thread.sleep(2000);
             } catch (Exception e) {}
             return null;
         }).when(s3Service).addS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class));

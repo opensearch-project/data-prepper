@@ -244,8 +244,8 @@ class DefaultAcknowledgementSetTests {
             }        
         );
         defaultAcknowledgementSet.addProgressCheck(
-            (ratio) -> {
-                currentRatio = ratio;
+            (progressCheck) -> {
+                currentRatio = progressCheck.getRatio();
             },
             Duration.ofSeconds(1)
         );

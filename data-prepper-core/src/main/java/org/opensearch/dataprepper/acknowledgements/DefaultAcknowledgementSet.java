@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.acknowledgements;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.ProgressCheck;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.InternalEventHandle;
@@ -29,7 +30,7 @@ import java.util.function.Consumer;
 public class DefaultAcknowledgementSet implements AcknowledgementSet {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAcknowledgementSet.class);
     private final Consumer<Boolean> callback;
-    private Consumer<Double> progressCheckCallback;
+    private Consumer<ProgressCheck> progressCheckCallback;
     private final Instant expiryTime;
     private final ScheduledExecutorService scheduledExecutor;
     // This lock protects all the non-final members
@@ -59,7 +60,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         lock = new ReentrantLock(true);
     }
 
-    public void addProgressCheck(final Consumer<Double> progressCheckCallback, final Duration progressCheckInterval) {
+    public void addProgressCheck(final Consumer<ProgressCheck> progressCheckCallback, final Duration progressCheckInterval) {
         this.progressCheckCallback = progressCheckCallback;
         this.progressCheckFuture = scheduledExecutor.scheduleAtFixedRate(this::checkProgress, 0L, progressCheckInterval.toMillis(), TimeUnit.MILLISECONDS);
     }
@@ -69,7 +70,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         int numberOfEventsPending = pendingAcknowledgments.size();
         lock.unlock();
         if (progressCheckCallback != null) {
-            progressCheckCallback.accept((double)numberOfEventsPending/totalEventsAdded.get());
+            progressCheckCallback.accept(new DefaultProgressCheck((double)numberOfEventsPending/totalEventsAdded.get()));
         }
     }
 

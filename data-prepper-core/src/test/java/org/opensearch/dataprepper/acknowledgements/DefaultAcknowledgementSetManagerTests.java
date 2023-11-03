@@ -135,7 +135,7 @@ class DefaultAcknowledgementSetManagerTests {
         lenient().when(event6.getEventHandle()).thenReturn(eventHandle6);
 
         AcknowledgementSet acknowledgementSet2 = acknowledgementSetManager.create((flag) -> { result = flag; }, Duration.ofMillis(10000));
-        acknowledgementSet2.addProgressCheck((ratio) -> {currentRatio = ratio;}, Duration.ofSeconds(1));
+        acknowledgementSet2.addProgressCheck((progressCheck) -> {currentRatio = progressCheck.getRatio();}, Duration.ofSeconds(1));
         acknowledgementSet2.add(event3);
         acknowledgementSet2.add(event4);
         acknowledgementSet2.add(event5);
@@ -186,7 +186,7 @@ class DefaultAcknowledgementSetManagerTests {
         lenient().when(event6.getEventHandle()).thenReturn(eventHandle6);
 
         AcknowledgementSet acknowledgementSet2 = acknowledgementSetManager.create((flag) -> { result = flag; }, Duration.ofSeconds(10));
-        acknowledgementSet2.addProgressCheck((ratio) -> {currentRatio = ratio;}, Duration.ofSeconds(1));
+        acknowledgementSet2.addProgressCheck((progressCheck) -> {currentRatio = progressCheck.getRatio();}, Duration.ofSeconds(1));
         acknowledgementSet2.add(event3);
         acknowledgementSet2.add(event4);
         acknowledgementSet2.add(event5);

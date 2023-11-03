@@ -39,7 +39,7 @@ public class SqsOptions {
     @JsonProperty("extend_visibility_timeout")
     private Boolean extendVisibilityTimeout = DEFAULT_EXTEND_VISIBILITY_TIMEOUT;
 
-    @JsonProperty("max_visibility_timeout_extesion")
+    @JsonProperty("max_visibility_timeout_extension")
     @DurationMin(seconds = 30)
     @DurationMax(seconds = 3600)
     private Duration maxVisibilityTimeoutExtension = DEFAULT_MAX_VISIBILITY_TIMEOUT_EXTENSION;

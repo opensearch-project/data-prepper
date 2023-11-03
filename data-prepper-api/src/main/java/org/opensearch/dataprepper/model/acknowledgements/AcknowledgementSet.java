@@ -72,5 +72,5 @@ public interface AcknowledgementSet {
      * @param progressCheckInterval frequency of invocation of progress check callback
      * @since 2.6
      */
-    public void addProgressCheck(final Consumer<Double> progressCheckCallback, final Duration progressCheckInterval);
+    public void addProgressCheck(final Consumer<ProgressCheck> progressCheckCallback, final Duration progressCheckInterval);
 }
