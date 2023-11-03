@@ -19,7 +19,8 @@ public class MongoDBConfig extends ConnectorConfig {
     public static final String CONNECTOR_CLASS = "io.debezium.connector.mongodb.MongoDbConnector";
     private static final String MONGODB_CONNECTION_STRING_FORMAT = "mongodb://%s:%s/?replicaSet=rs0&directConnection=true";
     private static final String DEFAULT_PORT = "27017";
-    private static final String DEFAULT_SNAPSHOT_MODE = "initial";
+    private static final String DEFAULT_SNAPSHOT_MODE = "never";
+    private static final String DEFAULT_INGESTION_MODE = "export_stream";
     private static final Boolean SSL_ENABLED = false;
     private static final Boolean SSL_INVALID_HOST_ALLOWED = false;
     private static final String DEFAULT_SNAPSHOT_FETCH_SIZE = "1000";
@@ -30,8 +31,10 @@ public class MongoDBConfig extends ConnectorConfig {
     private String port = DEFAULT_PORT;
     @JsonProperty("credentials")
     private CredentialsConfig credentialsConfig;
-    @JsonProperty("snapshot_mode")
-    private String snapshotMode = DEFAULT_SNAPSHOT_MODE;
+    @JsonProperty("ingestion_mode")
+    private String ingestionMode = DEFAULT_INGESTION_MODE;
+    @JsonProperty("export_config")
+    private ExportConfig exportConfig = new ExportConfig();
     @JsonProperty("snapshot_fetch_size")
     private String snapshotFetchSize = DEFAULT_SNAPSHOT_FETCH_SIZE;
     @JsonProperty("collections")
@@ -50,8 +53,8 @@ public class MongoDBConfig extends ConnectorConfig {
         }).collect(Collectors.toList());
     }
 
-    public String getSnapshotMode() {
-        return this.snapshotMode;
+    public String getIngestionMode() {
+        return this.ingestionMode;
     }
 
     public CredentialsConfig getCredentialsConfig() {
@@ -78,13 +81,17 @@ public class MongoDBConfig extends ConnectorConfig {
         return this.collections;
     }
 
+    public ExportConfig getExportConfig() {
+        return this.exportConfig;
+    }
+
     private Map<String, String> buildConfig(final CollectionConfig collection) {
         Map<String, String> config = new HashMap<>();
         config.put("connector.class", CONNECTOR_CLASS);
         config.put("mongodb.connection.string", String.format(MONGODB_CONNECTION_STRING_FORMAT, hostname, port));
         config.put("mongodb.user", credentialsConfig.getUsername());
         config.put("mongodb.password", credentialsConfig.getPassword());
-        config.put("snapshot.mode", "never");
+        config.put("snapshot.mode", DEFAULT_SNAPSHOT_MODE);
         config.put("snapshot.fetch.size", snapshotFetchSize);
         config.put("topic.prefix", collection.getTopicPrefix());
         config.put("collection.include.list", collection.getCollectionName());
@@ -114,6 +121,29 @@ public class MongoDBConfig extends ConnectorConfig {
 
         public String getTopicPrefix() {
             return topicPrefix;
+        }
+    }
+
+    public static class ExportConfig {
+        private static long DEFAULT_ITEMS_PER_PARTITION = 4000;
+        private static String DEFAULT_READ_PREFERENCE = "secondaryPreferred";
+        @JsonProperty("acknowledgments")
+        private boolean acknowledgments = false;
+        @JsonProperty("items_per_partition")
+        private long itemsPerPartition = DEFAULT_ITEMS_PER_PARTITION;
+        @JsonProperty("read_preference")
+        private String readPreference = DEFAULT_READ_PREFERENCE;
+
+        public boolean getAcknowledgements() {
+            return this.acknowledgments;
+        }
+
+        public long getItemsPerPartition() {
+            return this.itemsPerPartition;
+        }
+
+        public String getReadPreference() {
+            return this.readPreference;
         }
     }
 }

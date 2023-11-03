@@ -24,11 +24,13 @@ import java.util.concurrent.TimeUnit;
 public class MongoDBService {
     private static final Logger LOG = LoggerFactory.getLogger(MongoDBService.class);
     private static final Duration EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT = Duration.ofSeconds(30);
+    private final PluginMetrics pluginMetrics;
     private final MongoDBConfig mongoDBConfig;
     private final Buffer<Record<Object>> buffer;
     private final MongoDBPartitionCreationSupplier mongoDBPartitionCreationSupplier;
     private final ScheduledExecutorService scheduledExecutorService;
     private final SourceCoordinator<MongoDBSnapshotProgressState> sourceCoordinator;
+    private final AcknowledgementSetManager acknowledgementSetManager;
     private MongoDBSnapshotWorker snapshotWorker;
     private ScheduledFuture<?> snapshotWorkerFuture;
 
@@ -40,9 +42,11 @@ public class MongoDBService {
             final ScheduledExecutorService scheduledExecutorService,
             final AcknowledgementSetManager acknowledgementSetManager,
             final PluginMetrics pluginMetrics) {
+        this.pluginMetrics = pluginMetrics;
         this.mongoDBConfig = mongoDBConfig;
         this.buffer = buffer;
         this.scheduledExecutorService = scheduledExecutorService;
+        this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceCoordinator = sourceCoordinator;
         this.sourceCoordinator.initialize();
         this.mongoDBPartitionCreationSupplier = new MongoDBPartitionCreationSupplier(mongoDBConfig);
@@ -64,7 +68,13 @@ public class MongoDBService {
     }
 
     public void start() {
-        snapshotWorker = new MongoDBSnapshotWorker(sourceCoordinator, mongoDBPartitionCreationSupplier);
+        snapshotWorker = new MongoDBSnapshotWorker(
+                sourceCoordinator,
+                buffer,
+                mongoDBPartitionCreationSupplier,
+                pluginMetrics,
+                acknowledgementSetManager,
+                mongoDBConfig);
         snapshotWorkerFuture = scheduledExecutorService.schedule(() -> snapshotWorker.run(), 0L, TimeUnit.MILLISECONDS);
     }
 

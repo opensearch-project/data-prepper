@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 
 public class MongoDBPartitionCreationSupplier implements Function<Map<String, Object>, List<PartitionIdentifier>>  {
     private static final Logger LOG = LoggerFactory.getLogger(MongoDBPartitionCreationSupplier.class);
-    private static final String DOCUMENTDB_PARTITION_KEY_FORMAT = "%s|%s|%s"; // partition format: <db.collection>|<gte>|<lt>
+    private static final String DOCUMENTDB_PARTITION_KEY_FORMAT = "%s|%s|%s|%s"; // partition format: <db.collection>|<gte>|<lt>|<className>
     private static final String GLOBAL_STATE_PARTITIONED_COLLECTION_KEY = "partitionedCollections";
     private final MongoDBConfig mongoDBConfig;
 
@@ -76,7 +76,7 @@ public class MongoDBPartitionCreationSupplier implements Function<Map<String, Ob
         MongoCollection<Document> col = db.getCollection(collection.get(1));
 
         long totalCount = col.countDocuments();
-        long chunkSize = 6000L;
+        long chunkSize = this.mongoDBConfig.getExportConfig().getItemsPerPartition();
         long startIndex = 0;
         long endIndex = startIndex + chunkSize - 1;
 
@@ -110,12 +110,13 @@ public class MongoDBPartitionCreationSupplier implements Function<Map<String, Ob
             if (firstDoc != null && secondDoc != null) {
                 Object gteValue = firstDoc.get("_id");
                 Object lteValue = secondDoc.get("_id");
+                String className = gteValue.getClass().getName();
 
                 LOG.info("Chunk of " + collectionName + ": {gte: " + gteValue.toString() + ", lte: " + lteValue.toString() + "}");
                 collectionPartitions.add(
                         PartitionIdentifier
                                 .builder()
-                                .withPartitionKey(String.format(DOCUMENTDB_PARTITION_KEY_FORMAT, collectionName, gteValue, lteValue))
+                                .withPartitionKey(String.format(DOCUMENTDB_PARTITION_KEY_FORMAT, collectionName, gteValue, lteValue, className))
                                 .build());
             }
             startIndex = endIndex + 1;

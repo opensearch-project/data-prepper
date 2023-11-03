@@ -19,7 +19,7 @@ public class MongoDBHelper {
         String port = mongoDBConfig.getPort();
         String ssl = mongoDBConfig.getSSLEnabled().toString();
         String invalidHostAllowed = mongoDBConfig.getSSLInvalidHostAllowed().toString();
-        String readPreference = "secondaryPreferred";
+        String readPreference = mongoDBConfig.getExportConfig().getReadPreference();
         String connectionString = String.format(template, username, password, hostname, port, readPreference, ssl, invalidHostAllowed);
 
         return MongoClients.create(connectionString);

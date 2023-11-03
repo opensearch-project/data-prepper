@@ -24,6 +24,8 @@ import org.opensearch.dataprepper.plugins.kafkaconnect.source.mongoDB.MongoDBSna
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
+
 /**
  * The starting point of the mysql source which ingest CDC data using Kafka Connect and Debezium Connector.
  */
@@ -61,10 +63,9 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
 
     @Override
     public void start(Buffer<Record<Object>> buffer) {
-        if (shouldStartKafkaConnect()) {
-            super.start(buffer);
-        }
+        super.start(buffer);
         if (shouldStartInitialLoad()) {
+            LOG.info("Starting initial load");
             this.mongoDBService = MongoDBService.create(mongoDBConfig, sourceCoordinator, buffer, acknowledgementSetManager, pluginMetrics);
             this.mongoDBService.start();
         }
@@ -72,11 +73,11 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
 
     @Override
     public void stop(){
-        if (shouldStartKafkaConnect()) {
-            super.stop();
-        }
-        if (shouldStartInitialLoad()) {
-
+        super.stop();
+        if (shouldStartInitialLoad() && Objects.nonNull(mongoDBService) && Objects.nonNull(sourceCoordinator)) {
+            LOG.info("Stopping initial load");
+            mongoDBService.stop();
+            sourceCoordinator.giveUpPartitions();
         }
     }
 
@@ -90,12 +91,13 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
         return MongoDBSnapshotProgressState.class;
     }
 
-    private boolean shouldStartKafkaConnect() {
+    @Override
+    public boolean shouldStartKafkaConnect() {
         return false;
-//        return mongoDBConfig.getSnapshotMode().equals("initial") || mongoDBConfig.getSnapshotMode().equals("never");
+//        return mongoDBConfig.getSnapshotMode().equals("export_stream") || mongoDBConfig.getSnapshotMode().equals("stream");
     }
 
     private boolean shouldStartInitialLoad() {
-        return mongoDBConfig.getSnapshotMode().equals("initial") || mongoDBConfig.getSnapshotMode().equals("initial_only");
+        return mongoDBConfig.getIngestionMode().equals("export_stream") || mongoDBConfig.getIngestionMode().equals("export");
     }
 }

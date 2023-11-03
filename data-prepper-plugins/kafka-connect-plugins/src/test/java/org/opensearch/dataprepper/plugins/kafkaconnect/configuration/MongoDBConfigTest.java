@@ -38,7 +38,7 @@ public class MongoDBConfigTest {
         assertThat(actualConfig.get("mongodb.connection.string"), is("mongodb://localhost:27017/?replicaSet=rs0&directConnection=true"));
         assertThat(actualConfig.get("mongodb.user"), is("debezium"));
         assertThat(actualConfig.get("mongodb.password"), is("dbz"));
-        assertThat(actualConfig.get("snapshot.mode"), is("initial"));
+        assertThat(actualConfig.get("snapshot.mode"), is("never"));
         assertThat(actualConfig.get("topic.prefix"), is("prefix1"));
         assertThat(actualConfig.get("collection.include.list"), is("test.customers"));
         assertThat(actualConfig.get("mongodb.ssl.enabled"), is("false"));
