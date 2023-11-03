@@ -111,8 +111,8 @@ class S3ObjectWorker implements S3ObjectHandler {
                     if (sourceCoordinator != null && partitionKey != null &&
                             (System.currentTimeMillis() - lastCheckpointTime.get() > DEFAULT_CHECKPOINT_INTERVAL_MILLS)) {
                         LOG.debug("Renew partition ownership for the object {}", partitionKey);
-                        lastCheckpointTime.set(System.currentTimeMillis());
                         sourceCoordinator.saveProgressStateForPartition(partitionKey, null);
+                        lastCheckpointTime.set(System.currentTimeMillis());
                         saveStateCounter.getAndIncrement();
                     }
                 } catch (final Exception e) {
