@@ -78,10 +78,11 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
                     Instant timeStamp = result.getRight();
                     if (dateProcessorConfig.getToOriginationMetadata()) {
                         Event event = (Event)record.getData();
+                        event.getMetadata().setExternalOriginationTime(timeStamp);
                         event.getEventHandle().setExternalOriginationTime(timeStamp);
                     }
-                    populateDateProcessorMetrics(zonedDateTime);
                 }
+                populateDateProcessorMetrics(zonedDateTime);
             }
 
             if (zonedDateTime != null)
