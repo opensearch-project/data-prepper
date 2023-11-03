@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.opensearch.dataprepper.plugins.sink.SinkResponseLatency;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
@@ -79,6 +81,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.time.Duration;
+import com.google.common.util.concurrent.AtomicDouble;
 
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
 public class OpenSearchSink extends AbstractSink<Record<Event>> {
@@ -87,6 +91,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String INVALID_ACTION_ERRORS = "invalidActionErrors";
   public static final String BULKREQUEST_SIZE_BYTES = "bulkRequestSizeBytes";
   public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "dynamicIndexDroppedEvents";
+  public static final String LATENCY_THRESHOLD_MS="latency_threshold_ms";
+  public static final String HIGH_LATENCY_RESPONSES_THRESHOLD="high_latency_responses_threshold";
+  public static final int MAXIMUM_DELAY_MS = 60000; // one minute
+  public static final int INITIAL_DELAY_MS = 1000; // one second
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   private static final int INITIALIZE_RETRY_WAIT_TIME_MS = 5000;
@@ -124,6 +132,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private PluginSetting pluginSetting;
   private final SinkContext sinkContext;
   private final ExpressionEvaluator expressionEvaluator;
+  private SinkResponseLatency responseLatency;
+  private AtomicDouble responseLatencyAlertRatio;  
+  private Backoff backoff;
+  private int backoff_attempt;
 
   private FailedBulkOperationConverter failedBulkOperationConverter;
 
@@ -140,6 +152,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
     this.awsCredentialsSupplier = awsCredentialsSupplier;
     this.sinkContext = sinkContext != null ? sinkContext : new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+    this.responseLatencyAlertRatio = responseLatencyAlertRatio;
     this.expressionEvaluator = expressionEvaluator;
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
@@ -147,6 +160,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
     bulkRequestSizeBytesSummary = pluginMetrics.summary(BULKREQUEST_SIZE_BYTES);
 
+    final int latencyThresholdMs = (int) pluginSetting.getAttributeFromSettings(LATENCY_THRESHOLD_MS);
+    final int highLatencyResponsesThreshold = (int) pluginSetting.getAttributeFromSettings(HIGH_LATENCY_RESPONSES_THRESHOLD);
+    this.responseLatency = new SinkResponseLatency((value) -> 
+        {
+            responseLatencyAlertRatio.set((Double)value);
+        }, Duration.ofMillis(latencyThresholdMs), highLatencyResponsesThreshold);
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting, expressionEvaluator);
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
     this.flushTimeout = openSearchSinkConfig.getIndexConfiguration().getFlushTimeout();
@@ -172,6 +191,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       dlqPluginSetting.setPipelineName(pluginSetting.getPipelineName());
       dlqProvider = pluginFactory.loadPlugin(DlqProvider.class, dlqPluginSetting);
     }
+  }
+  public void updateResponseLatency(long latency) {
+    responseLatency.update(latency);
   }
 
   @Override
@@ -236,7 +258,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                     .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
                     .build());
     bulkApiWrapper = BulkApiWrapperFactory.getWrapper(openSearchSinkConfig.getIndexConfiguration(), filteringOpenSearchClient);
-    bulkRetryStrategy = new BulkRetryStrategy(
+    bulkRetryStrategy = new BulkRetryStrategy(this,
             bulkRequest -> bulkApiWrapper.bulk(bulkRequest.getRequest()),
             this::logFailureForBulkRequests,
             pluginMetrics,
@@ -325,6 +347,25 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     if (!lastFlushTimeMap.containsKey(threadId)) {
       lastFlushTimeMap.put(threadId, System.currentTimeMillis());
     }
+
+    if (responseLatencyAlertRatio.get() > 1.0) {
+        if (backoff == null) {
+            int initialDelay = (int) (INITIAL_DELAY_MS * responseLatencyAlertRatio.get());
+            if (initialDelay >= MAXIMUM_DELAY_MS) {
+                initialDelay = MAXIMUM_DELAY_MS;
+            }
+            backoff = Backoff.exponential(initialDelay, MAXIMUM_DELAY_MS).withMaxAttempts(Integer.MAX_VALUE);
+            backoff_attempt = 0;
+        }
+        final long delayMillis = backoff.nextDelayMillis(backoff_attempt++);
+        try {
+            Thread.sleep(delayMillis);
+        } catch (Exception e) {}
+    } else if (backoff != null) {
+        backoff = null;
+        backoff_attempt = 0;
+    }
+        
 
     AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = bulkRequestMap.get(threadId);
     long lastFlushTime = lastFlushTimeMap.get(threadId);
