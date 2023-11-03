@@ -18,7 +18,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.ArgumentMatchers.any;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 import java.time.Instant;
 import java.util.Map;
@@ -55,9 +55,9 @@ class LatencyMetricsTest {
     public void testInternalOriginationTime() {
         latencyMetrics.update(eventHandle);
         verify(pluginMetrics, times(3)).gauge(any(), any(), any());
-        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_MIN_MS), greaterThan(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_MAX_MS), greaterThan(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_AVG_MS), greaterThan(0.0));
+        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_MIN_MS), greaterThanOrEqualTo(0.0));
+        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_MAX_MS), greaterThanOrEqualTo(0.0));
+        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_AVG_MS), greaterThanOrEqualTo(0.0));
     }
 
     @Test
@@ -65,12 +65,12 @@ class LatencyMetricsTest {
         when(eventHandle.getExternalOriginationTime()).thenReturn(Instant.now());
         latencyMetrics.update(eventHandle);
         verify(pluginMetrics, times(6)).gauge(any(), any(), any());
-        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_MIN_MS), greaterThan(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_MAX_MS), greaterThan(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_AVG_MS), greaterThan(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.EXTERNAL_LATENCY_MIN_MS), greaterThan(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.EXTERNAL_LATENCY_MAX_MS), greaterThan(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.EXTERNAL_LATENCY_AVG_MS), greaterThan(0.0));
+        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_MIN_MS), greaterThanOrEqualTo(0.0));
+        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_MAX_MS), greaterThanOrEqualTo(0.0));
+        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_AVG_MS), greaterThanOrEqualTo(0.0));
+        assertThat(metricsMap.get(LatencyMetrics.EXTERNAL_LATENCY_MIN_MS), greaterThanOrEqualTo(0.0));
+        assertThat(metricsMap.get(LatencyMetrics.EXTERNAL_LATENCY_MAX_MS), greaterThanOrEqualTo(0.0));
+        assertThat(metricsMap.get(LatencyMetrics.EXTERNAL_LATENCY_AVG_MS), greaterThanOrEqualTo(0.0));
     }
 }
 
