@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-package org.opensearch.dataprepper.plugins.sink.SinkResponseLatency;
+import org.opensearch.dataprepper.plugins.sink.SinkResponseLatency;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.retry.Backoff;
@@ -81,6 +81,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.time.Duration;
 import com.google.common.util.concurrent.AtomicDouble;
 
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
@@ -92,6 +93,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "dynamicIndexDroppedEvents";
   public static final String LATENCY_THRESHOLD_MS="latency_threshold_ms";
   public static final String HIGH_LATENCY_RESPONSES_THRESHOLD="high_latency_responses_threshold";
+  public static final int MAXIMUM_DELAY_MS = 60000; // one minute
+  public static final int INITIAL_DELAY_MS = 1000; // one second
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   private static final int INITIALIZE_RETRY_WAIT_TIME_MS = 5000;
@@ -158,11 +161,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     bulkRequestSizeBytesSummary = pluginMetrics.summary(BULKREQUEST_SIZE_BYTES);
 
     final int latencyThresholdMs = (int) pluginSetting.getAttributeFromSettings(LATENCY_THRESHOLD_MS);
-    final int highLatencyResponsesThreshold = (String) pluginSetting.getAttributeFromSettings(HIGH_LATENCY_RESPONSES_THRESHOLD);
+    final int highLatencyResponsesThreshold = (int) pluginSetting.getAttributeFromSettings(HIGH_LATENCY_RESPONSES_THRESHOLD);
     this.responseLatency = new SinkResponseLatency((value) -> 
         {
-            responseLatencyAlertRatio.set(value);
-        }, latencyThresholdMs, highLatencyResponsesThreshold);
+            responseLatencyAlertRatio.set((Double)value);
+        }, Duration.ofMillis(latencyThresholdMs), highLatencyResponsesThreshold);
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting, expressionEvaluator);
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
     this.flushTimeout = openSearchSinkConfig.getIndexConfiguration().getFlushTimeout();
@@ -190,7 +193,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
   }
   public void updateResponseLatency(long latency) {
-    reponseLatency.update(latency);
+    responseLatency.update(latency);
   }
 
   @Override
@@ -347,7 +350,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     if (responseLatencyAlertRatio.get() > 1.0) {
         if (backoff == null) {
-            int initialDelay = (int) INITIAL_DELAY_MS * responseLatencyAlertRatio.get();
+            int initialDelay = (int) (INITIAL_DELAY_MS * responseLatencyAlertRatio.get());
             if (initialDelay >= MAXIMUM_DELAY_MS) {
                 initialDelay = MAXIMUM_DELAY_MS;
             }
