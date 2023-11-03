@@ -296,6 +296,7 @@ public final class BulkRetryStrategy {
             for (final BulkOperationWrapper bulkOperation: bulkRequestForRetry.getOperations()) {
                 bulkOperation.releaseEventHandle(true);
             }
+            sink.updateResponseLatency(bulkResponse.took());
         }
         return null;
     }

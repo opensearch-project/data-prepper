@@ -5,42 +5,32 @@
 
 package org.opensearch.dataprepper.plugins.sink;
 
+import java.time.Duration;
+import java.util.function.Consumer;
+
 public class SinkResponseLatency {
     
     final Duration latencyThreshold;
-    final int numberThreshold;
+    final int highLatencyResponsesThreshold;
     int numHighLatencyResponses;
-    Backoff backoff;
+    final Consumer<Object> callback;
 
-    public SinkResponseLatency(Duration latencyThreshold, int numberThreshold) {
+    public SinkResponseLatency(Consumer<Object> callback, Duration latencyThreshold, int highLatencyResponsesThreshold) {
         this.latencyThreshold = latencyThreshold;
-        this.numberThreshold = numberThreshold;
-        this.backoff = null;
+        this.highLatencyResponsesThreshold = highLatencyResponsesThreshold;
         this.numHighLatencyResponses = 0;
+        this.callback = callback;
     }
-    public void update(Duration latency) {
-        if (latency > latencyThreshold) {
+    public void update(long latencyMs) {
+        if (latencyMs > latencyThreshold.toMillis()) {
             numHighLatencyResponses++;
         } else if (numHighLatencyResponses > 0) {
             numHighLatencyResponses--;
         }
-        if (numHighLatencyResponses > numberThreshold) {
-            if (backoff == null) {
-                backoff = Backoff.exponential(INITIAL_DELAY_MS, MAXIMUM_DELAY_MS);
-            }
-        } else if (numHighLatencyResponses < numberThreshold) {
-            backoff = null;
+        if (numHighLatencyResponses > highLatencyResponsesThreshold) {
+            callback.accept((double)numHighLatencyResponses/highLatencyResponsesThreshold);
         }
     }
 
-    public void applyBackoffDelay() {
-        if (backoff != null) {
-            final long delayMillis = backoff.nextDelayMillis(attempt++);
-            try {
-                Thread.sleep(delayMillis);
-            } catch (Exception e) {}
-        }
-    }
-    
 }
 
