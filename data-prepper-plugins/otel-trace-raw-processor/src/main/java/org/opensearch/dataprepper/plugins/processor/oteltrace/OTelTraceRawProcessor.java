@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltrace;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -14,8 +16,6 @@ import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.plugins.processor.oteltrace.model.SpanSet;
 import org.opensearch.dataprepper.plugins.processor.oteltrace.model.TraceGroup;
@@ -62,14 +62,13 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
                                  final PluginMetrics pluginMetrics) {
         super(pluginMetrics);
         traceFlushInterval = SEC_TO_MILLIS * otelTraceRawProcessorConfig.getTraceFlushIntervalSeconds();
-        final int numProcessWorkers = pipelineDescription.getNumberOfProcessWorkers();
-        traceIdTraceGroupCache = CacheBuilder.newBuilder()
-                .concurrencyLevel(numProcessWorkers)
-                .maximumSize(otelTraceRawProcessorConfig.getTraceGroupCacheMaxSize())
-                .expireAfterWrite(otelTraceRawProcessorConfig.getTraceGroupCacheTimeToLive().toMillis(), TimeUnit.MILLISECONDS)
-                .build();
+        traceIdTraceGroupCache = Caffeine.newBuilder()
+          .maximumSize(otelTraceRawProcessorConfig.getTraceGroupCacheMaxSize())
+          .expireAfterWrite(otelTraceRawProcessorConfig.getTraceGroupCacheTimeToLive().toMillis(), TimeUnit.MILLISECONDS)
+          .build();
 
-        pluginMetrics.gauge(TRACE_GROUP_CACHE_COUNT_METRIC_NAME, traceIdTraceGroupCache, cache -> (double) cache.size());
+
+        pluginMetrics.gauge(TRACE_GROUP_CACHE_COUNT_METRIC_NAME, traceIdTraceGroupCache, cache -> (double) cache.estimatedSize());
         pluginMetrics.gauge(SPAN_SET_COUNT_METRIC_NAME, traceIdSpanSetMap, cache -> (double) cache.size());
 
         LOG.info("Configured Trace Raw Processor with a trace flush interval of {} ms.", traceFlushInterval);
@@ -109,9 +108,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
             spanSet.addAll(rootSpanAndChildren);
         } else {
             final Optional<Span> populatedChildSpanOptional = processChildSpan(span);
-            if (populatedChildSpanOptional.isPresent()) {
-                spanSet.add(populatedChildSpanOptional.get());
-            }
+          populatedChildSpanOptional.ifPresent(spanSet::add);
         }
     }
 
@@ -212,7 +209,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
                             entryIterator.remove();
                         }
                     }
-                    if (recordsToFlush.size() > 0) {
+                    if (!recordsToFlush.isEmpty()) {
                         LOG.info("Flushing {} records", recordsToFlush.size());
                     }
                 } finally {

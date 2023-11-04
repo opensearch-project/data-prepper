@@ -15,7 +15,6 @@ dependencies {
     implementation libs.opensearch.java
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation libs.guava.core
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:http-client-spi'
@@ -30,6 +29,7 @@ dependencies {
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:opensearchserverless'
     implementation libs.commons.lang3
+    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
     implementation 'software.amazon.awssdk:apache-client'
     testImplementation testLibs.junit.vintage
     testImplementation libs.commons.io
