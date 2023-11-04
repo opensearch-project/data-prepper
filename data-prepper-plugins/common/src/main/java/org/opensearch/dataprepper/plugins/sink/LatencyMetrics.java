@@ -23,6 +23,9 @@ public class LatencyMetrics {
         externalLatencySummary = pluginMetrics.summary(EXTERNAL_LATENCY);
     }
     public void update(final EventHandle eventHandle) {
+        if (eventHandle == null) {
+            return;
+        }
         Instant now = Instant.now();
         internalLatencySummary.record(Duration.between(eventHandle.getInternalOriginationTime(), now).toMillis());
         if (eventHandle.getExternalOriginationTime() == null) {
