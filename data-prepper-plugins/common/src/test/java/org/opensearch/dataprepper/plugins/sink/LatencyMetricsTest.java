@@ -7,30 +7,27 @@ package org.opensearch.dataprepper.plugins.sink;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.core.instrument.DistributionSummary;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.ArgumentMatchers.any;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 import java.time.Instant;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.function.ToDoubleFunction;
 
 class LatencyMetricsTest {
 
     private PluginMetrics pluginMetrics;
     private EventHandle eventHandle;
     private LatencyMetrics latencyMetrics;
-    private Map<String, Double> metricsMap;
+    private DistributionSummary internalLatencySummary;
+    private DistributionSummary externalLatencySummary;
 
     public LatencyMetrics createObjectUnderTest() {
         return new LatencyMetrics(pluginMetrics);
@@ -39,38 +36,35 @@ class LatencyMetricsTest {
     @BeforeEach
     void setup() {
         pluginMetrics = mock(PluginMetrics.class);
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        internalLatencySummary = DistributionSummary
+              .builder("internalLatency")
+              .baseUnit("milliseconds")
+              .register(registry);
+        externalLatencySummary = DistributionSummary
+              .builder("externalLatency")
+              .baseUnit("milliseconds")
+              .register(registry);
+        when(pluginMetrics.summary(LatencyMetrics.INTERNAL_LATENCY)).thenReturn(internalLatencySummary);
+        when(pluginMetrics.summary(LatencyMetrics.EXTERNAL_LATENCY)).thenReturn(externalLatencySummary);
         eventHandle = mock(EventHandle.class);
-        metricsMap = new HashMap<>();
         when(eventHandle.getInternalOriginationTime()).thenReturn(Instant.now());
-        doAnswer(a -> {
-            ToDoubleFunction<?> func = (ToDoubleFunction<?>)a.getArgument(2);
-            double value = func.applyAsDouble(a.getArgument(1));
-            metricsMap.put(a.getArgument(0), value);
-            return null;
-        }).when(pluginMetrics).gauge(any(),any(),any());
         latencyMetrics = createObjectUnderTest();
     }
 
     @Test
     public void testInternalOriginationTime() {
         latencyMetrics.update(eventHandle);
-        verify(pluginMetrics, times(3)).gauge(any(), any(), any());
-        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_MIN_MS), greaterThanOrEqualTo(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_MAX_MS), greaterThanOrEqualTo(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_AVG_MS), greaterThanOrEqualTo(0.0));
+        assertThat(internalLatencySummary.count(), equalTo(1L));
     }
 
     @Test
     public void testExternalOriginationTime() {
-        when(eventHandle.getExternalOriginationTime()).thenReturn(Instant.now());
+        when(eventHandle.getExternalOriginationTime()).thenReturn(Instant.now().minusMillis(10));
         latencyMetrics.update(eventHandle);
-        verify(pluginMetrics, times(6)).gauge(any(), any(), any());
-        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_MIN_MS), greaterThanOrEqualTo(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_MAX_MS), greaterThanOrEqualTo(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.INTERNAL_LATENCY_AVG_MS), greaterThanOrEqualTo(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.EXTERNAL_LATENCY_MIN_MS), greaterThanOrEqualTo(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.EXTERNAL_LATENCY_MAX_MS), greaterThanOrEqualTo(0.0));
-        assertThat(metricsMap.get(LatencyMetrics.EXTERNAL_LATENCY_AVG_MS), greaterThanOrEqualTo(0.0));
+        assertThat(internalLatencySummary.count(), equalTo(1L));
+        assertThat(externalLatencySummary.count(), equalTo(1L));
+        assertThat(externalLatencySummary.max(), greaterThanOrEqualTo(10.0));
     }
 }
 
