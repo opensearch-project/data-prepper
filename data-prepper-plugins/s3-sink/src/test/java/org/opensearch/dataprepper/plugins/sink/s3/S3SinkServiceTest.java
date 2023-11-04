@@ -25,8 +25,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import static org.opensearch.dataprepper.plugins.sink.LatencyMetrics.INTERNAL_LATENCY;
-import static org.opensearch.dataprepper.plugins.sink.LatencyMetrics.EXTERNAL_LATENCY;
 import org.opensearch.dataprepper.plugins.sink.LatencyMetrics;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
