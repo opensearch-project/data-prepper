@@ -35,11 +35,14 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -60,6 +63,8 @@ class SqsWorkerIT {
     private SqsClient sqsClient;
     @Mock
     private S3Service s3Service;
+    @Mock
+    private SqsOptions sqsOptions;
     private S3SourceConfig s3SourceConfig;
     private PluginMetrics pluginMetrics;
     private S3ObjectGenerator s3ObjectGenerator;
@@ -69,8 +74,11 @@ class SqsWorkerIT {
     private Double receivedCount = 0.0;
     private Double deletedCount = 0.0;
     private Double ackCallbackCount = 0.0;
+    private Double visibilityTimeoutChangedCount = 0.0;
     private Event event;
     private AtomicBoolean ready = new AtomicBoolean(false);
+    private int numEventsAdded;
+    private List<Event> events;
 
     @BeforeEach
     void setUp() {
@@ -80,6 +88,7 @@ class SqsWorkerIT {
                 .build();
         bucket = System.getProperty("tests.s3source.bucket");
         s3ObjectGenerator = new S3ObjectGenerator(s3Client, bucket);
+        events = new ArrayList<>();
 
         sqsClient = SqsClient.builder()
                 .region(Region.of(System.getProperty("tests.s3source.region")))
@@ -100,14 +109,14 @@ class SqsWorkerIT {
         lenient().when(pluginMetrics.summary(anyString())).thenReturn(distributionSummary);
         when(pluginMetrics.timer(anyString())).thenReturn(sqsMessageDelayTimer);
 
-        final SqsOptions sqsOptions = mock(SqsOptions.class);
+        sqsOptions = mock(SqsOptions.class);
         when(sqsOptions.getSqsUrl()).thenReturn(System.getProperty("tests.s3source.queue.url"));
         when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(60));
         when(sqsOptions.getMaximumMessages()).thenReturn(10);
         when(sqsOptions.getWaitTime()).thenReturn(Duration.ofSeconds(10));
         when(s3SourceConfig.getSqsOptions()).thenReturn(sqsOptions);
         lenient().when(s3SourceConfig.getOnErrorOption()).thenReturn(OnErrorOption.DELETE_MESSAGES);
-        when(s3SourceConfig.getNotificationSource()).thenReturn(NotificationSourceOption.S3);
+        lenient().when(s3SourceConfig.getNotificationSource()).thenReturn(NotificationSourceOption.S3);
     }
 
     private SqsWorker createObjectUnderTest() {
@@ -183,7 +192,7 @@ class SqsWorkerIT {
             ackSet.add(event);
             return null;
         }).when(s3Service).addS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class));
-        ExecutorService executor = Executors.newFixedThreadPool(2);
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         acknowledgementSetManager = new  DefaultAcknowledgementSetManager(executor);
         final SqsWorker objectUnderTest = createObjectUnderTest();
         Thread sinkThread = new Thread(() -> {
@@ -251,12 +260,12 @@ class SqsWorkerIT {
                 this.notify();
             }
             try {
-                Thread.sleep(4000);
+                Thread.sleep(2000);
             } catch (Exception e){}
 
             return null;
         }).when(s3Service).addS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class));
-        ExecutorService executor = Executors.newFixedThreadPool(2);
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         acknowledgementSetManager = new  DefaultAcknowledgementSetManager(executor);
         final SqsWorker objectUnderTest = createObjectUnderTest();
         Thread sinkThread = new Thread(() -> {
@@ -279,6 +288,149 @@ class SqsWorkerIT {
 
         assertThat(deletedCount, equalTo((double)1.0));
         assertThat(ackCallbackCount, equalTo((double)1.0));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1})
+    void processSqsMessages_with_acks_and_progress_check_callbacks(final int numberOfObjectsToWrite) throws IOException, InterruptedException {
+        writeToS3(numberOfObjectsToWrite);
+
+        when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
+        final Counter receivedCounter = mock(Counter.class);
+        final Counter deletedCounter = mock(Counter.class);
+        final Counter ackCallbackCounter = mock(Counter.class);
+        final Counter visibilityTimeoutChangedCounter = mock(Counter.class);
+        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_RECEIVED_METRIC_NAME)).thenReturn(receivedCounter);
+        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_DELETED_METRIC_NAME)).thenReturn(deletedCounter);
+        when(pluginMetrics.counter(SqsWorker.ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME)).thenReturn(ackCallbackCounter);
+        when(pluginMetrics.counter(SqsWorker.SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME)).thenReturn(visibilityTimeoutChangedCounter);
+        lenient().doAnswer((val) -> {
+            receivedCount += (double)val.getArgument(0);
+            return null;
+        }).when(receivedCounter).increment(any(Double.class));
+        
+        lenient().doAnswer((val) -> {
+            if (val.getArgument(0) != null) {
+                deletedCount += (double)val.getArgument(0);
+            }
+            return null;
+        }).when(deletedCounter).increment(any(Double.class));
+        ackCallbackCount = 0.0;
+        lenient().doAnswer((val) -> {
+            ackCallbackCount += 1;
+            return null;
+        }).when(ackCallbackCounter).increment();
+        lenient().doAnswer((val) -> {
+            visibilityTimeoutChangedCount += 1;
+            return null;
+        }).when(visibilityTimeoutChangedCounter).increment();
+        numEventsAdded = 0;
+
+        doAnswer((val) -> {
+            AcknowledgementSet ackSet = val.getArgument(1);
+            S3ObjectReference s3ObjectReference = val.getArgument(0);
+            assertThat(s3ObjectReference.getBucketName(), equalTo(bucket));
+            assertThat(s3ObjectReference.getKey(), startsWith("s3 source/sqs/"));
+            event = (Event)JacksonEvent.fromMessage(val.getArgument(0).toString());
+
+            ackSet.add(event);
+            synchronized(events) {
+                events.add(event);
+            }
+            try {
+                Thread.sleep(2000);
+            } catch (Exception e) {}
+            return null;
+        }).when(s3Service).addS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class));
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
+        when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(6));
+        when(sqsOptions.getMaxVisibilityTimeoutExtension()).thenReturn(Duration.ofSeconds(60));
+        when(sqsOptions.getVisibilityDuplicateProtection()).thenReturn(true);
+        acknowledgementSetManager = new  DefaultAcknowledgementSetManager(executor);
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        final int sqsMessagesProcessed = objectUnderTest.processSqsMessages();
+        synchronized(events) {
+            for (Event e: events) {
+                if (e.getEventHandle() != null) {
+                    e.getEventHandle().release(true);
+                }
+            }
+        }
+        await().atMost(Duration.ofSeconds(20))
+                .untilAsserted(() -> {
+                    assertThat(visibilityTimeoutChangedCount, greaterThanOrEqualTo((double)numberOfObjectsToWrite));
+                    assertThat(deletedCount, equalTo((double)numberOfObjectsToWrite));
+                    assertThat(ackCallbackCount, equalTo((double)numberOfObjectsToWrite));
+                });
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1})
+    void processSqsMessages_with_acks_and_progress_check_callbacks_expires(final int numberOfObjectsToWrite) throws IOException, InterruptedException {
+        writeToS3(numberOfObjectsToWrite);
+
+        when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
+        final Counter receivedCounter = mock(Counter.class);
+        final Counter deletedCounter = mock(Counter.class);
+        final Counter ackCallbackCounter = mock(Counter.class);
+        final Counter visibilityTimeoutChangedCounter = mock(Counter.class);
+        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_RECEIVED_METRIC_NAME)).thenReturn(receivedCounter);
+        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_DELETED_METRIC_NAME)).thenReturn(deletedCounter);
+        when(pluginMetrics.counter(SqsWorker.ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME)).thenReturn(ackCallbackCounter);
+        when(pluginMetrics.counter(SqsWorker.SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME)).thenReturn(visibilityTimeoutChangedCounter);
+        lenient().doAnswer((val) -> {
+            receivedCount += (double)val.getArgument(0);
+            return null;
+        }).when(receivedCounter).increment(any(Double.class));
+        
+        lenient().doAnswer((val) -> {
+            if (val.getArgument(0) != null) {
+                deletedCount += (double)val.getArgument(0);
+            }
+            return null;
+        }).when(deletedCounter).increment(any(Double.class));
+        lenient().when(deletedCounter.count()).thenReturn(deletedCount);
+        ackCallbackCount = 0.0;
+        lenient().doAnswer((val) -> {
+            ackCallbackCount += 1;
+            return null;
+        }).when(ackCallbackCounter).increment();
+        lenient().doAnswer((val) -> {
+            visibilityTimeoutChangedCount += 1;
+            return null;
+        }).when(visibilityTimeoutChangedCounter).increment();
+        numEventsAdded = 0;
+
+        doAnswer((val) -> {
+            AcknowledgementSet ackSet = val.getArgument(1);
+            S3ObjectReference s3ObjectReference = val.getArgument(0);
+            assertThat(s3ObjectReference.getBucketName(), equalTo(bucket));
+            assertThat(s3ObjectReference.getKey(), startsWith("s3 source/sqs/"));
+            event = (Event)JacksonEvent.fromMessage(val.getArgument(0).toString());
+
+            ackSet.add(event);
+            synchronized(events) {
+                events.add(event);
+            }
+            try {
+                Thread.sleep(2000);
+            } catch (Exception e) {}
+            return null;
+        }).when(s3Service).addS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class));
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
+        when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(6));
+        when(sqsOptions.getMaxVisibilityTimeoutExtension()).thenReturn(Duration.ofSeconds(60));
+        when(sqsOptions.getVisibilityDuplicateProtection()).thenReturn(true);
+        acknowledgementSetManager = new  DefaultAcknowledgementSetManager(executor);
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        final int sqsMessagesProcessed = objectUnderTest.processSqsMessages();
+        await().atMost(Duration.ofSeconds(10))
+                .untilAsserted(() -> {
+                    assertThat(visibilityTimeoutChangedCount, greaterThanOrEqualTo((double)numberOfObjectsToWrite));
+                    assertThat(deletedCount, equalTo(0.0));
+                    assertThat(ackCallbackCount, equalTo(0.0));
+                });
+
     }
 
     /** The EventBridge test is disabled by default

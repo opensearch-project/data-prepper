@@ -45,7 +45,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -72,7 +72,7 @@ public class KafkaCustomConsumerTest {
     @Mock
     private KafkaConsumerConfig sourceConfig;
 
-    private ExecutorService callbackExecutor;
+    private ScheduledExecutorService callbackExecutor;
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
@@ -134,7 +134,7 @@ public class KafkaCustomConsumerTest {
         }).when(negCounter).increment();
         doAnswer((i)-> {return posCount;}).when(posCounter).count();
         doAnswer((i)-> {return negCount;}).when(negCounter).count();
-        callbackExecutor = Executors.newFixedThreadPool(2); 
+        callbackExecutor = Executors.newScheduledThreadPool(2); 
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(callbackExecutor, Duration.ofMillis(2000));
 
         sourceConfig = mock(KafkaConsumerConfig.class);

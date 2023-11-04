@@ -42,7 +42,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -107,7 +107,7 @@ public class KafkaSourceJsonTypeIT {
         buffer = mock(Buffer.class);
         encryptionConfig = mock(EncryptionConfig.class);
         receivedRecords = new ArrayList<>();
-        ExecutorService executor = Executors.newFixedThreadPool(2);
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
         pipelineDescription = mock(PipelineDescription.class);
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
