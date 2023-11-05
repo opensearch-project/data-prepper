@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 
 import java.util.Map;
 
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TABLE_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
@@ -80,6 +81,7 @@ public abstract class RecordConverter {
 
         eventMetadata.setAttribute(EVENT_TABLE_NAME_METADATA_ATTRIBUTE, tableInfo.getTableName());
         eventMetadata.setAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreationTimeMillis);
+        eventMetadata.setAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE, eventName);
         eventMetadata.setAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, mapStreamEventNameToBulkAction(eventName));
         String partitionKey = getAttributeValue(keys, tableInfo.getMetadata().getPartitionKeyAttributeName());
         eventMetadata.setAttribute(PARTITION_KEY_METADATA_ATTRIBUTE, partitionKey);
@@ -110,9 +112,8 @@ public abstract class RecordConverter {
 
         switch (streamEventName) {
             case "INSERT":
-                return OpenSearchBulkActions.CREATE.toString();
             case "MODIFY":
-                return OpenSearchBulkActions.UPSERT.toString();
+                return OpenSearchBulkActions.INDEX.toString();
             case "REMOVE":
                 return OpenSearchBulkActions.DELETE.toString();
             default:
