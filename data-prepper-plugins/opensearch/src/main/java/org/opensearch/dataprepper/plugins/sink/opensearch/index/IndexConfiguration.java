@@ -26,11 +26,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -522,7 +524,8 @@ public class IndexConfiguration {
         }
 
         public Builder withAction(final String action, final ExpressionEvaluator expressionEvaluator) {
-            checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + OpenSearchBulkActions.values());
+            checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) ||
+                    (action.contains("${") && JacksonEvent.isValidFormatExpressions(action, expressionEvaluator))), "Invalid action \"" + action + "\". action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
             this.action = action;
             return this;
         }
@@ -531,7 +534,8 @@ public class IndexConfiguration {
             for (final Map<String, Object> actionMap: actions) {
                 String action = (String)actionMap.get("type");
                 if (action != null) {
-                    checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + OpenSearchBulkActions.values());
+                    checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) ||
+                            (action.contains("${") && JacksonEvent.isValidFormatExpressions(action, expressionEvaluator))), "Invalid action \"" + action + "\". action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
                 }
             }
             this.actions = actions;

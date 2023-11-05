@@ -322,6 +322,7 @@ public class JacksonEvent implements Event {
         if (Objects.isNull(expressionEvaluator)) {
             return false;
         }
+
         int fromIndex = 0;
         int position = 0;
         while ((position = format.indexOf("${", fromIndex)) != -1) {

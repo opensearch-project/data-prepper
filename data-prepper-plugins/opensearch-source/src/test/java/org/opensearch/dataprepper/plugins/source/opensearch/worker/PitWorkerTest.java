@@ -191,7 +191,7 @@ public class PitWorkerTest {
         assertThat(createPointInTimeRequest.getKeepAlive(), equalTo(STARTING_KEEP_ALIVE));
 
         verify(searchAccessor, times(2)).searchWithPit(any(SearchPointInTimeRequest.class));
-        verify(sourceCoordinator, times(2)).saveProgressStateForPartition(eq(partitionKey), any(OpenSearchIndexProgressState.class));
+        verify(sourceCoordinator, times(0)).saveProgressStateForPartition(eq(partitionKey), any(OpenSearchIndexProgressState.class));
 
         final List<SearchPointInTimeRequest> searchPointInTimeRequestList = searchPointInTimeRequestArgumentCaptor.getAllValues();
         assertThat(searchPointInTimeRequestList.size(), equalTo(2));
@@ -292,7 +292,7 @@ public class PitWorkerTest {
         assertThat(createPointInTimeRequest.getKeepAlive(), equalTo(STARTING_KEEP_ALIVE));
 
         verify(searchAccessor, times(2)).searchWithPit(any(SearchPointInTimeRequest.class));
-        verify(sourceCoordinator, times(2)).saveProgressStateForPartition(eq(partitionKey), any(OpenSearchIndexProgressState.class));
+        verify(sourceCoordinator, times(0)).saveProgressStateForPartition(eq(partitionKey), any(OpenSearchIndexProgressState.class));
 
         final List<SearchPointInTimeRequest> searchPointInTimeRequestList = searchPointInTimeRequestArgumentCaptor.getAllValues();
         assertThat(searchPointInTimeRequestList.size(), equalTo(2));
@@ -378,7 +378,7 @@ public class PitWorkerTest {
 
         verify(searchAccessor, never()).createPit(any(CreatePointInTimeRequest.class));
         verify(searchAccessor, times(2)).searchWithPit(any(SearchPointInTimeRequest.class));
-        verify(sourceCoordinator, times(2)).saveProgressStateForPartition(eq(partitionKey), eq(openSearchIndexProgressState));
+        verify(sourceCoordinator, times(0)).saveProgressStateForPartition(eq(partitionKey), eq(openSearchIndexProgressState));
         verify(sourceCoordinator, times(0)).updatePartitionForAcknowledgmentWait(anyString(), any(Duration.class));
 
         verify(documentsProcessedCounter, times(3)).increment();

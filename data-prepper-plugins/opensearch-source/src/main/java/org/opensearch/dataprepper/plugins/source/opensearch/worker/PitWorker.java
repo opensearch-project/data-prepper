@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.BACKOFF_ON_EXCEPTION;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.DEFAULT_CHECKPOINT_INTERVAL_MILLS;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.calculateExponentialBackoffAndJitter;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.completeIndexPartition;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.createAcknowledgmentSet;
@@ -150,6 +151,7 @@ public class PitWorker implements SearchWorker, Runnable {
     private void processIndex(final SourcePartition<OpenSearchIndexProgressState> openSearchIndexPartition,
                               final AcknowledgementSet acknowledgementSet) {
         final String indexName = openSearchIndexPartition.getPartitionKey();
+        long lastCheckpointTime = System.currentTimeMillis();
 
         LOG.info("Starting processing for index: '{}'", indexName);
         Optional<OpenSearchIndexProgressState> openSearchIndexProgressStateOptional = openSearchIndexPartition.getPartitionState();
@@ -203,7 +205,12 @@ public class PitWorker implements SearchWorker, Runnable {
 
             openSearchIndexProgressState.setSearchAfter(searchWithSearchAfterResults.getNextSearchAfter());
             openSearchIndexProgressState.setKeepAlive(Duration.ofMillis(openSearchIndexProgressState.getKeepAlive()).plus(EXTEND_KEEP_ALIVE_DURATION).toMillis());
-            sourceCoordinator.saveProgressStateForPartition(indexName, openSearchIndexProgressState);
+
+            if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
+                LOG.debug("Renew ownership of index {}", indexName);
+                sourceCoordinator.saveProgressStateForPartition(indexName, openSearchIndexProgressState);
+                lastCheckpointTime = System.currentTimeMillis();
+            }
         } while (searchWithSearchAfterResults.getDocuments().size() == searchConfiguration.getBatchSize());
 
         try {
