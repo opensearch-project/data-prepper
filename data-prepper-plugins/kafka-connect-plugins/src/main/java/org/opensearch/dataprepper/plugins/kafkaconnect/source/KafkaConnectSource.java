@@ -34,7 +34,7 @@ import java.util.Properties;
 @SuppressWarnings("deprecation")
 public abstract class KafkaConnectSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaConnectSource.class);
-    private final ConnectorConfig connectorConfig;
+    public final ConnectorConfig connectorConfig;
     private final String pipelineName;
     private KafkaConnectConfig kafkaConnectConfig;
     private KafkaConnect kafkaConnect;

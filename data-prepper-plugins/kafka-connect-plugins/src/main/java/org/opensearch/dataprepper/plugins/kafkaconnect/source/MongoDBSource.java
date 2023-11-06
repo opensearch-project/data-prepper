@@ -40,8 +40,6 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
 
     private final PluginMetrics pluginMetrics;
 
-    private final MongoDBConfig mongoDBConfig;
-
     private final AcknowledgementSetManager acknowledgementSetManager;
 
     private MongoDBService mongoDBService;
@@ -60,7 +58,6 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
                          final KafkaConnectConfigSupplier kafkaConnectConfigSupplier) {
         super(mongoDBConfig, pluginMetrics, pipelineDescription, kafkaClusterConfigSupplier, kafkaConnectConfigSupplier);
         this.pluginMetrics = pluginMetrics;
-        this.mongoDBConfig = mongoDBConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
         this.byteDecoder = new JsonDecoder();
@@ -71,7 +68,7 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
         super.start(buffer);
         if (shouldStartInitialLoad()) {
             LOG.info("Starting initial load");
-            this.mongoDBService = MongoDBService.create(mongoDBConfig, sourceCoordinator, buffer, acknowledgementSetManager, pluginMetrics);
+            this.mongoDBService = MongoDBService.create((MongoDBConfig) this.connectorConfig, sourceCoordinator, buffer, acknowledgementSetManager, pluginMetrics);
             this.mongoDBService.start();
         }
     }
@@ -103,11 +100,12 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
 
     @Override
     public boolean shouldStartKafkaConnect() {
-        return false;
-//        return mongoDBConfig.getSnapshotMode().equals("export_stream") || mongoDBConfig.getSnapshotMode().equals("stream");
+        final MongoDBConfig mongoDBConfig = (MongoDBConfig) this.connectorConfig;
+        return mongoDBConfig.getIngestionMode().equals("export_stream") || mongoDBConfig.getIngestionMode().equals("stream");
     }
 
     private boolean shouldStartInitialLoad() {
+        final MongoDBConfig mongoDBConfig = (MongoDBConfig) this.connectorConfig;
         return mongoDBConfig.getIngestionMode().equals("export_stream") || mongoDBConfig.getIngestionMode().equals("export");
     }
 }

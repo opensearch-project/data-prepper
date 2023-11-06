@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.kafkaconnect.source;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -16,6 +17,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.MongoDBConfig;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,6 +37,11 @@ public class MongoDBSourceTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
+    @BeforeEach
+    void setup() {
+        mongoDBConfig = mock(MongoDBConfig.class);
+        when(mongoDBConfig.getIngestionMode()).thenReturn("export_stream");
+    }
 
     @Test
     void testConstructorValidations() {
