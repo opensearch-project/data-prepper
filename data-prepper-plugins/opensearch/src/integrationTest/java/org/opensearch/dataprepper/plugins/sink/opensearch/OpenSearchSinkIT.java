@@ -439,7 +439,7 @@ public class OpenSearchSinkIT {
 
     @ParameterizedTest
     @ArgumentsSource(CreateSingleWithTemplatesArgumentsProvider.class)
-    //@DisabledIf(value = "isES6", disabledReason = TRACE_INGESTION_TEST_DISABLED_REASON)
+    @DisabledIf(value = "isES6", disabledReason = TRACE_INGESTION_TEST_DISABLED_REASON)
     public void testInstantiateSinkCustomIndex_WithIsmPolicy(
             final String templateType,
             final String templateFile) throws IOException {
@@ -470,7 +470,6 @@ public class OpenSearchSinkIT {
         JsonNode settingsIndexNode = settings.get("index");
         assertThat(settingsIndexNode, notNullValue());
         assertThat(settingsIndexNode.getNodeType(), equalTo(JsonNodeType.OBJECT));
-        //assertThat(settingsIndexNode.get("opendistro.index_state_management.rollover_alias"), notNullValue());
         assertThat(settingsIndexNode.get("opendistro"), notNullValue());
         assertThat(settingsIndexNode.get("opendistro").getNodeType(), equalTo(JsonNodeType.OBJECT));
         JsonNode settingsIsmNode = settingsIndexNode.get("opendistro").get("index_state_management");
