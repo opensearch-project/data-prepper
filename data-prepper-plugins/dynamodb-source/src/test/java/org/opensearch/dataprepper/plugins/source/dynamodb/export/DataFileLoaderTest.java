@@ -93,7 +93,7 @@ class DataFileLoaderTest {
 
     private final Random random = new Random();
 
-    private final int total = random.nextInt(10);
+    private final int total = random.nextInt(10) + 1;
 
     @BeforeEach
     void setup() {
@@ -153,8 +153,8 @@ class DataFileLoaderTest {
         try (
                 final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class);
                 final MockedConstruction<ExportRecordConverter> recordConverterMockedConstruction = mockConstruction(ExportRecordConverter.class, (mock, context) -> {
-            exportRecordConverter = mock;
-        })) {
+                    exportRecordConverter = mock;
+                })) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
             loader = DataFileLoader.builder(objectReader, pluginMetrics, buffer)
                     .bucketName(bucketName)
