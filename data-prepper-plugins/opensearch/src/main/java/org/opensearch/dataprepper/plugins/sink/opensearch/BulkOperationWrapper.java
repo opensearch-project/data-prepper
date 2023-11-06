@@ -45,22 +45,20 @@ public class BulkOperationWrapper {
     private final EventHandle eventHandle;
     private final BulkOperation bulkOperation;
     private final SerializedJson jsonNode;
-    private final OpenSearchSink sink;
 
-    public BulkOperationWrapper(final OpenSearchSink sink, final BulkOperation bulkOperation) {
-        this(sink, bulkOperation, null, null);
+    public BulkOperationWrapper(final BulkOperation bulkOperation) {
+        this(bulkOperation, null, null);
     }
 
-    public BulkOperationWrapper(final OpenSearchSink sink, final BulkOperation bulkOperation, final EventHandle eventHandle, final SerializedJson jsonNode) {
+    public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle, final SerializedJson jsonNode) {
         checkNotNull(bulkOperation);
-        this.sink = sink;
         this.bulkOperation = bulkOperation;
         this.eventHandle = eventHandle;
         this.jsonNode = jsonNode;
     }
 
-    public BulkOperationWrapper(final OpenSearchSink sink, final BulkOperation bulkOperation, final EventHandle eventHandle) {
-        this(sink, bulkOperation, eventHandle, null);
+    public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle) {
+        this(bulkOperation, eventHandle, null);
     }
 
     public BulkOperation getBulkOperation() {
@@ -72,10 +70,7 @@ public class BulkOperationWrapper {
     }
 
     public void releaseEventHandle(boolean result) {
-        if (eventHandle != null) {
-            sink.updateLatencyMetrics(eventHandle);
-            eventHandle.release(result);
-        }
+        eventHandle.release(result);
     }
 
     public Object getDocument() {

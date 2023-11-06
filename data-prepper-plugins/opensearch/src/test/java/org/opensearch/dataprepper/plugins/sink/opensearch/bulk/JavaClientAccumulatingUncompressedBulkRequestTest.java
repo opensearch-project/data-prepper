@@ -13,7 +13,6 @@ import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
-import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,12 +32,10 @@ import static org.mockito.Mockito.when;
 class JavaClientAccumulatingUncompressedBulkRequestTest {
 
     private BulkRequest.Builder bulkRequestBuilder;
-    private OpenSearchSink sink;
 
     @BeforeEach
     void setUp() {
         bulkRequestBuilder = mock(BulkRequest.Builder.class);
-        sink = mock(OpenSearchSink.class);
 
         when(bulkRequestBuilder.operations(any(BulkOperation.class)))
                 .thenReturn(bulkRequestBuilder);
@@ -64,7 +61,7 @@ class JavaClientAccumulatingUncompressedBulkRequestTest {
     void getOperations_returns_unmodifiable_list() {
         final List<BulkOperationWrapper> operations = createObjectUnderTest().getOperations();
 
-        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(sink, createBulkOperation(generateDocument()));
+        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(generateDocument()));
         assertThrows(UnsupportedOperationException.class, () -> operations.add(bulkOperation));
     }
 
@@ -73,7 +70,7 @@ class JavaClientAccumulatingUncompressedBulkRequestTest {
     void getOperationsCount_returns_the_correct_operation_count(final int operationCount) {
         final JavaClientAccumulatingUncompressedBulkRequest objectUnderTest = createObjectUnderTest();
         for (int i = 0; i < operationCount; i++) {
-            final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(sink, createBulkOperation(generateDocument()));
+            final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(generateDocument()));
             objectUnderTest.addOperation(bulkOperation);
         }
 
@@ -86,7 +83,7 @@ class JavaClientAccumulatingUncompressedBulkRequestTest {
         final JavaClientAccumulatingUncompressedBulkRequest objectUnderTest = createObjectUnderTest();
         final long arbitraryDocumentSize = 175;
         for (int i = 0; i < operationCount; i++) {
-            final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(sink, createBulkOperation(generateDocumentWithLength(arbitraryDocumentSize)));
+            final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(generateDocumentWithLength(arbitraryDocumentSize)));
             objectUnderTest.addOperation(bulkOperation);
         }
 
@@ -99,7 +96,7 @@ class JavaClientAccumulatingUncompressedBulkRequestTest {
     void getEstimatedSizeInBytes_returns_the_operation_overhead_if_requests_have_no_documents(final int operationCount) {
         final JavaClientAccumulatingUncompressedBulkRequest objectUnderTest = createObjectUnderTest();
         for (int i = 0; i < operationCount; i++) {
-            objectUnderTest.addOperation(new BulkOperationWrapper(sink, createBulkOperation(null)));
+            objectUnderTest.addOperation(new BulkOperationWrapper(createBulkOperation(null)));
         }
 
         final long expectedSize = operationCount * JavaClientAccumulatingUncompressedBulkRequest.OPERATION_OVERHEAD;
@@ -113,7 +110,7 @@ class JavaClientAccumulatingUncompressedBulkRequestTest {
         List<BulkOperationWrapper> knownOperations = new ArrayList<>();
 
         for (int i = 0; i < 7; i++) {
-            BulkOperationWrapper bulkOperation = new BulkOperationWrapper(sink, createBulkOperation(generateDocument()));
+            BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(generateDocument()));
             objectUnderTest.addOperation(bulkOperation);
             knownOperations.add(bulkOperation);
         }
@@ -127,7 +124,7 @@ class JavaClientAccumulatingUncompressedBulkRequestTest {
     @ValueSource(longs = {0, 1, 2, 10, 50, 100})
     void estimateSizeInBytesWithDocument_on_new_object_returns_estimated_document_size_plus_operation_overhead(long inputDocumentSize) {
         final SizedDocument document = generateDocumentWithLength(inputDocumentSize);
-        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(sink, createBulkOperation(document));
+        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(document));
 
         assertThat(createObjectUnderTest().estimateSizeInBytesWithDocument(bulkOperation),
                 equalTo(inputDocumentSize + JavaClientAccumulatingUncompressedBulkRequest.OPERATION_OVERHEAD));
@@ -137,10 +134,10 @@ class JavaClientAccumulatingUncompressedBulkRequestTest {
     @ValueSource(longs = {0, 1, 2, 10, 50, 100})
     void estimateSizeInBytesWithDocument_on_request_with_operations_returns_estimated_document_size_plus_operation_overhead(long inputDocumentSize) {
         final SizedDocument document = generateDocumentWithLength(inputDocumentSize);
-        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(sink, createBulkOperation(document));
+        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(document));
 
         final JavaClientAccumulatingUncompressedBulkRequest objectUnderTest = createObjectUnderTest();
-        objectUnderTest.addOperation(new BulkOperationWrapper(sink, createBulkOperation(generateDocumentWithLength(inputDocumentSize))));
+        objectUnderTest.addOperation(new BulkOperationWrapper(createBulkOperation(generateDocumentWithLength(inputDocumentSize))));
 
         final long expectedSize = 2 * (inputDocumentSize + JavaClientAccumulatingUncompressedBulkRequest.OPERATION_OVERHEAD);
         assertThat(objectUnderTest.estimateSizeInBytesWithDocument(bulkOperation),
@@ -149,7 +146,7 @@ class JavaClientAccumulatingUncompressedBulkRequestTest {
 
     @Test
     void estimateSizeInBytesWithDocument_on_new_object_returns_operation_overhead_if_no_document() {
-        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(sink, createBulkOperation(null));
+        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(null));
 
         assertThat(createObjectUnderTest().estimateSizeInBytesWithDocument(bulkOperation),
                 equalTo((long) JavaClientAccumulatingUncompressedBulkRequest.OPERATION_OVERHEAD));
@@ -157,7 +154,7 @@ class JavaClientAccumulatingUncompressedBulkRequestTest {
 
     @Test
     void addOperation_adds_operation_to_the_BulkRequestBuilder() {
-        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(sink, createBulkOperation(generateDocument()));
+        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(generateDocument()));
 
         createObjectUnderTest().addOperation(bulkOperation);
 
@@ -166,7 +163,7 @@ class JavaClientAccumulatingUncompressedBulkRequestTest {
 
     @Test
     void addOperation_throws_when_BulkOperation_is_not_an_index_request() {
-        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(sink, mock(BulkOperation.class));
+        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(mock(BulkOperation.class));
 
         final JavaClientAccumulatingUncompressedBulkRequest objectUnderTest = createObjectUnderTest();
 
@@ -175,7 +172,7 @@ class JavaClientAccumulatingUncompressedBulkRequestTest {
 
     @Test
     void addOperation_throws_when_document_is_not_JsonSize() {
-        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(sink, createBulkOperation(UUID.randomUUID().toString()));
+        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(UUID.randomUUID().toString()));
 
         final JavaClientAccumulatingUncompressedBulkRequest objectUnderTest = createObjectUnderTest();
 

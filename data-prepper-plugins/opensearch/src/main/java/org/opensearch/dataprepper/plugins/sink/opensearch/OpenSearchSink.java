@@ -246,6 +246,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             pluginMetrics,
             maxRetries,
             bulkRequestSupplier,
+            (eventHandle) -> updateLatencyMetrics(eventHandle),
             pluginSetting);
 
     // Attempt to update the serverless network policy if required argument are given.
@@ -384,7 +385,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       }
       BulkOperation bulkOperation = getBulkOperationForAction(eventAction, document, indexName, event.getJsonNode());
 
-      BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(this, bulkOperation, event.getEventHandle(), serializedJsonNode);
+      BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle(), serializedJsonNode);
       final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
         flushBatch(bulkRequest);

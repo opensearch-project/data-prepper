@@ -32,14 +32,13 @@ public class BulkOperationWrapperTests {
     private static final String DOCUMENT = UUID.randomUUID().toString();
 
     private BulkOperation bulkOperation;
-    private OpenSearchSink sink;
 
     BulkOperationWrapper createObjectUnderTest(final EventHandle eventHandle, BulkOperation aBulkOperation) {
         bulkOperation = Objects.isNull(aBulkOperation) ? mock(BulkOperation.class) : aBulkOperation;
         if (eventHandle == null) {
-            return new BulkOperationWrapper(sink, bulkOperation);
+            return new BulkOperationWrapper(bulkOperation);
         }
-        return new BulkOperationWrapper(sink, bulkOperation, eventHandle);
+        return new BulkOperationWrapper(bulkOperation, eventHandle);
     }
 
     @Test
