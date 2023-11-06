@@ -44,6 +44,22 @@ public class MongoDBConfigTest {
         assertThat(actualConfig.get("mongodb.ssl.enabled"), is("false"));
     }
 
+    @Test
+    public void test_get_mongodb_config_props() throws IOException {
+        MongoDBConfig testConfig = buildTestConfig("sample-mongodb-pipeline.yaml");
+        assertThat(testConfig, notNullValue());
+        assertThat(testConfig.getIngestionMode(), is("export_stream"));
+        assertThat(testConfig.getCredentialsConfig().getUsername(), is("debezium"));
+        assertThat(testConfig.getHostname(), is("localhost"));
+        assertThat(testConfig.getPort(), is("27017"));
+        assertThat(testConfig.getSSLEnabled(), is(false));
+        assertThat(testConfig.getSSLInvalidHostAllowed(), is(false));
+        assertThat(testConfig.getCollections().size(), is(1));
+        assertThat(testConfig.getExportConfig().getAcknowledgements(), is(false));
+        assertThat(testConfig.getExportConfig().getItemsPerPartition(), is(4000L));
+        assertThat(testConfig.getExportConfig().getReadPreference(), is("secondaryPreferred"));
+    }
+
     private MongoDBConfig buildTestConfig(final String resourceFileName) throws IOException {
         //Added to load Yaml file - Start
         Yaml yaml = new Yaml();

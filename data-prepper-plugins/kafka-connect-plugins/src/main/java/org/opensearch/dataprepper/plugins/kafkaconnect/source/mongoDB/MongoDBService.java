@@ -94,11 +94,4 @@ public class MongoDBService {
         }
 
     }
-
-    private Record<Object> getEventRecordFromData(final String json) {
-        return new Record<>(JacksonEvent
-                .builder()
-                .withData(json)
-                .build());
-    }
 }
