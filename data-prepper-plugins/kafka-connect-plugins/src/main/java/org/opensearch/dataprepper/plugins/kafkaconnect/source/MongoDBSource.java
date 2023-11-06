@@ -11,6 +11,8 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
+import org.opensearch.dataprepper.model.codec.JsonDecoder;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
@@ -46,6 +48,8 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
 
     private SourceCoordinator<MongoDBSnapshotProgressState> sourceCoordinator;
 
+    private ByteDecoder byteDecoder;
+
     @DataPrepperPluginConstructor
     public MongoDBSource(final MongoDBConfig mongoDBConfig,
                          final PluginMetrics pluginMetrics,
@@ -59,6 +63,7 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
         this.mongoDBConfig = mongoDBConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
+        this.byteDecoder = new JsonDecoder();
     }
 
     @Override
@@ -89,6 +94,11 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
     @Override
     public Class<?> getPartitionProgressStateClass() {
         return MongoDBSnapshotProgressState.class;
+    }
+
+    @Override
+    public ByteDecoder getDecoder() {
+        return byteDecoder;
     }
 
     @Override

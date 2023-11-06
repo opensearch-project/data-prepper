@@ -91,7 +91,7 @@ public class MongoDBSnapshotWorker implements Runnable {
                         Thread.sleep(BACKOFF_ON_EMPTY_PARTITION.toMillis());
                         continue;
                     } catch (final InterruptedException e) {
-                        LOG.info("The PitWorker was interrupted while sleeping after acquiring no indices to process, stopping processing");
+                        LOG.info("The worker was interrupted while sleeping after acquiring no indices to process, stopping processing");
                         return;
                     }
                 }
@@ -105,7 +105,7 @@ public class MongoDBSnapshotWorker implements Runnable {
                         sourceCoordinator.updatePartitionForAcknowledgmentWait(snapshotPartition.get().getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
                         acknowledgementSet.get().complete();
                     }
-                    successItemsCounter.increment();
+                    successPartitionCounter.increment();
                 } catch (final Exception e) {
                     sourceCoordinator.giveUpPartitions();
                     failureParitionCounter.increment();
