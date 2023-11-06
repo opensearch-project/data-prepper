@@ -88,7 +88,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String INVALID_ACTION_ERRORS = "invalidActionErrors";
   public static final String BULKREQUEST_SIZE_BYTES = "bulkRequestSizeBytes";
   public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "dynamicIndexDroppedEvents";
-  public static final String INVALID_VERSION_EXPRESSION_DROPPED_EVENTS = "invalidVersionExpressionDroppedEvents";
+  public static final String INVALID_VERSION_EXPRESSION_DROPPED_EVENTS = "dynamicDocumentVersionDroppedEvents";
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   private static final int INITIALIZE_RETRY_WAIT_TIME_MS = 5000;
@@ -122,7 +122,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final Counter invalidActionErrorsCounter;
   private final Counter dynamicIndexDroppedEvents;
   private final DistributionSummary bulkRequestSizeBytesSummary;
-  private final Counter versionExpressionDroppedEventsCounter;
+  private final Counter dynamicDocumentVersionDroppedEvents;
   private OpenSearchClient openSearchClient;
   private ObjectMapper objectMapper;
   private volatile boolean initialized;
@@ -151,7 +151,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     invalidActionErrorsCounter = pluginMetrics.counter(INVALID_ACTION_ERRORS);
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
     bulkRequestSizeBytesSummary = pluginMetrics.summary(BULKREQUEST_SIZE_BYTES);
-    versionExpressionDroppedEventsCounter = pluginMetrics.counter(INVALID_VERSION_EXPRESSION_DROPPED_EVENTS);
+    dynamicDocumentVersionDroppedEvents = pluginMetrics.counter(INVALID_VERSION_EXPRESSION_DROPPED_EVENTS);
 
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting, expressionEvaluator);
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
@@ -371,13 +371,13 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           versionExpressionEvaluationResult = event.formatString(versionExpression, expressionEvaluator);
           version = Long.valueOf(event.formatString(versionExpression, expressionEvaluator));
         } catch (final NumberFormatException e) {
-          LOG.warn("Unable to convert the result of evaluating version_expression {} to Long for an Event. {} must be a valid Long type", versionExpression, versionExpressionEvaluationResult);
+          LOG.warn("Unable to convert the result of evaluating document_version '{}' to Long for an Event. The evaluation result '{}' must be a valid Long type", versionExpression, versionExpressionEvaluationResult);
           logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
-          versionExpressionDroppedEventsCounter.increment();
+          dynamicDocumentVersionDroppedEvents.increment();
         } catch (final RuntimeException e) {
-          LOG.error("There was an exception when evaluating the version_expression {}. Check the dlq if configured to see details about the affected Event: {}", versionExpression, e.getMessage());
+          LOG.error("There was an exception when evaluating the document_version '{}'. Check the dlq if configured to see details about the affected Event: {}", versionExpression, e.getMessage());
           logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
-          versionExpressionDroppedEventsCounter.increment();
+          dynamicDocumentVersionDroppedEvents.increment();
         }
       }
 

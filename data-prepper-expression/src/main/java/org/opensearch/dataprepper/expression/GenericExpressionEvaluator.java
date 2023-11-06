@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.expression;
 
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -65,10 +66,8 @@ class GenericExpressionEvaluator implements ExpressionEvaluator {
             String name = format.substring(position + 2, endPosition);
 
             Object val;
-            // We only check the expression if it matches (.*) to mitigate the issue with the antlr logger ()
-            // These can't be keys because (, ) is invalid for keys, so we attempt to validate the expression. All expressions currently
-            // contain a function ( ) so this will detect them to validate against.
-            if (name.matches("(.*)") && !isValidExpressionStatement(name)) {
+            // Invalid if it is not a valid key and not a valid expression statement
+            if (!JacksonEvent.isValidEventKey(name) && !isValidExpressionStatement(name)) {
                 return false;
             }
             fromIndex = endPosition + 1;

@@ -799,6 +799,11 @@ public class JacksonEventTest {
 
     }
 
+    @ParameterizedTest
+    @CsvSource(value = {"test_key, true", "/test_key, true", "inv(alid, false", "getMetadata(\"test_key\"), false"})
+    void isValidEventKey_returns_expected_result(final String key, final boolean isValid) {
+        assertThat(JacksonEvent.isValidEventKey(key), equalTo(isValid));
+    }
 
     private static Map<String, Object> createComplexDataMap() {
         final Map<String, Object> dataObject = new HashMap<>();

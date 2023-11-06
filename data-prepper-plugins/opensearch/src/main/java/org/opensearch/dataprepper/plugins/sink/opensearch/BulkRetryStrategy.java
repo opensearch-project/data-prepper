@@ -318,6 +318,10 @@ public final class BulkRetryStrategy {
                 if (bulkItemResponse.error() != null) {
                     if (!NON_RETRY_STATUS.contains(bulkItemResponse.status())) {
                         requestToReissue.addOperation(bulkOperation);
+                    } else if (VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
+                        documentsVersionConflictErrors.increment();
+                        LOG.debug("Received version conflict from OpenSearch: {}", bulkItemResponse.error().reason());
+                        bulkOperation.releaseEventHandle(true);
                     } else {
                         nonRetryableFailures.add(FailedBulkOperation.builder()
                                 .withBulkOperation(bulkOperation)

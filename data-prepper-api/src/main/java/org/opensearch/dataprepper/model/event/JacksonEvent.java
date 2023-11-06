@@ -387,12 +387,21 @@ public class JacksonEvent implements Event {
         return mapper.convertValue(jsonNode, MAP_TYPE_REFERENCE);
     }
 
+
+    public static boolean isValidEventKey(final String key) {
+        try {
+            checkKey(key);
+            return true;
+        } catch (final Exception e) {
+            return false;
+        }
+    }
     private String checkAndTrimKey(final String key) {
         checkKey(key);
         return trimKey(key);
     }
 
-    private void checkKey(final String key) {
+    private static void checkKey(final String key) {
         checkNotNull(key, "key cannot be null");
         checkArgument(!key.isEmpty(), "key cannot be an empty string");
         if (key.length() > MAX_KEY_LENGTH) {
@@ -409,7 +418,7 @@ public class JacksonEvent implements Event {
         return trimmedLeadingSlash.endsWith(SEPARATOR) ? trimmedLeadingSlash.substring(0, trimmedLeadingSlash.length() - 2) : trimmedLeadingSlash;
     }
 
-    private boolean isValidKey(final String key) {
+    private static boolean isValidKey(final String key) {
         for (int i = 0; i < key.length(); i++) {
             char c = key.charAt(i);
 
