@@ -25,9 +25,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class MongoDBPartitionCreationSupplier implements Function<Map<String, Object>, List<PartitionIdentifier>>  {
+    public static final String GLOBAL_STATE_PARTITIONED_COLLECTION_KEY = "partitionedCollections";
     private static final Logger LOG = LoggerFactory.getLogger(MongoDBPartitionCreationSupplier.class);
     private static final String DOCUMENTDB_PARTITION_KEY_FORMAT = "%s|%s|%s|%s"; // partition format: <db.collection>|<gte>|<lt>|<className>
-    private static final String GLOBAL_STATE_PARTITIONED_COLLECTION_KEY = "partitionedCollections";
     private final MongoDBConfig mongoDBConfig;
 
     public MongoDBPartitionCreationSupplier(final MongoDBConfig mongoDBConfig) {
