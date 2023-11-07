@@ -156,8 +156,7 @@ public class ExportScheduler implements Runnable {
                 ExportProgressState state = exportPartition.getProgressState().get();
                 String bucketName = state.getBucket();
                 String exportArn = state.getExportArn();
-
-
+                
                 String manifestKey = exportTaskManager.getExportManifest(exportArn);
                 LOG.debug("Export manifest summary file is " + manifestKey);
 
@@ -189,6 +188,7 @@ public class ExportScheduler implements Runnable {
             DataFileProgressState progressState = new DataFileProgressState();
             progressState.setTotal(size);
             progressState.setLoaded(0);
+
             totalFiles.addAndGet(1);
             totalRecords.addAndGet(size);
             DataFilePartition partition = new DataFilePartition(exportArn, bucketName, key, Optional.of(progressState));
@@ -260,7 +260,7 @@ public class ExportScheduler implements Runnable {
 
         LOG.info("Try to submit a new export job for table {} with export time {}", exportPartition.getTableArn(), exportPartition.getExportTime());
         // submit a new export request
-        String exportArn = exportTaskManager.submitExportJob(exportPartition.getTableArn(), state.getBucket(), state.getPrefix(), exportPartition.getExportTime());
+        String exportArn = exportTaskManager.submitExportJob(exportPartition.getTableArn(), state.getBucket(), state.getPrefix(), state.getKmsKeyId(), exportPartition.getExportTime());
 
         // Update state with export Arn in the coordination table.
         // So that it won't be submitted again after a restart.

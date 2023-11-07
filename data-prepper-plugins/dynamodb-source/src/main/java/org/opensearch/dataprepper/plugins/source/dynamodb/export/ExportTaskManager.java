@@ -14,6 +14,7 @@ import software.amazon.awssdk.services.dynamodb.model.DescribeExportResponse;
 import software.amazon.awssdk.services.dynamodb.model.ExportFormat;
 import software.amazon.awssdk.services.dynamodb.model.ExportTableToPointInTimeRequest;
 import software.amazon.awssdk.services.dynamodb.model.ExportTableToPointInTimeResponse;
+import software.amazon.awssdk.services.dynamodb.model.S3SseAlgorithm;
 
 import java.time.Instant;
 
@@ -30,12 +31,15 @@ public class ExportTaskManager {
         this.dynamoDBClient = dynamoDBClient;
     }
 
-    public String submitExportJob(String tableArn, String bucketName, String prefix, Instant exportTime) {
+    public String submitExportJob(String tableArn, String bucket, String prefix, String kmsKeyId, Instant exportTime) {
+        S3SseAlgorithm algorithm = kmsKeyId == null || kmsKeyId.isEmpty() ? S3SseAlgorithm.AES256 : S3SseAlgorithm.KMS;
         // No needs to use a client token here.
         ExportTableToPointInTimeRequest req = ExportTableToPointInTimeRequest.builder()
                 .tableArn(tableArn)
-                .s3Bucket(bucketName)
+                .s3Bucket(bucket)
                 .s3Prefix(prefix)
+                .s3SseAlgorithm(algorithm)
+                .s3SseKmsKeyId(kmsKeyId)
                 .exportFormat(DEFAULT_EXPORT_FORMAT)
                 .exportTime(exportTime)
                 .build();
@@ -46,7 +50,6 @@ public class ExportTaskManager {
 
             String exportArn = response.exportDescription().exportArn();
             String status = response.exportDescription().exportStatusAsString();
-
             LOG.debug("Export Job submitted with ARN {} and status {}", exportArn, status);
             return exportArn;
         } catch (SdkException e) {

@@ -171,7 +171,12 @@ public class DynamoDBService {
             Instant startTime = Instant.now();
 
             if (tableInfo.getMetadata().isExportRequired()) {
-                createExportPartition(tableInfo.getTableArn(), startTime, tableInfo.getMetadata().getExportBucket(), tableInfo.getMetadata().getExportPrefix());
+                createExportPartition(
+                        tableInfo.getTableArn(),
+                        startTime,
+                        tableInfo.getMetadata().getExportBucket(),
+                        tableInfo.getMetadata().getExportPrefix(),
+                        tableInfo.getMetadata().getExportKmsKeyId());
             }
 
             if (tableInfo.getMetadata().isStreamRequired()) {
@@ -209,11 +214,12 @@ public class DynamoDBService {
      * @param bucket     Export bucket
      * @param prefix     Export Prefix
      */
-    private void createExportPartition(String tableArn, Instant exportTime, String bucket, String prefix) {
+    private void createExportPartition(String tableArn, Instant exportTime, String bucket, String prefix, String kmsKeyId) {
         ExportProgressState exportProgressState = new ExportProgressState();
         exportProgressState.setBucket(bucket);
         exportProgressState.setPrefix(prefix);
         exportProgressState.setExportTime(exportTime.toString()); // information purpose
+        exportProgressState.setKmsKeyId(kmsKeyId);
         ExportPartition exportPartition = new ExportPartition(tableArn, exportTime, Optional.of(exportProgressState));
         coordinator.createPartition(exportPartition);
     }
@@ -310,6 +316,7 @@ public class DynamoDBService {
                 .streamStartPosition(streamStartPosition)
                 .exportBucket(tableConfig.getExportConfig() == null ? null : tableConfig.getExportConfig().getS3Bucket())
                 .exportPrefix(tableConfig.getExportConfig() == null ? null : tableConfig.getExportConfig().getS3Prefix())
+                .exportKmsKeyId(tableConfig.getExportConfig() == null ? null : tableConfig.getExportConfig().getS3SseKmsKeyId())
                 .build();
         return new TableInfo(tableConfig.getTableArn(), metadata);
     }

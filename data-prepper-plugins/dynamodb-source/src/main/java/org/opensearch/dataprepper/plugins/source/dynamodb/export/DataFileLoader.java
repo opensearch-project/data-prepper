@@ -7,10 +7,10 @@ package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.slf4j.Logger;
@@ -169,14 +169,12 @@ public class DataFileLoader implements Runnable {
         int lineCount = 0;
         int lastLineProcessed = 0;
 
-        try {
-            InputStream inputStream = objectReader.readFile(bucketName, key);
-            GZIPInputStream gzipInputStream = new GZIPInputStream(inputStream);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(gzipInputStream));
+        try (InputStream inputStream = objectReader.readFile(bucketName, key);
+             GZIPInputStream gzipInputStream = new GZIPInputStream(inputStream);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(gzipInputStream))) {
 
             String line;
             while ((line = reader.readLine()) != null) {
-
                 if (shouldStop) {
                     checkpointer.checkpoint(lastLineProcessed);
                     LOG.debug("Should Stop flag is set to True, looks like shutdown has triggered");
@@ -213,9 +211,6 @@ public class DataFileLoader implements Runnable {
             }
 
             lines.clear();
-            reader.close();
-            gzipInputStream.close();
-            inputStream.close();
 
             LOG.info("Completed loading s3://{}/{} to buffer", bucketName, key);
 
@@ -226,7 +221,7 @@ public class DataFileLoader implements Runnable {
         } catch (Exception e) {
             checkpointer.checkpoint(lineCount);
 
-            String errorMessage = String.format("Loading of s3://%s/%s completed with Exception: %S", bucketName, key, e.getMessage());
+            String errorMessage = String.format("Loading of s3://%s/%s completed with Exception: %s", bucketName, key, e.getMessage());
             throw new RuntimeException(errorMessage);
         }
     }

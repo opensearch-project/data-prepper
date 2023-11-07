@@ -19,7 +19,6 @@ public class TableMetadata {
     private static final String REQUIRE_EXPORT_KEY = "export";
     private static final String REQUIRE_STREAM_KEY = "stream";
 
-
     private final String partitionKeyAttributeName;
 
     private final String sortKeyAttributeName;
@@ -36,6 +35,8 @@ public class TableMetadata {
 
     private final String exportPrefix;
 
+    private final String exportKmsKeyId;
+
     private TableMetadata(Builder builder) {
         this.partitionKeyAttributeName = builder.partitionKeyAttributeName;
         this.sortKeyAttributeName = builder.sortKeyAttributeName;
@@ -45,6 +46,7 @@ public class TableMetadata {
         this.exportBucket = builder.exportBucket;
         this.exportPrefix = builder.exportPrefix;
         this.streamStartPosition = builder.streamStartPosition;
+        this.exportKmsKeyId = builder.exportKmsKeyId;
 
     }
 
@@ -69,6 +71,8 @@ public class TableMetadata {
         private String exportBucket;
 
         private String exportPrefix;
+
+        private String exportKmsKeyId;
 
         private StreamStartPosition streamStartPosition;
 
@@ -105,6 +109,11 @@ public class TableMetadata {
 
         public Builder exportPrefix(String exportPrefix) {
             this.exportPrefix = exportPrefix;
+            return this;
+        }
+
+        public Builder exportKmsKeyId(String exportKmsKeyId) {
+            this.exportKmsKeyId = exportKmsKeyId;
             return this;
         }
 
@@ -172,5 +181,9 @@ public class TableMetadata {
 
     public String getExportPrefix() {
         return exportPrefix;
+    }
+
+    public String getExportKmsKeyId() {
+        return exportKmsKeyId;
     }
 }

@@ -52,6 +52,8 @@ source:
 
 * s3_bucket (Required):  The destination bucket to store the exported data files
 * s3_prefix (Optional):  Custom prefix.
+* s3_sse_kms_key_id (Optional):  A AWS KMS Customer Managed Key (CMK) to encrypt the export data files. The key id will
+  be the ARN of the Key, e.g. arn:aws:kms:us-west-2:123456789012:key/0a4bc22f-bb96-4ad4-80ca-63b12b3ec147
 
 ### Stream Configurations
 
