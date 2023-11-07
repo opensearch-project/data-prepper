@@ -161,6 +161,7 @@ public class PluginSetting implements PipelineDescription {
      * Returns the value of the specified {@literal List<Map<String, String>>}, or {@code defaultValue} if this settings contains no value for
      * the attribute.
      *
+     * @param attribute    attribute to be looked up
      * @param keyType      key type of the Map
      * @param valueType    value type stored in the Map
      * @param <K> The key type
