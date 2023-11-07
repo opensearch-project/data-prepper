@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -71,6 +72,9 @@ public class KafkaSinkTest {
     PluginSetting pluginSetting;
 
     @Mock
+    PluginMetrics pluginMetrics;
+
+    @Mock
     FutureTask futureTask;
 
 
@@ -114,7 +118,7 @@ public class KafkaSinkTest {
         when(pluginSetting.getPipelineName()).thenReturn("Kafka-sink");
         event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         when(sinkContext.getTagsTargetKey()).thenReturn("tag");
-        kafkaSink = new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactoryMock, mock(ExpressionEvaluator.class), sinkContext, awsCredentialsSupplier);
+        kafkaSink = new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactoryMock, pluginMetrics, mock(ExpressionEvaluator.class), sinkContext, awsCredentialsSupplier);
         spySink = spy(kafkaSink);
         executorsMockedStatic = mockStatic(Executors.class);
         props = new Properties();

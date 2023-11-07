@@ -18,7 +18,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.Event;
@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
 import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicProducerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +50,7 @@ public class KafkaCustomProducer<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomProducer.class);
 
-    private final Producer<String, T> producer;
+    private final KafkaProducer<String, T> producer;
 
     private final KafkaProducerConfig kafkaProducerConfig;
 
@@ -69,28 +70,39 @@ public class KafkaCustomProducer<T> {
 
     private final SchemaService schemaService;
 
+    private final KafkaTopicProducerMetrics topicMetrics;
 
-    public KafkaCustomProducer(final Producer producer,
+
+    public KafkaCustomProducer(final KafkaProducer producer,
                                final KafkaProducerConfig kafkaProducerConfig,
                                final DLQSink dlqSink,
                                final ExpressionEvaluator expressionEvaluator,
-                               final String tagTargetKey
+                               final String tagTargetKey,
+                               final KafkaTopicProducerMetrics topicMetrics
     ) {
         this.producer = producer;
         this.kafkaProducerConfig = kafkaProducerConfig;
         this.dlqSink = dlqSink;
-        bufferedEventHandles = new LinkedList<>();
+        this.bufferedEventHandles = new LinkedList<>();
         this.expressionEvaluator = expressionEvaluator;
         this.tagTargetKey = tagTargetKey;
         this.topicName = ObjectUtils.isEmpty(kafkaProducerConfig.getTopic()) ? null : kafkaProducerConfig.getTopic().getName();
         this.serdeFormat = ObjectUtils.isEmpty(kafkaProducerConfig.getSerdeFormat()) ? null : kafkaProducerConfig.getSerdeFormat();
-        schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
+        this.schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
+        this.topicMetrics = topicMetrics;
+        this.topicMetrics.register(this.producer);
+    }
+
+    KafkaTopicProducerMetrics getTopicMetrics() {
+        return topicMetrics;
     }
 
     public void produceRawData(final byte[] bytes, final String key) {
         try {
             send(topicName, key, bytes).get();
+            topicMetrics.update(producer);
         } catch (Exception e) {
+            // TODO: Metrics
             LOG.error("Error occurred while publishing {}", e.getMessage());
         }
     }
@@ -107,7 +119,9 @@ public class KafkaCustomProducer<T> {
             } else {
                 publishPlaintextMessage(record, key);
             }
+            topicMetrics.update(producer);
         } catch (Exception e) {
+            // TODO: Metrics
             LOG.error("Error occurred while publishing {}", e.getMessage());
             releaseEventHandles(false);
         }
