@@ -32,6 +32,7 @@ class OpenSearchSecurityAccessor {
         final String createRoleJson = Strings.toString(
                 XContentFactory.jsonBuilder()
                         .startObject()
+                        .array("cluster_permissions", "cluster:monitor/main")
                         .startArray("index_permissions")
                         .startObject()
                         .array("index_patterns", new String[]{indexPattern})
