@@ -104,6 +104,8 @@ processor:
     * Type: String
     * Default: `Locale.ROOT`
 
+* `to_origination_metadata` (Optional): When this option is used, matched time is put into the event's metadata as an instance of `Instant`.
+
 ## Metrics
 
 * `dateProcessingMatchSuccessCounter`: Number of records that match with at least one pattern specified in match configuration option.

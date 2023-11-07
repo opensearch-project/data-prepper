@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.tuple.Pair;
 
 @DataPrepperPlugin(name = "date", pluginType = Processor.class, pluginConfigurationType = DateProcessorConfig.class)
 public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -71,7 +72,16 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 zonedDateTime =  getDateTimeFromTimeReceived(record);
 
             else if (keyToParse != null && !keyToParse.isEmpty()) {
-                zonedDateTime = getDateTimeFromMatch(record);
+                Pair<String, Instant> result = getDateTimeFromMatch(record);
+                if (result != null) {
+                    zonedDateTime = result.getLeft();
+                    Instant timeStamp = result.getRight();
+                    if (dateProcessorConfig.getToOriginationMetadata()) {
+                        Event event = (Event)record.getData();
+                        event.getMetadata().setExternalOriginationTime(timeStamp);
+                        event.getEventHandle().setExternalOriginationTime(timeStamp);
+                    }
+                }
                 populateDateProcessorMetrics(zonedDateTime);
             }
 
@@ -119,7 +129,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
         return timeReceived.atZone(dateProcessorConfig.getDestinationZoneId()).format(getOutputFormatter());
     }
 
-    private String getDateTimeFromMatch(final Record<Event> record) {
+    private Pair<String, Instant> getDateTimeFromMatch(final Record<Event> record) {
         final String sourceTimestamp = getSourceTimestamp(record);
         if (sourceTimestamp == null)
             return null;
@@ -136,12 +146,12 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
         }
     }
 
-    private String getFormattedDateTimeString(final String sourceTimestamp) {
+    private Pair<String, Instant> getFormattedDateTimeString(final String sourceTimestamp) {
         for (DateTimeFormatter formatter : dateTimeFormatters) {
             try {
-                return ZonedDateTime.parse(sourceTimestamp, formatter).format(getOutputFormatter().withZone(dateProcessorConfig.getDestinationZoneId()));
+                ZonedDateTime tmp = ZonedDateTime.parse(sourceTimestamp, formatter);
+                return Pair.of(tmp.format(getOutputFormatter().withZone(dateProcessorConfig.getDestinationZoneId())), tmp.toInstant());
             } catch (Exception ignored) {
-
             }
         }
 

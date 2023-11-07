@@ -15,6 +15,7 @@ import java.util.Locale;
 
 public class DateProcessorConfig {
     static final Boolean DEFAULT_FROM_TIME_RECEIVED = false;
+    static final Boolean DEFAULT_TO_ORIGINATION_METADATA = false;
     static final String DEFAULT_DESTINATION = "@timestamp";
     static final String DEFAULT_SOURCE_TIMEZONE = ZoneId.systemDefault().toString();
     static final String DEFAULT_DESTINATION_TIMEZONE = ZoneId.systemDefault().toString();
@@ -45,6 +46,9 @@ public class DateProcessorConfig {
     @JsonProperty("from_time_received")
     private Boolean fromTimeReceived = DEFAULT_FROM_TIME_RECEIVED;
 
+    @JsonProperty("to_origination_metadata")
+    private Boolean toOriginationMetadata = DEFAULT_TO_ORIGINATION_METADATA;
+
     @JsonProperty("match")
     private List<DateMatch> match;
 
@@ -74,6 +78,10 @@ public class DateProcessorConfig {
 
     public Boolean getFromTimeReceived() {
         return fromTimeReceived;
+    }
+
+    public Boolean getToOriginationMetadata() {
+        return toOriginationMetadata;
     }
 
     public List<DateMatch> getMatch() {
