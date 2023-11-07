@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.sink.s3;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -140,15 +139,14 @@ class S3SinkServiceTest {
         lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED)).
                 thenReturn(numberOfRecordsFailedCounter);
         lenient().when(pluginMetrics.summary(S3SinkService.S3_OBJECTS_SIZE)).thenReturn(s3ObjectSizeSummary);
-        SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        internalLatencySummary = DistributionSummary
-              .builder("internalLatency")
-              .baseUnit("milliseconds")
-              .register(registry);
-        externalLatencySummary = DistributionSummary
-              .builder("externalLatency")
-              .baseUnit("milliseconds")
-              .register(registry);
+        internalLatencySummary = mock(DistributionSummary.class);
+        externalLatencySummary = mock(DistributionSummary.class);
+        lenient().doAnswer(a -> {
+            return null;
+        }).when(internalLatencySummary).record(any(Double.class));
+        lenient().doAnswer(a -> {
+            return null;
+        }).when(externalLatencySummary).record(any(Double.class));
         lenient().when(pluginMetrics.summary(LatencyMetrics.INTERNAL_LATENCY)).thenReturn(internalLatencySummary);
         lenient().when(pluginMetrics.summary(LatencyMetrics.EXTERNAL_LATENCY)).thenReturn(externalLatencySummary);
     }

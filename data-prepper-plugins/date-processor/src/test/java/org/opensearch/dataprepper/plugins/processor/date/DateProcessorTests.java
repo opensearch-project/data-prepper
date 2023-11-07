@@ -386,6 +386,8 @@ class DateProcessorTests {
         Event event = (Event)processedRecords.get(0).getData();
         Assertions.assertTrue(event.getMetadata().getExternalOriginationTime() != null);
         Assertions.assertTrue(event.getEventHandle().getExternalOriginationTime() != null);
+        ZonedDateTime expectedZonedDatetime = expectedDateTime.atZone(mockDateProcessorConfig.getSourceZoneId()).truncatedTo(ChronoUnit.SECONDS);
+        Assertions.assertTrue(expectedZonedDatetime.equals(event.getMetadata().getExternalOriginationTime().atZone(mockDateProcessorConfig.getSourceZoneId())));
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
     }
 
