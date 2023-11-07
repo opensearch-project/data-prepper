@@ -91,7 +91,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   private static final int INITIALIZE_RETRY_WAIT_TIME_MS = 5000;
   private final AwsCredentialsSupplier awsCredentialsSupplier;
-  //private final LatencyMetrics latencyMetrics;
 
   private DlqWriter dlqWriter;
   private BufferedWriter dlqFileWriter;
@@ -256,20 +255,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   double getInvalidActionErrorsCount() {
     return invalidActionErrorsCounter.count();
   }
-
-  /*
-  @Override
-  public void registerEventReleaseHandler(final Collection<Record<Event>> records) {
-    for (final Record<Event> record : records) {
-      final Event event = record.getData();
-      event.getEventHandle().onRelease((eventHandle, result) -> {
-        if (result) {
-            latencyMetrics.update(eventHandle);
-        }
-      });
-    }
-  }
-  */
 
   @Override
   public boolean isReady() {
