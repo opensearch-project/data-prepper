@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -23,6 +24,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -126,10 +128,18 @@ class GenericExpressionEvaluatorTest {
             "abc-${/foo, false",
             "abc-${/foo}, true",
             "abc-${getMetadata(\"key\")}, true",
-            "abc-${getXYZ(\"key\")}, true"
+            "abc-${getXYZ(\"key\")}, true",
+            "abc-${invalid, false"
     })
     void isValidFormatExpressionsReturnsCorrectResult(final String format, final Boolean expectedResult) {
         assertThat(statementEvaluator.isValidFormatExpressions(format), equalTo(expectedResult));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"abc-${anyS(=tring}"})
+    void isValidFormatExpressionsReturnsFalseWhenIsValidKeyAndValidExpressionIsFalse(final String format) {
+        doThrow(RuntimeException.class).when(parser).parse(anyString());
+        assertThat(statementEvaluator.isValidFormatExpressions(format), equalTo(false));
     }
 
 }
