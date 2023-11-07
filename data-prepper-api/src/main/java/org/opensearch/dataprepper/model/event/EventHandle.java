@@ -42,6 +42,11 @@ public interface EventHandle {
      */
     Instant getInternalOriginationTime();
 
+    /**
+     * registers onRelease consumer with event handle
+     *
+     * @param releaseConsumer consumer to be calledback when event handle is released.
+     */
     void onRelease(BiConsumer<EventHandle, Boolean> releaseConsumer);
     
 }
