@@ -37,6 +37,10 @@ class OpenSearchSecurityAccessor {
                         .array("index_patterns", new String[]{indexPattern})
                         .array("allowed_actions", allowedActions)
                         .endObject()
+                        .startObject()
+                        .array("index_patterns", new String[]{"*"})
+                        .array("allowed_actions", "indices:admin/aliases/get")
+                        .endObject()
                         .endArray()
                         .endObject()
         );

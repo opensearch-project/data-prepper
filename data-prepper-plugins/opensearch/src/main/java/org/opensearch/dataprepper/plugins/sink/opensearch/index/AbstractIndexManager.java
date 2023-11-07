@@ -184,10 +184,9 @@ public abstract class AbstractIndexManager implements IndexManager {
     }
 
     @Override
-    public boolean isIndexAlias() throws IOException {
+    public boolean isIndexAlias(final String dynamicIndexAlias) throws IOException {
         if (isIndexAlias == null) {
-            String indexAlias = getIndexName(null);
-            ExistsAliasRequest request = new ExistsAliasRequest.Builder().name(indexAlias).build();
+            ExistsAliasRequest request = new ExistsAliasRequest.Builder().name(dynamicIndexAlias).build();
             BooleanResponse response = openSearchClient.indices().existsAlias(request);
             isIndexAlias = response.value() && checkISMEnabled();
         }

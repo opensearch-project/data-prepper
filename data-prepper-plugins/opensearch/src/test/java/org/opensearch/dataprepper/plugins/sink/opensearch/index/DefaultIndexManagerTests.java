@@ -320,7 +320,7 @@ public class DefaultIndexManagerTests {
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
         when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(true));
         when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("true");
-        assertEquals(true, defaultIndexManager.isIndexAlias());
+        assertEquals(true, defaultIndexManager.isIndexAlias(INDEX_ALIAS));
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
         verify(indexConfiguration).getIndexAlias();
@@ -335,7 +335,7 @@ public class DefaultIndexManagerTests {
         defaultIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
         when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(false));
-        assertEquals(false, defaultIndexManager.isIndexAlias());
+        assertEquals(false, defaultIndexManager.isIndexAlias(INDEX_ALIAS));
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
         verify(indexConfiguration).getIndexAlias();
@@ -349,7 +349,7 @@ public class DefaultIndexManagerTests {
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
         when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(true));
         when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("false");
-        assertEquals(false, defaultIndexManager.isIndexAlias());
+        assertEquals(false, defaultIndexManager.isIndexAlias(INDEX_ALIAS));
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
         verify(indexConfiguration).getIndexAlias();
