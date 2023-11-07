@@ -481,7 +481,7 @@ public class IndexConfigurationTests {
     public void testReadIndexConfig_withValidDocumentVersionExpression(final String versionExpression) {
 
         final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
-        when(expressionEvaluator.isValidFormatExpressions(versionExpression)).thenReturn(true);
+        when(expressionEvaluator.isValidFormatExpression(versionExpression)).thenReturn(true);
 
         final Map<String, Object> metadata = initializeConfigMetaData(
                 IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
@@ -500,7 +500,7 @@ public class IndexConfigurationTests {
         final String versionExpression = UUID.randomUUID().toString();
 
         final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
-        when(expressionEvaluator.isValidFormatExpressions(versionExpression)).thenReturn(false);
+        when(expressionEvaluator.isValidFormatExpression(versionExpression)).thenReturn(false);
 
         final Map<String, Object> metadata = initializeConfigMetaData(
                 IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);

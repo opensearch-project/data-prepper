@@ -55,7 +55,7 @@ class GenericExpressionEvaluator implements ExpressionEvaluator {
     }
 
     @Override
-    public Boolean isValidFormatExpressions(final String format) {
+    public Boolean isValidFormatExpression(final String format) {
         int fromIndex = 0;
         int position = 0;
         while ((position = format.indexOf("${", fromIndex)) != -1) {
