@@ -77,8 +77,8 @@ public abstract class RecordConverter {
     public void addToBuffer(final AcknowledgementSet acknowledgementSet,
                             final Map<String, Object> data,
                             final Map<String, Object> keys,
-                            long eventCreationTimeMillis,
-                            long eventVersionNumber,
+                            final long eventCreationTimeMillis,
+                            final long eventVersionNumber,
                             final String eventName) throws Exception {
         Event event = JacksonEvent.builder()
                 .withEventType(getEventType())
@@ -87,7 +87,9 @@ public abstract class RecordConverter {
 
         // Only set external origination time for stream events, not export
         if (eventName != null) {
-            event.getEventHandle().setExternalOriginationTime(Instant.ofEpochMilli(eventCreationTimeMillis));
+            final Instant externalOriginationTime = Instant.ofEpochMilli(eventCreationTimeMillis);
+            event.getEventHandle().setExternalOriginationTime(externalOriginationTime);
+            event.getMetadata().setExternalOriginationTime(externalOriginationTime);
         }
         EventMetadata eventMetadata = event.getMetadata();
 

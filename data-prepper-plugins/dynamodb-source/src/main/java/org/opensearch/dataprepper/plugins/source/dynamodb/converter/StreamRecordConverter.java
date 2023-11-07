@@ -126,7 +126,7 @@ public class StreamRecordConverter extends RecordConverter {
         if (currentSecond == null) {
             currentSecond = eventTimeInSeconds;
         } else if (currentSecond.isAfter(eventTimeInSeconds)) {
-            return eventTimeInSeconds.toEpochMilli() * 1000;
+            return eventTimeInSeconds.getEpochSecond() * 1_000_000;
         } else if (currentSecond.isBefore(eventTimeInSeconds)) {
             recordsSeenThisSecond = 0;
             currentSecond = eventTimeInSeconds;
@@ -134,6 +134,6 @@ public class StreamRecordConverter extends RecordConverter {
             recordsSeenThisSecond++;
         }
 
-        return eventTimeInSeconds.toEpochMilli() * 1000 + recordsSeenThisSecond;
+        return eventTimeInSeconds.getEpochSecond() * 1_000_000 + recordsSeenThisSecond;
     }
 }

@@ -93,7 +93,7 @@ class DataFileLoaderTest {
 
     private final Random random = new Random();
 
-    private final int total = random.nextInt(10);
+    private final int total = random.nextInt(10) + 1;
 
     @BeforeEach
     void setup() {
