@@ -30,7 +30,6 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
@@ -60,7 +59,6 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPI
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapperFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
-import org.opensearch.dataprepper.plugins.sink.LatencyMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.opensearchserverless.OpenSearchServerlessClient;
@@ -93,7 +91,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   private static final int INITIALIZE_RETRY_WAIT_TIME_MS = 5000;
   private final AwsCredentialsSupplier awsCredentialsSupplier;
-  private final LatencyMetrics latencyMetrics;
+  //private final LatencyMetrics latencyMetrics;
 
   private DlqWriter dlqWriter;
   private BufferedWriter dlqFileWriter;
@@ -144,7 +142,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.awsCredentialsSupplier = awsCredentialsSupplier;
     this.sinkContext = sinkContext != null ? sinkContext : new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
     this.expressionEvaluator = expressionEvaluator;
-    this.latencyMetrics = new LatencyMetrics(pluginMetrics);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     invalidActionErrorsCounter = pluginMetrics.counter(INVALID_ACTION_ERRORS);
@@ -246,7 +243,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             pluginMetrics,
             maxRetries,
             bulkRequestSupplier,
-            (eventHandle) -> updateLatencyMetrics(eventHandle),
             pluginSetting);
 
     // Attempt to update the serverless network policy if required argument are given.
@@ -260,6 +256,20 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   double getInvalidActionErrorsCount() {
     return invalidActionErrorsCounter.count();
   }
+
+  /*
+  @Override
+  public void registerEventReleaseHandler(final Collection<Record<Event>> records) {
+    for (final Record<Event> record : records) {
+      final Event event = record.getData();
+      event.getEventHandle().onRelease((eventHandle, result) -> {
+        if (result) {
+            latencyMetrics.update(eventHandle);
+        }
+      });
+    }
+  }
+  */
 
   @Override
   public boolean isReady() {
@@ -319,10 +329,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                         .index(indexOperationBuilder.build())
                         .build();
     return bulkOperation;
-  }
-
-  public void updateLatencyMetrics(final EventHandle eventHandle) {
-    latencyMetrics.update(eventHandle);
   }
 
   @Override
@@ -458,7 +464,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         try {
           dlqFileWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
                   BulkOperationWriter.dlqObjectToString(dlqObject), message));
-          updateLatencyMetrics(dlqObject.getEventHandle());
           dlqObject.releaseEventHandle(true);
         } catch (final IOException e) {
         LOG.error("Failed to write a document to the DLQ", e);
@@ -469,7 +474,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       try {
         dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginSetting.getName());
         dlqObjects.forEach((dlqObject) -> {
-          updateLatencyMetrics(dlqObject.getEventHandle());
           dlqObject.releaseEventHandle(true);
         });
       } catch (final IOException e) {

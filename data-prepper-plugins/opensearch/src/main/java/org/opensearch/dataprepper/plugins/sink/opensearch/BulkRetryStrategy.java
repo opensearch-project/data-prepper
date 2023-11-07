@@ -15,7 +15,6 @@ import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
 import org.opensearch.rest.RestStatus;
@@ -30,7 +29,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public final class BulkRetryStrategy {
@@ -118,7 +116,6 @@ public final class BulkRetryStrategy {
     private final Counter bulkRequestNotFoundErrors;
     private final Counter bulkRequestTimeoutErrors;
     private final Counter bulkRequestServerErrors;
-    private final Consumer<EventHandle> handleReleaseCallback;
     private static final Logger LOG = LoggerFactory.getLogger(BulkRetryStrategy.class);
 
     static class BulkOperationRequestResponse {
@@ -141,7 +138,6 @@ public final class BulkRetryStrategy {
                              final PluginMetrics pluginMetrics,
                              final int maxRetries,
                              final Supplier<AccumulatingBulkRequest> bulkRequestSupplier,
-                             final Consumer<EventHandle> handleReleaseCallback,
                              final PluginSetting pluginSetting) {
         this.requestFunction = requestFunction;
         this.logFailure = logFailure;
@@ -152,7 +148,6 @@ public final class BulkRetryStrategy {
         this.pluginId = pluginSetting.getName();
         this.pluginName = pluginSetting.getName();
         this.objectMapper = new ObjectMapper();
-        this.handleReleaseCallback = handleReleaseCallback;
 
         sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
         sentDocumentsOnFirstAttemptCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS_FIRST_ATTEMPT);
@@ -184,11 +179,6 @@ public final class BulkRetryStrategy {
                 bulkRequestBadErrors.increment();
             }
         }
-    }
-
-    private void releaseBulkOperation(final BulkOperationWrapper bulkOperation) {
-        bulkOperation.releaseEventHandle(true);
-        handleReleaseCallback.accept(bulkOperation.getEventHandle());
     }
 
     public void execute(final AccumulatingBulkRequest bulkRequest) throws InterruptedException {
@@ -302,7 +292,7 @@ public final class BulkRetryStrategy {
             }
             sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());
             for (final BulkOperationWrapper bulkOperation: bulkRequestForRetry.getOperations()) {
-                releaseBulkOperation(bulkOperation);
+                bulkOperation.releaseEventHandle(true);
             }
         }
         return null;
@@ -332,7 +322,7 @@ public final class BulkRetryStrategy {
                     }
                 } else {
                     sentDocumentsCounter.increment();
-                    releaseBulkOperation(bulkOperation);
+                    bulkOperation.releaseEventHandle(true);
                 }
                 index++;
             }
@@ -355,7 +345,7 @@ public final class BulkRetryStrategy {
                 documentErrorsCounter.increment();
             } else {
                 sentDocumentsCounter.increment();
-                releaseBulkOperation(bulkOperation);
+                bulkOperation.releaseEventHandle(true);
             }
         }
         logFailure.accept(failures.build(), null);

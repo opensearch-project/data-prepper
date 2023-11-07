@@ -24,7 +24,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import org.opensearch.dataprepper.plugins.sink.LatencyMetrics;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
@@ -85,8 +84,6 @@ class S3SinkServiceTest {
     private BufferFactory bufferFactory;
     private Counter snapshotSuccessCounter;
     private DistributionSummary s3ObjectSizeSummary;
-    private DistributionSummary internalLatencySummary;
-    private DistributionSummary externalLatencySummary;
     private Random random;
     private String tagsTargetKey;
     private AcknowledgementSet acknowledgementSet;
@@ -139,16 +136,6 @@ class S3SinkServiceTest {
         lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED)).
                 thenReturn(numberOfRecordsFailedCounter);
         lenient().when(pluginMetrics.summary(S3SinkService.S3_OBJECTS_SIZE)).thenReturn(s3ObjectSizeSummary);
-        internalLatencySummary = mock(DistributionSummary.class);
-        externalLatencySummary = mock(DistributionSummary.class);
-        lenient().doAnswer(a -> {
-            return null;
-        }).when(internalLatencySummary).record(any(Double.class));
-        lenient().doAnswer(a -> {
-            return null;
-        }).when(externalLatencySummary).record(any(Double.class));
-        lenient().when(pluginMetrics.summary(LatencyMetrics.INTERNAL_LATENCY)).thenReturn(internalLatencySummary);
-        lenient().when(pluginMetrics.summary(LatencyMetrics.EXTERNAL_LATENCY)).thenReturn(externalLatencySummary);
     }
 
     private DefaultEventHandle castToDefaultHandle(EventHandle eventHandle) {

@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.event;
 
 import java.time.Instant;
+import java.util.function.BiConsumer;
 
 public interface EventHandle {
     /**
@@ -41,5 +42,6 @@ public interface EventHandle {
      */
     Instant getInternalOriginationTime();
 
+    void onRelease(BiConsumer<EventHandle, Boolean> releaseConsumer);
     
 }

@@ -344,8 +344,11 @@ public class Pipeline {
                     InactiveAcknowledgementSetManager.getInstance(),
                 sinks);
         router.route(records, sinks, getRecordStrategy, (sink, events) ->
-                sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events), null))
-        );
+                sinkFutures.add(sinkExecutorService.submit(() -> {
+                    sink.updateLatencyMetrics(events);
+                    sink.output(events);
+                }, null))
+            );
         return sinkFutures;
     }
 }

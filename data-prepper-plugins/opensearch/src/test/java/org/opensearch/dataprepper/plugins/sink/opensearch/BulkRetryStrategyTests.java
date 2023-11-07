@@ -118,7 +118,6 @@ public class BulkRetryStrategyTests {
                 pluginMetrics,
                 Integer.MAX_VALUE,
                 bulkRequestSupplier,
-                (eventHandle) -> {},
                 pluginSetting);
     }
 
@@ -134,7 +133,6 @@ public class BulkRetryStrategyTests {
                 pluginMetrics,
                 maxRetries,
                 bulkRequestSupplier,
-                (eventHandle) -> {},
                 pluginSetting);
     }
 

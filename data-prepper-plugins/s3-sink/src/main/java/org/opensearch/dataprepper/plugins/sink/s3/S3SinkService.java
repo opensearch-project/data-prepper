@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
-import org.opensearch.dataprepper.plugins.sink.LatencyMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -64,7 +63,6 @@ public class S3SinkService {
     private final OutputCodecContext codecContext;
     private final KeyGenerator keyGenerator;
     private final Duration retrySleepTime;
-    private final LatencyMetrics latencyMetrics;
 
     /**
      * @param s3SinkConfig  s3 sink related configuration.
@@ -83,7 +81,6 @@ public class S3SinkService {
         this.codecContext = codecContext;
         this.keyGenerator = keyGenerator;
         this.retrySleepTime = retrySleepTime;
-        this.latencyMetrics = new LatencyMetrics(pluginMetrics);
         reentrantLock = new ReentrantLock();
 
         bufferedEventHandles = new LinkedList<>();
@@ -102,10 +99,6 @@ public class S3SinkService {
         s3ObjectSizeSummary = pluginMetrics.summary(S3_OBJECTS_SIZE);
 
         currentBuffer = bufferFactory.getBuffer(s3Client, () -> bucket, keyGenerator::generateKey);
-    }
-
-    public void updateLatencyMetrics(final EventHandle eventHandle) {
-      latencyMetrics.update(eventHandle);
     }
 
     /**
@@ -160,9 +153,6 @@ public class S3SinkService {
 
     private void releaseEventHandles(final boolean result) {
         for (EventHandle eventHandle : bufferedEventHandles) {
-            if (result) {
-                latencyMetrics.update(eventHandle);
-            }
             eventHandle.release(result);
         }
 
