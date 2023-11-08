@@ -78,7 +78,8 @@ public class KafkaCustomProducer<T> {
                                final DLQSink dlqSink,
                                final ExpressionEvaluator expressionEvaluator,
                                final String tagTargetKey,
-                               final KafkaTopicProducerMetrics topicMetrics
+                               final KafkaTopicProducerMetrics topicMetrics,
+                               final SchemaService schemaService
     ) {
         this.producer = producer;
         this.kafkaProducerConfig = kafkaProducerConfig;
@@ -88,7 +89,7 @@ public class KafkaCustomProducer<T> {
         this.tagTargetKey = tagTargetKey;
         this.topicName = ObjectUtils.isEmpty(kafkaProducerConfig.getTopic()) ? null : kafkaProducerConfig.getTopic().getName();
         this.serdeFormat = ObjectUtils.isEmpty(kafkaProducerConfig.getSerdeFormat()) ? null : kafkaProducerConfig.getSerdeFormat();
-        this.schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
+        this.schemaService = schemaService;
         this.topicMetrics = topicMetrics;
         this.topicMetrics.register(this.producer);
     }
@@ -102,8 +103,8 @@ public class KafkaCustomProducer<T> {
             send(topicName, key, bytes).get();
             topicMetrics.update(producer);
         } catch (Exception e) {
-            // TODO: Metrics
-            LOG.error("Error occurred while publishing {}", e.getMessage());
+            topicMetrics.getNumberOfRawDataSendErrors().increment();
+            LOG.error("Error occurred while publishing raw data {}", e.getMessage());
         }
     }
 
@@ -121,8 +122,8 @@ public class KafkaCustomProducer<T> {
             }
             topicMetrics.update(producer);
         } catch (Exception e) {
-            // TODO: Metrics
-            LOG.error("Error occurred while publishing {}", e.getMessage());
+            LOG.error("Error occurred while publishing record {}", e.getMessage());
+            topicMetrics.getNumberOfRecordSendErrors().increment();
             releaseEventHandles(false);
         }
 
@@ -183,7 +184,8 @@ public class KafkaCustomProducer<T> {
     private Callback callBack(final Object dataForDlq) {
         return (metadata, exception) -> {
             if (null != exception) {
-                LOG.error("Error occured while publishing " + exception.getMessage());
+                LOG.error("Error occurred while publishing {}", exception.getMessage());
+                topicMetrics.getNumberOfRecordProcessingErrors().increment();
                 releaseEventHandles(false);
                 dlqSink.perform(dataForDlq, exception);
             } else {

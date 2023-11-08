@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.kafka.producer;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.serialization.Serializer;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
@@ -63,9 +64,11 @@ public class KafkaCustomProducerFactory {
         final KafkaProducer<Object, Object> producer = new KafkaProducer<>(properties, keyDeserializer, valueSerializer);
         final DLQSink dlqSink = new DLQSink(pluginFactory, kafkaProducerConfig, pluginSetting);
         final KafkaTopicProducerMetrics topicMetrics = new KafkaTopicProducerMetrics(topic.getName(), pluginMetrics, topicNameInMetrics);
+        final String topicName = ObjectUtils.isEmpty(kafkaProducerConfig.getTopic()) ? null : kafkaProducerConfig.getTopic().getName();
+        final SchemaService schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
         return new KafkaCustomProducer(producer,
             kafkaProducerConfig, dlqSink,
-            expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, topicMetrics);
+            expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, topicMetrics, schemaService);
     }
     private void prepareTopicAndSchema(final KafkaProducerConfig kafkaProducerConfig) {
         checkTopicCreationCriteriaAndCreateTopic(kafkaProducerConfig);

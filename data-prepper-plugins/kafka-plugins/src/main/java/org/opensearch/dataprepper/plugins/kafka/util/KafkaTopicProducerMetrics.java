@@ -28,13 +28,18 @@ public class KafkaTopicProducerMetrics {
     static final String BYTE_SEND_TOTAL = "byteSendTotal";
     static final String RECORD_SEND_RATE_MAP_VALUE = "recordSendRate";
     static final String RECORD_SEND_TOTAL_MAP_VALUE = "recordSendTotal";
-
+    static final String NUMBER_OF_RAW_DATA_SEND_ERRORS = "numberOfRawDataSendErrors";
+    static final String NUMBER_OF_RECORD_SEND_ERRORS = "numberOfRecordSendErrors";
+    static final String NUMBER_OF_RECORD_PROCESSING_ERRORS = "numberOfRecordProcessingErrors";
     private final String topicName;
     private Map<String, String> metricsNameMap;
     private Map<KafkaProducer, Map<String, Double>> metricValues;
     private final PluginMetrics pluginMetrics;
     private final Counter numberOfRecordsSent;
     private final Counter numberOfBytesSent;
+    private final Counter numberOfRawDataSendErrors;
+    private final Counter numberOfRecordSendErrors;
+    private final Counter numberOfRecordProcessingErrors;
 
     public KafkaTopicProducerMetrics(final String topicName, final PluginMetrics pluginMetrics,
                                      final boolean topicNameInMetrics) {
@@ -44,6 +49,9 @@ public class KafkaTopicProducerMetrics {
         initializeMetricNamesMap(topicNameInMetrics);
         this.numberOfRecordsSent = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORDS_SENT, topicNameInMetrics));
         this.numberOfBytesSent = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_BYTES_SENT, topicNameInMetrics));
+        this.numberOfRawDataSendErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RAW_DATA_SEND_ERRORS, topicNameInMetrics));
+        this.numberOfRecordSendErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORD_SEND_ERRORS, topicNameInMetrics));
+        this.numberOfRecordProcessingErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORD_PROCESSING_ERRORS, topicNameInMetrics));
     }
 
     private void initializeMetricNamesMap(final boolean topicNameInMetrics) {
@@ -83,6 +91,18 @@ public class KafkaTopicProducerMetrics {
 
     Counter getNumberOfBytesSent() {
         return numberOfBytesSent;
+    }
+
+    public Counter getNumberOfRawDataSendErrors() {
+        return numberOfRawDataSendErrors;
+    }
+
+    public Counter getNumberOfRecordSendErrors() {
+        return numberOfRecordSendErrors;
+    }
+
+    public Counter getNumberOfRecordProcessingErrors() {
+        return numberOfRecordProcessingErrors;
     }
 
     private String getTopicMetricName(final String metricName, final boolean topicNameInMetrics) {
