@@ -83,15 +83,15 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<?>, Record
         AtomicInteger droppedCounter = new AtomicInteger(0);
 
         for (Record<?> rec : records) {
-            Record<? extends Metric> newRecord = (Record<? extends Metric>)rec;
             if ((rec.getData() instanceof Event)) {
+                Record<? extends Metric> newRecord = (Record<? extends Metric>)rec;
                 if (otelMetricsRawProcessorConfig.getFlattenAttributesFlag() ||
                     !otelMetricsRawProcessorConfig.getCalculateHistogramBuckets() ||
                     !otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets()) {
                     modifyRecord(newRecord, otelMetricsRawProcessorConfig.getFlattenAttributesFlag(), otelMetricsRawProcessorConfig.getCalculateHistogramBuckets(), otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets());
                 }
+                recordsOut.add(newRecord);
             }
-            recordsOut.add(newRecord);
 
             if (!(rec.getData() instanceof ExportMetricsServiceRequest)) {
                 continue;

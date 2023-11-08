@@ -101,7 +101,6 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
             final OTelMetricsGrpcService oTelMetricsGrpcService = new OTelMetricsGrpcService(
                     (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8),
                     buffer,
-                    byteDecoder,
                     pluginMetrics
             );
 

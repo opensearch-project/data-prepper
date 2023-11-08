@@ -663,7 +663,7 @@ public class OTelProtoCodec {
 
         private List<? extends Record<? extends Metric>> mapExponentialHistogram(
                                             final io.opentelemetry.proto.metrics.v1.Metric metric,
-                                            final String serviceName, 
+                                            final String serviceName,
                                             final Map<String, Object> ils,
                                             final Map<String, Object> resourceAttributes,
                                             final String schemaUrl,

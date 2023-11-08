@@ -12,7 +12,6 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.metric.Metric;
 
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
