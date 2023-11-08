@@ -235,7 +235,7 @@ public class SqsWorker implements Runnable {
             List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
             final int visibilityTimeout = (int)sqsOptions.getVisibilityTimeout().getSeconds();
-            final int maxVisibilityTimeout = (int)sqsOptions.getMaxVisibilityTimeoutExtension().getSeconds();
+            final int maxVisibilityTimeout = (int)sqsOptions.getVisibilityDuplicateProtectionTimeout().getSeconds();
             final int progressCheckInterval = visibilityTimeout/2 - 1;
             if (endToEndAcknowledgementsEnabled) {
                 int expiryTimeout = visibilityTimeout - 2;

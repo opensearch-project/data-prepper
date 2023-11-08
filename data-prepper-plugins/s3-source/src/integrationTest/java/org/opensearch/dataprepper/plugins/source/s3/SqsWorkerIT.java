@@ -344,7 +344,7 @@ class SqsWorkerIT {
         }).when(s3Service).addS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class));
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(6));
-        when(sqsOptions.getMaxVisibilityTimeoutExtension()).thenReturn(Duration.ofSeconds(60));
+        when(sqsOptions.getVisibilityDuplicateProtectionTimeout()).thenReturn(Duration.ofSeconds(60));
         when(sqsOptions.getVisibilityDuplicateProtection()).thenReturn(true);
         acknowledgementSetManager = new  DefaultAcknowledgementSetManager(executor);
         final SqsWorker objectUnderTest = createObjectUnderTest();
@@ -419,7 +419,7 @@ class SqsWorkerIT {
         }).when(s3Service).addS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class));
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(6));
-        when(sqsOptions.getMaxVisibilityTimeoutExtension()).thenReturn(Duration.ofSeconds(60));
+        when(sqsOptions.getVisibilityDuplicateProtectionTimeout()).thenReturn(Duration.ofSeconds(60));
         when(sqsOptions.getVisibilityDuplicateProtection()).thenReturn(true);
         acknowledgementSetManager = new  DefaultAcknowledgementSetManager(executor);
         final SqsWorker objectUnderTest = createObjectUnderTest();

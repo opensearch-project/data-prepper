@@ -18,7 +18,7 @@ public class SqsOptions {
     private static final int DEFAULT_MAXIMUM_MESSAGES = 10;
     private static final Boolean DEFAULT_VISIBILITY_DUPLICATE_PROTECTION = false;
     private static final Duration DEFAULT_VISIBILITY_TIMEOUT_SECONDS = Duration.ofSeconds(30);
-    private static final Duration DEFAULT_MAX_VISIBILITY_TIMEOUT_EXTENSION = Duration.ofHours(2);
+    private static final Duration DEFAULT_VISIBILITY_DUPLICATE_PROTECTION_TIMEOUT = Duration.ofHours(2);
     private static final Duration DEFAULT_WAIT_TIME_SECONDS = Duration.ofSeconds(20);
     private static final Duration DEFAULT_POLL_DELAY_SECONDS = Duration.ofSeconds(0);
 
@@ -39,10 +39,10 @@ public class SqsOptions {
     @JsonProperty("visibility_duplication_protection")
     private Boolean visibilityDuplicateProtection = DEFAULT_VISIBILITY_DUPLICATE_PROTECTION;
 
-    @JsonProperty("maximum_visibility_timeout_extension")
+    @JsonProperty("visibility_duplicate_protection_timeout")
     @DurationMin(seconds = 30)
     @DurationMax(hours = 24)
-    private Duration maxVisibilityTimeoutExtension = DEFAULT_MAX_VISIBILITY_TIMEOUT_EXTENSION;
+    private Duration visibilityDuplicateProtectionTimeout = DEFAULT_VISIBILITY_DUPLICATE_PROTECTION_TIMEOUT;
 
     @JsonProperty("wait_time")
     @DurationMin(seconds = 0)
@@ -65,8 +65,8 @@ public class SqsOptions {
         return visibilityTimeout;
     }
 
-    public Duration getMaxVisibilityTimeoutExtension() {
-        return maxVisibilityTimeoutExtension;
+    public Duration getVisibilityDuplicateProtectionTimeout() {
+        return visibilityDuplicateProtectionTimeout;
     }
 
     public Boolean getVisibilityDuplicateProtection() {
