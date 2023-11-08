@@ -58,7 +58,7 @@ public class MongoDBPartitionCreationSupplierTest {
         collectionConfig = mock(MongoDBConfig.CollectionConfig.class);
         lenient().when(collectionConfig.getCollectionName()).thenReturn(TEST_COLLECTION_NAME);
         lenient().when(mongoDBConfig.getCollections()).thenReturn(Collections.singletonList(collectionConfig));
-        lenient().when(mongoDBConfig.getCredentialsConfig()).thenReturn(new CredentialsConfig(new CredentialsConfig.PlainText("", ""), null));
+        lenient().when(mongoDBConfig.getCredentialsConfig()).thenReturn(new CredentialsConfig(new CredentialsConfig.PlainText("user", "user"), null));
         lenient().when(mongoDBConfig.getExportConfig()).thenReturn(new MongoDBConfig.ExportConfig());
         testSupplier = new MongoDBPartitionCreationSupplier(mongoDBConfig);
     }

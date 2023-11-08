@@ -15,7 +15,6 @@ import com.mongodb.client.MongoDatabase;
 import io.micrometer.core.instrument.Counter;
 import org.bson.Document;
 import org.bson.conversions.Bson;
-import org.bson.types.ObjectId;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -35,16 +34,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.mongodb.client.model.Filters.and;
-import static com.mongodb.client.model.Filters.gte;
-import static com.mongodb.client.model.Filters.lte;
-
 public class MongoDBSnapshotWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(MongoDBSnapshotWorker.class);
     private static final Duration BACKOFF_ON_EXCEPTION = Duration.ofSeconds(60);
     private static final Duration BACKOFF_ON_EMPTY_PARTITION = Duration.ofSeconds(60);
     private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
     private static final String SUCCESS_ITEM_COUNTER_NAME = "exportRecordsSuccessTotal";
+    private static final String FAILURE_ITEM_COUNTER_NAME = "exportRecordsFailedTotal";
     private static final String SUCCESS_PARTITION_COUNTER_NAME = "exportPartitionSuccessTotal";
     private static final String FAILURE_PARTITION_COUNTER_NAME = "exportPartitionFailureTotal";
     private static final String EVENT_SOURCE_COLLECTION_ATTRIBUTE = "__collection";
@@ -58,10 +54,12 @@ public class MongoDBSnapshotWorker implements Runnable {
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final MongoDBConfig mongoDBConfig;
     private final Counter successItemsCounter;
+    private final Counter failureItemsCounter;
     private final Counter successPartitionCounter;
     private final Counter failureParitionCounter;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final TypeReference<Map<String, Object>> mapTypeReference = new TypeReference<Map<String, Object>>() {};
+    private final TypeReference<Map<String, Object>> mapTypeReference = new TypeReference<Map<String, Object>>() {
+    };
 
 
     public MongoDBSnapshotWorker(final SourceCoordinator<MongoDBSnapshotProgressState> sourceCoordinator,
@@ -76,6 +74,7 @@ public class MongoDBSnapshotWorker implements Runnable {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.mongoDBConfig = mongoDBConfig;
         this.successItemsCounter = pluginMetrics.counter(SUCCESS_ITEM_COUNTER_NAME);
+        this.failureItemsCounter = pluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME);
         this.successPartitionCounter = pluginMetrics.counter(SUCCESS_PARTITION_COUNTER_NAME);
         this.failureParitionCounter = pluginMetrics.counter(FAILURE_PARTITION_COUNTER_NAME);
     }
@@ -107,6 +106,7 @@ public class MongoDBSnapshotWorker implements Runnable {
                     }
                     successPartitionCounter.increment();
                 } catch (final Exception e) {
+                    LOG.error("Received an exception while processing the partition.", e);
                     sourceCoordinator.giveUpPartitions();
                     failureParitionCounter.increment();
                 }
@@ -137,21 +137,26 @@ public class MongoDBSnapshotWorker implements Runnable {
         MongoClient mongoClient = MongoDBHelper.getMongoClient(mongoDBConfig);
         MongoDatabase db = mongoClient.getDatabase(collection.get(0));
         MongoCollection<Document> col = db.getCollection(collection.get(1));
-        Bson query = this.buildQuery(gte, lte, className);
+        Bson query = MongoDBHelper.buildQuery(gte, lte, className);
         MongoCursor<Document> cursor = col.find(query).iterator();
         int totalRecords = 0;
         try {
             while (cursor.hasNext()) {
-
                 String record = cursor.next().toJson();
-                Map<String, Object> data = convertToMap(record);
-                data.putIfAbsent(EVENT_SOURCE_DB_ATTRIBUTE, collection.get(0));
-                data.putIfAbsent(EVENT_SOURCE_COLLECTION_ATTRIBUTE, collection.get(1));
-                data.putIfAbsent(EVENT_SOURCE_OPERATION, OpenSearchBulkActions.CREATE.toString());
-                if (buffer.isByteBuffer()) {
-                    buffer.writeBytes(objectMapper.writeValueAsBytes(data), null, DEFAULT_BUFFER_WRITE_TIMEOUT_MS);
-                } else {
-                    buffer.write(getEventFromData(data), DEFAULT_BUFFER_WRITE_TIMEOUT_MS);
+                try {
+                    Map<String, Object> data = convertToMap(record);
+                    data.putIfAbsent(EVENT_SOURCE_DB_ATTRIBUTE, collection.get(0));
+                    data.putIfAbsent(EVENT_SOURCE_COLLECTION_ATTRIBUTE, collection.get(1));
+                    data.putIfAbsent(EVENT_SOURCE_OPERATION, OpenSearchBulkActions.CREATE.toString());
+                    if (buffer.isByteBuffer()) {
+                        buffer.writeBytes(objectMapper.writeValueAsBytes(data), null, DEFAULT_BUFFER_WRITE_TIMEOUT_MS);
+                    } else {
+                        buffer.write(getEventFromData(data), DEFAULT_BUFFER_WRITE_TIMEOUT_MS);
+                    }
+                } catch (JsonProcessingException e) {
+                    LOG.error("failed to add record to buffer with error {}", e.getMessage());
+                    failureItemsCounter.increment();
+                    continue;
                 }
                 successItemsCounter.increment();
                 totalRecords += 1;
@@ -166,39 +171,6 @@ public class MongoDBSnapshotWorker implements Runnable {
         sourceCoordinator.saveProgressStateForPartition(partition.getPartitionKey(), progressState);
     }
 
-    private Bson buildQuery(String gte, String lte, String className) {
-        switch (className) {
-            case "java.lang.Integer":
-                return and(
-                        gte("_id", Integer.parseInt(gte)),
-                        lte("_id", Integer.parseInt(lte))
-                );
-            case "java.lang.Double":
-                return and(
-                        gte("_id", Double.parseDouble(gte)),
-                        lte("_id", Double.parseDouble(lte))
-                );
-            case "java.lang.String":
-                return and(
-                        gte("_id", gte),
-                        lte("_id", lte)
-                );
-            case "java.lang.Long":
-                return and(
-                        gte("_id", Long.parseLong(gte)),
-                        lte("_id", Long.parseLong(lte))
-                );
-            case "org.bson.types.ObjectId":
-                return and(
-                        gte("_id", new ObjectId(gte)),
-                        lte("_id", new ObjectId(lte))
-                );
-            default:
-                throw new RuntimeException("Unexpected _id class supported: " + className);
-        }
-
-    }
-
     private Optional<AcknowledgementSet> createAcknowledgementSet(SourcePartition<MongoDBSnapshotProgressState> partition) {
         if (mongoDBConfig.getExportConfig().getAcknowledgements()) {
             return Optional.of(this.acknowledgementSetManager.create((result) -> {
@@ -210,12 +182,8 @@ public class MongoDBSnapshotWorker implements Runnable {
         return Optional.empty();
     }
 
-    private Map<String, Object> convertToMap(String jsonData) {
-        try {
-            return objectMapper.readValue(jsonData, mapTypeReference);
-        } catch (JsonProcessingException e) {
-            return null;
-        }
+    private Map<String, Object> convertToMap(String jsonData) throws JsonProcessingException {
+        return objectMapper.readValue(jsonData, mapTypeReference);
     }
 
     private Record<Object> getEventFromData(Map<String, Object> data) {
