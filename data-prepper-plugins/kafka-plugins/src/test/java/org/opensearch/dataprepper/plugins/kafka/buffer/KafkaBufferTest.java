@@ -139,7 +139,7 @@ class KafkaBufferTest {
             final MockedConstruction<KafkaCustomConsumerFactory> consumerFactoryMock =
                 mockConstruction(KafkaCustomConsumerFactory.class, (mock, context) -> {
                 consumerFactory = mock;
-                when(consumerFactory.createConsumersForTopic(any(), any(), any(), any(), any(), any(), any())).thenReturn(consumers);
+                when(consumerFactory.createConsumersForTopic(any(), any(), any(), any(), any(), any(), any(), anyBoolean())).thenReturn(consumers);
             });
             final MockedConstruction<BlockingBuffer> blockingBufferMock =
                  mockConstruction(BlockingBuffer.class, (mock, context) -> {

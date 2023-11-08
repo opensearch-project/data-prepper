@@ -94,6 +94,7 @@ public class KafkaCustomConsumerTest {
 
     @Mock
     private KafkaTopicConsumerMetrics topicMetrics;
+    @Mock
     private PartitionInfo partitionInfo;
     @Mock
     private OffsetAndMetadata offsetAndMetadata;
