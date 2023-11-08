@@ -20,6 +20,7 @@ import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.Record;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,9 @@ public class StreamRecordConverter extends RecordConverter {
 
     private final Counter changeEventSuccessCounter;
     private final Counter changeEventErrorCounter;
+
+    private Instant currentSecond;
+    private int recordsSeenThisSecond = 0;
 
     public StreamRecordConverter(final BufferAccumulator<org.opensearch.dataprepper.model.record.Record<Event>> bufferAccumulator, TableInfo tableInfo, PluginMetrics pluginMetrics) {
         super(bufferAccumulator, tableInfo);
@@ -64,7 +68,8 @@ public class StreamRecordConverter extends RecordConverter {
             Map<String, Object> keys = convertKeys(record.dynamodb().keys());
 
             try {
-                addToBuffer(acknowledgementSet, data, keys, record.dynamodb().approximateCreationDateTime().toEpochMilli(), record.eventNameAsString());
+                final long eventCreationTimeMillis = calculateTieBreakingVersionFromTimestamp(record.dynamodb().approximateCreationDateTime());
+                addToBuffer(acknowledgementSet, data, keys, record.dynamodb().approximateCreationDateTime().toEpochMilli(), eventCreationTimeMillis, record.eventNameAsString());
                 eventCount++;
             } catch (Exception e) {
                 // will this cause too many logs?
@@ -115,5 +120,20 @@ public class StreamRecordConverter extends RecordConverter {
         }));
         return result;
 
+    }
+
+    private long calculateTieBreakingVersionFromTimestamp(final Instant eventTimeInSeconds) {
+        if (currentSecond == null) {
+            currentSecond = eventTimeInSeconds;
+        } else if (currentSecond.isAfter(eventTimeInSeconds)) {
+            return eventTimeInSeconds.getEpochSecond() * 1_000_000;
+        } else if (currentSecond.isBefore(eventTimeInSeconds)) {
+            recordsSeenThisSecond = 0;
+            currentSecond = eventTimeInSeconds;
+        } else {
+            recordsSeenThisSecond++;
+        }
+
+        return eventTimeInSeconds.getEpochSecond() * 1_000_000 + recordsSeenThisSecond;
     }
 }

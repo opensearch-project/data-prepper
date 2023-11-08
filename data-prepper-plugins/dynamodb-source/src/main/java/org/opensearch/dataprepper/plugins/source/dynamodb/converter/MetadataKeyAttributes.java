@@ -14,6 +14,8 @@ public class MetadataKeyAttributes {
 
     static final String EVENT_TIMESTAMP_METADATA_ATTRIBUTE = "dynamodb_timestamp";
 
+    static final String EVENT_DYNAMODB_ITEM_VERSION = "dynamodb_item_version";
+
     static final String EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE = "opensearch_action";
 
     static final String DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE = "dynamodb_event_name";
