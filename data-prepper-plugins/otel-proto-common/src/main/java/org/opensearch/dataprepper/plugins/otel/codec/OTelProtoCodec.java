@@ -152,7 +152,7 @@ public class OTelProtoCodec {
                     .flatMap(rs -> parseResourceSpans(rs).stream()).collect(Collectors.toList());
         }
 
-        public Map<String, ExportTraceServiceRequest> splitExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest) {
+        public Map<String, ExportTraceServiceRequest> splitExportTraceServiceRequestByTraceId(final ExportTraceServiceRequest exportTraceServiceRequest) {
             Map<String, ExportTraceServiceRequest> result = new HashMap<>();
             for (final ResourceSpans resourceSpans: exportTraceServiceRequest.getResourceSpansList()) {
                 Map<String, ResourceSpans> out = splitResourceSpans(resourceSpans);

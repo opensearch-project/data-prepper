@@ -143,7 +143,7 @@ public class OTelProtoCodecTest {
         @Test
         public void testSplitExportTraceServiceRequestWithMultipleTraces() throws Exception {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_MULTIPLE_TRACES_FILE);
-            final Map<String, ExportTraceServiceRequest> map = decoderUnderTest.splitExportTraceServiceRequest(exportTraceServiceRequest);
+            final Map<String, ExportTraceServiceRequest> map = decoderUnderTest.splitExportTraceServiceRequestByTraceId(exportTraceServiceRequest);
             assertThat(map.size(), is(equalTo(3)));
             for (Map.Entry<String, ExportTraceServiceRequest> entry: map.entrySet()) {
                 String expectedTraceId = new String(Hex.decodeHex(entry.getKey()), StandardCharsets.UTF_8);
