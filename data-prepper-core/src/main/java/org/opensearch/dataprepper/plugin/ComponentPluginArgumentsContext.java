@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -74,6 +75,8 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         if (builder.sinkContext != null) {
             typedArgumentsSuppliers.put(SinkContext.class, () -> builder.sinkContext);
         }
+
+        typedArgumentsSuppliers.put(CircuitBreaker.class, () -> builder.circuitBreaker);
     }
 
     @Override
@@ -135,6 +138,7 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         private AcknowledgementSetManager acknowledgementSetManager;
         private PluginConfigObservable pluginConfigObservable;
         private SinkContext sinkContext;
+        private CircuitBreaker circuitBreaker;
 
         Builder withPluginConfiguration(final Object pluginConfiguration) {
             this.pluginConfiguration = pluginConfiguration;
@@ -178,6 +182,11 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
 
         Builder withPluginConfigurationObservable(final PluginConfigObservable pluginConfigObservable) {
             this.pluginConfigObservable = pluginConfigObservable;
+            return this;
+        }
+
+        Builder withCircuitBreaker(final CircuitBreaker circuitBreaker) {
+            this.circuitBreaker = circuitBreaker;
             return this;
         }
 

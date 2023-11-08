@@ -99,6 +99,9 @@ public class KafkaCustomConsumerTest {
     @Mock
     private OffsetAndMetadata offsetAndMetadata;
 
+    @Mock
+    private PauseConsumePredicate pauseConsumePredicate;
+
     private KafkaCustomConsumer consumer;
 
     private ConsumerRecords consumerRecords;
@@ -166,7 +169,7 @@ public class KafkaCustomConsumerTest {
         topicEmptinessMetadata = new TopicEmptinessMetadata();
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
         return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType,
-                acknowledgementSetManager, null, topicMetrics, topicEmptinessMetadata);
+                acknowledgementSetManager, null, topicMetrics, topicEmptinessMetadata, pauseConsumePredicate);
     }
 
     private BlockingBuffer<Record<Event>> getBuffer() {

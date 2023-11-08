@@ -37,6 +37,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
+import org.opensearch.dataprepper.plugins.kafka.consumer.PauseConsumePredicate;
 import org.opensearch.dataprepper.plugins.kafka.consumer.TopicEmptinessMetadata;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
@@ -141,7 +142,7 @@ public class KafkaSource implements Source<Record<Event>> {
 
                     }
                     consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType,
-                            acknowledgementSetManager, null, topicMetrics, topicEmptinessMetadata);
+                            acknowledgementSetManager, null, topicMetrics, topicEmptinessMetadata, PauseConsumePredicate.noPause());
                     allTopicConsumers.add(consumer);
 
                     executorService.submit(consumer);

@@ -20,6 +20,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -73,7 +74,8 @@ public class KafkaCustomConsumerFactory {
                                                              final AcknowledgementSetManager acknowledgementSetManager,
                                                              final ByteDecoder byteDecoder,
                                                              final AtomicBoolean shutdownInProgress,
-                                                             final boolean topicNameInMetrics) {
+                                                             final boolean topicNameInMetrics,
+                                                             final CircuitBreaker circuitBreaker) {
         Properties authProperties = new Properties();
         KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaConsumerConfig, LOG);
         KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, topicNameInMetrics);
@@ -84,6 +86,8 @@ public class KafkaCustomConsumerFactory {
 
         AwsContext awsContext = new AwsContext(kafkaConsumerConfig, awsCredentialsSupplier);
         KeyFactory keyFactory = new KeyFactory(awsContext);
+
+        PauseConsumePredicate pauseConsumePredicate = PauseConsumePredicate.circuitBreakingPredicate(circuitBreaker);
 
         try {
             final int numWorkers = topic.getWorkers();
@@ -101,7 +105,7 @@ public class KafkaCustomConsumerFactory {
                 final KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProperties, keyDeserializer, valueDeserializer);
 
                 consumers.add(new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, kafkaConsumerConfig, topic,
-                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, topicEmptinessMetadata));
+                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, topicEmptinessMetadata, pauseConsumePredicate));
 
             });
         } catch (Exception e) {

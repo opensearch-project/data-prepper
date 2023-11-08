@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.breaker;
 
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
+
 import java.util.List;
 import java.util.Optional;
 

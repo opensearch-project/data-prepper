@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -43,6 +44,7 @@ public class DefaultPluginFactory implements PluginFactory {
     private final DefaultEventFactory eventFactory;
     private final DefaultAcknowledgementSetManager acknowledgementSetManager;
     private final PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
+    private final CircuitBreaker circuitBreaker;
 
     @Inject
     DefaultPluginFactory(
@@ -52,8 +54,10 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginBeanFactoryProvider pluginBeanFactoryProvider,
             final DefaultEventFactory eventFactory,
             final DefaultAcknowledgementSetManager acknowledgementSetManager,
-            final PluginConfigurationObservableFactory pluginConfigurationObservableFactory
-    ) {
+            final PluginConfigurationObservableFactory pluginConfigurationObservableFactory,
+            final CircuitBreaker circuitBreaker
+            ) {
+        this.circuitBreaker = circuitBreaker;
         Objects.requireNonNull(pluginProviderLoader);
         Objects.requireNonNull(pluginConfigurationObservableFactory);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
@@ -131,6 +135,7 @@ public class DefaultPluginFactory implements PluginFactory {
                 .withAcknowledgementSetManager(acknowledgementSetManager)
                 .withPluginConfigurationObservable(pluginConfigObservable)
                 .withSinkContext(sinkContext)
+                .withCircuitBreaker(circuitBreaker)
                 .build();
     }
 

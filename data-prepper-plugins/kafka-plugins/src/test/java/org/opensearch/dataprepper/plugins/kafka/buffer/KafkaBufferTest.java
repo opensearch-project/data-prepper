@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -74,7 +75,7 @@ class KafkaBufferTest {
 
     private static final String TEST_GROUP_ID = "testGroupId";
 
-    private KafkaBuffer<Record<Event>> kafkaBuffer;
+    private KafkaBuffer kafkaBuffer;
     ExecutorService executorService;
     @Mock
     private KafkaBufferConfig bufferConfig;
@@ -124,11 +125,14 @@ class KafkaBufferTest {
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
 
-    public KafkaBuffer<Record<Event>> createObjectUnderTest() {
+    @Mock
+    private CircuitBreaker circuitBreaker;
+
+    public KafkaBuffer createObjectUnderTest() {
         return createObjectUnderTest(List.of(consumer));
     }
 
-    public KafkaBuffer<Record<Event>> createObjectUnderTest(final List<KafkaCustomConsumer> consumers) {
+    public KafkaBuffer createObjectUnderTest(final List<KafkaCustomConsumer> consumers) {
         try (
             final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
             final MockedConstruction<KafkaCustomProducerFactory> producerFactoryMock =
@@ -139,7 +143,7 @@ class KafkaBufferTest {
             final MockedConstruction<KafkaCustomConsumerFactory> consumerFactoryMock =
                 mockConstruction(KafkaCustomConsumerFactory.class, (mock, context) -> {
                 consumerFactory = mock;
-                when(consumerFactory.createConsumersForTopic(any(), any(), any(), any(), any(), any(), any(), anyBoolean())).thenReturn(consumers);
+                when(consumerFactory.createConsumersForTopic(any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any())).thenReturn(consumers);
             });
             final MockedConstruction<BlockingBuffer> blockingBufferMock =
                  mockConstruction(BlockingBuffer.class, (mock, context) -> {
@@ -147,7 +151,7 @@ class KafkaBufferTest {
                  })) {
 
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executorService);
-            return new KafkaBuffer<Record<Event>>(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, null, awsCredentialsSupplier);
+            return new KafkaBuffer(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, null, awsCredentialsSupplier, circuitBreaker);
         }
     }
 
