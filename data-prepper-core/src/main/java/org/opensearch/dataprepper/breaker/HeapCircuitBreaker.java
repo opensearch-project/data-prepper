@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.breaker;
 
 import io.micrometer.core.instrument.Metrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.parser.model.HeapCircuitBreakerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

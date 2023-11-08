@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugin;
 
 import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
@@ -57,6 +58,7 @@ class DefaultPluginFactoryTest {
     private BeanFactory beanFactory;
     private String pipelineName;
     private DefaultAcknowledgementSetManager acknowledgementSetManager;
+    private CircuitBreaker circuitBreaker;
     private DefaultEventFactory eventFactory;
     private PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
     private PluginConfigObservable pluginConfigObservable;
@@ -68,6 +70,7 @@ class DefaultPluginFactoryTest {
         pluginConfigurationConverter = mock(PluginConfigurationConverter.class);
 
         acknowledgementSetManager = mock(DefaultAcknowledgementSetManager.class);
+        circuitBreaker = mock(CircuitBreaker.class);
         eventFactory = mock(DefaultEventFactory.class);
         pluginProviders = new ArrayList<>();
         given(pluginProviderLoader.getPluginProviders()).willReturn(pluginProviders);
@@ -94,7 +97,7 @@ class DefaultPluginFactoryTest {
     private DefaultPluginFactory createObjectUnderTest() {
         return new DefaultPluginFactory(
                 pluginProviderLoader, pluginCreator, pluginConfigurationConverter, beanFactoryProvider, eventFactory,
-                acknowledgementSetManager, pluginConfigurationObservableFactory);
+                acknowledgementSetManager, pluginConfigurationObservableFactory, circuitBreaker);
     }
 
     @Test

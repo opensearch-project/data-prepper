@@ -89,6 +89,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final boolean acknowledgementsEnabled;
     private final Duration acknowledgementsTimeout;
     private final KafkaTopicConsumerMetrics topicMetrics;
+    private final PauseConsumePredicate pauseConsumePredicate;
     private long metricsUpdatedTime;
     private final AtomicInteger numberOfAcksPending;
     private long numRecordsCommitted = 0;
@@ -105,7 +106,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final ByteDecoder byteDecoder,
                                final KafkaTopicConsumerMetrics topicMetrics,
-                               final TopicEmptinessMetadata topicEmptinessMetadata) {
+                               final TopicEmptinessMetadata topicEmptinessMetadata,
+                               final PauseConsumePredicate pauseConsumePredicate) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
         this.shutdownInProgress = shutdownInProgress;
@@ -113,6 +115,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.buffer = buffer;
         this.byteDecoder = byteDecoder;
         this.topicMetrics = topicMetrics;
+        this.pauseConsumePredicate = pauseConsumePredicate;
         this.topicMetrics.register(consumer);
         this.offsetsToCommit = new HashMap<>();
         this.ownedPartitionsEpoch = new HashMap<>();
@@ -171,7 +174,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         return acknowledgementSet;
     }
 
-    public <T> void consumeRecords() throws Exception {
+    <T> void consumeRecords() throws Exception {
         try {
             ConsumerRecords<String, T> records =
                     consumer.poll(Duration.ofMillis(topicConfig.getThreadWaitingTime().toMillis()/2));
@@ -331,7 +334,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         boolean retryingAfterException = false;
         while (!shutdownInProgress.get()) {
             try {
-                if (retryingAfterException) {
+                if (retryingAfterException || pauseConsumePredicate.pauseConsuming()) {
+                    LOG.debug("Pause consuming from Kafka topic.");
                     Thread.sleep(10000);
                 }
                 synchronized(this) {

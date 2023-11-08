@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.breaker;
 
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
+
 /**
  * Interface to signal that this {@link CircuitBreaker} to prevent
  * access beyond the {@link CircuitBreakerManager}.

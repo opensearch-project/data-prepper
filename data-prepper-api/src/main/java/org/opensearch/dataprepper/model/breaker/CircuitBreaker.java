@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.breaker;
+package org.opensearch.dataprepper.model.breaker;
 
 /**
  * Represents a circuit breaker in Data Prepper.
  *
- * @since 2.1
+ * @since 2.6
  */
 public interface CircuitBreaker {
     /**
@@ -16,7 +16,7 @@ public interface CircuitBreaker {
      * been tripped.
      *
      * @return true if open; false if closed.
-     * @since 2.1
+     * @since 2.6
      */
     boolean isOpen();
 }
