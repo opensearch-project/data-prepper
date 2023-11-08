@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.event.DefaultEventFactory;
 import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Inject;
@@ -55,7 +56,7 @@ public class DefaultPluginFactory implements PluginFactory {
             final DefaultEventFactory eventFactory,
             final DefaultAcknowledgementSetManager acknowledgementSetManager,
             final PluginConfigurationObservableFactory pluginConfigurationObservableFactory,
-            final CircuitBreaker circuitBreaker
+            @Autowired(required = false) final CircuitBreaker circuitBreaker
             ) {
         this.circuitBreaker = circuitBreaker;
         Objects.requireNonNull(pluginProviderLoader);
