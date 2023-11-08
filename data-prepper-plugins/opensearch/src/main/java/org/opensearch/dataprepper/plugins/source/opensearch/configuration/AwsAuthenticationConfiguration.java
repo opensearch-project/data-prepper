@@ -32,6 +32,9 @@ public class AwsAuthenticationConfiguration {
     @JsonProperty("serverless")
     private Boolean serverless = false;
 
+    @JsonProperty("serverless_options")
+    private ServerlessOptions serverlessOptions;
+
     public String getAwsStsRoleArn() {
         return awsStsRoleArn;
     }
@@ -50,6 +53,10 @@ public class AwsAuthenticationConfiguration {
 
     public Boolean isServerlessCollection() {
         return serverless;
+    }
+
+    public ServerlessOptions getServerlessOptions() {
+        return serverlessOptions;
     }
 }
 

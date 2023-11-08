@@ -16,12 +16,17 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessOptionsFactory;
+import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ServerlessOptions;
+import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdaterFactory;
 import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchClientFactory;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessorStrategy;
 
 import java.util.Objects;
+import java.util.Optional;
 
 @DataPrepperPlugin(name="opensearch", pluginType = Source.class, pluginConfigurationType = OpenSearchSourceConfiguration.class)
 public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordination {
@@ -55,12 +60,12 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
         if (buffer == null) {
             throw new IllegalStateException("Buffer provided is null");
         }
+        maybeUpdateNetworkPolicy();
         startProcess(openSearchSourceConfiguration, buffer);
     }
 
     private void startProcess(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                               final Buffer<Record<Event>> buffer)  {
-
         final OpenSearchClientFactory openSearchClientFactory = OpenSearchClientFactory.create(awsCredentialsSupplier);
         final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics = OpenSearchSourcePluginMetrics.create(pluginMetrics);
         final SearchAccessorStrategy searchAccessorStrategy = SearchAccessorStrategy.create(
@@ -92,5 +97,21 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
     @Override
     public Class<?> getPartitionProgressStateClass() {
         return OpenSearchIndexProgressState.class;
+    }
+
+    // VisibleForTesting
+    void maybeUpdateNetworkPolicy() {
+        final Optional<ServerlessOptions> maybeServerlessOptions = ServerlessOptionsFactory.create(
+            openSearchSourceConfiguration.getAwsAuthenticationOptions());
+        if (maybeServerlessOptions.isPresent()) {
+            final ServerlessNetworkPolicyUpdater networkPolicyUpdater = ServerlessNetworkPolicyUpdaterFactory.create(
+                awsCredentialsSupplier, openSearchSourceConfiguration.getAwsAuthenticationOptions()
+            );
+            networkPolicyUpdater.updateNetworkPolicy(
+                maybeServerlessOptions.get().getNetworkPolicyName(),
+                maybeServerlessOptions.get().getCollectionName(),
+                maybeServerlessOptions.get().getVpceId()
+            );
+        }
     }
 }
