@@ -20,7 +20,6 @@ import static org.mockito.Mockito.doAnswer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
-import org.apache.kafka.common.Metric;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.commons.lang3.RandomStringUtils;
 
@@ -34,7 +33,7 @@ import java.util.Random;
 import java.util.function.ToDoubleFunction; 
 
 @ExtendWith(MockitoExtension.class)
-public class KafkaTopicMetricsTests {
+public class KafkaTopicConsumerMetricsTests {
     public final class KafkaTestMetric implements Metric {
         private final Double value;
         private final MetricName name;
@@ -64,7 +63,7 @@ public class KafkaTopicMetricsTests {
 
     private Random random;
 
-    private KafkaTopicMetrics topicMetrics;
+    private KafkaTopicConsumerMetrics topicMetrics;
 
     private double bytesConsumed;
     private double recordsConsumed;
@@ -133,8 +132,8 @@ public class KafkaTopicMetricsTests {
         }).when(recordsConsumedCounter).increment(any(Double.class));
     }
 
-    public KafkaTopicMetrics createObjectUnderTest() {
-        return new KafkaTopicMetrics(topicName, pluginMetrics);
+    public KafkaTopicConsumerMetrics createObjectUnderTest() {
+        return new KafkaTopicConsumerMetrics(topicName, pluginMetrics, true);
     }
 
     private KafkaTestMetric getMetric(final String name, final double value, Map<String, String> tags) {

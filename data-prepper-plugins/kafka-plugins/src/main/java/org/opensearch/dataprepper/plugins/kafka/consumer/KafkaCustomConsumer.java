@@ -32,7 +32,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.LogRateLimiter;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
@@ -86,7 +86,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private List<Map<TopicPartition, CommitOffsetRange>> acknowledgedOffsets;
     private final boolean acknowledgementsEnabled;
     private final Duration acknowledgementsTimeout;
-    private final KafkaTopicMetrics topicMetrics;
+    private final KafkaTopicConsumerMetrics topicMetrics;
     private long metricsUpdatedTime;
     private final AtomicInteger numberOfAcksPending;
     private long numRecordsCommitted = 0;
@@ -101,7 +101,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final String schemaType,
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final ByteDecoder byteDecoder,
-                               KafkaTopicMetrics topicMetrics) {
+                               final KafkaTopicConsumerMetrics topicMetrics) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
         this.shutdownInProgress = shutdownInProgress;
@@ -127,7 +127,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
     }
 
-    KafkaTopicMetrics getTopicMetrics() {
+    KafkaTopicConsumerMetrics getTopicMetrics() {
         return topicMetrics;
     }
 

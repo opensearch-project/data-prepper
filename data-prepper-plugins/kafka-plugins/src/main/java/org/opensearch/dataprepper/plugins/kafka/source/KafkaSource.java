@@ -40,7 +40,7 @@ import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,7 +109,7 @@ public class KafkaSource implements Source<Record<Event>> {
         KafkaSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
         sourceConfig.getTopics().forEach(topic -> {
             consumerGroupID = topic.getGroupId();
-            KafkaTopicMetrics topicMetrics = new KafkaTopicMetrics(topic.getName(), pluginMetrics);
+            KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, true);
             Properties consumerProperties = getConsumerProperties(topic, authProperties);
             MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
             try {

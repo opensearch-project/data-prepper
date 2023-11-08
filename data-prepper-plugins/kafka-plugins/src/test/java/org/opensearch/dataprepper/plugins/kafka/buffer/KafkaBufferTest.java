@@ -50,6 +50,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -119,7 +120,7 @@ class KafkaBufferTest {
             final MockedConstruction<KafkaCustomProducerFactory> producerFactoryMock =
                 mockConstruction(KafkaCustomProducerFactory.class, (mock, context) -> {
                 producerFactory = mock;
-                when(producerFactory.createProducer(any() ,any(), any(), isNull(), isNull())).thenReturn(producer);
+                when(producerFactory.createProducer(any() ,any(), any(), isNull(), isNull(), any(), anyBoolean())).thenReturn(producer);
             });
             final MockedConstruction<BlockingBuffer> blockingBufferMock =
                  mockConstruction(BlockingBuffer.class, (mock, context) -> {

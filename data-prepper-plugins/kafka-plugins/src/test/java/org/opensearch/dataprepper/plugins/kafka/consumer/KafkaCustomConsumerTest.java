@@ -35,7 +35,7 @@ import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
@@ -79,7 +79,7 @@ public class KafkaCustomConsumerTest {
     private TopicConsumerConfig topicConfig;
 
     @Mock
-    private KafkaTopicMetrics topicMetrics;
+    private KafkaTopicConsumerMetrics topicMetrics;
 
     private KafkaCustomConsumer consumer;
 
@@ -110,7 +110,7 @@ public class KafkaCustomConsumerTest {
     public void setUp() {
         delayTime = Duration.ofMillis(10);
         kafkaConsumer = mock(KafkaConsumer.class);
-        topicMetrics = mock(KafkaTopicMetrics.class);
+        topicMetrics = mock(KafkaTopicConsumerMetrics.class);
         counter = mock(Counter.class);
         posCounter = mock(Counter.class);
         negCounter = mock(Counter.class);

@@ -43,6 +43,8 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     static final long EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT = 30L;
     public static final int INNER_BUFFER_CAPACITY = 1000000;
     public static final int INNER_BUFFER_BATCH_SIZE = 250000;
+    static final String WRITE = "Write";
+    static final String READ = "Read";
     private final KafkaCustomProducer producer;
     private final AbstractBuffer innerBuffer;
     private final ExecutorService executorService;
@@ -58,12 +60,15 @@ public class KafkaBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         SerializationFactory serializationFactory = new SerializationFactory();
         final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier);
         this.byteDecoder = byteDecoder;
-        producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, pluginFactory, pluginSetting,  null, null);
+        final String metricPrefixName = kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName());
+        final PluginMetrics producerMetrics = PluginMetrics.fromNames(metricPrefixName + WRITE, pluginSetting.getPipelineName());
+        producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, pluginFactory, pluginSetting,  null, null, producerMetrics, false);
         final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory, awsCredentialsSupplier);
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         this.shutdownInProgress = new AtomicBoolean(false);
+        final PluginMetrics consumerMetrics = PluginMetrics.fromNames(metricPrefixName + READ, pluginSetting.getPipelineName());
         final List<KafkaCustomConsumer> consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
-            innerBuffer, pluginMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress);
+            innerBuffer, consumerMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false);
         this.executorService = Executors.newFixedThreadPool(consumers.size());
         consumers.forEach(this.executorService::submit);
 

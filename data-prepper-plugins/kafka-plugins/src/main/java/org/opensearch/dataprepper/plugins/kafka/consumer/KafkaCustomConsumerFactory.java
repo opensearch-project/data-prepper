@@ -40,7 +40,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,10 +72,11 @@ public class KafkaCustomConsumerFactory {
                                                              final Buffer<Record<Event>> buffer, final PluginMetrics pluginMetrics,
                                                              final AcknowledgementSetManager acknowledgementSetManager,
                                                              final ByteDecoder byteDecoder,
-                                                             final AtomicBoolean shutdownInProgress) {
+                                                             final AtomicBoolean shutdownInProgress,
+                                                             final boolean topicNameInMetrics) {
         Properties authProperties = new Properties();
         KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaConsumerConfig, LOG);
-        KafkaTopicMetrics topicMetrics = new KafkaTopicMetrics(topic.getName(), pluginMetrics);
+        KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, topicNameInMetrics);
         Properties consumerProperties = getConsumerProperties(kafkaConsumerConfig, topic, authProperties);
         MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
 
