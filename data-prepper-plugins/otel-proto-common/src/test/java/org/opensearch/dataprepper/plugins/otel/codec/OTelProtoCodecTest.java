@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -71,6 +72,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -88,6 +90,7 @@ public class OTelProtoCodecTest {
     private static final String TEST_REQUEST_LOGS_JSON_FILE = "test-request-log.json";
 
     private static final String TEST_REQUEST_LOGS_IS_JSON_FILE = "test-request-log-is.json";
+    private static final String TEST_REQUEST_MULTIPLE_TRACES_FILE = "test-request-multiple-traces.json";
 
 
     private static final Long TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
@@ -137,6 +140,32 @@ public class OTelProtoCodecTest {
 
     @Nested
     class OTelProtoDecoderTest {
+        @Test
+        public void testSplitExportTraceServiceRequestWithMultipleTraces() throws Exception {
+            final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_MULTIPLE_TRACES_FILE);
+            final Map<String, ExportTraceServiceRequest> map = decoderUnderTest.splitExportTraceServiceRequest(exportTraceServiceRequest);
+            assertThat(map.size(), is(equalTo(3)));
+            for (Map.Entry<String, ExportTraceServiceRequest> entry: map.entrySet()) {
+                String expectedTraceId = new String(Hex.decodeHex(entry.getKey()), StandardCharsets.UTF_8);
+                assertTrue(Set.of("TRACEID1", "TRACEID2", "TRACEID3").contains(expectedTraceId));
+                final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(entry.getValue());
+                for (Span span: spans) {
+                    String traceId = new String(Hex.decodeHex(span.getTraceId()), StandardCharsets.UTF_8);
+                    String spanId = new String(Hex.decodeHex(span.getSpanId()), StandardCharsets.UTF_8);
+                    if (expectedTraceId.equals("TRACEID1")) {
+                        assertTrue(Set.of("TRACEID1-SPAN1", "TRACEID1-SPAN2", "TRACEID1-SPAN3", "TRACEID1-SPAN4", "TRACEID1-SPAN5", "TRACEID1-SPAN6").contains(spanId));
+                        assertThat(expectedTraceId, equalTo(traceId));
+                    } else if (expectedTraceId.equals("TRACEID2")) {
+                        assertTrue(Set.of("TRACEID2-SPAN1", "TRACEID2-SPAN2", "TRACEID2-SPAN3", "TRACEID2-SPAN4", "TRACEID2-SPAN5").contains(spanId));
+                        assertThat(expectedTraceId, equalTo(traceId));
+                    } else {
+                        assertTrue(Set.of("TRACEID3-SPAN1", "TRACEID3-SPAN2").contains(spanId));
+                        assertThat(expectedTraceId, equalTo(traceId));
+                    }
+                }
+            }
+        }
+
         @Test
         public void testParseExportTraceServiceRequest() throws IOException {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_TRACE_JSON_FILE);
