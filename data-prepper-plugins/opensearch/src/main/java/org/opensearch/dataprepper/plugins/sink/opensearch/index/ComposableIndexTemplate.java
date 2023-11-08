@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public class ComposableIndexTemplate implements IndexTemplate {
+class ComposableIndexTemplate implements IndexTemplate {
+    static final String TEMPLATE_KEY = "template";
+    static final String INDEX_SETTINGS_KEY = "settings";
 
     private final Map<String, Object> indexTemplateMap;
     private String name;
@@ -18,7 +20,6 @@ public class ComposableIndexTemplate implements IndexTemplate {
     @Override
     public void setTemplateName(final String name) {
         this.name = name;
-
     }
 
     @Override
@@ -28,7 +29,11 @@ public class ComposableIndexTemplate implements IndexTemplate {
 
     @Override
     public void putCustomSetting(final String name, final Object value) {
+        Map<String, Object> template = (Map<String, Object>) indexTemplateMap.computeIfAbsent(TEMPLATE_KEY, key -> new HashMap<>());
 
+        Map<String, Object> settings = (Map<String, Object>) template.computeIfAbsent(INDEX_SETTINGS_KEY, key -> new HashMap<>());
+
+        settings.put(name, value);
     }
 
     @Override
