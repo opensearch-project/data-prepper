@@ -16,6 +16,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
@@ -55,6 +56,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCause;
 
@@ -92,6 +94,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private long numRecordsCommitted = 0;
     private final LogRateLimiter errLogRateLimiter;
     private final ByteDecoder byteDecoder;
+    private final TopicEmptinessMetadata topicEmptinessMetadata;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -101,7 +104,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final String schemaType,
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final ByteDecoder byteDecoder,
-                               final KafkaTopicConsumerMetrics topicMetrics) {
+                               final KafkaTopicConsumerMetrics topicMetrics,
+                               final TopicEmptinessMetadata topicEmptinessMetadata) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
         this.shutdownInProgress = shutdownInProgress;
@@ -125,6 +129,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.lastCommitTime = System.currentTimeMillis();
         this.numberOfAcksPending = new AtomicInteger(0);
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
+        this.topicEmptinessMetadata = topicEmptinessMetadata;
     }
 
     KafkaTopicConsumerMetrics getTopicMetrics() {
@@ -527,5 +532,42 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     final String getTopicPartitionOffset(final Map<TopicPartition, Long> offsetMap, final TopicPartition topicPartition) {
         final Long offset = offsetMap.get(topicPartition);
         return Objects.isNull(offset) ? "-" : offset.toString();
+    }
+
+    public synchronized boolean isTopicEmpty() {
+        final long currentThreadId = Thread.currentThread().getId();
+        if (Objects.isNull(topicEmptinessMetadata.getTopicEmptyCheckingOwnerThreadId())) {
+            topicEmptinessMetadata.setTopicEmptyCheckingOwnerThreadId(currentThreadId);
+        }
+
+        if (currentThreadId != topicEmptinessMetadata.getTopicEmptyCheckingOwnerThreadId() ||
+                topicEmptinessMetadata.isWithinCheckInterval(System.currentTimeMillis())) {
+            return topicEmptinessMetadata.isTopicEmpty();
+        }
+
+        final List<PartitionInfo> partitions = consumer.partitionsFor(topicName);
+        final List<TopicPartition> topicPartitions = partitions.stream()
+                .map(partitionInfo -> new TopicPartition(topicName, partitionInfo.partition()))
+                .collect(Collectors.toList());
+
+        final Map<TopicPartition, OffsetAndMetadata> committedOffsets = consumer.committed(new HashSet<>(topicPartitions));
+        final Map<TopicPartition, Long> endOffsets = consumer.endOffsets(topicPartitions);
+
+        for (TopicPartition topicPartition : topicPartitions) {
+            final OffsetAndMetadata offsetAndMetadata = committedOffsets.get(topicPartition);
+            final Long endOffset = endOffsets.get(topicPartition);
+            topicEmptinessMetadata.updateTopicEmptinessStatus(topicPartition, true);
+
+            // If there is data in the partition
+            if (endOffset != 0L) {
+                // If there is no committed offset for the partition or the committed offset is behind the end offset
+                if (Objects.isNull(offsetAndMetadata) || offsetAndMetadata.offset() < endOffset) {
+                    topicEmptinessMetadata.updateTopicEmptinessStatus(topicPartition, false);
+                }
+            }
+        }
+
+        topicEmptinessMetadata.setLastIsEmptyCheckTime(System.currentTimeMillis());
+        return topicEmptinessMetadata.isTopicEmpty();
     }
 }

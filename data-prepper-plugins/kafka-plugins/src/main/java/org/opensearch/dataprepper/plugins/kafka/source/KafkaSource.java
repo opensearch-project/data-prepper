@@ -37,6 +37,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
+import org.opensearch.dataprepper.plugins.kafka.consumer.TopicEmptinessMetadata;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
@@ -116,6 +117,7 @@ public class KafkaSource implements Source<Record<Event>> {
                 int numWorkers = topic.getWorkers();
                 executorService = Executors.newFixedThreadPool(numWorkers);
                 allTopicExecutorServices.add(executorService);
+                final TopicEmptinessMetadata topicEmptinessMetadata = new TopicEmptinessMetadata();
 
                 IntStream.range(0, numWorkers).forEach(index -> {
                     while (true) {
@@ -138,7 +140,8 @@ public class KafkaSource implements Source<Record<Event>> {
                         }
 
                     }
-                    consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, null, topicMetrics);
+                    consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType,
+                            acknowledgementSetManager, null, topicMetrics, topicEmptinessMetadata);
                     allTopicConsumers.add(consumer);
 
                     executorService.submit(consumer);

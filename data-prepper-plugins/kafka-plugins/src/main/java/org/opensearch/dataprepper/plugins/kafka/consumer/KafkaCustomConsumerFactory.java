@@ -87,6 +87,7 @@ public class KafkaCustomConsumerFactory {
 
         try {
             final int numWorkers = topic.getWorkers();
+            final TopicEmptinessMetadata topicEmptinessMetadata = new TopicEmptinessMetadata();
             IntStream.range(0, numWorkers).forEach(index -> {
                 KafkaDataConfig dataConfig = new KafkaDataConfigAdapter(keyFactory, topic);
                 Deserializer<Object> keyDeserializer = (Deserializer<Object>) serializationFactory.getDeserializer(PlaintextKafkaDataConfig.plaintextDataConfig(dataConfig));
@@ -100,7 +101,7 @@ public class KafkaCustomConsumerFactory {
                 final KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProperties, keyDeserializer, valueDeserializer);
 
                 consumers.add(new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, kafkaConsumerConfig, topic,
-                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics));
+                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, topicEmptinessMetadata));
 
             });
         } catch (Exception e) {
