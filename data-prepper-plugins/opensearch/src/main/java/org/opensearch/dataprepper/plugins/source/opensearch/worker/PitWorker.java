@@ -156,7 +156,8 @@ public class PitWorker implements SearchWorker, Runnable {
         LOG.info("Starting processing for index: '{}'", indexName);
         Optional<OpenSearchIndexProgressState> openSearchIndexProgressStateOptional = openSearchIndexPartition.getPartitionState();
 
-        if (openSearchIndexProgressStateOptional.isEmpty()) {
+        // We can't checkpoint acks yet so need to restart from the beginning of index when acks are enabled for now
+        if (openSearchSourceConfiguration.isAcknowledgmentsEnabled() || openSearchIndexProgressStateOptional.isEmpty()) {
             openSearchIndexProgressStateOptional = Optional.of(initializeProgressState());
         }
 

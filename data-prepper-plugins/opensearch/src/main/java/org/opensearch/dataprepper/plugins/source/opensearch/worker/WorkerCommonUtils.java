@@ -28,7 +28,7 @@ public class WorkerCommonUtils {
     static final Duration BACKOFF_ON_EXCEPTION = Duration.ofSeconds(60);
 
     static final long DEFAULT_CHECKPOINT_INTERVAL_MILLS = 5 * 60_000;
-    static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(1);
+    static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofMinutes(20);
     static final Duration STARTING_BACKOFF = Duration.ofMillis(500);
     static final Duration MAX_BACKOFF = Duration.ofSeconds(60);
     static final int BACKOFF_RATE = 2;
