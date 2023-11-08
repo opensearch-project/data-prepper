@@ -646,9 +646,11 @@ public class OpenSearchSinkIT {
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         Event event = (Event)testRecords.get(0).getData();
         event.getMetadata().setAttribute("action", "create");
+        final String actionFormatExpression = "${getMetadata(\"action\")}";
+        when(expressionEvaluator.isValidFormatExpressions(actionFormatExpression)).thenReturn(true);
         when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"action\")")).thenReturn(true);
         when(expressionEvaluator.evaluate("getMetadata(\"action\")", event)).thenReturn(event.getMetadata().getAttribute("action"));
-        pluginSetting.getSettings().put(IndexConfiguration.ACTION, "${getMetadata(\"action\")}");
+        pluginSetting.getSettings().put(IndexConfiguration.ACTION, actionFormatExpression);
         final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -677,9 +679,11 @@ public class OpenSearchSinkIT {
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         Event event = (Event)testRecords.get(0).getData();
         event.getMetadata().setAttribute("action", "unknown");
+        final String actionFormatExpression = "${getMetadata(\"action\")}";
+        when(expressionEvaluator.isValidFormatExpressions(actionFormatExpression)).thenReturn(true);
         when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"action\")")).thenReturn(true);
         when(expressionEvaluator.evaluate("getMetadata(\"action\")", event)).thenReturn(event.getMetadata().getAttribute("action"));
-        pluginSetting.getSettings().put(IndexConfiguration.ACTION, "${getMetadata(\"action\")}");
+        pluginSetting.getSettings().put(IndexConfiguration.ACTION, actionFormatExpression);
         final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
