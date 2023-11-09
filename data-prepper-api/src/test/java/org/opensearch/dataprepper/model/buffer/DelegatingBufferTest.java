@@ -193,6 +193,15 @@ class DelegatingBufferTest {
                 equalTo(drainTimeout));
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void isWrittenOffHeapOnly_returns_inner_isWrittenOffHeapOnly(final boolean isWrittenOffHeapOnly) {
+        when(innerBuffer.isWrittenOffHeapOnly()).thenReturn(isWrittenOffHeapOnly);
+
+        assertThat(createObjectUnderTest().isWrittenOffHeapOnly(),
+                equalTo(isWrittenOffHeapOnly));
+    }
+
     @Test
     void shutdown_calls_inner_shutdown() {
         createObjectUnderTest().shutdown();

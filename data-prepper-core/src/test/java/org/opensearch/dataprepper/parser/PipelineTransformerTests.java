@@ -54,6 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
@@ -297,6 +298,27 @@ class PipelineTransformerTests {
         assertThat(pipeline, notNullValue());
         assertThat(pipeline.getBuffer(), instanceOf(CircuitBreakingBuffer.class));
 
+        verify(dataPrepperConfiguration).getProcessorShutdownTimeout();
+        verify(dataPrepperConfiguration).getSinkShutdownTimeout();
+        verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
+        verify(dataPrepperConfiguration).getPipelineExtensions();
+    }
+
+    @Test
+    void parseConfiguration_uses_unwrapped_buffer_when_circuit_breakers_applied_but_Buffer_is_off_heap() {
+        final PipelineTransformer objectUnderTest =
+                createObjectUnderTest(TestDataProvider.VALID_OFF_HEAP_FILE);
+
+        final Map<String, Pipeline> pipelineMap = objectUnderTest.transformConfiguration();
+
+        assertThat(pipelineMap.size(), equalTo(1));
+        assertThat(pipelineMap, hasKey("test-pipeline-1"));
+        final Pipeline pipeline = pipelineMap.get("test-pipeline-1");
+        assertThat(pipeline, notNullValue());
+        assertThat(pipeline.getBuffer(), notNullValue());
+        assertThat(pipeline.getBuffer(), CoreMatchers.not(instanceOf(CircuitBreakingBuffer.class)));
+
+        verifyNoInteractions(circuitBreakerManager);
         verify(dataPrepperConfiguration).getProcessorShutdownTimeout();
         verify(dataPrepperConfiguration).getSinkShutdownTimeout();
         verify(dataPrepperConfiguration).getPeerForwarderConfiguration();

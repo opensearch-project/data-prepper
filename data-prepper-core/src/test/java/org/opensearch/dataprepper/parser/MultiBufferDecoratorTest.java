@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins;
+package org.opensearch.dataprepper.parser;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
