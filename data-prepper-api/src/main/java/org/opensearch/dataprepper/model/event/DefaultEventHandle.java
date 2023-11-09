@@ -56,8 +56,10 @@ public class DefaultEventHandle implements EventHandle, InternalEventHandle, Ser
 
     @Override
     public void release(boolean result) {
-        for (final BiConsumer<EventHandle, Boolean> consumer: releaseConsumers) {
-            consumer.accept(this, result);
+        synchronized (releaseConsumers) {
+            for (final BiConsumer<EventHandle, Boolean> consumer: releaseConsumers) {
+                consumer.accept(this, result);
+            }
         }
         AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
         if (acknowledgementSet != null) {
@@ -67,6 +69,8 @@ public class DefaultEventHandle implements EventHandle, InternalEventHandle, Ser
 
     @Override
     public void onRelease(BiConsumer<EventHandle, Boolean> releaseConsumer) {
-        releaseConsumers.add(releaseConsumer);
+        synchronized (releaseConsumers) {
+            releaseConsumers.add(releaseConsumer);
+        }
     }
 }
