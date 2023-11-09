@@ -147,21 +147,47 @@ public class OTelProtoCodecTest {
             assertThat(map.size(), is(equalTo(3)));
             for (Map.Entry<String, ExportTraceServiceRequest> entry: map.entrySet()) {
                 String expectedTraceId = new String(Hex.decodeHex(entry.getKey()), StandardCharsets.UTF_8);
-                assertTrue(Set.of("TRACEID1", "TRACEID2", "TRACEID3").contains(expectedTraceId));
-                final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(entry.getValue());
-                for (Span span: spans) {
-                    String traceId = new String(Hex.decodeHex(span.getTraceId()), StandardCharsets.UTF_8);
-                    String spanId = new String(Hex.decodeHex(span.getSpanId()), StandardCharsets.UTF_8);
-                    if (expectedTraceId.equals("TRACEID1")) {
-                        assertTrue(Set.of("TRACEID1-SPAN1", "TRACEID1-SPAN2", "TRACEID1-SPAN3", "TRACEID1-SPAN4", "TRACEID1-SPAN5", "TRACEID1-SPAN6").contains(spanId));
-                        assertThat(expectedTraceId, equalTo(traceId));
-                    } else if (expectedTraceId.equals("TRACEID2")) {
-                        assertTrue(Set.of("TRACEID2-SPAN1", "TRACEID2-SPAN2", "TRACEID2-SPAN3", "TRACEID2-SPAN4", "TRACEID2-SPAN5").contains(spanId));
-                        assertThat(expectedTraceId, equalTo(traceId));
-                    } else {
-                        assertTrue(Set.of("TRACEID3-SPAN1", "TRACEID3-SPAN2").contains(spanId));
-                        assertThat(expectedTraceId, equalTo(traceId));
-                    }
+                ExportTraceServiceRequest request = entry.getValue();
+                if (expectedTraceId.equals("TRACEID1")) {
+                    assertThat(request.getResourceSpansList().size(), equalTo(1));
+                    ResourceSpans rs = request.getResourceSpansList().get(0);
+                    assertThat(rs.getScopeSpansList().size(), equalTo(1));
+                    assertThat(rs.getInstrumentationLibrarySpansList().size(), equalTo(0));
+                    ScopeSpans ss = rs.getScopeSpansList().get(0);
+                    assertThat(ss.getSpansList().size(), equalTo(1));
+                    io.opentelemetry.proto.trace.v1.Span span = ss.getSpansList().get(0);
+                    String spanId = span.getSpanId().toStringUtf8();
+                    assertTrue(spanId.equals("TRACEID1-SPAN1"));
+                } else if (expectedTraceId.equals("TRACEID2")) {
+                    assertThat(request.getResourceSpansList().size(), equalTo(1));
+                    ResourceSpans rs = request.getResourceSpansList().get(0);
+                    assertThat(rs.getScopeSpansList().size(), equalTo(2));
+                    assertThat(rs.getInstrumentationLibrarySpansList().size(), equalTo(2));
+
+                    ScopeSpans ss = rs.getScopeSpansList().get(0);
+                    assertThat(ss.getSpansList().size(), equalTo(1));
+                    io.opentelemetry.proto.trace.v1.Span span = ss.getSpansList().get(0);
+                    String spanId = span.getSpanId().toStringUtf8();
+                    assertTrue(spanId.equals("TRACEID2-SPAN1"));
+
+                    ss = rs.getScopeSpansList().get(1);
+                    assertThat(ss.getSpansList().size(), equalTo(1));
+                    span = ss.getSpansList().get(0);
+                    spanId = span.getSpanId().toStringUtf8();
+                    assertTrue(spanId.equals("TRACEID2-SPAN2"));
+
+                } else if (expectedTraceId.equals("TRACEID3")) {
+                    assertThat(request.getResourceSpansList().size(), equalTo(1));
+                    ResourceSpans rs = request.getResourceSpansList().get(0);
+                    assertThat(rs.getScopeSpansList().size(), equalTo(1));
+                    assertThat(rs.getInstrumentationLibrarySpansList().size(), equalTo(0));
+                    ScopeSpans ss = rs.getScopeSpansList().get(0);
+                    assertThat(ss.getSpansList().size(), equalTo(1));
+                    io.opentelemetry.proto.trace.v1.Span span = ss.getSpansList().get(0);
+                    String spanId = span.getSpanId().toStringUtf8();
+                    assertTrue(spanId.equals("TRACEID3-SPAN1"));
+                } else {
+                    assertTrue("Failed".equals("Unknown TraceId"));
                 }
             }
         }
