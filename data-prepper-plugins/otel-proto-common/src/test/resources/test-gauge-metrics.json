@@ -1,0 +1,44 @@
+{
+  "resourceMetrics": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "resource-attr",
+            "value": {
+              "stringValue": "resource-attr-val-1"
+            }
+          }
+        ]
+      },
+      "scopeMetrics": [
+        {
+          "scope": {},
+          "metrics": [
+            {
+              "name": "counter-int",
+              "unit": 1,
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-1",
+                        "value": {
+                          "stringValue": "label-value-1"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1581452773000000789",
+                    "timeUnixNano": "1581452773000000789",
+                    "asInt": "123"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -29,7 +29,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
     private static final String AGGREGATION_TEMPORALITY_KEY = "aggregationTemporality";
     private static final String BUCKET_COUNTS_KEY = "bucketCounts";
     private static final String EXPLICIT_BOUNDS_COUNT_KEY = "explicitBoundsCount";
-    private static final String BUCKETS_KEY = "buckets";
+    public static final String BUCKETS_KEY = "buckets";
     private static final String BUCKET_COUNTS_LIST_KEY = "bucketCountsList";
     private static final String EXPLICIT_BOUNDS_KEY = "explicitBounds";
 
