@@ -166,6 +166,26 @@ public class OTelProtoCodec {
                     .flatMap(rs -> parseResourceSpans(rs).stream()).collect(Collectors.toList());
         }
 
+        public Map<String, ExportTraceServiceRequest> splitExportTraceServiceRequestByTraceId(final ExportTraceServiceRequest exportTraceServiceRequest) {
+            Map<String, ExportTraceServiceRequest> result = new HashMap<>();
+            Map<String, ExportTraceServiceRequest.Builder> resultBuilderMap = new HashMap<>();
+            for (final ResourceSpans resourceSpans: exportTraceServiceRequest.getResourceSpansList()) {
+                for (Map.Entry<String, ResourceSpans> entry: splitResourceSpansByTraceId(resourceSpans).entrySet()) {
+                    String traceId = entry.getKey();
+
+                    if (resultBuilderMap.containsKey(traceId)) {
+                        resultBuilderMap.get(traceId).addResourceSpans(entry.getValue());
+                    } else {
+                        resultBuilderMap.put(traceId, ExportTraceServiceRequest.newBuilder().addResourceSpans(entry.getValue()));
+                    }
+                }
+            }
+            for (Map.Entry<String, ExportTraceServiceRequest.Builder> entry: resultBuilderMap.entrySet()) {
+                result.put(entry.getKey(), entry.getValue().build());
+            }
+            return result;
+        }
+
         public List<OpenTelemetryLog> parseExportLogsServiceRequest(final ExportLogsServiceRequest exportLogsServiceRequest) {
             return exportLogsServiceRequest.getResourceLogsList().stream()
                     .flatMap(rs -> parseResourceLogs(rs).stream()).collect(Collectors.toList());
@@ -199,6 +219,38 @@ public class OTelProtoCodec {
             return Stream.concat(mappedInstrumentationLibraryLogs, mappedScopeListLogs).collect(Collectors.toList());
         }
 
+        protected Map<String, ResourceSpans> splitResourceSpansByTraceId(final ResourceSpans resourceSpans) {
+            final Resource resource = resourceSpans.getResource();
+            Map<String, ResourceSpans> result = new HashMap<>();
+            Map<String, ResourceSpans.Builder> resultBuilderMap = new HashMap<>();
+
+            if (resourceSpans.getScopeSpansList().size() > 0) {
+                for (Map.Entry<String, List<ScopeSpans>> entry: splitScopeSpansByTraceId(resourceSpans.getScopeSpansList()).entrySet()) {
+                    ResourceSpans.Builder b = ResourceSpans.newBuilder().setResource(resource).addAllScopeSpans(entry.getValue());
+                    resultBuilderMap.put(entry.getKey(), b);
+                }
+            }
+
+            if (resourceSpans.getInstrumentationLibrarySpansList().size() > 0) {
+                for (Map.Entry<String, List<InstrumentationLibrarySpans>> entry: splitInstrumentationLibrarySpansByTraceId(resourceSpans.getInstrumentationLibrarySpansList()).entrySet()) {
+                    ResourceSpans.Builder resourceSpansBuilder;
+                    String traceId = entry.getKey();
+                    if (resultBuilderMap.containsKey(traceId)) {
+                        resourceSpansBuilder = resultBuilderMap.get(traceId);
+                    } else {
+                        resourceSpansBuilder = ResourceSpans.newBuilder().setResource(resource);
+                        resultBuilderMap.put(traceId, resourceSpansBuilder);
+                    }
+                    resourceSpansBuilder.addAllInstrumentationLibrarySpans(entry.getValue());
+                }
+            }
+            for (Map.Entry<String, ResourceSpans.Builder> entry: resultBuilderMap.entrySet()) {
+                result.put(entry.getKey(), entry.getValue().build());
+            }
+
+            return result;
+        }
+
         protected List<Span> parseResourceSpans(final ResourceSpans resourceSpans) {
             final String serviceName = getServiceName(resourceSpans.getResource()).orElse(null);
             final Map<String, Object> resourceAttributes = getResourceAttributes(resourceSpans.getResource());
@@ -223,6 +275,21 @@ public class OTelProtoCodec {
                     .collect(Collectors.toList());
         }
 
+        private Map<String, List<ScopeSpans>> splitScopeSpansByTraceId(final List<ScopeSpans> scopeSpansList) {
+            Map<String, List<ScopeSpans>> result = new HashMap<>();
+            for (ScopeSpans ss: scopeSpansList) {
+                for (Map.Entry<String, List<io.opentelemetry.proto.trace.v1.Span>> entry: splitSpansByTraceId(ss.getSpansList()).entrySet()) {
+                    ScopeSpans.Builder scopeSpansBuilder = ScopeSpans.newBuilder().setScope(ss.getScope()).addAllSpans(entry.getValue());
+                    String traceId = entry.getKey();
+                    if (!result.containsKey(traceId)) {
+                        result.put(traceId, new ArrayList<>());
+                    }
+                    result.get(traceId).add(scopeSpansBuilder.build());
+                }
+            }
+            return result;
+        }
+
         private List<Span> parseInstrumentationLibrarySpans(final List<InstrumentationLibrarySpans> instrumentationLibrarySpansList,
                                                             final String serviceName, final Map<String, Object> resourceAttributes) {
             return instrumentationLibrarySpansList.stream()
@@ -231,6 +298,38 @@ public class OTelProtoCodec {
                             serviceName, resourceAttributes))
                     .flatMap(Collection::stream)
                     .collect(Collectors.toList());
+        }
+
+        private Map<String, List<InstrumentationLibrarySpans>> splitInstrumentationLibrarySpansByTraceId(final List<InstrumentationLibrarySpans> instrumentationLibrarySpansList) {
+            Map<String, List<InstrumentationLibrarySpans>> result = new HashMap<>();
+            for (InstrumentationLibrarySpans is: instrumentationLibrarySpansList) {
+                for (Map.Entry<String, List<io.opentelemetry.proto.trace.v1.Span>> entry: splitSpansByTraceId(is.getSpansList()).entrySet()) {
+                    String traceId = entry.getKey();
+                    InstrumentationLibrarySpans.Builder ilSpansBuilder = InstrumentationLibrarySpans.newBuilder().setInstrumentationLibrary(is.getInstrumentationLibrary()).addAllSpans(entry.getValue());
+                    if (!result.containsKey(traceId)) {
+                        result.put(traceId, new ArrayList<>());
+                    }
+                    result.get(traceId).add(ilSpansBuilder.build());
+                }
+            }
+            return result;
+        }
+
+
+        private Map<String, List<io.opentelemetry.proto.trace.v1.Span>> splitSpansByTraceId(final List<io.opentelemetry.proto.trace.v1.Span> spans) {
+            Map<String, List<io.opentelemetry.proto.trace.v1.Span>> result = new HashMap<>();
+            for (io.opentelemetry.proto.trace.v1.Span span: spans) {
+                String traceId = convertByteStringToString(span.getTraceId());
+                List<io.opentelemetry.proto.trace.v1.Span> spanList;
+                if (result.containsKey(traceId)) {
+                    spanList = result.get(traceId);
+                } else {
+                    spanList = new ArrayList<>();
+                    result.put(traceId, spanList);
+                }
+                spanList.add(span);
+            }
+            return result;
         }
 
         private <T> List<Span> parseSpans(final List<io.opentelemetry.proto.trace.v1.Span> spans, final T scope,
