@@ -357,6 +357,12 @@ class KafkaBufferTest {
     }
 
     @Test
+    void isWrittenOffHeapOnly_returns_true() {
+        assertThat(createObjectUnderTest().isWrittenOffHeapOnly(),
+                equalTo(true));
+    }
+
+    @Test
     public void testShutdown_Successful() throws InterruptedException {
         kafkaBuffer = createObjectUnderTest();
         lenient().when(executorService.awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.SECONDS))).thenReturn(true);

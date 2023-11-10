@@ -142,6 +142,11 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     }
 
     @Override
+    public boolean isWrittenOffHeapOnly() {
+        return true;
+    }
+
+    @Override
     public void shutdown() {
         shutdownInProgress.set(true);
         executorService.shutdown();

@@ -79,6 +79,11 @@ public abstract class DelegatingBuffer<T extends Record<?>> implements Buffer<T>
     }
 
     @Override
+    public boolean isWrittenOffHeapOnly() {
+        return delegateBuffer.isWrittenOffHeapOnly();
+    }
+
+    @Override
     public void shutdown() {
         delegateBuffer.shutdown();
     }

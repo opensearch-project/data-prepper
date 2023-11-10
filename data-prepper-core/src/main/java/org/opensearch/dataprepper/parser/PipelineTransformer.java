@@ -28,7 +28,6 @@ import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.PipelineConnector;
 import org.opensearch.dataprepper.pipeline.router.Router;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
-import org.opensearch.dataprepper.plugins.MultiBufferDecorator;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -147,15 +146,7 @@ public class PipelineTransformer {
             final MultiBufferDecorator multiBufferDecorator = new MultiBufferDecorator(pipelineDefinedBuffer, secondaryBuffers);
 
 
-            final Buffer buffer;
-            if(source instanceof PipelineConnector) {
-                buffer = multiBufferDecorator;
-            } else {
-                buffer = circuitBreakerManager.getGlobalCircuitBreaker()
-                        .map(circuitBreaker -> new CircuitBreakingBuffer<>(multiBufferDecorator, circuitBreaker))
-                        .map(b -> (Buffer)b)
-                        .orElseGet(() -> multiBufferDecorator);
-            }
+            final Buffer buffer = applyCircuitBreakerToBuffer(source, multiBufferDecorator);
 
             final Router router = routerFactory.createRouter(pipelineConfiguration.getRoutes());
 
@@ -312,5 +303,18 @@ public class PipelineTransformer {
                 .flatMap(entry -> entry.getValue().entrySet().stream())
                 .map(innerEntry -> innerEntry.getValue())
                 .collect(Collectors.toList());
+    }
+
+    private Buffer applyCircuitBreakerToBuffer(final Source source, final Buffer buffer) {
+        if (source instanceof PipelineConnector)
+            return buffer;
+
+        if(buffer.isWrittenOffHeapOnly())
+            return buffer;
+
+        return circuitBreakerManager.getGlobalCircuitBreaker()
+                .map(circuitBreaker -> new CircuitBreakingBuffer<>(buffer, circuitBreaker))
+                .map(b -> (Buffer) b)
+                .orElseGet(() -> buffer);
     }
 }
