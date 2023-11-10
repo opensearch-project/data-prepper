@@ -46,6 +46,7 @@ public class MongoDBSnapshotWorker implements Runnable {
     private static final String EVENT_SOURCE_COLLECTION_ATTRIBUTE = "__collection";
     private static final String EVENT_SOURCE_DB_ATTRIBUTE = "__source_db";
     private static final String EVENT_SOURCE_OPERATION = "__op";
+    private static final String EVENT_SOURCE_TS_MS = "__source_ts_ms";
     private static final String EVENT_TYPE = "EXPORT";
     private static int DEFAULT_BUFFER_WRITE_TIMEOUT_MS = 5000;
     private final SourceCoordinator<MongoDBSnapshotProgressState> sourceCoordinator;
@@ -139,36 +140,43 @@ public class MongoDBSnapshotWorker implements Runnable {
         MongoCollection<Document> col = db.getCollection(collection.get(1));
         Bson query = MongoDBHelper.buildQuery(gte, lte, className);
         MongoCursor<Document> cursor = col.find(query).iterator();
-        int totalRecords = 0;
+        long totalRecords = 0L;
+        long successRecords = 0L;
+        long failedRecords = 0L;
         try {
             while (cursor.hasNext()) {
-                String record = cursor.next().toJson();
                 try {
+                    String record = cursor.next().toJson();
                     Map<String, Object> data = convertToMap(record);
                     data.putIfAbsent(EVENT_SOURCE_DB_ATTRIBUTE, collection.get(0));
                     data.putIfAbsent(EVENT_SOURCE_COLLECTION_ATTRIBUTE, collection.get(1));
                     data.putIfAbsent(EVENT_SOURCE_OPERATION, OpenSearchBulkActions.CREATE.toString());
+                    data.putIfAbsent(EVENT_SOURCE_TS_MS, 0);
                     if (buffer.isByteBuffer()) {
                         buffer.writeBytes(objectMapper.writeValueAsBytes(data), null, DEFAULT_BUFFER_WRITE_TIMEOUT_MS);
                     } else {
                         buffer.write(getEventFromData(data), DEFAULT_BUFFER_WRITE_TIMEOUT_MS);
                     }
+                    successItemsCounter.increment();
+                    successRecords += 1;
                 } catch (JsonProcessingException e) {
                     LOG.error("failed to add record to buffer with error {}", e.getMessage());
                     failureItemsCounter.increment();
-                    continue;
+                    failedRecords += 1;
+                } finally {
+                    totalRecords += 1;
                 }
-                successItemsCounter.increment();
-                totalRecords += 1;
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
             cursor.close();
+            final MongoDBSnapshotProgressState progressState = new MongoDBSnapshotProgressState();
+            progressState.setTotal(totalRecords);
+            progressState.setSuccess(successRecords);
+            progressState.setFailure(failedRecords);
+            sourceCoordinator.saveProgressStateForPartition(partition.getPartitionKey(), progressState);
         }
-        final MongoDBSnapshotProgressState progressState = new MongoDBSnapshotProgressState();
-        progressState.setTotal(totalRecords);
-        sourceCoordinator.saveProgressStateForPartition(partition.getPartitionKey(), progressState);
     }
 
     private Optional<AcknowledgementSet> createAcknowledgementSet(SourcePartition<MongoDBSnapshotProgressState> partition) {

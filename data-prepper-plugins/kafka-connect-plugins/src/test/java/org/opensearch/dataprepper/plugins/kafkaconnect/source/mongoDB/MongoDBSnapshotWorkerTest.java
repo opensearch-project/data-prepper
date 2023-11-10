@@ -122,8 +122,8 @@ public class MongoDBSnapshotWorkerTest {
         List<Record<Object>> capturedData = ingestDataCapture.getAllValues();
         String data1 = ((Event) capturedData.get(0).getData()).jsonBuilder().includeTags(null).toJsonString();
         String data2 = ((Event) capturedData.get(1).getData()).jsonBuilder().includeTags(null).toJsonString();
-        assertThat(data1, is("{\"_id\":0,\"__source_db\":\"test\",\"__collection\":\"collection\",\"__op\":\"create\"}"));
-        assertThat(data2, is("{\"_id\":1,\"__source_db\":\"test\",\"__collection\":\"collection\",\"__op\":\"create\"}"));
+        assertThat(data1, is("{\"_id\":0,\"__source_db\":\"test\",\"__collection\":\"collection\",\"__op\":\"create\",\"__source_ts_ms\":0}"));
+        assertThat(data2, is("{\"_id\":1,\"__source_db\":\"test\",\"__collection\":\"collection\",\"__op\":\"create\",\"__source_ts_ms\":0}"));
     }
 
     @Test
@@ -137,8 +137,8 @@ public class MongoDBSnapshotWorkerTest {
         List<byte[]> capturedData = ingestDataCapture.getAllValues();
         String data1 = new String(capturedData.get(0));
         String data2 = new String(capturedData.get(1));
-        assertThat(data1, is("{\"_id\":0,\"__source_db\":\"test\",\"__collection\":\"collection\",\"__op\":\"create\"}"));
-        assertThat(data2, is("{\"_id\":1,\"__source_db\":\"test\",\"__collection\":\"collection\",\"__op\":\"create\"}"));
+        assertThat(data1, is("{\"_id\":0,\"__source_db\":\"test\",\"__collection\":\"collection\",\"__op\":\"create\",\"__source_ts_ms\":0}"));
+        assertThat(data2, is("{\"_id\":1,\"__source_db\":\"test\",\"__collection\":\"collection\",\"__op\":\"create\",\"__source_ts_ms\":0}"));
     }
 
     @Test
@@ -161,8 +161,8 @@ public class MongoDBSnapshotWorkerTest {
         List<Record<Object>> capturedData = ingestDataCapture.getAllValues();
         String data1 = ((Event) capturedData.get(0).getData()).jsonBuilder().includeTags(null).toJsonString();
         String data2 = ((Event) capturedData.get(1).getData()).jsonBuilder().includeTags(null).toJsonString();
-        assertThat(data1, is("{\"_id\":0,\"__source_db\":\"test\",\"__collection\":\"collection\",\"__op\":\"create\"}"));
-        assertThat(data2, is("{\"_id\":1,\"__source_db\":\"test\",\"__collection\":\"collection\",\"__op\":\"create\"}"));
+        assertThat(data1, is("{\"_id\":0,\"__source_db\":\"test\",\"__collection\":\"collection\",\"__op\":\"create\",\"__source_ts_ms\":0}"));
+        assertThat(data2, is("{\"_id\":1,\"__source_db\":\"test\",\"__collection\":\"collection\",\"__op\":\"create\",\"__source_ts_ms\":0}"));
     }
 
     @Test
@@ -223,7 +223,9 @@ public class MongoDBSnapshotWorkerTest {
             final ArgumentCaptor<MongoDBSnapshotProgressState> progressStateCapture = ArgumentCaptor.forClass(MongoDBSnapshotProgressState.class);
             verify(sourceCoordinator, times(1)).saveProgressStateForPartition(eq(partitionKey), progressStateCapture.capture());
             List<MongoDBSnapshotProgressState> progressStates = progressStateCapture.getAllValues();
-            assertThat(progressStates.get(0).getTotal(), is(2));
+            assertThat(progressStates.get(0).getTotal(), is(2L));
+            assertThat(progressStates.get(0).getSuccess(), is(2L));
+            assertThat(progressStates.get(0).getFailed(), is(0L));
         }
     }
 }
