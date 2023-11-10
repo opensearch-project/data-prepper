@@ -23,6 +23,7 @@ import software.amazon.awssdk.services.servicediscovery.model.DiscoverInstancesR
 import software.amazon.awssdk.services.servicediscovery.model.DiscoverInstancesResponse;
 import software.amazon.awssdk.services.servicediscovery.model.HttpInstanceSummary;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,7 +49,7 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
     private final String serviceName;
     private final Map<String, String> queryParameters;
     private final AwsCloudMapDynamicEndpointGroup endpointGroup;
-    private final int timeToRefreshSeconds;
+    private final Duration timeToRefresh;
     private final Backoff backoff;
     private final EventLoop eventLoop;
     private final String domainName;
@@ -58,18 +59,18 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
             final String namespaceName,
             final String serviceName,
             final Map<String, String> queryParameters,
-            final int timeToRefreshSeconds,
+            final Duration timeToRefresh,
             final Backoff backoff,
             final PluginMetrics pluginMetrics) {
         this.awsServiceDiscovery = Objects.requireNonNull(awsServiceDiscovery);
         this.namespaceName = Objects.requireNonNull(namespaceName);
         this.serviceName = Objects.requireNonNull(serviceName);
         this.queryParameters = Objects.requireNonNull(queryParameters);
-        this.timeToRefreshSeconds = timeToRefreshSeconds;
+        this.timeToRefresh = timeToRefresh;
         this.backoff = Objects.requireNonNull(backoff);
 
-        if (timeToRefreshSeconds < 1)
-            throw new IllegalArgumentException("timeToRefreshSeconds must be positive. Actual: " + timeToRefreshSeconds);
+        if (timeToRefresh.isNegative() || timeToRefresh.isZero())
+            throw new IllegalArgumentException("timeToRefreshSeconds must be positive. Actual: " + timeToRefresh);
 
         eventLoop = CommonPools.workerGroup().next();
         LOG.info("Using AWS CloudMap for Peer Forwarding. namespace='{}', serviceName='{}'",
@@ -92,7 +93,7 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
         final Map<String, String> queryParameters = peerForwarderConfiguration.getAwsCloudMapQueryParameters();
 
         final Backoff standardBackoff = Backoff.exponential(ONE_SECOND, TWENTY_SECONDS).withJitter(TWENTY_PERCENT);
-        final int timeToRefreshSeconds = 20;
+        final Duration timeToRefresh = Duration.ofSeconds(20);
 
         final PluginMetrics awsSdkMetrics = PluginMetrics.fromNames("sdk", "aws");
 
@@ -108,7 +109,7 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
                 namespace,
                 serviceName,
                 queryParameters,
-                timeToRefreshSeconds,
+                timeToRefresh,
                 standardBackoff,
                 pluginMetrics);
     }
@@ -175,7 +176,7 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
                                 LOG.warn("Failed to update endpoints.", ex);
                             } finally {
                                 scheduledDiscovery = eventLoop.schedule(this::discoverInstances,
-                                        timeToRefreshSeconds, TimeUnit.SECONDS);
+                                        timeToRefresh.toMillis(), TimeUnit.MILLISECONDS);
                             }
                         }
 
