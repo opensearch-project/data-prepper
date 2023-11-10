@@ -83,7 +83,8 @@ class DateProcessorTests {
         lenient().when(pluginMetrics.counter(DateProcessor.DATE_PROCESSING_MATCH_SUCCESS)).thenReturn(dateProcessingMatchSuccessCounter);
         lenient().when(pluginMetrics.counter(DateProcessor.DATE_PROCESSING_MATCH_FAILURE)).thenReturn(dateProcessingMatchFailureCounter);
         when(mockDateProcessorConfig.getDateWhen()).thenReturn(null);
-        expectedDateTime = LocalDateTime.now();
+        expectedInstant = Instant.now();
+        expectedDateTime = LocalDateTime.ofInstant(expectedInstant, ZoneId.systemDefault());
     }
 
     @AfterEach
@@ -358,6 +359,35 @@ class DateProcessorTests {
         ZonedDateTime expectedZonedDatetime = expectedDateTime.minus(10, ChronoUnit.YEARS).atZone(mockDateProcessorConfig.getSourceZoneId()).truncatedTo(ChronoUnit.SECONDS);
 
         Assertions.assertTrue(actualZonedDateTime.toLocalDate().isEqual(expectedZonedDatetime.toLocalDate()));
+        verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"yyyy MM dd HH mm ss"})
+    void match_with_to_origination_metadata(String pattern) {
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(pattern));
+
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.systemDefault());
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
+        when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
+        when(mockDateProcessorConfig.getToOriginationMetadata()).thenReturn(true);
+
+        dateProcessor = createObjectUnderTest();
+
+        Map<String, Object> testData = getTestData();
+        testData.put("logDate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern)));
+
+        final Record<Event> record = buildRecordWithEvent(testData);
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
+
+        Event event = (Event)processedRecords.get(0).getData();
+        Assertions.assertTrue(event.getMetadata().getExternalOriginationTime() != null);
+        Assertions.assertTrue(event.getEventHandle().getExternalOriginationTime() != null);
+        ZonedDateTime expectedZonedDatetime = expectedDateTime.atZone(mockDateProcessorConfig.getSourceZoneId()).truncatedTo(ChronoUnit.SECONDS);
+        Assertions.assertTrue(expectedZonedDatetime.equals(event.getMetadata().getExternalOriginationTime().atZone(mockDateProcessorConfig.getSourceZoneId())));
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
     }
 

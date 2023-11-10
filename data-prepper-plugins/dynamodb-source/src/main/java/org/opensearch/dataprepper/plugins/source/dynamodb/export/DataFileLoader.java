@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -16,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.Duration;
@@ -64,15 +64,20 @@ public class DataFileLoader implements Runnable {
      */
     private final int startLine;
 
+    private final AcknowledgementSet acknowledgementSet;
+
+    private final Duration dataFileAcknowledgmentTimeout;
+
     private DataFileLoader(Builder builder) {
         this.objectReader = builder.objectReader;
         this.bucketName = builder.bucketName;
         this.key = builder.key;
         this.checkpointer = builder.checkpointer;
         this.startLine = builder.startLine;
-
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(builder.buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
         recordConverter = new ExportRecordConverter(bufferAccumulator, builder.tableInfo, builder.pluginMetrics);
+        this.acknowledgementSet = builder.acknowledgementSet;
+        this.dataFileAcknowledgmentTimeout = builder.dataFileAcknowledgmentTimeout;
     }
 
     public static Builder builder(final S3ObjectReader s3ObjectReader, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
@@ -99,6 +104,10 @@ public class DataFileLoader implements Runnable {
         private String bucketName;
 
         private String key;
+
+        private AcknowledgementSet acknowledgementSet;
+
+        private Duration dataFileAcknowledgmentTimeout;
 
         private int startLine;
 
@@ -133,6 +142,16 @@ public class DataFileLoader implements Runnable {
             return this;
         }
 
+        public Builder acknowledgmentSet(AcknowledgementSet acknowledgementSet) {
+            this.acknowledgementSet = acknowledgementSet;
+            return this;
+        }
+
+        public Builder acknowledgmentSetTimeout(Duration dataFileAcknowledgmentTimeout) {
+            this.dataFileAcknowledgmentTimeout = dataFileAcknowledgmentTimeout;
+            return this;
+        }
+
         public DataFileLoader build() {
             return new DataFileLoader(this);
         }
@@ -150,14 +169,12 @@ public class DataFileLoader implements Runnable {
         int lineCount = 0;
         int lastLineProcessed = 0;
 
-        try {
-            InputStream inputStream = objectReader.readFile(bucketName, key);
-            GZIPInputStream gzipInputStream = new GZIPInputStream(inputStream);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(gzipInputStream));
+        try (InputStream inputStream = objectReader.readFile(bucketName, key);
+             GZIPInputStream gzipInputStream = new GZIPInputStream(inputStream);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(gzipInputStream))) {
 
             String line;
             while ((line = reader.readLine()) != null) {
-
                 if (shouldStop) {
                     checkpointer.checkpoint(lastLineProcessed);
                     LOG.debug("Should Stop flag is set to True, looks like shutdown has triggered");
@@ -174,7 +191,7 @@ public class DataFileLoader implements Runnable {
 
                 if ((lineCount - startLine) % DEFAULT_BATCH_SIZE == 0) {
                     // LOG.debug("Write to buffer for line " + (lineCount - DEFAULT_BATCH_SIZE) + " to " + lineCount);
-                    recordConverter.writeToBuffer(lines);
+                    recordConverter.writeToBuffer(acknowledgementSet, lines);
                     lines.clear();
                     lastLineProcessed = lineCount;
                 }
@@ -189,20 +206,22 @@ public class DataFileLoader implements Runnable {
             }
             if (!lines.isEmpty()) {
                 // Do final checkpoint.
-                recordConverter.writeToBuffer(lines);
+                recordConverter.writeToBuffer(acknowledgementSet, lines);
                 checkpointer.checkpoint(lineCount);
             }
 
             lines.clear();
 
-            reader.close();
-            gzipInputStream.close();
-            inputStream.close();
-            LOG.info("Complete loading s3://{}/{}", bucketName, key);
-        } catch (IOException e) {
+            LOG.info("Completed loading s3://{}/{} to buffer", bucketName, key);
+
+            if (acknowledgementSet != null) {
+                checkpointer.updateDatafileForAcknowledgmentWait(dataFileAcknowledgmentTimeout);
+                acknowledgementSet.complete();
+            }
+        } catch (Exception e) {
             checkpointer.checkpoint(lineCount);
 
-            String errorMessage = String.format("Loading of s3://%s/%s completed with Exception: %S", bucketName, key, e.getMessage());
+            String errorMessage = String.format("Loading of s3://%s/%s completed with Exception: %s", bucketName, key, e.getMessage());
             throw new RuntimeException(errorMessage);
         }
     }

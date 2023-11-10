@@ -20,6 +20,7 @@ import java.time.Instant;
 class DefaultEventHandleTests {
     @Mock
     private AcknowledgementSet acknowledgementSet;
+    private int count;
 
     @Test
     void testBasic() {
@@ -56,4 +57,16 @@ class DefaultEventHandleTests {
         assertThat(eventHandle.getExternalOriginationTime(), equalTo(now.minusSeconds(60)));
         eventHandle.release(true);
     }
+
+    @Test
+    void testWithOnReleaseHandler() {
+        Instant now = Instant.now();
+        count = 0;
+        DefaultEventHandle eventHandle = new DefaultEventHandle(now);
+        eventHandle.onRelease((handle, result) -> {if (result) count++; });
+        eventHandle.release(true);
+        assertThat(count, equalTo(1));
+
+    }
+
 }

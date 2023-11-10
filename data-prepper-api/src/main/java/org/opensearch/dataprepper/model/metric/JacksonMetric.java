@@ -28,7 +28,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     protected static final String SERVICE_NAME_KEY = "serviceName";
     protected static final String KIND_KEY = "kind";
     protected static final String UNIT_KEY = "unit";
-    protected static final String ATTRIBUTES_KEY = "attributes";
+    public static final String ATTRIBUTES_KEY = "attributes";
     protected static final String SCHEMA_URL_KEY = "schemaUrl";
     protected static final String EXEMPLARS_KEY = "exemplars";
     protected static final String FLAGS_KEY = "flags";

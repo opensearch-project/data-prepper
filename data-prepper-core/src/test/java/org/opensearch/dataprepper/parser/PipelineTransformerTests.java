@@ -16,7 +16,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.TestDataProvider;
-import org.opensearch.dataprepper.breaker.CircuitBreaker;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;

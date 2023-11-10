@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -81,6 +82,9 @@ public class KafkaSinkAvroTypeIT {
     @Mock
     private PluginFactory pluginFactory;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
     private SinkContext sinkContext;
 
     private String registryUrl;
@@ -104,7 +108,7 @@ public class KafkaSinkAvroTypeIT {
 
 
     public KafkaSink createObjectUnderTest() {
-        return new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactory, evaluator, sinkContext, awsCredentialsSupplier);
+        return new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactory, pluginMetrics, evaluator, sinkContext, awsCredentialsSupplier);
     }
 
     @BeforeEach

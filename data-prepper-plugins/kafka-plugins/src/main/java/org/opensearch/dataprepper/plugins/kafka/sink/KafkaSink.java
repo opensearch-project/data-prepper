@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.kafka.sink;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -60,6 +61,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private final PluginSetting pluginSetting;
 
+    private final PluginMetrics pluginMetrics;
+
     private final ExpressionEvaluator expressionEvaluator;
 
     private final Lock reentrantLock;
@@ -69,10 +72,11 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     @DataPrepperPluginConstructor
     public KafkaSink(final PluginSetting pluginSetting, final KafkaSinkConfig kafkaSinkConfig, final PluginFactory pluginFactory,
-                     final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext,
+                     final PluginMetrics pluginMetrics, final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext,
                      AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
         this.pluginSetting = pluginSetting;
+        this.pluginMetrics = pluginMetrics;
         this.kafkaSinkConfig = kafkaSinkConfig;
         this.pluginFactory = pluginFactory;
         this.expressionEvaluator = expressionEvaluator;
@@ -156,7 +160,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     public KafkaCustomProducer createProducer() {
         // TODO: Add the DLQSink here. new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting)
-        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, pluginFactory, pluginSetting, expressionEvaluator, sinkContext);
+        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, pluginFactory, pluginSetting, expressionEvaluator, sinkContext, pluginMetrics, true);
     }
 
 

@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
@@ -59,6 +60,8 @@ public class DynamoDBService {
     private final EnhancedSourceCoordinator coordinator;
 
     private final DynamoDbClient dynamoDbClient;
+
+    private final DynamoDBSourceConfig dynamoDBSourceConfig;
     //
     private final DynamoDbStreamsClient dynamoDbStreamsClient;
 
@@ -70,13 +73,21 @@ public class DynamoDBService {
 
     private final PluginMetrics pluginMetrics;
 
+    private final AcknowledgementSetManager acknowledgementSetManager;
+
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
 
 
-    public DynamoDBService(EnhancedSourceCoordinator coordinator, ClientFactory clientFactory, DynamoDBSourceConfig sourceConfig, PluginMetrics pluginMetrics) {
+    public DynamoDBService(final EnhancedSourceCoordinator coordinator,
+                           final ClientFactory clientFactory,
+                           final DynamoDBSourceConfig sourceConfig,
+                           final PluginMetrics pluginMetrics,
+                           final AcknowledgementSetManager acknowledgementSetManager) {
         this.coordinator = coordinator;
         this.pluginMetrics = pluginMetrics;
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.dynamoDBSourceConfig = sourceConfig;
 
         // Initialize AWS clients
         dynamoDbClient = clientFactory.buildDynamoDBClient();
@@ -103,10 +114,10 @@ public class DynamoDBService {
         Runnable exportScheduler = new ExportScheduler(coordinator, dynamoDbClient, manifestFileReader, pluginMetrics);
 
         DataFileLoaderFactory loaderFactory = new DataFileLoaderFactory(coordinator, s3Client, pluginMetrics, buffer);
-        Runnable fileLoaderScheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics);
+        Runnable fileLoaderScheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
 
         ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, shardManager, buffer);
-        Runnable streamScheduler = new StreamScheduler(coordinator, consumerFactory, shardManager, pluginMetrics);
+        Runnable streamScheduler = new StreamScheduler(coordinator, consumerFactory, shardManager, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
 
         // May consider start or shutdown the scheduler on demand
         // Currently, event after the exports are done, the related scheduler will not be shutdown
@@ -160,7 +171,12 @@ public class DynamoDBService {
             Instant startTime = Instant.now();
 
             if (tableInfo.getMetadata().isExportRequired()) {
-                createExportPartition(tableInfo.getTableArn(), startTime, tableInfo.getMetadata().getExportBucket(), tableInfo.getMetadata().getExportPrefix());
+                createExportPartition(
+                        tableInfo.getTableArn(),
+                        startTime,
+                        tableInfo.getMetadata().getExportBucket(),
+                        tableInfo.getMetadata().getExportPrefix(),
+                        tableInfo.getMetadata().getExportKmsKeyId());
             }
 
             if (tableInfo.getMetadata().isStreamRequired()) {
@@ -198,11 +214,12 @@ public class DynamoDBService {
      * @param bucket     Export bucket
      * @param prefix     Export Prefix
      */
-    private void createExportPartition(String tableArn, Instant exportTime, String bucket, String prefix) {
+    private void createExportPartition(String tableArn, Instant exportTime, String bucket, String prefix, String kmsKeyId) {
         ExportProgressState exportProgressState = new ExportProgressState();
         exportProgressState.setBucket(bucket);
         exportProgressState.setPrefix(prefix);
         exportProgressState.setExportTime(exportTime.toString()); // information purpose
+        exportProgressState.setKmsKeyId(kmsKeyId);
         ExportPartition exportPartition = new ExportPartition(tableArn, exportTime, Optional.of(exportProgressState));
         coordinator.createPartition(exportPartition);
     }
@@ -299,6 +316,7 @@ public class DynamoDBService {
                 .streamStartPosition(streamStartPosition)
                 .exportBucket(tableConfig.getExportConfig() == null ? null : tableConfig.getExportConfig().getS3Bucket())
                 .exportPrefix(tableConfig.getExportConfig() == null ? null : tableConfig.getExportConfig().getS3Prefix())
+                .exportKmsKeyId(tableConfig.getExportConfig() == null ? null : tableConfig.getExportConfig().getS3SseKmsKeyId())
                 .build();
         return new TableInfo(tableConfig.getTableArn(), metadata);
     }

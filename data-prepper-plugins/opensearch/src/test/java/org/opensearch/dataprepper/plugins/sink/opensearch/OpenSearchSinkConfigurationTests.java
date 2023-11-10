@@ -132,16 +132,17 @@ public class OpenSearchSinkConfigurationTests {
     @Test
     public void testReadESConfigWithBulkActionCreateExpression() {
 
+        final String actionFormatExpression = "${getMetadata(\"action\")}";
         final Map<String, Object> metadata = new HashMap<>();
         metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.TRACE_ANALYTICS_RAW.getValue());
-        metadata.put(IndexConfiguration.ACTION, "${getMetadata(\"action\")}");
+        metadata.put(IndexConfiguration.ACTION, actionFormatExpression);
         metadata.put(ConnectionConfiguration.HOSTS, TEST_HOSTS);
 
         final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, metadata);
         pluginSetting.setPipelineName(PIPELINE_NAME);
 
         expressionEvaluator = mock(ExpressionEvaluator.class);
-        when(expressionEvaluator.isValidExpressionStatement(anyString())).thenReturn(true);
+        when(expressionEvaluator.isValidFormatExpressions(actionFormatExpression)).thenReturn(true);
         final OpenSearchSinkConfiguration openSearchSinkConfiguration =
                 OpenSearchSinkConfiguration.readESConfig(pluginSetting, expressionEvaluator);
 

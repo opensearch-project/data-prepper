@@ -56,7 +56,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
@@ -209,7 +209,7 @@ public class S3ScanObjectWorkerIT {
         lenient().when(s3ScanSchedulingOptions.getInterval()).thenReturn(Duration.ofHours(1));
         lenient().when(s3ScanSchedulingOptions.getCount()).thenReturn(1);
 
-        ExecutorService executor = Executors.newFixedThreadPool(2);
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
 
         return new ScanObjectWorker(s3Client,List.of(scanOptions),createObjectUnderTest(s3ObjectRequest)
@@ -257,7 +257,7 @@ public class S3ScanObjectWorkerIT {
                 startTimeAndRangeScanOptions,
                 Boolean.TRUE);
 
-        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
         executorService.submit(objectUnderTest::run);
 
         await().atMost(Duration.ofSeconds(30)).until(() -> waitForAllRecordsToBeProcessed(numberOfRecords));
@@ -299,7 +299,7 @@ public class S3ScanObjectWorkerIT {
 
         final int expectedWrites = numberOfRecords / numberOfRecordsToAccumulate + (numberOfRecords % numberOfRecordsToAccumulate != 0 ? 1 : 0);
 
-        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
         executorService.submit(scanObjectWorker::run);
 
         await().atMost(Duration.ofSeconds(30)).until(() -> waitForAllRecordsToBeProcessed(numberOfRecords));
@@ -346,7 +346,7 @@ public class S3ScanObjectWorkerIT {
 
         final int expectedWrites = numberOfRecords / numberOfRecordsToAccumulate;
 
-        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
         executorService.submit(scanObjectWorker::run);
 
 

@@ -127,7 +127,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
 
 
     @Override
-    public <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition) {
+    public <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition, final Duration ownershipTimeoutRenewal) {
         String partitionType = partition.getPartitionType() == null ? DEFAULT_GLOBAL_STATE_PARTITION_TYPE : partition.getPartitionType();
         LOG.debug("Try to save progress for partition {} (Type {})", partition.getPartitionKey(), partitionType);
 
@@ -140,7 +140,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         final SourcePartitionStoreItem updateItem = partition.getSourcePartitionStoreItem();
         // Also extend the timeout of the lease (ownership)
         if (updateItem.getPartitionOwnershipTimeout() != null) {
-            updateItem.setPartitionOwnershipTimeout(Instant.now().plus(DEFAULT_LEASE_TIMEOUT));
+            updateItem.setPartitionOwnershipTimeout(Instant.now().plus(ownershipTimeoutRenewal == null ? DEFAULT_LEASE_TIMEOUT : ownershipTimeoutRenewal));
         }
         updateItem.setPartitionProgressState(partition.convertPartitionProgressStatetoString(partition.getProgressState()));
 

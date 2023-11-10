@@ -23,6 +23,11 @@ public class ExpressionEvaluatorTest {
         public Boolean isValidExpressionStatement(final String statement) {
             return true;
         }
+
+        @Override
+        public Boolean isValidFormatExpressions(String format) {
+            return true;
+        }
     }
 
     @Test

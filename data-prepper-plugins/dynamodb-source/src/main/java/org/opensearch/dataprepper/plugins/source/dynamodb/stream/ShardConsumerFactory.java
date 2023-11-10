@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -19,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -51,7 +53,9 @@ public class ShardConsumerFactory {
 
     }
 
-    public Runnable createConsumer(StreamPartition streamPartition) {
+    public Runnable createConsumer(final StreamPartition streamPartition,
+                                   final AcknowledgementSet acknowledgementSet,
+                                   final Duration shardAcknowledgmentTimeout) {
 
         LOG.info("Try to start a Shard Consumer for " + streamPartition.getShardId());
 
@@ -61,7 +65,8 @@ public class ShardConsumerFactory {
         Instant startTime = null;
         boolean waitForExport = false;
         if (progressState.isPresent()) {
-            sequenceNumber = progressState.get().getSequenceNumber();
+            // We can't checkpoint with acks yet
+            sequenceNumber = acknowledgementSet == null ? null : progressState.get().getSequenceNumber();
             waitForExport = progressState.get().shouldWaitForExport();
             if (progressState.get().getStartTime() != 0) {
                 startTime = Instant.ofEpochMilli(progressState.get().getStartTime());
@@ -85,6 +90,8 @@ public class ShardConsumerFactory {
                 .shardIterator(shardIter)
                 .startTime(startTime)
                 .waitForExport(waitForExport)
+                .acknowledgmentSet(acknowledgementSet)
+                .acknowledgmentSetTimeout(shardAcknowledgmentTimeout)
                 .build();
         return shardConsumer;
     }

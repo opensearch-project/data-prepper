@@ -5,31 +5,31 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import org.opensearch.client.opensearch._types.ErrorResponse;
-import org.opensearch.dataprepper.metrics.MetricNames;
-import org.opensearch.dataprepper.metrics.MetricsTestUtil;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import io.micrometer.core.instrument.Measurement;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.opensearch.client.opensearch._types.OpenSearchException;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.opensearch._types.ErrorCause;
+import org.opensearch.client.opensearch._types.ErrorResponse;
+import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingUncompressedBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
 import org.opensearch.rest.RestStatus;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -37,19 +37,21 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.eq;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.BulkRetryStrategy.VERSION_CONFLICT_EXCEPTION_TYPE;
 
 @ExtendWith(MockitoExtension.class)
 public class BulkRetryStrategyTests {
@@ -65,6 +67,7 @@ public class BulkRetryStrategyTests {
     private EventHandle eventHandle2;
     private EventHandle eventHandle3;
     private EventHandle eventHandle4;
+    private EventHandle eventHandle5;
 
     @BeforeEach
     public void setUp() {
@@ -74,6 +77,7 @@ public class BulkRetryStrategyTests {
         eventHandle2 = mock(EventHandle.class);
         eventHandle3 = mock(EventHandle.class);
         eventHandle4 = mock(EventHandle.class);
+        eventHandle5 = mock(EventHandle.class);
 
         lenient().doAnswer(a -> {
             List<FailedBulkOperation> l = a.getArgument(0);
@@ -106,13 +110,42 @@ public class BulkRetryStrategyTests {
         }
     }
 
+    public BulkRetryStrategy createObjectUnderTest(
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction,
+        final BiConsumer<List<FailedBulkOperation>, Throwable> logFailure,
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier
+) {
+        return new BulkRetryStrategy(
+                requestFunction,
+                logFailure,
+                pluginMetrics,
+                Integer.MAX_VALUE,
+                bulkRequestSupplier,
+                pluginSetting);
+    }
+
+    public BulkRetryStrategy createObjectUnderTest(
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction,
+        final BiConsumer<List<FailedBulkOperation>, Throwable> logFailure,
+        final int maxRetries,
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier
+) {
+        return new BulkRetryStrategy(
+                requestFunction,
+                logFailure,
+                pluginMetrics,
+                maxRetries,
+                bulkRequestSupplier,
+                pluginSetting);
+    }
+
     @Test
     public void testCanRetry() {
         AccumulatingBulkRequest accumulatingBulkRequest = mock(AccumulatingBulkRequest.class);
-        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
                 bulkRequest -> mock(BulkResponse.class),
-                (docWriteRequest, throwable) -> {}, pluginMetrics, Integer.MAX_VALUE,
-                () -> mock(AccumulatingBulkRequest.class), pluginSetting);
+                (docWriteRequest, throwable) -> {},
+                () -> mock(AccumulatingBulkRequest.class));
         final String testIndex = "foo";
         final BulkResponseItem bulkItemResponse1 = successItemResponse(testIndex);
         final BulkResponseItem bulkItemResponse2 = badRequestItemResponse(testIndex);
@@ -139,9 +172,9 @@ public class BulkRetryStrategyTests {
         numEventsSucceeded = 0;
         numEventsFailed = 0;
 
-        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logFailureConsumer, pluginMetrics, Integer.MAX_VALUE,
-                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()), pluginSetting);
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                client::bulk, logFailureConsumer,
+                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()));
 
         final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
@@ -178,9 +211,9 @@ public class BulkRetryStrategyTests {
 
         numEventsSucceeded = 0;
         numEventsFailed = 0;
-        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logFailureConsumer, pluginMetrics, Integer.MAX_VALUE,
-                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()), pluginSetting);
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                client::bulk, logFailureConsumer,
+                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()));
         final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
@@ -190,7 +223,6 @@ public class BulkRetryStrategyTests {
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation2).build(), eventHandle2));
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation3).build(), eventHandle3));
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation4).build(), eventHandle4));
-
         bulkRetryStrategy.execute(accumulatingBulkRequest);
 
         assertEquals(3, client.attempt);
@@ -198,8 +230,8 @@ public class BulkRetryStrategyTests {
         assertFalse(client.finalResponse.errors());
         assertEquals("3", client.finalRequest.operations().get(0).index().id());
         assertEquals("4", client.finalRequest.operations().get(1).index().id());
-        assertEquals(numEventsSucceeded, 3);
-        assertEquals(numEventsFailed, 1);
+        assertEquals(3, numEventsSucceeded);
+        assertEquals(1, numEventsFailed);
 
         final ArgumentCaptor<List<FailedBulkOperation>> failedBulkOperationsCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<Throwable> throwableArgCaptor = ArgumentCaptor.forClass(Throwable.class);
@@ -208,12 +240,11 @@ public class BulkRetryStrategyTests {
 
         final List<FailedBulkOperation> failedBulkOperations = failedBulkOperationsCaptor.getValue();
         MatcherAssert.assertThat(failedBulkOperations.size(), equalTo(1));
-        failedBulkOperations.forEach(failedBulkOperation -> {
-            final BulkOperationWrapper bulkOperationWithHandle = failedBulkOperation.getBulkOperation();
-            final BulkOperation bulkOperation = bulkOperationWithHandle.getBulkOperation();
-            MatcherAssert.assertThat(bulkOperation.index().index(), equalTo(testIndex));
-            MatcherAssert.assertThat(bulkOperation.index().id(), equalTo(String.valueOf("2")));
-        });
+
+        final BulkOperationWrapper bulkOperationWithHandle = failedBulkOperations.get(0).getBulkOperation();
+        final BulkOperation bulkOperation = bulkOperationWithHandle.getBulkOperation();
+        MatcherAssert.assertThat(bulkOperation.index().index(), equalTo(testIndex));
+        MatcherAssert.assertThat(bulkOperation.index().id(), equalTo("2"));
 
         // verify metrics
         final List<Measurement> documentsSuccessFirstAttemptMeasurements = MetricsTestUtil.getMeasurementList(
@@ -241,9 +272,9 @@ public class BulkRetryStrategyTests {
 
         numEventsSucceeded = 0;
         numEventsFailed = 0;
-        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logFailureConsumer, pluginMetrics, Integer.MAX_VALUE,
-                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()), pluginSetting);
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                client::bulk, logFailureConsumer,
+                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()));
         final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
@@ -306,9 +337,9 @@ public class BulkRetryStrategyTests {
         maxRetriesLimitReached = false;
         client.maxRetriesTestValue = MAX_RETRIES;
         logFailureConsumer = this::logFailureMaxRetries;
-        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logFailureConsumer, pluginMetrics, MAX_RETRIES,
-                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()), pluginSetting);
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                client::bulk, logFailureConsumer, MAX_RETRIES,
+                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()));
         final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
@@ -336,9 +367,9 @@ public class BulkRetryStrategyTests {
         client.maxRetriesTestValue = MAX_RETRIES;
         client.maxRetriesWithException = true;
         logFailureConsumer = this::logFailureMaxRetries;
-        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logFailureConsumer, pluginMetrics, MAX_RETRIES,
-                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()), pluginSetting);
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                client::bulk, logFailureConsumer, MAX_RETRIES,
+                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()));
         final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
@@ -366,22 +397,30 @@ public class BulkRetryStrategyTests {
         client.maxRetriesTestValue = MAX_RETRIES;
         client.maxRetriesWithSuccesses = true;
         logFailureConsumer = this::logFailureMaxRetries;
-        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logFailureConsumer, pluginMetrics, MAX_RETRIES,
-                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()), pluginSetting);
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                client::bulk, logFailureConsumer, MAX_RETRIES,
+                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()));
         final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation4 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("4").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation5 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("5").document(arbitraryDocument()).build();
         final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation1).build(), eventHandle1));
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation2).build(), eventHandle2));
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation3).build(), eventHandle3));
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation4).build(), eventHandle4));
+        accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation5).build(), eventHandle5));
         bulkRetryStrategy.execute(accumulatingBulkRequest);
         MatcherAssert.assertThat(maxRetriesLimitReached, equalTo(true));
         assertEquals(numEventsSucceeded, 2);
         assertEquals(numEventsFailed, 2);
+
+        final List<Measurement> documentVersionConflictMeasurement = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_VERSION_CONFLICT_ERRORS).toString());
+        assertEquals(1, documentVersionConflictMeasurement.size());
+        assertEquals(1.0, documentVersionConflictMeasurement.get(0).getValue(), 0);
     }
 
     @Test
@@ -393,9 +432,9 @@ public class BulkRetryStrategyTests {
 
         numEventsSucceeded = 0;
         numEventsFailed = 0;
-        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logFailureConsumer, pluginMetrics, Integer.MAX_VALUE,
-                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()), pluginSetting);
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                client::bulk, logFailureConsumer,
+                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()));
         final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
         final IndexOperation<SerializedJson> indexOperation3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
@@ -458,8 +497,21 @@ public class BulkRetryStrategyTests {
         return customBulkFailureResponse(index, RestStatus.INTERNAL_SERVER_ERROR);
     }
 
+    private static BulkResponseItem versionConflictErrorItemResponse() {
+        return customBulkFailureResponse(RestStatus.CONFLICT, VERSION_CONFLICT_EXCEPTION_TYPE);
+    }
+
     private static BulkResponseItem customBulkFailureResponse(final String index, final RestStatus restStatus) {
         final ErrorCause errorCause = mock(ErrorCause.class);
+        final BulkResponseItem badResponse = mock(BulkResponseItem.class);
+        lenient().when(badResponse.status()).thenReturn(restStatus.getStatus());
+        lenient().when(badResponse.error()).thenReturn(errorCause);
+        return badResponse;
+    }
+
+    private static BulkResponseItem customBulkFailureResponse(final RestStatus restStatus, final String errorType) {
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        lenient().when(errorCause.type()).thenReturn(errorType);
         final BulkResponseItem badResponse = mock(BulkResponseItem.class);
         lenient().when(badResponse.status()).thenReturn(restStatus.getStatus());
         lenient().when(badResponse.error()).thenReturn(errorCause);
@@ -548,7 +600,8 @@ public class BulkRetryStrategyTests {
                     internalServerErrorItemResponse(index),
                     successItemResponse(index),
                     successItemResponse(index),
-                    tooManyRequestItemResponse(index));
+                    tooManyRequestItemResponse(index),
+                    versionConflictErrorItemResponse());
             return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
         }
 

@@ -53,6 +53,9 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     @JsonProperty("drain_timeout")
     private Duration drainTimeout = DEFAULT_DRAIN_TIMEOUT;
 
+    @JsonProperty("custom_metric_prefix")
+    private String customMetricPrefix;
+
 
     public List<String> getBootstrapServers() {
         if (Objects.nonNull(bootStrapServers)) {
@@ -125,10 +128,14 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
 
     @Override
     public boolean getAcknowledgementsEnabled() {
-        return false;
+        return true;
     }
 
     public Duration getDrainTimeout() {
         return drainTimeout;
+    }
+
+    public Optional<String> getCustomMetricPrefix() {
+        return Optional.ofNullable(customMetricPrefix);
     }
 }

@@ -32,6 +32,8 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelMetricDecoder;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
@@ -62,6 +64,7 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
     private final CertificateProviderFactory certificateProviderFactory;
     private final GrpcRequestExceptionHandler requestExceptionHandler;
     private Server server;
+    private final ByteDecoder byteDecoder;
 
     @DataPrepperPluginConstructor
     public OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig, final PluginMetrics pluginMetrics,
@@ -79,6 +82,12 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
         this.requestExceptionHandler = new GrpcRequestExceptionHandler(pluginMetrics);
+        this.byteDecoder = new OTelMetricDecoder();
+    }
+
+    @Override
+    public ByteDecoder getDecoder() {
+        return byteDecoder;
     }
 
     @Override

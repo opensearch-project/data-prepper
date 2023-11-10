@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -13,8 +14,11 @@ import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 
+import java.time.Instant;
 import java.util.Map;
 
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_DYNAMODB_ITEM_VERSION;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TABLE_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
@@ -70,16 +74,31 @@ public abstract class RecordConverter {
      * @param eventName               Event name
      * @throws Exception Exception if failed to write to buffer.
      */
-    public void addToBuffer(Map<String, Object> data, Map<String, Object> keys, long eventCreationTimeMillis, String eventName) throws Exception {
+    public void addToBuffer(final AcknowledgementSet acknowledgementSet,
+                            final Map<String, Object> data,
+                            final Map<String, Object> keys,
+                            final long eventCreationTimeMillis,
+                            final long eventVersionNumber,
+                            final String eventName) throws Exception {
         Event event = JacksonEvent.builder()
                 .withEventType(getEventType())
                 .withData(data)
                 .build();
+
+        // Only set external origination time for stream events, not export
+        if (eventName != null) {
+            final Instant externalOriginationTime = Instant.ofEpochMilli(eventCreationTimeMillis);
+            event.getEventHandle().setExternalOriginationTime(externalOriginationTime);
+            event.getMetadata().setExternalOriginationTime(externalOriginationTime);
+        }
         EventMetadata eventMetadata = event.getMetadata();
 
         eventMetadata.setAttribute(EVENT_TABLE_NAME_METADATA_ATTRIBUTE, tableInfo.getTableName());
         eventMetadata.setAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreationTimeMillis);
+        eventMetadata.setAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE, eventName);
         eventMetadata.setAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, mapStreamEventNameToBulkAction(eventName));
+        eventMetadata.setAttribute(EVENT_DYNAMODB_ITEM_VERSION, eventVersionNumber);
+
         String partitionKey = getAttributeValue(keys, tableInfo.getMetadata().getPartitionKeyAttributeName());
         eventMetadata.setAttribute(PARTITION_KEY_METADATA_ATTRIBUTE, partitionKey);
 
@@ -90,13 +109,17 @@ public abstract class RecordConverter {
         } else {
             eventMetadata.setAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE, partitionKey);
         }
+        if (acknowledgementSet != null) {
+            acknowledgementSet.add(event);
+        }
         bufferAccumulator.add(new Record<>(event));
     }
 
-    public void addToBuffer(Map<String, Object> data) throws Exception {
+    public void addToBuffer(final AcknowledgementSet acknowledgementSet, Map<String, Object> data) throws Exception {
         // Export data doesn't have an event timestamp
-        // Default to current timestamp when the event is added to buffer
-        addToBuffer(data, data, System.currentTimeMillis(), null);
+        // We consider this to be time of 0, meaning stream records will always be considered as newer
+        // than export records
+        addToBuffer(acknowledgementSet, data, data, System.currentTimeMillis(), 0L, null);
     }
 
     private String mapStreamEventNameToBulkAction(final String streamEventName) {
@@ -106,9 +129,8 @@ public abstract class RecordConverter {
 
         switch (streamEventName) {
             case "INSERT":
-                return OpenSearchBulkActions.CREATE.toString();
             case "MODIFY":
-                return OpenSearchBulkActions.UPSERT.toString();
+                return OpenSearchBulkActions.INDEX.toString();
             case "REMOVE":
                 return OpenSearchBulkActions.DELETE.toString();
             default:

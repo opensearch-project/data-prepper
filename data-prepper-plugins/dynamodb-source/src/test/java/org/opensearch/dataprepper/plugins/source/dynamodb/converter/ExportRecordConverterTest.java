@@ -29,8 +29,10 @@ import java.util.UUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
@@ -38,6 +40,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.EXPORT_RECORDS_PROCESSED_COUNT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.EXPORT_RECORDS_PROCESSING_ERROR_COUNT;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_DYNAMODB_ITEM_VERSION;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
@@ -107,7 +111,7 @@ class ExportRecordConverterTest {
         List<String> data = generateData(numberOfRecords);
         ExportRecordConverter recordConverter = new ExportRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
 
-        recordConverter.writeToBuffer(data);
+        recordConverter.writeToBuffer(null, data);
         verify(bufferAccumulator, times(numberOfRecords)).add(any(Record.class));
         verify(exportRecordSuccess).increment(anyDouble());
 
@@ -127,7 +131,7 @@ class ExportRecordConverterTest {
         doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
 //        doNothing().when(bufferAccumulator).flush();
 
-        recordConverter.writeToBuffer(List.of(line));
+        recordConverter.writeToBuffer(eq(null), List.of(line));
         verify(bufferAccumulator).add(any(Record.class));
         verify(bufferAccumulator).flush();
         assertThat(recordArgumentCaptor.getValue().getData(), notNullValue());
@@ -140,5 +144,10 @@ class ExportRecordConverterTest {
         assertThat(event.getMetadata().getAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE), equalTo(pk + "|" + sk));
         assertThat(event.getMetadata().getAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE), equalTo(OpenSearchBulkActions.INDEX.toString()));
         assertThat(event.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), notNullValue());
+        assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), nullValue());
+        assertThat(event.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), notNullValue());
+        assertThat(event.getMetadata().getAttribute(EVENT_DYNAMODB_ITEM_VERSION), equalTo(0L));
+        assertThat(event.getEventHandle(), notNullValue());
+        assertThat(event.getEventHandle().getExternalOriginationTime(), nullValue());
     }
 }

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.dataformat.ion.IonObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
@@ -58,13 +59,13 @@ public class ExportRecordConverter extends RecordConverter {
         return "EXPORT";
     }
 
-    public void writeToBuffer(List<String> lines) {
+    public void writeToBuffer(final AcknowledgementSet acknowledgementSet, List<String> lines) {
 
         int eventCount = 0;
         for (String line : lines) {
             Map data = (Map<String, Object>) convertToMap(line).get(ITEM_KEY);
             try {
-                addToBuffer(data);
+                addToBuffer(acknowledgementSet, data);
                 eventCount++;
             } catch (Exception e) {
                 // will this cause too many logs?

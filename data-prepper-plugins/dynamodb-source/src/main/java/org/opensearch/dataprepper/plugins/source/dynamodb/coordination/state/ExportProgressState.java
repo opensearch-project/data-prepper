@@ -21,10 +21,13 @@ public class ExportProgressState {
     @JsonProperty("prefix")
     private String prefix;
 
+    @JsonProperty("kmsKeyId")
+    private String kmsKeyId;
+
     @JsonProperty("exportTime")
     private String exportTime;
 
-    
+
     public String getExportArn() {
         return exportArn;
     }
@@ -63,5 +66,13 @@ public class ExportProgressState {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getKmsKeyId() {
+        return kmsKeyId;
+    }
+
+    public void setKmsKeyId(String kmsKeyId) {
+        this.kmsKeyId = kmsKeyId;
     }
 }

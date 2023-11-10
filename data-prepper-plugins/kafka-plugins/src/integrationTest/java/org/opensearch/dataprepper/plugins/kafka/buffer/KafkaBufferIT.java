@@ -93,13 +93,13 @@ public class KafkaBufferIT {
         when(kafkaBufferConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
     }
 
-    private KafkaBuffer<Record<Event>> createObjectUnderTest() {
-        return new KafkaBuffer<>(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, null, null);
+    private KafkaBuffer createObjectUnderTest() {
+        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, null, null, null);
     }
 
     @Test
     void write_and_read() throws TimeoutException {
-        KafkaBuffer<Record<Event>> objectUnderTest = createObjectUnderTest();
+        KafkaBuffer objectUnderTest = createObjectUnderTest();
 
         Record<Event> record = createRecord();
         objectUnderTest.write(record, 1_000);
@@ -123,7 +123,7 @@ public class KafkaBufferIT {
     void write_and_read_encrypted() throws TimeoutException, NoSuchAlgorithmException {
         when(topicConfig.getEncryptionKey()).thenReturn(createAesKey());
 
-        KafkaBuffer<Record<Event>> objectUnderTest = createObjectUnderTest();
+        KafkaBuffer objectUnderTest = createObjectUnderTest();
 
         Record<Event> record = createRecord();
         objectUnderTest.write(record, 1_000);

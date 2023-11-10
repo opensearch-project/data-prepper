@@ -70,7 +70,11 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
 
     private void processRequest(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
         try {
-            buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
+            if (buffer.isByteBuffer()) {
+                buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
+            } else {
+                buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
+            }
         } catch (Exception e) {
             if (ServiceRequestContext.current().isTimedOut()) {
                 LOG.warn("Exception writing to buffer but request already timed out.", e);
