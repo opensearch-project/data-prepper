@@ -357,7 +357,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       String indexName = configuredIndexAlias;
       try {
           indexName = indexManager.getIndexName(event.formatString(indexName, expressionEvaluator));
-      } catch (IOException | EventKeyNotFoundException e) {
+      } catch (final Exception e) {
           LOG.error("There was an exception when constructing the index name. Check the dlq if configured to see details about the affected Event: {}", e.getMessage());
           dynamicIndexDroppedEvents.increment();
           logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
