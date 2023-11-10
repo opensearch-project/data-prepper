@@ -1,13 +1,19 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafka.common;
 
 import org.opensearch.dataprepper.plugins.kafka.common.key.KeyFactory;
+import org.opensearch.dataprepper.plugins.kafka.configuration.CommonTopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.util.function.Supplier;
 
 /**
- * Adapts a {@link TopicConfig} to a {@link KafkaDataConfig}.
+ * Adapts a {@link CommonTopicConfig} to a {@link KafkaDataConfig}.
  */
 public class KafkaDataConfigAdapter implements KafkaDataConfig {
     private final KeyFactory keyFactory;

@@ -33,7 +33,7 @@ class DeclaredOpenSearchVersion implements Comparable<DeclaredOpenSearchVersion>
     }
 
     static DeclaredOpenSearchVersion parse(final String versionString) {
-        if(versionString == null) {
+        if(versionString == null || versionString.isEmpty()) {
             return DEFAULT;
         }
 

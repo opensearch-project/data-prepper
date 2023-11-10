@@ -8,9 +8,9 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.EnumUtils;
+import org.opensearch.client.opensearch._types.VersionType;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
@@ -26,11 +26,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -68,6 +70,8 @@ public class IndexConfiguration {
     public static final String DISTRIBUTION_VERSION = "distribution_version";
     public static final String AWS_OPTION = "aws";
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
+    public static final String DOCUMENT_VERSION_EXPRESSION = "document_version";
+    public static final String DOCUMENT_VERSION_TYPE = "document_version_type";
 
     private IndexType indexType;
     private TemplateType templateType;
@@ -90,6 +94,8 @@ public class IndexConfiguration {
     private final boolean serverless;
     private final DistributionVersion distributionVersion;
     private final String documentRootKey;
+    private final String versionExpression;
+    private final VersionType versionType;
 
     private static final String S3_PREFIX = "s3://";
     private static final String DEFAULT_AWS_REGION = "us-east-1";
@@ -104,6 +110,8 @@ public class IndexConfiguration {
         this.s3AwsStsRoleArn = builder.s3AwsStsRoleArn;
         this.s3AwsExternalId = builder.s3AwsStsExternalId;
         this.s3Client = builder.s3Client;
+        this.versionExpression = builder.versionExpression;
+        this.versionType = builder.versionType;
 
         determineTemplateType(builder);
 
@@ -220,6 +228,15 @@ public class IndexConfiguration {
         final String documentIdField = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
         final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID, null);
 
+        final String versionExpression = pluginSetting.getStringOrDefault(DOCUMENT_VERSION_EXPRESSION, null);
+        final String versionType = pluginSetting.getStringOrDefault(DOCUMENT_VERSION_TYPE, null);
+
+        builder = builder.withVersionExpression(versionExpression);
+        if (versionExpression != null && (!expressionEvaluator.isValidFormatExpression(versionExpression))) {
+            throw new InvalidPluginConfigurationException("document_version {} is not a valid format expression.");
+        }
+
+        builder = builder.withVersionType(versionType);
 
         if (Objects.nonNull(documentIdField) && Objects.nonNull(documentId)) {
             throw new InvalidPluginConfigurationException("Both document_id_field and document_id cannot be used at the same time. It is preferred to only use document_id as document_id_field is deprecated.");
@@ -355,6 +372,10 @@ public class IndexConfiguration {
         return documentRootKey;
     }
 
+    public VersionType getVersionType() { return versionType; }
+
+    public String getVersionExpression() { return versionExpression; }
+
     /**
      * This method is used in the creation of IndexConfiguration object. It takes in the template file path
      * or index type and returns the index template read from the file or specific to index type or returns an
@@ -435,6 +456,8 @@ public class IndexConfiguration {
         private boolean serverless;
         private DistributionVersion distributionVersion;
         private String documentRootKey;
+        private VersionType versionType;
+        private String versionExpression;
 
         public Builder withIndexAlias(final String indexAlias) {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
@@ -522,7 +545,8 @@ public class IndexConfiguration {
         }
 
         public Builder withAction(final String action, final ExpressionEvaluator expressionEvaluator) {
-            checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + OpenSearchBulkActions.values());
+            checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) ||
+                    (action.contains("${") && expressionEvaluator.isValidFormatExpression(action))), "action \"" + action + "\" is invalid. action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
             this.action = action;
             return this;
         }
@@ -531,7 +555,8 @@ public class IndexConfiguration {
             for (final Map<String, Object> actionMap: actions) {
                 String action = (String)actionMap.get("type");
                 if (action != null) {
-                    checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + OpenSearchBulkActions.values());
+                    checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) ||
+                            (action.contains("${") && expressionEvaluator.isValidFormatExpression(action))), "action \"" + action + "\". action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
                 }
             }
             this.actions = actions;
@@ -584,6 +609,44 @@ public class IndexConfiguration {
                 checkArgument(!documentRootKey.isEmpty(), "documentRootKey cannot be empty string");
             }
             this.documentRootKey = documentRootKey;
+            return this;
+        }
+
+        public Builder withVersionType(final String versionType) {
+            if (versionType != null) {
+                try {
+                    this.versionType = getVersionType(versionType);
+                } catch (final IllegalArgumentException e) {
+                    throw new InvalidPluginConfigurationException(
+                            String.format("version_type %s is invalid. version_type must be one of: %s",
+                                    versionType, Arrays.stream(VersionType.values()).collect(Collectors.toList())));
+                }
+            }
+
+            return this;
+        }
+
+        private VersionType getVersionType(final String versionType) {
+            switch (versionType.toLowerCase()) {
+                case "internal":
+                    return VersionType.Internal;
+                case "external":
+                    return VersionType.External;
+                case "external_gte":
+                    return VersionType.ExternalGte;
+                default:
+                    throw new IllegalArgumentException();
+            }
+        }
+
+        public Builder withVersionExpression(final String versionExpression) {
+            if (versionExpression != null && !versionExpression.contains("${")) {
+                throw new InvalidPluginConfigurationException(
+                        String.format("document_version %s is invalid. It must be in the format of \"${/key}\" or \"${expression}\"", versionExpression));
+            }
+
+            this.versionExpression = versionExpression;
+
             return this;
         }
 

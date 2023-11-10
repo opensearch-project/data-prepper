@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
@@ -54,9 +56,8 @@ public class DynamicIndexManager extends AbstractIndexManager {
         this.restHighLevelClient = restHighLevelClient;
         this.openSearchSinkConfiguration = openSearchSinkConfiguration;
         this.clusterSettingsParser = clusterSettingsParser;
-        CacheBuilder<String, IndexManager> cacheBuilder = CacheBuilder.newBuilder()
+        Caffeine<String, IndexManager> cacheBuilder = Caffeine.newBuilder()
                         .recordStats()
-                        .concurrencyLevel(1)
                         .maximumWeight(cacheSizeInKB)
                         .expireAfterAccess(CACHE_EXPIRE_AFTER_ACCESS_TIME_MINUTES, TimeUnit.MINUTES)
                         .weigher((k, v) -> APPROXIMATE_INDEX_MANAGER_SIZE);

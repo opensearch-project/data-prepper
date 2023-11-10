@@ -51,8 +51,9 @@ class DateProcessorConfigTest {
         }
 
         @Test
-        void isValidMatchAndFromTimestampReceived_should_return_false_if_from_time_received_and_match_are_not_configured() {
-            assertThat(dateProcessorConfig.isValidMatchAndFromTimestampReceived(), equalTo(false));
+        void testToOriginationMetadata_should_return_true() throws NoSuchFieldException, IllegalAccessException {
+            reflectivelySetField(dateProcessorConfig, "toOriginationMetadata", true);
+            assertThat(dateProcessorConfig.getToOriginationMetadata(), equalTo(true));
         }
 
         @Test

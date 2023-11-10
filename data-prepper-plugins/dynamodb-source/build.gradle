@@ -26,10 +26,12 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-ion'
 
     implementation project(path: ':data-prepper-plugins:aws-plugin-api')
+    implementation project(path: ':data-prepper-plugins:buffer-common')
 
 
     testImplementation platform('org.junit:junit-bom:5.9.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation testLibs.mockito.inline
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 }
 

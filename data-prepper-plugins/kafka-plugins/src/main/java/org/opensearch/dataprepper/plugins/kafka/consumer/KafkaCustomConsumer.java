@@ -16,6 +16,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
@@ -24,15 +25,15 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.codec.ByteDecoder;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.LogRateLimiter;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
@@ -55,6 +56,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCause;
 
@@ -72,7 +74,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private KafkaConsumer consumer= null;
     private AtomicBoolean shutdownInProgress;
     private final String topicName;
-    private final TopicConfig topicConfig;
+    private final TopicConsumerConfig topicConfig;
     private MessageFormat schema;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final Buffer<Record<Event>> buffer;
@@ -86,22 +88,26 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private List<Map<TopicPartition, CommitOffsetRange>> acknowledgedOffsets;
     private final boolean acknowledgementsEnabled;
     private final Duration acknowledgementsTimeout;
-    private final KafkaTopicMetrics topicMetrics;
+    private final KafkaTopicConsumerMetrics topicMetrics;
+    private final PauseConsumePredicate pauseConsumePredicate;
     private long metricsUpdatedTime;
     private final AtomicInteger numberOfAcksPending;
     private long numRecordsCommitted = 0;
     private final LogRateLimiter errLogRateLimiter;
     private final ByteDecoder byteDecoder;
+    private final TopicEmptinessMetadata topicEmptinessMetadata;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
                                final Buffer<Record<Event>> buffer,
                                final KafkaConsumerConfig consumerConfig,
-                               final TopicConfig topicConfig,
+                               final TopicConsumerConfig topicConfig,
                                final String schemaType,
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final ByteDecoder byteDecoder,
-                               KafkaTopicMetrics topicMetrics) {
+                               final KafkaTopicConsumerMetrics topicMetrics,
+                               final TopicEmptinessMetadata topicEmptinessMetadata,
+                               final PauseConsumePredicate pauseConsumePredicate) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
         this.shutdownInProgress = shutdownInProgress;
@@ -109,6 +115,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.buffer = buffer;
         this.byteDecoder = byteDecoder;
         this.topicMetrics = topicMetrics;
+        this.pauseConsumePredicate = pauseConsumePredicate;
         this.topicMetrics.register(consumer);
         this.offsetsToCommit = new HashMap<>();
         this.ownedPartitionsEpoch = new HashMap<>();
@@ -125,9 +132,10 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.lastCommitTime = System.currentTimeMillis();
         this.numberOfAcksPending = new AtomicInteger(0);
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
+        this.topicEmptinessMetadata = topicEmptinessMetadata;
     }
 
-    KafkaTopicMetrics getTopicMetrics() {
+    KafkaTopicConsumerMetrics getTopicMetrics() {
         return topicMetrics;
     }
 
@@ -166,7 +174,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         return acknowledgementSet;
     }
 
-    public <T> void consumeRecords() throws Exception {
+    <T> void consumeRecords() throws Exception {
         try {
             ConsumerRecords<String, T> records =
                     consumer.poll(Duration.ofMillis(topicConfig.getThreadWaitingTime().toMillis()/2));
@@ -326,7 +334,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         boolean retryingAfterException = false;
         while (!shutdownInProgress.get()) {
             try {
-                if (retryingAfterException) {
+                if (retryingAfterException || pauseConsumePredicate.pauseConsuming()) {
+                    LOG.debug("Pause consuming from Kafka topic.");
                     Thread.sleep(10000);
                 }
                 synchronized(this) {
@@ -527,5 +536,42 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     final String getTopicPartitionOffset(final Map<TopicPartition, Long> offsetMap, final TopicPartition topicPartition) {
         final Long offset = offsetMap.get(topicPartition);
         return Objects.isNull(offset) ? "-" : offset.toString();
+    }
+
+    public synchronized boolean isTopicEmpty() {
+        final long currentThreadId = Thread.currentThread().getId();
+        if (Objects.isNull(topicEmptinessMetadata.getTopicEmptyCheckingOwnerThreadId())) {
+            topicEmptinessMetadata.setTopicEmptyCheckingOwnerThreadId(currentThreadId);
+        }
+
+        if (currentThreadId != topicEmptinessMetadata.getTopicEmptyCheckingOwnerThreadId() ||
+                topicEmptinessMetadata.isWithinCheckInterval(System.currentTimeMillis())) {
+            return topicEmptinessMetadata.isTopicEmpty();
+        }
+
+        final List<PartitionInfo> partitions = consumer.partitionsFor(topicName);
+        final List<TopicPartition> topicPartitions = partitions.stream()
+                .map(partitionInfo -> new TopicPartition(topicName, partitionInfo.partition()))
+                .collect(Collectors.toList());
+
+        final Map<TopicPartition, OffsetAndMetadata> committedOffsets = consumer.committed(new HashSet<>(topicPartitions));
+        final Map<TopicPartition, Long> endOffsets = consumer.endOffsets(topicPartitions);
+
+        for (TopicPartition topicPartition : topicPartitions) {
+            final OffsetAndMetadata offsetAndMetadata = committedOffsets.get(topicPartition);
+            final Long endOffset = endOffsets.get(topicPartition);
+            topicEmptinessMetadata.updateTopicEmptinessStatus(topicPartition, true);
+
+            // If there is data in the partition
+            if (endOffset != 0L) {
+                // If there is no committed offset for the partition or the committed offset is behind the end offset
+                if (Objects.isNull(offsetAndMetadata) || offsetAndMetadata.offset() < endOffset) {
+                    topicEmptinessMetadata.updateTopicEmptinessStatus(topicPartition, false);
+                }
+            }
+        }
+
+        topicEmptinessMetadata.setLastIsEmptyCheckTime(System.currentTimeMillis());
+        return topicEmptinessMetadata.isTopicEmpty();
     }
 }

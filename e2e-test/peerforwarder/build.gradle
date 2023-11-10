@@ -8,139 +8,155 @@ import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
-import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
 
 /**
  * End-to-end test docker network
  */
 
-def AGGREGATE_PIPELINE_YAML = "aggregate-e2e-pipeline.yml"
-def LOG_METRICS_PIPELINE_YAML = "log-metrics-pipeline.yml"
-def DATA_PREPPER_CONFIG_LOCAL_NODE = "data_prepper_local_node.yml"
-def DATA_PREPPER_CONFIG_STATIC = "data_prepper_static.yml"
+def AGGREGATE_PIPELINE_YAML = 'aggregate-e2e-pipeline.yml'
+def DATA_PREPPER_CONFIG_LOCAL_NODE = 'data_prepper_local_node.yml'
+def DATA_PREPPER_CONFIG_STATIC = 'data_prepper_static.yml'
+
 
 /**
- * DataPrepper Docker tasks
+ * Represents the configurations needed for peer-forwarder end-to-end tests.
  */
-
-task buildDataPrepperDockerImage(type: DockerBuildImage) {
-    dependsOn createDataPrepperDockerFile
-    dockerFile = file('build/docker/Dockerfile')
-    images.add('integ-test-pipeline-image')
-}
-
-def createDataPrepperDockerContainer(final String taskBaseName, final String dataPrepperName, final int sourcePort,
-                                     final String pipelineConfigYAML, final String dataPrepperConfigYAML) {
-    return tasks.create("create${taskBaseName}", DockerCreateContainer) {
-        dependsOn buildDataPrepperDockerImage
-        dependsOn createDataPrepperNetwork
-        containerName = dataPrepperName
-        exposePorts('tcp', [2021])
-        hostConfig.portBindings = [String.format('%d:2021', sourcePort)]
-        hostConfig.network = createDataPrepperNetwork.getNetworkName()
-        hostConfig.binds = [
-                (project.file("src/integrationTest/resources/${pipelineConfigYAML}").toString())   : "/app/data-prepper/pipelines/pipelines.yaml",
-                "/tmp"                                                                             : "/tmp",
-                (project.file("src/integrationTest/resources/${dataPrepperConfigYAML}").toString()): "/app/data-prepper/config/data-prepper-config.yaml",
-                (project.file('src/integrationTest/resources/default_certificate.pem').toString()) : '/app/data-prepper/config/default_certificate.pem',
-                (project.file('src/integrationTest/resources/default_private_key.pem').toString()): '/app/data-prepper/config/default_private_key.pem'
-        ]
-        cmd = ['java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute']
-        targetImageId buildDataPrepperDockerImage.getImageId()
+class PeerForwarderTestConfiguration {
+    PeerForwarderTestConfiguration(
+            String testName,
+            String description,
+            String testFilters,
+            String containerName,
+            String pipelineConfiguration,
+            String dataPrepperConfiguration) {
+        this.testName = testName
+        this.description = description
+        this.testFilters = testFilters
+        this.containerName = containerName
+        this.pipelineConfiguration = pipelineConfiguration
+        this.dataPrepperConfiguration = dataPrepperConfiguration
     }
+    String testName
+    String description
+    String testFilters
+    String containerName
+    String pipelineConfiguration
+    String dataPrepperConfiguration
 }
 
-def startDataPrepperDockerContainer(final DockerCreateContainer createDataPrepperDockerContainerTask) {
-    return tasks.create("start${createDataPrepperDockerContainerTask.getName()}", DockerStartContainer) {
-        dependsOn createDataPrepperDockerContainerTask
-        targetContainerId createDataPrepperDockerContainerTask.getContainerId()
-    }
-}
-
-def stopDataPrepperDockerContainer(final DockerStartContainer startDataPrepperDockerContainerTask) {
-    return tasks.create("stop${startDataPrepperDockerContainerTask.getName()}", DockerStopContainer) {
-        targetContainerId startDataPrepperDockerContainerTask.getContainerId()
-    }
-}
-
-def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDockerContainerTask) {
-    return tasks.create("remove${stopDataPrepperDockerContainerTask.getName()}", DockerRemoveContainer) {
-        targetContainerId stopDataPrepperDockerContainerTask.getContainerId()
-    }
-}
+List<PeerForwarderTestConfiguration> peerForwarderTestConfigurations = [
+        new PeerForwarderTestConfiguration(
+                'localAggregateEndToEndTest',
+                'Runs the local log aggregation end-to-end test.',
+                'org.opensearch.dataprepper.integration.peerforwarder.EndToEndPeerForwarderTest.testAggregatePipelineWithSingleNodeEndToEnd*',
+                'data-prepper',
+                AGGREGATE_PIPELINE_YAML,
+                DATA_PREPPER_CONFIG_LOCAL_NODE
+        ),
+        new PeerForwarderTestConfiguration(
+                'staticAggregateEndToEndTest',
+                'Runs the local log aggregation end-to-end test.',
+                'org.opensearch.dataprepper.integration.peerforwarder.EndToEndPeerForwarderTest.testAggregatePipelineWithMultipleNodesEndToEnd*',
+                'node.data-prepper.example.com',
+                AGGREGATE_PIPELINE_YAML,
+                DATA_PREPPER_CONFIG_STATIC
+        ),
+        new PeerForwarderTestConfiguration(
+                'staticLogMetricsEndToEndTest',
+                'Runs the local log aggregation end-to-end test.',
+                'org.opensearch.dataprepper.integration.peerforwarder.EndToEndLogMetricsTest.testLogMetricsPipelineWithMultipleNodesEndToEnd*',
+                'node.data-prepper.example.com',
+                'log-metrics-pipeline.yml',
+                DATA_PREPPER_CONFIG_STATIC
+        )
+]
 
 /**
- * End to end test. Spins up OpenSearch and DataPrepper docker containers, then runs the integ test
- * Stops the docker containers when finished
+ * Creates a container name from a base name. If the name looks like a DNS entry
+ * it adds the index after the first part. Otherwise, it appends the index to the end.
+ *
+ * @param name The base container name
+ * @param index The index of the container to create
+ * @return The container name to use.
  */
-def createEndToEndTest(final String testName, final String includeTestsMatchPattern,
-                       final DockerCreateContainer createDataPrepper1Task, final DockerCreateContainer createDataPrepper2Task) {
-    return tasks.create(testName, Test) {
+static def createContainerName(String name, int index) {
+    def nameParts = name.split('\\.', 2)
+
+    return "${nameParts[0]}${index}${nameParts.length==2 ? '.' + nameParts[1] : ''}"
+}
+
+peerForwarderTestConfigurations.each { testConfiguration ->
+    tasks.register("start${testConfiguration.testName}All")
+    tasks.register("remove${testConfiguration.testName}All")
+
+    (0..1).each { containerIndex ->
+        tasks.register("create${testConfiguration.testName}${containerIndex}", DockerCreateContainer) {
+            dependsOn dataPrepperDockerImage
+            dependsOn createDataPrepperNetwork
+            containerName = createContainerName(testConfiguration.containerName, containerIndex)
+            exposePorts('tcp', [2021])
+            hostConfig.portBindings = ["${2021+containerIndex}:2021"]
+            hostConfig.binds = [
+                    (project.file("src/integrationTest/resources/${testConfiguration.pipelineConfiguration}").toString())   : '/usr/share/data-prepper/pipelines/test-pipeline.yaml',
+                    (project.file("src/integrationTest/resources/${testConfiguration.dataPrepperConfiguration}").toString()): '/usr/share/data-prepper/config/data-prepper-config.yaml',
+                    (project.file('src/integrationTest/resources/default_certificate.pem').toString()) : '/usr/share/data-prepper/config/default_certificate.pem',
+                    (project.file('src/integrationTest/resources/default_private_key.pem').toString()): '/usr/share/data-prepper/config/default_private_key.pem'
+            ]
+            hostConfig.network = createDataPrepperNetwork.getNetworkName()
+            targetImageId dataPrepperDockerImage.imageId
+        }
+
+        tasks.register("start${testConfiguration.testName}${containerIndex}", DockerStartContainer) {
+            dependsOn "create${testConfiguration.testName}${containerIndex}"
+            dependsOn 'startOpenSearchDockerContainer'
+            mustRunAfter 'startOpenSearchDockerContainer'
+            targetContainerId tasks.getByName("create${testConfiguration.testName}${containerIndex}").getContainerId()
+        }
+
+        tasks.named("start${testConfiguration.testName}All").configure {
+            dependsOn "start${testConfiguration.testName}${containerIndex}"
+        }
+
+        tasks.register("stop${testConfiguration.testName}${containerIndex}", DockerStopContainer) {
+            dependsOn "${testConfiguration.testName}"
+            targetContainerId tasks.getByName("create${testConfiguration.testName}${containerIndex}").getContainerId()
+        }
+
+        tasks.register("remove${testConfiguration.testName}${containerIndex}", DockerRemoveContainer) {
+            dependsOn "stop${testConfiguration.testName}${containerIndex}"
+            targetContainerId tasks.getByName("stop${testConfiguration.testName}${containerIndex}").getContainerId()
+        }
+
+        tasks.named("remove${testConfiguration.testName}All").configure {
+            dependsOn "remove${testConfiguration.testName}${containerIndex}"
+        }
+    }
+
+    tasks.register(testConfiguration.testName, Test) {
         dependsOn build
         dependsOn startOpenSearchDockerContainer
-        def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
-        def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
-        dependsOn startDataPrepper1Task
-        dependsOn startDataPrepper2Task
-        startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
-        startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
-        // wait for data-preppers to be ready
+        dependsOn "start${testConfiguration.testName}All"
+
+        // Wait for Data Prepper image to be ready
         doFirst {
             sleep(15 * 1000)
         }
 
-        description = 'Runs the raw span integration tests.'
+        description = testConfiguration.description
         group = 'verification'
         testClassesDirs = sourceSets.integrationTest.output.classesDirs
         classpath = sourceSets.integrationTest.runtimeClasspath
 
         filter {
-            includeTestsMatching includeTestsMatchPattern
+            includeTestsMatching testConfiguration.testFilters
         }
 
         finalizedBy stopOpenSearchDockerContainer
-        def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
-        def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
-        finalizedBy stopDataPrepper1Task
-        finalizedBy stopDataPrepper2Task
-        finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
-        finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
+        finalizedBy "remove${testConfiguration.testName}All"
         finalizedBy removeDataPrepperNetwork
     }
 }
 
-// Discovery mode: LOCAL_NODE
-def includeLocalAggregateTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndPeerForwarderTest.testAggregatePipelineWithSingleNodeEndToEnd*"
-
-def createLocalAggregateDataPrepper1Task = createDataPrepperDockerContainer(
-        "localAggregateDataPrepper1", "dataprepper1", 2021, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_LOCAL_NODE}")
-def createLocalAggregateDataPrepper2Task = createDataPrepperDockerContainer(
-        "localAggregateDataPrepper2", "dataprepper2", 2022, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_LOCAL_NODE}")
-
-def localAggregateEndToEndTest = createEndToEndTest("localAggregateEndToEndTest", includeLocalAggregateTestsMatchPattern,
-        createLocalAggregateDataPrepper1Task, createLocalAggregateDataPrepper2Task)
-
-// Discovery mode: STATIC with SSL & mTLS
-def includeStaticAggregateTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndPeerForwarderTest.testAggregatePipelineWithMultipleNodesEndToEnd*"
-
-def createAggregateDataPrepper1Task = createDataPrepperDockerContainer(
-        "staticAggregateDataPrepper1", "node1.data-prepper.example.com", 2021, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC}")
-def createAggregateDataPrepper2Task = createDataPrepperDockerContainer(
-        "staticAggregateDataPrepper2", "node2.data-prepper.example.com", 2022, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC}")
-
-def staticAggregateEndToEndTest = createEndToEndTest("staticAggregateEndToEndTest", includeStaticAggregateTestsMatchPattern,
-        createAggregateDataPrepper1Task, createAggregateDataPrepper2Task)
-
-// Discovery mode: STATIC - Log pipeline metrics e2e test
-def includeLocalLogMetricsTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndLogMetricsTest.testLogMetricsPipelineWithMultipleNodesEndToEnd*"
-
-def createStaticLogMetricsDataPrepper1Task = createDataPrepperDockerContainer(
-        "staticLogMetricsDataPrepper1", "node1.data-prepper.example.com", 2021, "${LOG_METRICS_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC}")
-def createStaticLogMetricsDataPrepper2Task = createDataPrepperDockerContainer(
-        "staticLogMetricsDataPrepper2", "node2.data-prepper.example.com", 2022, "${LOG_METRICS_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC}")
-
-def staticLogMetricsEndToEndTest = createEndToEndTest("staticLogMetricsEndToEndTest", includeLocalLogMetricsTestsMatchPattern,
-        createStaticLogMetricsDataPrepper1Task, createStaticLogMetricsDataPrepper2Task)
 
 dependencies {
     integrationTestImplementation project(':data-prepper-api')

@@ -4,6 +4,8 @@
  */
 
 package org.opensearch.dataprepper.plugins.processor.otelmetrics;
+
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec.DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class OtelMetricsRawProcessorConfig {
@@ -15,7 +17,7 @@ public class OtelMetricsRawProcessorConfig {
 
     private Boolean calculateExponentialHistogramBuckets = true;
 
-    private Integer exponentialHistogramMaxAllowedScale = 10;
+    private Integer exponentialHistogramMaxAllowedScale = DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE;
 
     public Boolean getCalculateExponentialHistogramBuckets() {
         return calculateExponentialHistogramBuckets;

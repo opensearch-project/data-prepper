@@ -9,14 +9,17 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.ErrorResponse;
 import org.opensearch.client.opensearch.indices.ExistsIndexTemplateRequest;
 import org.opensearch.client.opensearch.indices.GetIndexTemplateRequest;
 import org.opensearch.client.opensearch.indices.GetIndexTemplateResponse;
 import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
-import org.opensearch.client.opensearch.indices.PutIndexTemplateRequest;
+import org.opensearch.client.opensearch.indices.PutIndexTemplateResponse;
+import org.opensearch.client.transport.Endpoint;
+import org.opensearch.client.transport.JsonEndpoint;
 import org.opensearch.client.transport.OpenSearchTransport;
+import org.opensearch.client.transport.TransportOptions;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
-import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -28,11 +31,15 @@ import java.util.Random;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasKey;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -47,11 +54,15 @@ class ComposableTemplateAPIWrapperTest {
     @Mock
     private OpenSearchTransport openSearchTransport;
     @Mock
+    private TransportOptions openSearchTransportOptions;
+    @Mock
     private GetIndexTemplateResponse getIndexTemplateResponse;
     @Mock
     private BooleanResponse booleanResponse;
     @Captor
-    private ArgumentCaptor<PutIndexTemplateRequest> putIndexTemplateRequestArgumentCaptor;
+    private ArgumentCaptor<Map<String, Object>> putIndexTemplateRequestArgumentCaptor;
+    @Captor
+    private ArgumentCaptor<Endpoint<Map<String, Object>, PutIndexTemplateResponse, ErrorResponse>> endpointArgumentCaptor;
     @Captor
     private ArgumentCaptor<ExistsIndexTemplateRequest> existsIndexTemplateRequestArgumentCaptor;
 
@@ -76,7 +87,7 @@ class ComposableTemplateAPIWrapperTest {
     @Test
     void putTemplate_performs_putIndexTemplate_request() throws IOException {
         when(openSearchClient._transport()).thenReturn(openSearchTransport);
-        when(openSearchTransport.jsonpMapper()).thenReturn(new PreSerializedJsonpMapper());
+        when(openSearchClient._transportOptions()).thenReturn(openSearchTransportOptions);
 
         final List<String> indexPatterns = Collections.singletonList(UUID.randomUUID().toString());
         final IndexTemplate indexTemplate = new ComposableIndexTemplate(new HashMap<>());
@@ -84,12 +95,25 @@ class ComposableTemplateAPIWrapperTest {
         indexTemplate.setIndexPatterns(indexPatterns);
         objectUnderTest.putTemplate(indexTemplate);
 
-        verify(openSearchIndicesClient).putIndexTemplate(putIndexTemplateRequestArgumentCaptor.capture());
+        verify(openSearchTransport).performRequest(
+                putIndexTemplateRequestArgumentCaptor.capture(),
+                endpointArgumentCaptor.capture(),
+                eq(openSearchTransportOptions)
+        );
 
-        final PutIndexTemplateRequest actualPutRequest = putIndexTemplateRequestArgumentCaptor.getValue();
+        Map<String, Object> actualPutRequest = putIndexTemplateRequestArgumentCaptor.getValue();
 
-        assertThat(actualPutRequest.name(), equalTo(indexTemplateName));
-        assertThat(actualPutRequest.indexPatterns(), equalTo(indexPatterns));
+        assertThat(actualPutRequest.get("index_patterns"), equalTo(indexPatterns));
+
+        Endpoint<Map<String, Object>, PutIndexTemplateResponse, ErrorResponse> actualEndpoint = endpointArgumentCaptor.getValue();
+        assertThat(actualEndpoint.method(null), equalTo("PUT"));
+        assertThat(actualEndpoint.requestUrl(null), equalTo("/_index_template/" + indexTemplateName));
+        assertThat(actualEndpoint.queryParameters(null), equalTo(Collections.emptyMap()));
+        assertThat(actualEndpoint.headers(null), equalTo(Collections.emptyMap()));
+        assertThat(actualEndpoint.hasRequestBody(), equalTo(true));
+
+        assertThat(actualEndpoint, instanceOf(JsonEndpoint.class));
+        assertThat(((JsonEndpoint)actualEndpoint).responseDeserializer(), equalTo(PutIndexTemplateResponse._DESERIALIZER));
     }
 
     @Test
@@ -139,18 +163,15 @@ class ComposableTemplateAPIWrapperTest {
 
     @Nested
     class IndexTemplateWithCreateTemplateTests {
-        private ArgumentCaptor<PutIndexTemplateRequest> putIndexTemplateRequestArgumentCaptor;
         private List<String> indexPatterns;
 
         @BeforeEach
         void setUp() {
-            final OpenSearchTransport openSearchTransport = mock(OpenSearchTransport.class);
             when(openSearchClient._transport()).thenReturn(openSearchTransport);
-            when(openSearchTransport.jsonpMapper()).thenReturn(new PreSerializedJsonpMapper());
-
-            putIndexTemplateRequestArgumentCaptor = ArgumentCaptor.forClass(PutIndexTemplateRequest.class);
 
             indexPatterns = Collections.singletonList(UUID.randomUUID().toString());
+
+            when(openSearchClient._transportOptions()).thenReturn(openSearchTransportOptions);
         }
 
         @Test
@@ -159,43 +180,64 @@ class ComposableTemplateAPIWrapperTest {
             indexTemplate.setTemplateName(indexTemplateName);
             objectUnderTest.putTemplate(indexTemplate);
 
-            verify(openSearchIndicesClient).putIndexTemplate(putIndexTemplateRequestArgumentCaptor.capture());
+            verify(openSearchTransport).performRequest(
+                    putIndexTemplateRequestArgumentCaptor.capture(),
+                    endpointArgumentCaptor.capture(),
+                    eq(openSearchTransportOptions)
+            );
 
-            final PutIndexTemplateRequest actualPutRequest = putIndexTemplateRequestArgumentCaptor.getValue();
+            final Map<String, Object> actualPutRequest = putIndexTemplateRequestArgumentCaptor.getValue();
 
-            assertThat(actualPutRequest.name(), equalTo(indexTemplateName));
+            final Endpoint<Map<String, Object>, PutIndexTemplateResponse, ErrorResponse> actualEndpoint = endpointArgumentCaptor.getValue();
+            assertThat(actualEndpoint.method(null), equalTo("PUT"));
+            assertThat(actualEndpoint.requestUrl(null), equalTo("/_index_template/" + indexTemplateName));
+            assertThat(actualEndpoint.queryParameters(null), equalTo(Collections.emptyMap()));
+            assertThat(actualEndpoint.headers(null), equalTo(Collections.emptyMap()));
+            assertThat(actualEndpoint.hasRequestBody(), equalTo(true));
 
-            assertThat(actualPutRequest.version(), nullValue());
-            assertThat(actualPutRequest.indexPatterns(), notNullValue());
-            assertThat(actualPutRequest.indexPatterns(), equalTo(Collections.emptyList()));
-            assertThat(actualPutRequest.template(), nullValue());
-            assertThat(actualPutRequest.priority(), nullValue());
-            assertThat(actualPutRequest.composedOf(), notNullValue());
-            assertThat(actualPutRequest.composedOf(), equalTo(Collections.emptyList()));
+            assertThat(actualEndpoint, instanceOf(JsonEndpoint.class));
+            assertThat(((JsonEndpoint)actualEndpoint).responseDeserializer(), equalTo(PutIndexTemplateResponse._DESERIALIZER));
+
+            assertThat(actualPutRequest.get("version"), nullValue());
+            assertThat(actualPutRequest.get("index_patterns"), nullValue());
+            assertThat(actualPutRequest.get("template"), nullValue());
+            assertThat(actualPutRequest.get("priority"), nullValue());
+            assertThat(actualPutRequest.get("composed_of"), nullValue());
         }
 
         @Test
         void putTemplate_with_setIndexPatterns_performs_putIndexTemplate_request() throws IOException {
             final List<String> indexPatterns = Collections.singletonList(UUID.randomUUID().toString());
 
-            final IndexConfiguration indexConfiguration = mock(IndexConfiguration.class);
             final IndexTemplate indexTemplate = new ComposableIndexTemplate(new HashMap<>());
             indexTemplate.setTemplateName(indexTemplateName);
             indexTemplate.setIndexPatterns(indexPatterns);
             objectUnderTest.putTemplate(indexTemplate);
 
-            verify(openSearchIndicesClient).putIndexTemplate(putIndexTemplateRequestArgumentCaptor.capture());
+            verify(openSearchTransport).performRequest(
+                    putIndexTemplateRequestArgumentCaptor.capture(),
+                    endpointArgumentCaptor.capture(),
+                    eq(openSearchTransportOptions)
+            );
 
-            final PutIndexTemplateRequest actualPutRequest = putIndexTemplateRequestArgumentCaptor.getValue();
+            Map<String, Object> actualPutRequest = putIndexTemplateRequestArgumentCaptor.getValue();
 
-            assertThat(actualPutRequest.name(), equalTo(indexTemplateName));
-            assertThat(actualPutRequest.indexPatterns(), equalTo(indexPatterns));
+            assertThat(actualPutRequest.get("index_patterns"), equalTo(indexPatterns));
 
-            assertThat(actualPutRequest.version(), nullValue());
-            assertThat(actualPutRequest.template(), nullValue());
-            assertThat(actualPutRequest.priority(), nullValue());
-            assertThat(actualPutRequest.composedOf(), notNullValue());
-            assertThat(actualPutRequest.composedOf(), equalTo(Collections.emptyList()));
+            Endpoint<Map<String, Object>, PutIndexTemplateResponse, ErrorResponse> actualEndpoint = endpointArgumentCaptor.getValue();
+            assertThat(actualEndpoint.method(null), equalTo("PUT"));
+            assertThat(actualEndpoint.requestUrl(null), equalTo("/_index_template/" + indexTemplateName));
+            assertThat(actualEndpoint.queryParameters(null), equalTo(Collections.emptyMap()));
+            assertThat(actualEndpoint.headers(null), equalTo(Collections.emptyMap()));
+            assertThat(actualEndpoint.hasRequestBody(), equalTo(true));
+
+            assertThat(actualEndpoint, instanceOf(JsonEndpoint.class));
+            assertThat(((JsonEndpoint)actualEndpoint).responseDeserializer(), equalTo(PutIndexTemplateResponse._DESERIALIZER));
+
+            assertThat(actualPutRequest, not(hasKey("template")));
+            assertThat(actualPutRequest, not(hasKey("priority")));
+            assertThat(actualPutRequest, not(hasKey("composedOf")));
+            assertThat(actualPutRequest, not(hasKey("template")));
         }
 
         @Test
@@ -205,7 +247,6 @@ class ComposableTemplateAPIWrapperTest {
             final String numberOfShards = Integer.toString(random.nextInt(1000) + 100);
             final List<String> composedOf = Collections.singletonList(UUID.randomUUID().toString());
 
-            final IndexConfiguration indexConfiguration = mock(IndexConfiguration.class);
             final IndexTemplate indexTemplate = new ComposableIndexTemplate(
                     Map.of("version", version,
                             "priority", priority,
@@ -220,21 +261,40 @@ class ComposableTemplateAPIWrapperTest {
             indexTemplate.setIndexPatterns(indexPatterns);
             objectUnderTest.putTemplate(indexTemplate);
 
-            verify(openSearchIndicesClient).putIndexTemplate(putIndexTemplateRequestArgumentCaptor.capture());
+            verify(openSearchTransport).performRequest(
+                    putIndexTemplateRequestArgumentCaptor.capture(),
+                    endpointArgumentCaptor.capture(),
+                    eq(openSearchTransportOptions)
+            );
 
-            final PutIndexTemplateRequest actualPutRequest = putIndexTemplateRequestArgumentCaptor.getValue();
+            final Map<String, Object> actualPutRequest = putIndexTemplateRequestArgumentCaptor.getValue();
 
-            assertThat(actualPutRequest.name(), equalTo(indexTemplateName));
-            assertThat(actualPutRequest.indexPatterns(), equalTo(indexPatterns));
-            assertThat(actualPutRequest.version(), equalTo(version));
-            assertThat(actualPutRequest.priority(), equalTo(priority));
-            assertThat(actualPutRequest.composedOf(), equalTo(composedOf));
-            assertThat(actualPutRequest.template(), notNullValue());
-            assertThat(actualPutRequest.template().mappings(), notNullValue());
-            assertThat(actualPutRequest.template().mappings().dateDetection(), equalTo(true));
-            assertThat(actualPutRequest.template().settings(), notNullValue());
-            assertThat(actualPutRequest.template().settings().index(), notNullValue());
-            assertThat(actualPutRequest.template().settings().index().numberOfShards(), equalTo(numberOfShards));
+            assertThat(actualPutRequest.get("index_patterns"), equalTo(indexPatterns));
+
+            final Endpoint<Map<String, Object>, PutIndexTemplateResponse, ErrorResponse> actualEndpoint = endpointArgumentCaptor.getValue();
+            assertThat(actualEndpoint.method(null), equalTo("PUT"));
+            assertThat(actualEndpoint.requestUrl(null), equalTo("/_index_template/" + indexTemplateName));
+            assertThat(actualEndpoint.queryParameters(null), equalTo(Collections.emptyMap()));
+            assertThat(actualEndpoint.headers(null), equalTo(Collections.emptyMap()));
+            assertThat(actualEndpoint.hasRequestBody(), equalTo(true));
+
+            assertThat(actualEndpoint, instanceOf(JsonEndpoint.class));
+            assertThat(((JsonEndpoint)actualEndpoint).responseDeserializer(), equalTo(PutIndexTemplateResponse._DESERIALIZER));
+
+            assertThat(actualPutRequest, hasKey("template"));
+            assertThat(actualPutRequest.get("version"), equalTo(version));
+            assertThat(actualPutRequest.get("priority"), equalTo(priority));
+            assertThat(actualPutRequest.get("composed_of"), equalTo(composedOf));
+            assertThat(actualPutRequest.get("template"), notNullValue());
+            assertThat(actualPutRequest.get("template"), instanceOf(Map.class));
+            Map<String, Object> actualTemplate = (Map<String, Object>) actualPutRequest.get("template");
+            assertThat(actualTemplate.get("mappings"), instanceOf(Map.class));
+            assertThat(((Map) actualTemplate.get("mappings")).get("date_detection"), equalTo(true));
+            assertThat(actualTemplate.get("settings"), instanceOf(Map.class));
+            Map<String, Object> actualSettings = (Map<String, Object>) actualTemplate.get("settings");
+            assertThat(actualSettings.get("index"), instanceOf(Map.class));
+            Map<String, Object> actualIndex = (Map<String, Object>) actualSettings.get("index");
+            assertThat(actualIndex.get("number_of_shards"), equalTo(numberOfShards));
         }
     }
 }

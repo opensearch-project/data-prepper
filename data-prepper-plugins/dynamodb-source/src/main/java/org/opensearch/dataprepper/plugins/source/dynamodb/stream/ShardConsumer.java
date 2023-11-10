@@ -5,16 +5,22 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
-
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter;
+import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse;
-import software.amazon.awssdk.services.dynamodb.model.Record;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -42,14 +48,34 @@ public class ShardConsumer implements Runnable {
     private static final int GET_RECORD_INTERVAL_MILLS = 300;
 
     /**
+     * Idle Time between GetRecords Reads
+     */
+    private static final int MINIMUM_GET_RECORD_INTERVAL_MILLS = 10;
+
+    /**
+     * Minimum Idle Time between GetRecords Reads
+     */
+    private static final long GET_RECORD_DELAY_THRESHOLD_MILLS = 15_000;
+
+    /**
      * Default interval to check if export is completed.
      */
     private static final int DEFAULT_WAIT_FOR_EXPORT_INTERVAL_MILLS = 60_000;
+
+
+    /**
+     * Default number of times in the wait for export to do regular checkpoint.
+     */
+    private static final int DEFAULT_WAIT_COUNT_TO_CHECKPOINT = 5;
 
     /**
      * Default regular checkpoint interval
      */
     private static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 2 * 60_000;
+
+    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
+    static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+
 
     private final DynamoDbStreamsClient dynamoDbStreamsClient;
 
@@ -63,17 +89,24 @@ public class ShardConsumer implements Runnable {
 
     private boolean waitForExport;
 
+    private final AcknowledgementSet acknowledgementSet;
+
+    private final Duration shardAcknowledgmentTimeout;
+
     private ShardConsumer(Builder builder) {
         this.dynamoDbStreamsClient = builder.dynamoDbStreamsClient;
-        this.recordConverter = builder.recordConverter;
         this.checkpointer = builder.checkpointer;
         this.shardIterator = builder.shardIterator;
         this.startTime = builder.startTime;
         this.waitForExport = builder.waitForExport;
+        final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(builder.buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
+        recordConverter = new StreamRecordConverter(bufferAccumulator, builder.tableInfo, builder.pluginMetrics);
+        this.acknowledgementSet = builder.acknowledgementSet;
+        this.shardAcknowledgmentTimeout = builder.dataFileAcknowledgmentTimeout;
     }
 
-    public static Builder builder(DynamoDbStreamsClient streamsClient) {
-        return new Builder(streamsClient);
+    public static Builder builder(final DynamoDbStreamsClient dynamoDbStreamsClient, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
+        return new Builder(dynamoDbStreamsClient, pluginMetrics, buffer);
     }
 
 
@@ -81,8 +114,11 @@ public class ShardConsumer implements Runnable {
 
         private final DynamoDbStreamsClient dynamoDbStreamsClient;
 
+        private final PluginMetrics pluginMetrics;
 
-        private StreamRecordConverter recordConverter;
+        private final Buffer<Record<Event>> buffer;
+
+        private TableInfo tableInfo;
 
         private StreamCheckpointer checkpointer;
 
@@ -93,12 +129,17 @@ public class ShardConsumer implements Runnable {
 
         private boolean waitForExport;
 
-        public Builder(DynamoDbStreamsClient dynamoDbStreamsClient) {
+        private AcknowledgementSet acknowledgementSet;
+        private Duration dataFileAcknowledgmentTimeout;
+
+        public Builder(final DynamoDbStreamsClient dynamoDbStreamsClient, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
             this.dynamoDbStreamsClient = dynamoDbStreamsClient;
+            this.pluginMetrics = pluginMetrics;
+            this.buffer = buffer;
         }
 
-        public Builder recordConverter(StreamRecordConverter recordConverter) {
-            this.recordConverter = recordConverter;
+        public Builder tableInfo(TableInfo tableInfo) {
+            this.tableInfo = tableInfo;
             return this;
         }
 
@@ -122,6 +163,16 @@ public class ShardConsumer implements Runnable {
             return this;
         }
 
+        public Builder acknowledgmentSet(AcknowledgementSet acknowledgementSet) {
+            this.acknowledgementSet = acknowledgementSet;
+            return this;
+        }
+
+        public Builder acknowledgmentSetTimeout(Duration dataFileAcknowledgmentTimeout) {
+            this.dataFileAcknowledgmentTimeout = dataFileAcknowledgmentTimeout;
+            return this;
+        }
+
         public ShardConsumer build() {
             return new ShardConsumer(this);
         }
@@ -131,7 +182,7 @@ public class ShardConsumer implements Runnable {
 
     @Override
     public void run() {
-        LOG.info("Shard Consumer start to run...");
+        LOG.debug("Shard Consumer start to run...");
 
         long lastCheckpointTime = System.currentTimeMillis();
         String sequenceNumber = "";
@@ -139,7 +190,7 @@ public class ShardConsumer implements Runnable {
         while (!shouldStop) {
             if (shardIterator == null) {
                 // End of Shard
-                LOG.debug("Reach end of shard");
+                LOG.debug("Reached end of shard");
                 checkpointer.checkpoint(sequenceNumber);
                 break;
             }
@@ -157,7 +208,7 @@ public class ShardConsumer implements Runnable {
                     .build();
 
 
-            List<Record> records;
+            List<software.amazon.awssdk.services.dynamodb.model.Record> records;
             GetRecordsResponse response;
             try {
                 response = dynamoDbStreamsClient.getRecords(req);
@@ -168,12 +219,15 @@ public class ShardConsumer implements Runnable {
 
             shardIterator = response.nextShardIterator();
 
+            int interval;
+
             if (!response.records().isEmpty()) {
                 // Always use the last sequence number for checkpoint
                 sequenceNumber = response.records().get(response.records().size() - 1).dynamodb().sequenceNumber();
+                Instant lastEventTime = response.records().get(response.records().size() - 1).dynamodb().approximateCreationDateTime();
 
                 if (waitForExport) {
-                    Instant lastEventTime = response.records().get(response.records().size() - 1).dynamodb().approximateCreationDateTime();
+
                     if (lastEventTime.compareTo(startTime) <= 0) {
                         LOG.debug("Get {} events before start time, ignore...", response.records().size());
                         continue;
@@ -188,14 +242,24 @@ public class ShardConsumer implements Runnable {
                 } else {
                     records = response.records();
                 }
-                recordConverter.writeToBuffer(records);
+                recordConverter.writeToBuffer(acknowledgementSet, records);
+                long delay = System.currentTimeMillis() - lastEventTime.toEpochMilli();
+                interval = delay > GET_RECORD_DELAY_THRESHOLD_MILLS ? MINIMUM_GET_RECORD_INTERVAL_MILLS : GET_RECORD_INTERVAL_MILLS;
+
+            } else {
+                interval = GET_RECORD_INTERVAL_MILLS;
             }
             try {
                 // Idle between get records call.
-                Thread.sleep(GET_RECORD_INTERVAL_MILLS);
+                Thread.sleep(interval);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        if (acknowledgementSet != null) {
+            checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
+            acknowledgementSet.complete();
         }
 
         // interrupted
@@ -205,14 +269,27 @@ public class ShardConsumer implements Runnable {
             checkpointer.checkpoint(sequenceNumber);
             throw new RuntimeException("Shard Consumer is interrupted");
         }
+
+        if (waitForExport) {
+            waitForExport();
+        }
     }
 
     private void waitForExport() {
         LOG.debug("Start waiting for export to be done and loaded");
+        int numberOfWaits = 0;
         while (!checkpointer.isExportDone()) {
             LOG.debug("Export is in progress, wait...");
             try {
                 Thread.sleep(DEFAULT_WAIT_FOR_EXPORT_INTERVAL_MILLS);
+                // The wait for export may take a long time
+                // Need to extend the timeout of the ownership in the coordination store.
+                // Otherwise, the lease will expire.
+                numberOfWaits++;
+                if (numberOfWaits % DEFAULT_WAIT_COUNT_TO_CHECKPOINT == 0) {
+                    // To extend the timeout of lease
+                    checkpointer.checkpoint(null);
+                }
             } catch (InterruptedException e) {
                 LOG.error("Wait for export is interrupted ({})", e.getMessage());
                 // Directly quit the process

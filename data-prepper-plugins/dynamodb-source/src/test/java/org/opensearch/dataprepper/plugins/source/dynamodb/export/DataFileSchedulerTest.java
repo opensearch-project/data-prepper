@@ -12,8 +12,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.DataFileProgressState;
@@ -21,6 +24,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.model.LoadStatus;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -28,6 +32,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -35,7 +40,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFileScheduler.ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE;
@@ -46,6 +53,12 @@ class DataFileSchedulerTest {
 
     @Mock
     private EnhancedSourceCoordinator coordinator;
+
+    @Mock
+    private DynamoDBSourceConfig dynamoDBSourceConfig;
+
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -113,16 +126,18 @@ class DataFileSchedulerTest {
         lenient().when(coordinator.createPartition(any(EnhancedSourcePartition.class))).thenReturn(true);
         lenient().doNothing().when(coordinator).completePartition(any(EnhancedSourcePartition.class));
         lenient().doNothing().when(coordinator).giveUpPartition(any(EnhancedSourcePartition.class));
-
-        lenient().when(loaderFactory.createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class))).thenReturn(() -> System.out.println("Hello"));
-
     }
 
     @Test
     public void test_run_DataFileLoader_correctly() throws InterruptedException {
-        given(coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE)).willReturn(Optional.of(dataFilePartition)).willReturn(Optional.empty());
+        given(loaderFactory.createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class), eq(null), any(Duration.class))).willReturn(() -> System.out.println("Hello"));
 
-        scheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics);
+
+        given(coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE)).willReturn(Optional.of(dataFilePartition)).willReturn(Optional.empty());
+        given(dynamoDBSourceConfig.isAcknowledgmentsEnabled()).willReturn(false);
+        given(dynamoDBSourceConfig.getDataFileAcknowledgmentTimeout()).willReturn(Duration.ofSeconds(10));
+
+        scheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> scheduler.run());
@@ -134,11 +149,11 @@ class DataFileSchedulerTest {
         // Should acquire data file partition
         verify(coordinator).acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
         // Should create a loader
-        verify(loaderFactory).createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class));
+        verify(loaderFactory).createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class), eq(null), any(Duration.class));
         // Need to call getPartition for 3 times (3 global states, 2 TableInfo)
         verify(coordinator, times(3)).getPartition(anyString());
         // Should update global state with load status
-        verify(coordinator).saveProgressStateForPartition(any(GlobalState.class));
+        verify(coordinator).saveProgressStateForPartition(any(GlobalState.class), eq(null));
         // Should create a partition to inform streaming can start.
         verify(coordinator).createPartition(any(GlobalState.class));
         // Should mask the partition as completed.
@@ -148,7 +163,65 @@ class DataFileSchedulerTest {
 
         executorService.shutdownNow();
 
+    }
 
+    @Test
+    void run_DataFileLoader_with_acknowledgments_enabled_processes_correctly() throws InterruptedException {
+        given(coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE)).willReturn(Optional.of(dataFilePartition)).willReturn(Optional.empty());
+        given(dynamoDBSourceConfig.isAcknowledgmentsEnabled()).willReturn(true);
+
+        final Duration dataFileAcknowledgmentTimeout = Duration.ofSeconds(30);
+        given(dynamoDBSourceConfig.getDataFileAcknowledgmentTimeout()).willReturn(dataFileAcknowledgmentTimeout);
+
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        doAnswer(invocation -> {
+            Consumer<Boolean> consumer = invocation.getArgument(0);
+            consumer.accept(true);
+            return acknowledgementSet;
+        }).when(acknowledgementSetManager).create(any(Consumer.class), eq(dataFileAcknowledgmentTimeout));
+
+        given(loaderFactory.createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class), eq(acknowledgementSet), eq(dataFileAcknowledgmentTimeout))).willReturn(() -> System.out.println("Hello"));
+
+        scheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> scheduler.run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
+
+        // Should acquire data file partition
+        verify(coordinator).acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
+        // Should create a loader
+        verify(loaderFactory).createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class), eq(acknowledgementSet), eq(dataFileAcknowledgmentTimeout));
+        // Need to call getPartition for 3 times (3 global states, 2 TableInfo)
+        verify(coordinator, times(3)).getPartition(anyString());
+        // Should update global state with load status
+        verify(coordinator).saveProgressStateForPartition(any(GlobalState.class), eq(null));
+        // Should create a partition to inform streaming can start.
+        verify(coordinator).createPartition(any(GlobalState.class));
+        // Should mask the partition as completed.
+        verify(coordinator).completePartition(any(DataFilePartition.class));
+        // Should update metrics.
+        verify(exportFileSuccess).increment();
+
+        executorService.shutdownNow();
+    }
+
+    @Test
+    void run_catches_exception_and_retries_when_exception_is_thrown_during_processing() throws InterruptedException {
+        given(coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
+
+        scheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> scheduler.run());
+        Thread.sleep(100);
+        assertThat(future.isDone(), equalTo(false));
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
     }
 
 

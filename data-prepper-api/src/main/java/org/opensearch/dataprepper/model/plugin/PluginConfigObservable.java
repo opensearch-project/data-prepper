@@ -10,6 +10,9 @@ public interface PluginConfigObservable {
 
     /**
      * Onboard a new {@link PluginConfigObserver} within the plugin.
+     *
+     * @param pluginConfigObserver plugin config observer
+     * @return returns true if the opration is successful, false otherwise
      */
     boolean addPluginConfigObserver(PluginConfigObserver pluginConfigObserver);
 

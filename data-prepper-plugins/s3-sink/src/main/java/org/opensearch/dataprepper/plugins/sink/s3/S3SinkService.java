@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -127,9 +126,7 @@ public class S3SinkService {
                     int count = currentBuffer.getEventCount() + 1;
                     currentBuffer.setEventCount(count);
 
-                    if (event.getEventHandle() != null) {
-                        bufferedEventHandles.add(event.getEventHandle());
-                    }
+                    bufferedEventHandles.add(event.getEventHandle());
                 } catch (Exception ex) {
                     if(sampleException == null) {
                         sampleException = ex;
@@ -149,7 +146,6 @@ public class S3SinkService {
             failedEvents
                     .stream()
                     .map(Event::getEventHandle)
-                    .filter(Objects::nonNull)
                     .forEach(eventHandle -> eventHandle.release(false));
             LOG.error("Unable to add {} events to buffer. Dropping these events. Sample exception provided.", failedEvents.size(), sampleException);
         }

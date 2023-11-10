@@ -42,12 +42,6 @@ import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTi
 
 public class JacksonEventTest {
 
-    class TestEventHandle implements EventHandle {
-        @Override
-        public void release(boolean result) {
-        }
-    }
-
     private Event event;
 
     private String eventType;
@@ -398,6 +392,8 @@ public class JacksonEventTest {
                 .build();
 
         assertThat(event.getMetadata().getEventType(), is(equalTo(eventType)));
+        assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(notNullValue()));
     }
 
     @Test
@@ -411,6 +407,8 @@ public class JacksonEventTest {
                 .build();
 
         assertThat(event.getMetadata().getTimeReceived(), is(equalTo(now)));
+        assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(equalTo(now)));
     }
 
     @Test
@@ -422,6 +420,8 @@ public class JacksonEventTest {
 
         assertThat(event, is(notNullValue()));
         assertThat(event.get("message", String.class), is(equalTo(message)));
+        assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(notNullValue()));
     }
 
     @Test
@@ -533,25 +533,6 @@ public class JacksonEventTest {
                 .build();
 
         assertThat(event.formatString(formattedString), is(equalTo(finalString)));
-    }
-
-    @ParameterizedTest
-    @CsvSource({
-            "abc-${/foo, false",
-            "abc-${/foo}, true",
-            "abc-${getMetadata(\"key\")}, true",
-            "abc-${getXYZ(\"key\")}, false"
-    })
-    public void testBuild_withIsValidFormatExpressions(final String format, final Boolean expectedResult) {
-        final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
-        when(expressionEvaluator.isValidExpressionStatement("/foo")).thenReturn(true);
-        when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"key\")")).thenReturn(true);
-        assertThat(JacksonEvent.isValidFormatExpressions(format, expressionEvaluator), equalTo(expectedResult));
-    }
-
-    @Test
-    public void testBuild_withIsValidFormatExpressionsWithNullEvaluator() {
-        assertThat(JacksonEvent.isValidFormatExpressions("${}", null), equalTo(false));
     }
 
     @Test
@@ -678,6 +659,8 @@ public class JacksonEventTest {
 
         assertThat(createdEvent, notNullValue());
         assertThat(createdEvent, not(sameInstance(originalEvent)));
+        assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(notNullValue()));
 
         assertThat(createdEvent.toMap(), equalTo(dataObject));
         assertThat(createdEvent.getJsonNode(), not(sameInstance(originalEvent.getJsonNode())));
@@ -705,19 +688,6 @@ public class JacksonEventTest {
 
         assertThat(createdEvent.getMetadata(), notNullValue());
         assertThat(createdEvent.getMetadata(), equalTo(eventMetadata));
-    }
-
-    @Test
-    void testEventHandleGetAndSet() {
-        EventHandle testEventHandle = new TestEventHandle();
-        final String jsonString = "{\"foo\": \"bar\"}";
-
-        final JacksonEvent event = JacksonEvent.builder()
-                .withEventType(eventType)
-                .withData(jsonString)
-                .build();
-        event.setEventHandle(testEventHandle);
-        assertThat(event.getEventHandle(), equalTo(testEventHandle));
     }
 
     @Test
@@ -829,6 +799,11 @@ public class JacksonEventTest {
 
     }
 
+    @ParameterizedTest
+    @CsvSource(value = {"test_key, true", "/test_key, true", "inv(alid, false", "getMetadata(\"test_key\"), false"})
+    void isValidEventKey_returns_expected_result(final String key, final boolean isValid) {
+        assertThat(JacksonEvent.isValidEventKey(key), equalTo(isValid));
+    }
 
     private static Map<String, Object> createComplexDataMap() {
         final Map<String, Object> dataObject = new HashMap<>();

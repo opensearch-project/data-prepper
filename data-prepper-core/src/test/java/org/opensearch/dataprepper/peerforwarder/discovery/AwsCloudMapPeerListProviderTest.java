@@ -5,11 +5,9 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import com.linecorp.armeria.client.Endpoint;
 import com.linecorp.armeria.client.retry.Backoff;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -19,11 +17,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.InOrder;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import software.amazon.awssdk.services.servicediscovery.ServiceDiscoveryAsyncClient;
 import software.amazon.awssdk.services.servicediscovery.model.DiscoverInstancesRequest;
 import software.amazon.awssdk.services.servicediscovery.model.DiscoverInstancesResponse;
 import software.amazon.awssdk.services.servicediscovery.model.HttpInstanceSummary;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -59,7 +60,7 @@ class AwsCloudMapPeerListProviderTest {
     private String namespaceName;
     private String serviceName;
     private Map<String, String> queryParameters;
-    private int timeToRefreshSeconds;
+    private Duration timeToRefresh;
     private Backoff backoff;
     private PluginMetrics pluginMetrics;
     private List<AwsCloudMapPeerListProvider> objectsToClose;
@@ -71,7 +72,7 @@ class AwsCloudMapPeerListProviderTest {
         serviceName = RandomStringUtils.randomAlphabetic(10);
         queryParameters = generateRandomStringMap();
 
-        timeToRefreshSeconds = 1;
+        timeToRefresh = Duration.ofMillis(200);
         backoff = mock(Backoff.class);
         pluginMetrics = mock(PluginMetrics.class);
 
@@ -85,7 +86,7 @@ class AwsCloudMapPeerListProviderTest {
 
     private AwsCloudMapPeerListProvider createObjectUnderTest() {
         final AwsCloudMapPeerListProvider objectUnderTest =
-                new AwsCloudMapPeerListProvider(awsServiceDiscovery, namespaceName, serviceName, queryParameters, timeToRefreshSeconds, backoff, pluginMetrics);
+                new AwsCloudMapPeerListProvider(awsServiceDiscovery, namespaceName, serviceName, queryParameters, timeToRefresh, backoff, pluginMetrics);
         objectsToClose.add(objectUnderTest);
         return objectUnderTest;
     }
@@ -133,7 +134,7 @@ class AwsCloudMapPeerListProviderTest {
     @ParameterizedTest
     @ValueSource(ints = {Integer.MIN_VALUE, -10, -1, 0})
     void constructor_throws_with_non_positive_timeToRefreshSeconds(final int badTimeToRefresh) {
-        timeToRefreshSeconds = badTimeToRefresh;
+        timeToRefresh = Duration.ofSeconds(badTimeToRefresh);
 
         assertThrows(IllegalArgumentException.class,
                 this::createObjectUnderTest);
@@ -374,7 +375,7 @@ class AwsCloudMapPeerListProviderTest {
      */
     private void waitUntilDiscoverInstancesCalledAtLeast(final int timesCalled) {
         final long waitTimeMillis = (long) timesCalled * WAIT_TIME_MULTIPLIER_MILLIS;
-        Awaitility.waitAtMost(waitTimeMillis, TimeUnit.MILLISECONDS)
+        await().atMost(waitTimeMillis, TimeUnit.MILLISECONDS)
                 .pollDelay(100, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> then(awsServiceDiscovery)
                         .should(atLeast(timesCalled))
@@ -388,7 +389,7 @@ class AwsCloudMapPeerListProviderTest {
      * @param objectUnderTest The object to wait for.
      */
     private void waitUntilPeerListPopulated(final AwsCloudMapPeerListProvider objectUnderTest) {
-        Awaitility.waitAtMost(2, TimeUnit.SECONDS)
+        await().atMost(5, TimeUnit.SECONDS)
                 .pollDelay(100, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
                     final List<String> actualPeers = objectUnderTest.getPeerList();
@@ -411,7 +412,7 @@ class AwsCloudMapPeerListProviderTest {
 
         final Map<String, String> map = new HashMap<>();
         IntStream.range(0, random.nextInt(5) + 1)
-                .mapToObj(num -> map.put(UUID.randomUUID().toString(), UUID.randomUUID().toString()));
+                .forEach(num -> map.put(UUID.randomUUID().toString(), UUID.randomUUID().toString()));
 
         return map;
     }

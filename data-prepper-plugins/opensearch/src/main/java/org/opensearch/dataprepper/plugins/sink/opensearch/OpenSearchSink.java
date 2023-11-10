@@ -13,6 +13,7 @@ import io.micrometer.core.instrument.Timer;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.VersionType;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.CreateOperation;
@@ -61,6 +62,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.opensearchserverless.OpenSearchServerlessClient;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -86,6 +88,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String INVALID_ACTION_ERRORS = "invalidActionErrors";
   public static final String BULKREQUEST_SIZE_BYTES = "bulkRequestSizeBytes";
   public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "dynamicIndexDroppedEvents";
+  public static final String INVALID_VERSION_EXPRESSION_DROPPED_EVENTS = "dynamicDocumentVersionDroppedEvents";
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   private static final int INITIALIZE_RETRY_WAIT_TIME_MS = 5000;
@@ -111,12 +114,15 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String documentRootKey;
   private String configuredIndexAlias;
   private final ReentrantLock lock;
+  private final VersionType versionType;
+  private final String versionExpression;
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
   private final Counter invalidActionErrorsCounter;
   private final Counter dynamicIndexDroppedEvents;
   private final DistributionSummary bulkRequestSizeBytesSummary;
+  private final Counter dynamicDocumentVersionDroppedEvents;
   private OpenSearchClient openSearchClient;
   private ObjectMapper objectMapper;
   private volatile boolean initialized;
@@ -145,6 +151,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     invalidActionErrorsCounter = pluginMetrics.counter(INVALID_ACTION_ERRORS);
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
     bulkRequestSizeBytesSummary = pluginMetrics.summary(BULKREQUEST_SIZE_BYTES);
+    dynamicDocumentVersionDroppedEvents = pluginMetrics.counter(INVALID_VERSION_EXPRESSION_DROPPED_EVENTS);
 
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting, expressionEvaluator);
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
@@ -156,6 +163,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.actions = openSearchSinkConfig.getIndexConfiguration().getActions();
     this.documentRootKey = openSearchSinkConfig.getIndexConfiguration().getDocumentRootKey();
+    this.versionType = openSearchSinkConfig.getIndexConfiguration().getVersionType();
+    this.versionExpression = openSearchSinkConfig.getIndexConfiguration().getVersionExpression();
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
     this.failedBulkOperationConverter = new FailedBulkOperationConverter(pluginSetting.getPipelineName(), pluginSetting.getName(),
         pluginSetting.getName());
@@ -235,13 +244,15 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                     .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
                     .build());
     bulkApiWrapper = BulkApiWrapperFactory.getWrapper(openSearchSinkConfig.getIndexConfiguration(), filteringOpenSearchClient);
-    bulkRetryStrategy = new BulkRetryStrategy(
-            bulkRequest -> bulkApiWrapper.bulk(bulkRequest.getRequest()),
+    bulkRetryStrategy = new BulkRetryStrategy(bulkRequest -> bulkApiWrapper.bulk(bulkRequest.getRequest()),
             this::logFailureForBulkRequests,
             pluginMetrics,
             maxRetries,
             bulkRequestSupplier,
             pluginSetting);
+
+    // Attempt to update the serverless network policy if required argument are given.
+    maybeUpdateServerlessNetworkPolicy();
 
     objectMapper = new ObjectMapper();
     this.initialized = true;
@@ -257,7 +268,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     return initialized;
   }
 
-  private BulkOperation getBulkOperationForAction(final String action, final SerializedJson document, final String indexName, final JsonNode jsonNode) {
+  private BulkOperation getBulkOperationForAction(final String action,
+                                                  final SerializedJson document,
+                                                  final Long version,
+                                                  final String indexName,
+                                                  final JsonNode jsonNode) {
     BulkOperation bulkOperation;
     final Optional<String> docId = document.getDocumentId();
     final Optional<String> routing = document.getRoutingField();
@@ -280,10 +295,14 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
               new UpdateOperation.Builder<>()
                   .index(indexName)
                   .document(jsonNode)
-                  .upsert(jsonNode) :
+                  .upsert(jsonNode)
+                  .versionType(versionType)
+                  .version(version) :
               new UpdateOperation.Builder<>()
                   .index(indexName)
-                  .document(jsonNode);
+                  .document(jsonNode)
+                  .versionType(versionType)
+                  .version(version);
           docId.ifPresent(updateOperationBuilder::id);
           routing.ifPresent(updateOperationBuilder::routing);
           bulkOperation = new BulkOperation.Builder()
@@ -297,13 +316,20 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       docId.ifPresent(deleteOperationBuilder::id);
       routing.ifPresent(deleteOperationBuilder::routing);
       bulkOperation = new BulkOperation.Builder()
-                          .delete(deleteOperationBuilder.build())
+                          .delete(deleteOperationBuilder
+                                  .versionType(versionType)
+                                  .version(version)
+                                  .build())
                           .build();
       return bulkOperation;
     }
     // Default to "index"
     final IndexOperation.Builder<Object> indexOperationBuilder =
-      new IndexOperation.Builder<>().index(indexName).document(document);
+      new IndexOperation.Builder<>()
+              .index(indexName)
+              .document(document)
+              .version(version)
+              .versionType(versionType);
     docId.ifPresent(indexOperationBuilder::id);
     routing.ifPresent(indexOperationBuilder::routing);
     bulkOperation = new BulkOperation.Builder()
@@ -334,14 +360,30 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       } catch (final Exception e) {
           LOG.error("There was an exception when constructing the index name. Check the dlq if configured to see details about the affected Event: {}", e.getMessage());
           dynamicIndexDroppedEvents.increment();
-          logFailureForDlqObjects(List.of(DlqObject.builder()
-                  .withEventHandle(event.getEventHandle())
-                  .withFailedData(FailedDlqData.builder().withDocument(event.toJsonString()).withIndex(indexName).withMessage(e.getMessage()).build())
-                  .withPluginName(pluginSetting.getName())
-                  .withPipelineName(pluginSetting.getPipelineName())
-                  .withPluginId(pluginSetting.getName())
-                  .build()), e);
+          logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
           continue;
+      }
+
+      Long version = null;
+      String versionExpressionEvaluationResult = null;
+      if (versionExpression != null) {
+        try {
+          versionExpressionEvaluationResult = event.formatString(versionExpression, expressionEvaluator);
+          version = Long.valueOf(event.formatString(versionExpression, expressionEvaluator));
+        } catch (final NumberFormatException e) {
+          final String errorMessage = String.format(
+                  "Unable to convert the result of evaluating document_version '%s' to Long for an Event. The evaluation result '%s' must be a valid Long type", versionExpression, versionExpressionEvaluationResult
+          );
+          LOG.error(errorMessage);
+          logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, errorMessage)), e);
+          dynamicDocumentVersionDroppedEvents.increment();
+        } catch (final RuntimeException e) {
+          final String errorMessage = String.format(
+                  "There was an exception when evaluating the document_version '%s': %s", versionExpression, e.getMessage());
+          LOG.error(errorMessage + " Check the dlq if configured to see more details about the affected Event");
+          logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, errorMessage)), e);
+          dynamicDocumentVersionDroppedEvents.increment();
+        }
       }
 
       String eventAction = action;
@@ -370,7 +412,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           StringUtils.equals(action, OpenSearchBulkActions.DELETE.toString())) {
             serializedJsonNode = SerializedJson.fromJsonNode(event.getJsonNode(), document);
       }
-      BulkOperation bulkOperation = getBulkOperationForAction(eventAction, document, indexName, event.getJsonNode());
+      BulkOperation bulkOperation = getBulkOperationForAction(eventAction, document, version, indexName, event.getJsonNode());
 
       BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle(), serializedJsonNode);
       final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);
@@ -504,5 +546,37 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public void shutdown() {
     super.shutdown();
     closeFiles();
+  }
+
+  private void maybeUpdateServerlessNetworkPolicy() {
+    final ConnectionConfiguration connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
+    if (connectionConfiguration.isServerless() &&
+        !StringUtils.isBlank(connectionConfiguration.getServerlessNetworkPolicyName()) &&
+        !StringUtils.isBlank(connectionConfiguration.getServerlessCollectionName()) &&
+        !StringUtils.isBlank(connectionConfiguration.getServerlessVpceId())
+    ) {
+      final OpenSearchServerlessClient openSearchServerlessClient = connectionConfiguration.createOpenSearchServerlessClient(awsCredentialsSupplier);
+      final ServerlessNetworkPolicyUpdater networkPolicyUpdater = new ServerlessNetworkPolicyUpdater(openSearchServerlessClient);
+      networkPolicyUpdater.updateNetworkPolicy(
+          connectionConfiguration.getServerlessNetworkPolicyName(),
+          connectionConfiguration.getServerlessCollectionName(),
+          connectionConfiguration.getServerlessVpceId());
+    }
+  }
+
+  private DlqObject createDlqObjectFromEvent(final Event event,
+                                             final String index,
+                                             final String message) {
+    return DlqObject.builder()
+            .withEventHandle(event.getEventHandle())
+            .withFailedData(FailedDlqData.builder()
+                    .withDocument(event.toJsonString())
+                    .withIndex(index)
+                    .withMessage(message)
+                    .build())
+            .withPluginName(pluginSetting.getName())
+            .withPipelineName(pluginSetting.getPipelineName())
+            .withPluginId(pluginSetting.getName())
+            .build();
   }
 }

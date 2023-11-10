@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
@@ -41,6 +42,7 @@ import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +60,8 @@ public class DynamoDBService {
     private final EnhancedSourceCoordinator coordinator;
 
     private final DynamoDbClient dynamoDbClient;
+
+    private final DynamoDBSourceConfig dynamoDBSourceConfig;
     //
     private final DynamoDbStreamsClient dynamoDbStreamsClient;
 
@@ -69,10 +73,21 @@ public class DynamoDBService {
 
     private final PluginMetrics pluginMetrics;
 
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
-    public DynamoDBService(EnhancedSourceCoordinator coordinator, ClientFactory clientFactory, DynamoDBSourceConfig sourceConfig, PluginMetrics pluginMetrics) {
+    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
+    static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+
+
+    public DynamoDBService(final EnhancedSourceCoordinator coordinator,
+                           final ClientFactory clientFactory,
+                           final DynamoDBSourceConfig sourceConfig,
+                           final PluginMetrics pluginMetrics,
+                           final AcknowledgementSetManager acknowledgementSetManager) {
         this.coordinator = coordinator;
         this.pluginMetrics = pluginMetrics;
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.dynamoDBSourceConfig = sourceConfig;
 
         // Initialize AWS clients
         dynamoDbClient = clientFactory.buildDynamoDBClient();
@@ -99,10 +114,10 @@ public class DynamoDBService {
         Runnable exportScheduler = new ExportScheduler(coordinator, dynamoDbClient, manifestFileReader, pluginMetrics);
 
         DataFileLoaderFactory loaderFactory = new DataFileLoaderFactory(coordinator, s3Client, pluginMetrics, buffer);
-        Runnable fileLoaderScheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics);
+        Runnable fileLoaderScheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
 
         ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, shardManager, buffer);
-        Runnable streamScheduler = new StreamScheduler(coordinator, consumerFactory, shardManager, pluginMetrics);
+        Runnable streamScheduler = new StreamScheduler(coordinator, consumerFactory, shardManager, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
 
         // May consider start or shutdown the scheduler on demand
         // Currently, event after the exports are done, the related scheduler will not be shutdown
@@ -156,14 +171,18 @@ public class DynamoDBService {
             Instant startTime = Instant.now();
 
             if (tableInfo.getMetadata().isExportRequired()) {
-//                exportTime = Instant.now();
-                createExportPartition(tableInfo.getTableArn(), startTime, tableInfo.getMetadata().getExportBucket(), tableInfo.getMetadata().getExportPrefix());
+                createExportPartition(
+                        tableInfo.getTableArn(),
+                        startTime,
+                        tableInfo.getMetadata().getExportBucket(),
+                        tableInfo.getMetadata().getExportPrefix(),
+                        tableInfo.getMetadata().getExportKmsKeyId());
             }
 
             if (tableInfo.getMetadata().isStreamRequired()) {
                 List<String> shardIds;
                 // start position by default is TRIM_HORIZON if not provided.
-                if (tableInfo.getMetadata().isExportRequired() || String.valueOf(StreamStartPosition.LATEST).equals(tableInfo.getMetadata().getStreamStartPosition())) {
+                if (tableInfo.getMetadata().isExportRequired() || tableInfo.getMetadata().getStreamStartPosition() == StreamStartPosition.LATEST) {
                     // For a continued data extraction process that involves both export and stream
                     // The export must be completed and loaded before stream can start.
                     // Moreover, there should not be any gaps between the export time and the time start reading the stream
@@ -195,11 +214,12 @@ public class DynamoDBService {
      * @param bucket     Export bucket
      * @param prefix     Export Prefix
      */
-    private void createExportPartition(String tableArn, Instant exportTime, String bucket, String prefix) {
+    private void createExportPartition(String tableArn, Instant exportTime, String bucket, String prefix, String kmsKeyId) {
         ExportProgressState exportProgressState = new ExportProgressState();
         exportProgressState.setBucket(bucket);
         exportProgressState.setPrefix(prefix);
         exportProgressState.setExportTime(exportTime.toString()); // information purpose
+        exportProgressState.setKmsKeyId(kmsKeyId);
         ExportPartition exportPartition = new ExportPartition(tableArn, exportTime, Optional.of(exportProgressState));
         coordinator.createPartition(exportPartition);
     }
@@ -274,15 +294,13 @@ public class DynamoDBService {
                 throw new InvalidPluginConfigurationException(errorMessage);
             }
             // Validate view type of DynamoDB stream
-            if (describeTableResult.table().streamSpecification() != null) {
-                String viewType = describeTableResult.table().streamSpecification().streamViewTypeAsString();
-                LOG.debug("The stream view type for table " + tableName + " is " + viewType);
-                List<String> supportedType = List.of("NEW_IMAGE", "NEW_AND_OLD_IMAGES");
-                if (!supportedType.contains(viewType)) {
-                    String errorMessage = "Stream " + tableConfig.getTableArn() + " is enabled with " + viewType + ". Supported types are " + supportedType;
-                    LOG.error(errorMessage);
-                    throw new InvalidPluginConfigurationException(errorMessage);
-                }
+            String viewType = describeTableResult.table().streamSpecification().streamViewTypeAsString();
+            LOG.debug("The stream view type for table " + tableName + " is " + viewType);
+            List<String> supportedType = List.of("NEW_IMAGE", "NEW_AND_OLD_IMAGES");
+            if (!supportedType.contains(viewType)) {
+                String errorMessage = "Stream " + tableConfig.getTableArn() + " is enabled with " + viewType + ". Supported types are " + supportedType;
+                LOG.error(errorMessage);
+                throw new InvalidPluginConfigurationException(errorMessage);
             }
             streamStartPosition = tableConfig.getStreamConfig().getStartPosition();
         }
@@ -298,6 +316,7 @@ public class DynamoDBService {
                 .streamStartPosition(streamStartPosition)
                 .exportBucket(tableConfig.getExportConfig() == null ? null : tableConfig.getExportConfig().getS3Bucket())
                 .exportPrefix(tableConfig.getExportConfig() == null ? null : tableConfig.getExportConfig().getS3Prefix())
+                .exportKmsKeyId(tableConfig.getExportConfig() == null ? null : tableConfig.getExportConfig().getS3SseKmsKeyId())
                 .build();
         return new TableInfo(tableConfig.getTableArn(), metadata);
     }

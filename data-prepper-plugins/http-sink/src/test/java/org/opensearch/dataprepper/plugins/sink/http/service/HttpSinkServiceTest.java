@@ -17,10 +17,10 @@ import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
@@ -29,6 +29,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.http.FailedHttpResponseInterceptor;
+import org.opensearch.dataprepper.plugins.sink.http.configuration.AuthenticationOptions;
+import org.opensearch.dataprepper.plugins.sink.http.configuration.AuthTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.ThresholdOptions;
 import org.opensearch.dataprepper.plugins.sink.http.dlq.DlqPushHandler;
@@ -50,6 +52,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+
 public class HttpSinkServiceTest {
 
     private ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
@@ -66,8 +69,12 @@ public class HttpSinkServiceTest {
             "            username: \"username\"\n" +
             "            password: \"vip\"\n" +
             "          bearer_token:\n" +
-            "            token: \"test\"\n" +
-            "        ssl: false\n" +
+            "            client_id: 0oaafr4j79segrYGC5d7\n" +
+            "            client_secret: fFel-3FutCXAOndezEsOVlght6D6DR4OIt7G5D1_oJ6w0wNoaYtgU17JdyXmGf0M\n" +
+            "            token_url: https://localhost/oauth2/default/v1/token\n" +
+            "            grant_type: client_credentials\n" +
+            "            scope: httpSink\n"+
+            "        insecure_skip_verify: true\n" +
             "        dlq_file: \"/your/local/dlq-file\"\n" +
             "        dlq:\n" +
             "        ssl_certificate_file: \"/full/path/to/certfile.crt\"\n" +
@@ -110,10 +117,8 @@ public class HttpSinkServiceTest {
 
     private CloseableHttpResponse closeableHttpResponse;
 
-    private String tagsTargetKey;
-
     @BeforeEach
-    void setup() throws IOException {
+    void setup() throws Exception {
         this.codec = mock(OutputCodec.class);
         this.pluginMetrics = mock(PluginMetrics.class);
         this.httpSinkConfiguration = objectMapper.readValue(SINK_YAML,HttpSinkConfiguration.class);
@@ -128,13 +133,12 @@ public class HttpSinkServiceTest {
         this.closeableHttpResponse = mock(CloseableHttpResponse.class);
         this.bufferFactory = new InMemoryBufferFactory();
 
-        lenient().when(httpClientBuilder.setConnectionManager(null)).thenReturn(httpClientBuilder);
+        lenient().when(httpClientBuilder.setConnectionManager(Mockito.any())).thenReturn(httpClientBuilder);
         lenient().when(httpClientBuilder.addResponseInterceptorLast(any(FailedHttpResponseInterceptor.class))).thenReturn(httpClientBuilder);
         lenient().when(httpClientBuilder.build()).thenReturn(closeableHttpClient);
         lenient().when(closeableHttpClient.execute(any(ClassicHttpRequest.class),any(HttpClientContext.class))).thenReturn(closeableHttpResponse);
         when(pluginMetrics.counter(HttpSinkService.HTTP_SINK_RECORDS_SUCCESS_COUNTER)).thenReturn(httpSinkRecordsSuccessCounter);
         when(pluginMetrics.counter(HttpSinkService.HTTP_SINK_RECORDS_FAILED_COUNTER)).thenReturn(httpSinkRecordsFailedCounter);
-
     }
 
     HttpSinkService createObjectUnderTest(final int eventCount,final HttpSinkConfiguration httpSinkConfig) throws NoSuchFieldException, IllegalAccessException {
@@ -148,7 +152,9 @@ public class HttpSinkServiceTest {
                 webhookService,
                 httpClientBuilder,
                 pluginMetrics,
-                pluginSetting);
+                pluginSetting,
+                codec,
+                null);
     }
 
     @Test
@@ -181,10 +187,16 @@ public class HttpSinkServiceTest {
     }
 
     @Test
-    void http_sink_service_test_with_single_record_with_basic_authentication() throws NoSuchFieldException, IllegalAccessException {
+    void http_sink_service_test_with_single_record_with_basic_authentication() throws NoSuchFieldException, IllegalAccessException, JsonProcessingException {
+
+        final String basicAuthYaml =            "          http_basic:\n" +
+                "            username: \"username\"\n" +
+                "            password: \"vip\"\n" ;
+        ReflectivelySetField.setField(HttpSinkConfiguration.class,httpSinkConfiguration,"authentication", objectMapper.readValue(basicAuthYaml, AuthenticationOptions.class));
+        ReflectivelySetField.setField(HttpSinkConfiguration.class,httpSinkConfiguration,"authType", AuthTypeOptions.HTTP_BASIC);
+        final Record<Event> eventRecord = new Record<>(JacksonEvent.fromMessage("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}"));
         lenient().when(httpClientBuilder.setDefaultCredentialsProvider(any(BasicCredentialsProvider.class))).thenReturn(httpClientBuilder);
         final HttpSinkService objectUnderTest = createObjectUnderTest(1,httpSinkConfiguration);
-        final Record<Event> eventRecord = new Record<>(JacksonEvent.fromMessage("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}"));
         objectUnderTest.output(List.of(eventRecord));
         verify(httpSinkRecordsSuccessCounter).increment(1);
     }
@@ -193,8 +205,12 @@ public class HttpSinkServiceTest {
     void http_sink_service_test_with_single_record_with_bearer_token() throws NoSuchFieldException, IllegalAccessException, JsonProcessingException {
         lenient().when(httpClientBuilder.setDefaultCredentialsProvider(any(BasicCredentialsProvider.class))).thenReturn(httpClientBuilder);
         final String authentication = "          bearer_token:\n" +
-        "            token: \"test\"" ;
-        ReflectivelySetField.setField(HttpSinkConfiguration.class,httpSinkConfiguration,"authentication", objectMapper.readValue(authentication, PluginModel.class));
+                "            client_id: 0oaafr4j79segrYGC5d7\n" +
+                "            client_secret: fFel-3FutCXAOndezEsOVlght6D6DR4OIt7G5D1_oJ6w0wNoaYtgU17JdyXmGf0M\n" +
+                "            token_url: https://localhost/oauth2/default/v1/token\n" +
+                "            grant_type: client_credentials\n" +
+                "            scope: httpSink" ;
+        ReflectivelySetField.setField(HttpSinkConfiguration.class,httpSinkConfiguration,"authentication", objectMapper.readValue(authentication, AuthenticationOptions.class));
         final HttpSinkService objectUnderTest = createObjectUnderTest(1,httpSinkConfiguration);
         final Record<Event> eventRecord = new Record<>(JacksonEvent.fromMessage("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}"));
         objectUnderTest.output(List.of(eventRecord));
@@ -216,6 +232,7 @@ public class HttpSinkServiceTest {
         final Event event = mock(Event.class);
         given(event.toJsonString()).willReturn("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}");
         given(event.getEventHandle()).willReturn(mock(EventHandle.class));
+        given(event.jsonBuilder()).willReturn(mock(Event.JsonStringBuilder.class));
         objectUnderTest.output(List.of(new Record<>(event)));
         verify(httpSinkRecordsSuccessCounter).increment(1);
     }

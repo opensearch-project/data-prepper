@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -21,12 +22,14 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
 import software.amazon.awssdk.services.s3.S3Client;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class DataFileLoaderFactoryTest {
@@ -44,7 +47,6 @@ class DataFileLoaderFactoryTest {
 
     @Mock
     private Buffer<Record<Event>> buffer;
-
 
     private TableInfo tableInfo;
 
@@ -85,10 +87,19 @@ class DataFileLoaderFactoryTest {
 
     @Test
     void test_createDataFileLoader() {
+        DataFileLoaderFactory loaderFactory = new DataFileLoaderFactory(coordinator, s3Client, pluginMetrics, buffer);
+        Runnable loader = loaderFactory.createDataFileLoader(dataFilePartition, tableInfo, null, null);
+        assertThat(loader, notNullValue());
+    }
+
+    @Test
+    void test_createDataFileLoader_with_acknowledgments() {
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        final Duration acknowledgmentTimeout = Duration.ofSeconds(30);
 
         DataFileLoaderFactory loaderFactory = new DataFileLoaderFactory(coordinator, s3Client, pluginMetrics, buffer);
-        Runnable loader = loaderFactory.createDataFileLoader(dataFilePartition, tableInfo);
-        assertThat(loader, notNullValue());
 
+        Runnable loader = loaderFactory.createDataFileLoader(dataFilePartition, tableInfo, acknowledgementSet, acknowledgmentTimeout);
+        assertThat(loader, notNullValue());
     }
 }

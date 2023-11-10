@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.sink.http.FailedHttpResponseInterceptor;
 import org.opensearch.dataprepper.plugins.sink.http.HttpEndPointResponse;
+
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.http.dlq.FailedDlqData;
 
@@ -71,7 +72,11 @@ public class WebhookServiceTest {
     public void http_sink_webhook_service_test_with_one_webhook_success_push() throws IOException {
         lenient().when(closeableHttpClient.execute(any(ClassicHttpRequest.class),any(HttpClientContext.class))).thenReturn(closeableHttpResponse);
         HttpEndPointResponse httpEndPointResponse = new HttpEndPointResponse(TEST_URL,200);
-        FailedDlqData failedDlqData = FailedDlqData.builder().withBufferData("Test Data").withEndPointResponses(httpEndPointResponse).build();
+        FailedDlqData failedDlqData =
+                FailedDlqData.builder()
+                        .withUrl(httpEndPointResponse.getUrl())
+                        .withMessage("Test Data")
+                        .withStatus(httpEndPointResponse.getStatusCode()).build();
         WebhookService webhookService = createObjectUnderTest();
         webhookService.pushWebhook(failedDlqData);
         verify(httpSinkWebhookSuccessCounter).increment();
@@ -81,7 +86,11 @@ public class WebhookServiceTest {
     public void http_sink_webhook_service_test_with_one_webhook_failed_to_push() throws IOException {
         when(closeableHttpClient.execute(any(HttpHost.class),any(ClassicHttpRequest.class),any(HttpClientContext.class))).thenThrow(new IOException("Internal Server Error"));
         HttpEndPointResponse httpEndPointResponse = new HttpEndPointResponse(TEST_URL,500);
-        FailedDlqData failedDlqData = FailedDlqData.builder().withBufferData("Test Data").withEndPointResponses(httpEndPointResponse).build();
+        FailedDlqData failedDlqData = FailedDlqData.builder()
+                .withMessage("Test Data")
+                .withStatus(httpEndPointResponse.getStatusCode())
+                .withUrl(httpEndPointResponse.getUrl())
+                .build();
         WebhookService webhookService = createObjectUnderTest();
         webhookService.pushWebhook(failedDlqData);
         verify(httpSinkWebhookFailedCounter).increment();

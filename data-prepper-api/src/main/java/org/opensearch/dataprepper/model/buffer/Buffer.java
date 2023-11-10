@@ -49,7 +49,7 @@ public interface Buffer<T extends Record<?>> {
      * @throws RuntimeException Other exceptions
      */
     default void writeBytes(final byte[] bytes, final String key, int timeoutInMillis) throws Exception {
-        throw new RuntimeException("Not supported");
+        throw new UnsupportedOperationException("This buffer type does not support bytes.");
     }
 
     /**
@@ -90,6 +90,17 @@ public interface Buffer<T extends Record<?>> {
      */
     default Duration getDrainTimeout() {
         return Duration.ZERO;
+    }
+
+    /**
+     * Indicates if writes to this buffer are also in some way written
+     * onto the JVM heap. If writes do go on heap, this should <b>false</b>
+     * which is the default.
+     *
+     * @return True if this buffer does not write to the JVM heap.
+     */
+    default boolean isWrittenOffHeapOnly() {
+        return false;
     }
 
     /**

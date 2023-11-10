@@ -23,7 +23,7 @@ public class DataFilePartition extends EnhancedSourcePartition<DataFileProgressS
     private final String bucket;
     private final String key;
 
-    private final DataFileProgressState state;
+    private DataFileProgressState state;
 
     public DataFilePartition(SourcePartitionStoreItem sourcePartitionStoreItem) {
 

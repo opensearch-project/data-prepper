@@ -38,12 +38,18 @@ public class ShardManager {
         this.streamsClient = streamsClient;
     }
 
-    private List<Shard> listShards(String streamArn) {
+    /**
+     * List all shards using describe stream API.
+     *
+     * @param streamArn            Stream Arn
+     * @param lastEvaluatedShardId Start shard id for listing, useful when trying to get child shards. If not provided, all shards will be returned.
+     * @return A list of {@link Shard}
+     */
+    private List<Shard> listShards(String streamArn, String lastEvaluatedShardId) {
         LOG.info("Start getting all shards from {}", streamArn);
         long startTime = System.currentTimeMillis();
         // Get all the shard IDs from the stream.
         List<Shard> shards = new ArrayList<>();
-        String lastEvaluatedShardId = null;
         do {
             DescribeStreamRequest req = DescribeStreamRequest.builder()
                     .streamArn(streamArn)
@@ -70,12 +76,12 @@ public class ShardManager {
      * Get a list of Child Shard Ids based on a parent shard id provided.
      *
      * @param streamArn Stream Arn
-     * @param shardId   Parent Shard Id
-     * @return A list of child shard Ids.
+     * @param shardId   Parent Shard id
+     * @return A list of child shard ids.
      */
     public List<String> getChildShardIds(String streamArn, String shardId) {
         LOG.debug("Getting child ids for " + shardId);
-        List<Shard> shards = listShards(streamArn);
+        List<Shard> shards = listShards(streamArn, shardId);
         return shards.stream()
                 .filter(s -> shardId.equals(s.parentShardId()))
                 .map(s -> s.shardId())
@@ -90,7 +96,7 @@ public class ShardManager {
      * @return A list of shard Ids
      */
     public List<String> getActiveShards(String streamArn) {
-        List<Shard> shards = listShards(streamArn);
+        List<Shard> shards = listShards(streamArn, null);
         return shards.stream()
                 .filter(s -> s.sequenceNumberRange().endingSequenceNumber() == null)
                 .map(s -> s.shardId())
@@ -123,9 +129,8 @@ public class ShardManager {
                     .shardIteratorType(ShardIteratorType.AFTER_SEQUENCE_NUMBER)
                     .sequenceNumber(sequenceNumber)
                     .build();
-
         } else {
-            LOG.debug("Get Shard Iterator from beginning (TRIM_HORIZON)");
+            LOG.info("Get Shard Iterator from beginning (TRIM_HORIZON) for shard {}", shardId);
             getShardIteratorRequest = GetShardIteratorRequest.builder()
                     .shardId(shardId)
                     .streamArn(streamArn)
@@ -155,7 +160,7 @@ public class ShardManager {
      * @return A list of root shard Ids
      */
     public List<String> getRootShardIds(String streamArn) {
-        List<Shard> shards = listShards(streamArn);
+        List<Shard> shards = listShards(streamArn, null);
 
         List<String> childIds = shards.stream().map(shard -> shard.shardId()).collect(Collectors.toList());
         List<String> rootIds = shards.stream()

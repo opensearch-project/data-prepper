@@ -30,17 +30,19 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
+import org.opensearch.dataprepper.plugins.kafka.consumer.PauseConsumePredicate;
+import org.opensearch.dataprepper.plugins.kafka.consumer.TopicEmptinessMetadata;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,13 +111,14 @@ public class KafkaSource implements Source<Record<Event>> {
         KafkaSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
         sourceConfig.getTopics().forEach(topic -> {
             consumerGroupID = topic.getGroupId();
-            KafkaTopicMetrics topicMetrics = new KafkaTopicMetrics(topic.getName(), pluginMetrics);
+            KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, true);
             Properties consumerProperties = getConsumerProperties(topic, authProperties);
             MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
             try {
                 int numWorkers = topic.getWorkers();
                 executorService = Executors.newFixedThreadPool(numWorkers);
                 allTopicExecutorServices.add(executorService);
+                final TopicEmptinessMetadata topicEmptinessMetadata = new TopicEmptinessMetadata();
 
                 IntStream.range(0, numWorkers).forEach(index -> {
                     while (true) {
@@ -138,7 +141,8 @@ public class KafkaSource implements Source<Record<Event>> {
                         }
 
                     }
-                    consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, null, topicMetrics);
+                    consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType,
+                            acknowledgementSetManager, null, topicMetrics, topicEmptinessMetadata, PauseConsumePredicate.noPause());
                     allTopicConsumers.add(consumer);
 
                     executorService.submit(consumer);
@@ -204,7 +208,7 @@ public class KafkaSource implements Source<Record<Event>> {
     }
 
     private long calculateLongestThreadWaitingTime() {
-        List<TopicConfig> topicsList = sourceConfig.getTopics();
+        List<? extends TopicConsumerConfig> topicsList = sourceConfig.getTopics();
         return topicsList.stream().
                 map(
                         topics -> topics.getThreadWaitingTime().toSeconds()
@@ -217,7 +221,7 @@ public class KafkaSource implements Source<Record<Event>> {
         return kafkaConsumer;
     }
 
-    private Properties getConsumerProperties(final TopicConfig topicConfig, final Properties authProperties) {
+    private Properties getConsumerProperties(final TopicConsumerConfig topicConfig, final Properties authProperties) {
         Properties properties = (Properties) authProperties.clone();
         if (StringUtils.isNotEmpty(sourceConfig.getClientDnsLookup())) {
             ClientDNSLookupType dnsLookupType = ClientDNSLookupType.getDnsLookupType(sourceConfig.getClientDnsLookup());
@@ -306,7 +310,7 @@ public class KafkaSource implements Source<Record<Event>> {
         }
     }
 
-    private void setConsumerTopicProperties(Properties properties, TopicConfig topicConfig) {
+    private void setConsumerTopicProperties(Properties properties, TopicConsumerConfig topicConfig) {
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupID);
         properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, (int) topicConfig.getMaxPartitionFetchBytes());
         properties.put(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, ((Long) topicConfig.getRetryBackoff().toMillis()).intValue());

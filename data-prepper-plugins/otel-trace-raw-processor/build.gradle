@@ -18,7 +18,7 @@ dependencies {
     implementation libs.armeria.grpc
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation libs.guava.core
+    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
     testImplementation testLibs.junit.vintage
     testImplementation 'org.assertj:assertj-core:3.24.2'
     testImplementation testLibs.mockito.inline

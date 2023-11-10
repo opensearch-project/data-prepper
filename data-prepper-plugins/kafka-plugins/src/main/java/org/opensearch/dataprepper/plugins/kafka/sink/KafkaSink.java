@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.kafka.sink;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -18,9 +19,8 @@ import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
@@ -61,6 +61,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private final PluginSetting pluginSetting;
 
+    private final PluginMetrics pluginMetrics;
+
     private final ExpressionEvaluator expressionEvaluator;
 
     private final Lock reentrantLock;
@@ -70,10 +72,11 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     @DataPrepperPluginConstructor
     public KafkaSink(final PluginSetting pluginSetting, final KafkaSinkConfig kafkaSinkConfig, final PluginFactory pluginFactory,
-                     final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext,
+                     final PluginMetrics pluginMetrics, final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext,
                      AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
         this.pluginSetting = pluginSetting;
+        this.pluginMetrics = pluginMetrics;
         this.kafkaSinkConfig = kafkaSinkConfig;
         this.pluginFactory = pluginFactory;
         this.expressionEvaluator = expressionEvaluator;
@@ -145,10 +148,10 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     }
 
     private void checkTopicCreationCriteriaAndCreateTopic() {
-        final TopicConfig topic = kafkaSinkConfig.getTopic();
-        if (topic.isCreate()) {
+        final TopicProducerConfig topic = kafkaSinkConfig.getTopic();
+        if (topic.isCreateTopic()) {
             final TopicService topicService = new TopicService(kafkaSinkConfig);
-            topicService.createTopic(kafkaSinkConfig.getTopic().getName(), topic.getNumberOfPartions(), topic.getReplicationFactor());
+            topicService.createTopic(kafkaSinkConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor());
             topicService.closeAdminClient();
         }
 
@@ -157,7 +160,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     public KafkaCustomProducer createProducer() {
         // TODO: Add the DLQSink here. new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting)
-        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, pluginFactory, pluginSetting, expressionEvaluator, sinkContext);
+        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, pluginFactory, pluginSetting, expressionEvaluator, sinkContext, pluginMetrics, true);
     }
 
 

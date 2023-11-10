@@ -94,32 +94,41 @@ public class ExportScheduler implements Runnable {
     public void run() {
         LOG.debug("Start running Export Scheduler");
         while (!Thread.currentThread().isInterrupted()) {
-            // Does not have limit on max leases
-            // As most of the time it's just to wait
-            final Optional<EnhancedSourcePartition> sourcePartition = enhancedSourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE);
-
-            if (sourcePartition.isPresent()) {
-
-                ExportPartition exportPartition = (ExportPartition) sourcePartition.get();
-                LOG.debug("Acquired an export partition: " + exportPartition.getPartitionKey());
-
-                String exportArn = getOrCreateExportArn(exportPartition);
-
-                if (exportArn == null) {
-                    closeExportPartitionWithError(exportPartition);
-                } else {
-                    CompletableFuture<String> checkStatus = CompletableFuture.supplyAsync(() -> checkExportStatus(exportPartition), executor);
-                    checkStatus.whenComplete(completeExport(exportPartition));
-                }
-
-            }
             try {
-                Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
-            } catch (final InterruptedException e) {
-                LOG.info("InterruptedException occurred");
-                break;
-            }
+                // Does not have limit on max leases
+                // As most of the time it's just to wait
+                final Optional<EnhancedSourcePartition> sourcePartition = enhancedSourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE);
 
+                if (sourcePartition.isPresent()) {
+
+                    ExportPartition exportPartition = (ExportPartition) sourcePartition.get();
+                    LOG.debug("Acquired an export partition: " + exportPartition.getPartitionKey());
+
+                    String exportArn = getOrCreateExportArn(exportPartition);
+
+                    if (exportArn == null) {
+                        closeExportPartitionWithError(exportPartition);
+                    } else {
+                        CompletableFuture<String> checkStatus = CompletableFuture.supplyAsync(() -> checkExportStatus(exportPartition), executor);
+                        checkStatus.whenComplete(completeExport(exportPartition));
+                    }
+
+                }
+                try {
+                    Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException e) {
+                    LOG.info("The ExportScheduler was interrupted while waiting to retry, stopping processing");
+                    break;
+                }
+            } catch (final Exception e) {
+                LOG.error("Received an exception during export from DynamoDB to S3, backing off and retrying", e);
+                try {
+                    Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException ex) {
+                    LOG.info("The ExportScheduler was interrupted while waiting to retry, stopping processing");
+                    break;
+                }
+            }
         }
         LOG.warn("Export scheduler interrupted, looks like shutdown has triggered");
         executor.shutdownNow();
@@ -130,7 +139,7 @@ public class ExportScheduler implements Runnable {
     private BiConsumer<String, Throwable> completeExport(ExportPartition exportPartition) {
         return (status, ex) -> {
             if (ex != null) {
-                LOG.debug("Check export status for {} failed with error {}", exportPartition.getPartitionKey(), ex.getMessage());
+                LOG.warn("Check export status for {} failed with error {}", exportPartition.getPartitionKey(), ex.getMessage());
 //                closeExportPartitionWithError(exportPartition);
                 enhancedSourceCoordinator.giveUpPartition(exportPartition);
             } else {
@@ -147,8 +156,7 @@ public class ExportScheduler implements Runnable {
                 ExportProgressState state = exportPartition.getProgressState().get();
                 String bucketName = state.getBucket();
                 String exportArn = state.getExportArn();
-
-
+                
                 String manifestKey = exportTaskManager.getExportManifest(exportArn);
                 LOG.debug("Export manifest summary file is " + manifestKey);
 
@@ -173,13 +181,14 @@ public class ExportScheduler implements Runnable {
 
 
     private void createDataFilePartitions(String exportArn, String bucketName, Map<String, Integer> dataFileInfo) {
-        LOG.info("Totally {} data files generated for export {}", dataFileInfo.size(), exportArn);
+        LOG.info("Total of {} data files generated for export {}", dataFileInfo.size(), exportArn);
         AtomicInteger totalRecords = new AtomicInteger();
         AtomicInteger totalFiles = new AtomicInteger();
         dataFileInfo.forEach((key, size) -> {
             DataFileProgressState progressState = new DataFileProgressState();
             progressState.setTotal(size);
             progressState.setLoaded(0);
+
             totalFiles.addAndGet(1);
             totalRecords.addAndGet(size);
             DataFilePartition partition = new DataFilePartition(exportArn, bucketName, key, Optional.of(progressState));
@@ -197,6 +206,7 @@ public class ExportScheduler implements Runnable {
 
 
     private void closeExportPartitionWithError(ExportPartition exportPartition) {
+        LOG.error("The export from DynamoDb to S3 failed, it will be retried");
         exportJobFailureCounter.increment(1);
         ExportProgressState exportProgressState = exportPartition.getProgressState().get();
         // Clear current Arn, so that a new export can be submitted.
@@ -219,7 +229,7 @@ public class ExportScheduler implements Runnable {
         LOG.debug("Start Checking the status of export " + exportArn);
         while (true) {
             if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
-                enhancedSourceCoordinator.saveProgressStateForPartition(exportPartition);
+                enhancedSourceCoordinator.saveProgressStateForPartition(exportPartition, null);
                 lastCheckpointTime = System.currentTimeMillis();
             }
 
@@ -250,14 +260,14 @@ public class ExportScheduler implements Runnable {
 
         LOG.info("Try to submit a new export job for table {} with export time {}", exportPartition.getTableArn(), exportPartition.getExportTime());
         // submit a new export request
-        String exportArn = exportTaskManager.submitExportJob(exportPartition.getTableArn(), state.getBucket(), state.getPrefix(), exportPartition.getExportTime());
+        String exportArn = exportTaskManager.submitExportJob(exportPartition.getTableArn(), state.getBucket(), state.getPrefix(), state.getKmsKeyId(), exportPartition.getExportTime());
 
         // Update state with export Arn in the coordination table.
         // So that it won't be submitted again after a restart.
         if (exportArn != null) {
             LOG.info("Export arn is " + exportArn);
             state.setExportArn(exportArn);
-            enhancedSourceCoordinator.saveProgressStateForPartition(exportPartition);
+            enhancedSourceCoordinator.saveProgressStateForPartition(exportPartition, null);
         }
         return exportArn;
     }

@@ -7,8 +7,11 @@ package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.LoadStatus;
@@ -35,7 +38,7 @@ public class DataFileScheduler implements Runnable {
     /**
      * Maximum concurrent data loader per node
      */
-    private static final int MAX_JOB_COUNT = 4;
+    private static final int MAX_JOB_COUNT = 3;
 
     /**
      * Default interval to acquire a lease from coordination store
@@ -54,16 +57,25 @@ public class DataFileScheduler implements Runnable {
 
     private final PluginMetrics pluginMetrics;
 
+    private final AcknowledgementSetManager acknowledgementSetManager;
+
+    private final DynamoDBSourceConfig dynamoDBSourceConfig;
+
 
     private final Counter exportFileSuccessCounter;
     private final AtomicLong activeExportS3ObjectConsumersGauge;
 
 
-    public DataFileScheduler(EnhancedSourceCoordinator coordinator, DataFileLoaderFactory loaderFactory, PluginMetrics pluginMetrics) {
+    public DataFileScheduler(final EnhancedSourceCoordinator coordinator,
+                             final DataFileLoaderFactory loaderFactory,
+                             final PluginMetrics pluginMetrics,
+                             final AcknowledgementSetManager acknowledgementSetManager,
+                             final DynamoDBSourceConfig dynamoDBSourceConfig) {
         this.coordinator = coordinator;
         this.pluginMetrics = pluginMetrics;
         this.loaderFactory = loaderFactory;
-
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.dynamoDBSourceConfig = dynamoDBSourceConfig;
 
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
 
@@ -77,34 +89,63 @@ public class DataFileScheduler implements Runnable {
 
         TableInfo tableInfo = getTableInfo(tableArn);
 
-        Runnable loader = loaderFactory.createDataFileLoader(dataFilePartition, tableInfo);
+        final boolean acknowledgmentsEnabled = dynamoDBSourceConfig.isAcknowledgmentsEnabled();
+
+        AcknowledgementSet acknowledgementSet = null;
+        if (acknowledgmentsEnabled) {
+            acknowledgementSet = acknowledgementSetManager.create((result) -> {
+                if (result == true) {
+                    completeDataLoader(dataFilePartition).accept(null, null);
+                    LOG.info("Received acknowledgment of completion from sink for data file {}", dataFilePartition.getKey());
+                } else {
+                    LOG.warn("Negative acknowledgment received for data file {}, retrying", dataFilePartition.getKey());
+                    coordinator.giveUpPartition(dataFilePartition);
+                }
+            }, dynamoDBSourceConfig.getDataFileAcknowledgmentTimeout());
+        }
+
+        Runnable loader = loaderFactory.createDataFileLoader(dataFilePartition, tableInfo, acknowledgementSet, dynamoDBSourceConfig.getDataFileAcknowledgmentTimeout());
         CompletableFuture runLoader = CompletableFuture.runAsync(loader, executor);
-        runLoader.whenComplete(completeDataLoader(dataFilePartition));
+
+        if (!acknowledgmentsEnabled) {
+            runLoader.whenComplete(completeDataLoader(dataFilePartition));
+        } else {
+            runLoader.whenComplete((v, ex) -> numOfWorkers.decrementAndGet());
+        }
         numOfWorkers.incrementAndGet();
     }
 
     @Override
     public void run() {
-        LOG.info("Start running Data File Scheduler");
+        LOG.debug("Starting Data File Scheduler to process S3 data files for export");
 
         while (!Thread.currentThread().isInterrupted()) {
-            if (numOfWorkers.get() < MAX_JOB_COUNT) {
-                final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
+            try {
+                if (numOfWorkers.get() < MAX_JOB_COUNT) {
+                    final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
 
-                if (sourcePartition.isPresent()) {
-                    activeExportS3ObjectConsumersGauge.incrementAndGet();
-                    DataFilePartition dataFilePartition = (DataFilePartition) sourcePartition.get();
-                    processDataFilePartition(dataFilePartition);
-                    activeExportS3ObjectConsumersGauge.decrementAndGet();
+                    if (sourcePartition.isPresent()) {
+                        activeExportS3ObjectConsumersGauge.incrementAndGet();
+                        DataFilePartition dataFilePartition = (DataFilePartition) sourcePartition.get();
+                        processDataFilePartition(dataFilePartition);
+                        activeExportS3ObjectConsumersGauge.decrementAndGet();
+                    }
+                }
+                try {
+                    Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException e) {
+                    LOG.info("The DataFileScheduler was interrupted while waiting to retry, stopping processing");
+                    break;
+                }
+            } catch (final Exception e) {
+                LOG.error("Received an exception while processing an S3 data file, backing off and retrying", e);
+                try {
+                    Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException ex) {
+                    LOG.info("The DataFileScheduler was interrupted while waiting to retry, stopping processing");
+                    break;
                 }
             }
-            try {
-                Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
-            } catch (final InterruptedException e) {
-                LOG.info("InterruptedException occurred");
-                break;
-            }
-
         }
         LOG.warn("Data file scheduler is interrupted, Stop all data file loaders...");
         // Cannot call executor.shutdownNow() here
@@ -138,7 +179,10 @@ public class DataFileScheduler implements Runnable {
 
     private BiConsumer completeDataLoader(DataFilePartition dataFilePartition) {
         return (v, ex) -> {
-            numOfWorkers.decrementAndGet();
+
+            if (!dynamoDBSourceConfig.isAcknowledgmentsEnabled()) {
+                numOfWorkers.decrementAndGet();
+            }
             if (ex == null) {
                 exportFileSuccessCounter.increment();
                 // Update global state
@@ -148,8 +192,7 @@ public class DataFileScheduler implements Runnable {
 
             } else {
                 // The data loader must have already done one last checkpointing.
-                LOG.debug("Data Loader completed with exception");
-                LOG.error("{}", ex);
+                LOG.error("Loading S3 data files completed with an exception: {}", ex);
                 // Release the ownership
                 coordinator.giveUpPartition(dataFilePartition);
             }
@@ -157,6 +200,17 @@ public class DataFileScheduler implements Runnable {
         };
     }
 
+    /**
+     * There is a global state with sourcePartitionKey the export Arn,
+     * to track the number of files are processed. <br/>
+     * Each time, load of a data file is completed,
+     * The state must be updated.<br/>
+     * Note that the state may be updated since multiple threads are updating the same state.
+     * Retry is required.
+     *
+     * @param exportArn Export Arn.
+     * @param loaded    Number records Loaded.
+     */
     private void updateState(String exportArn, int loaded) {
 
         String streamArn = getStreamArn(exportArn);
@@ -172,27 +226,24 @@ public class DataFileScheduler implements Runnable {
 
             GlobalState globalState = (GlobalState) globalPartition.get();
             LoadStatus loadStatus = LoadStatus.fromMap(globalState.getProgressState().get());
-            LOG.debug("Current status: total {} loaded {}", loadStatus.getTotalFiles(), loadStatus.getLoadedFiles());
-
             loadStatus.setLoadedFiles(loadStatus.getLoadedFiles() + 1);
+            LOG.info("Current status: total {} loaded {}", loadStatus.getTotalFiles(), loadStatus.getLoadedFiles());
+
             loadStatus.setLoadedRecords(loadStatus.getLoadedRecords() + loaded);
             globalState.setProgressState(loadStatus.toMap());
 
             try {
-                coordinator.saveProgressStateForPartition(globalState);
+                coordinator.saveProgressStateForPartition(globalState, null);
                 // if all load are completed.
                 if (streamArn != null && loadStatus.getLoadedFiles() == loadStatus.getTotalFiles()) {
-                    LOG.debug("All Exports are done, streaming can continue...");
+                    LOG.info("All Exports are done, streaming can continue...");
                     coordinator.createPartition(new GlobalState(streamArn, Optional.empty()));
                 }
                 break;
             } catch (Exception e) {
-                LOG.error("Failed to update the global status, looks like the status was out of dated, will retry..");
+                LOG.error("Failed to update the global status, looks like the status was out of date, will retry..");
             }
-
         }
-
-
     }
 
 }

@@ -38,4 +38,12 @@ public interface Sink<T extends Record<?>> {
      */
     boolean isReady();
 
+    /**
+     * updates latency metrics of sink
+     *
+     * @param events list of events used for updating the latency metrics
+     */
+    default void updateLatencyMetrics(final Collection<T> events) {
+    }
+
 }

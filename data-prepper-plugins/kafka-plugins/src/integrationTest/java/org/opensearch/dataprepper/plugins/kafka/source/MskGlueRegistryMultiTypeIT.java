@@ -36,7 +36,6 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.MskBrokerConnectionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
@@ -105,8 +104,8 @@ public class MskGlueRegistryMultiTypeIT {
     private KafkaClusterConfigSupplier kafkaClusterConfigSupplier;
 
     private KafkaSource kafkaSource;
-    private TopicConfig jsonTopic;
-    private TopicConfig avroTopic;
+    private SourceTopicConfig jsonTopic;
+    private SourceTopicConfig avroTopic;
 
     private Counter counter;
 
@@ -162,8 +161,8 @@ public class MskGlueRegistryMultiTypeIT {
 
         final String testGroup = "TestGroup_"+RandomStringUtils.randomAlphabetic(6);
         final String testTopic = "TestTopic_"+RandomStringUtils.randomAlphabetic(5);
-        avroTopic = mock(TopicConfig.class);
-        jsonTopic = mock(TopicConfig.class);
+        avroTopic = mock(SourceTopicConfig.class);
+        jsonTopic = mock(SourceTopicConfig.class);
         when(avroTopic.getName()).thenReturn(testTopic);
         when(avroTopic.getGroupId()).thenReturn(testGroup);
         when(avroTopic.getWorkers()).thenReturn(1);
@@ -201,7 +200,7 @@ public class MskGlueRegistryMultiTypeIT {
         final int numRecords = 1;
         when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
+        when(sourceConfig.getTopics()).thenReturn((List) List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
         when(saslAuthConfig.getAwsIamAuthConfig()).thenReturn(AwsIamAuthConfig.DEFAULT);
@@ -268,7 +267,7 @@ public class MskGlueRegistryMultiTypeIT {
         final int numRecords = 1;
         when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
         when(avroTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(sourceConfig.getTopics()).thenReturn(List.of(avroTopic));
+        when(sourceConfig.getTopics()).thenReturn((List) List.of(avroTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
         when(saslAuthConfig.getAwsIamAuthConfig()).thenReturn(AwsIamAuthConfig.DEFAULT);

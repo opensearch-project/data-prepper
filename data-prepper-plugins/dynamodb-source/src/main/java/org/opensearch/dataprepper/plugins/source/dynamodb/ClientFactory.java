@@ -8,7 +8,10 @@ package org.opensearch.dataprepper.plugins.source.dynamodb;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.AwsAuthenticationConfig;
+import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.ExportConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -17,8 +20,11 @@ public class ClientFactory {
 
     private final AwsCredentialsProvider awsCredentialsProvider;
     private final AwsAuthenticationConfig awsAuthenticationConfig;
+    private final ExportConfig exportConfig;
 
-    public ClientFactory(AwsCredentialsSupplier awsCredentialsSupplier, AwsAuthenticationConfig awsAuthenticationConfig) {
+    public ClientFactory(final AwsCredentialsSupplier awsCredentialsSupplier,
+                         final AwsAuthenticationConfig awsAuthenticationConfig,
+                         final ExportConfig exportConfig) {
         awsCredentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
                 .withRegion(awsAuthenticationConfig.getAwsRegion())
                 .withStsRoleArn(awsAuthenticationConfig.getAwsStsRoleArn())
@@ -26,6 +32,7 @@ public class ClientFactory {
                 .withStsHeaderOverrides(awsAuthenticationConfig.getAwsStsHeaderOverrides())
                 .build());
         this.awsAuthenticationConfig = awsAuthenticationConfig;
+        this.exportConfig = exportConfig;
     }
 
 
@@ -47,8 +54,20 @@ public class ClientFactory {
 
     public S3Client buildS3Client() {
         return S3Client.builder()
+                .region(getS3ClientRegion())
                 .credentialsProvider(awsCredentialsProvider)
+                .overrideConfiguration(ClientOverrideConfiguration.builder()
+                        .retryPolicy(retryPolicy -> retryPolicy.numRetries(5).build())
+                        .build())
                 .build();
+    }
+
+    private Region getS3ClientRegion() {
+        if (exportConfig != null && exportConfig.getAwsRegion() != null) {
+            return exportConfig.getAwsRegion();
+        }
+
+        return awsAuthenticationConfig.getAwsRegion();
     }
 
 }

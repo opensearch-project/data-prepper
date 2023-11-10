@@ -265,6 +265,36 @@ class ConnectionConfigurationTests {
     }
 
     @Test
+    void testServerlessOptions() throws IOException {
+        final String serverlessNetworkPolicyName = UUID.randomUUID().toString();
+        final String serverlessCollectionName = UUID.randomUUID().toString();
+        final String serverlessVpceId = UUID.randomUUID().toString();
+
+        final Map<String, Object> metadata = new HashMap<>();
+        final Map<String, Object> awsOptionMetadata = new HashMap<>();
+        final Map<String, String> serverlessOptionsMetadata = new HashMap<>();
+        serverlessOptionsMetadata.put("network_policy_name", serverlessNetworkPolicyName);
+        serverlessOptionsMetadata.put("collection_name", serverlessCollectionName);
+        serverlessOptionsMetadata.put("vpce_id", serverlessVpceId);
+        awsOptionMetadata.put("region", UUID.randomUUID().toString());
+        awsOptionMetadata.put("serverless", true);
+        awsOptionMetadata.put("serverless_options", serverlessOptionsMetadata);
+        awsOptionMetadata.put("sts_role_arn", TEST_ROLE);
+        metadata.put("hosts", TEST_HOSTS);
+        metadata.put("username", UUID.randomUUID().toString());
+        metadata.put("password", UUID.randomUUID().toString());
+        metadata.put("connect_timeout", 1);
+        metadata.put("socket_timeout", 1);
+        metadata.put("aws", awsOptionMetadata);
+
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
+        final ConnectionConfiguration connectionConfiguration = ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertThat(connectionConfiguration.getServerlessNetworkPolicyName(), equalTo(serverlessNetworkPolicyName));
+        assertThat(connectionConfiguration.getServerlessCollectionName(), equalTo(serverlessCollectionName));
+        assertThat(connectionConfiguration.getServerlessVpceId(), equalTo(serverlessVpceId));
+    }
+
+    @Test
     void testCreateClientWithAWSSigV4DefaultRegion() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, null, null, null, null, true, null, null, null, false);

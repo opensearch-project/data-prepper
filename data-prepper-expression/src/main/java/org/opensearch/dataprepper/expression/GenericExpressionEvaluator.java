@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.expression;
 
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -51,5 +52,26 @@ class GenericExpressionEvaluator implements ExpressionEvaluator {
         catch (final Exception exception) {
             return false;
         }
+    }
+
+    @Override
+    public Boolean isValidFormatExpression(final String format) {
+        int fromIndex = 0;
+        int position = 0;
+        while ((position = format.indexOf("${", fromIndex)) != -1) {
+            int endPosition = format.indexOf("}", position + 1);
+            if (endPosition == -1) {
+                return false;
+            }
+            String name = format.substring(position + 2, endPosition);
+
+            Object val;
+            // Invalid if it is not a valid key and not a valid expression statement
+            if (!JacksonEvent.isValidEventKey(name) && !isValidExpressionStatement(name)) {
+                return false;
+            }
+            fromIndex = endPosition + 1;
+        }
+        return true;
     }
 }

@@ -6,11 +6,11 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -31,17 +32,19 @@ public class ShardConsumerFactory {
 
     private static final int STREAM_TO_TABLE_OFFSET = "stream/".length();
 
+
     private final DynamoDbStreamsClient streamsClient;
 
     private final EnhancedSourceCoordinator enhancedSourceCoordinator;
     private final PluginMetrics pluginMetrics;
     private final ShardManager shardManager;
-
     private final Buffer<Record<Event>> buffer;
+
 
     public ShardConsumerFactory(final EnhancedSourceCoordinator enhancedSourceCoordinator,
                                 final DynamoDbStreamsClient streamsClient, final PluginMetrics pluginMetrics,
-                                final ShardManager shardManager, final Buffer<Record<Event>> buffer) {
+                                final ShardManager shardManager,
+                                final Buffer<Record<Event>> buffer) {
         this.streamsClient = streamsClient;
         this.enhancedSourceCoordinator = enhancedSourceCoordinator;
         this.pluginMetrics = pluginMetrics;
@@ -50,7 +53,9 @@ public class ShardConsumerFactory {
 
     }
 
-    public Runnable createConsumer(StreamPartition streamPartition) {
+    public Runnable createConsumer(final StreamPartition streamPartition,
+                                   final AcknowledgementSet acknowledgementSet,
+                                   final Duration shardAcknowledgmentTimeout) {
 
         LOG.info("Try to start a Shard Consumer for " + streamPartition.getShardId());
 
@@ -60,7 +65,8 @@ public class ShardConsumerFactory {
         Instant startTime = null;
         boolean waitForExport = false;
         if (progressState.isPresent()) {
-            sequenceNumber = progressState.get().getSequenceNumber();
+            // We can't checkpoint with acks yet
+            sequenceNumber = acknowledgementSet == null ? null : progressState.get().getSequenceNumber();
             waitForExport = progressState.get().shouldWaitForExport();
             if (progressState.get().getStartTime() != 0) {
                 startTime = Instant.ofEpochMilli(progressState.get().getStartTime());
@@ -77,14 +83,15 @@ public class ShardConsumerFactory {
         StreamCheckpointer checkpointer = new StreamCheckpointer(enhancedSourceCoordinator, streamPartition);
         String tableArn = getTableArn(streamPartition.getStreamArn());
         TableInfo tableInfo = getTableInfo(tableArn);
-        StreamRecordConverter recordConverter = new StreamRecordConverter(buffer, tableInfo, pluginMetrics);
 
-        ShardConsumer shardConsumer = ShardConsumer.builder(streamsClient)
-                .recordConverter(recordConverter)
+        ShardConsumer shardConsumer = ShardConsumer.builder(streamsClient, pluginMetrics, buffer)
+                .tableInfo(tableInfo)
                 .checkpointer(checkpointer)
                 .shardIterator(shardIter)
                 .startTime(startTime)
                 .waitForExport(waitForExport)
+                .acknowledgmentSet(acknowledgementSet)
+                .acknowledgmentSetTimeout(shardAcknowledgmentTimeout)
                 .build();
         return shardConsumer;
     }

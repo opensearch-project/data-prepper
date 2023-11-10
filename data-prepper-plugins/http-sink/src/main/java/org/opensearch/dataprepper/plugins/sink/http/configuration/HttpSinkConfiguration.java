@@ -16,6 +16,7 @@ import java.net.URL;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class HttpSinkConfiguration {
 
@@ -23,7 +24,7 @@ public class HttpSinkConfiguration {
 
     private static final int DEFAULT_WORKERS = 1;
 
-    static final boolean DEFAULT_SSL = false;
+    static final boolean DEFAULT_INSECURE = false;
 
     private static final String S3_PREFIX = "s3://";
 
@@ -31,6 +32,11 @@ public class HttpSinkConfiguration {
     static final String SSL_KEY_FILE = "sslKeyFile";
     static final String SSL = "ssl";
     static final String AWS_REGION = "awsRegion";
+
+
+    public static final String STS_REGION = "sts_region";
+
+    public static final String STS_ROLE_ARN = "sts_role_arn";
     static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
     static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
     public static final String SSL_IS_ENABLED = "%s is enabled";
@@ -38,6 +44,8 @@ public class HttpSinkConfiguration {
     public static final Duration DEFAULT_HTTP_RETRY_INTERVAL = Duration.ofSeconds(30);
 
     private static final String HTTPS = "https";
+
+    private static final String HTTP = "http";
 
     private static final String AWS_HOST_AMAZONAWS_COM = "amazonaws.com";
 
@@ -65,7 +73,7 @@ public class HttpSinkConfiguration {
     private AuthTypeOptions authType = AuthTypeOptions.UNAUTHENTICATED;
 
     @JsonProperty("authentication")
-    private PluginModel authentication;
+    private AuthenticationOptions authentication;
 
     @JsonProperty("ssl_certificate_file")
     private String sslCertificateFile;
@@ -114,8 +122,14 @@ public class HttpSinkConfiguration {
     @JsonProperty("acm_cert_issue_time_out_millis")
     private long acmCertIssueTimeOutMillis = DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS;
 
-    @JsonProperty("ssl")
-    private boolean ssl = DEFAULT_SSL;
+    @JsonProperty("insecure")
+    private boolean insecure = DEFAULT_INSECURE;
+
+    @JsonProperty("insecure_skip_verify")
+    private boolean insecureSkipVerify = DEFAULT_INSECURE;
+
+    @JsonProperty("request_timout")
+    private Duration requestTimout;
 
     @JsonProperty("http_retry_interval")
     private Duration httpRetryInterval = DEFAULT_HTTP_RETRY_INTERVAL;
@@ -127,8 +141,8 @@ public class HttpSinkConfiguration {
         return url;
     }
 
-    public boolean isSsl() {
-        return ssl;
+    public boolean isInsecureSkipVerify() {
+        return insecureSkipVerify;
     }
 
     public Duration getHttpRetryInterval() {
@@ -160,7 +174,7 @@ public class HttpSinkConfiguration {
         if (useAcmCertForSSL) {
             validateSSLArgument(String.format(SSL_IS_ENABLED, useAcmCertForSSL), acmCertificateArn, acmCertificateArn);
             validateSSLArgument(String.format(SSL_IS_ENABLED, useAcmCertForSSL), awsAuthenticationOptions.getAwsRegion().toString(), AWS_REGION);
-        } else if(ssl) {
+        } else if(!insecureSkipVerify) {
             validateSSLCertificateFiles();
             certAndKeyFileInS3 = isSSLCertificateLocatedInS3();
             if (certAndKeyFileInS3) {
@@ -205,7 +219,7 @@ public class HttpSinkConfiguration {
         return authType;
     }
 
-    public PluginModel getAuthentication() {
+    public AuthenticationOptions getAuthentication() {
         return authentication;
     }
 
@@ -259,5 +273,34 @@ public class HttpSinkConfiguration {
             return true;
         }
         return false;
+    }
+
+    public String getDlqStsRoleARN(){
+        return Objects.nonNull(getDlqPluginSetting().get(STS_ROLE_ARN)) ?
+                String.valueOf(getDlqPluginSetting().get(STS_ROLE_ARN)) :
+                awsAuthenticationOptions.getAwsStsRoleArn();
+    }
+
+    public String getDlqStsRegion(){
+        return Objects.nonNull(getDlqPluginSetting().get(STS_REGION)) ?
+                String.valueOf(getDlqPluginSetting().get(STS_REGION)) :
+                awsAuthenticationOptions.getAwsRegion().toString();
+    }
+
+    public  Map<String, Object> getDlqPluginSetting(){
+        return dlq != null ? dlq.getPluginSettings() : Map.of();
+    }
+
+    public boolean isInsecure() {
+        return insecure;
+    }
+
+    public Duration getRequestTimout() {
+        return requestTimout;
+    }
+
+    public boolean isHttpUrl() {
+        URL parsedUrl = HttpSinkUtil.getURLByUrlString(url);
+        return parsedUrl.getProtocol().equals(HTTP);
     }
 }
