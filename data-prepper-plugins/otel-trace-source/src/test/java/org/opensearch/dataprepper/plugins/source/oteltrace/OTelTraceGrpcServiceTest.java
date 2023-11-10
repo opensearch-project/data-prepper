@@ -46,6 +46,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -91,6 +92,9 @@ public class OTelTraceGrpcServiceTest {
     Timer requestProcessDuration;
     @Mock
     private ServiceRequestContext serviceRequestContext;
+
+    @Captor
+    ArgumentCaptor<byte[]> bytesCaptor;
 
     @Captor
     ArgumentCaptor<Record> recordCaptor;
@@ -144,6 +148,30 @@ public class OTelTraceGrpcServiceTest {
         final List<Record<Span>> capturedRecords = (List<Record<Span>>) recordsCaptor.getValue();
         assertThat(capturedRecords.size(), equalTo(1));
         assertThat(capturedRecords.get(0).getData().getTraceState(), equalTo("SUCCESS"));
+    }
+
+    @Test
+    public void export_Success_with_ByteBuffer_responseObserverOnCompleted() throws Exception {
+        when(buffer.isByteBuffer()).thenReturn(true);
+        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder());
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
+        }
+
+        verify(buffer, times(1)).writeBytes(bytesCaptor.capture(), anyString(), anyInt());
+        verify(responseObserver, times(1)).onNext(ExportTraceServiceResponse.newBuilder().build());
+        verify(responseObserver, times(1)).onCompleted();
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(successRequestsCounter, times(1)).increment();
+        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
+        assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(SUCCESS_REQUEST.getSerializedSize()));
+        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
+
+        final byte[] capturedBytes = (byte[]) bytesCaptor.getValue();
+        assertThat(capturedBytes.length, equalTo(SUCCESS_REQUEST.toByteArray().length));
     }
 
     @Test

@@ -9,7 +9,6 @@ import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.metric.Metric;
 
 
@@ -31,8 +30,7 @@ public class OTelMetricDecoder implements ByteDecoder {
         Collection<Record<? extends Metric>> records =
             otelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, OTelProtoCodec.DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE, true, true, false);
         for (Record<? extends Metric> record: records) {
-            final JacksonEvent event = JacksonEvent.fromEvent(record.getData());
-            eventConsumer.accept(new Record<>(event));
+            eventConsumer.accept((Record)record);
         }
     }
 

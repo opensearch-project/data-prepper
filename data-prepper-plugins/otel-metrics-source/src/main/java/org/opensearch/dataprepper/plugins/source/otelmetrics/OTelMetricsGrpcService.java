@@ -51,6 +51,14 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
     }
 
+    public void rawExport(final ExportMetricsServiceRequest request) {
+        try {
+            if (buffer.isByteBuffer()) {
+                buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
+            }
+        } catch (Exception e) {
+        }
+    }
 
     @Override
     public void export(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
