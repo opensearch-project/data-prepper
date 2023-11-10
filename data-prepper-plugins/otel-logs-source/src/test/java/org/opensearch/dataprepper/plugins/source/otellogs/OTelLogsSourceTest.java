@@ -69,6 +69,7 @@ import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -209,6 +210,7 @@ class OTelLogsSourceTest {
 
     private void configureObjectUnderTest() {
         SOURCE = new OTelLogsSource(oTelLogsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        assertTrue(SOURCE.getDecoder() instanceof OTelLogsDecoder);
     }
 
     @Test
