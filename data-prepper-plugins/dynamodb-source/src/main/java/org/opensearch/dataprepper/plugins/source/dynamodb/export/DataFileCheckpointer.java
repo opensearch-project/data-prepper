@@ -21,6 +21,8 @@ import java.util.Optional;
 public class DataFileCheckpointer {
     private static final Logger LOG = LoggerFactory.getLogger(DataFileCheckpointer.class);
 
+    static final Duration CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE = Duration.ofMinutes(5);
+
 
     private final EnhancedSourceCoordinator enhancedSourceCoordinator;
 
@@ -48,7 +50,7 @@ public class DataFileCheckpointer {
     public void checkpoint(int lineNumber) {
         LOG.debug("Checkpoint data file " + dataFilePartition.getKey() + " with line number " + lineNumber);
         setProgressState(lineNumber);
-        enhancedSourceCoordinator.saveProgressStateForPartition(dataFilePartition, null);
+        enhancedSourceCoordinator.saveProgressStateForPartition(dataFilePartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
     }
 
     /**

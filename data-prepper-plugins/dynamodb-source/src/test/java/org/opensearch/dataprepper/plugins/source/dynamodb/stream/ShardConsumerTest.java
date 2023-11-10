@@ -54,6 +54,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.BUFFER_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.DEFAULT_BUFFER_BATCH_SIZE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamCheckpointer.CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE;
 
 @ExtendWith(MockitoExtension.class)
 class ShardConsumerTest {
@@ -169,7 +170,7 @@ class ShardConsumerTest {
         verify(bufferAccumulator, times(total)).add(any(org.opensearch.dataprepper.model.record.Record.class));
         verify(bufferAccumulator).flush();
         // Should complete the consumer as reach to end of shard
-        verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(null));
+        verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE));
     }
 
     @Test
@@ -203,7 +204,7 @@ class ShardConsumerTest {
         verify(bufferAccumulator).flush();
 
         // Should complete the consumer as reach to end of shard
-        verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(null));
+        verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE));
 
         verify(acknowledgementSet).complete();
     }

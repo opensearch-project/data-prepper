@@ -22,6 +22,8 @@ import java.util.Optional;
 public class StreamCheckpointer {
     private static final Logger LOG = LoggerFactory.getLogger(StreamCheckpointer.class);
 
+    static final Duration CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE = Duration.ofMinutes(5);
+
     private final EnhancedSourceCoordinator coordinator;
 
     private final StreamPartition streamPartition;
@@ -52,7 +54,7 @@ public class StreamCheckpointer {
     public void checkpoint(String sequenceNumber) {
         LOG.debug("Checkpoint shard " + streamPartition.getShardId() + " with sequenceNumber " + sequenceNumber);
         setSequenceNumber(sequenceNumber);
-        coordinator.saveProgressStateForPartition(streamPartition, null);
+        coordinator.saveProgressStateForPartition(streamPartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
     }
 
     /**
