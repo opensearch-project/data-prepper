@@ -371,12 +371,17 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           versionExpressionEvaluationResult = event.formatString(versionExpression, expressionEvaluator);
           version = Long.valueOf(event.formatString(versionExpression, expressionEvaluator));
         } catch (final NumberFormatException e) {
-          LOG.warn("Unable to convert the result of evaluating document_version '{}' to Long for an Event. The evaluation result '{}' must be a valid Long type", versionExpression, versionExpressionEvaluationResult);
-          logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
+          final String errorMessage = String.format(
+                  "Unable to convert the result of evaluating document_version '%s' to Long for an Event. The evaluation result '%s' must be a valid Long type", versionExpression, versionExpressionEvaluationResult
+          );
+          LOG.error(errorMessage);
+          logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, errorMessage)), e);
           dynamicDocumentVersionDroppedEvents.increment();
         } catch (final RuntimeException e) {
-          LOG.error("There was an exception when evaluating the document_version '{}'. Check the dlq if configured to see details about the affected Event: {}", versionExpression, e.getMessage());
-          logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
+          final String errorMessage = String.format(
+                  "There was an exception when evaluating the document_version '%s': %s", versionExpression, e.getMessage());
+          LOG.error(errorMessage + " Check the dlq if configured to see more details about the affected Event");
+          logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, errorMessage)), e);
           dynamicDocumentVersionDroppedEvents.increment();
         }
       }

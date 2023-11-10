@@ -682,7 +682,7 @@ public class OpenSearchSinkIT {
         Event event = (Event) testRecords.get(0).getData();
         event.getMetadata().setAttribute("action", "create");
         final String actionFormatExpression = "${getMetadata(\"action\")}";
-        when(expressionEvaluator.isValidFormatExpressions(actionFormatExpression)).thenReturn(true);
+        when(expressionEvaluator.isValidFormatExpression(actionFormatExpression)).thenReturn(true);
         when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"action\")")).thenReturn(true);
         when(expressionEvaluator.evaluate("getMetadata(\"action\")", event)).thenReturn(event.getMetadata().getAttribute("action"));
         pluginSetting.getSettings().put(IndexConfiguration.ACTION, actionFormatExpression);
@@ -715,7 +715,7 @@ public class OpenSearchSinkIT {
         Event event = (Event) testRecords.get(0).getData();
         event.getMetadata().setAttribute("action", "unknown");
         final String actionFormatExpression = "${getMetadata(\"action\")}";
-        when(expressionEvaluator.isValidFormatExpressions(actionFormatExpression)).thenReturn(true);
+        when(expressionEvaluator.isValidFormatExpression(actionFormatExpression)).thenReturn(true);
         when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"action\")")).thenReturn(true);
         when(expressionEvaluator.evaluate("getMetadata(\"action\")", event)).thenReturn(event.getMetadata().getAttribute("action"));
         pluginSetting.getSettings().put(IndexConfiguration.ACTION, actionFormatExpression);

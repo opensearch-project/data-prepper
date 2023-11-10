@@ -232,7 +232,7 @@ public class IndexConfiguration {
         final String versionType = pluginSetting.getStringOrDefault(DOCUMENT_VERSION_TYPE, null);
 
         builder = builder.withVersionExpression(versionExpression);
-        if (versionExpression != null && (!expressionEvaluator.isValidFormatExpressions(versionExpression))) {
+        if (versionExpression != null && (!expressionEvaluator.isValidFormatExpression(versionExpression))) {
             throw new InvalidPluginConfigurationException("document_version {} is not a valid format expression.");
         }
 
@@ -546,7 +546,7 @@ public class IndexConfiguration {
 
         public Builder withAction(final String action, final ExpressionEvaluator expressionEvaluator) {
             checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) ||
-                    (action.contains("${") && expressionEvaluator.isValidFormatExpressions(action))), "action \"" + action + "\" is invalid. action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
+                    (action.contains("${") && expressionEvaluator.isValidFormatExpression(action))), "action \"" + action + "\" is invalid. action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
             this.action = action;
             return this;
         }
@@ -556,7 +556,7 @@ public class IndexConfiguration {
                 String action = (String)actionMap.get("type");
                 if (action != null) {
                     checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) ||
-                            (action.contains("${") && expressionEvaluator.isValidFormatExpressions(action))), "action \"" + action + "\". action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
+                            (action.contains("${") && expressionEvaluator.isValidFormatExpression(action))), "action \"" + action + "\". action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
                 }
             }
             this.actions = actions;
