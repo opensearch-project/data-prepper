@@ -44,6 +44,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamScheduler.ACTIVE_CHANGE_EVENT_CONSUMERS;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamScheduler.SHARDS_IN_PROCESSING;
 
 @ExtendWith(MockitoExtension.class)
 class StreamSchedulerTest {
@@ -79,6 +80,9 @@ class StreamSchedulerTest {
     @Mock
     private AtomicLong activeShardConsumers;
 
+    @Mock
+    private AtomicLong activeShardsInProcessing;
+
 
     private final String tableName = UUID.randomUUID().toString();
     private final String tableArn = "arn:aws:dynamodb:us-west-2:123456789012:table/" + tableName;
@@ -108,6 +112,7 @@ class StreamSchedulerTest {
         lenient().when(shardManager.getChildShardIds(anyString(), anyString())).thenReturn(List.of(shardId));
 
         when(pluginMetrics.gauge(eq(ACTIVE_CHANGE_EVENT_CONSUMERS), any(AtomicLong.class))).thenReturn(activeShardConsumers);
+        when(pluginMetrics.gauge(eq(SHARDS_IN_PROCESSING), any(AtomicLong.class))).thenReturn(activeShardsInProcessing);
 
     }
 
@@ -134,6 +139,9 @@ class StreamSchedulerTest {
         verify(coordinator).createPartition(any(StreamPartition.class));
         // Should mask the stream partition as completed.
         verify(coordinator).completePartition(any(StreamPartition.class));
+
+        verify(activeShardsInProcessing).incrementAndGet();
+        verify(activeShardsInProcessing).decrementAndGet();
 
         executorService.shutdownNow();
     }
@@ -173,6 +181,9 @@ class StreamSchedulerTest {
         verify(coordinator).createPartition(any(StreamPartition.class));
         // Should mask the stream partition as completed.
         verify(coordinator).completePartition(any(StreamPartition.class));
+
+        verify(activeShardsInProcessing).incrementAndGet();
+        verify(activeShardsInProcessing).decrementAndGet();
 
         executorService.shutdownNow();
     }

@@ -47,6 +47,7 @@ public class StreamScheduler implements Runnable {
     private static final int DELAY_TO_GET_CHILD_SHARDS_MILLIS = 1_500;
 
     static final String ACTIVE_CHANGE_EVENT_CONSUMERS = "activeChangeEventConsumers";
+    static final String SHARDS_IN_PROCESSING = "activeShardsInProcessing";
 
     private final AtomicInteger numOfWorkers = new AtomicInteger(0);
     private final EnhancedSourceCoordinator coordinator;
@@ -55,6 +56,7 @@ public class StreamScheduler implements Runnable {
     private final ShardManager shardManager;
     private final PluginMetrics pluginMetrics;
     private final AtomicLong activeChangeEventConsumers;
+    private final AtomicLong shardsInProcessing;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final DynamoDBSourceConfig dynamoDBSourceConfig;
 
@@ -74,6 +76,7 @@ public class StreamScheduler implements Runnable {
 
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
         activeChangeEventConsumers = pluginMetrics.gauge(ACTIVE_CHANGE_EVENT_CONSUMERS, new AtomicLong());
+        shardsInProcessing = pluginMetrics.gauge(SHARDS_IN_PROCESSING, new AtomicLong());
     }
 
     private void processStreamPartition(StreamPartition streamPartition) {
@@ -98,11 +101,15 @@ public class StreamScheduler implements Runnable {
             CompletableFuture runConsumer = CompletableFuture.runAsync(shardConsumer, executor);
 
             if (acknowledgmentsEnabled) {
-                runConsumer.whenComplete((v, ex) -> numOfWorkers.decrementAndGet());
+                runConsumer.whenComplete((v, ex) -> {
+                    numOfWorkers.decrementAndGet();
+                    shardsInProcessing.decrementAndGet();
+                });
             } else {
                 runConsumer.whenComplete(completeConsumer(streamPartition));
             }
             numOfWorkers.incrementAndGet();
+            shardsInProcessing.incrementAndGet();
         } else {
             // If failed to create a new consumer.
             coordinator.completePartition(streamPartition);
@@ -153,6 +160,7 @@ public class StreamScheduler implements Runnable {
         return (v, ex) -> {
             if (!dynamoDBSourceConfig.isAcknowledgmentsEnabled()) {
                 numOfWorkers.decrementAndGet();
+                shardsInProcessing.decrementAndGet();
             }
             if (ex == null) {
                 LOG.info("Shard consumer for {} is completed", streamPartition.getShardId());
