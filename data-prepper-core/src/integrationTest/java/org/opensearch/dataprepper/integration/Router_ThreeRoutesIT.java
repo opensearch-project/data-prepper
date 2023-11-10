@@ -79,7 +79,7 @@ class Router_ThreeRoutesIT {
 
         inMemorySourceAccessor.submit(TESTING_KEY, allEvents);
 
-        await().atMost(400, TimeUnit.MILLISECONDS)
+        await().atMost(2, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
                     assertThat(inMemorySinkAccessor.get(sourceKeyToReceiveAll), not(empty()));
                 });
@@ -101,7 +101,7 @@ class Router_ThreeRoutesIT {
 
         inMemorySourceAccessor.submit(TESTING_KEY, allEvents);
 
-        await().atMost(400, TimeUnit.MILLISECONDS)
+        await().atMost(2, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
                     assertThat(inMemorySinkAccessor.get(ALPHA_SOURCE_KEY), not(empty()));
                     assertThat(inMemorySinkAccessor.get(BETA_SOURCE_KEY), not(empty()));
@@ -136,9 +136,9 @@ class Router_ThreeRoutesIT {
 
         inMemorySourceAccessor.submit(TESTING_KEY, randomEvents);
 
-        Thread.sleep(1000);
-
-        assertThat(inMemorySinkAccessor.get(sourceKey), empty());
+        await().during(1200, TimeUnit.MILLISECONDS)
+                .pollDelay(50, TimeUnit.MILLISECONDS)
+                .until(() -> inMemorySinkAccessor.get(sourceKey), empty());
     }
 
     private List<Record<Event>> createEvents(final String value, final int numberToCreate) {
