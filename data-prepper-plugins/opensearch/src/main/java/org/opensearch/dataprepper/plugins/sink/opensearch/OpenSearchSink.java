@@ -40,6 +40,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessOptionsFactory;
+import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater;
+import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdaterFactory;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
@@ -60,9 +63,9 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPI
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapperFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ServerlessOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.opensearchserverless.OpenSearchServerlessClient;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -549,18 +552,18 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   }
 
   private void maybeUpdateServerlessNetworkPolicy() {
-    final ConnectionConfiguration connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
-    if (connectionConfiguration.isServerless() &&
-        !StringUtils.isBlank(connectionConfiguration.getServerlessNetworkPolicyName()) &&
-        !StringUtils.isBlank(connectionConfiguration.getServerlessCollectionName()) &&
-        !StringUtils.isBlank(connectionConfiguration.getServerlessVpceId())
-    ) {
-      final OpenSearchServerlessClient openSearchServerlessClient = connectionConfiguration.createOpenSearchServerlessClient(awsCredentialsSupplier);
-      final ServerlessNetworkPolicyUpdater networkPolicyUpdater = new ServerlessNetworkPolicyUpdater(openSearchServerlessClient);
+    final Optional<ServerlessOptions> maybeServerlessOptions = ServerlessOptionsFactory.create(
+        openSearchSinkConfig.getConnectionConfiguration());
+
+    if (maybeServerlessOptions.isPresent()) {
+      final ServerlessNetworkPolicyUpdater networkPolicyUpdater = ServerlessNetworkPolicyUpdaterFactory.create(
+          awsCredentialsSupplier, openSearchSinkConfig.getConnectionConfiguration()
+      );
       networkPolicyUpdater.updateNetworkPolicy(
-          connectionConfiguration.getServerlessNetworkPolicyName(),
-          connectionConfiguration.getServerlessCollectionName(),
-          connectionConfiguration.getServerlessVpceId());
+          maybeServerlessOptions.get().getNetworkPolicyName(),
+          maybeServerlessOptions.get().getCollectionName(),
+          maybeServerlessOptions.get().getVpceId()
+      );
     }
   }
 

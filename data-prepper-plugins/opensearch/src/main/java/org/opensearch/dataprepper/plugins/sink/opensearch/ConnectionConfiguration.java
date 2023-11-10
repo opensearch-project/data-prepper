@@ -36,14 +36,10 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
-import software.amazon.awssdk.core.retry.RetryPolicy;
-import software.amazon.awssdk.core.retry.backoff.FullJitterBackoffStrategy;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.http.apache.ProxyConfiguration;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.opensearchserverless.OpenSearchServerlessClient;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -162,19 +158,19 @@ public class ConnectionConfiguration {
     return connectTimeout;
   }
 
-  boolean isServerless() {
+  public boolean isServerless() {
     return serverless;
   }
 
-  String getServerlessNetworkPolicyName() {
+  public String getServerlessNetworkPolicyName() {
     return serverlessNetworkPolicyName;
   }
 
-  String getServerlessCollectionName() {
+  public String getServerlessCollectionName() {
     return serverlessCollectionName;
   }
 
-  String getServerlessVpceId() {
+  public String getServerlessVpceId() {
     return serverlessVpceId;
   }
 
@@ -333,7 +329,7 @@ public class ConnectionConfiguration {
     });
   }
 
-  private AwsCredentialsOptions createAwsCredentialsOptions() {
+  public AwsCredentialsOptions createAwsCredentialsOptions() {
     final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
         .withStsRoleArn(awsStsRoleArn)
         .withStsExternalId(awsStsExternalId)
@@ -438,24 +434,6 @@ public class ConnectionConfiguration {
       return new RestClientTransport(
               restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
     }
-  }
-
-  public OpenSearchServerlessClient createOpenSearchServerlessClient(final AwsCredentialsSupplier awsCredentialsSupplier) {
-    final AwsCredentialsOptions awsCredentialsOptions = createAwsCredentialsOptions();
-
-    return OpenSearchServerlessClient.builder()
-        .credentialsProvider(awsCredentialsSupplier.getProvider(awsCredentialsOptions))
-        .region(Region.of(awsRegion))
-        .overrideConfiguration(ClientOverrideConfiguration.builder()
-            .retryPolicy(RetryPolicy.builder()
-                .backoffStrategy(FullJitterBackoffStrategy.builder()
-                    .baseDelay(Duration.ofSeconds(10))
-                    .maxBackoffTime(Duration.ofSeconds(60))
-                    .build())
-                .numRetries(10)
-                .build())
-            .build())
-        .build();
   }
 
   private SdkHttpClient createSdkHttpClient() {

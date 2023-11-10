@@ -120,6 +120,5 @@ public class OpenSearchService {
             LOG.error("Interrupted while waiting for the search worker to terminate", e);
             scheduledExecutorService.shutdownNow();
         }
-
     }
 }
