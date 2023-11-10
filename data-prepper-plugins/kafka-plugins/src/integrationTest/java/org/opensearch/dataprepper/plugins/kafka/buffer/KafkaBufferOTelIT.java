@@ -25,7 +25,10 @@ import org.opensearch.dataprepper.model.metric.JacksonGauge;
 import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.JacksonHistogram;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
-import org.opensearch.dataprepper.plugins.MultiBufferDecorator;
+import org.opensearch.dataprepper.model.buffer.DelegatingBuffer;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+
+
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import org.slf4j.Logger;
@@ -69,11 +72,16 @@ public class KafkaBufferOTelIT {
     @Mock
     private BufferTopicConfig topicConfig;
 
-    private MultiBufferDecorator buffer;
+    private DelegatingBuffer buffer;
 
     private PluginMetrics pluginMetrics;
     private String bootstrapServersCommaDelimited;
     private OTelMetricsGrpcService oTelMetricsGrpcService;
+    class KafkaDelegatingBuffer extends DelegatingBuffer {
+        KafkaDelegatingBuffer(Buffer buffer) {
+            super(buffer);
+        }
+    };
 
     @BeforeEach
     void setUp() {
@@ -125,7 +133,7 @@ public class KafkaBufferOTelIT {
     @Test
     void test_otel_metrics_with_kafka_buffer() throws Exception {
         KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, new OTelMetricDecoder(), null, null);
-        buffer = new MultiBufferDecorator(kafkaBuffer, null);
+        buffer = new KafkaDelegatingBuffer(kafkaBuffer);
         oTelMetricsGrpcService = new OTelMetricsGrpcService(10000, 
             buffer,
             pluginMetrics);
