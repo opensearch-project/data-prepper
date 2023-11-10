@@ -140,6 +140,9 @@ class StreamSchedulerTest {
         // Should mask the stream partition as completed.
         verify(coordinator).completePartition(any(StreamPartition.class));
 
+        verify(activeShardsInProcessing).incrementAndGet();
+        verify(activeShardsInProcessing).decrementAndGet();
+
         executorService.shutdownNow();
     }
 
@@ -178,6 +181,9 @@ class StreamSchedulerTest {
         verify(coordinator).createPartition(any(StreamPartition.class));
         // Should mask the stream partition as completed.
         verify(coordinator).completePartition(any(StreamPartition.class));
+
+        verify(activeShardsInProcessing).incrementAndGet();
+        verify(activeShardsInProcessing).decrementAndGet();
 
         executorService.shutdownNow();
     }
