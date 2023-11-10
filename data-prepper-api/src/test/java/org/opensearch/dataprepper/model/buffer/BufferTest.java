@@ -5,43 +5,55 @@
 
 package org.opensearch.dataprepper.model.buffer;
 
-import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.time.Duration;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.spy;
 
-public class BufferTest {
+class BufferTest {
 
-    @Test
-    public void testGetDrainTimeout() {
-        final Buffer<Record<Event>> buffer = spy(Buffer.class);
-
-        Assert.assertEquals(Duration.ZERO, buffer.getDrainTimeout());
+    private Buffer createObjectUnderTest() {
+        return spy(Buffer.class);
     }
 
     @Test
-    public void testShutdown() {
-        final Buffer<Record<Event>> buffer = spy(Buffer.class);
+    void testGetDrainTimeout() {
+        final Buffer<Record<Event>> buffer = createObjectUnderTest();
+
+        assertEquals(Duration.ZERO, buffer.getDrainTimeout());
+    }
+
+    @Test
+    void testShutdown() {
+        final Buffer<Record<Event>> buffer = createObjectUnderTest();
         buffer.shutdown();
     }
 
     @Test
-    public void testIsByteBuffer() {
-        final Buffer<Record<Event>> buffer = spy(Buffer.class);
+    void testIsByteBuffer() {
+        final Buffer<Record<Event>> buffer = createObjectUnderTest();
 
-        Assert.assertEquals(false, buffer.isByteBuffer());
+        assertEquals(false, buffer.isByteBuffer());
     }
 
     @Test
-    public void testWriteBytes() {
-        final Buffer<Record<Event>> buffer = spy(Buffer.class);
+    void isWrittenOffHeapOnly_returns_false_by_default() {
+        assertThat(createObjectUnderTest().isWrittenOffHeapOnly(), equalTo(false));
+    }
+
+    @Test
+    void testWriteBytes() {
+        final Buffer<Record<Event>> buffer = createObjectUnderTest();
 
         byte[] bytes = new byte[2];
-        Assert.assertThrows(UnsupportedOperationException.class, () -> buffer.writeBytes(bytes, "", 10));
+        assertThrows(UnsupportedOperationException.class, () -> buffer.writeBytes(bytes, "", 10));
 
     }
 
