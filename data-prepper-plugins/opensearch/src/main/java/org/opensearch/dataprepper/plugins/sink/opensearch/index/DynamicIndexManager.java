@@ -11,12 +11,12 @@ import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -27,6 +27,8 @@ public class DynamicIndexManager extends AbstractIndexManager {
     private Cache<String, IndexManager> indexManagerCache;
     final int CACHE_EXPIRE_AFTER_ACCESS_TIME_MINUTES = 30;
     final int APPROXIMATE_INDEX_MANAGER_SIZE = 32;
+    private static final String INVALID_INDEX_CHARACTERS = "[:\\\"*+/\\\\|?#><]";
+    private static final Pattern INVALID_REGEX_CHARACTERS_PATTERN = Pattern.compile(INVALID_INDEX_CHARACTERS);
     private final long cacheSizeInKB = 1024;
     protected RestHighLevelClient restHighLevelClient;
     protected OpenSearchClient openSearchClient;
@@ -73,6 +75,11 @@ public class DynamicIndexManager extends AbstractIndexManager {
             throw new IOException("index alias is null");
         }
         String fullIndexAlias = AbstractIndexManager.getIndexAliasWithDate(dynamicIndexAlias);
+
+        if (openSearchSinkConfiguration.getIndexConfiguration().isNormalizeIndex()) {
+            fullIndexAlias = normalizeIndex(fullIndexAlias);
+        }
+
         IndexManager indexManager = indexManagerCache.getIfPresent(fullIndexAlias);
         if (indexManager == null) {
             indexManager = indexManagerFactory.getIndexManager(
@@ -82,7 +89,6 @@ public class DynamicIndexManager extends AbstractIndexManager {
         }
         return indexManager.getIndexName(fullIndexAlias);
     }
-
     private void setupIndexWithRetries(final IndexManager indexManager) throws IOException {
         boolean isIndexSetup = false;
 
@@ -99,6 +105,30 @@ public class DynamicIndexManager extends AbstractIndexManager {
                 }
             }
         }
+    }
+    // Restrictions on index names (https://opensearch.org/docs/1.0/opensearch/rest-api/create-index/#index-naming-restrictions)
+    private String normalizeIndex(final String indexName) {
+        String normalizedIndexName = indexName.toLowerCase(Locale.ROOT);
+
+        normalizedIndexName = INVALID_REGEX_CHARACTERS_PATTERN.matcher(normalizedIndexName).replaceAll("");
+
+        while (normalizedIndexName.startsWith("_") || normalizedIndexName.startsWith("-")) {
+            if (normalizedIndexName.length() == 1) {
+                throw new RuntimeException(String.format(
+                        "Unable to normalize index '%s'. This index name is invalid.", indexName)
+                );
+            }
+
+            normalizedIndexName = normalizedIndexName.substring(1);
+        }
+
+        if (normalizedIndexName.isBlank()) {
+            throw new RuntimeException(String.format(
+                    "Unable to normalize index '%s'. The result after normalization was an empty String.", indexName)
+            );
+        }
+
+        return normalizedIndexName;
     }
 }
 
