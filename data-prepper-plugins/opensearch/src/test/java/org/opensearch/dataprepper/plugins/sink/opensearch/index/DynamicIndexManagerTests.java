@@ -8,8 +8,12 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.opensearch.client.opensearch._types.OpenSearchException;
+import org.mockito.MockedStatic;
 import org.opensearch.client.IndicesClient;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
@@ -24,6 +28,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -229,5 +236,51 @@ public class DynamicIndexManagerTests {
         assertThrows(RuntimeException.class, () -> dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias)));
 
         verify(innerIndexManager, times(3)).setupIndex();
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {"INVALID_INDEX#, invalid_index", "-AAA:\\\"*+/\\\\|?#><, aaa", "_TeST_InDeX<, test_index", "--<t, t"})
+    public void normalize_index_correctly_normalizes_invalid_indexes(final String dynamicIndexName, final String normalizedDynamicIndexName) throws IOException {
+        when(indexConfiguration.isNormalizeIndex()).thenReturn(true);
+        innerIndexManager = mock(IndexManager.class);
+
+
+        when(mockIndexManagerFactory.getIndexManager(
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy, normalizedDynamicIndexName)).thenReturn(innerIndexManager);
+        when(innerIndexManager.getIndexName(normalizedDynamicIndexName)).thenReturn(normalizedDynamicIndexName);
+
+        final String result = dynamicIndexManager.getIndexName(dynamicIndexName);
+        assertThat(result, equalTo(normalizedDynamicIndexName));
+    }
+
+    @Test
+    public void normalize_index_correctly_normalizes_indexes_correctly_with_data_time_patterns() throws IOException {
+        final String dynamicIndexName = "-<_-test-%{yyyy.MM.dd}";
+        final String indexWithDateTimePatternResolved = "-<_-test-2023.11.11";
+        final String normalizedDynamicIndexName = "test-2023.11.11";
+        when(indexConfiguration.isNormalizeIndex()).thenReturn(true);
+        innerIndexManager = mock(IndexManager.class);
+
+
+        when(mockIndexManagerFactory.getIndexManager(
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy, normalizedDynamicIndexName)).thenReturn(innerIndexManager);
+        when(innerIndexManager.getIndexName(normalizedDynamicIndexName)).thenReturn(normalizedDynamicIndexName);
+
+        try (final MockedStatic<AbstractIndexManager> abstractIndexManagerMockedStatic = mockStatic(AbstractIndexManager.class)) {
+            abstractIndexManagerMockedStatic.when(() -> AbstractIndexManager.getIndexAliasWithDate(dynamicIndexName))
+                    .thenReturn(indexWithDateTimePatternResolved);
+            final String result = dynamicIndexManager.getIndexName(dynamicIndexName);
+            assertThat(result, equalTo(normalizedDynamicIndexName));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"*-<-", "<?"})
+    public void normalize_index_resulting_in_empty_index_throws_expected_exception(final String dynamicIndexName) {
+        when(indexConfiguration.isNormalizeIndex()).thenReturn(true);
+        final RuntimeException exception = assertThrows(RuntimeException.class, () -> dynamicIndexManager.getIndexName(dynamicIndexName));
+
+        assertThat(exception, notNullValue());
+        assertThat(exception.getMessage(), startsWith("Unable to normalize index"));
     }
 }
