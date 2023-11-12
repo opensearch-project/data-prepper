@@ -132,7 +132,7 @@ public class KafkaBufferOTelIT {
 
     @Test
     void test_otel_metrics_with_kafka_buffer() throws Exception {
-        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, new OTelMetricDecoder(), null, null);
+        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, new OTelMetricDecoder(), null, null);
         buffer = new KafkaDelegatingBuffer(kafkaBuffer);
         oTelMetricsGrpcService = new OTelMetricsGrpcService(10000, 
             buffer,

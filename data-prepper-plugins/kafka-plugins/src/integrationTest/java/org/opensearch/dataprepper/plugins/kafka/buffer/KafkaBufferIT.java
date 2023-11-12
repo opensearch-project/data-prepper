@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -54,14 +53,10 @@ public class KafkaBufferIT {
     private AcknowledgementSetManager acknowledgementSetManager;
     @Mock
     private BufferTopicConfig topicConfig;
-
-    private PluginMetrics pluginMetrics;
     private String bootstrapServersCommaDelimited;
 
     @BeforeEach
     void setUp() {
-        pluginMetrics = PluginMetrics.fromNames(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-
         when(pluginSetting.getPipelineName()).thenReturn(UUID.randomUUID().toString());
 
         MessageFormat messageFormat = MessageFormat.JSON;
@@ -94,7 +89,7 @@ public class KafkaBufferIT {
     }
 
     private KafkaBuffer createObjectUnderTest() {
-        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, null, null, null);
+        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, null, null, null);
     }
 
     @Test
