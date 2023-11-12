@@ -182,7 +182,6 @@ public class KafkaCustomConsumerFactory {
     private void setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(Properties properties, final TopicConfig topicConfig) {
         MessageFormat dataFormat = topicConfig.getSerdeFormat();
         schemaType = dataFormat.toString();
-        LOG.error("Setting schemaType to {}", schemaType);
     }
 
     private void setPropertiesForSchemaRegistryConnectivity(final KafkaConsumerConfig kafkaConsumerConfig, final Properties properties) {
