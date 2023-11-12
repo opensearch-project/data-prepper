@@ -19,7 +19,9 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,5 +69,13 @@ class BufferMessageSerializerTest {
         assertThat(actualBufferedData.getData(), notNullValue());
         assertThat(actualBufferedData.getData().toByteArray(),
                 equalTo(expectedBytes));
+    }
+
+    @Test
+    void serialize_with_null_returns_null_and_does_not_call_inner_dataSerializer() {
+        assertThat(createObjectUnderTest().serialize(topic, null),
+                nullValue());
+
+        verifyNoInteractions(innerDataSerializer);
     }
 }

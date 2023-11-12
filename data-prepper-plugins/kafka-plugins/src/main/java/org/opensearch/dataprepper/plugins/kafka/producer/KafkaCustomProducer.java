@@ -104,7 +104,7 @@ public class KafkaCustomProducer<T> {
             topicMetrics.update(producer);
         } catch (Exception e) {
             topicMetrics.getNumberOfRawDataSendErrors().increment();
-            LOG.error("Error occurred while publishing raw data {}", e.getMessage());
+            LOG.error("Error occurred while publishing raw data", e);
         }
     }
 

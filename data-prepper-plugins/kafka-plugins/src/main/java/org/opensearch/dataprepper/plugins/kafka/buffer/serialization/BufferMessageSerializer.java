@@ -23,6 +23,9 @@ class BufferMessageSerializer<T> implements Serializer<T> {
 
     @Override
     public byte[] serialize(final String topic, final T data) {
+        if(data == null)
+            return null;
+
         final byte[] serializedData = dataSerializer.serialize(topic, data);
 
         final KafkaBufferMessage.BufferData bufferedData = KafkaBufferMessage.BufferData.newBuilder()
