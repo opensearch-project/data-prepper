@@ -10,10 +10,12 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DistributionVersion;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class OpenSearchSourceConfigurationTest {
@@ -82,6 +84,7 @@ public class OpenSearchSourceConfigurationTest {
         assertThat(sourceConfiguration.getPassword(), equalTo(null));
         assertThat(sourceConfiguration.getUsername(), equalTo(null));
         assertThat(sourceConfiguration.getAwsAuthenticationOptions(), equalTo(null));
+        assertThat(sourceConfiguration.getDistributionVersion(), nullValue());
     }
 
     @Test
@@ -90,6 +93,7 @@ public class OpenSearchSourceConfigurationTest {
                 "connection:\n" +
                 "  insecure: true\n" +
                 "  cert: \"cert\"\n" +
+                "distribution_version: \"es7\"\n" +
                 "indices:\n" +
                 "  include:\n" +
                 "    - index_name_regex: \"regex\"\n" +
@@ -111,6 +115,9 @@ public class OpenSearchSourceConfigurationTest {
 
         assertThat(sourceConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn(),
             equalTo("arn:aws:iam::123456789012:role/aos-role"));
+
+        assertThat(sourceConfiguration.isDistributionVersionValid(), equalTo(true));
+        assertThat(sourceConfiguration.getDistributionVersion(), equalTo(DistributionVersion.ES7));
     }
 
     @Test
@@ -119,6 +126,7 @@ public class OpenSearchSourceConfigurationTest {
             "connection:\n" +
             "  insecure: true\n" +
             "  cert: \"cert\"\n" +
+            "distribution_version: \"opensearch\"\n" +
             "indices:\n" +
             "  include:\n" +
             "    - index_name_regex: \"regex\"\n" +
@@ -143,6 +151,9 @@ public class OpenSearchSourceConfigurationTest {
             equalTo("arn:aws:iam::123456789012:role/aos-role"));
         assertThat(sourceConfiguration.getAwsAuthenticationOptions().getAwsStsExternalId(),
             equalTo("some-random-id"));
+
+        assertThat(sourceConfiguration.isDistributionVersionValid(), equalTo(true));
+        assertThat(sourceConfiguration.getDistributionVersion(), equalTo(DistributionVersion.OPENSEARCH));
     }
 
     @Test
@@ -154,6 +165,7 @@ public class OpenSearchSourceConfigurationTest {
                 "connection:\n" +
                 "  insecure: true\n" +
                 "  cert: \"cert\"\n" +
+                "distribution_version: \"invalid\"\n" +
                 "indices:\n" +
                 "  include:\n" +
                 "    - index_name_regex: \"regex\"\n" +
@@ -169,6 +181,7 @@ public class OpenSearchSourceConfigurationTest {
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
         assertThrows(InvalidPluginConfigurationException.class, sourceConfiguration::validateAwsConfigWithUsernameAndPassword);
+        assertThat(sourceConfiguration.isDistributionVersionValid(), equalTo(false));
     }
 
     @Test
