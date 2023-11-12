@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.kafka.admin.KafkaAdminAccessor;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
@@ -62,7 +63,6 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -116,6 +116,9 @@ class KafkaBufferTest {
     private KafkaCustomConsumer consumer;
 
     @Mock
+    private KafkaAdminAccessor kafkaAdminAccessor;
+
+    @Mock
     BlockingBuffer<Record<Event>>  blockingBuffer;
 
     @Mock
@@ -141,6 +144,8 @@ class KafkaBufferTest {
                 consumerFactory = mock;
                 when(consumerFactory.createConsumersForTopic(any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any())).thenReturn(consumers);
             });
+            final MockedConstruction<KafkaAdminAccessor> adminAccessorMock =
+                mockConstruction(KafkaAdminAccessor.class, (mock, context) -> kafkaAdminAccessor = mock);
             final MockedConstruction<BlockingBuffer> blockingBufferMock =
                  mockConstruction(BlockingBuffer.class, (mock, context) -> {
                      blockingBuffer = mock;
@@ -232,13 +237,13 @@ class KafkaBufferTest {
         kafkaBuffer = createObjectUnderTest();
         assertTrue(Objects.nonNull(kafkaBuffer));
         when(blockingBuffer.isEmpty()).thenReturn(true);
-        when(consumer.isTopicEmpty()).thenReturn(true);
+        when(kafkaAdminAccessor.areTopicsEmpty()).thenReturn(true);
 
         final boolean result = kafkaBuffer.isEmpty();
         assertThat(result, equalTo(true));
 
         verify(blockingBuffer).isEmpty();
-        verify(consumer).isTopicEmpty();
+        verify(kafkaAdminAccessor).areTopicsEmpty();
     }
 
     @Test
@@ -246,13 +251,13 @@ class KafkaBufferTest {
         kafkaBuffer = createObjectUnderTest();
         assertTrue(Objects.nonNull(kafkaBuffer));
         when(blockingBuffer.isEmpty()).thenReturn(false);
-        when(consumer.isTopicEmpty()).thenReturn(true);
+        when(kafkaAdminAccessor.areTopicsEmpty()).thenReturn(true);
 
         final boolean result = kafkaBuffer.isEmpty();
         assertThat(result, equalTo(false));
 
         verify(blockingBuffer).isEmpty();
-        verify(consumer).isTopicEmpty();
+        verify(kafkaAdminAccessor).areTopicsEmpty();
     }
 
     @Test
@@ -260,13 +265,13 @@ class KafkaBufferTest {
         kafkaBuffer = createObjectUnderTest();
         assertTrue(Objects.nonNull(kafkaBuffer));
         when(blockingBuffer.isEmpty()).thenReturn(true);
-        when(consumer.isTopicEmpty()).thenReturn(false);
+        when(kafkaAdminAccessor.areTopicsEmpty()).thenReturn(false);
 
         final boolean result = kafkaBuffer.isEmpty();
         assertThat(result, equalTo(false));
 
         verifyNoInteractions(blockingBuffer);
-        verify(consumer).isTopicEmpty();
+        verify(kafkaAdminAccessor).areTopicsEmpty();
     }
 
     @Test
@@ -274,54 +279,13 @@ class KafkaBufferTest {
         kafkaBuffer = createObjectUnderTest(List.of(consumer, consumer));
         assertTrue(Objects.nonNull(kafkaBuffer));
         when(blockingBuffer.isEmpty()).thenReturn(true);
-        when(consumer.isTopicEmpty()).thenReturn(false).thenReturn(false);
+        when(kafkaAdminAccessor.areTopicsEmpty()).thenReturn(false).thenReturn(false);
 
         final boolean result = kafkaBuffer.isEmpty();
         assertThat(result, equalTo(false));
 
         verifyNoInteractions(blockingBuffer);
-        verify(consumer).isTopicEmpty();
-    }
-
-    @Test
-    void test_kafkaBuffer_isEmpty_MultipleTopics_SomeNotEmpty() {
-        kafkaBuffer = createObjectUnderTest(List.of(consumer, consumer));
-        assertTrue(Objects.nonNull(kafkaBuffer));
-        when(blockingBuffer.isEmpty()).thenReturn(true);
-        when(consumer.isTopicEmpty()).thenReturn(true).thenReturn(false);
-
-        final boolean result = kafkaBuffer.isEmpty();
-        assertThat(result, equalTo(false));
-
-        verifyNoInteractions(blockingBuffer);
-        verify(consumer, times(2)).isTopicEmpty();
-    }
-
-    @Test
-    void test_kafkaBuffer_isEmpty_MultipleTopics_AllEmpty() {
-        kafkaBuffer = createObjectUnderTest(List.of(consumer, consumer));
-        assertTrue(Objects.nonNull(kafkaBuffer));
-        when(blockingBuffer.isEmpty()).thenReturn(true);
-        when(consumer.isTopicEmpty()).thenReturn(true).thenReturn(true);
-
-        final boolean result = kafkaBuffer.isEmpty();
-        assertThat(result, equalTo(true));
-
-        verify(blockingBuffer).isEmpty();
-        verify(consumer, times(2)).isTopicEmpty();
-    }
-
-    @Test
-    void test_kafkaBuffer_isEmpty_ZeroTopics() {
-        kafkaBuffer = createObjectUnderTest(Collections.emptyList());
-        assertTrue(Objects.nonNull(kafkaBuffer));
-        when(blockingBuffer.isEmpty()).thenReturn(true);
-
-        final boolean result = kafkaBuffer.isEmpty();
-        assertThat(result, equalTo(true));
-
-        verify(blockingBuffer).isEmpty();
-        verifyNoInteractions(consumer);
+        verify(kafkaAdminAccessor).areTopicsEmpty();
     }
 
     @Test
