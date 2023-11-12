@@ -12,11 +12,9 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -34,7 +32,7 @@ public class StreamScheduler implements Runnable {
     /**
      * Max number of shards each node can handle in parallel
      */
-    private static final int MAX_JOB_COUNT = 250;
+    private static final int MAX_JOB_COUNT = 150;
 
     /**
      * Default interval to acquire a lease from coordination store
@@ -53,7 +51,6 @@ public class StreamScheduler implements Runnable {
     private final EnhancedSourceCoordinator coordinator;
     private final ShardConsumerFactory consumerFactory;
     private final ExecutorService executor;
-    private final ShardManager shardManager;
     private final PluginMetrics pluginMetrics;
     private final AtomicLong activeChangeEventConsumers;
     private final AtomicLong shardsInProcessing;
@@ -63,12 +60,10 @@ public class StreamScheduler implements Runnable {
 
     public StreamScheduler(final EnhancedSourceCoordinator coordinator,
                            final ShardConsumerFactory consumerFactory,
-                           final ShardManager shardManager,
                            final PluginMetrics pluginMetrics,
                            final AcknowledgementSetManager acknowledgementSetManager,
                            final DynamoDBSourceConfig dynamoDBSourceConfig) {
         this.coordinator = coordinator;
-        this.shardManager = shardManager;
         this.consumerFactory = consumerFactory;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -85,7 +80,7 @@ public class StreamScheduler implements Runnable {
 
         if (acknowledgmentsEnabled) {
             acknowledgementSet = acknowledgementSetManager.create((result) -> {
-                if (result == true) {
+                if (result) {
                     LOG.info("Received acknowledgment of completion from sink for shard {}", streamPartition.getShardId());
                     completeConsumer(streamPartition).accept(null, null);
                 } else {
@@ -164,20 +159,6 @@ public class StreamScheduler implements Runnable {
             }
             if (ex == null) {
                 LOG.info("Shard consumer for {} is completed", streamPartition.getShardId());
-                LOG.debug("Start creating new stream partitions for Child Shards");
-
-                try {
-                    // Add a delay as the Child shards may not be ready yet.
-                    Thread.sleep(DELAY_TO_GET_CHILD_SHARDS_MILLIS);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                List<String> childShardIds = shardManager.getChildShardIds(streamPartition.getStreamArn(), streamPartition.getShardId());
-                LOG.info("{} child shards for {} have been found", childShardIds.size(), streamPartition.getShardId());
-
-                createStreamPartitions(streamPartition.getStreamArn(), childShardIds);
-                LOG.info("Creation of all child shards partitions is completed");
-                // Finally mask the partition as completed.
                 coordinator.completePartition(streamPartition);
 
             } else {
@@ -189,15 +170,5 @@ public class StreamScheduler implements Runnable {
             }
         };
     }
-
-    private void createStreamPartitions(String streamArn, List<String> shardIds) {
-        shardIds.forEach(
-                shardId -> {
-                    StreamPartition partition = new StreamPartition(streamArn, shardId, Optional.of(new StreamProgressState()));
-                    coordinator.createPartition(partition);
-                }
-        );
-    }
-
 
 }

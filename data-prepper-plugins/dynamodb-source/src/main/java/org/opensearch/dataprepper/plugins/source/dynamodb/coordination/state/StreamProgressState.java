@@ -18,6 +18,9 @@ public class StreamProgressState {
 
     @JsonProperty("waitForExport")
     private boolean waitForExport = false;
+    
+    @JsonProperty("endingSequenceNumber")
+    private String endingSequenceNumber;
 
     public long getStartTime() {
         return startTime;
@@ -41,5 +44,13 @@ public class StreamProgressState {
 
     public void setWaitForExport(boolean waitForExport) {
         this.waitForExport = waitForExport;
+    }
+
+    public String getEndingSequenceNumber() {
+        return endingSequenceNumber;
+    }
+
+    public void setEndingSequenceNumber(String endingSequenceNumber) {
+        this.endingSequenceNumber = endingSequenceNumber;
     }
 }
