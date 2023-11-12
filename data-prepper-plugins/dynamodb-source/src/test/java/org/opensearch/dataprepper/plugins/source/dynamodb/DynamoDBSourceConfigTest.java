@@ -40,7 +40,7 @@ class DynamoDBSourceConfigTest {
                 "      s3_prefix: \"xxx/\"\n" +
                 "  - table_arn: \"arn:aws:dynamodb:us-west-2:123456789012:table/table-c\"\n" +
                 "    stream:\n" +
-                "      start_position: \"TRIM_HORIZON\"  \n" +
+                "      start_position: \"LATEST\"  \n" +
                 "aws:\n" +
                 "  region: \"us-west-2\"\n" +
                 "  sts_role_arn: \"arn:aws:iam::123456789012:role/DataPrepperRole\"";
@@ -67,7 +67,7 @@ class DynamoDBSourceConfigTest {
 
         TableConfig streamOnlyConfig = sourceConfiguration.getTableConfigs().get(2);
         assertThat(streamOnlyConfig.getStreamConfig(), notNullValue());
-        assertThat(streamOnlyConfig.getStreamConfig().getStartPosition(), equalTo(StreamStartPosition.TRIM_HORIZON));
+        assertThat(streamOnlyConfig.getStreamConfig().getStartPosition(), equalTo(StreamStartPosition.LATEST));
         assertNull(streamOnlyConfig.getExportConfig());
 
         AwsAuthenticationConfig awsAuthenticationConfig = sourceConfiguration.getAwsAuthenticationConfig();

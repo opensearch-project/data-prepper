@@ -17,16 +17,18 @@ import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 /**
  * An implementation of {@link org.opensearch.dataprepper.model.source.SourceCoordinationStore} when DynamoDB is used at the distributed store
  * for source_coordination
+ *
  * @since 2.2
  */
 
-@DataPrepperPlugin(name = "dynamodb", pluginType = SourceCoordinationStore.class, pluginConfigurationType = DynamoStoreSettings.class )
+@DataPrepperPlugin(name = "dynamodb", pluginType = SourceCoordinationStore.class, pluginConfigurationType = DynamoStoreSettings.class)
 public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore {
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamoDbSourceCoordinationStore.class);
@@ -42,9 +44,9 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
         this.dynamoStoreSettings = dynamoStoreSettings;
         this.pluginMetrics = pluginMetrics;
         this.dynamoDbClientWrapper = DynamoDbClientWrapper.create(
-            dynamoStoreSettings.getRegion(),
-            dynamoStoreSettings.getStsRoleArn(),
-            dynamoStoreSettings.getStsExternalId());
+                dynamoStoreSettings.getRegion(),
+                dynamoStoreSettings.getStsRoleArn(),
+                dynamoStoreSettings.getStsExternalId());
     }
 
     @Override
@@ -57,6 +59,13 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
     public Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String sourceIdentifier, final String sourcePartitionKey) {
         return dynamoDbClientWrapper.getSourcePartitionItem(sourceIdentifier, sourcePartitionKey);
     }
+
+    @Override
+    public List<SourcePartitionStoreItem> querySourcePartitionItemsByStatus(final String sourceIdentifier, final SourcePartitionStatus sourcePartitionStatus, final String startPartitionPriority) {
+        String statusKey = String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, sourcePartitionStatus);
+        return dynamoDbClientWrapper.queryPartitionsByStatus(statusKey, startPartitionPriority);
+    }
+
 
     @Override
     public boolean tryCreatePartitionItem(final String sourceIdentifier,

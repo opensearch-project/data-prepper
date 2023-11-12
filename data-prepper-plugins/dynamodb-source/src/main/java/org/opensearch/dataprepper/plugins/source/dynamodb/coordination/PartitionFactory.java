@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.InitPartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 
 import java.util.function.Function;
@@ -32,8 +32,8 @@ public class PartitionFactory implements Function<SourcePartitionStoreItem, Enha
             return new StreamPartition(partitionStoreItem);
         } else if (DataFilePartition.PARTITION_TYPE.equals(partitionType)) {
             return new DataFilePartition(partitionStoreItem);
-        } else if (InitPartition.PARTITION_TYPE.equals(partitionType)) {
-            return new InitPartition(partitionStoreItem);
+        } else if (LeaderPartition.PARTITION_TYPE.equals(partitionType)) {
+            return new LeaderPartition(partitionStoreItem);
         } else {
             // Unable to acquire other partitions.
             return new GlobalState(partitionStoreItem);

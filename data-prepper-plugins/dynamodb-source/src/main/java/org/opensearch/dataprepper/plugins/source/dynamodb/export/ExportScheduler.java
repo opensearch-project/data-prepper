@@ -38,9 +38,9 @@ public class ExportScheduler implements Runnable {
 
     private static final int DEFAULT_TAKE_LEASE_INTERVAL_MILLIS = 60_000;
 
-    private static final Duration DEFAULT_CLOSE_DURATION = Duration.ofMinutes(1);
+    private static final Duration DEFAULT_CLOSE_DURATION = Duration.ofMinutes(10);
 
-    private static final int DEFAULT_MAX_CLOSE_COUNT = 6;
+    private static final int DEFAULT_MAX_CLOSE_COUNT = 36;
 
     private static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 5 * 60_000;
 
@@ -156,7 +156,7 @@ public class ExportScheduler implements Runnable {
                 ExportProgressState state = exportPartition.getProgressState().get();
                 String bucketName = state.getBucket();
                 String exportArn = state.getExportArn();
-                
+
                 String manifestKey = exportTaskManager.getExportManifest(exportArn);
                 LOG.debug("Export manifest summary file is " + manifestKey);
 

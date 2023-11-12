@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.LoadStatus;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.TableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +86,7 @@ public class DataFileScheduler implements Runnable {
 
     private void processDataFilePartition(DataFilePartition dataFilePartition) {
         String exportArn = dataFilePartition.getExportArn();
-        String tableArn = getTableArn(exportArn);
+        String tableArn = TableUtil.getTableArnFromExportArn(exportArn);
 
         TableInfo tableInfo = getTableInfo(tableArn);
 
@@ -94,7 +95,7 @@ public class DataFileScheduler implements Runnable {
         AcknowledgementSet acknowledgementSet = null;
         if (acknowledgmentsEnabled) {
             acknowledgementSet = acknowledgementSetManager.create((result) -> {
-                if (result == true) {
+                if (result) {
                     completeDataLoader(dataFilePartition).accept(null, null);
                     LOG.info("Received acknowledgment of completion from sink for data file {}", dataFilePartition.getKey());
                 } else {
@@ -159,15 +160,10 @@ public class DataFileScheduler implements Runnable {
         TableInfo tableInfo = new TableInfo(tableArn, TableMetadata.fromMap(tableState.getProgressState().get()));
         return tableInfo;
     }
-
-    private String getTableArn(String exportArn) {
-        // e.g. given export arn:arn:aws:dynamodb:us-west-2:123456789012:table/Thread/export/01693291918297-bfeccbea
-        // returns: arn:aws:dynamodb:us-west-2:123456789012:table/Thread
-        return exportArn.substring(0, exportArn.lastIndexOf("/export/"));
-    }
+    
 
     private String getStreamArn(String exportArn) {
-        String tableArn = getTableArn(exportArn);
+        String tableArn = TableUtil.getTableArnFromExportArn(exportArn);
         TableInfo tableInfo = getTableInfo(tableArn);
 
         if (tableInfo.getMetadata().isStreamRequired()) {

@@ -14,7 +14,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.InitPartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 
 import java.time.Instant;
@@ -165,17 +165,16 @@ class PartitionFactoryTest {
     }
 
     @Test
-    void testCreateInitPartition() {
-        String sourceId = sourceIdentifier + "|" + InitPartition.PARTITION_TYPE;
+    void testCreateLeaderPartition() {
+        String sourceId = sourceIdentifier + "|" + LeaderPartition.PARTITION_TYPE;
         when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceId);
 
         PartitionFactory factory = new PartitionFactory();
         EnhancedSourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
         assertThat(sourcePartition, notNullValue());
-        InitPartition exportPartition = (InitPartition) sourcePartition;
-        assertThat(exportPartition.getPartitionKey(), equalTo("GLOBAL"));
-        assertThat(exportPartition.getPartitionType(), equalTo(InitPartition.PARTITION_TYPE));
-
-
+        LeaderPartition leaderPartition = (LeaderPartition) sourcePartition;
+        assertThat(leaderPartition.getPartitionKey(), equalTo("GLOBAL"));
+        assertThat(leaderPartition.getPartitionType(), equalTo(LeaderPartition.PARTITION_TYPE));
+        
     }
 }
