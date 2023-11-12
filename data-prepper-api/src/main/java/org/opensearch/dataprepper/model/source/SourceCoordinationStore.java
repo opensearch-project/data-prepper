@@ -25,7 +25,7 @@ public interface SourceCoordinationStore {
     Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String sourceIdentifier, final String sourcePartitionKey);
 
     /**
-     * To query a list of partitions based on status and priority. <br/>
+     * To query a list of partitions based on status and priority.
      * Note that it will still return an empty list if nothing was found.
      *
      * @param sourceIdentifier       The identifier for the source
