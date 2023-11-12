@@ -57,10 +57,10 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
 
     @DataPrepperPluginConstructor
     public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig, final PluginFactory pluginFactory,
-                       final AcknowledgementSetManager acknowledgementSetManager, final PluginMetrics pluginMetrics,
+                       final AcknowledgementSetManager acknowledgementSetManager,
                        final ByteDecoder byteDecoder, final AwsCredentialsSupplier awsCredentialsSupplier,
                        final CircuitBreaker circuitBreaker) {
-        super(pluginSetting);
+        super(kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName()), pluginSetting.getPipelineName());
         SerializationFactory serializationFactory = new SerializationFactory();
         final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier);
         this.byteDecoder = byteDecoder;
@@ -74,7 +74,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         final List<KafkaCustomConsumer> consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
             innerBuffer, consumerMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false, circuitBreaker);
         emptyCheckingConsumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
-                innerBuffer, pluginMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false, null);
+                innerBuffer, consumerMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false, null);
         this.executorService = Executors.newFixedThreadPool(consumers.size());
         consumers.forEach(this.executorService::submit);
 

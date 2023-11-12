@@ -15,7 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
@@ -79,9 +78,6 @@ class KafkaBufferTest {
     ExecutorService executorService;
     @Mock
     private KafkaBufferConfig bufferConfig;
-
-    @Mock
-    private PluginMetrics pluginMetrics;
 
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
@@ -151,7 +147,7 @@ class KafkaBufferTest {
                  })) {
 
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executorService);
-            return new KafkaBuffer(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, null, awsCredentialsSupplier, circuitBreaker);
+            return new KafkaBuffer(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, null, awsCredentialsSupplier, circuitBreaker);
         }
     }
 
@@ -160,7 +156,6 @@ class KafkaBufferTest {
     @BeforeEach
     void setUp() {
         when(pluginSetting.getPipelineName()).thenReturn("pipeline");
-        pluginMetrics = mock(PluginMetrics.class);
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         when(topic1.getName()).thenReturn("topic1");
         when(topic1.isCreateTopic()).thenReturn(true);
