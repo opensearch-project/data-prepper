@@ -8,13 +8,13 @@ import java.util.ArrayList;
 import java.util.Optional;
 
 /**
- * A LeaderPartition is for some tasks that should be done in a single node only. <br/>
- * Hence whatever node owns the lease of this partition will be acted as a 'leader'. <br/>
- * In this DynamoDB source design, a leader node will be responsible for:
- * <url>
+ * <p>A LeaderPartition is for some tasks that should be done in a single node only. </p>
+ * <p>Hence whatever node owns the lease of this partition will be acted as a 'leader'. </p>
+ * <p>In this DynamoDB source design, a leader node will be responsible for:</p>
+ * <ul>
  * <li>Initialization process</li>
  * <li>Regular Shard Discovery</li>
- * </url>
+ * </ul>
  */
 public class LeaderPartition extends EnhancedSourcePartition<LeaderProgressState> {
 

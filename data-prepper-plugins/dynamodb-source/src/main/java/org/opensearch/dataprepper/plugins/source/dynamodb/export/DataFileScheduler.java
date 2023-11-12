@@ -160,7 +160,7 @@ public class DataFileScheduler implements Runnable {
         TableInfo tableInfo = new TableInfo(tableArn, TableMetadata.fromMap(tableState.getProgressState().get()));
         return tableInfo;
     }
-    
+
 
     private String getStreamArn(String exportArn) {
         String tableArn = TableUtil.getTableArnFromExportArn(exportArn);
@@ -197,10 +197,10 @@ public class DataFileScheduler implements Runnable {
     }
 
     /**
-     * There is a global state with sourcePartitionKey the export Arn,
-     * to track the number of files are processed. <br/>
-     * Each time, load of a data file is completed,
-     * The state must be updated.<br/>
+     * <p>There is a global state with sourcePartitionKey the export Arn,
+     * to track the number of files are processed. </p>
+     * <p>Each time, load of a data file is completed,
+     * The state must be updated.</p>
      * Note that the state may be updated since multiple threads are updating the same state.
      * Retry is required.
      *

@@ -52,13 +52,12 @@ public class ShardManager {
     }
 
     /**
-     * This is the main process for shard discovery (listing shards using DescribeStream API). <br/>
+     * <p>This is the main process for shard discovery (listing shards using DescribeStream API).
      * It will use the last evaluated shard ID to speed up the listing,
-     * but still run a full listing on a regular basis. <br/>
-     * <p>
-     * Everytime the process run, it also builds the internal caching store,
-     * which will be used to find child shards for a given parent.
-     * </p>
+     * but still run a full listing on a regular basis.</p>
+     *
+     * <p>Everytime the process run, it also builds the internal caching store,
+     * which will be used to find child shards for a given parent.</p>
      *
      * @param streamArn Stream ARN
      * @return a list of {@link Shard}
