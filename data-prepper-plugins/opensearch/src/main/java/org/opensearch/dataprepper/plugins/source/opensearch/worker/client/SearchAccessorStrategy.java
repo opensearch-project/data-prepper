@@ -8,19 +8,17 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.InfoResponse;
-import org.opensearch.client.util.MissingRequiredPropertyException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DistributionVersion;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Objects;
 
 /**
@@ -82,16 +80,28 @@ public class SearchAccessorStrategy {
             infoResponse = clientRefresher.get().info();
             pluginConfigObservable.addPluginConfigObserver(newConfig -> clientRefresher.update(
                     (OpenSearchSourceConfiguration) newConfig));
-        } catch (final MissingRequiredPropertyException e) {
+        } catch (final Exception e) {
+
+            if (DistributionVersion.OPENSEARCH.equals(openSearchSourceConfiguration.getDistributionVersion())) {
+                LOG.info("distribution_version is opensearch. Forcing creation of OpenSearch client...");
+                return new OpenSearchAccessor(clientRefresher,
+                        openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType() != null ?
+                                openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType() :
+                                SearchContextType.SCROLL);
+            }
+
             LOG.info("Detected Elasticsearch cluster. Constructing Elasticsearch client");
-            elasticsearchClientRefresher = new ClientRefresher<>(ElasticsearchClient.class,
-                    openSearchClientFactory::provideElasticSearchClient, openSearchSourceConfiguration);
-            final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration>
-                    finalElasticsearchClientRefresher = elasticsearchClientRefresher;
-            pluginConfigObservable.addPluginConfigObserver(
-                    newConfig -> finalElasticsearchClientRefresher.update((OpenSearchSourceConfiguration) newConfig));
-        } catch (final IOException | OpenSearchException e) {
-            throw new RuntimeException("There was an error looking up the OpenSearch cluster info: ", e);
+
+            try {
+                elasticsearchClientRefresher = new ClientRefresher<>(ElasticsearchClient.class,
+                        openSearchClientFactory::provideElasticSearchClient, openSearchSourceConfiguration);
+                final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration>
+                        finalElasticsearchClientRefresher = elasticsearchClientRefresher;
+                pluginConfigObservable.addPluginConfigObserver(
+                        newConfig -> finalElasticsearchClientRefresher.update((OpenSearchSourceConfiguration) newConfig));
+            } catch (final Exception ex) {
+                throw new RuntimeException("There was an error looking up the OpenSearch cluster info: ", ex);
+            }
         }
 
         final Pair<String, String> distributionAndVersion = getDistributionAndVersionNumber(infoResponse, elasticsearchClientRefresher);

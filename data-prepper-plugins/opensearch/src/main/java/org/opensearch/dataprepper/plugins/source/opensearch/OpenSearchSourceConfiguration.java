@@ -4,8 +4,10 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
@@ -13,6 +15,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.configuration.Connec
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DistributionVersion;
 
 import java.util.List;
 import java.util.Objects;
@@ -55,6 +58,12 @@ public class OpenSearchSourceConfiguration {
     @Valid
     private SearchConfiguration searchConfiguration = new SearchConfiguration();
 
+    @JsonProperty("distribution_version")
+    private String distributionVersion;
+
+    @JsonIgnore
+    private DistributionVersion distributionVersionValue;
+
     public List<String> getHosts() {
         return hosts;
     }
@@ -93,12 +102,27 @@ public class OpenSearchSourceConfiguration {
         return searchConfiguration;
     }
 
+    public DistributionVersion getDistributionVersion() { return distributionVersionValue; }
+
     void validateAwsConfigWithUsernameAndPassword() {
 
         if (((Objects.nonNull(awsAuthenticationOptions) && ((Objects.nonNull(username) || Objects.nonNull(password)) || disableAuthentication)) ||
                 (Objects.nonNull(username) || Objects.nonNull(password)) && disableAuthentication) ||
                 (Objects.isNull(awsAuthenticationOptions) && (Objects.isNull(username) || Objects.isNull(password)) && !disableAuthentication)) {
             throw new InvalidPluginConfigurationException("Either username and password, or aws options must be specified. Both cannot be set at once. Authentication can be disabled by setting the disable_authentication flag to true.");
+        }
+    }
+
+    @AssertTrue(message = "distribution_version must be one of [ 'es7', 'opensearch' ]")
+    boolean isDistributionVersionValid() {
+        try {
+            if (distributionVersion != null) {
+                distributionVersionValue = DistributionVersion.valueOf(distributionVersion.toUpperCase());
+            }
+
+            return true;
+        } catch (final IllegalArgumentException e) {
+            return false;
         }
     }
 
