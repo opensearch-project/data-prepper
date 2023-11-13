@@ -5,7 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,6 +66,8 @@ import static org.opensearch.dataprepper.plugins.source.opensearch.worker.Worker
 
 @ExtendWith(MockitoExtension.class)
 public class NoSearchContextWorkerTest {
+    @Mock
+    private ObjectMapper objectMapper;
 
     @Mock
     private OpenSearchSourceConfiguration openSearchSourceConfiguration;
@@ -97,6 +102,12 @@ public class NoSearchContextWorkerTest {
     @Mock
     private Timer indexProcessingTimeTimer;
 
+    @Mock
+    private DistributionSummary bytesReceivedSummary;
+
+    @Mock
+    private DistributionSummary bytesProcessedSummary;
+
     private ExecutorService executorService;
 
     @BeforeEach
@@ -107,10 +118,12 @@ public class NoSearchContextWorkerTest {
         when(openSearchSourcePluginMetrics.getIndicesProcessedCounter()).thenReturn(indicesProcessedCounter);
         when(openSearchSourcePluginMetrics.getProcessingErrorsCounter()).thenReturn(processingErrorsCounter);
         when(openSearchSourcePluginMetrics.getIndexProcessingTimeTimer()).thenReturn(indexProcessingTimeTimer);
+        when(openSearchSourcePluginMetrics.getBytesReceivedSummary()).thenReturn(bytesReceivedSummary);
+        when(openSearchSourcePluginMetrics.getBytesProcessedSummary()).thenReturn(bytesProcessedSummary);
     }
 
     private NoSearchContextWorker createObjectUnderTest() {
-        return new NoSearchContextWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
+        return new NoSearchContextWorker(objectMapper, searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
     }
 
     @Test
@@ -166,6 +179,7 @@ public class NoSearchContextWorkerTest {
     void run_with_getNextPartition_with_non_empty_partition_processes_and_closes_that_partition() throws Exception {
         mockTimerCallable();
 
+        when(objectMapper.writeValueAsBytes(any(JsonNode.class))).thenReturn(new byte[0]);
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
         final String partitionKey = UUID.randomUUID().toString();
         when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
@@ -177,8 +191,14 @@ public class NoSearchContextWorkerTest {
 
         final SearchWithSearchAfterResults searchWithSearchAfterResults = mock(SearchWithSearchAfterResults.class);
         when(searchWithSearchAfterResults.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
-        when(searchWithSearchAfterResults.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class))).thenReturn(List.of(mock(Event.class), mock(Event.class)))
-                .thenReturn(List.of(mock(Event.class))).thenReturn(List.of(mock(Event.class)));
+        final Event testEvent1 = mock(Event.class);
+        final Event testEvent2 = mock(Event.class);
+        final Event testEvent3 = mock(Event.class);
+        when(testEvent1.getJsonNode()).thenReturn(mock(JsonNode.class));
+        when(testEvent2.getJsonNode()).thenReturn(mock(JsonNode.class));
+        when(testEvent3.getJsonNode()).thenReturn(mock(JsonNode.class));
+        when(searchWithSearchAfterResults.getDocuments()).thenReturn(List.of(testEvent1, testEvent2)).thenReturn(List.of(testEvent1, testEvent2))
+                .thenReturn(List.of(testEvent3)).thenReturn(List.of(testEvent3));
 
         final ArgumentCaptor<NoSearchContextSearchRequest> searchRequestArgumentCaptor = ArgumentCaptor.forClass(NoSearchContextSearchRequest.class);
         when(searchAccessor.searchWithoutSearchContext(searchRequestArgumentCaptor.capture())).thenReturn(searchWithSearchAfterResults);
@@ -220,7 +240,9 @@ public class NoSearchContextWorkerTest {
         assertThat(noSearchContextSearchRequests.get(1).getPaginationSize(), equalTo(2));
         assertThat(noSearchContextSearchRequests.get(1).getSearchAfter(), equalTo(searchWithSearchAfterResults.getNextSearchAfter()));
 
+        verify(bytesReceivedSummary, times(3)).record(0L);
         verify(documentsProcessedCounter, times(3)).increment();
+        verify(bytesProcessedSummary, times(3)).record(0L);
         verify(indicesProcessedCounter).increment();
         verifyNoInteractions(processingErrorsCounter);
     }
@@ -229,6 +251,7 @@ public class NoSearchContextWorkerTest {
     void run_with_getNextPartition_with_acknowledgments_processes_and_closes_that_partition() throws Exception {
         mockTimerCallable();
 
+        when(objectMapper.writeValueAsBytes(any(JsonNode.class))).thenReturn(new byte[0]);
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         AtomicReference<Integer> numEventsAdded = new AtomicReference<>(0);
         doAnswer(a -> {
@@ -254,8 +277,14 @@ public class NoSearchContextWorkerTest {
 
         final SearchWithSearchAfterResults searchWithSearchAfterResults = mock(SearchWithSearchAfterResults.class);
         when(searchWithSearchAfterResults.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
-        when(searchWithSearchAfterResults.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class))).thenReturn(List.of(mock(Event.class), mock(Event.class)))
-                .thenReturn(List.of(mock(Event.class))).thenReturn(List.of(mock(Event.class)));
+        final Event testEvent1 = mock(Event.class);
+        final Event testEvent2 = mock(Event.class);
+        final Event testEvent3 = mock(Event.class);
+        when(testEvent1.getJsonNode()).thenReturn(mock(JsonNode.class));
+        when(testEvent2.getJsonNode()).thenReturn(mock(JsonNode.class));
+        when(testEvent3.getJsonNode()).thenReturn(mock(JsonNode.class));
+        when(searchWithSearchAfterResults.getDocuments()).thenReturn(List.of(testEvent1, testEvent2)).thenReturn(List.of(testEvent1, testEvent2))
+                .thenReturn(List.of(testEvent3)).thenReturn(List.of(testEvent3));
 
         final ArgumentCaptor<NoSearchContextSearchRequest> searchRequestArgumentCaptor = ArgumentCaptor.forClass(NoSearchContextSearchRequest.class);
         when(searchAccessor.searchWithoutSearchContext(searchRequestArgumentCaptor.capture())).thenReturn(searchWithSearchAfterResults);
@@ -299,7 +328,9 @@ public class NoSearchContextWorkerTest {
 
         verify(acknowledgementSet).complete();
 
+        verify(bytesReceivedSummary, times(3)).record(0L);
         verify(documentsProcessedCounter, times(3)).increment();
+        verify(bytesProcessedSummary, times(3)).record(0L);
         verify(indicesProcessedCounter).increment();
         verifyNoInteractions(processingErrorsCounter);
     }
