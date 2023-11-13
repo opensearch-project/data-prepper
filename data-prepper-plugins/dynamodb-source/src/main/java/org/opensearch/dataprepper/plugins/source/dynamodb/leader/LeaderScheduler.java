@@ -114,7 +114,7 @@ public class LeaderScheduler implements Runnable {
                 }
 
             } catch (Exception e) {
-                LOG.error("Exception occurred: {}", e.getMessage());
+                LOG.error("Exception occurred in primary scheduling loop", e);
             } finally {
                 try {
                     Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
