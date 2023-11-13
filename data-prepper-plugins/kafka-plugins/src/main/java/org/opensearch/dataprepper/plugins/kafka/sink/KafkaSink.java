@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.plugins.kafka.common.serialization.CommonSerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
@@ -83,7 +84,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         reentrantLock = new ReentrantLock();
         this.sinkContext = sinkContext;
 
-        SerializationFactory serializationFactory = new SerializationFactory();
+        SerializationFactory serializationFactory = new CommonSerializationFactory();
         kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier);
 
     }
