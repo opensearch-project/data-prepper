@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.dataformat.ion.IonObjectMapper;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
@@ -28,6 +29,8 @@ public class ExportRecordConverter extends RecordConverter {
 
     static final String EXPORT_RECORDS_PROCESSED_COUNT = "exportRecordsProcessed";
     static final String EXPORT_RECORDS_PROCESSING_ERROR_COUNT = "exportRecordProcessingErrors";
+    static final String BYTES_RECEIVED = "bytesReceived";
+    static final String BYTES_PROCESSED = "bytesProcessed";
 
 
     IonObjectMapper MAPPER = new IonObjectMapper();
@@ -36,13 +39,16 @@ public class ExportRecordConverter extends RecordConverter {
 
     private final Counter exportRecordSuccessCounter;
     private final Counter exportRecordErrorCounter;
+    private final DistributionSummary bytesReceivedSummary;
+    private final DistributionSummary bytesProcessedSummary;
 
     public ExportRecordConverter(final BufferAccumulator<Record<Event>> bufferAccumulator, TableInfo tableInfo, PluginMetrics pluginMetrics) {
         super(bufferAccumulator, tableInfo);
         this.pluginMetrics = pluginMetrics;
         this.exportRecordSuccessCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT);
         this.exportRecordErrorCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSING_ERROR_COUNT);
-
+        this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
+        this.bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
     }
 
     private Map<String, Object> convertToMap(String jsonData) {
@@ -63,9 +69,12 @@ public class ExportRecordConverter extends RecordConverter {
 
         int eventCount = 0;
         for (String line : lines) {
+            final long bytes = line.getBytes().length;
+            bytesReceivedSummary.record(bytes);
             Map data = (Map<String, Object>) convertToMap(line).get(ITEM_KEY);
             try {
                 addToBuffer(acknowledgementSet, data);
+                bytesProcessedSummary.record(bytes);
                 eventCount++;
             } catch (Exception e) {
                 // will this cause too many logs?
