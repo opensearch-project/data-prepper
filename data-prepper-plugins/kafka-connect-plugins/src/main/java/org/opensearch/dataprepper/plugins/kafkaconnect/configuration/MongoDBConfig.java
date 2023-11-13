@@ -125,12 +125,12 @@ public class MongoDBConfig extends ConnectorConfig {
     }
 
     public static class ExportConfig {
-        private static long DEFAULT_ITEMS_PER_PARTITION = 4000;
+        private static int DEFAULT_ITEMS_PER_PARTITION = 4000;
         private static String DEFAULT_READ_PREFERENCE = "secondaryPreferred";
         @JsonProperty("acknowledgments")
-        private boolean acknowledgments = false;
+        private Boolean acknowledgments = false;
         @JsonProperty("items_per_partition")
-        private long itemsPerPartition = DEFAULT_ITEMS_PER_PARTITION;
+        private Integer itemsPerPartition = DEFAULT_ITEMS_PER_PARTITION;
         @JsonProperty("read_preference")
         private String readPreference = DEFAULT_READ_PREFERENCE;
 
@@ -138,7 +138,7 @@ public class MongoDBConfig extends ConnectorConfig {
             return this.acknowledgments;
         }
 
-        public long getItemsPerPartition() {
+        public Integer getItemsPerPartition() {
             return this.itemsPerPartition;
         }
 

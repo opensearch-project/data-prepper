@@ -12,6 +12,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -85,18 +86,21 @@ public class MongoDBPartitionCreationSupplierTest {
             mockedMongoClientsStatic.when(() -> MongoClients.create(anyString())).thenReturn(mongoClient);
             when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
             when(mongoDatabase.getCollection(anyString())).thenReturn(col);
-            when(col.countDocuments()).thenReturn(5000L);
             when(col.find()).thenReturn(findIterable);
+            when(col.find(any(Bson.class))).thenReturn(findIterable);
             when(findIterable.projection(any())).thenReturn(findIterable);
             when(findIterable.sort(any())).thenReturn(findIterable);
             when(findIterable.skip(anyInt())).thenReturn(findIterable);
             when(findIterable.limit(anyInt())).thenReturn(findIterable);
             when(findIterable.iterator()).thenReturn(cursor);
-            when(cursor.hasNext()).thenReturn(true, true, true, true, false, true);
+            when(cursor.hasNext()).thenReturn(true, true, false);
+            // mock startDoc and endDoc returns, 0-3999, and 4000-4999
             when(cursor.next())
                     .thenReturn(new Document("_id", "0"))
+                    .thenReturn(new Document("_id", "4000"));
+            when(findIterable.first())
                     .thenReturn(new Document("_id", "3999"))
-                    .thenReturn(new Document("_id", "4000"))
+                    .thenReturn(null)
                     .thenReturn(new Document("_id", "4999"));
             // When Apply Partition create logics
             final Map<String, Object> globalStateMap = new HashMap<>();

@@ -138,12 +138,11 @@ public class MongoDBSnapshotWorker implements Runnable {
         MongoClient mongoClient = MongoDBHelper.getMongoClient(mongoDBConfig);
         MongoDatabase db = mongoClient.getDatabase(collection.get(0));
         MongoCollection<Document> col = db.getCollection(collection.get(1));
-        Bson query = MongoDBHelper.buildQuery(gte, lte, className);
-        MongoCursor<Document> cursor = col.find(query).iterator();
+        Bson query = MongoDBHelper.buildAndQuery(gte, lte, className);
         long totalRecords = 0L;
         long successRecords = 0L;
         long failedRecords = 0L;
-        try {
+        try (MongoCursor<Document> cursor = col.find(query).iterator()) {
             while (cursor.hasNext()) {
                 try {
                     String record = cursor.next().toJson();
@@ -170,7 +169,6 @@ public class MongoDBSnapshotWorker implements Runnable {
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
-            cursor.close();
             final MongoDBSnapshotProgressState progressState = new MongoDBSnapshotProgressState();
             progressState.setTotal(totalRecords);
             progressState.setSuccess(successRecords);

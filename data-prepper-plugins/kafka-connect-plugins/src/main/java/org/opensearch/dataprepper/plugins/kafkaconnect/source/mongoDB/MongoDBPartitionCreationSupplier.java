@@ -5,10 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.kafkaconnect.source.mongoDB;
 
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
 import org.bson.Document;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.MongoDBConfig;
@@ -24,7 +26,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class MongoDBPartitionCreationSupplier implements Function<Map<String, Object>, List<PartitionIdentifier>>  {
+public class MongoDBPartitionCreationSupplier implements Function<Map<String, Object>, List<PartitionIdentifier>> {
     public static final String GLOBAL_STATE_PARTITIONED_COLLECTION_KEY = "partitionedCollections";
     private static final Logger LOG = LoggerFactory.getLogger(MongoDBPartitionCreationSupplier.class);
     private static final String DOCUMENTDB_PARTITION_KEY_FORMAT = "%s|%s|%s|%s"; // partition format: <db.collection>|<gte>|<lt>|<className>
@@ -75,52 +77,50 @@ public class MongoDBPartitionCreationSupplier implements Function<Map<String, Ob
         MongoDatabase db = mongoClient.getDatabase(collection.get(0));
         MongoCollection<Document> col = db.getCollection(collection.get(1));
 
-        long totalCount = col.countDocuments();
-        long chunkSize = this.mongoDBConfig.getExportConfig().getItemsPerPartition();
-        long startIndex = 0;
-        long endIndex = startIndex + chunkSize - 1;
+        int chunkSize = this.mongoDBConfig.getExportConfig().getItemsPerPartition();
+        FindIterable<Document> startIterable = col.find()
+                .projection(new Document("_id", 1))
+                .sort(new Document("_id", 1))
+                .limit(1);
 
-        while (startIndex < totalCount) {
-            MongoCursor<Document> cursor = col.find()
-                    .projection(new Document("_id", 1))
-                    .sort(new Document("_id", 1))
-                    .skip((int) startIndex)
-                    .limit(1)
-                    .iterator();
-
-            Document firstDoc = cursor.hasNext() ? cursor.next() : null;
-
-            // Get second doc
-            MongoCursor<Document> secondCursor = col.find()
-                        .projection(new Document("_id", 1))
-                        .sort(new Document("_id", 1))
-                        .skip((int)endIndex)
-                        .limit(1)
-                        .iterator();
-            if (!secondCursor.hasNext()) {
-                // this means we have reached the end of the doc
-                secondCursor = col.find()
-                        .projection(new Document("_id", 1))
-                        .sort(new Document("_id", -1))
-                        .limit(1)
-                        .iterator();
-            }
-            Document secondDoc = secondCursor.hasNext() ? secondCursor.next() : null;
-
-            if (firstDoc != null && secondDoc != null) {
-                Object gteValue = firstDoc.get("_id");
-                Object lteValue = secondDoc.get("_id");
+        while (true) {
+            try (MongoCursor<Document> startCursor = startIterable.iterator()) {
+                if (!startCursor.hasNext()) {
+                    break;
+                }
+                Document startDoc = startCursor.next();
+                Object gteValue = startDoc.get("_id");
                 String className = gteValue.getClass().getName();
 
+                // Get end doc
+                Document endDoc = startIterable.skip(chunkSize - 1).limit(1).first();
+                if (endDoc == null) {
+                    // this means we have reached the end of the doc
+                    endDoc = col.find()
+                            .projection(new Document("_id", 1))
+                            .sort(new Document("_id", -1))
+                            .limit(1)
+                            .first();
+                }
+                if (endDoc == null) {
+                    break;
+                }
+
+                Object lteValue = endDoc.get("_id");
                 LOG.info("Chunk of " + collectionName + ": {gte: " + gteValue.toString() + ", lte: " + lteValue.toString() + "}");
                 collectionPartitions.add(
                         PartitionIdentifier
                                 .builder()
                                 .withPartitionKey(String.format(DOCUMENTDB_PARTITION_KEY_FORMAT, collectionName, gteValue, lteValue, className))
                                 .build());
+
+                startIterable = col.find(Filters.gt("_id", lteValue))
+                        .projection(new Document("_id", 1))
+                        .sort(new Document("_id", 1))
+                        .limit(1);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
-            startIndex = endIndex + 1;
-            endIndex = startIndex + chunkSize - 1;
         }
         return collectionPartitions;
     }

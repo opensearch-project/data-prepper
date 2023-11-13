@@ -56,7 +56,7 @@ public class MongoDBConfigTest {
         assertThat(testConfig.getSSLInvalidHostAllowed(), is(false));
         assertThat(testConfig.getCollections().size(), is(1));
         assertThat(testConfig.getExportConfig().getAcknowledgements(), is(false));
-        assertThat(testConfig.getExportConfig().getItemsPerPartition(), is(4000L));
+        assertThat(testConfig.getExportConfig().getItemsPerPartition(), is(4000));
         assertThat(testConfig.getExportConfig().getReadPreference(), is("secondaryPreferred"));
     }
 

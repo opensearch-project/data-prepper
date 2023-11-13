@@ -31,7 +31,7 @@ public class MongoDBHelper {
         return MongoClients.create(connectionString);
     }
 
-    public static Bson buildQuery(String gte, String lte, String className) {
+    public static Bson buildAndQuery(String gte, String lte, String className) {
         switch (className) {
             case "java.lang.Integer":
                 return and(
