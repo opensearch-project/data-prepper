@@ -21,6 +21,8 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.kafka.admin.KafkaAdminAccessor;
+import org.opensearch.dataprepper.plugins.kafka.buffer.serialization.BufferSerializationFactory;
+import org.opensearch.dataprepper.plugins.kafka.common.serialization.CommonSerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
@@ -62,7 +64,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
                        final ByteDecoder byteDecoder, final AwsCredentialsSupplier awsCredentialsSupplier,
                        final CircuitBreaker circuitBreaker) {
         super(kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName()), pluginSetting.getPipelineName());
-        SerializationFactory serializationFactory = new SerializationFactory();
+        final SerializationFactory serializationFactory = new BufferSerializationFactory(new CommonSerializationFactory());
         final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier);
         this.byteDecoder = byteDecoder;
         final String metricPrefixName = kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName());

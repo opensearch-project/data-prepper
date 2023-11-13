@@ -5,6 +5,7 @@
 
 plugins {
     id 'java'
+    id 'com.google.protobuf' version '0.9.4'
 }
 
 dependencies {
@@ -62,8 +63,13 @@ dependencies {
     testImplementation libs.protobuf.util
     testImplementation libs.commons.io
     testImplementation libs.armeria.grpc
+}
 
 
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.25.0'
+    }
 }
 
 test {

@@ -16,7 +16,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class SerializationFactoryTest {
+class CommonSerializationFactoryTest {
     @Mock
     private MessageFormatSerializationFactory messageFormatSerializationFactory;
     @Mock
@@ -26,7 +26,7 @@ class SerializationFactoryTest {
     private KafkaDataConfig kafkaDataConfig;
 
     private SerializationFactory createObjectUnderTest() {
-        return new SerializationFactory(messageFormatSerializationFactory, encryptionSerializationFactory);
+        return new CommonSerializationFactory(messageFormatSerializationFactory, encryptionSerializationFactory);
     }
 
     @ParameterizedTest
