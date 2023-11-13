@@ -117,6 +117,8 @@ public class KafkaCustomProducer<T> {
                 publishJsonMessage(record, key);
             } else if (Objects.equals(serdeFormat, MessageFormat.AVRO.toString())) {
                 publishAvroMessage(record, key);
+            } else if(Objects.equals(serdeFormat, MessageFormat.BYTES.toString())) {
+                publishJsonMessageAsBytes(record, key);
             } else {
                 publishPlaintextMessage(record, key);
             }
@@ -127,6 +129,18 @@ public class KafkaCustomProducer<T> {
             releaseEventHandles(false);
         }
 
+    }
+
+    private void publishJsonMessageAsBytes(Record<Event> record, String key) {
+        JsonNode dataNode = record.getData().getJsonNode();
+
+        try {
+            byte[] bytes = objectMapper.writeValueAsBytes(dataNode);
+            send(topicName, key, bytes);
+        }
+        catch (Throwable ex) {
+            dlqSink.perform(dataNode, ex);
+        }
     }
 
     private Event getEvent(final Record<Event> record) {

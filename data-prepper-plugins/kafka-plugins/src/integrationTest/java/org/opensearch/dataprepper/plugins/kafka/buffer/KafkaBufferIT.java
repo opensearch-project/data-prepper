@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.kafka.buffer;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,13 +18,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
+import org.opensearch.dataprepper.model.codec.JsonDecoder;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
-import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.opensearch.dataprepper.plugins.kafka.util.TestConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -53,7 +53,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,51 +60,49 @@ public class KafkaBufferIT {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaBufferIT.class);
     @Mock
     private PluginSetting pluginSetting;
-    @Mock
+
     private KafkaBufferConfig kafkaBufferConfig;
     @Mock
     private PluginFactory pluginFactory;
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
-    @Mock
+
     private BufferTopicConfig topicConfig;
+
+    private ByteDecoder byteDecoder;
+
     private String bootstrapServersCommaDelimited;
     private String topicName;
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
+        objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
         when(pluginSetting.getPipelineName()).thenReturn(UUID.randomUUID().toString());
 
-        MessageFormat messageFormat = MessageFormat.JSON;
-
         topicName = "buffer-" + RandomStringUtils.randomAlphabetic(5);
-        when(topicConfig.getName()).thenReturn(topicName);
-        when(topicConfig.getGroupId()).thenReturn("buffergroup-" + RandomStringUtils.randomAlphabetic(6));
-        when(topicConfig.isCreateTopic()).thenReturn(true);
-        when(topicConfig.getSerdeFormat()).thenReturn(messageFormat);
-        when(topicConfig.getWorkers()).thenReturn(1);
-        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));
-        when(topicConfig.getConsumerMaxPollRecords()).thenReturn(1);
-        when(topicConfig.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
-        when(topicConfig.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
-        when(topicConfig.getAutoCommit()).thenReturn(false);
-        when(topicConfig.getAutoOffsetReset()).thenReturn("earliest");
-        when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
-        when(kafkaBufferConfig.getTopic()).thenReturn(topicConfig);
-        when(kafkaBufferConfig.getSerdeFormat()).thenReturn(messageFormat.toString());
-        when(kafkaBufferConfig.getPartitionKey()).thenReturn(UUID.randomUUID().toString());
 
-        EncryptionConfig encryptionConfig = mock(EncryptionConfig.class);
+        final Map<String, Object> topicConfigMap = Map.of(
+                "name", topicName,
+                "group_id", "buffergroup-" + RandomStringUtils.randomAlphabetic(6),
+                "create_topic", true
+        );
+
+        topicConfig = objectMapper.convertValue(topicConfigMap, BufferTopicConfig.class);
 
         bootstrapServersCommaDelimited = System.getProperty("tests.kafka.bootstrap_servers");
 
         LOG.info("Using Kafka bootstrap servers: {}", bootstrapServersCommaDelimited);
 
-        when(kafkaBufferConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServersCommaDelimited));
-        when(kafkaBufferConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
+        final Map<String, Object> bufferConfigMap = Map.of(
+                "topics", List.of(topicConfigMap),
+                "bootstrap_servers", List.of(bootstrapServersCommaDelimited),
+                "encryption", Map.of("type", "none")
+        );
+        kafkaBufferConfig = objectMapper.convertValue(bufferConfigMap, KafkaBufferConfig.class);
 
-        objectMapper = new ObjectMapper();
+        byteDecoder = null;
     }
 
     private KafkaBuffer createObjectUnderTest() {
@@ -132,6 +129,32 @@ public class KafkaBufferIT {
         // TODO: The metadata is not included. It needs to be included in the Buffer, though not in the Sink. This may be something we make configurable in the consumer/producer - whether to serialize the metadata or not.
         //assertThat(onlyResult.getData().getMetadata(), equalTo(record.getData().getMetadata()));
         assertThat(onlyResult.getData().toMap(), equalTo(record.getData().toMap()));
+    }
+
+    @Test
+    void write_and_read_bytes() throws Exception {
+        byteDecoder = new JsonDecoder();
+
+        KafkaBuffer objectUnderTest = createObjectUnderTest();
+
+        Map<String, String> map = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        byte[] bytes = objectMapper.writeValueAsBytes(map);
+        String key = UUID.randomUUID().toString();
+        objectUnderTest.writeBytes(bytes, key, 1_000);
+
+        Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = objectUnderTest.read(10_000);
+
+        assertThat(readResult, notNullValue());
+        assertThat(readResult.getKey(), notNullValue());
+        assertThat(readResult.getKey().size(), equalTo(1));
+
+        Record<Event> onlyResult = readResult.getKey().stream().iterator().next();
+
+        assertThat(onlyResult, notNullValue());
+        assertThat(onlyResult.getData(), notNullValue());
+        // TODO: The metadata is not included. It needs to be included in the Buffer, though not in the Sink. This may be something we make configurable in the consumer/producer - whether to serialize the metadata or not.
+        //assertThat(onlyResult.getData().getMetadata(), equalTo(record.getData().getMetadata()));
+        //assertThat(onlyResult.getData().toMap(), equalTo(record.getData().toMap()));
     }
 
     @Test
@@ -185,11 +208,15 @@ public class KafkaBufferIT {
             final byte[] base64Bytes = Base64.getEncoder().encode(secretKey.getEncoded());
             final String aesKey = new String(base64Bytes);
 
-            when(topicConfig.getEncryptionKey()).thenReturn(aesKey);
+            final Map<String, Object> topicConfigMap = objectMapper.convertValue(topicConfig, Map.class);
+            topicConfigMap.put("encryption_key", aesKey);
+            final Map<String, Object> bufferConfigMap = objectMapper.convertValue(kafkaBufferConfig, Map.class);
+            bufferConfigMap.put("topics", List.of(topicConfigMap));
+            kafkaBufferConfig = objectMapper.convertValue(bufferConfigMap, KafkaBufferConfig.class);
         }
 
         @Test
-        void write_and_read_encrypted() throws TimeoutException, NoSuchAlgorithmException {
+        void write_and_read_encrypted() throws TimeoutException {
             KafkaBuffer objectUnderTest = createObjectUnderTest();
 
             Record<Event> record = createRecord();
@@ -211,7 +238,7 @@ public class KafkaBufferIT {
         }
 
         @Test
-        void write_data_is_correctly_formatted_encrypted() throws TimeoutException, IOException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException {
+        void write_data_is_correctly_formatted_encrypted() throws TimeoutException, IOException, IllegalBlockSizeException, BadPaddingException {
             final KafkaBuffer objectUnderTest = createObjectUnderTest();
 
             final Record<Event> record = createRecord();

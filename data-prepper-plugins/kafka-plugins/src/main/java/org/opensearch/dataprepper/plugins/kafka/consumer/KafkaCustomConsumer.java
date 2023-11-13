@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.kafka.consumer;
 import com.amazonaws.services.schemaregistry.serializers.json.JsonDataWithSchema;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.avro.generic.GenericRecord;
@@ -27,6 +28,7 @@ import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
@@ -440,11 +442,19 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
             List<ConsumerRecord<String, T>> partitionRecords = records.records(topicPartition);
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
-                if (schema == MessageFormat.BYTES && byteDecoder != null) {
+                if (schema == MessageFormat.BYTES) {
                     InputStream inputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
-                    byteDecoder.parse(inputStream, (record) -> {
+                    if(byteDecoder != null) {
+                        byteDecoder.parse(inputStream, (record) -> {
+                            processRecord(acknowledgementSet, record);
+                        });
+                    } else {
+                        JsonNode jsonNode = objectMapper.readValue(inputStream, JsonNode.class);
+
+                        Event event = JacksonLog.builder().withData(jsonNode).build();
+                        Record<Event> record = new Record<>(event);
                         processRecord(acknowledgementSet, record);
-                    });
+                    }
                 } else {
                     Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
                     if (record != null) {
