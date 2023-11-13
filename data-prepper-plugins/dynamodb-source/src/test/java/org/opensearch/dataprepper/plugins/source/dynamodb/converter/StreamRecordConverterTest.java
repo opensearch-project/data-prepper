@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,11 +49,15 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.Metad
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.SORT_KEY_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.BYTES_PROCESSED;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.BYTES_RECEIVED;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.CHANGE_EVENTS_PROCESSED_COUNT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.CHANGE_EVENTS_PROCESSING_ERROR_COUNT;
 
 @ExtendWith(MockitoExtension.class)
 class StreamRecordConverterTest {
+    private static final Random RANDOM = new Random();
+
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -66,6 +71,12 @@ class StreamRecordConverterTest {
 
     @Mock
     private Counter changeEventErrorCounter;
+
+    @Mock
+    private DistributionSummary bytesReceivedSummary;
+
+    @Mock
+    private DistributionSummary bytesProcessedSummary;
 
 
     private final String tableName = UUID.randomUUID().toString();
@@ -89,6 +100,8 @@ class StreamRecordConverterTest {
 
         given(pluginMetrics.counter(CHANGE_EVENTS_PROCESSED_COUNT)).willReturn(changeEventSuccessCounter);
         given(pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT)).willReturn(changeEventErrorCounter);
+        given(pluginMetrics.summary(BYTES_RECEIVED)).willReturn(bytesReceivedSummary);
+        given(pluginMetrics.summary(BYTES_PROCESSED)).willReturn(bytesProcessedSummary);
 
     }
 
@@ -110,6 +123,8 @@ class StreamRecordConverterTest {
         verify(changeEventSuccessCounter).increment(anyDouble());
 
         verifyNoInteractions(changeEventErrorCounter);
+        verify(bytesReceivedSummary, times(numberOfRecords)).record(anyDouble());
+        verify(bytesProcessedSummary, times(numberOfRecords)).record(anyDouble());
 
     }
 
@@ -141,6 +156,8 @@ class StreamRecordConverterTest {
         assertThat(event.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(record.dynamodb().approximateCreationDateTime().toEpochMilli()));
 
         verifyNoInteractions(changeEventErrorCounter);
+        verify(bytesReceivedSummary).record(record.dynamodb().sizeBytes());
+        verify(bytesProcessedSummary).record(record.dynamodb().sizeBytes());
     }
 
     @Test
@@ -230,6 +247,8 @@ class StreamRecordConverterTest {
         assertThat(fourthEventWithNewerSecond.getEventHandle().getExternalOriginationTime(), equalTo(newerSecond));
 
         verifyNoInteractions(changeEventErrorCounter);
+        verify(bytesReceivedSummary, times(4)).record(anyDouble());
+        verify(bytesProcessedSummary, times(4)).record(anyDouble());
     }
 
     private List<software.amazon.awssdk.services.dynamodb.model.Record> buildRecords(int count, final Instant creationTime) {
@@ -246,6 +265,7 @@ class StreamRecordConverterTest {
                 partitionKeyAttrName, AttributeValue.builder().s(UUID.randomUUID().toString()).build(),
                 sortKeyAttrName, AttributeValue.builder().s(UUID.randomUUID().toString()).build());
         StreamRecord streamRecord = StreamRecord.builder()
+                .sizeBytes(RANDOM.nextLong())
                 .newImage(data)
                 .keys(data)
                 .sequenceNumber(UUID.randomUUID().toString())

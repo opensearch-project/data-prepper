@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,6 +39,8 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.BYTES_PROCESSED;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.BYTES_RECEIVED;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.EXPORT_RECORDS_PROCESSED_COUNT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.EXPORT_RECORDS_PROCESSING_ERROR_COUNT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
@@ -65,6 +68,12 @@ class ExportRecordConverterTest {
     @Mock
     private Counter exportRecordErrors;
 
+    @Mock
+    private DistributionSummary bytesReceivedSummary;
+
+    @Mock
+    private DistributionSummary bytesProcessedSummary;
+
 
     private final String tableName = UUID.randomUUID().toString();
     private final String tableArn = "arn:aws:dynamodb:us-west-2:123456789012:table/" + tableName;
@@ -87,6 +96,8 @@ class ExportRecordConverterTest {
 
         given(pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT)).willReturn(exportRecordSuccess);
         given(pluginMetrics.counter(EXPORT_RECORDS_PROCESSING_ERROR_COUNT)).willReturn(exportRecordErrors);
+        given(pluginMetrics.summary(BYTES_RECEIVED)).willReturn(bytesReceivedSummary);
+        given(pluginMetrics.summary(BYTES_PROCESSED)).willReturn(bytesProcessedSummary);
 
     }
 
@@ -116,7 +127,8 @@ class ExportRecordConverterTest {
         verify(exportRecordSuccess).increment(anyDouble());
 
         verifyNoInteractions(exportRecordErrors);
-
+        verify(bytesReceivedSummary, times(numberOfRecords)).record(anyDouble());
+        verify(bytesProcessedSummary, times(numberOfRecords)).record(anyDouble());
     }
 
     @Test
@@ -149,5 +161,7 @@ class ExportRecordConverterTest {
         assertThat(event.getMetadata().getAttribute(EVENT_VERSION_FROM_TIMESTAMP), equalTo(0L));
         assertThat(event.getEventHandle(), notNullValue());
         assertThat(event.getEventHandle().getExternalOriginationTime(), nullValue());
+        verify(bytesReceivedSummary, times(1)).record(line.getBytes().length);
+        verify(bytesProcessedSummary, times(1)).record(line.getBytes().length);
     }
 }
