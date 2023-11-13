@@ -77,40 +77,42 @@ public class LeaderScheduler implements Runnable {
                     if (sourcePartition.isPresent()) {
                         LOG.info("Running as a LEADER node");
                         leaderPartition = (LeaderPartition) sourcePartition.get();
-
-                        LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
-                        if (!leaderProgressState.isInitialized()) {
-                            LOG.debug("The service is not been initialized");
-                            init();
-                        }
-
+                    }
+                }
+                // Once owned, run Normal LEADER node process.
+                // May want to quit this scheduler if streaming is not required
+                if (leaderPartition != null) {
+                    LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
+                    if (!leaderProgressState.isInitialized()) {
+                        LOG.debug("The service is not been initialized");
+                        init();
+                    } else {
                         // The initialization process will populate that value, otherwise, get from state
                         if (streamArns == null) {
                             streamArns = leaderProgressState.getStreamArns();
                         }
                     }
-                }
-                // Once owned, run Normal LEADER node process.
-                // May want to quit this scheduler if streaming is not required
-                if (leaderPartition != null && !streamArns.isEmpty()) {
 
-                    // Step 1: Run shard discovery
-                    streamArns.forEach(streamArn -> {
-                        shardManager.runDiscovery(streamArn);
-                    });
+                    if (streamArns != null && !streamArns.isEmpty()) {
+                        // Step 1: Run shard discovery
+                        streamArns.forEach(streamArn -> {
+                            shardManager.runDiscovery(streamArn);
+                        });
 
-                    // Step 2: Search all completed shards in the last 1 day (maximum time)
-                    List<EnhancedSourcePartition> sourcePartitions = coordinator.queryCompletedPartitions(
-                            StreamPartition.PARTITION_TYPE,
-                            Instant.now().minus(Duration.ofDays(1))
-                    );
+                        // Step 2: Search all completed shards in the last 1 day (maximum time)
+                        List<EnhancedSourcePartition> sourcePartitions = coordinator.queryCompletedPartitions(
+                                StreamPartition.PARTITION_TYPE,
+                                Instant.now().minus(Duration.ofDays(1))
+                        );
 
-                    // Step 3: Find and create children partitions.
-                    compareAndCreateChildrenPartitions(sourcePartitions);
+                        // Step 3: Find and create children partitions.
+                        compareAndCreateChildrenPartitions(sourcePartitions);
 
-                    // Extend the timeout
-                    // will always be a leader until shutdown
-                    coordinator.saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
+                        // Extend the timeout
+                        // will always be a leader until shutdown
+                        coordinator.saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
+                    }
+
                 }
 
             } catch (Exception e) {
