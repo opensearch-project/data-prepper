@@ -149,7 +149,6 @@ public class ScrollWorkerTest {
     void run_with_getNextPartition_with_non_empty_partition_creates_and_deletes_scroll_and_closes_that_partition() throws Exception {
         mockTimerCallable();
 
-        when(objectMapper.writeValueAsBytes(any(JsonNode.class))).thenReturn(new byte[0]);
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
         final String partitionKey = UUID.randomUUID().toString();
         when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
@@ -160,8 +159,12 @@ public class ScrollWorkerTest {
         when(createScrollResponse.getScrollId()).thenReturn(scrollId);
         final Event testEvent1 = mock(Event.class);
         final Event testEvent2 = mock(Event.class);
-        when(testEvent1.getJsonNode()).thenReturn(mock(JsonNode.class));
-        when(testEvent2.getJsonNode()).thenReturn(mock(JsonNode.class));
+        final JsonNode testData1 = mock(JsonNode.class);
+        final JsonNode testData2 = mock(JsonNode.class);
+        when(testEvent1.getJsonNode()).thenReturn(testData1);
+        when(testEvent2.getJsonNode()).thenReturn(testData2);
+        when(objectMapper.writeValueAsBytes(testData1)).thenReturn(new byte[10]);
+        when(objectMapper.writeValueAsBytes(testData2)).thenReturn(new byte[20]);
         when(createScrollResponse.getDocuments()).thenReturn(List.of(testEvent1, testEvent2));
         when(searchAccessor.createScroll(requestArgumentCaptor.capture())).thenReturn(createScrollResponse);
 
@@ -174,9 +177,15 @@ public class ScrollWorkerTest {
         final Event testEvent3 = mock(Event.class);
         final Event testEvent4 = mock(Event.class);
         final Event testEvent5 = mock(Event.class);
-        when(testEvent3.getJsonNode()).thenReturn(mock(JsonNode.class));
-        when(testEvent4.getJsonNode()).thenReturn(mock(JsonNode.class));
-        when(testEvent5.getJsonNode()).thenReturn(mock(JsonNode.class));
+        final JsonNode testData3 = mock(JsonNode.class);
+        final JsonNode testData4 = mock(JsonNode.class);
+        final JsonNode testData5 = mock(JsonNode.class);
+        when(testEvent3.getJsonNode()).thenReturn(testData3);
+        when(testEvent4.getJsonNode()).thenReturn(testData4);
+        when(testEvent5.getJsonNode()).thenReturn(testData5);
+        when(objectMapper.writeValueAsBytes(testData3)).thenReturn(new byte[30]);
+        when(objectMapper.writeValueAsBytes(testData4)).thenReturn(new byte[40]);
+        when(objectMapper.writeValueAsBytes(testData5)).thenReturn(new byte[50]);
         when(searchScrollResponse.getDocuments()).thenReturn(List.of(testEvent3, testEvent4))
                 .thenReturn(List.of(testEvent3, testEvent4)).thenReturn(List.of(testEvent5)).thenReturn(List.of(testEvent5));
 
@@ -232,9 +241,17 @@ public class ScrollWorkerTest {
         assertThat(deleteScrollRequest, notNullValue());
         assertThat(deleteScrollRequest.getScrollId(), equalTo(scrollId));
 
-        verify(bytesReceivedSummary, times(5)).record(0L);
+        verify(bytesReceivedSummary).record(10L);
+        verify(bytesReceivedSummary).record(20L);
+        verify(bytesReceivedSummary).record(30L);
+        verify(bytesReceivedSummary).record(40L);
+        verify(bytesReceivedSummary).record(50L);
         verify(documentsProcessedCounter, times(5)).increment();
-        verify(bytesProcessedSummary, times(5)).record(0L);
+        verify(bytesProcessedSummary).record(10L);
+        verify(bytesProcessedSummary).record(20L);
+        verify(bytesProcessedSummary).record(30L);
+        verify(bytesProcessedSummary).record(40L);
+        verify(bytesProcessedSummary).record(50L);
         verify(indicesProcessedCounter).increment();
         verifyNoInteractions(processingErrorsCounter);
     }
@@ -243,7 +260,6 @@ public class ScrollWorkerTest {
     void run_with_getNextPartition_with_acknowledgments_creates_and_deletes_scroll_and_closes_that_partition() throws Exception {
         mockTimerCallable();
 
-        when(objectMapper.writeValueAsBytes(any(JsonNode.class))).thenReturn(new byte[0]);
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         AtomicReference<Integer> numEventsAdded = new AtomicReference<>(0);
         doAnswer(a -> {
@@ -268,8 +284,12 @@ public class ScrollWorkerTest {
         when(createScrollResponse.getScrollId()).thenReturn(scrollId);
         final Event testEvent1 = mock(Event.class);
         final Event testEvent2 = mock(Event.class);
-        when(testEvent1.getJsonNode()).thenReturn(mock(JsonNode.class));
-        when(testEvent2.getJsonNode()).thenReturn(mock(JsonNode.class));
+        final JsonNode testData1 = mock(JsonNode.class);
+        final JsonNode testData2 = mock(JsonNode.class);
+        when(testEvent1.getJsonNode()).thenReturn(testData1);
+        when(testEvent2.getJsonNode()).thenReturn(testData2);
+        when(objectMapper.writeValueAsBytes(testData1)).thenReturn(new byte[10]);
+        when(objectMapper.writeValueAsBytes(testData2)).thenReturn(new byte[20]);
         when(createScrollResponse.getDocuments()).thenReturn(List.of(testEvent1, testEvent2));
         when(searchAccessor.createScroll(requestArgumentCaptor.capture())).thenReturn(createScrollResponse);
 
@@ -282,9 +302,15 @@ public class ScrollWorkerTest {
         final Event testEvent3 = mock(Event.class);
         final Event testEvent4 = mock(Event.class);
         final Event testEvent5 = mock(Event.class);
-        when(testEvent3.getJsonNode()).thenReturn(mock(JsonNode.class));
-        when(testEvent4.getJsonNode()).thenReturn(mock(JsonNode.class));
-        when(testEvent5.getJsonNode()).thenReturn(mock(JsonNode.class));
+        final JsonNode testData3 = mock(JsonNode.class);
+        final JsonNode testData4 = mock(JsonNode.class);
+        final JsonNode testData5 = mock(JsonNode.class);
+        when(testEvent3.getJsonNode()).thenReturn(testData3);
+        when(testEvent4.getJsonNode()).thenReturn(testData4);
+        when(testEvent5.getJsonNode()).thenReturn(testData5);
+        when(objectMapper.writeValueAsBytes(testData3)).thenReturn(new byte[30]);
+        when(objectMapper.writeValueAsBytes(testData4)).thenReturn(new byte[40]);
+        when(objectMapper.writeValueAsBytes(testData5)).thenReturn(new byte[50]);
         when(searchScrollResponse.getDocuments()).thenReturn(List.of(testEvent3, testEvent4))
                 .thenReturn(List.of(testEvent3, testEvent4)).thenReturn(List.of(testEvent5)).thenReturn(List.of(testEvent5));
 
@@ -342,9 +368,17 @@ public class ScrollWorkerTest {
 
         verify(acknowledgementSet).complete();
 
-        verify(bytesReceivedSummary, times(5)).record(0L);
+        verify(bytesReceivedSummary).record(10L);
+        verify(bytesReceivedSummary).record(20L);
+        verify(bytesReceivedSummary).record(30L);
+        verify(bytesReceivedSummary).record(40L);
+        verify(bytesReceivedSummary).record(50L);
         verify(documentsProcessedCounter, times(5)).increment();
-        verify(bytesProcessedSummary, times(5)).record(0L);
+        verify(bytesProcessedSummary).record(10L);
+        verify(bytesProcessedSummary).record(20L);
+        verify(bytesProcessedSummary).record(30L);
+        verify(bytesProcessedSummary).record(40L);
+        verify(bytesProcessedSummary).record(50L);
         verify(indicesProcessedCounter).increment();
         verifyNoInteractions(processingErrorsCounter);
     }

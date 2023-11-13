@@ -150,7 +150,6 @@ public class PitWorkerTest {
     void run_with_getNextPartition_with_non_empty_partition_creates_and_deletes_pit_and_closes_that_partition() throws Exception {
         mockTimerCallable();
 
-        when(objectMapper.writeValueAsBytes(any(JsonNode.class))).thenReturn(new byte[0]);
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
         final String partitionKey = UUID.randomUUID().toString();
         when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
@@ -171,9 +170,15 @@ public class PitWorkerTest {
         final Event testEvent1 = mock(Event.class);
         final Event testEvent2 = mock(Event.class);
         final Event testEvent3 = mock(Event.class);
-        when(testEvent1.getJsonNode()).thenReturn(mock(JsonNode.class));
-        when(testEvent2.getJsonNode()).thenReturn(mock(JsonNode.class));
-        when(testEvent3.getJsonNode()).thenReturn(mock(JsonNode.class));
+        final JsonNode testData1 = mock(JsonNode.class);
+        final JsonNode testData2 = mock(JsonNode.class);
+        final JsonNode testData3 = mock(JsonNode.class);
+        when(testEvent1.getJsonNode()).thenReturn(testData1);
+        when(testEvent2.getJsonNode()).thenReturn(testData2);
+        when(testEvent3.getJsonNode()).thenReturn(testData3);
+        when(objectMapper.writeValueAsBytes(testData1)).thenReturn(new byte[10]);
+        when(objectMapper.writeValueAsBytes(testData2)).thenReturn(new byte[20]);
+        when(objectMapper.writeValueAsBytes(testData3)).thenReturn(new byte[30]);
         when(searchWithSearchAfterResults.getDocuments()).thenReturn(List.of(testEvent1, testEvent2)).thenReturn(List.of(testEvent1, testEvent2))
                 .thenReturn(List.of(testEvent3)).thenReturn(List.of(testEvent3));
 
@@ -234,9 +239,13 @@ public class PitWorkerTest {
 
         verifyNoInteractions(acknowledgementSetManager);
 
-        verify(bytesReceivedSummary, times(3)).record(0L);
+        verify(bytesReceivedSummary).record(10L);
+        verify(bytesReceivedSummary).record(20L);
+        verify(bytesReceivedSummary).record(30L);
         verify(documentsProcessedCounter, times(3)).increment();
-        verify(bytesProcessedSummary, times(3)).record(0L);
+        verify(bytesProcessedSummary).record(10L);
+        verify(bytesProcessedSummary).record(20L);
+        verify(bytesProcessedSummary).record(30L);
         verify(indicesProcessedCounter).increment();
         verifyNoInteractions(processingErrorsCounter);
     }
@@ -245,7 +254,6 @@ public class PitWorkerTest {
     void run_with_acknowledgments_enabled_creates_and_deletes_pit_and_closes_that_partition() throws Exception {
         mockTimerCallable();
 
-        when(objectMapper.writeValueAsBytes(any(JsonNode.class))).thenReturn(new byte[0]);
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         AtomicReference<Integer> numEventsAdded = new AtomicReference<>(0);
         doAnswer(a -> {
@@ -280,9 +288,15 @@ public class PitWorkerTest {
         final Event testEvent1 = mock(Event.class);
         final Event testEvent2 = mock(Event.class);
         final Event testEvent3 = mock(Event.class);
-        when(testEvent1.getJsonNode()).thenReturn(mock(JsonNode.class));
-        when(testEvent2.getJsonNode()).thenReturn(mock(JsonNode.class));
-        when(testEvent3.getJsonNode()).thenReturn(mock(JsonNode.class));
+        final JsonNode testData1 = mock(JsonNode.class);
+        final JsonNode testData2 = mock(JsonNode.class);
+        final JsonNode testData3 = mock(JsonNode.class);
+        when(testEvent1.getJsonNode()).thenReturn(testData1);
+        when(testEvent2.getJsonNode()).thenReturn(testData2);
+        when(testEvent3.getJsonNode()).thenReturn(testData3);
+        when(objectMapper.writeValueAsBytes(testData1)).thenReturn(new byte[10]);
+        when(objectMapper.writeValueAsBytes(testData2)).thenReturn(new byte[20]);
+        when(objectMapper.writeValueAsBytes(testData3)).thenReturn(new byte[30]);
         when(searchWithSearchAfterResults.getDocuments()).thenReturn(List.of(testEvent1, testEvent2)).thenReturn(List.of(testEvent1, testEvent2))
                 .thenReturn(List.of(testEvent3)).thenReturn(List.of(testEvent3));
 
@@ -344,9 +358,13 @@ public class PitWorkerTest {
 
         verify(acknowledgementSet).complete();
 
-        verify(bytesReceivedSummary, times(3)).record(0L);
+        verify(bytesReceivedSummary).record(10L);
+        verify(bytesReceivedSummary).record(20L);
+        verify(bytesReceivedSummary).record(30L);
         verify(documentsProcessedCounter, times(3)).increment();
-        verify(bytesProcessedSummary, times(3)).record(0L);
+        verify(bytesProcessedSummary).record(10L);
+        verify(bytesProcessedSummary).record(20L);
+        verify(bytesProcessedSummary).record(30L);
         verify(indicesProcessedCounter).increment();
         verifyNoInteractions(processingErrorsCounter);
     }
@@ -355,7 +373,6 @@ public class PitWorkerTest {
     void run_with_getNextPartition_with_valid_existing_point_in_time_does_not_create_another_point_in_time() throws Exception {
         mockTimerCallable();
 
-        when(objectMapper.writeValueAsBytes(any(JsonNode.class))).thenReturn(new byte[0]);
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
         final String partitionKey = UUID.randomUUID().toString();
         when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
@@ -377,9 +394,15 @@ public class PitWorkerTest {
         final Event testEvent1 = mock(Event.class);
         final Event testEvent2 = mock(Event.class);
         final Event testEvent3 = mock(Event.class);
-        when(testEvent1.getJsonNode()).thenReturn(mock(JsonNode.class));
-        when(testEvent2.getJsonNode()).thenReturn(mock(JsonNode.class));
-        when(testEvent3.getJsonNode()).thenReturn(mock(JsonNode.class));
+        final JsonNode testData1 = mock(JsonNode.class);
+        final JsonNode testData2 = mock(JsonNode.class);
+        final JsonNode testData3 = mock(JsonNode.class);
+        when(testEvent1.getJsonNode()).thenReturn(testData1);
+        when(testEvent2.getJsonNode()).thenReturn(testData2);
+        when(testEvent3.getJsonNode()).thenReturn(testData3);
+        when(objectMapper.writeValueAsBytes(testData1)).thenReturn(new byte[10]);
+        when(objectMapper.writeValueAsBytes(testData2)).thenReturn(new byte[20]);
+        when(objectMapper.writeValueAsBytes(testData3)).thenReturn(new byte[30]);
         when(searchWithSearchAfterResults.getDocuments()).thenReturn(List.of(testEvent1, testEvent2)).thenReturn(List.of(testEvent1, testEvent2))
                 .thenReturn(List.of(testEvent3)).thenReturn(List.of(testEvent3));
 
@@ -419,9 +442,13 @@ public class PitWorkerTest {
         verify(sourceCoordinator, times(0)).saveProgressStateForPartition(eq(partitionKey), eq(openSearchIndexProgressState));
         verify(sourceCoordinator, times(0)).updatePartitionForAcknowledgmentWait(anyString(), any(Duration.class));
 
-        verify(bytesReceivedSummary, times(3)).record(0L);
+        verify(bytesReceivedSummary).record(10L);
+        verify(bytesReceivedSummary).record(20L);
+        verify(bytesReceivedSummary).record(30L);
         verify(documentsProcessedCounter, times(3)).increment();
-        verify(bytesProcessedSummary, times(3)).record(0L);
+        verify(bytesProcessedSummary).record(10L);
+        verify(bytesProcessedSummary).record(20L);
+        verify(bytesProcessedSummary).record(30L);
         verify(indicesProcessedCounter).increment();
         verifyNoInteractions(processingErrorsCounter);
     }
