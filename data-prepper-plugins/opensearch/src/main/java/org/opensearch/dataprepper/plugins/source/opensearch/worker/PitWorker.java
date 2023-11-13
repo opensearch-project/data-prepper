@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -55,6 +56,7 @@ public class PitWorker implements SearchWorker, Runnable {
     static final String EXTEND_KEEP_ALIVE_TIME = "1m";
     private static final Duration EXTEND_KEEP_ALIVE_DURATION = Duration.ofMinutes(1);
 
+    private final ObjectMapper objectMapper;
     private final SearchAccessor searchAccessor;
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
@@ -66,13 +68,15 @@ public class PitWorker implements SearchWorker, Runnable {
 
     private int noAvailableIndicesCount = 0;
 
-    public PitWorker(final SearchAccessor searchAccessor,
+    public PitWorker(final ObjectMapper objectMapper,
+                     final SearchAccessor searchAccessor,
                      final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                      final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
                      final BufferAccumulator<Record<Event>> bufferAccumulator,
                      final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier,
                      final AcknowledgementSetManager acknowledgementSetManager,
                      final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics) {
+        this.objectMapper = objectMapper;
         this.searchAccessor = searchAccessor;
         this.sourceCoordinator = sourceCoordinator;
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
@@ -191,11 +195,14 @@ public class PitWorker implements SearchWorker, Runnable {
 
             searchWithSearchAfterResults.getDocuments().stream().map(Record::new).forEach(record -> {
                 try {
+                    final long documentBytes = objectMapper.writeValueAsBytes(record.getData().getJsonNode()).length;
+                    openSearchSourcePluginMetrics.getBytesReceivedSummary().record(documentBytes);
                     if (Objects.nonNull(acknowledgementSet)) {
                         acknowledgementSet.add(record.getData());
                     }
                     bufferAccumulator.add(record);
                     openSearchSourcePluginMetrics.getDocumentsProcessedCounter().increment();
+                    openSearchSourcePluginMetrics.getBytesProcessedSummary().record(documentBytes);
                 } catch (Exception e) {
                     openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                     LOG.error("Failed writing OpenSearch documents to buffer. The last document created has document id '{}' from index '{}' : {}",
