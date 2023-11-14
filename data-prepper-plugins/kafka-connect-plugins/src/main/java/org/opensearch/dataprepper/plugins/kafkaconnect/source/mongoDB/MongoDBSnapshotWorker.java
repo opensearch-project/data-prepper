@@ -15,6 +15,8 @@ import com.mongodb.client.MongoDatabase;
 import io.micrometer.core.instrument.Counter;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -145,7 +147,11 @@ public class MongoDBSnapshotWorker implements Runnable {
         try (MongoCursor<Document> cursor = col.find(query).iterator()) {
             while (cursor.hasNext()) {
                 try {
-                    String record = cursor.next().toJson();
+                    JsonWriterSettings writerSettings = JsonWriterSettings.builder()
+                            .outputMode(JsonMode.RELAXED)
+                            .objectIdConverter((value, writer) -> writer.writeString(value.toHexString()))
+                            .build();
+                    String record = cursor.next().toJson(writerSettings);
                     Map<String, Object> data = convertToMap(record);
                     data.putIfAbsent(EVENT_SOURCE_DB_ATTRIBUTE, collection.get(0));
                     data.putIfAbsent(EVENT_SOURCE_COLLECTION_ATTRIBUTE, collection.get(1));
