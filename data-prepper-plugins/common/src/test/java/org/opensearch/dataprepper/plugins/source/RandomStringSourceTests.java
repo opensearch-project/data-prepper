@@ -5,33 +5,34 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.buffer.TestBuffer;
 
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.awaitility.Awaitility.await;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+@ExtendWith(MockitoExtension.class)
 class RandomStringSourceTests {
-
-    private TestBuffer buffer;
-
-    @BeforeEach
-    void setUp() {
-        final Queue<Record<Event>> bufferQueue = new ConcurrentLinkedQueue<>();
-        buffer = new TestBuffer(bufferQueue, 1);
-    }
+    @Mock
+    private Buffer<Record<Event>> buffer;
 
     private RandomStringSource createObjectUnderTest() {
-        return new RandomStringSource();
+        return new RandomStringSource(new RandomStringSourceConfig());
     }
 
     @Test
@@ -41,25 +42,44 @@ class RandomStringSourceTests {
         randomStringSource.start(buffer);
         await().atMost(3, TimeUnit.SECONDS)
                 .pollDelay(200, TimeUnit.MILLISECONDS)
-                .until(() -> buffer.size() > 0);
-        assertThat(buffer.size(), greaterThan(0));
+                .untilAsserted(() -> verify(buffer).write(any(), anyInt()));
     }
 
     @Test
-    void testStop() throws InterruptedException {
+    void source_continues_to_write_if_a_write_to_buffer_fails() throws TimeoutException {
+        final RandomStringSource randomStringSource = createObjectUnderTest();
+
+        doThrow(TimeoutException.class).when(buffer).write(any(), anyInt());
+
+        randomStringSource.start(buffer);
+        await().atMost(3, TimeUnit.SECONDS)
+                .pollDelay(200, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> verify(buffer, atLeast(2)).write(any(), anyInt()));
+    }
+
+    @Test
+    void testStop() throws InterruptedException, TimeoutException {
         final RandomStringSource randomStringSource = createObjectUnderTest();
         //Start source, and sleep for 1000 millis
         randomStringSource.start(buffer);
         await().atMost(3, TimeUnit.SECONDS)
                 .pollDelay(200, TimeUnit.MILLISECONDS)
-                .until(() -> buffer.size() > 0);
+                .untilAsserted(() -> verify(buffer).write(any(), anyInt()));
         //Stop the source, and wait long enough that another message would be sent
         //if the source was running
         randomStringSource.stop();
         Thread.sleep(200);  // Ensure the other thread has time to finish writing.
-        final int sizeAfterCompletion = buffer.size();
+        verify(buffer, atLeastOnce()).write(any(), anyInt());
         Thread.sleep(1000);
-        assertThat(buffer.size(), equalTo(sizeAfterCompletion));
+        verifyNoMoreInteractions(buffer);
     }
 
+    @Test
+    void multiple_calls_to_start_throws() {
+        final RandomStringSource objectUnderTest = createObjectUnderTest();
+
+        objectUnderTest.start(buffer);
+
+        assertThrows(IllegalStateException.class, () -> objectUnderTest.start(buffer));
+    }
 }
