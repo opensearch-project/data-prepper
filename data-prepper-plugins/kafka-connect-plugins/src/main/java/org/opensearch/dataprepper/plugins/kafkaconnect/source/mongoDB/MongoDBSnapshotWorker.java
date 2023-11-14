@@ -158,7 +158,7 @@ public class MongoDBSnapshotWorker implements Runnable {
                     }
                     successItemsCounter.increment();
                     successRecords += 1;
-                } catch (JsonProcessingException e) {
+                } catch (Exception e) {
                     LOG.error("failed to add record to buffer with error {}", e.getMessage());
                     failureItemsCounter.increment();
                     failedRecords += 1;

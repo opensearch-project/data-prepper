@@ -173,6 +173,18 @@ public class MongoDBSnapshotWorkerTest {
     }
 
     @Test
+    public void test_shouldCountFailureIfBufferFailed() throws Exception {
+        doThrow(new RuntimeException("")).when(buffer).write(any(), anyInt());
+        this.mockDependencyAndProcessPartition("test.collection|0|1|java.lang.Integer", false);
+        final ArgumentCaptor<MongoDBSnapshotProgressState> progressStateCapture = ArgumentCaptor.forClass(MongoDBSnapshotProgressState.class);
+        verify(sourceCoordinator, times(1)).saveProgressStateForPartition(anyString(), progressStateCapture.capture());
+        List<MongoDBSnapshotProgressState> progressStates = progressStateCapture.getAllValues();
+        assertThat(progressStates.get(0).getTotal(), is(2L));
+        assertThat(progressStates.get(0).getSuccess(), is(0L));
+        assertThat(progressStates.get(0).getFailed(), is(2L));
+    }
+
+    @Test
     public void test_shouldThreadSleepIfExceptionOccurred() throws InterruptedException {
         doThrow(new RuntimeException("")).when(sourceCoordinator).getNextPartition(mongoDBPartitionCreationSupplier);
         final Future<?> future = executorService.submit(() -> testWorker.run());
