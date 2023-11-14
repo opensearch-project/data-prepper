@@ -13,8 +13,8 @@ import java.time.Duration;
 import java.time.Instant;
 
 public class SinkLatencyMetrics {
-    public static final String INTERNAL_LATENCY = "PipelineLatency";
-    public static final String EXTERNAL_LATENCY = "EndToEndLatency";
+    public static final String INTERNAL_LATENCY = "pipelineLatency";
+    public static final String EXTERNAL_LATENCY = "endToEndLatency";
     private final DistributionSummary internalLatencySummary;
     private final DistributionSummary externalLatencySummary;
 
