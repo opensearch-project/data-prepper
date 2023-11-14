@@ -15,6 +15,7 @@ import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
  */
 
 def BASIC_GROK_PIPELINE_YAML = "basic-grok-e2e-pipeline.yml"
+def BASIC_GROK_WITH_AWS_SECRETS_YAML = "basic-grok-e2e-pipeline-with-aws-secrets.yml"
 def PARALLEL_GROK_SUBSTITUTE_PIPELINE_YAML = "parallel-grok-substitute-e2e-pipeline.yml"
 def DATA_PREPPER_CONFIG_YAML = "data_prepper.yml"
 
@@ -38,6 +39,11 @@ def createDataPrepperDockerContainer(final String taskBaseName, final String dat
         hostConfig.binds = [(project.file("src/integrationTest/resources/${pipelineConfigYAML}").toString()):"/app/data-prepper/pipelines/pipelines.yaml",
                             (project.file("src/integrationTest/resources/${dataPrepperConfigYAML}").toString()):"/app/data-prepper/config/data-prepper-config.yaml"]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
+        envVars = [
+                'AWS_ACCESS_KEY_ID' : System.getenv('AWS_ACCESS_KEY_ID') ?: '',
+                'AWS_SECRET_ACCESS_KEY' : System.getenv('AWS_SECRET_ACCESS_KEY') ?: '',
+                'AWS_SESSION_TOKEN' : System.getenv('AWS_SESSION_TOKEN') ?: ''
+        ]
         cmd = ['java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute']
         targetImageId buildDataPrepperDockerImage.getImageId()
     }
@@ -71,6 +77,35 @@ task basicLogEndToEndTest(type: Test) {
     dependsOn startOpenSearchDockerContainer
     def createDataPrepperTask = createDataPrepperDockerContainer(
             "basicLogDataPrepper", "dataprepper", 2021, 4900, "${BASIC_GROK_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_YAML}")
+    def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
+    dependsOn startDataPrepperTask
+    startDataPrepperTask.mustRunAfter 'startOpenSearchDockerContainer'
+    // wait for data-preppers to be ready
+    doFirst {
+        sleep(15*1000)
+    }
+
+    description = 'Runs the basic grok end-to-end test.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    filter {
+        includeTestsMatching "org.opensearch.dataprepper.integration.log.EndToEndBasicLogTest.testPipelineEndToEnd*"
+    }
+
+    finalizedBy stopOpenSearchDockerContainer
+    def stopDataPrepperTask = stopDataPrepperDockerContainer(startDataPrepperTask as DockerStartContainer)
+    finalizedBy stopDataPrepperTask
+    finalizedBy removeDataPrepperDockerContainer(stopDataPrepperTask as DockerStopContainer)
+    finalizedBy removeDataPrepperNetwork
+}
+
+task basicLogWithAwsSecretsEndToEndTest(type: Test) {
+    dependsOn build
+    dependsOn startOpenSearchDockerContainer
+    def createDataPrepperTask = createDataPrepperDockerContainer(
+            "basicLogWithAwsSecretsDataPrepper", "dataprepper", 2021, 4900, "${BASIC_GROK_WITH_AWS_SECRETS_YAML}", "${DATA_PREPPER_CONFIG_YAML}")
     def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
     dependsOn startDataPrepperTask
     startDataPrepperTask.mustRunAfter 'startOpenSearchDockerContainer'
