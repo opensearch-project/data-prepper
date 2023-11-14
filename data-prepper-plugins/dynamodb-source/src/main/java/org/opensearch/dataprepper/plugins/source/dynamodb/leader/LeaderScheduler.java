@@ -201,7 +201,7 @@ public class LeaderScheduler implements Runnable {
         sourcePartitions.forEach(sourcePartition -> {
             StreamPartition streamPartition = (StreamPartition) sourcePartition;
             List<String> childShardIds = shardManager.findChildShardIds(streamPartition.getStreamArn(), streamPartition.getShardId());
-            if (!childShardIds.isEmpty()) {
+            if (childShardIds != null && !childShardIds.isEmpty()) {
                 childShardIds.forEach(
                         shardId -> {
                             if (!completedShardIds.contains(shardId)) {
