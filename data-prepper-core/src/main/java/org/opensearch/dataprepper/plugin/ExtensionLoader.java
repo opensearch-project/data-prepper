@@ -74,7 +74,7 @@ public class ExtensionLoader {
 
     protected static class NoArgumentsArgumentsContext implements PluginArgumentsContext {
         @Override
-        public Object[] createArguments(final Class<?>[] parameterTypes) {
+        public Object[] createArguments(final Class<?>[] parameterTypes, final Object ... args) {
             if(parameterTypes.length != 0) {
                 throw new InvalidPluginDefinitionException("No arguments are permitted for extensions constructors.");
             }
@@ -90,7 +90,7 @@ public class ExtensionLoader {
         }
 
         @Override
-        public Object[] createArguments(Class<?>[] parameterTypes) {
+        public Object[] createArguments(Class<?>[] parameterTypes, final Object ... args) {
             if (parameterTypes.length != 1 && (Objects.nonNull(extensionPluginConfiguration) &&
                     !parameterTypes[0].equals(extensionPluginConfiguration.getClass()))) {
                 throw new InvalidPluginDefinitionException(String.format(

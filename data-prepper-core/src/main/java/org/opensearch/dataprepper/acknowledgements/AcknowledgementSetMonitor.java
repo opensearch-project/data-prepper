@@ -6,7 +6,8 @@
 package org.opensearch.dataprepper.acknowledgements;
 
 import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.event.DefaultEventHandle;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
+import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 
 import java.util.concurrent.locks.ReentrantLock;
@@ -33,7 +34,12 @@ class AcknowledgementSetMonitor implements Runnable {
     private final AtomicInteger numNullHandles;
 
     private DefaultAcknowledgementSet getAcknowledgementSet(final EventHandle eventHandle) {
-        return (DefaultAcknowledgementSet)((DefaultEventHandle)eventHandle).getAcknowledgementSet();
+        if (eventHandle instanceof DefaultEventHandle) {
+            InternalEventHandle internalEventHandle = (InternalEventHandle)(DefaultEventHandle)eventHandle;
+            return (DefaultAcknowledgementSet)internalEventHandle.getAcknowledgementSet();
+        } else {
+            throw new RuntimeException("Unsupported event handle");
+        }
     }
 
     public AcknowledgementSetMonitor() {

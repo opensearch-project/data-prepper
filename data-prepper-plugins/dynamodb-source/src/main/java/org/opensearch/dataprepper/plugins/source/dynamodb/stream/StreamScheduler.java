@@ -5,19 +5,22 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
 /**
@@ -26,31 +29,82 @@ import java.util.function.BiConsumer;
 public class StreamScheduler implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(StreamScheduler.class);
 
-    private static final int MAX_JOB_COUNT = 50;
-    private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 30_000;
+    /**
+     * Max number of shards each node can handle in parallel
+     */
+    private static final int MAX_JOB_COUNT = 150;
+
+    /**
+     * Default interval to acquire a lease from coordination store
+     */
+    private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 15_000;
+
+    /**
+     * Add a delay of getting child shards when the parent finished.
+     */
+    private static final int DELAY_TO_GET_CHILD_SHARDS_MILLIS = 1_500;
+
+    static final String ACTIVE_CHANGE_EVENT_CONSUMERS = "activeChangeEventConsumers";
+    static final String SHARDS_IN_PROCESSING = "activeShardsInProcessing";
 
     private final AtomicInteger numOfWorkers = new AtomicInteger(0);
     private final EnhancedSourceCoordinator coordinator;
     private final ShardConsumerFactory consumerFactory;
     private final ExecutorService executor;
-    private final ShardManager shardManager;
+    private final PluginMetrics pluginMetrics;
+    private final AtomicLong activeChangeEventConsumers;
+    private final AtomicLong shardsInProcessing;
+    private final AcknowledgementSetManager acknowledgementSetManager;
+    private final DynamoDBSourceConfig dynamoDBSourceConfig;
 
 
-    public StreamScheduler(final EnhancedSourceCoordinator coordinator, final ShardConsumerFactory consumerFactory, final ShardManager shardManager) {
+    public StreamScheduler(final EnhancedSourceCoordinator coordinator,
+                           final ShardConsumerFactory consumerFactory,
+                           final PluginMetrics pluginMetrics,
+                           final AcknowledgementSetManager acknowledgementSetManager,
+                           final DynamoDBSourceConfig dynamoDBSourceConfig) {
         this.coordinator = coordinator;
-        this.shardManager = shardManager;
         this.consumerFactory = consumerFactory;
+        this.pluginMetrics = pluginMetrics;
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.dynamoDBSourceConfig = dynamoDBSourceConfig;
 
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
-
+        activeChangeEventConsumers = pluginMetrics.gauge(ACTIVE_CHANGE_EVENT_CONSUMERS, new AtomicLong());
+        shardsInProcessing = pluginMetrics.gauge(SHARDS_IN_PROCESSING, new AtomicLong());
     }
 
     private void processStreamPartition(StreamPartition streamPartition) {
-        Runnable shardConsumer = consumerFactory.createConsumer(streamPartition);
+        final boolean acknowledgmentsEnabled = dynamoDBSourceConfig.isAcknowledgmentsEnabled();
+        AcknowledgementSet acknowledgementSet = null;
+
+        if (acknowledgmentsEnabled) {
+            acknowledgementSet = acknowledgementSetManager.create((result) -> {
+                if (result) {
+                    LOG.info("Received acknowledgment of completion from sink for shard {}", streamPartition.getShardId());
+                    completeConsumer(streamPartition).accept(null, null);
+                } else {
+                    LOG.warn("Negative acknowledgment received for shard {}, it will be retried", streamPartition.getShardId());
+                    coordinator.giveUpPartition(streamPartition);
+                }
+            }, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
+        }
+
+        Runnable shardConsumer = consumerFactory.createConsumer(streamPartition, acknowledgementSet, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
         if (shardConsumer != null) {
+
             CompletableFuture runConsumer = CompletableFuture.runAsync(shardConsumer, executor);
-            runConsumer.whenComplete(completeConsumer(streamPartition));
+
+            if (acknowledgmentsEnabled) {
+                runConsumer.whenComplete((v, ex) -> {
+                    numOfWorkers.decrementAndGet();
+                    shardsInProcessing.decrementAndGet();
+                });
+            } else {
+                runConsumer.whenComplete(completeConsumer(streamPartition));
+            }
             numOfWorkers.incrementAndGet();
+            shardsInProcessing.incrementAndGet();
         } else {
             // If failed to create a new consumer.
             coordinator.completePartition(streamPartition);
@@ -60,24 +114,36 @@ public class StreamScheduler implements Runnable {
     @Override
     public void run() {
         LOG.debug("Stream Scheduler start to run...");
-        while (!Thread.interrupted()) {
-            if (numOfWorkers.get() < MAX_JOB_COUNT) {
-                final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
-                if (sourcePartition.isPresent()) {
-                    StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
-                    processStreamPartition(streamPartition);
-                }
-            }
-
+        while (!Thread.currentThread().isInterrupted()) {
             try {
-                Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
-            } catch (final InterruptedException e) {
-                LOG.info("InterruptedException occurred");
-                break;
+                if (numOfWorkers.get() < MAX_JOB_COUNT) {
+                    final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
+                    if (sourcePartition.isPresent()) {
+                        activeChangeEventConsumers.incrementAndGet();
+                        StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
+                        processStreamPartition(streamPartition);
+                        activeChangeEventConsumers.decrementAndGet();
+                    }
+                }
+
+                try {
+                    Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException e) {
+                    LOG.info("InterruptedException occurred");
+                    break;
+                }
+            } catch (final Exception e) {
+                LOG.error("Received an exception while processing a shard for streams, backing off and retrying", e);
+                try {
+                    Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException ex) {
+                    LOG.info("The StreamScheduler was interrupted while waiting to retry, stopping processing");
+                    break;
+                }
             }
         }
         // Should Stop
-        LOG.debug("Stream Scheduler is interrupted, looks like shutdown has triggered");
+        LOG.warn("Stream Scheduler is interrupted, looks like shutdown has triggered");
 
         // Cannot call executor.shutdownNow() here
         // Otherwise the final checkpoint will fail due to SDK interruption.
@@ -87,17 +153,12 @@ public class StreamScheduler implements Runnable {
 
     private BiConsumer completeConsumer(StreamPartition streamPartition) {
         return (v, ex) -> {
-            numOfWorkers.decrementAndGet();
+            if (!dynamoDBSourceConfig.isAcknowledgmentsEnabled()) {
+                numOfWorkers.decrementAndGet();
+                shardsInProcessing.decrementAndGet();
+            }
             if (ex == null) {
-                LOG.debug("Shard consumer is completed");
-                LOG.debug("Start creating new stream partitions for Child Shards");
-
-                List<String> childShardIds = shardManager.getChildShardIds(streamPartition.getStreamArn(), streamPartition.getShardId());
-                LOG.debug("Child Ids Retrieved: {}", childShardIds);
-
-                createStreamPartitions(streamPartition.getStreamArn(), childShardIds);
-                LOG.debug("Create child shard completed");
-                // Finally mask the partition as completed.
+                LOG.info("Shard consumer for {} is completed", streamPartition.getShardId());
                 coordinator.completePartition(streamPartition);
 
             } else {
@@ -106,20 +167,8 @@ public class StreamScheduler implements Runnable {
                 LOG.debug("Shard consumer completed with exception");
                 LOG.error(ex.toString());
                 coordinator.giveUpPartition(streamPartition);
-
-
             }
         };
     }
-
-    private void createStreamPartitions(String streamArn, List<String> shardIds) {
-        shardIds.forEach(
-                shardId -> {
-                    StreamPartition partition = new StreamPartition(streamArn, shardId, Optional.of(new StreamProgressState()));
-                    coordinator.createPartition(partition);
-                }
-        );
-    }
-
 
 }

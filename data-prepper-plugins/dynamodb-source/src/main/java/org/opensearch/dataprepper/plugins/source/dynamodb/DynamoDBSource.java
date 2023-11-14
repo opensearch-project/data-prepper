@@ -7,10 +7,10 @@ package org.opensearch.dataprepper.plugins.source.dynamodb;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
@@ -20,7 +20,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.PartitionFactory;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.InitPartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.LeaderPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,30 +40,36 @@ public class DynamoDBSource implements Source<Record<Event>>, UsesEnhancedSource
 
     private final ClientFactory clientFactory;
 
+    private final AcknowledgementSetManager acknowledgementSetManager;
+
     private EnhancedSourceCoordinator coordinator;
 
     private DynamoDBService dynamoDBService;
 
 
     @DataPrepperPluginConstructor
-    public DynamoDBSource(PluginMetrics pluginMetrics, final DynamoDBSourceConfig sourceConfig, final PluginFactory pluginFactory, final PluginSetting pluginSetting, final AwsCredentialsSupplier awsCredentialsSupplier) {
+    public DynamoDBSource(final PluginMetrics pluginMetrics,
+                          final DynamoDBSourceConfig sourceConfig,
+                          final PluginFactory pluginFactory,
+                          final AwsCredentialsSupplier awsCredentialsSupplier,
+                          final AcknowledgementSetManager acknowledgementSetManager) {
         LOG.info("Create DynamoDB Source");
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
         this.pluginFactory = pluginFactory;
+        this.acknowledgementSetManager = acknowledgementSetManager;
 
-        clientFactory = new ClientFactory(awsCredentialsSupplier, sourceConfig.getAwsAuthenticationConfig());
+        clientFactory = new ClientFactory(awsCredentialsSupplier, sourceConfig.getAwsAuthenticationConfig(), sourceConfig.getTableConfigs().get(0).getExportConfig());
     }
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         Objects.requireNonNull(coordinator);
 
-        coordinator.createPartition(new InitPartition());
+        coordinator.createPartition(new LeaderPartition());
 
         // Create DynamoDB Service
-        dynamoDBService = new DynamoDBService(coordinator, clientFactory, sourceConfig, pluginMetrics);
-        dynamoDBService.init();
+        dynamoDBService = new DynamoDBService(coordinator, clientFactory, sourceConfig, pluginMetrics, acknowledgementSetManager);
 
         LOG.info("Start DynamoDB service");
         dynamoDBService.start(buffer);

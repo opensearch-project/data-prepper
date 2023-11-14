@@ -5,25 +5,24 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.junit.Test;
-import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
-import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Map;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.anyString;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class OpenSearchSinkConfigurationTests {
     private final List<String> TEST_HOSTS = Collections.singletonList("http://localhost:9200");
@@ -38,7 +37,7 @@ public class OpenSearchSinkConfigurationTests {
         assertNotNull(openSearchSinkConfiguration.getConnectionConfiguration());
         assertNotNull(openSearchSinkConfiguration.getIndexConfiguration());
         assertNotNull(openSearchSinkConfiguration.getRetryConfiguration());
-        assertEquals(BulkAction.INDEX.toString(), openSearchSinkConfiguration.getIndexConfiguration().getAction());
+        assertEquals(OpenSearchBulkActions.INDEX.toString(), openSearchSinkConfiguration.getIndexConfiguration().getAction());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -116,7 +115,7 @@ public class OpenSearchSinkConfigurationTests {
 
         final Map<String, Object> metadata = new HashMap<>();
         metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.TRACE_ANALYTICS_RAW.getValue());
-        metadata.put(IndexConfiguration.ACTION, BulkAction.CREATE.toString());
+        metadata.put(IndexConfiguration.ACTION, OpenSearchBulkActions.CREATE.toString());
         metadata.put(ConnectionConfiguration.HOSTS, TEST_HOSTS);
 
         final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, metadata);
@@ -133,16 +132,17 @@ public class OpenSearchSinkConfigurationTests {
     @Test
     public void testReadESConfigWithBulkActionCreateExpression() {
 
+        final String actionFormatExpression = "${getMetadata(\"action\")}";
         final Map<String, Object> metadata = new HashMap<>();
         metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.TRACE_ANALYTICS_RAW.getValue());
-        metadata.put(IndexConfiguration.ACTION, "${getMetadata(\"action\")}");
+        metadata.put(IndexConfiguration.ACTION, actionFormatExpression);
         metadata.put(ConnectionConfiguration.HOSTS, TEST_HOSTS);
 
         final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, metadata);
         pluginSetting.setPipelineName(PIPELINE_NAME);
 
         expressionEvaluator = mock(ExpressionEvaluator.class);
-        when(expressionEvaluator.isValidExpressionStatement(anyString())).thenReturn(true);
+        when(expressionEvaluator.isValidFormatExpression(actionFormatExpression)).thenReturn(true);
         final OpenSearchSinkConfiguration openSearchSinkConfiguration =
                 OpenSearchSinkConfiguration.readESConfig(pluginSetting, expressionEvaluator);
 

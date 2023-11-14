@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -15,7 +20,7 @@ public interface KafkaProducerConfig extends KafkaConnectionConfig {
 
     String getSerdeFormat();
 
-    TopicConfig getTopic();
+    TopicProducerConfig getTopic();
 
     KafkaProducerProperties getKafkaProducerProperties();
 

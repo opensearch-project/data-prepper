@@ -73,6 +73,22 @@ class PluginCreatorTest {
             this.pluginSetting = pluginSetting;
             this.alternatePluginConfig = alternatePluginConfig;
         }
+
+    }
+
+    public static class PluginClassWithThreeArgs extends PluginClassWithMultipleConstructors {
+        private Object obj;
+        private PluginSetting pluginSetting;
+        private AlternatePluginConfig alternatePluginConfig;
+
+        public PluginClassWithThreeArgs() {}
+        public PluginClassWithThreeArgs(final String ignored) { }
+        @DataPrepperPluginConstructor
+        public PluginClassWithThreeArgs(final PluginSetting pluginSetting, final AlternatePluginConfig alternatePluginConfig, Object obj) {
+            this.pluginSetting = pluginSetting;
+            this.alternatePluginConfig = alternatePluginConfig;
+            this.obj = obj;
+        }
     }
 
     public static class PluginClassWithPluginConfigurationObservableConstructor {
@@ -123,6 +139,23 @@ class PluginCreatorTest {
         assertThat(instance, notNullValue());
         assertThat(instance.pluginSetting, equalTo(pluginSetting));
         assertThat(instance.alternatePluginConfig, equalTo(alternatePluginConfig));
+    }
+
+    @Test
+    void newPluginInstance_should_create_new_instance_from_annotated_constructor_with_byte_decoder() {
+
+        Object obj = new Object();
+        final AlternatePluginConfig alternatePluginConfig = mock(AlternatePluginConfig.class);
+        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class, AlternatePluginConfig.class, Object.class}, obj))
+                .willReturn(new Object[] { pluginSetting, alternatePluginConfig, obj});
+
+        final PluginClassWithThreeArgs instance = createObjectUnderTest()
+                .newPluginInstance(PluginClassWithThreeArgs.class, pluginConstructionContext, pluginName, obj);
+
+        assertThat(instance, notNullValue());
+        assertThat(instance.pluginSetting, equalTo(pluginSetting));
+        assertThat(instance.alternatePluginConfig, equalTo(alternatePluginConfig));
+        assertThat(instance.obj, equalTo(obj));
     }
 
     @Test

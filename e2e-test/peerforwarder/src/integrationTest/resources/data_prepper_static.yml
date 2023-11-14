@@ -2,9 +2,9 @@ ssl: false
 peer_forwarder:
   port: 4994
   ssl: true
-  ssl_certificate_file: "/app/data-prepper/config/default_certificate.pem"
-  ssl_key_file: "/app/data-prepper/config/default_private_key.pem"
+  ssl_certificate_file: "/usr/share/data-prepper/config/default_certificate.pem"
+  ssl_key_file: "/usr/share/data-prepper/config/default_private_key.pem"
   discovery_mode: static
-  static_endpoints: ["node1.data-prepper.example.com", "node2.data-prepper.example.com"]
+  static_endpoints: ["node0.data-prepper.example.com", "node1.data-prepper.example.com"]
   authentication:
     mutual_tls:

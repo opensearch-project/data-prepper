@@ -38,9 +38,9 @@ public class ExportScheduler implements Runnable {
 
     private static final int DEFAULT_TAKE_LEASE_INTERVAL_MILLIS = 60_000;
 
-    private static final Duration DEFAULT_CLOSE_DURATION = Duration.ofMinutes(1);
+    private static final Duration DEFAULT_CLOSE_DURATION = Duration.ofMinutes(10);
 
-    private static final int DEFAULT_MAX_CLOSE_COUNT = 6;
+    private static final int DEFAULT_MAX_CLOSE_COUNT = 36;
 
     private static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 5 * 60_000;
 
@@ -51,8 +51,8 @@ public class ExportScheduler implements Runnable {
     private static final String FAILED_STATUS = "Failed";
 
     static final String EXPORT_JOB_SUCCESS_COUNT = "exportJobSuccess";
-    static final String EXPORT_JOB_ERROR_COUNT = "exportJobErrors";
-    static final String EXPORT_FILES_TOTAL_COUNT = "exportFilesTotal";
+    static final String EXPORT_JOB_FAILURE_COUNT = "exportJobFailure";
+    static final String EXPORT_S3_OBJECTS_TOTAL_COUNT = "exportS3ObjectsTotal";
     static final String EXPORT_RECORDS_TOTAL_COUNT = "exportRecordsTotal";
 
     private final PluginMetrics pluginMetrics;
@@ -68,9 +68,9 @@ public class ExportScheduler implements Runnable {
     private final ExportTaskManager exportTaskManager;
 
     private final Counter exportJobSuccessCounter;
-    private final Counter exportJobErrorCounter;
+    private final Counter exportJobFailureCounter;
 
-    private final Counter exportFilesTotalCounter;
+    private final Counter exportS3ObjectsTotalCounter;
     private final Counter exportRecordsTotalCounter;
 
     public ExportScheduler(EnhancedSourceCoordinator enhancedSourceCoordinator, DynamoDbClient dynamoDBClient, ManifestFileReader manifestFileReader, PluginMetrics pluginMetrics) {
@@ -83,8 +83,8 @@ public class ExportScheduler implements Runnable {
         executor = Executors.newCachedThreadPool();
 
         exportJobSuccessCounter = pluginMetrics.counter(EXPORT_JOB_SUCCESS_COUNT);
-        exportJobErrorCounter = pluginMetrics.counter(EXPORT_JOB_ERROR_COUNT);
-        exportFilesTotalCounter = pluginMetrics.counter(EXPORT_FILES_TOTAL_COUNT);
+        exportJobFailureCounter = pluginMetrics.counter(EXPORT_JOB_FAILURE_COUNT);
+        exportS3ObjectsTotalCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_TOTAL_COUNT);
         exportRecordsTotalCounter = pluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT);
 
 
@@ -93,35 +93,44 @@ public class ExportScheduler implements Runnable {
     @Override
     public void run() {
         LOG.debug("Start running Export Scheduler");
-        while (!Thread.interrupted()) {
-            // Does not have limit on max leases
-            // As most of the time it's just to wait
-            final Optional<EnhancedSourcePartition> sourcePartition = enhancedSourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE);
-
-            if (sourcePartition.isPresent()) {
-
-                ExportPartition exportPartition = (ExportPartition) sourcePartition.get();
-                LOG.debug("Acquired an export partition: " + exportPartition.getPartitionKey());
-
-                String exportArn = getOrCreateExportArn(exportPartition);
-
-                if (exportArn == null) {
-                    closeExportPartitionWithError(exportPartition);
-                } else {
-                    CompletableFuture<String> checkStatus = CompletableFuture.supplyAsync(() -> checkExportStatus(exportPartition), executor);
-                    checkStatus.whenComplete(completeExport(exportPartition));
-                }
-
-            }
+        while (!Thread.currentThread().isInterrupted()) {
             try {
-                Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
-            } catch (final InterruptedException e) {
-                LOG.info("InterruptedException occurred");
-                break;
-            }
+                // Does not have limit on max leases
+                // As most of the time it's just to wait
+                final Optional<EnhancedSourcePartition> sourcePartition = enhancedSourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE);
 
+                if (sourcePartition.isPresent()) {
+
+                    ExportPartition exportPartition = (ExportPartition) sourcePartition.get();
+                    LOG.debug("Acquired an export partition: " + exportPartition.getPartitionKey());
+
+                    String exportArn = getOrCreateExportArn(exportPartition);
+
+                    if (exportArn == null) {
+                        closeExportPartitionWithError(exportPartition);
+                    } else {
+                        CompletableFuture<String> checkStatus = CompletableFuture.supplyAsync(() -> checkExportStatus(exportPartition), executor);
+                        checkStatus.whenComplete(completeExport(exportPartition));
+                    }
+
+                }
+                try {
+                    Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException e) {
+                    LOG.info("The ExportScheduler was interrupted while waiting to retry, stopping processing");
+                    break;
+                }
+            } catch (final Exception e) {
+                LOG.error("Received an exception during export from DynamoDB to S3, backing off and retrying", e);
+                try {
+                    Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException ex) {
+                    LOG.info("The ExportScheduler was interrupted while waiting to retry, stopping processing");
+                    break;
+                }
+            }
         }
-        LOG.debug("Export scheduler interrupted, looks like shutdown has triggered");
+        LOG.warn("Export scheduler interrupted, looks like shutdown has triggered");
         executor.shutdownNow();
 
     }
@@ -130,7 +139,7 @@ public class ExportScheduler implements Runnable {
     private BiConsumer<String, Throwable> completeExport(ExportPartition exportPartition) {
         return (status, ex) -> {
             if (ex != null) {
-                LOG.debug("Check export status for {} failed with error {}", exportPartition.getPartitionKey(), ex.getMessage());
+                LOG.warn("Check export status for {} failed with error {}", exportPartition.getPartitionKey(), ex.getMessage());
 //                closeExportPartitionWithError(exportPartition);
                 enhancedSourceCoordinator.giveUpPartition(exportPartition);
             } else {
@@ -147,7 +156,6 @@ public class ExportScheduler implements Runnable {
                 ExportProgressState state = exportPartition.getProgressState().get();
                 String bucketName = state.getBucket();
                 String exportArn = state.getExportArn();
-
 
                 String manifestKey = exportTaskManager.getExportManifest(exportArn);
                 LOG.debug("Export manifest summary file is " + manifestKey);
@@ -173,20 +181,21 @@ public class ExportScheduler implements Runnable {
 
 
     private void createDataFilePartitions(String exportArn, String bucketName, Map<String, Integer> dataFileInfo) {
-        LOG.debug("Totally {} data files generated for export {}", dataFileInfo.size(), exportArn);
+        LOG.info("Total of {} data files generated for export {}", dataFileInfo.size(), exportArn);
         AtomicInteger totalRecords = new AtomicInteger();
         AtomicInteger totalFiles = new AtomicInteger();
         dataFileInfo.forEach((key, size) -> {
             DataFileProgressState progressState = new DataFileProgressState();
             progressState.setTotal(size);
             progressState.setLoaded(0);
+
             totalFiles.addAndGet(1);
             totalRecords.addAndGet(size);
             DataFilePartition partition = new DataFilePartition(exportArn, bucketName, key, Optional.of(progressState));
             enhancedSourceCoordinator.createPartition(partition);
         });
 
-        exportFilesTotalCounter.increment(totalFiles.get());
+        exportS3ObjectsTotalCounter.increment(totalFiles.get());
         exportRecordsTotalCounter.increment(totalRecords.get());
 
         // Currently, we need to maintain a global state to track the overall progress.
@@ -197,7 +206,8 @@ public class ExportScheduler implements Runnable {
 
 
     private void closeExportPartitionWithError(ExportPartition exportPartition) {
-        exportJobErrorCounter.increment(1);
+        LOG.error("The export from DynamoDb to S3 failed, it will be retried");
+        exportJobFailureCounter.increment(1);
         ExportProgressState exportProgressState = exportPartition.getProgressState().get();
         // Clear current Arn, so that a new export can be submitted.
         exportProgressState.setExportArn(null);
@@ -219,13 +229,13 @@ public class ExportScheduler implements Runnable {
         LOG.debug("Start Checking the status of export " + exportArn);
         while (true) {
             if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
-                enhancedSourceCoordinator.saveProgressStateForPartition(exportPartition);
+                enhancedSourceCoordinator.saveProgressStateForPartition(exportPartition, null);
                 lastCheckpointTime = System.currentTimeMillis();
             }
 
             String status = exportTaskManager.checkExportStatus(exportArn);
             if (!"IN_PROGRESS".equals(status)) {
-                LOG.debug("Export {} is completed with final status {}", exportArn, status);
+                LOG.info("Export {} is completed with final status {}", exportArn, status);
                 return status;
             }
             LOG.debug("Export {} is still running in progress, sleep and recheck later", exportArn);
@@ -243,21 +253,21 @@ public class ExportScheduler implements Runnable {
         ExportProgressState state = exportPartition.getProgressState().get();
         // Check the progress state
         if (state.getExportArn() != null) {
-            LOG.debug("Export Job has already submitted for table {} with export time {}", exportPartition.getTableArn(), exportPartition.getExportTime());
+            LOG.info("Export Job has already submitted for table {} with export time {}", exportPartition.getTableArn(), exportPartition.getExportTime());
             // Export job already submitted
             return state.getExportArn();
         }
 
-        LOG.debug("Try to submit a new export job for table {} with export time {}", exportPartition.getTableArn(), exportPartition.getExportTime());
+        LOG.info("Try to submit a new export job for table {} with export time {}", exportPartition.getTableArn(), exportPartition.getExportTime());
         // submit a new export request
-        String exportArn = exportTaskManager.submitExportJob(exportPartition.getTableArn(), state.getBucket(), state.getPrefix(), exportPartition.getExportTime());
+        String exportArn = exportTaskManager.submitExportJob(exportPartition.getTableArn(), state.getBucket(), state.getPrefix(), state.getKmsKeyId(), exportPartition.getExportTime());
 
         // Update state with export Arn in the coordination table.
         // So that it won't be submitted again after a restart.
         if (exportArn != null) {
-            LOG.debug("Export arn is " + exportArn);
+            LOG.info("Export arn is " + exportArn);
             state.setExportArn(exportArn);
-            enhancedSourceCoordinator.saveProgressStateForPartition(exportPartition);
+            enhancedSourceCoordinator.saveProgressStateForPartition(exportPartition, null);
         }
         return exportArn;
     }

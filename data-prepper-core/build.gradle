@@ -27,7 +27,7 @@ dependencies {
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     implementation 'software.amazon.awssdk:cloudwatch'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
-    implementation platform('org.apache.logging.log4j:log4j-bom:2.20.0')
+    implementation platform('org.apache.logging.log4j:log4j-bom:2.21.1')
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
     implementation 'javax.inject:javax.inject:1'
@@ -39,7 +39,7 @@ dependencies {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
     implementation 'software.amazon.cloudwatchlogs:aws-embedded-metrics:2.0.0-beta-1'
-    testImplementation 'org.apache.logging.log4j:log4j-jpl:2.20.0'
+    testImplementation 'org.apache.logging.log4j:log4j-jpl:2.21.1'
     testImplementation testLibs.spring.test
     implementation libs.armeria.core
     implementation libs.armeria.grpc

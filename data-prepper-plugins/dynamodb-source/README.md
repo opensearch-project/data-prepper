@@ -52,10 +52,12 @@ source:
 
 * s3_bucket (Required):  The destination bucket to store the exported data files
 * s3_prefix (Optional):  Custom prefix.
+* s3_sse_kms_key_id (Optional):  A AWS KMS Customer Managed Key (CMK) to encrypt the export data files. The key id will
+  be the ARN of the Key, e.g. arn:aws:kms:us-west-2:123456789012:key/0a4bc22f-bb96-4ad4-80ca-63b12b3ec147
 
 ### Stream Configurations
 
-* start_position (Optional):  start position of the stream, can be either BEGINNING or LATEST. If export is required,
+* start_position (Optional):  start position of the stream, can be either TRIM_HORIZON or LATEST. If export is required,
   this value will be ignored and set to LATEST by default. This is useful if customer don’t want to run initial export,
   so they can
   choose either from the beginning of the stream (up to 24 hours) or from latest (from the time point when pipeline is

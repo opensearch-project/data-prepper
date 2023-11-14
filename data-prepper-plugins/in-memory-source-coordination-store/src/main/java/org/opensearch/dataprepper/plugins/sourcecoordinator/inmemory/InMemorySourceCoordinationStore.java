@@ -16,12 +16,14 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 /**
  * An implementation of {@link org.opensearch.dataprepper.model.source.SourceCoordinationStore} that will be used by default if no store is specified. This store is only usable
  * for single node clusters of Data Prepper, and is meant to allow sources to keep their code the same, and to not care whether the source is running in a single or multi-node environment.
  * This is not recommended for use in production environments.
+ *
  * @since 2.3
  */
 @DataPrepperPlugin(name = "in_memory", pluginType = SourceCoordinationStore.class)
@@ -54,6 +56,11 @@ public class InMemorySourceCoordinationStore implements SourceCoordinationStore 
         synchronized (this) {
             return inMemoryPartitionAccessor.getItem(sourceIdentifier, partitionKey);
         }
+    }
+
+    @Override
+    public List<SourcePartitionStoreItem> querySourcePartitionItemsByStatus(final String sourceIdentifier, final SourcePartitionStatus sourcePartitionStatus, final String startPartitionPriority) {
+        throw new UnsupportedOperationException("querySourcePartitionItemsByStatus is currently not supported in In Memory Store");
     }
 
     @Override

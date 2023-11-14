@@ -12,7 +12,6 @@ package org.opensearch.dataprepper.model.record;
  * TODO: The current implementation focuses on proving the bare bones for which this class only need to
  * TODO: support sample test cases.
  */
-@Deprecated
 public class Record<T> {
     private final T data;
     private final RecordMetadata metadata;

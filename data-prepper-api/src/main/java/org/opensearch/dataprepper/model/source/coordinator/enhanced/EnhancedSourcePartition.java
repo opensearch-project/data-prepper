@@ -48,6 +48,11 @@ public abstract class EnhancedSourcePartition<T> implements EnhancedPartition<T>
     /**
      * Helper method to convert progress state.
      * This is because the state is currently stored as a String in the coordination store.
+     *
+     * @param progressStateClass class of progress state
+     * @param serializedPartitionProgressState serialized value of the partition progress state
+     *
+     * @return returns the converted value of the progress state
      */
     public T convertStringToPartitionProgressState(Class<T> progressStateClass, final String serializedPartitionProgressState) {
         if (Objects.isNull(serializedPartitionProgressState)) {
@@ -69,6 +74,9 @@ public abstract class EnhancedSourcePartition<T> implements EnhancedPartition<T>
     /**
      * Helper method to convert progress state to String
      * This is because the state is currently stored as a String in the coordination store.
+     *
+     * @param partitionProgressState optional parameter indicating the partition progress state
+     * @return returns the progress state as string
      */
     public String convertPartitionProgressStatetoString(Optional<T> partitionProgressState) {
         if (partitionProgressState.isEmpty()) {

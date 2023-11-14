@@ -28,6 +28,9 @@ class EncryptionSerializer<T> implements Serializer<T> {
 
     @Override
     public byte[] serialize(String topic, T data) {
+        if(data == null)
+            return null;
+
         byte[] unencryptedBytes = innerSerializer.serialize(topic, data);
         try {
             return cipher.doFinal(unencryptedBytes);

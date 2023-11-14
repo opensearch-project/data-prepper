@@ -32,10 +32,10 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
@@ -45,12 +45,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.awaitility.Awaitility.await;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,6 +61,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class KafkaCustomConsumerTest {
+    private static final String TOPIC_NAME = "topic1";
 
     @Mock
     private KafkaConsumer<String, Object> kafkaConsumer;
@@ -71,16 +71,19 @@ public class KafkaCustomConsumerTest {
     private Buffer<Record<Event>> buffer;
 
     @Mock
-    private KafkaSourceConfig sourceConfig;
+    private KafkaConsumerConfig sourceConfig;
 
-    private ExecutorService callbackExecutor;
+    private ScheduledExecutorService callbackExecutor;
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
-    private TopicConfig topicConfig;
+    private TopicConsumerConfig topicConfig;
 
     @Mock
-    private KafkaTopicMetrics topicMetrics;
+    private KafkaTopicConsumerMetrics topicMetrics;
+
+    @Mock
+    private PauseConsumePredicate pauseConsumePredicate;
 
     private KafkaCustomConsumer consumer;
 
@@ -111,11 +114,11 @@ public class KafkaCustomConsumerTest {
     public void setUp() {
         delayTime = Duration.ofMillis(10);
         kafkaConsumer = mock(KafkaConsumer.class);
-        topicMetrics = mock(KafkaTopicMetrics.class);
+        topicMetrics = mock(KafkaTopicConsumerMetrics.class);
         counter = mock(Counter.class);
         posCounter = mock(Counter.class);
         negCounter = mock(Counter.class);
-        topicConfig = mock(TopicConfig.class);
+        topicConfig = mock(TopicConsumerConfig.class);
         when(topicMetrics.getNumberOfPositiveAcknowledgements()).thenReturn(posCounter);
         when(topicMetrics.getNumberOfNegativeAcknowledgements()).thenReturn(negCounter);
         when(topicMetrics.getNumberOfRecordsCommitted()).thenReturn(counter);
@@ -135,18 +138,19 @@ public class KafkaCustomConsumerTest {
         }).when(negCounter).increment();
         doAnswer((i)-> {return posCount;}).when(posCounter).count();
         doAnswer((i)-> {return negCount;}).when(negCounter).count();
-        callbackExecutor = Executors.newFixedThreadPool(2); 
+        callbackExecutor = Executors.newScheduledThreadPool(2); 
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(callbackExecutor, Duration.ofMillis(2000));
 
-        sourceConfig = mock(KafkaSourceConfig.class);
+        sourceConfig = mock(KafkaConsumerConfig.class);
         buffer = getBuffer();
         shutdownInProgress = new AtomicBoolean(false);
-        when(topicConfig.getName()).thenReturn("topic1");
+        when(topicConfig.getName()).thenReturn(TOPIC_NAME);
     }
 
     public KafkaCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
-        return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType, acknowledgementSetManager, topicMetrics);
+        return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType,
+                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate);
     }
 
     private BlockingBuffer<Record<Event>> getBuffer() {

@@ -10,8 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
-import io.confluent.kafka.serializers.KafkaJsonDeserializer;
+import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
 import kafka.common.BrokerEndPointNotAvailableException;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.StringUtils;
@@ -31,17 +30,18 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
+import org.opensearch.dataprepper.plugins.kafka.consumer.PauseConsumePredicate;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,7 +110,7 @@ public class KafkaSource implements Source<Record<Event>> {
         KafkaSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
         sourceConfig.getTopics().forEach(topic -> {
             consumerGroupID = topic.getGroupId();
-            KafkaTopicMetrics topicMetrics = new KafkaTopicMetrics(topic.getName(), pluginMetrics);
+            KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, true);
             Properties consumerProperties = getConsumerProperties(topic, authProperties);
             MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
             try {
@@ -139,7 +139,8 @@ public class KafkaSource implements Source<Record<Event>> {
                         }
 
                     }
-                    consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, topicMetrics);
+                    consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType,
+                            acknowledgementSetManager, null, topicMetrics, PauseConsumePredicate.noPause());
                     allTopicConsumers.add(consumer);
 
                     executorService.submit(consumer);
@@ -205,7 +206,7 @@ public class KafkaSource implements Source<Record<Event>> {
     }
 
     private long calculateLongestThreadWaitingTime() {
-        List<TopicConfig> topicsList = sourceConfig.getTopics();
+        List<? extends TopicConsumerConfig> topicsList = sourceConfig.getTopics();
         return topicsList.stream().
                 map(
                         topics -> topics.getThreadWaitingTime().toSeconds()
@@ -218,7 +219,7 @@ public class KafkaSource implements Source<Record<Event>> {
         return kafkaConsumer;
     }
 
-    private Properties getConsumerProperties(final TopicConfig topicConfig, final Properties authProperties) {
+    private Properties getConsumerProperties(final TopicConsumerConfig topicConfig, final Properties authProperties) {
         Properties properties = (Properties) authProperties.clone();
         if (StringUtils.isNotEmpty(sourceConfig.getClientDnsLookup())) {
             ClientDNSLookupType dnsLookupType = ClientDNSLookupType.getDnsLookupType(sourceConfig.getClientDnsLookup());
@@ -285,9 +286,9 @@ public class KafkaSource implements Source<Record<Event>> {
         Map prop = properties;
         Map<String, String> propertyMap = (Map<String, String>) prop;
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
-        properties.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, getSchemaRegistryUrl());
-        properties.put(KafkaAvroDeserializerConfig.AUTO_REGISTER_SCHEMAS, false);
-        schemaRegistryClient = new CachedSchemaRegistryClient(properties.getProperty(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG),
+        properties.put("schema.registry.url", getSchemaRegistryUrl());
+        properties.put("auto.register.schemas", false);
+        schemaRegistryClient = new CachedSchemaRegistryClient(getSchemaRegistryUrl(),
                 100, propertyMap);
         try {
             schemaType = schemaRegistryClient.getSchemaMetadata(topic.getName() + "-value",
@@ -297,7 +298,8 @@ public class KafkaSource implements Source<Record<Event>> {
             throw new RuntimeException(e);
         }
         if (schemaType.equalsIgnoreCase(MessageFormat.JSON.toString())) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaJsonDeserializer.class);
+            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaJsonSchemaDeserializer.class);
+	    properties.put("json.value.type", "com.fasterxml.jackson.databind.JsonNode");
         } else if (schemaType.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
             properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
         } else {
@@ -306,7 +308,7 @@ public class KafkaSource implements Source<Record<Event>> {
         }
     }
 
-    private void setConsumerTopicProperties(Properties properties, TopicConfig topicConfig) {
+    private void setConsumerTopicProperties(Properties properties, TopicConsumerConfig topicConfig) {
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupID);
         properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, (int) topicConfig.getMaxPartitionFetchBytes());
         properties.put(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, ((Long) topicConfig.getRetryBackoff().toMillis()).intValue());
@@ -336,7 +338,7 @@ public class KafkaSource implements Source<Record<Event>> {
         if ("USER_INFO".equalsIgnoreCase(sourceConfig.getSchemaConfig().getBasicAuthCredentialsSource())
                 && authConfig.getSaslAuthConfig().getPlainTextAuthConfig() != null) {
             String schemaBasicAuthUserInfo = schemaRegistryApiKey.concat(":").concat(schemaRegistryApiSecret);
-            properties.put("schema.registry.basic.auth.user.info", schemaBasicAuthUserInfo);
+            properties.put("basic.auth.user.info", schemaBasicAuthUserInfo);
             properties.put("basic.auth.credentials.source", "USER_INFO");
         }
 

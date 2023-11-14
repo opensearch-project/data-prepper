@@ -20,15 +20,14 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.yaml.snakeyaml.Yaml;
@@ -71,6 +70,9 @@ public class KafkaSinkTest {
 
     @Mock
     PluginSetting pluginSetting;
+
+    @Mock
+    PluginMetrics pluginMetrics;
 
     @Mock
     FutureTask futureTask;
@@ -116,7 +118,7 @@ public class KafkaSinkTest {
         when(pluginSetting.getPipelineName()).thenReturn("Kafka-sink");
         event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         when(sinkContext.getTagsTargetKey()).thenReturn("tag");
-        kafkaSink = new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactoryMock, mock(ExpressionEvaluator.class), sinkContext, awsCredentialsSupplier);
+        kafkaSink = new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactoryMock, pluginMetrics, mock(ExpressionEvaluator.class), sinkContext, awsCredentialsSupplier);
         spySink = spy(kafkaSink);
         executorsMockedStatic = mockStatic(Executors.class);
         props = new Properties();
@@ -198,8 +200,8 @@ public class KafkaSinkTest {
     @Test
     public void doOutputTestForAutoTopicCreate() {
 
-        TopicConfig topicConfig = mock(TopicConfig.class);
-        when(topicConfig.isCreate()).thenReturn(true);
+        SinkTopicConfig topicConfig = mock(SinkTopicConfig.class);
+        when(topicConfig.isCreateTopic()).thenReturn(true);
 
         SchemaConfig schemaConfig = mock(SchemaConfig.class);
         when(schemaConfig.isCreate()).thenReturn(true);

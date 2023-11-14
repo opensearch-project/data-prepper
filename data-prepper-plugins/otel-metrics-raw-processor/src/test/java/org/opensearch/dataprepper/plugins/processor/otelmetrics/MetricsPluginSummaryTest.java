@@ -21,11 +21,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.metric.JacksonMetric;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -83,8 +84,9 @@ public class MetricsPluginSummaryTest {
 
         Record record = new Record<>(exportMetricRequest);
 
-        List<Record<Event>> rec =  (List<Record<Event>>) rawProcessor.doExecute(Arrays.asList(record));
-        Record<Event> firstRecord = rec.get(0);
+        Collection<Record<?>> records = Arrays.asList((Record<?>)record);
+        List<Record<? extends org.opensearch.dataprepper.model.metric.Metric>> outputRecords = (List<Record<? extends org.opensearch.dataprepper.model.metric.Metric>>)rawProcessor.doExecute(records);
+        Record<JacksonMetric> firstRecord = (Record<JacksonMetric>)outputRecords.get(0);
 
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, Object> map = objectMapper.readValue(firstRecord.getData().toJsonString(), Map.class);

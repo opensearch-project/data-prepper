@@ -10,9 +10,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class StreamConfig {
     
     @JsonProperty(value = "start_position")
-    private String startPosition;
+    private StreamStartPosition startPosition = StreamStartPosition.LATEST;
 
-    public String getStartPosition() {
+    public StreamStartPosition getStartPosition() {
         return startPosition;
     }
 

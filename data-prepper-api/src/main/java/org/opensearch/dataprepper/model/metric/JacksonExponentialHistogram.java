@@ -27,8 +27,8 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
     private static final String SCALE_KEY = "scale";
     private static final String AGGREGATION_TEMPORALITY_KEY = "aggregationTemporality";
     private static final String ZERO_COUNT_KEY = "zeroCount";
-    private static final String POSITIVE_BUCKETS_KEY = "positiveBuckets";
-    private static final String NEGATIVE_BUCKETS_KEY = "negativeBuckets";
+    public static final String POSITIVE_BUCKETS_KEY = "positiveBuckets";
+    public static final String NEGATIVE_BUCKETS_KEY = "negativeBuckets";
     private static final String NEGATIVE_KEY = "negative";
     private static final String POSITIVE_KEY = "positive";
     private static final String NEGATIVE_OFFSET_KEY = "negativeOffset";

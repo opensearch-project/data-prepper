@@ -12,6 +12,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.util.JsonFormat;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.ArrayValue;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
@@ -34,6 +35,12 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.metric.Bucket;
+import org.opensearch.dataprepper.model.metric.Metric;
+import org.opensearch.dataprepper.model.metric.JacksonMetric;
+import org.opensearch.dataprepper.model.metric.JacksonGauge;
+import org.opensearch.dataprepper.model.metric.JacksonSum;
+import org.opensearch.dataprepper.model.metric.JacksonHistogram;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.DefaultLink;
 import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
 import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
@@ -56,12 +63,14 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.entry;
@@ -71,6 +80,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -84,10 +94,12 @@ public class OTelProtoCodecTest {
     private static final String TEST_REQUEST_BOTH_SPAN_TYPES_JSON_FILE = "test-request-both-span-types.json";
     private static final String TEST_REQUEST_NO_SPANS_JSON_FILE = "test-request-no-spans.json";
     private static final String TEST_SPAN_EVENT_JSON_FILE = "test-span-event.json";
-
+    private static final String TEST_REQUEST_GAUGE_METRICS_JSON_FILE = "test-gauge-metrics.json";
+    private static final String TEST_REQUEST_SUM_METRICS_JSON_FILE = "test-sum-metrics.json";
+    private static final String TEST_REQUEST_HISTOGRAM_METRICS_JSON_FILE = "test-histogram-metrics.json";
     private static final String TEST_REQUEST_LOGS_JSON_FILE = "test-request-log.json";
-
     private static final String TEST_REQUEST_LOGS_IS_JSON_FILE = "test-request-log-is.json";
+    private static final String TEST_REQUEST_MULTIPLE_TRACES_FILE = "test-request-multiple-traces.json";
 
 
     private static final Long TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
@@ -124,6 +136,12 @@ public class OTelProtoCodecTest {
         return builder.build();
     }
 
+    private ExportMetricsServiceRequest buildExportMetricsServiceRequestFromJsonFile(String requestJsonFileName) throws IOException {
+        final ExportMetricsServiceRequest.Builder builder = ExportMetricsServiceRequest.newBuilder();
+        JsonFormat.parser().merge(getFileAsJsonString(requestJsonFileName), builder);
+        return builder.build();
+    }
+
     private String getFileAsJsonString(String requestJsonFileName) throws IOException {
         final StringBuilder jsonBuilder = new StringBuilder();
         try (final InputStream inputStream = Objects.requireNonNull(
@@ -137,6 +155,58 @@ public class OTelProtoCodecTest {
 
     @Nested
     class OTelProtoDecoderTest {
+        @Test
+        public void testSplitExportTraceServiceRequestWithMultipleTraces() throws Exception {
+            final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_MULTIPLE_TRACES_FILE);
+            final Map<String, ExportTraceServiceRequest> map = decoderUnderTest.splitExportTraceServiceRequestByTraceId(exportTraceServiceRequest);
+            assertThat(map.size(), is(equalTo(3)));
+            for (Map.Entry<String, ExportTraceServiceRequest> entry: map.entrySet()) {
+                String expectedTraceId = new String(Hex.decodeHex(entry.getKey()), StandardCharsets.UTF_8);
+                ExportTraceServiceRequest request = entry.getValue();
+                if (expectedTraceId.equals("TRACEID1")) {
+                    assertThat(request.getResourceSpansList().size(), equalTo(1));
+                    ResourceSpans rs = request.getResourceSpansList().get(0);
+                    assertThat(rs.getScopeSpansList().size(), equalTo(1));
+                    assertThat(rs.getInstrumentationLibrarySpansList().size(), equalTo(0));
+                    ScopeSpans ss = rs.getScopeSpansList().get(0);
+                    assertThat(ss.getSpansList().size(), equalTo(1));
+                    io.opentelemetry.proto.trace.v1.Span span = ss.getSpansList().get(0);
+                    String spanId = span.getSpanId().toStringUtf8();
+                    assertTrue(spanId.equals("TRACEID1-SPAN1"));
+                } else if (expectedTraceId.equals("TRACEID2")) {
+                    assertThat(request.getResourceSpansList().size(), equalTo(1));
+                    ResourceSpans rs = request.getResourceSpansList().get(0);
+                    assertThat(rs.getScopeSpansList().size(), equalTo(2));
+                    assertThat(rs.getInstrumentationLibrarySpansList().size(), equalTo(2));
+
+                    ScopeSpans ss = rs.getScopeSpansList().get(0);
+                    assertThat(ss.getSpansList().size(), equalTo(1));
+                    io.opentelemetry.proto.trace.v1.Span span = ss.getSpansList().get(0);
+                    String spanId = span.getSpanId().toStringUtf8();
+                    assertTrue(spanId.equals("TRACEID2-SPAN1"));
+
+                    ss = rs.getScopeSpansList().get(1);
+                    assertThat(ss.getSpansList().size(), equalTo(1));
+                    span = ss.getSpansList().get(0);
+                    spanId = span.getSpanId().toStringUtf8();
+                    assertTrue(spanId.equals("TRACEID2-SPAN2"));
+
+                } else if (expectedTraceId.equals("TRACEID3")) {
+                    assertThat(request.getResourceSpansList().size(), equalTo(1));
+                    ResourceSpans rs = request.getResourceSpansList().get(0);
+                    assertThat(rs.getScopeSpansList().size(), equalTo(1));
+                    assertThat(rs.getInstrumentationLibrarySpansList().size(), equalTo(0));
+                    ScopeSpans ss = rs.getScopeSpansList().get(0);
+                    assertThat(ss.getSpansList().size(), equalTo(1));
+                    io.opentelemetry.proto.trace.v1.Span span = ss.getSpansList().get(0);
+                    String spanId = span.getSpanId().toStringUtf8();
+                    assertTrue(spanId.equals("TRACEID3-SPAN1"));
+                } else {
+                    assertTrue("Failed".equals("Unknown TraceId"));
+                }
+            }
+        }
+
         @Test
         public void testParseExportTraceServiceRequest() throws IOException {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_TRACE_JSON_FILE);
@@ -458,6 +528,71 @@ public class OTelProtoCodecTest {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_INSTRUMENTATION_LIBRARY_TRACE_JSON_FILE);
             final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest);
             validateSpans(spans);
+        }
+
+        @Test
+        public void testParseExportMetricsServiceRequest_Guage() throws IOException {
+            final ExportMetricsServiceRequest exportMetricsServiceRequest = buildExportMetricsServiceRequestFromJsonFile(TEST_REQUEST_GAUGE_METRICS_JSON_FILE);
+            AtomicInteger droppedCount = new AtomicInteger(0);
+            final Collection<Record<? extends Metric>> metrics = decoderUnderTest.parseExportMetricsServiceRequest(exportMetricsServiceRequest, droppedCount, 10, true, true, true);
+
+            validateGaugeMetricRequest(metrics);
+        }
+
+        @Test
+        public void testParseExportMetricsServiceRequest_Sum() throws IOException {
+            final ExportMetricsServiceRequest exportMetricsServiceRequest = buildExportMetricsServiceRequestFromJsonFile(TEST_REQUEST_SUM_METRICS_JSON_FILE);
+            AtomicInteger droppedCount = new AtomicInteger(0);
+            final Collection<Record<? extends Metric>> metrics = decoderUnderTest.parseExportMetricsServiceRequest(exportMetricsServiceRequest, droppedCount, 10, true, true, true);
+            validateSumMetricRequest(metrics);
+        }
+
+        @Test
+        public void testParseExportMetricsServiceRequest_Histogram() throws IOException {
+            final ExportMetricsServiceRequest exportMetricsServiceRequest = buildExportMetricsServiceRequestFromJsonFile(TEST_REQUEST_HISTOGRAM_METRICS_JSON_FILE);
+            AtomicInteger droppedCount = new AtomicInteger(0);
+            final Collection<Record<? extends Metric>> metrics = decoderUnderTest.parseExportMetricsServiceRequest(exportMetricsServiceRequest, droppedCount, 10, true, true, true);
+            validateHistogramMetricRequest(metrics);
+        }
+
+        private void validateGaugeMetricRequest(Collection<Record<? extends Metric>> metrics) {
+            assertThat(metrics.size(), equalTo(1));
+            Record<? extends Metric> record = ((List<Record<? extends Metric>>)metrics).get(0);
+            JacksonMetric metric = (JacksonMetric) record.getData();
+            assertThat(metric.getKind(), equalTo(Metric.KIND.GAUGE.toString()));
+            assertThat(metric.getUnit(), equalTo("1"));
+            assertThat(metric.getName(), equalTo("counter-int"));
+            JacksonGauge gauge = (JacksonGauge)metric;
+            assertThat(gauge.getValue(), equalTo(123.0));
+        }
+
+        private void validateSumMetricRequest(Collection<Record<? extends Metric>> metrics) {
+            assertThat(metrics.size(), equalTo(1));
+            Record<? extends Metric> record = ((List<Record<? extends Metric>>)metrics).get(0);
+            JacksonMetric metric = (JacksonMetric) record.getData();
+            assertThat(metric.getKind(), equalTo(Metric.KIND.SUM.toString()));
+            assertThat(metric.getUnit(), equalTo("1"));
+            assertThat(metric.getName(), equalTo("sum-int"));
+            JacksonSum sum = (JacksonSum)metric;
+            assertThat(sum.getValue(), equalTo(456.0));
+        }
+
+        private void validateHistogramMetricRequest(Collection<Record<? extends Metric>> metrics) {
+            assertThat(metrics.size(), equalTo(1));
+            Record<? extends Metric> record = ((List<Record<? extends Metric>>)metrics).get(0);
+            JacksonMetric metric = (JacksonMetric) record.getData();
+            assertThat(metric.getKind(), equalTo(Metric.KIND.HISTOGRAM.toString()));
+            assertThat(metric.getUnit(), equalTo("1"));
+            assertThat(metric.getName(), equalTo("histogram-int"));
+            JacksonHistogram histogram = (JacksonHistogram)metric;
+            assertThat(histogram.getSum(), equalTo(100.0));
+            assertThat(histogram.getCount(), equalTo(30L));
+            assertThat(histogram.getExemplars(), equalTo(Collections.emptyList()));
+            assertThat(histogram.getExplicitBoundsList(), equalTo(List.of(1.0, 2.0, 3.0, 4.0)));
+            assertThat(histogram.getExplicitBoundsCount(), equalTo(4));
+            assertThat(histogram.getBucketCountsList(), equalTo(List.of(3L, 5L, 15L, 6L, 1L)));
+            assertThat(histogram.getBucketCount(), equalTo(5));
+            assertThat(histogram.getAggregationTemporality(), equalTo("AGGREGATION_TEMPORALITY_CUMULATIVE"));
         }
 
     }

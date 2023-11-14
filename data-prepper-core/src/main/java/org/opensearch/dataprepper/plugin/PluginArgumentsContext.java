@@ -6,5 +6,5 @@
 package org.opensearch.dataprepper.plugin;
 
 interface PluginArgumentsContext {
-    Object[] createArguments(final Class<?>[] parameterTypes);
+    Object[] createArguments(final Class<?>[] parameterTypes, final Object ... args);
 }

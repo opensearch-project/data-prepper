@@ -15,27 +15,27 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import java.time.Duration;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 
 @Named
 public class DefaultAcknowledgementSetManager implements AcknowledgementSetManager {
     private static final int DEFAULT_WAIT_TIME_MS = 15 * 1000;
     private final AcknowledgementSetMonitor acknowledgementSetMonitor;
-    private final ExecutorService executor;
+    private final ScheduledExecutorService scheduledExecutor;
     private final AcknowledgementSetMonitorThread acknowledgementSetMonitorThread;
     private PluginMetrics pluginMetrics;
     private DefaultAcknowledgementSetMetrics metrics;
 
     @Inject
     public DefaultAcknowledgementSetManager(
-            @Named("acknowledgementCallbackExecutor") final ExecutorService callbackExecutor) {
+            @Named("acknowledgementCallbackExecutor") final ScheduledExecutorService callbackExecutor) {
         this(callbackExecutor, Duration.ofMillis(DEFAULT_WAIT_TIME_MS));
     }
 
-    public DefaultAcknowledgementSetManager(final ExecutorService callbackExecutor, final Duration waitTime) {
+    public DefaultAcknowledgementSetManager(final ScheduledExecutorService callbackExecutor, final Duration waitTime) {
         this.acknowledgementSetMonitor = new AcknowledgementSetMonitor();
-        this.executor = Objects.requireNonNull(callbackExecutor);
+        this.scheduledExecutor = Objects.requireNonNull(callbackExecutor);
         acknowledgementSetMonitorThread = new AcknowledgementSetMonitorThread(acknowledgementSetMonitor, waitTime);
         acknowledgementSetMonitorThread.start();
         pluginMetrics = PluginMetrics.fromNames("acknowledgementSetManager", "acknowledgements");
@@ -43,7 +43,7 @@ public class DefaultAcknowledgementSetManager implements AcknowledgementSetManag
     }
 
     public AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout) {
-        AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(executor, callback, timeout, metrics);
+        AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(scheduledExecutor, callback, timeout, metrics);
         acknowledgementSetMonitor.add(acknowledgementSet);
         metrics.increment(DefaultAcknowledgementSetMetrics.CREATED_METRIC_NAME);
         return acknowledgementSet;

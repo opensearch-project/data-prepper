@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.model.source.coordinator.enhanced;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -38,17 +40,28 @@ public interface EnhancedSourceCoordinator {
      * @param partitionType The partition type identifier
      * @return A {@link EnhancedSourcePartition} instance
      */
-    Optional<EnhancedSourcePartition> acquireAvailablePartition(String partitionType);
+    Optional<EnhancedSourcePartition> acquireAvailablePartition(final String partitionType);
+    
+
+    /**
+     * This method is used to query a list of completed partition items in the coordination store.
+     *
+     * @param partitionType      Type of partition
+     * @param fromCompletionTime completed since.
+     * @return A list of completed partitions
+     */
+    List<EnhancedSourcePartition> queryCompletedPartitions(final String partitionType, final Instant fromCompletionTime);
 
     /**
      * This method is used to update progress state for a partition in the coordination store.
      * It will also extend the timeout for ownership.
      *
-     * @param partition The partition to be updated.
-     * @param <T>       The progress state class
+     * @param partition               The partition to be updated.
+     * @param <T>                     The progress state class
+     * @param ownershipTimeoutRenewal The amount of time to update ownership of the partition before another instance can acquire it.
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
      */
-    <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition);
+    <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition, Duration ownershipTimeoutRenewal);
 
     /**
      * This method is used to release the lease of a partition in the coordination store.
@@ -93,7 +106,7 @@ public interface EnhancedSourceCoordinator {
      * @param partitionKey A unique key for that partition
      * @return A {@link EnhancedSourcePartition} instance
      */
-    Optional<EnhancedSourcePartition> getPartition(String partitionKey);
+    Optional<EnhancedSourcePartition> getPartition(final String partitionKey);
 
     /**
      * This method is to perform initialization for the coordinator

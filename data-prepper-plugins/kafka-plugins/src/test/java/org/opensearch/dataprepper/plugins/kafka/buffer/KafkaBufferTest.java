@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafka.buffer;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -10,21 +15,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.kafka.admin.KafkaAdminAccessor;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaBufferConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
+import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
@@ -33,6 +39,7 @@ import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 import java.util.UUID;
@@ -47,6 +54,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -56,6 +64,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.kafka.buffer.KafkaBuffer.EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT;
 
@@ -65,13 +74,10 @@ class KafkaBufferTest {
 
     private static final String TEST_GROUP_ID = "testGroupId";
 
-    private KafkaBuffer<Record<Event>> kafkaBuffer;
+    private KafkaBuffer kafkaBuffer;
     ExecutorService executorService;
     @Mock
     private KafkaBufferConfig bufferConfig;
-
-    @Mock
-    private PluginMetrics pluginMetrics;
 
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
@@ -83,7 +89,7 @@ class KafkaBufferTest {
     private PluginFactory pluginFactory;
 
     @Mock
-    TopicConfig topic1;
+    BufferTopicConfig topic1;
     @Mock
     AuthConfig authConfig;
     @Mock
@@ -104,27 +110,49 @@ class KafkaBufferTest {
     KafkaCustomProducer<Event> producer;
 
     @Mock
+    private KafkaCustomConsumerFactory consumerFactory;
+
+    @Mock
+    private KafkaCustomConsumer consumer;
+
+    @Mock
+    private KafkaAdminAccessor kafkaAdminAccessor;
+
+    @Mock
     BlockingBuffer<Record<Event>>  blockingBuffer;
 
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
 
-    public KafkaBuffer<Record<Event>> createObjectUnderTest() {
+    @Mock
+    private CircuitBreaker circuitBreaker;
 
+    public KafkaBuffer createObjectUnderTest() {
+        return createObjectUnderTest(List.of(consumer));
+    }
+
+    public KafkaBuffer createObjectUnderTest(final List<KafkaCustomConsumer> consumers) {
         try (
             final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
             final MockedConstruction<KafkaCustomProducerFactory> producerFactoryMock =
                 mockConstruction(KafkaCustomProducerFactory.class, (mock, context) -> {
                 producerFactory = mock;
-                when(producerFactory.createProducer(any() ,any(), any(), isNull(), isNull())).thenReturn(producer);
+                when(producerFactory.createProducer(any() ,any(), any(), isNull(), isNull(), any(), anyBoolean())).thenReturn(producer);
             });
+            final MockedConstruction<KafkaCustomConsumerFactory> consumerFactoryMock =
+                mockConstruction(KafkaCustomConsumerFactory.class, (mock, context) -> {
+                consumerFactory = mock;
+                when(consumerFactory.createConsumersForTopic(any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any())).thenReturn(consumers);
+            });
+            final MockedConstruction<KafkaAdminAccessor> adminAccessorMock =
+                mockConstruction(KafkaAdminAccessor.class, (mock, context) -> kafkaAdminAccessor = mock);
             final MockedConstruction<BlockingBuffer> blockingBufferMock =
                  mockConstruction(BlockingBuffer.class, (mock, context) -> {
                      blockingBuffer = mock;
                  })) {
 
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executorService);
-            return new KafkaBuffer<Record<Event>>(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, pluginMetrics, awsCredentialsSupplier);
+            return new KafkaBuffer(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, null, awsCredentialsSupplier, circuitBreaker);
         }
     }
 
@@ -133,10 +161,9 @@ class KafkaBufferTest {
     @BeforeEach
     void setUp() {
         when(pluginSetting.getPipelineName()).thenReturn("pipeline");
-        pluginMetrics = mock(PluginMetrics.class);
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         when(topic1.getName()).thenReturn("topic1");
-        when(topic1.isCreate()).thenReturn(true);
+        when(topic1.isCreateTopic()).thenReturn(true);
 
         when(topic1.getWorkers()).thenReturn(2);
         when(topic1.getCommitInterval()).thenReturn(Duration.ofSeconds(1));
@@ -206,12 +233,59 @@ class KafkaBufferTest {
     }
 
     @Test
-    void test_kafkaBuffer_isEmpty() {
+    void test_kafkaBuffer_isEmpty_True() {
         kafkaBuffer = createObjectUnderTest();
         assertTrue(Objects.nonNull(kafkaBuffer));
+        when(blockingBuffer.isEmpty()).thenReturn(true);
+        when(kafkaAdminAccessor.areTopicsEmpty()).thenReturn(true);
 
-        kafkaBuffer.isEmpty();
+        final boolean result = kafkaBuffer.isEmpty();
+        assertThat(result, equalTo(true));
+
         verify(blockingBuffer).isEmpty();
+        verify(kafkaAdminAccessor).areTopicsEmpty();
+    }
+
+    @Test
+    void test_kafkaBuffer_isEmpty_BufferNotEmpty() {
+        kafkaBuffer = createObjectUnderTest();
+        assertTrue(Objects.nonNull(kafkaBuffer));
+        when(blockingBuffer.isEmpty()).thenReturn(false);
+        when(kafkaAdminAccessor.areTopicsEmpty()).thenReturn(true);
+
+        final boolean result = kafkaBuffer.isEmpty();
+        assertThat(result, equalTo(false));
+
+        verify(blockingBuffer).isEmpty();
+        verify(kafkaAdminAccessor).areTopicsEmpty();
+    }
+
+    @Test
+    void test_kafkaBuffer_isEmpty_TopicNotEmpty() {
+        kafkaBuffer = createObjectUnderTest();
+        assertTrue(Objects.nonNull(kafkaBuffer));
+        when(blockingBuffer.isEmpty()).thenReturn(true);
+        when(kafkaAdminAccessor.areTopicsEmpty()).thenReturn(false);
+
+        final boolean result = kafkaBuffer.isEmpty();
+        assertThat(result, equalTo(false));
+
+        verifyNoInteractions(blockingBuffer);
+        verify(kafkaAdminAccessor).areTopicsEmpty();
+    }
+
+    @Test
+    void test_kafkaBuffer_isEmpty_MultipleTopics_AllNotEmpty() {
+        kafkaBuffer = createObjectUnderTest(List.of(consumer, consumer));
+        assertTrue(Objects.nonNull(kafkaBuffer));
+        when(blockingBuffer.isEmpty()).thenReturn(true);
+        when(kafkaAdminAccessor.areTopicsEmpty()).thenReturn(false).thenReturn(false);
+
+        final boolean result = kafkaBuffer.isEmpty();
+        assertThat(result, equalTo(false));
+
+        verifyNoInteractions(blockingBuffer);
+        verify(kafkaAdminAccessor).areTopicsEmpty();
     }
 
     @Test
@@ -239,6 +313,12 @@ class KafkaBufferTest {
         assertThat(result, equalTo(duration));
 
         verify(bufferConfig).getDrainTimeout();
+    }
+
+    @Test
+    void isWrittenOffHeapOnly_returns_true() {
+        assertThat(createObjectUnderTest().isWrittenOffHeapOnly(),
+                equalTo(true));
     }
 
     @Test

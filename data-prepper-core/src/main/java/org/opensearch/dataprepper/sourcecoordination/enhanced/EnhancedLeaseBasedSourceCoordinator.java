@@ -7,10 +7,10 @@ package org.opensearch.dataprepper.sourcecoordination.enhanced;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
-import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,9 +19,11 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 
 /**
@@ -112,22 +114,39 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
 
 
     @Override
-    public Optional<EnhancedSourcePartition> acquireAvailablePartition(String partitionType) {
+    public Optional<EnhancedSourcePartition> acquireAvailablePartition(final String partitionType) {
         // Not available for global state.
-        Objects.nonNull(partitionType);
+        Objects.requireNonNull(partitionType);
         LOG.debug("Try to acquire an available {} partition", partitionType);
         Optional<SourcePartitionStoreItem> sourceItem = coordinationStore.tryAcquireAvailablePartition(this.sourceIdentifier + "|" + partitionType, hostName, DEFAULT_LEASE_TIMEOUT);
         if (sourceItem.isEmpty()) {
-            LOG.info("Partition owner {} failed to acquire a partition, no available {} partitions now", hostName, partitionType);
+            LOG.debug("Partition owner {} failed to acquire a partition, no available {} partitions now", hostName, partitionType);
             return Optional.empty();
         }
 
         return Optional.of(partitionFactory.apply(sourceItem.get()));
     }
 
+    @Override
+    public List<EnhancedSourcePartition> queryCompletedPartitions(final String partitionType, final Instant fromCompletionTime) {
+        Objects.requireNonNull(partitionType);
+        LOG.debug("Try to query a list of completed {} partitions", partitionType);
+        long startTime = System.currentTimeMillis();
+        List<SourcePartitionStoreItem> sourcePartitionStoreItems = coordinationStore.querySourcePartitionItemsByStatus(
+                this.sourceIdentifier + "|" + partitionType,
+                SourcePartitionStatus.COMPLETED,
+                fromCompletionTime.toString());
+
+        List<EnhancedSourcePartition> sourcePartitions = sourcePartitionStoreItems.stream()
+                .map(sourcePartitionStoreItem -> partitionFactory.apply(sourcePartitionStoreItem))
+                .collect(Collectors.toList());
+        long endTime = System.currentTimeMillis();
+        LOG.info("Query of completed partitions took {} milliseconds with {} items found", endTime - startTime, sourcePartitions.size());
+        return sourcePartitions;
+    }
 
     @Override
-    public <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition) {
+    public <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition, final Duration ownershipTimeoutRenewal) {
         String partitionType = partition.getPartitionType() == null ? DEFAULT_GLOBAL_STATE_PARTITION_TYPE : partition.getPartitionType();
         LOG.debug("Try to save progress for partition {} (Type {})", partition.getPartitionKey(), partitionType);
 
@@ -140,17 +159,17 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         final SourcePartitionStoreItem updateItem = partition.getSourcePartitionStoreItem();
         // Also extend the timeout of the lease (ownership)
         if (updateItem.getPartitionOwnershipTimeout() != null) {
-            updateItem.setPartitionOwnershipTimeout(Instant.now().plus(DEFAULT_LEASE_TIMEOUT));
+            updateItem.setPartitionOwnershipTimeout(Instant.now().plus(ownershipTimeoutRenewal == null ? DEFAULT_LEASE_TIMEOUT : ownershipTimeoutRenewal));
         }
         updateItem.setPartitionProgressState(partition.convertPartitionProgressStatetoString(partition.getProgressState()));
 
         coordinationStore.tryUpdateSourcePartitionItem(updateItem);
-        LOG.info("Progress for for partition {} (Type {}) was saved", partition.getPartitionKey(), partitionType);
+        LOG.debug("Progress for for partition {} (Type {}) was saved", partition.getPartitionKey(), partitionType);
     }
 
     @Override
     public <T> void giveUpPartition(EnhancedSourcePartition<T> partition) {
-        Objects.nonNull(partition.getPartitionType());
+        Objects.requireNonNull(partition.getPartitionType());
 
         LOG.debug("Try to give up the ownership for partition {} (Type {})", partition.getPartitionKey(), partition.getPartitionType());
 
@@ -167,13 +186,13 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
 
         // Throws UpdateException if update failed.
         coordinationStore.tryUpdateSourcePartitionItem(updateItem);
-        LOG.info("Partition key {} was given up by owner {}", partition.getPartitionKey(), hostName);
+        LOG.debug("Partition key {} was given up by owner {}", partition.getPartitionKey(), hostName);
 
     }
 
     @Override
     public <T> void completePartition(EnhancedSourcePartition<T> partition) {
-        Objects.nonNull(partition.getPartitionType());
+        Objects.requireNonNull(partition.getPartitionType());
 
         LOG.debug("Try to complete partition {} (Type {})", partition.getPartitionKey(), partition.getPartitionType());
 
@@ -197,7 +216,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
     @Override
     public <T> void closePartition(EnhancedSourcePartition<T> partition, final Duration reopenAfter, final int maxClosedCount) {
 
-        Objects.nonNull(partition.getPartitionType());
+        Objects.requireNonNull(partition.getPartitionType());
 
         LOG.debug("Try to close partition {} (Type {})", partition.getPartitionKey(), partition.getPartitionType());
         if (partition.getSourcePartitionStoreItem() == null) {
@@ -227,7 +246,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
 
 
     @Override
-    public Optional<EnhancedSourcePartition> getPartition(String partitionKey) {
+    public Optional<EnhancedSourcePartition> getPartition(final String partitionKey) {
         // Default to Global State only.
         final Optional<SourcePartitionStoreItem> sourceItem = coordinationStore.getSourcePartitionItem(this.sourceIdentifier + "|" + DEFAULT_GLOBAL_STATE_PARTITION_TYPE, partitionKey);
         if (!sourceItem.isPresent()) {

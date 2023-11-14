@@ -15,5 +15,5 @@ opentelemetry-semantic-conventions==0.26b1
 protobuf==3.19.5
 requests==2.31.0
 six==1.16.0
-urllib3==1.26.17
+urllib3==1.26.18
 wrapt==1.13.3

@@ -8,6 +8,9 @@ package org.opensearch.dataprepper.model.acknowledgements;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
+import java.time.Duration;
+import java.util.function.Consumer;
+
 /**
  * AcknowledgmentSet keeps track of set of events that
  * belong to the batch of events that a source creates.
@@ -58,4 +61,16 @@ public interface AcknowledgementSet {
       * initial events are going through the pipeline line.
      */
     public void complete();
+
+    /**
+     * adds progress check callback to the acknowledgement set. When added
+     * the callback is called every progressCheckInterval time with the 
+     * indication of current progress as a ratio of pending number of
+     * acknowledgements over total acknowledgements
+     *
+     * @param progressCheckCallback progress check callback to be called
+     * @param progressCheckInterval frequency of invocation of progress check callback
+     * @since 2.6
+     */
+    public void addProgressCheck(final Consumer<ProgressCheck> progressCheckCallback, final Duration progressCheckInterval);
 }

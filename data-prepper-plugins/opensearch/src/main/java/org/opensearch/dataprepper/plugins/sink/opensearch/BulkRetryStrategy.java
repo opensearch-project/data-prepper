@@ -5,21 +5,24 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import com.linecorp.armeria.client.retry.Backoff;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
+import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
 import org.opensearch.rest.RestStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -27,9 +30,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
-import java.time.Duration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public final class BulkRetryStrategy {
     public static final String DOCUMENTS_SUCCESS = "documentsSuccess";
@@ -43,8 +43,10 @@ public final class BulkRetryStrategy {
     public static final String BULK_REQUEST_NOT_FOUND_ERRORS = "bulkRequestNotFoundErrors";
     public static final String BULK_REQUEST_TIMEOUT_ERRORS = "bulkRequestTimeoutErrors";
     public static final String BULK_REQUEST_SERVER_ERRORS = "bulkRequestServerErrors";
+    public static final String DOCUMENTS_VERSION_CONFLICT_ERRORS = "documentsVersionConflictErrors";
     static final long INITIAL_DELAY_MS = 50;
     static final long MAXIMUM_DELAY_MS = Duration.ofMinutes(10).toMillis();
+    static final String VERSION_CONFLICT_EXCEPTION_TYPE = "version_conflict_engine_exception";
 
     private static final Set<Integer> NON_RETRY_STATUS = new HashSet<>(
             Arrays.asList(
@@ -116,6 +118,7 @@ public final class BulkRetryStrategy {
     private final Counter bulkRequestNotFoundErrors;
     private final Counter bulkRequestTimeoutErrors;
     private final Counter bulkRequestServerErrors;
+    private final Counter documentsVersionConflictErrors;
     private static final Logger LOG = LoggerFactory.getLogger(BulkRetryStrategy.class);
 
     static class BulkOperationRequestResponse {
@@ -160,6 +163,7 @@ public final class BulkRetryStrategy {
         bulkRequestNotFoundErrors = pluginMetrics.counter(BULK_REQUEST_NOT_FOUND_ERRORS);
         bulkRequestTimeoutErrors = pluginMetrics.counter(BULK_REQUEST_TIMEOUT_ERRORS);
         bulkRequestServerErrors = pluginMetrics.counter(BULK_REQUEST_SERVER_ERRORS);
+        documentsVersionConflictErrors = pluginMetrics.counter(DOCUMENTS_VERSION_CONFLICT_ERRORS);
     }
 
     private void incrementErrorCounters(final Exception e) {
@@ -238,6 +242,13 @@ public final class BulkRetryStrategy {
         if (doRetry) {
             if (retryCount % 5 == 0) {
                 LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", retryCount, e);
+                if (e == null) {
+                    for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
+                        if (bulkItemResponse.error() != null) {
+                            LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.error().reason());
+                        }
+                    }
+                }
             }
             bulkRequestNumberOfRetries.increment();
             return new BulkOperationRequestResponse(bulkRequestForRetry, bulkResponse);
@@ -248,9 +259,16 @@ public final class BulkRetryStrategy {
     }
 
     private void handleFailures(final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest, final BulkResponse bulkResponse, final Throwable failure) {
-        if (Objects.isNull(failure)) {
+        if (failure == null) {
+            for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
+                // Skip logging the error for version conflicts
+                if (bulkItemResponse.error() != null && !VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
+                    LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.error().reason());
+                }
+            }
             handleFailures(bulkRequest, bulkResponse.items());
         } else {
+            LOG.warn("Bulk Operation Failed.", failure);
             handleFailures(bulkRequest, failure);
         }
         bulkRequestFailedCounter.increment();
@@ -300,6 +318,10 @@ public final class BulkRetryStrategy {
                 if (bulkItemResponse.error() != null) {
                     if (!NON_RETRY_STATUS.contains(bulkItemResponse.status())) {
                         requestToReissue.addOperation(bulkOperation);
+                    } else if (VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
+                        documentsVersionConflictErrors.increment();
+                        LOG.debug("Received version conflict from OpenSearch: {}", bulkItemResponse.error().reason());
+                        bulkOperation.releaseEventHandle(true);
                     } else {
                         nonRetryableFailures.add(FailedBulkOperation.builder()
                                 .withBulkOperation(bulkOperation)
@@ -325,10 +347,16 @@ public final class BulkRetryStrategy {
             final BulkResponseItem bulkItemResponse = itemResponses.get(i);
             final BulkOperationWrapper bulkOperation = accumulatingBulkRequest.getOperationAt(i);
             if (bulkItemResponse.error() != null) {
-                failures.add(FailedBulkOperation.builder()
-                    .withBulkOperation(bulkOperation)
-                    .withBulkResponseItem(bulkItemResponse)
-                    .build());
+                if (VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
+                    documentsVersionConflictErrors.increment();
+                    LOG.debug("Received version conflict from OpenSearch: {}", bulkItemResponse.error().reason());
+                    bulkOperation.releaseEventHandle(true);
+                } else {
+                    failures.add(FailedBulkOperation.builder()
+                            .withBulkOperation(bulkOperation)
+                            .withBulkResponseItem(bulkItemResponse)
+                            .build());
+                }
                 documentErrorsCounter.increment();
             } else {
                 sentDocumentsCounter.increment();

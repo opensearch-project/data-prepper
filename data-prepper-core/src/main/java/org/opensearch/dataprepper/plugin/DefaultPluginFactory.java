@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -15,6 +16,7 @@ import org.opensearch.dataprepper.event.DefaultEventFactory;
 import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Inject;
@@ -43,6 +45,7 @@ public class DefaultPluginFactory implements PluginFactory {
     private final DefaultEventFactory eventFactory;
     private final DefaultAcknowledgementSetManager acknowledgementSetManager;
     private final PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
+    private final CircuitBreaker circuitBreaker;
 
     @Inject
     DefaultPluginFactory(
@@ -52,8 +55,10 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginBeanFactoryProvider pluginBeanFactoryProvider,
             final DefaultEventFactory eventFactory,
             final DefaultAcknowledgementSetManager acknowledgementSetManager,
-            final PluginConfigurationObservableFactory pluginConfigurationObservableFactory
-    ) {
+            final PluginConfigurationObservableFactory pluginConfigurationObservableFactory,
+            @Autowired(required = false) final CircuitBreaker circuitBreaker
+            ) {
+        this.circuitBreaker = circuitBreaker;
         Objects.requireNonNull(pluginProviderLoader);
         Objects.requireNonNull(pluginConfigurationObservableFactory);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
@@ -72,13 +77,13 @@ public class DefaultPluginFactory implements PluginFactory {
     }
 
     @Override
-    public <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting) {
+    public <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting, final Object ... args) {
         final String pluginName = pluginSetting.getName();
         final Class<? extends T> pluginClass = getPluginClass(baseClass, pluginName);
 
         final ComponentPluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass, null);
 
-        return pluginCreator.newPluginInstance(pluginClass, constructionContext, pluginName);
+        return pluginCreator.newPluginInstance(pluginClass, constructionContext, pluginName, args);
     }
 
     @Override
@@ -131,6 +136,7 @@ public class DefaultPluginFactory implements PluginFactory {
                 .withAcknowledgementSetManager(acknowledgementSetManager)
                 .withPluginConfigurationObservable(pluginConfigObservable)
                 .withSinkContext(sinkContext)
+                .withCircuitBreaker(circuitBreaker)
                 .build();
     }
 

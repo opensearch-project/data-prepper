@@ -86,6 +86,10 @@ public class ConnectionConfiguration {
   public static final String AWS_STS_HEADER_OVERRIDES = "aws_sts_header_overrides";
   public static final String PROXY = "proxy";
   public static final String SERVERLESS = "serverless";
+  public static final String SERVERLESS_OPTIONS = "serverless_options";
+  public static final String COLLECTION_NAME = "collection_name";
+  public static final String NETWORK_POLICY_NAME = "network_policy_name";
+  public static final String VPCE_ID = "vpce_id";
   public static final String REQUEST_COMPRESSION_ENABLED = "enable_request_compression";
 
   /**
@@ -109,6 +113,9 @@ public class ConnectionConfiguration {
   private final Optional<String> proxy;
   private final String pipelineName;
   private final boolean serverless;
+  private final String serverlessNetworkPolicyName;
+  private final String serverlessCollectionName;
+  private final String serverlessVpceId;
   private final boolean requestCompressionEnabled;
 
   List<String> getHosts() {
@@ -151,8 +158,20 @@ public class ConnectionConfiguration {
     return connectTimeout;
   }
 
-  boolean isServerless() {
+  public boolean isServerless() {
     return serverless;
+  }
+
+  public String getServerlessNetworkPolicyName() {
+    return serverlessNetworkPolicyName;
+  }
+
+  public String getServerlessCollectionName() {
+    return serverlessCollectionName;
+  }
+
+  public String getServerlessVpceId() {
+    return serverlessVpceId;
   }
 
   boolean isRequestCompressionEnabled() {
@@ -174,6 +193,9 @@ public class ConnectionConfiguration {
     this.awsStsHeaderOverrides = builder.awsStsHeaderOverrides;
     this.proxy = builder.proxy;
     this.serverless = builder.serverless;
+    this.serverlessNetworkPolicyName = builder.serverlessNetworkPolicyName;
+    this.serverlessCollectionName = builder.serverlessCollectionName;
+    this.serverlessVpceId = builder.serverlessVpceId;
     this.requestCompressionEnabled = builder.requestCompressionEnabled;
     this.pipelineName = builder.pipelineName;
   }
@@ -212,6 +234,13 @@ public class ConnectionConfiguration {
         builder.withAwsStsHeaderOverrides((Map<String, String>)awsOption.get(AWS_STS_HEADER_OVERRIDES.substring(4)));
         builder.withServerless(OBJECT_MAPPER.convertValue(
                 awsOption.getOrDefault(SERVERLESS, false), Boolean.class));
+
+        Map<String, String> serverlessOptions = (Map<String, String>) awsOption.get(SERVERLESS_OPTIONS);
+        if (serverlessOptions != null && !serverlessOptions.isEmpty()) {
+          builder.withServerlessNetworkPolicyName((String)(serverlessOptions.getOrDefault(NETWORK_POLICY_NAME, null)));
+          builder.withServerlessCollectionName((String)(serverlessOptions.getOrDefault(COLLECTION_NAME, null)));
+          builder.withServerlessVpceId((String)(serverlessOptions.getOrDefault(VPCE_ID, null)));
+        }
     } else {
       builder.withServerless(false);
     }
@@ -300,7 +329,7 @@ public class ConnectionConfiguration {
     });
   }
 
-  private AwsCredentialsOptions createAwsCredentialsOptions() {
+  public AwsCredentialsOptions createAwsCredentialsOptions() {
     final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
         .withStsRoleArn(awsStsRoleArn)
         .withStsExternalId(awsStsExternalId)
@@ -475,6 +504,9 @@ public class ConnectionConfiguration {
     private Optional<String> proxy = Optional.empty();
     private String pipelineName;
     private boolean serverless;
+    private String serverlessNetworkPolicyName;
+    private String serverlessCollectionName;
+    private String serverlessVpceId;
     private boolean requestCompressionEnabled;
 
     private void validateStsRoleArn(final String awsStsRoleArn) {
@@ -582,6 +614,21 @@ public class ConnectionConfiguration {
 
     public Builder withServerless(boolean serverless) {
       this.serverless = serverless;
+      return this;
+    }
+
+    public Builder withServerlessNetworkPolicyName(final String serverlessNetworkPolicyName) {
+      this.serverlessNetworkPolicyName = serverlessNetworkPolicyName;
+      return this;
+    }
+
+    public Builder withServerlessCollectionName(final String serverlessCollectionName) {
+      this.serverlessCollectionName = serverlessCollectionName;
+      return this;
+    }
+
+    public Builder withServerlessVpceId(final String serverlessVpceId) {
+      this.serverlessVpceId = serverlessVpceId;
       return this;
     }
 

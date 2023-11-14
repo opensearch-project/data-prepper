@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.sink.http.configuration;
 
+import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.types.ByteCount;
 
@@ -16,7 +17,7 @@ class ThresholdOptionsTest {
 
     @Test
     void default_byte_capacity_test() {
-        assertThat(new ThresholdOptions().getMaximumSize().getBytes(),
+        MatcherAssert.assertThat(new ThresholdOptions().getMaximumSize().getBytes(),
                 equalTo(ByteCount.parse(DEFAULT_BYTE_CAPACITY).getBytes()));
     }
 

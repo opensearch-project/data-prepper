@@ -10,10 +10,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -83,7 +84,7 @@ class PipelineTests {
     private Duration peerForwarderDrainTimeout;
     private EventFactory eventFactory;
     private JacksonEvent event;
-    private EventHandle eventHandle;
+    private DefaultEventHandle eventHandle;
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @BeforeEach
@@ -391,6 +392,7 @@ class PipelineTests {
         private List<Record> records;
         private List<DataFlowComponent<Sink>> dataFlowComponents;
         private Source mockSource;
+        private AcknowledgementSet acknowledgementSet;
 
         @BeforeEach
         void setUp() {
@@ -426,8 +428,10 @@ class PipelineTests {
                 RouterCopyRecordStrategy routerCopyRecordStrategy = (RouterCopyRecordStrategy)a.getArgument(2);
                 Record rec = records.get(0);
                 event = mock(JacksonEvent.class);
-                eventHandle = mock(EventHandle.class);
+                eventHandle = mock(DefaultEventHandle.class);
+                acknowledgementSet = mock(AcknowledgementSet.class);
                 when(event.getEventHandle()).thenReturn(eventHandle);
+                when(eventHandle.getAcknowledgementSet()).thenReturn(acknowledgementSet);
                 when(rec.getData()).thenReturn(event);
                 routerCopyRecordStrategy.getRecord(rec);
                 routerCopyRecordStrategy.getRecord(rec);
@@ -437,7 +441,7 @@ class PipelineTests {
             Pipeline pipeline = createObjectUnderTest();
             when(mockSource.areAcknowledgementsEnabled()).thenReturn(true);
             pipeline.publishToSinks(records);
-            verify(acknowledgementSetManager).acquireEventReference(any(EventHandle.class));
+            verify(acknowledgementSetManager).acquireEventReference(any(DefaultEventHandle.class));
 
             verify(router)
                     .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
@@ -451,7 +455,7 @@ class PipelineTests {
                 RouterCopyRecordStrategy routerCopyRecordStrategy = (RouterCopyRecordStrategy)a.getArgument(2);
                 Record rec = records.get(0);
                 event = mock(JacksonEvent.class);
-                eventHandle = mock(EventHandle.class);
+                eventHandle = mock(DefaultEventHandle.class);
                 when(event.getEventHandle()).thenReturn(null);
                 when(rec.getData()).thenReturn(event);
                 routerCopyRecordStrategy.getRecord(rec);

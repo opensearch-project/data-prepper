@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
  */
 public class ByteCount {
     private static final Pattern BYTE_PATTERN = Pattern.compile("^(?<value>\\d+\\.?\\d*)(?<unit>[a-z]+)?\\z");
+    private static final ByteCount ZERO_BYTES = new ByteCount(0);
     private final long bytes;
 
     private ByteCount(final long bytes) {
@@ -92,6 +93,10 @@ public class ByteCount {
         }
 
         return new ByteCount(byteCount.longValue());
+    }
+
+    public static ByteCount zeroBytes() {
+        return ZERO_BYTES;
     }
 
     private static BigDecimal scaleToBytes(final BigDecimal value, final Unit unit) {

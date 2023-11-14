@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -74,24 +75,35 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         if (builder.sinkContext != null) {
             typedArgumentsSuppliers.put(SinkContext.class, () -> builder.sinkContext);
         }
+
+        typedArgumentsSuppliers.put(CircuitBreaker.class, () -> builder.circuitBreaker);
     }
 
     @Override
-    public Object[] createArguments(final Class<?>[] parameterTypes) {
+    public Object[] createArguments(final Class<?>[] parameterTypes, final Object ... args) {
+        Map<Class<?>, Supplier<Object>> optionalArgumentsSuppliers = new HashMap<>();
+        for (final Object arg: args) {
+            if (Objects.nonNull(arg)) {
+                optionalArgumentsSuppliers.put(arg.getClass(), () -> arg);
+                for (final Class interfaceClass: arg.getClass().getInterfaces()) {
+                    optionalArgumentsSuppliers.put(interfaceClass, () -> arg);
+                }
+            }
+        }
         return Arrays.stream(parameterTypes)
-                .map(this::getRequiredArgumentSupplier)
+                .map(parameterType -> getRequiredArgumentSupplier(parameterType, optionalArgumentsSuppliers))
                 .map(Supplier::get)
                 .toArray();
     }
 
-    private Supplier<Object> getRequiredArgumentSupplier(final Class<?> parameterType) {
+    private Supplier<Object> getRequiredArgumentSupplier(final Class<?> parameterType, Map<Class<?>, Supplier<Object>> optionalArgumentsSuppliers) {
         if(typedArgumentsSuppliers.containsKey(parameterType)) {
             return typedArgumentsSuppliers.get(parameterType);
-        }
-        else if (beanFactory != null) {
+        } else if(optionalArgumentsSuppliers.containsKey(parameterType)) {
+            return optionalArgumentsSuppliers.get(parameterType);
+        } else if (beanFactory != null) {
             return createBeanSupplier(parameterType, beanFactory);
-        }
-        else {
+        } else {
             throw new InvalidPluginDefinitionException(UNABLE_TO_CREATE_PLUGIN_PARAMETER + parameterType);
         }
     }
@@ -126,6 +138,7 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         private AcknowledgementSetManager acknowledgementSetManager;
         private PluginConfigObservable pluginConfigObservable;
         private SinkContext sinkContext;
+        private CircuitBreaker circuitBreaker;
 
         Builder withPluginConfiguration(final Object pluginConfiguration) {
             this.pluginConfiguration = pluginConfiguration;
@@ -169,6 +182,11 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
 
         Builder withPluginConfigurationObservable(final PluginConfigObservable pluginConfigObservable) {
             this.pluginConfigObservable = pluginConfigObservable;
+            return this;
+        }
+
+        Builder withCircuitBreaker(final CircuitBreaker circuitBreaker) {
+            this.circuitBreaker = circuitBreaker;
             return this;
         }
 

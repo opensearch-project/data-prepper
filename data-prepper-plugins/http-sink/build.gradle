@@ -7,6 +7,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'org.apache.commons:commons-compress:1.21'
     implementation libs.commons.compress
     implementation 'joda-time:joda-time:2.11.1'
     implementation project(':data-prepper-plugins:common')
@@ -21,10 +22,46 @@ dependencies {
     implementation 'software.amazon.awssdk:auth'
     implementation libs.commons.lang3
     implementation project(':data-prepper-plugins:failures-common')
-    implementation group: 'org.apache.httpcomponents.client5', name: 'httpclient5', version: '5.2'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
+    implementation 'com.github.scribejava:scribejava-core:8.3.3'
+    implementation project(path: ':data-prepper-core')
+    implementation project(':data-prepper-plugins:parse-json-processor')
+    implementation 'com.amazonaws:aws-java-sdk-sts:1.12.395'
     testImplementation project(':data-prepper-test-common')
 }
 
 test {
     useJUnitPlatform()
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    systemProperty 'tests.http.sink.http.endpoint', System.getProperty('tests.http.sink.http.endpoint')
+    systemProperty 'tests.http.sink.region', System.getProperty('tests.http.sink.region')
+    systemProperty 'tests.http.sink.bucket', System.getProperty('tests.http.sink.bucket')
+
+    filter {
+        includeTestsMatching '*IT'
+    }
 }

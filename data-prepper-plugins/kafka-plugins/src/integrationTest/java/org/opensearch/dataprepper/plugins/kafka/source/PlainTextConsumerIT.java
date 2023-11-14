@@ -19,18 +19,15 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -38,8 +35,6 @@ import java.util.Properties;
 public class PlainTextConsumerIT {
 
     private PluginMetrics pluginMetrics;
-    @Mock
-    TopicConfig topicConfig;
     @Mock
     private SchemaConfig schemaConfig;
     private KafkaSourceConfig kafkaSourceConfig;
@@ -70,8 +65,6 @@ public class PlainTextConsumerIT {
             String json = mapper.writeValueAsString(kafkaConfigMap);
             Reader reader = new StringReader(json);
             kafkaSourceConfig = mapper.readValue(reader, KafkaSourceConfig.class);
-            List<TopicConfig> topicConfigList = kafkaSourceConfig.getTopics();
-            topicConfig = topicConfigList.get(0);
             schemaConfig = kafkaSourceConfig.getSchemaConfig();
         }
     }
