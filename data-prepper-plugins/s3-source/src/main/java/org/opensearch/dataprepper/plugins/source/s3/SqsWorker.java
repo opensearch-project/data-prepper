@@ -55,6 +55,7 @@ public class SqsWorker implements Runnable {
     static final String SQS_MESSAGES_DELETE_FAILED_METRIC_NAME = "sqsMessagesDeleteFailed";
     static final String SQS_MESSAGE_DELAY_METRIC_NAME = "sqsMessageDelay";
     static final String SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangedCount";
+    static final String SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangeFailedCount";
     static final String ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
 
     private final S3SourceConfig s3SourceConfig;
@@ -69,6 +70,7 @@ public class SqsWorker implements Runnable {
     private final Counter sqsMessagesDeleteFailedCounter;
     private final Counter acknowledgementSetCallbackCounter;
     private final Counter sqsVisibilityTimeoutChangedCount;
+    private final Counter sqsVisibilityTimeoutChangeFailedCount;
     private final Timer sqsMessageDelayTimer;
     private final Backoff standardBackoff;
     private int failedAttemptCount;
@@ -104,6 +106,7 @@ public class SqsWorker implements Runnable {
         sqsMessageDelayTimer = pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME);
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME);
         sqsVisibilityTimeoutChangedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME);
+        sqsVisibilityTimeoutChangeFailedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME);
     }
 
     @Override
@@ -270,9 +273,15 @@ public class SqsWorker implements Runnable {
                                     .receiptHandle(parsedMessage.getMessage().receiptHandle())
                                     .build();
 
-                            LOG.info("Setting visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds);
-                            sqsClient.changeMessageVisibility(changeMessageVisibilityRequest);
-                            sqsVisibilityTimeoutChangedCount.increment();
+                            try {
+                                sqsClient.changeMessageVisibility(changeMessageVisibilityRequest);
+                                sqsVisibilityTimeoutChangedCount.increment();
+                                LOG.info("Set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds);
+                            } catch (Exception e) {
+                                LOG.info("Failed to set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds);
+                                sqsVisibilityTimeoutChangeFailedCount.increment();
+                            }
+
                         },
                         Duration.ofSeconds(progressCheckInterval));
                 }
