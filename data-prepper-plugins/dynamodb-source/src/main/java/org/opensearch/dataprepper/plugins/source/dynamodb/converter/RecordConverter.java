@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Map;
 
@@ -56,7 +57,11 @@ public abstract class RecordConverter {
      */
     private String getAttributeValue(final Map<String, Object> data, String attributeName) {
         if (data.containsKey(attributeName)) {
-            return String.valueOf(data.get(attributeName));
+            final Object value = data.get(attributeName);
+            if (value instanceof Number) {
+                return new BigDecimal(value.toString()).toPlainString();
+            }
+            return String.valueOf(value);
         }
         return null;
     }
