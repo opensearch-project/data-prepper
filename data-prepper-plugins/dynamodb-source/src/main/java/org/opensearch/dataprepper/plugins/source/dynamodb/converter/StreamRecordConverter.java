@@ -36,8 +36,7 @@ public class StreamRecordConverter extends RecordConverter {
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
 
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-            .configure(JsonParser.Feature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER, true);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {
     };
