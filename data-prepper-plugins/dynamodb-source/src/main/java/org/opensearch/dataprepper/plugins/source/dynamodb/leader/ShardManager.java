@@ -166,7 +166,7 @@ public class ShardManager {
         } while (lastEvaluatedShardId != null);
 
         long endTime = System.currentTimeMillis();
-        LOG.info("Listing shards (DescribeStream call) took {} milliseconds with {} shards found, ", endTime - startTime, shards.size());
+        LOG.info("Listing shards (DescribeStream call) took {} milliseconds with {} shards found", endTime - startTime, shards.size());
         return shards;
     }
 

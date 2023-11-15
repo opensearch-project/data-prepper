@@ -198,7 +198,13 @@ public class ShardConsumer implements Runnable {
     public void run() {
         LOG.debug("Shard Consumer start to run...");
         // Check should skip processing or not.
-        if (shouldSkip()) return;
+        if (shouldSkip()) {
+            if (acknowledgementSet != null) {
+                checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
+                acknowledgementSet.complete();
+            }
+            return;
+        }
 
         long lastCheckpointTime = System.currentTimeMillis();
         String sequenceNumber = "";

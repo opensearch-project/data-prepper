@@ -39,7 +39,7 @@ public class DataFileScheduler implements Runnable {
     /**
      * Maximum concurrent data loader per node
      */
-    private static final int MAX_JOB_COUNT = 3;
+    private static final int MAX_JOB_COUNT = 1;
 
     /**
      * Default interval to acquire a lease from coordination store

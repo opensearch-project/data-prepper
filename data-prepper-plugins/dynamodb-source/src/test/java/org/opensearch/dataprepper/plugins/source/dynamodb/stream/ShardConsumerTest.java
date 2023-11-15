@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,6 +59,7 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamCh
 
 @ExtendWith(MockitoExtension.class)
 class ShardConsumerTest {
+    private static final Random RANDOM = new Random();
 
     @Mock
     private EnhancedSourceCoordinator coordinator;
@@ -78,6 +80,9 @@ class ShardConsumerTest {
 
     @Mock
     private Counter testCounter;
+
+    @Mock
+    private DistributionSummary testSummary;
 
 
     private StreamCheckpointer checkpointer;
@@ -142,6 +147,7 @@ class ShardConsumerTest {
         when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenReturn(response);
 
         given(pluginMetrics.counter(anyString())).willReturn(testCounter);
+        given(pluginMetrics.summary(anyString())).willReturn(testSummary);
     }
 
 
@@ -220,6 +226,7 @@ class ShardConsumerTest {
                     sortKeyAttrName, AttributeValue.builder().s(UUID.randomUUID().toString()).build());
 
             StreamRecord streamRecord = StreamRecord.builder()
+                    .sizeBytes(RANDOM.nextLong())
                     .newImage(data)
                     .sequenceNumber(UUID.randomUUID().toString())
                     .approximateCreationDateTime(Instant.now())
