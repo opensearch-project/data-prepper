@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,7 +36,8 @@ public class StreamRecordConverter extends RecordConverter {
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .configure(JsonParser.Feature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER, true);
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {
     };
@@ -70,10 +72,18 @@ public class StreamRecordConverter extends RecordConverter {
         int eventCount = 0;
         for (Record record : records) {
             final long bytes = record.dynamodb().sizeBytes();
-            // NewImage may be empty
-            Map<String, Object> data = convertData(record.dynamodb().newImage());
-            // Always get keys from dynamodb().keys()
-            Map<String, Object> keys = convertKeys(record.dynamodb().keys());
+            Map<String, Object> data;
+            Map<String, Object> keys;
+            try {
+                // NewImage may be empty
+                data = convertData(record.dynamodb().newImage());
+                // Always get keys from dynamodb().keys()
+                keys = convertKeys(record.dynamodb().keys());
+            } catch (final Exception e) {
+                LOG.error("Failed to parse and convert data from stream due to {}", e.getMessage());
+                changeEventErrorCounter.increment();
+                continue;
+            }
 
             try {
                 bytesReceivedSummary.record(bytes);
@@ -101,13 +111,9 @@ public class StreamRecordConverter extends RecordConverter {
     /**
      * Convert the DynamoDB attribute map to a normal map for data
      */
-    private Map<String, Object> convertData(Map<String, AttributeValue> data) {
-        try {
-            String jsonData = EnhancedDocument.fromAttributeValueMap(data).toJson();
-            return MAPPER.readValue(jsonData, MAP_TYPE_REFERENCE);
-        } catch (JsonProcessingException e) {
-            return null;
-        }
+    private Map<String, Object> convertData(Map<String, AttributeValue> data) throws JsonProcessingException {
+        String jsonData = EnhancedDocument.fromAttributeValueMap(data).toJson();
+        return MAPPER.readValue(jsonData, MAP_TYPE_REFERENCE);
     }
 
     /**
