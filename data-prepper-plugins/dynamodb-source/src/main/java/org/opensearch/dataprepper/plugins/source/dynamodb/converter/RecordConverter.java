@@ -19,10 +19,10 @@ import java.time.Instant;
 import java.util.Map;
 
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TABLE_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.SORT_KEY_METADATA_ATTRIBUTE;
@@ -35,7 +35,6 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.Metad
 public abstract class RecordConverter {
 
     private static final String DEFAULT_ACTION = OpenSearchBulkActions.INDEX.toString();
-
 
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
 
@@ -120,11 +119,11 @@ public abstract class RecordConverter {
         bufferAccumulator.add(new Record<>(event));
     }
 
-    public void addToBuffer(final AcknowledgementSet acknowledgementSet, Map<String, Object> data) throws Exception {
-        // Export data doesn't have an event timestamp
-        // We consider this to be time of 0, meaning stream records will always be considered as newer
-        // than export records
-        addToBuffer(acknowledgementSet, data, data, System.currentTimeMillis(), 0L, null);
+    public void addToBuffer(final AcknowledgementSet acknowledgementSet,
+                            final Map<String, Object> data,
+                            final long timestamp,
+                            final long eventVersionNumber) throws Exception {
+        addToBuffer(acknowledgementSet, data, data, timestamp, eventVersionNumber, null);
     }
 
     private String mapStreamEventNameToBulkAction(final String streamEventName) {

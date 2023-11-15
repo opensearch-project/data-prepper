@@ -47,6 +47,7 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.Expor
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.BYTES_RECEIVED;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.EXPORT_RECORDS_PROCESSED_COUNT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.EXPORT_RECORDS_PROCESSING_ERROR_COUNT;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.ExportRecordConverter.VERSION_OVERLAP_TIME_FOR_EXPORT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
@@ -84,6 +85,8 @@ class ExportRecordConverterTest {
 
     private final String partitionKeyAttrName = "PK";
     private final String sortKeyAttrName = "SK";
+
+    private final long exportStartTime = 1700020441123L;
 
 
     @BeforeEach
@@ -124,7 +127,7 @@ class ExportRecordConverterTest {
         int numberOfRecords = random.nextInt(10);
 
         List<String> data = generateData(numberOfRecords);
-        ExportRecordConverter recordConverter = new ExportRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
+        ExportRecordConverter recordConverter = new ExportRecordConverter(bufferAccumulator, tableInfo, pluginMetrics, exportStartTime);
 
         recordConverter.writeToBuffer(null, data);
         verify(bufferAccumulator, times(numberOfRecords)).add(any(Record.class));
@@ -143,7 +146,7 @@ class ExportRecordConverterTest {
 
         final ArgumentCaptor<Record> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
 
-        ExportRecordConverter recordConverter = new ExportRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
+        ExportRecordConverter recordConverter = new ExportRecordConverter(bufferAccumulator, tableInfo, pluginMetrics, exportStartTime);
         doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
 //        doNothing().when(bufferAccumulator).flush();
 
@@ -162,7 +165,8 @@ class ExportRecordConverterTest {
         assertThat(event.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), notNullValue());
         assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), nullValue());
         assertThat(event.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), notNullValue());
-        assertThat(event.getMetadata().getAttribute(EVENT_VERSION_FROM_TIMESTAMP), equalTo(0L));
+        final long expectedVersion = (1700020441123L - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis()) * 1_000;
+        assertThat(event.getMetadata().getAttribute(EVENT_VERSION_FROM_TIMESTAMP), equalTo(expectedVersion));
         assertThat(event.getEventHandle(), notNullValue());
         assertThat(event.getEventHandle().getExternalOriginationTime(), nullValue());
         verify(bytesReceivedSummary, times(1)).record(line.getBytes().length);
@@ -181,7 +185,7 @@ class ExportRecordConverterTest {
         final ArgumentCaptor<Record> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
         final String line = " $ion_1_0 {Item:{PK:" + partitionKey + ",SK:" + sortKey + "}}";
 
-        ExportRecordConverter objectUnderTest = new ExportRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
+        ExportRecordConverter objectUnderTest = new ExportRecordConverter(bufferAccumulator, tableInfo, pluginMetrics, exportStartTime);
         doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
 
         objectUnderTest.writeToBuffer(eq(null), List.of(line));

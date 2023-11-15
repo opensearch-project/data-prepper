@@ -111,9 +111,17 @@ public class DataFileScheduler implements Runnable {
         if (!acknowledgmentsEnabled) {
             runLoader.whenComplete(completeDataLoader(dataFilePartition));
         } else {
-            runLoader.whenComplete((v, ex) -> numOfWorkers.decrementAndGet());
+            runLoader.whenComplete((v, ex) -> {
+                numOfWorkers.decrementAndGet();
+                if (numOfWorkers.get() == 0) {
+                    activeExportS3ObjectConsumersGauge.decrementAndGet();
+                }
+            });
         }
         numOfWorkers.incrementAndGet();
+        if (numOfWorkers.get() >= 1) {
+            activeExportS3ObjectConsumersGauge.incrementAndGet();
+        }
     }
 
     @Override
@@ -126,10 +134,8 @@ public class DataFileScheduler implements Runnable {
                     final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
 
                     if (sourcePartition.isPresent()) {
-                        activeExportS3ObjectConsumersGauge.incrementAndGet();
                         DataFilePartition dataFilePartition = (DataFilePartition) sourcePartition.get();
                         processDataFilePartition(dataFilePartition);
-                        activeExportS3ObjectConsumersGauge.decrementAndGet();
                     }
                 }
                 try {
@@ -178,6 +184,9 @@ public class DataFileScheduler implements Runnable {
 
             if (!dynamoDBSourceConfig.isAcknowledgmentsEnabled()) {
                 numOfWorkers.decrementAndGet();
+                if (numOfWorkers.get() == 0) {
+                    activeExportS3ObjectConsumersGauge.decrementAndGet();
+                }
             }
             if (ex == null) {
                 exportFileSuccessCounter.increment();

@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -90,6 +91,7 @@ class DataFileSchedulerTest {
     private final String prefix = UUID.randomUUID().toString();
 
     private final String exportArn = tableArn + "/export/01693291918297-bfeccbea";
+    private final String exportTime = "1976-01-01T00:00:00Z";
     private final String streamArn = tableArn + "/stream/2023-09-14T05:46:45.367";
 
 
@@ -100,6 +102,7 @@ class DataFileSchedulerTest {
         DataFileProgressState state = new DataFileProgressState();
         state.setLoaded(0);
         state.setTotal(100);
+        state.setStartTime(Instant.parse(exportTime).toEpochMilli());
         dataFilePartition = new DataFilePartition(exportArn, bucketName, manifestKey, Optional.of(state));
 
         // Mock Global Table Info
