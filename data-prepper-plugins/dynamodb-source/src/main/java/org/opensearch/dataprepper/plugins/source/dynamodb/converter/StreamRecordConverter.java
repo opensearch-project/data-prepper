@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
