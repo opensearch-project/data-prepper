@@ -25,13 +25,14 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -73,7 +74,7 @@ class DataFileSchedulerTest {
     private Counter exportFileSuccess;
 
     @Mock
-    private AtomicLong activeExportS3ObjectConsumers;
+    private AtomicInteger activeExportS3ObjectConsumers;
 
     @Mock
     private DataFileLoaderFactory loaderFactory;
@@ -90,6 +91,7 @@ class DataFileSchedulerTest {
     private final String prefix = UUID.randomUUID().toString();
 
     private final String exportArn = tableArn + "/export/01693291918297-bfeccbea";
+    private final String exportTime = "1976-01-01T00:00:00Z";
     private final String streamArn = tableArn + "/stream/2023-09-14T05:46:45.367";
 
 
@@ -100,6 +102,7 @@ class DataFileSchedulerTest {
         DataFileProgressState state = new DataFileProgressState();
         state.setLoaded(0);
         state.setTotal(100);
+        state.setStartTime(Instant.parse(exportTime).toEpochMilli());
         dataFilePartition = new DataFilePartition(exportArn, bucketName, manifestKey, Optional.of(state));
 
         // Mock Global Table Info
@@ -121,7 +124,7 @@ class DataFileSchedulerTest {
         lenient().when(exportInfoGlobalState.getProgressState()).thenReturn(Optional.of(loadStatus.toMap()));
 
         given(pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT)).willReturn(exportFileSuccess);
-        given(pluginMetrics.gauge(eq(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE), any(AtomicLong.class))).willReturn(activeExportS3ObjectConsumers);
+        given(pluginMetrics.gauge(eq(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE), any(AtomicInteger.class))).willReturn(activeExportS3ObjectConsumers);
 
         lenient().when(coordinator.createPartition(any(EnhancedSourcePartition.class))).thenReturn(true);
         lenient().doNothing().when(coordinator).completePartition(any(EnhancedSourcePartition.class));

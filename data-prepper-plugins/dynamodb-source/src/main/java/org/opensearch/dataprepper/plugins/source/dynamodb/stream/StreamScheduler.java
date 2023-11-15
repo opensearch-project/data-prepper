@@ -39,11 +39,6 @@ public class StreamScheduler implements Runnable {
      */
     private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 15_000;
 
-    /**
-     * Add a delay of getting child shards when the parent finished.
-     */
-    private static final int DELAY_TO_GET_CHILD_SHARDS_MILLIS = 1_500;
-
     static final String ACTIVE_CHANGE_EVENT_CONSUMERS = "activeChangeEventConsumers";
     static final String SHARDS_IN_PROCESSING = "activeShardsInProcessing";
 
@@ -98,12 +93,18 @@ public class StreamScheduler implements Runnable {
             if (acknowledgmentsEnabled) {
                 runConsumer.whenComplete((v, ex) -> {
                     numOfWorkers.decrementAndGet();
+                    if (numOfWorkers.get() == 0) {
+                        activeChangeEventConsumers.decrementAndGet();
+                    }
                     shardsInProcessing.decrementAndGet();
                 });
             } else {
                 runConsumer.whenComplete(completeConsumer(streamPartition));
             }
             numOfWorkers.incrementAndGet();
+            if (numOfWorkers.get() >= 1) {
+                activeChangeEventConsumers.incrementAndGet();
+            }
             shardsInProcessing.incrementAndGet();
         } else {
             // If failed to create a new consumer.
@@ -119,10 +120,8 @@ public class StreamScheduler implements Runnable {
                 if (numOfWorkers.get() < MAX_JOB_COUNT) {
                     final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
                     if (sourcePartition.isPresent()) {
-                        activeChangeEventConsumers.incrementAndGet();
                         StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
                         processStreamPartition(streamPartition);
-                        activeChangeEventConsumers.decrementAndGet();
                     }
                 }
 
@@ -155,6 +154,9 @@ public class StreamScheduler implements Runnable {
         return (v, ex) -> {
             if (!dynamoDBSourceConfig.isAcknowledgmentsEnabled()) {
                 numOfWorkers.decrementAndGet();
+                if (numOfWorkers.get() == 0) {
+                    activeChangeEventConsumers.decrementAndGet();
+                }
                 shardsInProcessing.decrementAndGet();
             }
             if (ex == null) {

@@ -253,7 +253,7 @@ public class LeaderScheduler implements Runnable {
         if (tableConfig.getStreamConfig() != null) {
             // Validate if DynamoDB Stream is turn on or not
             if (describeTableResult.table().streamSpecification() == null) {
-                String errorMessage = "Steam is not enabled for table " + tableConfig.getTableArn();
+                String errorMessage = "Stream is not enabled for table " + tableConfig.getTableArn();
                 LOG.error(errorMessage);
                 throw new InvalidPluginConfigurationException(errorMessage);
             }

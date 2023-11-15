@@ -26,7 +26,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
 
@@ -64,7 +63,7 @@ public class DataFileScheduler implements Runnable {
 
 
     private final Counter exportFileSuccessCounter;
-    private final AtomicLong activeExportS3ObjectConsumersGauge;
+    private final AtomicInteger activeExportS3ObjectConsumersGauge;
 
 
     public DataFileScheduler(final EnhancedSourceCoordinator coordinator,
@@ -81,7 +80,7 @@ public class DataFileScheduler implements Runnable {
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
 
         this.exportFileSuccessCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT);
-        this.activeExportS3ObjectConsumersGauge = pluginMetrics.gauge(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE, new AtomicLong());
+        this.activeExportS3ObjectConsumersGauge = pluginMetrics.gauge(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE, numOfWorkers);
     }
 
     private void processDataFilePartition(DataFilePartition dataFilePartition) {
@@ -111,7 +110,9 @@ public class DataFileScheduler implements Runnable {
         if (!acknowledgmentsEnabled) {
             runLoader.whenComplete(completeDataLoader(dataFilePartition));
         } else {
-            runLoader.whenComplete((v, ex) -> numOfWorkers.decrementAndGet());
+            runLoader.whenComplete((v, ex) -> {
+                numOfWorkers.decrementAndGet();
+            });
         }
         numOfWorkers.incrementAndGet();
     }
@@ -126,10 +127,8 @@ public class DataFileScheduler implements Runnable {
                     final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
 
                     if (sourcePartition.isPresent()) {
-                        activeExportS3ObjectConsumersGauge.incrementAndGet();
                         DataFilePartition dataFilePartition = (DataFilePartition) sourcePartition.get();
                         processDataFilePartition(dataFilePartition);
-                        activeExportS3ObjectConsumersGauge.decrementAndGet();
                     }
                 }
                 try {
@@ -178,6 +177,9 @@ public class DataFileScheduler implements Runnable {
 
             if (!dynamoDBSourceConfig.isAcknowledgmentsEnabled()) {
                 numOfWorkers.decrementAndGet();
+                if (numOfWorkers.get() == 0) {
+                    activeExportS3ObjectConsumersGauge.decrementAndGet();
+                }
             }
             if (ex == null) {
                 exportFileSuccessCounter.increment();

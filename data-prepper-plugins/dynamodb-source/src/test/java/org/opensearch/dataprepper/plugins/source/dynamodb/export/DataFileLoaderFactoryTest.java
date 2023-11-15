@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
@@ -61,6 +62,7 @@ class DataFileLoaderFactoryTest {
     private final String prefix = UUID.randomUUID().toString();
 
     private final String exportArn = tableArn + "/export/01693291918297-bfeccbea";
+    private final String exportTime = "1976-01-01T00:00:00Z";
 
     private final Random random = new Random();
 
@@ -72,6 +74,7 @@ class DataFileLoaderFactoryTest {
         DataFileProgressState state = new DataFileProgressState();
         state.setLoaded(0);
         state.setTotal(total);
+        state.setStartTime(Instant.parse(exportTime).toEpochMilli());
         dataFilePartition = new DataFilePartition(exportArn, bucketName, manifestKey, Optional.of(state));
 
         // Mock Global Table Info

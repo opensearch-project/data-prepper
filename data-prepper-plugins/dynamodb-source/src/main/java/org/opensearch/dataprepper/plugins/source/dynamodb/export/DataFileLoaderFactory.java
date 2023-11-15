@@ -46,18 +46,17 @@ public class DataFileLoaderFactory {
         DataFileCheckpointer checkpointer = new DataFileCheckpointer(coordinator, dataFilePartition);
 
         // Start a data loader thread.
-        DataFileLoader loader = DataFileLoader.builder(objectReader, pluginMetrics, buffer)
+        return DataFileLoader.builder(objectReader, pluginMetrics, buffer)
                 .bucketName(dataFilePartition.getBucket())
                 .key(dataFilePartition.getKey())
                 .tableInfo(tableInfo)
+                .exportStartTime(dataFilePartition.getProgressState().get().getStartTime())
                 .checkpointer(checkpointer)
                 .acknowledgmentSet(acknowledgementSet)
                 .acknowledgmentSetTimeout(acknowledgmentTimeout)
                 // We can't checkpoint with acks enabled yet
                 .startLine(acknowledgementSet == null ? dataFilePartition.getProgressState().get().getLoaded() : 0)
                 .build();
-
-        return loader;
     }
 
 }

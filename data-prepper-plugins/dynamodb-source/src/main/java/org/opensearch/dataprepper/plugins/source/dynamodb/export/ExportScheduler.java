@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -158,18 +159,19 @@ public class ExportScheduler implements Runnable {
                 String exportArn = state.getExportArn();
 
                 String manifestKey = exportTaskManager.getExportManifest(exportArn);
+
                 LOG.debug("Export manifest summary file is " + manifestKey);
 
                 // Extract the info in the manifest summary file
                 // We may need to store the info
                 ExportSummary summaryInfo = manifestFileReader.parseSummaryFile(bucketName, manifestKey);
-
+                final Instant exportTime = Instant.parse(summaryInfo.getExportTime());
                 // Get the manifest data path
                 // We don't really need to use the summary info to get the path
                 Map<String, Integer> dataFileInfo = manifestFileReader.parseDataFile(summaryInfo.getS3Bucket(), summaryInfo.getManifestFilesS3Key());
 
                 // Create a data file partition for each
-                createDataFilePartitions(exportArn, bucketName, dataFileInfo);
+                createDataFilePartitions(exportArn, exportTime, bucketName, dataFileInfo);
 
                 // Finally close the export partition
                 completeExportPartition(exportPartition);
@@ -180,7 +182,10 @@ public class ExportScheduler implements Runnable {
     }
 
 
-    private void createDataFilePartitions(String exportArn, String bucketName, Map<String, Integer> dataFileInfo) {
+    private void createDataFilePartitions(final String exportArn,
+                                          final Instant exportTime,
+                                          final String bucketName,
+                                          final Map<String, Integer> dataFileInfo) {
         LOG.info("Total of {} data files generated for export {}", dataFileInfo.size(), exportArn);
         AtomicInteger totalRecords = new AtomicInteger();
         AtomicInteger totalFiles = new AtomicInteger();
@@ -188,6 +193,7 @@ public class ExportScheduler implements Runnable {
             DataFileProgressState progressState = new DataFileProgressState();
             progressState.setTotal(size);
             progressState.setLoaded(0);
+            progressState.setStartTime(exportTime.toEpochMilli());
 
             totalFiles.addAndGet(1);
             totalRecords.addAndGet(size);
