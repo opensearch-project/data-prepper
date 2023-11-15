@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.MongoDBConfig;
 
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -27,6 +28,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class MongoDBServiceTest {
@@ -38,9 +40,6 @@ public class MongoDBServiceTest {
 
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
-
-    @Mock
-    private ScheduledExecutorService scheduledExecutorService;
 
     @Mock
     private SourceCoordinator<MongoDBSnapshotProgressState> sourceCoordinator;
@@ -58,17 +57,18 @@ public class MongoDBServiceTest {
     }
 
     @Test
-    public void testStart() {
-        createObjectUnderTest().start();
-        verify(scheduledExecutorService).schedule(any(Runnable.class), eq(0L), eq(TimeUnit.MILLISECONDS));
+    public void testStartAndStop() throws InterruptedException {
+        when(sourceCoordinator.getNextPartition(mongoDBPartitionCreationSupplier)).thenReturn(Optional.empty());
+        MongoDBService testObject = createObjectUnderTest();
+        testObject.start();
+        Thread.sleep(100);
+        testObject.stop();
     }
 
     private MongoDBService createObjectUnderTest() {
-        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
-             final MockedConstruction<MongoDBPartitionCreationSupplier> mockedConstruction = mockConstruction(MongoDBPartitionCreationSupplier.class, (mock, context) -> {
+        try (final MockedConstruction<MongoDBPartitionCreationSupplier> mockedConstruction = mockConstruction(MongoDBPartitionCreationSupplier.class, (mock, context) -> {
                  mongoDBPartitionCreationSupplier = mock;
              })) {
-            executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor).thenReturn(scheduledExecutorService);
             return MongoDBService.create(mongoDBConfig, sourceCoordinator, buffer, acknowledgementSetManager, pluginMetrics);
         }
     }

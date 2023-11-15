@@ -73,53 +73,52 @@ public class MongoDBPartitionCreationSupplier implements Function<Map<String, Ob
         if (collection.size() < 2) {
             throw new IllegalArgumentException("Invalid Collection Name. Must as db.collection format");
         }
-        MongoClient mongoClient = MongoDBHelper.getMongoClient(mongoDBConfig);
-        MongoDatabase db = mongoClient.getDatabase(collection.get(0));
-        MongoCollection<Document> col = db.getCollection(collection.get(1));
+        try (MongoClient mongoClient = MongoDBHelper.getMongoClient(mongoDBConfig)) {
+            MongoDatabase db = mongoClient.getDatabase(collection.get(0));
+            MongoCollection<Document> col = db.getCollection(collection.get(1));
+            int chunkSize = this.mongoDBConfig.getExportConfig().getItemsPerPartition();
+            FindIterable<Document> startIterable = col.find()
+                    .projection(new Document("_id", 1))
+                    .sort(new Document("_id", 1))
+                    .limit(1);
+            while (true) {
+                try (MongoCursor<Document> startCursor = startIterable.iterator()) {
+                    if (!startCursor.hasNext()) {
+                        break;
+                    }
+                    Document startDoc = startCursor.next();
+                    Object gteValue = startDoc.get("_id");
+                    String className = gteValue.getClass().getName();
 
-        int chunkSize = this.mongoDBConfig.getExportConfig().getItemsPerPartition();
-        FindIterable<Document> startIterable = col.find()
-                .projection(new Document("_id", 1))
-                .sort(new Document("_id", 1))
-                .limit(1);
+                    // Get end doc
+                    Document endDoc = startIterable.skip(chunkSize - 1).limit(1).first();
+                    if (endDoc == null) {
+                        // this means we have reached the end of the doc
+                        endDoc = col.find()
+                                .projection(new Document("_id", 1))
+                                .sort(new Document("_id", -1))
+                                .limit(1)
+                                .first();
+                    }
+                    if (endDoc == null) {
+                        break;
+                    }
 
-        while (true) {
-            try (MongoCursor<Document> startCursor = startIterable.iterator()) {
-                if (!startCursor.hasNext()) {
-                    break;
-                }
-                Document startDoc = startCursor.next();
-                Object gteValue = startDoc.get("_id");
-                String className = gteValue.getClass().getName();
+                    Object lteValue = endDoc.get("_id");
+                    LOG.info("Chunk of " + collectionName + ": {gte: " + gteValue.toString() + ", lte: " + lteValue.toString() + "}");
+                    collectionPartitions.add(
+                            PartitionIdentifier
+                                    .builder()
+                                    .withPartitionKey(String.format(DOCUMENTDB_PARTITION_KEY_FORMAT, collectionName, gteValue, lteValue, className))
+                                    .build());
 
-                // Get end doc
-                Document endDoc = startIterable.skip(chunkSize - 1).limit(1).first();
-                if (endDoc == null) {
-                    // this means we have reached the end of the doc
-                    endDoc = col.find()
+                    startIterable = col.find(Filters.gt("_id", lteValue))
                             .projection(new Document("_id", 1))
-                            .sort(new Document("_id", -1))
-                            .limit(1)
-                            .first();
+                            .sort(new Document("_id", 1))
+                            .limit(1);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
                 }
-                if (endDoc == null) {
-                    break;
-                }
-
-                Object lteValue = endDoc.get("_id");
-                LOG.info("Chunk of " + collectionName + ": {gte: " + gteValue.toString() + ", lte: " + lteValue.toString() + "}");
-                collectionPartitions.add(
-                        PartitionIdentifier
-                                .builder()
-                                .withPartitionKey(String.format(DOCUMENTDB_PARTITION_KEY_FORMAT, collectionName, gteValue, lteValue, className))
-                                .build());
-
-                startIterable = col.find(Filters.gt("_id", lteValue))
-                        .projection(new Document("_id", 1))
-                        .sort(new Document("_id", 1))
-                        .limit(1);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
             }
         }
         return collectionPartitions;

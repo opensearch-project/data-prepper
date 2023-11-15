@@ -137,49 +137,48 @@ public class MongoDBSnapshotWorker implements Runnable {
         if (collection.size() < 2) {
             throw new RuntimeException("Invalid Collection Name. Must as db.collection format");
         }
-        MongoClient mongoClient = MongoDBHelper.getMongoClient(mongoDBConfig);
-        MongoDatabase db = mongoClient.getDatabase(collection.get(0));
-        MongoCollection<Document> col = db.getCollection(collection.get(1));
-        Bson query = MongoDBHelper.buildAndQuery(gte, lte, className);
-        long totalRecords = 0L;
-        long successRecords = 0L;
-        long failedRecords = 0L;
-        try (MongoCursor<Document> cursor = col.find(query).iterator()) {
-            while (cursor.hasNext()) {
-                try {
-                    JsonWriterSettings writerSettings = JsonWriterSettings.builder()
-                            .outputMode(JsonMode.RELAXED)
-                            .objectIdConverter((value, writer) -> writer.writeString(value.toHexString()))
-                            .build();
-                    String record = cursor.next().toJson(writerSettings);
-                    Map<String, Object> data = convertToMap(record);
-                    data.putIfAbsent(EVENT_SOURCE_DB_ATTRIBUTE, collection.get(0));
-                    data.putIfAbsent(EVENT_SOURCE_COLLECTION_ATTRIBUTE, collection.get(1));
-                    data.putIfAbsent(EVENT_SOURCE_OPERATION, OpenSearchBulkActions.CREATE.toString());
-                    data.putIfAbsent(EVENT_SOURCE_TS_MS, 0);
-                    if (buffer.isByteBuffer()) {
-                        buffer.writeBytes(objectMapper.writeValueAsBytes(data), null, DEFAULT_BUFFER_WRITE_TIMEOUT_MS);
-                    } else {
-                        buffer.write(getEventFromData(data), DEFAULT_BUFFER_WRITE_TIMEOUT_MS);
-                    }
-                    successItemsCounter.increment();
-                    successRecords += 1;
-                } catch (Exception e) {
-                    LOG.error("failed to add record to buffer with error {}", e.getMessage());
-                    failureItemsCounter.increment();
-                    failedRecords += 1;
-                } finally {
+        try (MongoClient mongoClient = MongoDBHelper.getMongoClient(mongoDBConfig)) {
+            MongoDatabase db = mongoClient.getDatabase(collection.get(0));
+            MongoCollection<Document> col = db.getCollection(collection.get(1));
+            Bson query = MongoDBHelper.buildAndQuery(gte, lte, className);
+            long totalRecords = 0L;
+            long successRecords = 0L;
+            long failedRecords = 0L;
+            try (MongoCursor<Document> cursor = col.find(query).iterator()) {
+                while (cursor.hasNext()) {
                     totalRecords += 1;
+                    try {
+                        JsonWriterSettings writerSettings = JsonWriterSettings.builder()
+                                .outputMode(JsonMode.RELAXED)
+                                .objectIdConverter((value, writer) -> writer.writeString(value.toHexString()))
+                                .build();
+                        String record = cursor.next().toJson(writerSettings);
+                        Map<String, Object> data = convertToMap(record);
+                        data.putIfAbsent(EVENT_SOURCE_DB_ATTRIBUTE, collection.get(0));
+                        data.putIfAbsent(EVENT_SOURCE_COLLECTION_ATTRIBUTE, collection.get(1));
+                        data.putIfAbsent(EVENT_SOURCE_OPERATION, OpenSearchBulkActions.CREATE.toString());
+                        data.putIfAbsent(EVENT_SOURCE_TS_MS, 0);
+                        if (buffer.isByteBuffer()) {
+                            buffer.writeBytes(objectMapper.writeValueAsBytes(data), null, DEFAULT_BUFFER_WRITE_TIMEOUT_MS);
+                        } else {
+                            buffer.write(getEventFromData(data), DEFAULT_BUFFER_WRITE_TIMEOUT_MS);
+                        }
+                        successItemsCounter.increment();
+                        successRecords += 1;
+                    } catch (Exception e) {
+                        LOG.error("failed to add record to buffer with error {}", e.getMessage());
+                        failureItemsCounter.increment();
+                        failedRecords += 1;
+                    }
                 }
+                final MongoDBSnapshotProgressState progressState = new MongoDBSnapshotProgressState();
+                progressState.setTotal(totalRecords);
+                progressState.setSuccess(successRecords);
+                progressState.setFailure(failedRecords);
+                sourceCoordinator.saveProgressStateForPartition(partition.getPartitionKey(), progressState);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            final MongoDBSnapshotProgressState progressState = new MongoDBSnapshotProgressState();
-            progressState.setTotal(totalRecords);
-            progressState.setSuccess(successRecords);
-            progressState.setFailure(failedRecords);
-            sourceCoordinator.saveProgressStateForPartition(partition.getPartitionKey(), progressState);
         }
     }
 

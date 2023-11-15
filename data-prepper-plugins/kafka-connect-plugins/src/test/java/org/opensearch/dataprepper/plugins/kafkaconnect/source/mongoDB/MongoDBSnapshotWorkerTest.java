@@ -227,7 +227,6 @@ public class MongoDBSnapshotWorkerTest {
         future.cancel(true);
         assertThat(future.isCancelled(), equalTo(true));
         assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
-
         if (shouldProcessSucceed) {
             // Verify Results
             verify(cursor, times(2)).next();
@@ -238,6 +237,8 @@ public class MongoDBSnapshotWorkerTest {
             assertThat(progressStates.get(0).getTotal(), is(2L));
             assertThat(progressStates.get(0).getSuccess(), is(2L));
             assertThat(progressStates.get(0).getFailed(), is(0L));
+            
+            verify(mongoClient, times(1)).close();
         }
     }
 }

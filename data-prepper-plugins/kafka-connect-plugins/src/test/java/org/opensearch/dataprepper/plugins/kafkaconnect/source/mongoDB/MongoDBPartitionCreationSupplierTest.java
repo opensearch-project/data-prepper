@@ -39,6 +39,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -107,6 +108,7 @@ public class MongoDBPartitionCreationSupplierTest {
             List<PartitionIdentifier> partitions = testSupplier.apply(globalStateMap);
             // Then dependencies are called
             verify(mongoClient).getDatabase(eq("test"));
+            verify(mongoClient, times(1)).close();
             verify(mongoDatabase).getCollection(eq("collection"));
             // And partitions are created
             assertThat(partitions.size(), is(2));
