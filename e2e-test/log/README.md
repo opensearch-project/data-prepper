@@ -15,15 +15,15 @@ or from project root directory
 
 ## Basic Grok Ingestion Pipeline with AWS secrets End-to-end test
 
-This test requires AWS secrets `opensearch-sink-basic-credentials` with the basic credentials for opensearch sink to be created in `us-east-1` within the test AWS account. The IAM credentials needs to be passed in as environment variables.
+This test requires AWS secrets `opensearch-sink-basic-credentials` with the basic credentials for opensearch sink to be created in `us-east-1` within the test AWS account. The IAM credentials needs to be passed in through specifying [`AWS_PROFILE` environment variable](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html).
 
 Run from current directory
 ```
-AWS_ACCESS_KEY_ID=<your-aws-access-key-id> AWS_SECRET_ACCESS_KEY=<your-aws-secret-key> AWS_SESSION_TOKEN=<your-aws-session-token> ./gradlew :basicLogWithAwsSecretsEndToEndTest
+AWS_PROFILE=<your-aws-profile-name> ./gradlew :basicLogWithAwsSecretsEndToEndTest
 ```
 or from project root directory
 ```
-AWS_ACCESS_KEY_ID=<your-aws-access-key-id> AWS_SECRET_ACCESS_KEY=<your-aws-secret-key> AWS_SESSION_TOKEN=<your-aws-session-token> ./gradlew :e2e-test:log:basicLogWithAwsSecretsEndToEndTest
+AWS_PROFILE=<your-aws-profile-name> ./gradlew :e2e-test:log:basicLogWithAwsSecretsEndToEndTest
 ```
 
 ## Parallel Grok and string substitute End-to-End test

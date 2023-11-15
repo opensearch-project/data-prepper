@@ -71,13 +71,12 @@ logTestConfigurations.each { testConfiguration ->
         exposePorts('tcp', [2021, 4900])
         hostConfig.portBindings = ['2021:2021', '4900:4900']
         hostConfig.binds = [
+                "${System.getProperty('user.home')}/.aws" : '/root/.aws',
                 (project.file("src/integrationTest/resources/${testConfiguration.pipelineConfiguration}").toString())   : '/usr/share/data-prepper/pipelines/log-pipeline.yaml',
                 (project.file("src/integrationTest/resources/${testConfiguration.dataPrepperConfiguration}").toString()): '/usr/share/data-prepper/config/data-prepper-config.yaml'
         ]
         envVars = [
-                'AWS_ACCESS_KEY_ID' : System.getenv('AWS_ACCESS_KEY_ID') ?: '',
-                'AWS_SECRET_ACCESS_KEY' : System.getenv('AWS_SECRET_ACCESS_KEY') ?: '',
-                'AWS_SESSION_TOKEN' : System.getenv('AWS_SESSION_TOKEN') ?: ''
+                'AWS_PROFILE' : System.getenv('AWS_PROFILE') ?: ''
         ]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
         targetImageId dataPrepperDockerImage.imageId
