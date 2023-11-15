@@ -107,10 +107,6 @@ public class LeaderScheduler implements Runnable {
 
                         // Step 3: Find and create children partitions.
                         compareAndCreateChildrenPartitions(sourcePartitions);
-
-                        // Extend the timeout
-                        // will always be a leader until shutdown
-                        coordinator.saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
                     }
 
                 }
@@ -118,6 +114,9 @@ public class LeaderScheduler implements Runnable {
             } catch (Exception e) {
                 LOG.error("Exception occurred in primary scheduling loop", e);
             } finally {
+                // Extend the timeout
+                // will always be a leader until shutdown
+                coordinator.saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
                 try {
                     Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
                 } catch (final InterruptedException e) {
@@ -178,7 +177,6 @@ public class LeaderScheduler implements Runnable {
         LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
         leaderProgressState.setStreamArns(streamArns);
         leaderProgressState.setInitialized(true);
-        coordinator.saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
     }
 
 
@@ -212,7 +210,7 @@ public class LeaderScheduler implements Runnable {
             }
         });
         long endTime = System.currentTimeMillis();
-        LOG.info("Compare and create children partitions took {} milliseconds", endTime - startTime);
+        LOG.debug("Compare and create children partitions took {} milliseconds", endTime - startTime);
     }
 
 
