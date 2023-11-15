@@ -26,7 +26,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
 
@@ -64,7 +63,7 @@ public class DataFileScheduler implements Runnable {
 
 
     private final Counter exportFileSuccessCounter;
-    private final AtomicLong activeExportS3ObjectConsumersGauge;
+    private final AtomicInteger activeExportS3ObjectConsumersGauge;
 
 
     public DataFileScheduler(final EnhancedSourceCoordinator coordinator,
@@ -81,7 +80,7 @@ public class DataFileScheduler implements Runnable {
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
 
         this.exportFileSuccessCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT);
-        this.activeExportS3ObjectConsumersGauge = pluginMetrics.gauge(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE, new AtomicLong());
+        this.activeExportS3ObjectConsumersGauge = pluginMetrics.gauge(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE, numOfWorkers);
     }
 
     private void processDataFilePartition(DataFilePartition dataFilePartition) {
@@ -113,15 +112,9 @@ public class DataFileScheduler implements Runnable {
         } else {
             runLoader.whenComplete((v, ex) -> {
                 numOfWorkers.decrementAndGet();
-                if (numOfWorkers.get() == 0) {
-                    activeExportS3ObjectConsumersGauge.decrementAndGet();
-                }
             });
         }
         numOfWorkers.incrementAndGet();
-        if (numOfWorkers.get() >= 1) {
-            activeExportS3ObjectConsumersGauge.incrementAndGet();
-        }
     }
 
     @Override
