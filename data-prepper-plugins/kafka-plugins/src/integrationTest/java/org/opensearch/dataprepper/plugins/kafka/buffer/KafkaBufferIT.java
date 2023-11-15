@@ -44,10 +44,12 @@ import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
@@ -66,6 +68,7 @@ public class KafkaBufferIT {
     private PluginFactory pluginFactory;
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
+    private Random random;
 
     private BufferTopicConfig topicConfig;
 
@@ -77,6 +80,7 @@ public class KafkaBufferIT {
 
     @BeforeEach
     void setUp() {
+        random = new Random();
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
         when(pluginSetting.getPipelineName()).thenReturn(UUID.randomUUID().toString());
@@ -132,14 +136,14 @@ public class KafkaBufferIT {
     }
 
     @Test
-    void write_and_read_bytes() throws Exception {
+    void writeBytes_and_read() throws Exception {
         byteDecoder = new JsonDecoder();
 
-        KafkaBuffer objectUnderTest = createObjectUnderTest();
+        final KafkaBuffer objectUnderTest = createObjectUnderTest();
 
-        Map<String, String> map = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        byte[] bytes = objectMapper.writeValueAsBytes(map);
-        String key = UUID.randomUUID().toString();
+        final Map<String, String> inputDataMap = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        final byte[] bytes = objectMapper.writeValueAsBytes(inputDataMap);
+        final String key = UUID.randomUUID().toString();
         objectUnderTest.writeBytes(bytes, key, 1_000);
 
         Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = objectUnderTest.read(10_000);
@@ -154,11 +158,11 @@ public class KafkaBufferIT {
         assertThat(onlyResult.getData(), notNullValue());
         // TODO: The metadata is not included. It needs to be included in the Buffer, though not in the Sink. This may be something we make configurable in the consumer/producer - whether to serialize the metadata or not.
         //assertThat(onlyResult.getData().getMetadata(), equalTo(record.getData().getMetadata()));
-        //assertThat(onlyResult.getData().toMap(), equalTo(record.getData().toMap()));
+        assertThat(onlyResult.getData().toMap(), equalTo(inputDataMap));
     }
 
     @Test
-    void write_data_is_correctly_formatted_in_protobuf_wrapper() throws TimeoutException, IOException {
+    void write_puts_correctly_formatted_data_in_protobuf_wrapper() throws TimeoutException, IOException {
         final KafkaBuffer objectUnderTest = createObjectUnderTest();
 
         final Record<Event> record = createRecord();
@@ -191,6 +195,39 @@ public class KafkaBufferIT {
         assertThat(actualEventData, notNullValue());
         assertThat(actualEventData, hasKey("message"));
         assertThat(actualEventData.get("message"), equalTo(record.getData().get("message", String.class)));
+    }
+
+    @Test
+    void writeBytes_puts_correctly_formatted_data_in_protobuf_wrapper() throws Exception {
+        final KafkaBuffer objectUnderTest = createObjectUnderTest();
+
+        final TestConsumer testConsumer = new TestConsumer(bootstrapServersCommaDelimited, topicName);
+
+        final byte[] writtenBytes = createRandomBytes();
+        final String key = UUID.randomUUID().toString();
+        objectUnderTest.writeBytes(writtenBytes, key, 1_000);
+
+        final List<ConsumerRecord<byte[], byte[]>> consumerRecords = new ArrayList<>();
+
+        await().atMost(Duration.ofSeconds(10))
+                .until(() -> {
+                    testConsumer.readConsumerRecords(consumerRecords);
+                    return !consumerRecords.isEmpty();
+                });
+
+        assertThat(consumerRecords.size(), equalTo(1));
+
+        final ConsumerRecord<byte[], byte[]> consumerRecord = consumerRecords.get(0);
+
+        assertThat(consumerRecord, notNullValue());
+        assertThat(consumerRecord.value(), notNullValue());
+
+        final KafkaBufferMessage.BufferData bufferData = KafkaBufferMessage.BufferData.parseFrom(consumerRecord.value());
+
+        assertThat(bufferData, notNullValue());
+        final byte[] innerData = bufferData.getData().toByteArray();
+
+        assertThat(innerData, equalTo(writtenBytes));
     }
 
     @Nested
@@ -238,7 +275,7 @@ public class KafkaBufferIT {
         }
 
         @Test
-        void write_data_is_correctly_formatted_encrypted() throws TimeoutException, IOException, IllegalBlockSizeException, BadPaddingException {
+        void write_puts_correctly_formatted_and_encrypted_data_in_Kafka_topic() throws TimeoutException, IOException, IllegalBlockSizeException, BadPaddingException {
             final KafkaBuffer objectUnderTest = createObjectUnderTest();
 
             final Record<Event> record = createRecord();
@@ -278,6 +315,51 @@ public class KafkaBufferIT {
             assertThat(actualEventData, hasKey("message"));
             assertThat(actualEventData.get("message"), equalTo(record.getData().get("message", String.class)));
         }
+
+        @Test
+        void writeBytes_puts_correctly_formatted_and_encrypted_data_in_Kafka_topic() throws Exception {
+            final KafkaBuffer objectUnderTest = createObjectUnderTest();
+
+            final TestConsumer testConsumer = new TestConsumer(bootstrapServersCommaDelimited, topicName);
+
+            final byte[] writtenBytes = createRandomBytes();
+            final String key = UUID.randomUUID().toString();
+            objectUnderTest.writeBytes(writtenBytes, key, 1_000);
+
+            final List<ConsumerRecord<byte[], byte[]>> consumerRecords = new ArrayList<>();
+
+            await().atMost(Duration.ofSeconds(10))
+                    .until(() -> {
+                        testConsumer.readConsumerRecords(consumerRecords);
+                        return !consumerRecords.isEmpty();
+                    });
+
+            assertThat(consumerRecords.size(), equalTo(1));
+
+            final ConsumerRecord<byte[], byte[]> consumerRecord = consumerRecords.get(0);
+
+            assertThat(consumerRecord, notNullValue());
+            final byte[] valueBytes = consumerRecord.value();
+            assertThat(valueBytes, notNullValue());
+
+            final KafkaBufferMessage.BufferData bufferData = KafkaBufferMessage.BufferData.parseFrom(valueBytes);
+
+            assertThat(bufferData, notNullValue());
+            final byte[] innerData = bufferData.getData().toByteArray();
+
+            assertThat(innerData, notNullValue());
+            assertThat(innerData, not(equalTo(writtenBytes)));
+
+            final byte[] decryptedBytes = cipher.doFinal(innerData);
+
+            assertThat(decryptedBytes, equalTo(writtenBytes));
+        }
+    }
+
+    private byte[] createRandomBytes() {
+        final byte[] writtenBytes = new byte[128];
+        random.nextBytes(writtenBytes);
+        return writtenBytes;
     }
 
     private Record<Event> createRecord() {
