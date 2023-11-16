@@ -96,6 +96,7 @@ public class ShardConsumerFactory {
                 .tableInfo(tableInfo)
                 .checkpointer(checkpointer)
                 .shardIterator(shardIterator)
+                .shardId(streamPartition.getShardId())
                 .lastShardIterator(lastShardIterator)
                 .startTime(startTime)
                 .waitForExport(waitForExport)
