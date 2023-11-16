@@ -30,13 +30,26 @@ public class BackoffCalculator {
     static final Duration MAX_JITTER = Duration.ofSeconds(2);
     static final Duration MIN_JITTER = Duration.ofSeconds(-2);
 
+    private final boolean isExportConfigured;
+
+
+
+    public BackoffCalculator(final boolean isExportConfigured) {
+        this.isExportConfigured = isExportConfigured;
+    }
+
     public long calculateBackoffToAcquireNextShard(final int noAvailableShardCount, final AtomicInteger shardsAcquired) {
 
         // When no shards are available to process we backoff exponentially based on how many consecutive attempts have been made without getting a shard
         // This limits calls to the coordination store
         if (noAvailableShardCount > 0) {
-            if (noAvailableShardCount % 10 == 0) {
-                LOG.info("No shards acquired after {} attempts", noAvailableShardCount);
+            if (noAvailableShardCount % 50 == 0 && shardsAcquired.get() == 0) {
+                String errorMessage = String.format("No new shards acquired after %s attempts.", noAvailableShardCount);
+
+                if (isExportConfigured) {
+                    errorMessage += " It is possible that the export is still in progress. New shards will not be consumed until the export is fully processed.";
+                }
+                LOG.info(errorMessage);
             }
 
             final long jitterMillis = MIN_JITTER.toMillis() + RANDOM.nextInt((int) (MAX_JITTER.toMillis() - MIN_JITTER.toMillis() + 1));

@@ -27,7 +27,7 @@ public class BackoffCalculatorTest {
             final long maxExpectedBackoff
     ) {
 
-        final BackoffCalculator objectUnderTest = new BackoffCalculator();
+        final BackoffCalculator objectUnderTest = new BackoffCalculator(false);
 
         final long backOffForShardCounts = objectUnderTest.calculateBackoffToAcquireNextShard(noAvailableShardCount, new AtomicInteger(shardsAcquiredCount));
 
