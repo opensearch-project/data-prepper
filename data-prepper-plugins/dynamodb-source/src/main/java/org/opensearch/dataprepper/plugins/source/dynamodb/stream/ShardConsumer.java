@@ -101,6 +101,8 @@ public class ShardConsumer implements Runnable {
 
     private final String shardId;
 
+    private long recordsWrittenToBuffer;
+
     private ShardConsumer(Builder builder) {
         this.dynamoDbStreamsClient = builder.dynamoDbStreamsClient;
         this.checkpointer = builder.checkpointer;
@@ -114,6 +116,7 @@ public class ShardConsumer implements Runnable {
         this.acknowledgementSet = builder.acknowledgementSet;
         this.shardAcknowledgmentTimeout = builder.dataFileAcknowledgmentTimeout;
         this.shardId = builder.shardId;
+        this.recordsWrittenToBuffer = 0;
     }
 
     public static Builder builder(final DynamoDbStreamsClient dynamoDbStreamsClient, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
@@ -230,7 +233,7 @@ public class ShardConsumer implements Runnable {
             }
 
             if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
-                LOG.debug("Perform regular checkpointing for Shard Consumer");
+                LOG.info("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
                 checkpointer.checkpoint(sequenceNumber);
                 lastCheckpointTime = System.currentTimeMillis();
             }
@@ -255,6 +258,7 @@ public class ShardConsumer implements Runnable {
                         .filter(record -> record.dynamodb().approximateCreationDateTime().isAfter(startTime))
                         .collect(Collectors.toList());
                 recordConverter.writeToBuffer(acknowledgementSet, records);
+                recordsWrittenToBuffer += records.size();
                 long delay = System.currentTimeMillis() - lastEventTime.toEpochMilli();
                 interval = delay > GET_RECORD_DELAY_THRESHOLD_MILLS ? MINIMUM_GET_RECORD_INTERVAL_MILLS : GET_RECORD_INTERVAL_MILLS;
 

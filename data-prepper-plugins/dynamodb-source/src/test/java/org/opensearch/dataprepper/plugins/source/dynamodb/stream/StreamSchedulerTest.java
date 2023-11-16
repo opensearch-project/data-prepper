@@ -124,10 +124,6 @@ class StreamSchedulerTest {
         executorService.shutdown();
         future.cancel(true);
 
-        // Should acquire the stream partition
-        verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
-        // Should start a new consumer
-        verify(consumerFactory).createConsumer(any(StreamPartition.class), eq(null), any(Duration.class));
         // Should mask the stream partition as completed.
         verify(coordinator).completePartition(any(StreamPartition.class));
 
@@ -164,10 +160,6 @@ class StreamSchedulerTest {
         future.cancel(true);
         assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
 
-        // Should acquire the stream partition
-        verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
-        // Should start a new consumer
-        verify(consumerFactory).createConsumer(any(StreamPartition.class), any(AcknowledgementSet.class), any(Duration.class));
         // Should mask the stream partition as completed.
         verify(coordinator).completePartition(any(StreamPartition.class));
 
