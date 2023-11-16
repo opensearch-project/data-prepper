@@ -184,8 +184,8 @@ public class DataFileLoader implements Runnable {
             while ((line = reader.readLine()) != null) {
                 if (shouldStop) {
                     checkpointer.checkpoint(lastLineProcessed);
-                    LOG.debug("Should Stop flag is set to True, looks like shutdown has triggered");
-                    throw new RuntimeException("Load is interrupted");
+                    LOG.warn("Loading data file s3://{}/{} was interrupted by a shutdown signal, giving up ownership of data file", bucketName, key);
+                    throw new RuntimeException("Loading data file interrupted");
                 }
 
                 lineCount += 1;
