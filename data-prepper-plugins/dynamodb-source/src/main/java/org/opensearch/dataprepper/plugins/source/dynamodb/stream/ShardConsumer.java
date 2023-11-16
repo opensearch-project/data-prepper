@@ -233,7 +233,9 @@ public class ShardConsumer implements Runnable {
             }
 
             if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
-                LOG.info("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
+                if (shardId != null) {
+                    LOG.info("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
+                }
                 checkpointer.checkpoint(sequenceNumber);
                 lastCheckpointTime = System.currentTimeMillis();
             }
@@ -287,7 +289,9 @@ public class ShardConsumer implements Runnable {
             acknowledgementSet.complete();
         }
 
-        LOG.info("Completed writing shard {} to buffer after reaching the end of the shard", shardId);
+        if (shardId != null) {
+            LOG.info("Completed writing shard {} to buffer after reaching the end of the shard", shardId);
+        }
 
         if (waitForExport) {
             waitForExport();
@@ -353,10 +357,10 @@ public class ShardConsumer implements Runnable {
 
             Instant lastEventTime = response.records().get(response.records().size() - 1).dynamodb().approximateCreationDateTime();
             if (lastEventTime.isBefore(startTime)) {
-                LOG.info("LastShardIterator is provided, and Last Event Time is earlier than export time, skip processing");
+                LOG.info("LastShardIterator is provided, and Last Event Time is earlier than {}, skip processing", startTime);
                 return true;
             } else {
-                LOG.info("LastShardIterator is provided, and Last Event Time is later than export time, start processing");
+                LOG.info("LastShardIterator is provided, and Last Event Time is later than {}, start processing", startTime);
                 return false;
             }
         }

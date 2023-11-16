@@ -45,7 +45,7 @@ public class StreamScheduler implements Runnable {
 
     static final Duration STARTING_BACKOFF = Duration.ofMillis(500);
     static final Duration MAX_BACKOFF_WITH_SHARDS = Duration.ofSeconds(15);
-    static final Duration MAX_BACKOFF_NO_SHARDS_ACQUIRED = Duration.ofSeconds(30);
+    static final Duration MAX_BACKOFF_NO_SHARDS_ACQUIRED = Duration.ofSeconds(15);
     static final int BACKOFF_RATE = 2;
     static final Duration MAX_JITTER = Duration.ofSeconds(2);
     static final Duration MIN_JITTER = Duration.ofSeconds(-2);
@@ -144,14 +144,16 @@ public class StreamScheduler implements Runnable {
                 if (numOfWorkers.get() < MAX_JOB_COUNT) {
                     final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
                     if (sourcePartition.isPresent()) {
-                        noAvailableShardsCount = 0;
                         StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
                         processStreamPartition(streamPartition);
+                        noAvailableShardsCount = 0;
+                    } else {
+                        noAvailableShardsCount++;
                     }
                 }
 
                 try {
-                    Thread.sleep(calculateBackoffToAcquireNextShard(++noAvailableShardsCount));
+                    Thread.sleep(calculateBackoffToAcquireNextShard(noAvailableShardsCount));
                 } catch (final InterruptedException e) {
                     LOG.info("InterruptedException occurred");
                     break;

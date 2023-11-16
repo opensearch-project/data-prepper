@@ -264,7 +264,7 @@ public class ExportScheduler implements Runnable {
             return state.getExportArn();
         }
 
-        LOG.info("Try to submit a new export job for table {} with export time {}", exportPartition.getTableArn(), exportPartition.getExportTime());
+        LOG.info("Submitting a new export job for table {} with export time {}", exportPartition.getTableArn(), exportPartition.getExportTime());
         // submit a new export request
         String exportArn = exportTaskManager.submitExportJob(exportPartition.getTableArn(), state.getBucket(), state.getPrefix(), state.getKmsKeyId(), exportPartition.getExportTime());
 
