@@ -45,13 +45,17 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -280,6 +284,28 @@ class LeaderSchedulerTest {
         assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(false));
 
 
+    }
+
+    @Test
+    void run_without_acquiring_leader_partition_does_not_save_null_state() {
+
+        final Duration leastInterval = Duration.ofMillis(200);
+
+        given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE))
+                .willReturn(Optional.empty());
+
+        leaderScheduler = new LeaderScheduler(coordinator, dynamoDbClient, shardManager, List.of(tableConfig), leastInterval);
+        leaderPartition = new LeaderPartition();
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> leaderScheduler.run());
+
+        await().atMost(leastInterval.multipliedBy(5))
+                .untilAsserted(() -> verify(coordinator, atLeast(3))
+                        .acquireAvailablePartition(LeaderPartition.PARTITION_TYPE));
+        executorService.shutdownNow();
+
+        verify(coordinator, atLeast(3)).acquireAvailablePartition(LeaderPartition.PARTITION_TYPE);
+        verify(coordinator, never()).saveProgressStateForPartition(isNull(), any(Duration.class));
     }
 
 
