@@ -233,9 +233,7 @@ public class ShardConsumer implements Runnable {
             }
 
             if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
-                if (shardId != null) {
-                    LOG.info("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
-                }
+                LOG.debug("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
                 checkpointer.checkpoint(sequenceNumber);
                 lastCheckpointTime = System.currentTimeMillis();
             }
@@ -287,10 +285,6 @@ public class ShardConsumer implements Runnable {
         if (acknowledgementSet != null) {
             checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
             acknowledgementSet.complete();
-        }
-
-        if (shardId != null) {
-            LOG.info("Completed writing shard {} to buffer after reaching the end of the shard", shardId);
         }
 
         if (waitForExport) {
