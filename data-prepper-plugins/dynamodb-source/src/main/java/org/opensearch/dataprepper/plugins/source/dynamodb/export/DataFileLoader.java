@@ -75,7 +75,7 @@ public class DataFileLoader implements Runnable {
         this.checkpointer = builder.checkpointer;
         this.startLine = builder.startLine;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(builder.buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-        recordConverter = new ExportRecordConverter(bufferAccumulator, builder.tableInfo, builder.pluginMetrics);
+        recordConverter = new ExportRecordConverter(bufferAccumulator, builder.tableInfo, builder.pluginMetrics, builder.exportStartTime);
         this.acknowledgementSet = builder.acknowledgementSet;
         this.dataFileAcknowledgmentTimeout = builder.dataFileAcknowledgmentTimeout;
     }
@@ -111,6 +111,8 @@ public class DataFileLoader implements Runnable {
 
         private int startLine;
 
+        private long exportStartTime;
+
         public Builder(final S3ObjectReader objectReader, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
             this.objectReader = objectReader;
             this.pluginMetrics = pluginMetrics;
@@ -139,6 +141,11 @@ public class DataFileLoader implements Runnable {
 
         public Builder startLine(int startLine) {
             this.startLine = startLine;
+            return this;
+        }
+
+        public Builder exportStartTime(final long exportStartTime) {
+            this.exportStartTime = exportStartTime;
             return this;
         }
 

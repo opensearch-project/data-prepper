@@ -17,10 +17,13 @@ import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.exceptions.RequestCancelledException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeoutException;
 
 public class GrpcRequestExceptionHandler implements GrpcStatusFunction {
+    private static final Logger LOG = LoggerFactory.getLogger(GrpcRequestExceptionHandler.class);
     static final String ARMERIA_REQUEST_TIMEOUT_MESSAGE = "Timeout waiting for request to be served. This is usually due to the buffer being full.";
 
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
@@ -63,6 +66,7 @@ public class GrpcRequestExceptionHandler implements GrpcStatusFunction {
         }
 
         internalServerErrorCounter.increment();
+        LOG.error("Unexpected exception handling gRPC request", e);
         return createStatus(e, Status.INTERNAL);
     }
 

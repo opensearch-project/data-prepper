@@ -22,7 +22,6 @@ import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -35,7 +34,6 @@ import java.util.function.Consumer;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doAnswer;
@@ -44,6 +42,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamScheduler.ACTIVE_CHANGE_EVENT_CONSUMERS;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamScheduler.SHARDS_IN_PROCESSING;
 
 @ExtendWith(MockitoExtension.class)
 class StreamSchedulerTest {
@@ -60,10 +59,6 @@ class StreamSchedulerTest {
     @Mock
     private DynamoDBSourceConfig dynamoDBSourceConfig;
 
-
-    @Mock
-    private ShardManager shardManager;
-
     private StreamScheduler scheduler;
 
 
@@ -78,6 +73,9 @@ class StreamSchedulerTest {
 
     @Mock
     private AtomicLong activeShardConsumers;
+
+    @Mock
+    private AtomicLong activeShardsInProcessing;
 
 
     private final String tableName = UUID.randomUUID().toString();
@@ -105,9 +103,9 @@ class StreamSchedulerTest {
         lenient().doNothing().when(coordinator).completePartition(any(EnhancedSourcePartition.class));
         lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(EnhancedSourcePartition.class), eq(null));
         lenient().doNothing().when(coordinator).giveUpPartition(any(EnhancedSourcePartition.class));
-        lenient().when(shardManager.getChildShardIds(anyString(), anyString())).thenReturn(List.of(shardId));
 
         when(pluginMetrics.gauge(eq(ACTIVE_CHANGE_EVENT_CONSUMERS), any(AtomicLong.class))).thenReturn(activeShardConsumers);
+        when(pluginMetrics.gauge(eq(SHARDS_IN_PROCESSING), any(AtomicLong.class))).thenReturn(activeShardsInProcessing);
 
     }
 
@@ -117,7 +115,7 @@ class StreamSchedulerTest {
         when(consumerFactory.createConsumer(any(StreamPartition.class), eq(null), any(Duration.class))).thenReturn(() -> System.out.println("Hello"));
         when(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).thenReturn(Optional.of(streamPartition)).thenReturn(Optional.empty());
 
-        scheduler = new StreamScheduler(coordinator, consumerFactory, shardManager, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
+        scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -130,10 +128,11 @@ class StreamSchedulerTest {
         verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
         // Should start a new consumer
         verify(consumerFactory).createConsumer(any(StreamPartition.class), eq(null), any(Duration.class));
-        // Should create stream partition for child shards.
-        verify(coordinator).createPartition(any(StreamPartition.class));
         // Should mask the stream partition as completed.
         verify(coordinator).completePartition(any(StreamPartition.class));
+
+        verify(activeShardsInProcessing).incrementAndGet();
+        verify(activeShardsInProcessing).decrementAndGet();
 
         executorService.shutdownNow();
     }
@@ -155,7 +154,7 @@ class StreamSchedulerTest {
 
         when(consumerFactory.createConsumer(any(StreamPartition.class), eq(acknowledgementSet), eq(shardAcknowledgmentTimeout))).thenReturn(() -> System.out.println("Hello"));
 
-        scheduler = new StreamScheduler(coordinator, consumerFactory, shardManager, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
+        scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -169,10 +168,11 @@ class StreamSchedulerTest {
         verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
         // Should start a new consumer
         verify(consumerFactory).createConsumer(any(StreamPartition.class), any(AcknowledgementSet.class), any(Duration.class));
-        // Should create stream partition for child shards.
-        verify(coordinator).createPartition(any(StreamPartition.class));
         // Should mask the stream partition as completed.
         verify(coordinator).completePartition(any(StreamPartition.class));
+
+        verify(activeShardsInProcessing).incrementAndGet();
+        verify(activeShardsInProcessing).decrementAndGet();
 
         executorService.shutdownNow();
     }
@@ -180,7 +180,7 @@ class StreamSchedulerTest {
     @Test
     void run_catches_exception_and_retries_when_exception_is_thrown_during_processing() throws InterruptedException {
         given(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
-        scheduler = new StreamScheduler(coordinator, consumerFactory, shardManager, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
+        scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> scheduler.run());

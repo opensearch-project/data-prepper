@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,9 +44,9 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -54,9 +55,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.BUFFER_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.DEFAULT_BUFFER_BATCH_SIZE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamCheckpointer.CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE;
 
 @ExtendWith(MockitoExtension.class)
 class ShardConsumerTest {
+    private static final Random RANDOM = new Random();
 
     @Mock
     private EnhancedSourceCoordinator coordinator;
@@ -77,6 +80,9 @@ class ShardConsumerTest {
 
     @Mock
     private Counter testCounter;
+
+    @Mock
+    private DistributionSummary testSummary;
 
 
     private StreamCheckpointer checkpointer;
@@ -108,7 +114,7 @@ class ShardConsumerTest {
 
         StreamProgressState state = new StreamProgressState();
         state.setWaitForExport(false);
-        state.setStartTime(0);
+        state.setStartTime(Instant.now().toEpochMilli());
         streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
 
 
@@ -141,6 +147,7 @@ class ShardConsumerTest {
         when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenReturn(response);
 
         given(pluginMetrics.counter(anyString())).willReturn(testCounter);
+        given(pluginMetrics.summary(anyString())).willReturn(testSummary);
     }
 
 
@@ -169,7 +176,7 @@ class ShardConsumerTest {
         verify(bufferAccumulator, times(total)).add(any(org.opensearch.dataprepper.model.record.Record.class));
         verify(bufferAccumulator).flush();
         // Should complete the consumer as reach to end of shard
-        verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(null));
+        verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE));
     }
 
     @Test
@@ -203,7 +210,7 @@ class ShardConsumerTest {
         verify(bufferAccumulator).flush();
 
         // Should complete the consumer as reach to end of shard
-        verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(null));
+        verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE));
 
         verify(acknowledgementSet).complete();
     }
@@ -219,6 +226,7 @@ class ShardConsumerTest {
                     sortKeyAttrName, AttributeValue.builder().s(UUID.randomUUID().toString()).build());
 
             StreamRecord streamRecord = StreamRecord.builder()
+                    .sizeBytes(RANDOM.nextLong())
                     .newImage(data)
                     .sequenceNumber(UUID.randomUUID().toString())
                     .approximateCreationDateTime(Instant.now())

@@ -15,7 +15,6 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecord
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
@@ -36,6 +35,11 @@ public class ShardConsumer implements Runnable {
      * A flag to interrupt the process
      */
     private static volatile boolean shouldStop = false;
+
+    /**
+     * An overlap added between the event creation time and the export time
+     */
+    private static final Duration STREAM_EVENT_OVERLAP_TIME = Duration.ofMinutes(5);
 
     /**
      * Max number of items to return per GetRecords call, maximum 1000.
@@ -85,6 +89,8 @@ public class ShardConsumer implements Runnable {
 
     private String shardIterator;
 
+    private final String lastShardIterator;
+
     private final Instant startTime;
 
     private boolean waitForExport;
@@ -97,7 +103,9 @@ public class ShardConsumer implements Runnable {
         this.dynamoDbStreamsClient = builder.dynamoDbStreamsClient;
         this.checkpointer = builder.checkpointer;
         this.shardIterator = builder.shardIterator;
-        this.startTime = builder.startTime;
+        this.lastShardIterator = builder.lastShardIterator;
+        // Introduce an overlap
+        this.startTime = builder.startTime == null ? Instant.MIN : builder.startTime.minus(STREAM_EVENT_OVERLAP_TIME);
         this.waitForExport = builder.waitForExport;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(builder.buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
         recordConverter = new StreamRecordConverter(bufferAccumulator, builder.tableInfo, builder.pluginMetrics);
@@ -124,6 +132,7 @@ public class ShardConsumer implements Runnable {
 
         private String shardIterator;
 
+        private String lastShardIterator;
 
         private Instant startTime;
 
@@ -150,6 +159,11 @@ public class ShardConsumer implements Runnable {
 
         public Builder shardIterator(String shardIterator) {
             this.shardIterator = shardIterator;
+            return this;
+        }
+
+        public Builder lastShardIterator(String lastShardIterator) {
+            this.lastShardIterator = lastShardIterator;
             return this;
         }
 
@@ -183,9 +197,19 @@ public class ShardConsumer implements Runnable {
     @Override
     public void run() {
         LOG.debug("Shard Consumer start to run...");
+        // Check should skip processing or not.
+        if (shouldSkip()) {
+            if (acknowledgementSet != null) {
+                checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
+                acknowledgementSet.complete();
+            }
+            return;
+        }
 
         long lastCheckpointTime = System.currentTimeMillis();
         String sequenceNumber = "";
+        int interval;
+        List<software.amazon.awssdk.services.dynamodb.model.Record> records;
 
         while (!shouldStop) {
             if (shardIterator == null) {
@@ -201,47 +225,25 @@ public class ShardConsumer implements Runnable {
                 lastCheckpointTime = System.currentTimeMillis();
             }
 
-            // Use the shard iterator to read the stream records
-            GetRecordsRequest req = GetRecordsRequest.builder()
-                    .shardIterator(shardIterator)
-                    .limit(MAX_GET_RECORD_ITEM_COUNT)
-                    .build();
-
-
-            List<software.amazon.awssdk.services.dynamodb.model.Record> records;
-            GetRecordsResponse response;
-            try {
-                response = dynamoDbStreamsClient.getRecords(req);
-            } catch (SdkException e) {
-                checkpointer.checkpoint(sequenceNumber);
-                throw e;
-            }
-
+            GetRecordsResponse response = callGetRecords(shardIterator);
             shardIterator = response.nextShardIterator();
-
-            int interval;
-
             if (!response.records().isEmpty()) {
                 // Always use the last sequence number for checkpoint
                 sequenceNumber = response.records().get(response.records().size() - 1).dynamodb().sequenceNumber();
                 Instant lastEventTime = response.records().get(response.records().size() - 1).dynamodb().approximateCreationDateTime();
 
+                if (lastEventTime.isBefore(startTime)) {
+                    LOG.debug("Get {} events before start time, ignore...", response.records().size());
+                    continue;
+                }
                 if (waitForExport) {
-
-                    if (lastEventTime.compareTo(startTime) <= 0) {
-                        LOG.debug("Get {} events before start time, ignore...", response.records().size());
-                        continue;
-                    }
                     checkpointer.checkpoint(sequenceNumber);
                     waitForExport();
                     waitForExport = false;
-
-                    records = response.records().stream()
-                            .filter(record -> record.dynamodb().approximateCreationDateTime().compareTo(startTime) > 0)
-                            .collect(Collectors.toList());
-                } else {
-                    records = response.records();
                 }
+                records = response.records().stream()
+                        .filter(record -> record.dynamodb().approximateCreationDateTime().isAfter(startTime))
+                        .collect(Collectors.toList());
                 recordConverter.writeToBuffer(acknowledgementSet, records);
                 long delay = System.currentTimeMillis() - lastEventTime.toEpochMilli();
                 interval = delay > GET_RECORD_DELAY_THRESHOLD_MILLS ? MINIMUM_GET_RECORD_INTERVAL_MILLS : GET_RECORD_INTERVAL_MILLS;
@@ -249,6 +251,7 @@ public class ShardConsumer implements Runnable {
             } else {
                 interval = GET_RECORD_INTERVAL_MILLS;
             }
+
             try {
                 // Idle between get records call.
                 Thread.sleep(interval);
@@ -275,6 +278,25 @@ public class ShardConsumer implements Runnable {
         }
     }
 
+    /**
+     * Wrap of GetRecords call
+     */
+    private GetRecordsResponse callGetRecords(String shardIterator) {
+        // Use the shard iterator to read the stream records
+        GetRecordsRequest req = GetRecordsRequest.builder()
+                .shardIterator(shardIterator)
+                .limit(MAX_GET_RECORD_ITEM_COUNT)
+                .build();
+
+        try {
+            GetRecordsResponse response = dynamoDbStreamsClient.getRecords(req);
+            return response;
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
+
+    }
+
     private void waitForExport() {
         LOG.debug("Start waiting for export to be done and loaded");
         int numberOfWaits = 0;
@@ -296,6 +318,34 @@ public class ShardConsumer implements Runnable {
                 throw new RuntimeException("Wait for export is interrupted.");
             }
         }
+    }
+
+    /**
+     * Only to skip processing when below two conditions are met.
+     * - Last Shard Iterator is provided (Shard with ending sequence number)
+     * - Last Event Timestamp is later than start time or No Last Event Timestamp (empty shard)
+     */
+    private boolean shouldSkip() {
+        // Do skip check
+        if (lastShardIterator != null && !lastShardIterator.isEmpty()) {
+            GetRecordsResponse response = callGetRecords(lastShardIterator);
+            if (response.records().isEmpty()) {
+                // Empty shard
+                LOG.info("LastShardIterator is provided, but there is no Last Event Time, skip processing");
+                return true;
+            }
+
+            Instant lastEventTime = response.records().get(response.records().size() - 1).dynamodb().approximateCreationDateTime();
+            if (lastEventTime.isBefore(startTime)) {
+                LOG.info("LastShardIterator is provided, and Last Event Time is earlier than export time, skip processing");
+                return true;
+            } else {
+                LOG.info("LastShardIterator is provided, and Last Event Time is later than export time, start processing");
+                return false;
+            }
+        }
+
+        return false;
     }
 
 

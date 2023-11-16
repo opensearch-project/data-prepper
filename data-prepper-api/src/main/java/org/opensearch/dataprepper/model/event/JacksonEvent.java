@@ -334,8 +334,8 @@ public class JacksonEvent implements Event {
 
             try {
                 val = this.get(name, Object.class);
-            } catch (final Exception e) {
-                LOG.debug("Received exception using Event key for formatting, now checking for Data Prepper expression: {}", e.getMessage());
+            } catch (final Exception ignored) {
+                // Exception likely indicates use of a Data Prepper expression
             }
 
             if (val == null) {

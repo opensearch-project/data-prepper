@@ -14,14 +14,15 @@ import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Map;
 
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_DYNAMODB_ITEM_VERSION;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TABLE_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.SORT_KEY_METADATA_ATTRIBUTE;
@@ -34,7 +35,6 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.Metad
 public abstract class RecordConverter {
 
     private static final String DEFAULT_ACTION = OpenSearchBulkActions.INDEX.toString();
-
 
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
 
@@ -56,7 +56,11 @@ public abstract class RecordConverter {
      */
     private String getAttributeValue(final Map<String, Object> data, String attributeName) {
         if (data.containsKey(attributeName)) {
-            return String.valueOf(data.get(attributeName));
+            final Object value = data.get(attributeName);
+            if (value instanceof Number) {
+                return new BigDecimal(value.toString()).toPlainString();
+            }
+            return String.valueOf(value);
         }
         return null;
     }
@@ -97,7 +101,7 @@ public abstract class RecordConverter {
         eventMetadata.setAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreationTimeMillis);
         eventMetadata.setAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE, eventName);
         eventMetadata.setAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, mapStreamEventNameToBulkAction(eventName));
-        eventMetadata.setAttribute(EVENT_DYNAMODB_ITEM_VERSION, eventVersionNumber);
+        eventMetadata.setAttribute(EVENT_VERSION_FROM_TIMESTAMP, eventVersionNumber);
 
         String partitionKey = getAttributeValue(keys, tableInfo.getMetadata().getPartitionKeyAttributeName());
         eventMetadata.setAttribute(PARTITION_KEY_METADATA_ATTRIBUTE, partitionKey);
@@ -115,11 +119,11 @@ public abstract class RecordConverter {
         bufferAccumulator.add(new Record<>(event));
     }
 
-    public void addToBuffer(final AcknowledgementSet acknowledgementSet, Map<String, Object> data) throws Exception {
-        // Export data doesn't have an event timestamp
-        // We consider this to be time of 0, meaning stream records will always be considered as newer
-        // than export records
-        addToBuffer(acknowledgementSet, data, data, System.currentTimeMillis(), 0L, null);
+    public void addToBuffer(final AcknowledgementSet acknowledgementSet,
+                            final Map<String, Object> data,
+                            final long timestamp,
+                            final long eventVersionNumber) throws Exception {
+        addToBuffer(acknowledgementSet, data, data, timestamp, eventVersionNumber, null);
     }
 
     private String mapStreamEventNameToBulkAction(final String streamEventName) {

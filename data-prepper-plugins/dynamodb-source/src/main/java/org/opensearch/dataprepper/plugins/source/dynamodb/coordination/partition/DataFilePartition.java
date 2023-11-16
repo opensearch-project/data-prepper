@@ -22,10 +22,9 @@ public class DataFilePartition extends EnhancedSourcePartition<DataFileProgressS
     private final String exportArn;
     private final String bucket;
     private final String key;
+    private final DataFileProgressState state;
 
-    private DataFileProgressState state;
-
-    public DataFilePartition(SourcePartitionStoreItem sourcePartitionStoreItem) {
+    public DataFilePartition(final SourcePartitionStoreItem sourcePartitionStoreItem) {
 
         setSourcePartitionStoreItem(sourcePartitionStoreItem);
         String[] keySplits = sourcePartitionStoreItem.getSourcePartitionKey().split("\\|");
@@ -36,7 +35,10 @@ public class DataFilePartition extends EnhancedSourcePartition<DataFileProgressS
 
     }
 
-    public DataFilePartition(String exportArn, String bucket, String key, Optional<DataFileProgressState> state) {
+    public DataFilePartition(final String exportArn,
+                             final String bucket,
+                             final String key,
+                             final Optional<DataFileProgressState> state) {
         this.exportArn = exportArn;
         this.bucket = bucket;
         this.key = key;

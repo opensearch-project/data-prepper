@@ -25,7 +25,7 @@ public class ExpressionEvaluatorTest {
         }
 
         @Override
-        public Boolean isValidFormatExpressions(String format) {
+        public Boolean isValidFormatExpression(String format) {
             return true;
         }
     }

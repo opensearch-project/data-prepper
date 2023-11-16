@@ -142,7 +142,7 @@ public class OpenSearchSinkConfigurationTests {
         pluginSetting.setPipelineName(PIPELINE_NAME);
 
         expressionEvaluator = mock(ExpressionEvaluator.class);
-        when(expressionEvaluator.isValidFormatExpressions(actionFormatExpression)).thenReturn(true);
+        when(expressionEvaluator.isValidFormatExpression(actionFormatExpression)).thenReturn(true);
         final OpenSearchSinkConfiguration openSearchSinkConfiguration =
                 OpenSearchSinkConfiguration.readESConfig(pluginSetting, expressionEvaluator);
 

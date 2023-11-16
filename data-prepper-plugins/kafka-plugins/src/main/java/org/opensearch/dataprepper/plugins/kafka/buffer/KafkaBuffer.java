@@ -20,6 +20,9 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.kafka.admin.KafkaAdminAccessor;
+import org.opensearch.dataprepper.plugins.kafka.buffer.serialization.BufferSerializationFactory;
+import org.opensearch.dataprepper.plugins.kafka.common.serialization.CommonSerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
@@ -48,7 +51,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     static final String WRITE = "Write";
     static final String READ = "Read";
     private final KafkaCustomProducer producer;
-    private final List<KafkaCustomConsumer> emptyCheckingConsumers;
+    private final KafkaAdminAccessor kafkaAdminAccessor;
     private final AbstractBuffer<Record<Event>> innerBuffer;
     private final ExecutorService executorService;
     private final Duration drainTimeout;
@@ -57,11 +60,11 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
 
     @DataPrepperPluginConstructor
     public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig, final PluginFactory pluginFactory,
-                       final AcknowledgementSetManager acknowledgementSetManager, final PluginMetrics pluginMetrics,
+                       final AcknowledgementSetManager acknowledgementSetManager,
                        final ByteDecoder byteDecoder, final AwsCredentialsSupplier awsCredentialsSupplier,
                        final CircuitBreaker circuitBreaker) {
-        super(pluginSetting);
-        SerializationFactory serializationFactory = new SerializationFactory();
+        super(kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName()), pluginSetting.getPipelineName());
+        final SerializationFactory serializationFactory = new BufferSerializationFactory(new CommonSerializationFactory());
         final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier);
         this.byteDecoder = byteDecoder;
         final String metricPrefixName = kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName());
@@ -73,8 +76,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         final PluginMetrics consumerMetrics = PluginMetrics.fromNames(metricPrefixName + READ, pluginSetting.getPipelineName());
         final List<KafkaCustomConsumer> consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
             innerBuffer, consumerMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false, circuitBreaker);
-        emptyCheckingConsumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
-                innerBuffer, pluginMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false, null);
+        this.kafkaAdminAccessor = new KafkaAdminAccessor(kafkaBufferConfig, List.of(kafkaBufferConfig.getTopic().getGroupId()));
         this.executorService = Executors.newFixedThreadPool(consumers.size());
         consumers.forEach(this.executorService::submit);
 
@@ -130,15 +132,17 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
 
     @Override
     public boolean isEmpty() {
-        final boolean areTopicsEmpty = emptyCheckingConsumers.stream()
-                .allMatch(KafkaCustomConsumer::isTopicEmpty);
-
-        return areTopicsEmpty && innerBuffer.isEmpty();
+        return kafkaAdminAccessor.areTopicsEmpty() && innerBuffer.isEmpty();
     }
 
     @Override
     public Duration getDrainTimeout() {
         return drainTimeout;
+    }
+
+    @Override
+    public boolean isWrittenOffHeapOnly() {
+        return true;
     }
 
     @Override

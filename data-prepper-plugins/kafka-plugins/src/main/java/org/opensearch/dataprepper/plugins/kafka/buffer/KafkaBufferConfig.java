@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.kafka.buffer;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -29,7 +30,7 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     private static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(30);
 
     @JsonProperty("bootstrap_servers")
-    private List<String> bootStrapServers;
+    private List<String> bootstrapServers;
 
     @JsonProperty("topics")
     @NotNull
@@ -58,8 +59,8 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
 
 
     public List<String> getBootstrapServers() {
-        if (Objects.nonNull(bootStrapServers)) {
-            return bootStrapServers;
+        if (Objects.nonNull(bootstrapServers)) {
+            return bootstrapServers;
         }
         return null;
     }
@@ -70,16 +71,19 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     }
 
     @Override
+    @JsonIgnore
     public SchemaConfig getSchemaConfig() {
         return null;
     }
 
     @Override
+    @JsonIgnore
     public String getSerdeFormat() {
         return getTopic().getSerdeFormat().toString();
     }
 
     @Override
+    @JsonIgnore
     public BufferTopicConfig getTopic() {
         return topics.get(0);
     }
@@ -95,16 +99,19 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     }
 
     @Override
+    @JsonIgnore
     public String getPartitionKey() {
         return "pipeline-buffer";
     }
 
     @Override
+    @JsonIgnore
     public Optional<PluginModel> getDlq() {
         // TODO: move DLQ logic to be sink specific (currently, write to DLQ is handled by KafkaCustomConsumer)
         return Optional.empty();
     }
     @Override
+    @JsonIgnore
     public void setDlqConfig(PluginSetting pluginSetting) {
 
     }
@@ -122,11 +129,13 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     }
 
     @Override
+    @JsonIgnore
     public String getClientDnsLookup() {
         return null;
     }
 
     @Override
+    @JsonIgnore
     public boolean getAcknowledgementsEnabled() {
         return true;
     }
@@ -135,6 +144,7 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
         return drainTimeout;
     }
 
+    @JsonIgnore
     public Optional<String> getCustomMetricPrefix() {
         return Optional.ofNullable(customMetricPrefix);
     }

@@ -92,7 +92,11 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
 
         final List<Record<Object>> records = logs.stream().map(log -> new Record<Object>(log)).collect(Collectors.toList());
         try {
-            buffer.writeAll(records, bufferWriteTimeoutInMillis);
+            if (buffer.isByteBuffer()) {
+                buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
+            } else {
+                buffer.writeAll(records, bufferWriteTimeoutInMillis);
+            }
         } catch (Exception e) {
             if (ServiceRequestContext.current().isTimedOut()) {
                 LOG.warn("Exception writing to buffer but request already timed out.", e);

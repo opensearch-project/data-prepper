@@ -5,6 +5,7 @@
 
 plugins {
     id 'java'
+    id 'com.google.protobuf' version '0.9.4'
 }
 
 dependencies {
@@ -32,6 +33,13 @@ dependencies {
     implementation 'software.amazon.glue:schema-registry-serde:1.1.15'
     implementation 'com.amazonaws:aws-java-sdk-glue:1.12.506'
     implementation 'io.confluent:kafka-json-schema-serializer:7.4.0'
+    implementation project(':data-prepper-plugins:failures-common')
+    implementation 'org.apache.kafka:connect-json:3.4.0'
+    implementation 'com.github.fge:json-schema-validator:2.2.14'
+    implementation 'commons-collections:commons-collections:3.2.2'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:apache-client'
+
     testImplementation 'org.mockito:mockito-inline:4.1.0'
     testImplementation 'org.yaml:snakeyaml:2.0'
     testImplementation testLibs.spring.test
@@ -48,15 +56,20 @@ dependencies {
     testImplementation 'org.apache.kafka:kafka-clients:3.4.0:test'
     testImplementation 'org.apache.kafka:connect-json:3.4.0'
     testImplementation('com.kjetland:mbknor-jackson-jsonschema_2.13:1.0.39')
-    implementation project(':data-prepper-plugins:failures-common')
     testImplementation group: 'org.powermock', name: 'powermock-api-mockito2', version: '2.0.9'
-    implementation 'org.apache.kafka:connect-json:3.4.0'
-    implementation 'com.github.fge:json-schema-validator:2.2.14'
-    implementation 'commons-collections:commons-collections:3.2.2'
-    implementation 'software.amazon.awssdk:s3'
-    implementation 'software.amazon.awssdk:apache-client'
+    testImplementation project(':data-prepper-plugins:otel-metrics-source')
+    testImplementation project(':data-prepper-plugins:otel-proto-common')
+    testImplementation libs.opentelemetry.proto
+    testImplementation libs.protobuf.util
+    testImplementation libs.commons.io
+    testImplementation libs.armeria.grpc
+}
 
 
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.25.0'
+    }
 }
 
 test {

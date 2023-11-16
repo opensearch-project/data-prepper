@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -32,6 +33,7 @@ public class OpenSearchService {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchService.class);
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     static final Duration EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT = Duration.ofSeconds(30);
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(30);
 
@@ -83,13 +85,13 @@ public class OpenSearchService {
     public void start() {
         switch(searchAccessor.getSearchContextType()) {
             case POINT_IN_TIME:
-                searchWorker = new PitWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
+                searchWorker = new PitWorker(OBJECT_MAPPER, searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
                 break;
             case SCROLL:
-                searchWorker = new ScrollWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
+                searchWorker = new ScrollWorker(OBJECT_MAPPER, searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
                 break;
             case NONE:
-                searchWorker = new NoSearchContextWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
+                searchWorker = new NoSearchContextWorker(OBJECT_MAPPER, searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
                 break;
             default:
                 throw new IllegalArgumentException(
@@ -120,6 +122,5 @@ public class OpenSearchService {
             LOG.error("Interrupted while waiting for the search worker to terminate", e);
             scheduledExecutorService.shutdownNow();
         }
-
     }
 }

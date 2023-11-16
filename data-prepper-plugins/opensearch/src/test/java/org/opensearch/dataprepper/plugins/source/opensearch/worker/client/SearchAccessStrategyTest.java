@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DistributionVersion;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 
 import java.io.IOException;
@@ -254,5 +255,41 @@ public class SearchAccessStrategyTest {
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.valueOf(searchContextType)));
         verifyNoInteractions(pluginConfigObservable);
+    }
+
+    @Test
+    void force_OpenSearch_client_and_defaults_to_scroll_search_context_type_when_distribution_version_is_opensearch() throws IOException {
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getSearchContextType()).thenReturn(null);
+
+        when(openSearchSourceConfiguration.getDistributionVersion()).thenReturn(DistributionVersion.OPENSEARCH);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        final OpenSearchClient openSearchClient = mock(OpenSearchClient.class);
+        when(openSearchClient.info()).thenThrow(MissingRequiredPropertyException.class);
+        when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(openSearchClient);
+
+        final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
+
+        assertThat(searchAccessor, notNullValue());
+        assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.SCROLL));
+    }
+
+    @Test
+    void force_OpenSearch_client_and_uses_search_context_type_override_when_distribution_version_is_opensearch() throws IOException {
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getSearchContextType()).thenReturn(SearchContextType.POINT_IN_TIME);
+
+        when(openSearchSourceConfiguration.getDistributionVersion()).thenReturn(DistributionVersion.OPENSEARCH);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        final OpenSearchClient openSearchClient = mock(OpenSearchClient.class);
+        when(openSearchClient.info()).thenThrow(MissingRequiredPropertyException.class);
+        when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(openSearchClient);
+
+        final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
+
+        assertThat(searchAccessor, notNullValue());
+        assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
     }
 }

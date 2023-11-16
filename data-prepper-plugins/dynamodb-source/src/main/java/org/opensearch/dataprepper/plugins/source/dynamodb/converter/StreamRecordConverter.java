@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
@@ -31,6 +32,8 @@ public class StreamRecordConverter extends RecordConverter {
 
     static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
     static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
+    static final String BYTES_RECEIVED = "bytesReceived";
+    static final String BYTES_PROCESSED = "bytesProcessed";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -41,6 +44,8 @@ public class StreamRecordConverter extends RecordConverter {
 
     private final Counter changeEventSuccessCounter;
     private final Counter changeEventErrorCounter;
+    private final DistributionSummary bytesReceivedSummary;
+    private final DistributionSummary bytesProcessedSummary;
 
     private Instant currentSecond;
     private int recordsSeenThisSecond = 0;
@@ -50,6 +55,8 @@ public class StreamRecordConverter extends RecordConverter {
         this.pluginMetrics = pluginMetrics;
         this.changeEventSuccessCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSED_COUNT);
         this.changeEventErrorCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT);
+        this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
+        this.bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
     }
 
     @Override
@@ -62,14 +69,25 @@ public class StreamRecordConverter extends RecordConverter {
 
         int eventCount = 0;
         for (Record record : records) {
-            // NewImage may be empty
-            Map<String, Object> data = convertData(record.dynamodb().newImage());
-            // Always get keys from dynamodb().keys()
-            Map<String, Object> keys = convertKeys(record.dynamodb().keys());
+            final long bytes = record.dynamodb().sizeBytes();
+            Map<String, Object> data;
+            Map<String, Object> keys;
+            try {
+                // NewImage may be empty
+                data = convertData(record.dynamodb().newImage());
+                // Always get keys from dynamodb().keys()
+                keys = convertKeys(record.dynamodb().keys());
+            } catch (final Exception e) {
+                LOG.error("Failed to parse and convert data from stream due to {}", e.getMessage());
+                changeEventErrorCounter.increment();
+                continue;
+            }
 
             try {
+                bytesReceivedSummary.record(bytes);
                 final long eventCreationTimeMillis = calculateTieBreakingVersionFromTimestamp(record.dynamodb().approximateCreationDateTime());
                 addToBuffer(acknowledgementSet, data, keys, record.dynamodb().approximateCreationDateTime().toEpochMilli(), eventCreationTimeMillis, record.eventNameAsString());
+                bytesProcessedSummary.record(bytes);
                 eventCount++;
             } catch (Exception e) {
                 // will this cause too many logs?
@@ -91,13 +109,9 @@ public class StreamRecordConverter extends RecordConverter {
     /**
      * Convert the DynamoDB attribute map to a normal map for data
      */
-    private Map<String, Object> convertData(Map<String, AttributeValue> data) {
-        try {
-            String jsonData = EnhancedDocument.fromAttributeValueMap(data).toJson();
-            return MAPPER.readValue(jsonData, MAP_TYPE_REFERENCE);
-        } catch (JsonProcessingException e) {
-            return null;
-        }
+    private Map<String, Object> convertData(Map<String, AttributeValue> data) throws JsonProcessingException {
+        String jsonData = EnhancedDocument.fromAttributeValueMap(data).toJson();
+        return MAPPER.readValue(jsonData, MAP_TYPE_REFERENCE);
     }
 
     /**

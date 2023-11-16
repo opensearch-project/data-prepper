@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.LoadStatus;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.TableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +26,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
 
@@ -38,7 +38,7 @@ public class DataFileScheduler implements Runnable {
     /**
      * Maximum concurrent data loader per node
      */
-    private static final int MAX_JOB_COUNT = 3;
+    private static final int MAX_JOB_COUNT = 1;
 
     /**
      * Default interval to acquire a lease from coordination store
@@ -63,7 +63,7 @@ public class DataFileScheduler implements Runnable {
 
 
     private final Counter exportFileSuccessCounter;
-    private final AtomicLong activeExportS3ObjectConsumersGauge;
+    private final AtomicInteger activeExportS3ObjectConsumersGauge;
 
 
     public DataFileScheduler(final EnhancedSourceCoordinator coordinator,
@@ -80,12 +80,12 @@ public class DataFileScheduler implements Runnable {
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
 
         this.exportFileSuccessCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT);
-        this.activeExportS3ObjectConsumersGauge = pluginMetrics.gauge(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE, new AtomicLong());
+        this.activeExportS3ObjectConsumersGauge = pluginMetrics.gauge(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE, numOfWorkers);
     }
 
     private void processDataFilePartition(DataFilePartition dataFilePartition) {
         String exportArn = dataFilePartition.getExportArn();
-        String tableArn = getTableArn(exportArn);
+        String tableArn = TableUtil.getTableArnFromExportArn(exportArn);
 
         TableInfo tableInfo = getTableInfo(tableArn);
 
@@ -94,7 +94,7 @@ public class DataFileScheduler implements Runnable {
         AcknowledgementSet acknowledgementSet = null;
         if (acknowledgmentsEnabled) {
             acknowledgementSet = acknowledgementSetManager.create((result) -> {
-                if (result == true) {
+                if (result) {
                     completeDataLoader(dataFilePartition).accept(null, null);
                     LOG.info("Received acknowledgment of completion from sink for data file {}", dataFilePartition.getKey());
                 } else {
@@ -110,7 +110,9 @@ public class DataFileScheduler implements Runnable {
         if (!acknowledgmentsEnabled) {
             runLoader.whenComplete(completeDataLoader(dataFilePartition));
         } else {
-            runLoader.whenComplete((v, ex) -> numOfWorkers.decrementAndGet());
+            runLoader.whenComplete((v, ex) -> {
+                numOfWorkers.decrementAndGet();
+            });
         }
         numOfWorkers.incrementAndGet();
     }
@@ -125,10 +127,8 @@ public class DataFileScheduler implements Runnable {
                     final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
 
                     if (sourcePartition.isPresent()) {
-                        activeExportS3ObjectConsumersGauge.incrementAndGet();
                         DataFilePartition dataFilePartition = (DataFilePartition) sourcePartition.get();
                         processDataFilePartition(dataFilePartition);
-                        activeExportS3ObjectConsumersGauge.decrementAndGet();
                     }
                 }
                 try {
@@ -160,14 +160,9 @@ public class DataFileScheduler implements Runnable {
         return tableInfo;
     }
 
-    private String getTableArn(String exportArn) {
-        // e.g. given export arn:arn:aws:dynamodb:us-west-2:123456789012:table/Thread/export/01693291918297-bfeccbea
-        // returns: arn:aws:dynamodb:us-west-2:123456789012:table/Thread
-        return exportArn.substring(0, exportArn.lastIndexOf("/export/"));
-    }
 
     private String getStreamArn(String exportArn) {
-        String tableArn = getTableArn(exportArn);
+        String tableArn = TableUtil.getTableArnFromExportArn(exportArn);
         TableInfo tableInfo = getTableInfo(tableArn);
 
         if (tableInfo.getMetadata().isStreamRequired()) {
@@ -182,6 +177,9 @@ public class DataFileScheduler implements Runnable {
 
             if (!dynamoDBSourceConfig.isAcknowledgmentsEnabled()) {
                 numOfWorkers.decrementAndGet();
+                if (numOfWorkers.get() == 0) {
+                    activeExportS3ObjectConsumersGauge.decrementAndGet();
+                }
             }
             if (ex == null) {
                 exportFileSuccessCounter.increment();
@@ -201,10 +199,10 @@ public class DataFileScheduler implements Runnable {
     }
 
     /**
-     * There is a global state with sourcePartitionKey the export Arn,
-     * to track the number of files are processed. <br/>
-     * Each time, load of a data file is completed,
-     * The state must be updated.<br/>
+     * <p>There is a global state with sourcePartitionKey the export Arn,
+     * to track the number of files are processed. </p>
+     * <p>Each time, load of a data file is completed,
+     * The state must be updated.</p>
      * Note that the state may be updated since multiple threads are updating the same state.
      * Retry is required.
      *

@@ -40,6 +40,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessOptionsFactory;
+import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater;
+import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdaterFactory;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
@@ -60,9 +63,9 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPI
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapperFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ServerlessOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.opensearchserverless.OpenSearchServerlessClient;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -357,7 +360,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       String indexName = configuredIndexAlias;
       try {
           indexName = indexManager.getIndexName(event.formatString(indexName, expressionEvaluator));
-      } catch (IOException | EventKeyNotFoundException e) {
+      } catch (final Exception e) {
           LOG.error("There was an exception when constructing the index name. Check the dlq if configured to see details about the affected Event: {}", e.getMessage());
           dynamicIndexDroppedEvents.increment();
           logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
@@ -371,12 +374,17 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           versionExpressionEvaluationResult = event.formatString(versionExpression, expressionEvaluator);
           version = Long.valueOf(event.formatString(versionExpression, expressionEvaluator));
         } catch (final NumberFormatException e) {
-          LOG.warn("Unable to convert the result of evaluating document_version '{}' to Long for an Event. The evaluation result '{}' must be a valid Long type", versionExpression, versionExpressionEvaluationResult);
-          logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
+          final String errorMessage = String.format(
+                  "Unable to convert the result of evaluating document_version '%s' to Long for an Event. The evaluation result '%s' must be a valid Long type", versionExpression, versionExpressionEvaluationResult
+          );
+          LOG.error(errorMessage);
+          logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, errorMessage)), e);
           dynamicDocumentVersionDroppedEvents.increment();
         } catch (final RuntimeException e) {
-          LOG.error("There was an exception when evaluating the document_version '{}'. Check the dlq if configured to see details about the affected Event: {}", versionExpression, e.getMessage());
-          logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
+          final String errorMessage = String.format(
+                  "There was an exception when evaluating the document_version '%s': %s", versionExpression, e.getMessage());
+          LOG.error(errorMessage + " Check the dlq if configured to see more details about the affected Event");
+          logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, errorMessage)), e);
           dynamicDocumentVersionDroppedEvents.increment();
         }
       }
@@ -544,18 +552,18 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   }
 
   private void maybeUpdateServerlessNetworkPolicy() {
-    final ConnectionConfiguration connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
-    if (connectionConfiguration.isServerless() &&
-        !StringUtils.isBlank(connectionConfiguration.getServerlessNetworkPolicyName()) &&
-        !StringUtils.isBlank(connectionConfiguration.getServerlessCollectionName()) &&
-        !StringUtils.isBlank(connectionConfiguration.getServerlessVpceId())
-    ) {
-      final OpenSearchServerlessClient openSearchServerlessClient = connectionConfiguration.createOpenSearchServerlessClient(awsCredentialsSupplier);
-      final ServerlessNetworkPolicyUpdater networkPolicyUpdater = new ServerlessNetworkPolicyUpdater(openSearchServerlessClient);
+    final Optional<ServerlessOptions> maybeServerlessOptions = ServerlessOptionsFactory.create(
+        openSearchSinkConfig.getConnectionConfiguration());
+
+    if (maybeServerlessOptions.isPresent()) {
+      final ServerlessNetworkPolicyUpdater networkPolicyUpdater = ServerlessNetworkPolicyUpdaterFactory.create(
+          awsCredentialsSupplier, openSearchSinkConfig.getConnectionConfiguration()
+      );
       networkPolicyUpdater.updateNetworkPolicy(
-          connectionConfiguration.getServerlessNetworkPolicyName(),
-          connectionConfiguration.getServerlessCollectionName(),
-          connectionConfiguration.getServerlessVpceId());
+          maybeServerlessOptions.get().getNetworkPolicyName(),
+          maybeServerlessOptions.get().getCollectionName(),
+          maybeServerlessOptions.get().getVpceId()
+      );
     }
   }
 

@@ -20,7 +20,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.PartitionFactory;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.InitPartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.LeaderPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,11 +66,10 @@ public class DynamoDBSource implements Source<Record<Event>>, UsesEnhancedSource
     public void start(Buffer<Record<Event>> buffer) {
         Objects.requireNonNull(coordinator);
 
-        coordinator.createPartition(new InitPartition());
+        coordinator.createPartition(new LeaderPartition());
 
         // Create DynamoDB Service
         dynamoDBService = new DynamoDBService(coordinator, clientFactory, sourceConfig, pluginMetrics, acknowledgementSetManager);
-        dynamoDBService.init();
 
         LOG.info("Start DynamoDB service");
         dynamoDBService.start(buffer);

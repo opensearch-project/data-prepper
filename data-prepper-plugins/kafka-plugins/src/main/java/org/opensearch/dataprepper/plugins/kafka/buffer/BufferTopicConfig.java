@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.kafka.buffer;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
@@ -109,6 +110,7 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     private ByteCount fetchMinBytes = DEFAULT_FETCH_MIN_BYTES;
 
     @Override
+    @JsonIgnore
     public MessageFormat getSerdeFormat() {
         return MessageFormat.BYTES;
     }
@@ -124,6 +126,7 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     }
 
     @Override
+    @JsonIgnore
     public KafkaKeyMode getKafkaKeyMode() {
         return KafkaKeyMode.DISCARD;
     }
@@ -155,6 +158,7 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     }
 
     @Override
+    @JsonIgnore
     public boolean isCreateTopic() {
         return isCreateTopic;
     }

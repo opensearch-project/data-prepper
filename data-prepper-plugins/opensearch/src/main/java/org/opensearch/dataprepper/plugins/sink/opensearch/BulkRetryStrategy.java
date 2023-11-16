@@ -228,10 +228,10 @@ public final class BulkRetryStrategy {
     }
 
     private BulkOperationRequestResponse handleRetriesAndFailures(final AccumulatingBulkRequest bulkRequestForRetry,
-                                          final int retryCount,
-                                          final BulkResponse bulkResponse,
-                                          Exception e) throws InterruptedException {
-        final boolean doRetry = (Objects.isNull(e)) ? canRetry(bulkResponse) : canRetry(e);
+                                                                  final int retryCount,
+                                                                  final BulkResponse bulkResponse,
+                                                                  final Exception exceptionFromRequest) {
+        final boolean doRetry = (Objects.isNull(exceptionFromRequest)) ? canRetry(bulkResponse) : canRetry(exceptionFromRequest);
         if (!Objects.isNull(bulkResponse) && retryCount == 1) { // first attempt
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if (bulkItemResponse.error() == null) {
@@ -241,8 +241,8 @@ public final class BulkRetryStrategy {
         }
         if (doRetry) {
             if (retryCount % 5 == 0) {
-                LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", retryCount, e);
-                if (e == null) {
+                LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", retryCount, exceptionFromRequest);
+                if (exceptionFromRequest == null) {
                     for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                         if (bulkItemResponse.error() != null) {
                             LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.error().reason());
@@ -253,7 +253,7 @@ public final class BulkRetryStrategy {
             bulkRequestNumberOfRetries.increment();
             return new BulkOperationRequestResponse(bulkRequestForRetry, bulkResponse);
         } else {
-            handleFailures(bulkRequestForRetry, bulkResponse, e);
+            handleFailures(bulkRequestForRetry, bulkResponse, exceptionFromRequest);
         }
         return null;
     }
@@ -335,7 +335,10 @@ public final class BulkRetryStrategy {
                 }
                 index++;
             }
-            logFailure.accept(nonRetryableFailures.build(), null);
+            final ImmutableList<FailedBulkOperation> failedBulkOperations = nonRetryableFailures.build();
+            if(!failedBulkOperations.isEmpty()) {
+                logFailure.accept(failedBulkOperations, null);
+            }
             return requestToReissue;
         }
     }

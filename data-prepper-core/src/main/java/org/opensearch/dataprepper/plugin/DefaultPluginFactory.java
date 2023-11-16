@@ -5,18 +5,14 @@
 
 package org.opensearch.dataprepper.plugin;
 
-import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
-import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
-import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.event.DefaultEventFactory;
-import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Inject;
@@ -42,10 +38,8 @@ public class DefaultPluginFactory implements PluginFactory {
     private final PluginCreator pluginCreator;
     private final PluginConfigurationConverter pluginConfigurationConverter;
     private final PluginBeanFactoryProvider pluginBeanFactoryProvider;
-    private final DefaultEventFactory eventFactory;
-    private final DefaultAcknowledgementSetManager acknowledgementSetManager;
     private final PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
-    private final CircuitBreaker circuitBreaker;
+    private final ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers;
 
     @Inject
     DefaultPluginFactory(
@@ -53,12 +47,9 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginCreator pluginCreator,
             final PluginConfigurationConverter pluginConfigurationConverter,
             final PluginBeanFactoryProvider pluginBeanFactoryProvider,
-            final DefaultEventFactory eventFactory,
-            final DefaultAcknowledgementSetManager acknowledgementSetManager,
             final PluginConfigurationObservableFactory pluginConfigurationObservableFactory,
-            @Autowired(required = false) final CircuitBreaker circuitBreaker
-            ) {
-        this.circuitBreaker = circuitBreaker;
+            final ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers) {
+        this.applicationContextToTypedSuppliers = applicationContextToTypedSuppliers;
         Objects.requireNonNull(pluginProviderLoader);
         Objects.requireNonNull(pluginConfigurationObservableFactory);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
@@ -66,8 +57,6 @@ public class DefaultPluginFactory implements PluginFactory {
 
         this.pluginProviders = Objects.requireNonNull(pluginProviderLoader.getPluginProviders());
         this.pluginBeanFactoryProvider = Objects.requireNonNull(pluginBeanFactoryProvider);
-        this.eventFactory = Objects.requireNonNull(eventFactory);
-        this.acknowledgementSetManager = Objects.requireNonNull(acknowledgementSetManager);
         this.pluginConfigurationObservableFactory = pluginConfigurationObservableFactory;
 
         if(pluginProviders.isEmpty()) {
@@ -131,12 +120,10 @@ public class DefaultPluginFactory implements PluginFactory {
                 .withPipelineDescription(pluginSetting)
                 .withPluginConfiguration(configuration)
                 .withPluginFactory(this)
-                .withBeanFactory(pluginBeanFactoryProvider.get())
-                .withEventFactory(eventFactory)
-                .withAcknowledgementSetManager(acknowledgementSetManager)
-                .withPluginConfigurationObservable(pluginConfigObservable)
                 .withSinkContext(sinkContext)
-                .withCircuitBreaker(circuitBreaker)
+                .withBeanFactory(pluginBeanFactoryProvider.get())
+                .withPluginConfigurationObservable(pluginConfigObservable)
+                .withTypeArgumentSuppliers(applicationContextToTypedSuppliers.getArgumentsSuppliers())
                 .build();
     }
 

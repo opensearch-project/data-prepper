@@ -72,6 +72,7 @@ public class IndexConfiguration {
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
     public static final String DOCUMENT_VERSION_EXPRESSION = "document_version";
     public static final String DOCUMENT_VERSION_TYPE = "document_version_type";
+    public static final String NORMALIZE_INDEX = "normalize_index";
 
     private IndexType indexType;
     private TemplateType templateType;
@@ -96,6 +97,7 @@ public class IndexConfiguration {
     private final String documentRootKey;
     private final String versionExpression;
     private final VersionType versionType;
+    private final boolean normalizeIndex;
 
     private static final String S3_PREFIX = "s3://";
     private static final String DEFAULT_AWS_REGION = "us-east-1";
@@ -112,6 +114,7 @@ public class IndexConfiguration {
         this.s3Client = builder.s3Client;
         this.versionExpression = builder.versionExpression;
         this.versionType = builder.versionType;
+        this.normalizeIndex = builder.normalizeIndex;
 
         determineTemplateType(builder);
 
@@ -230,9 +233,11 @@ public class IndexConfiguration {
 
         final String versionExpression = pluginSetting.getStringOrDefault(DOCUMENT_VERSION_EXPRESSION, null);
         final String versionType = pluginSetting.getStringOrDefault(DOCUMENT_VERSION_TYPE, null);
+        final boolean normalizeIndex = pluginSetting.getBooleanOrDefault(NORMALIZE_INDEX, false);
+        builder = builder.withNormalizeIndex(normalizeIndex);
 
         builder = builder.withVersionExpression(versionExpression);
-        if (versionExpression != null && (!expressionEvaluator.isValidFormatExpressions(versionExpression))) {
+        if (versionExpression != null && (!expressionEvaluator.isValidFormatExpression(versionExpression))) {
             throw new InvalidPluginConfigurationException("document_version {} is not a valid format expression.");
         }
 
@@ -376,6 +381,8 @@ public class IndexConfiguration {
 
     public String getVersionExpression() { return versionExpression; }
 
+    public boolean isNormalizeIndex() { return normalizeIndex; }
+
     /**
      * This method is used in the creation of IndexConfiguration object. It takes in the template file path
      * or index type and returns the index template read from the file or specific to index type or returns an
@@ -458,6 +465,7 @@ public class IndexConfiguration {
         private String documentRootKey;
         private VersionType versionType;
         private String versionExpression;
+        private boolean normalizeIndex;
 
         public Builder withIndexAlias(final String indexAlias) {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
@@ -546,7 +554,7 @@ public class IndexConfiguration {
 
         public Builder withAction(final String action, final ExpressionEvaluator expressionEvaluator) {
             checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) ||
-                    (action.contains("${") && expressionEvaluator.isValidFormatExpressions(action))), "action \"" + action + "\" is invalid. action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
+                    (action.contains("${") && expressionEvaluator.isValidFormatExpression(action))), "action \"" + action + "\" is invalid. action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
             this.action = action;
             return this;
         }
@@ -556,7 +564,7 @@ public class IndexConfiguration {
                 String action = (String)actionMap.get("type");
                 if (action != null) {
                     checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) ||
-                            (action.contains("${") && expressionEvaluator.isValidFormatExpressions(action))), "action \"" + action + "\". action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
+                            (action.contains("${") && expressionEvaluator.isValidFormatExpression(action))), "action \"" + action + "\". action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
                 }
             }
             this.actions = actions;
@@ -623,6 +631,11 @@ public class IndexConfiguration {
                 }
             }
 
+            return this;
+        }
+
+        public Builder withNormalizeIndex(final boolean normalizeIndex) {
+            this.normalizeIndex = normalizeIndex;
             return this;
         }
 

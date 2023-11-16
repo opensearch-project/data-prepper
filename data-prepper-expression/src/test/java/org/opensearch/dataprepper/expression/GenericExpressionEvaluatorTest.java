@@ -132,14 +132,14 @@ class GenericExpressionEvaluatorTest {
             "abc-${invalid, false"
     })
     void isValidFormatExpressionsReturnsCorrectResult(final String format, final Boolean expectedResult) {
-        assertThat(statementEvaluator.isValidFormatExpressions(format), equalTo(expectedResult));
+        assertThat(statementEvaluator.isValidFormatExpression(format), equalTo(expectedResult));
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"abc-${anyS(=tring}"})
     void isValidFormatExpressionsReturnsFalseWhenIsValidKeyAndValidExpressionIsFalse(final String format) {
         doThrow(RuntimeException.class).when(parser).parse(anyString());
-        assertThat(statementEvaluator.isValidFormatExpressions(format), equalTo(false));
+        assertThat(statementEvaluator.isValidFormatExpression(format), equalTo(false));
     }
 
 }

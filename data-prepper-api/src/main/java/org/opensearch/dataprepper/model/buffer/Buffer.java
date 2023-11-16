@@ -93,6 +93,17 @@ public interface Buffer<T extends Record<?>> {
     }
 
     /**
+     * Indicates if writes to this buffer are also in some way written
+     * onto the JVM heap. If writes do go on heap, this should <b>false</b>
+     * which is the default.
+     *
+     * @return True if this buffer does not write to the JVM heap.
+     */
+    default boolean isWrittenOffHeapOnly() {
+        return false;
+    }
+
+    /**
      * shuts down the buffer
      */
     default void shutdown() {

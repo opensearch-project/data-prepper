@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.sink.opensearch;
+package org.opensearch.dataprepper.plugins.common.opensearch;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,13 +25,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.ServerlessNetworkPolicyUpdater.COLLECTION;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.ServerlessNetworkPolicyUpdater.CREATED_BY_DATA_PREPPER;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.ServerlessNetworkPolicyUpdater.DESCRIPTION;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.ServerlessNetworkPolicyUpdater.RESOURCE;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.ServerlessNetworkPolicyUpdater.RESOURCE_TYPE;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.ServerlessNetworkPolicyUpdater.RULES;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.ServerlessNetworkPolicyUpdater.SOURCE_VPCES;
+import static org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater.COLLECTION;
+import static org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater.CREATED_BY_DATA_PREPPER;
+import static org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater.DESCRIPTION;
+import static org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater.RESOURCE;
+import static org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater.RESOURCE_TYPE;
+import static org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater.RULES;
+import static org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater.SOURCE_VPCES;
 
 public class ServerlessNetworkPolicyUpdaterTest {
 

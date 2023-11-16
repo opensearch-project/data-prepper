@@ -6,9 +6,12 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,6 +29,8 @@ import software.amazon.awssdk.services.dynamodb.model.StreamRecord;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -38,21 +43,26 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_DYNAMODB_ITEM_VERSION;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.SORT_KEY_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.BYTES_PROCESSED;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.BYTES_RECEIVED;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.CHANGE_EVENTS_PROCESSED_COUNT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.CHANGE_EVENTS_PROCESSING_ERROR_COUNT;
 
 @ExtendWith(MockitoExtension.class)
 class StreamRecordConverterTest {
+    private static final Random RANDOM = new Random();
+
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -66,6 +76,12 @@ class StreamRecordConverterTest {
 
     @Mock
     private Counter changeEventErrorCounter;
+
+    @Mock
+    private DistributionSummary bytesReceivedSummary;
+
+    @Mock
+    private DistributionSummary bytesProcessedSummary;
 
 
     private final String tableName = UUID.randomUUID().toString();
@@ -89,6 +105,8 @@ class StreamRecordConverterTest {
 
         given(pluginMetrics.counter(CHANGE_EVENTS_PROCESSED_COUNT)).willReturn(changeEventSuccessCounter);
         given(pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT)).willReturn(changeEventErrorCounter);
+        given(pluginMetrics.summary(BYTES_RECEIVED)).willReturn(bytesReceivedSummary);
+        given(pluginMetrics.summary(BYTES_PROCESSED)).willReturn(bytesProcessedSummary);
 
     }
 
@@ -110,6 +128,8 @@ class StreamRecordConverterTest {
         verify(changeEventSuccessCounter).increment(anyDouble());
 
         verifyNoInteractions(changeEventErrorCounter);
+        verify(bytesReceivedSummary, times(numberOfRecords)).record(anyDouble());
+        verify(bytesProcessedSummary, times(numberOfRecords)).record(anyDouble());
 
     }
 
@@ -140,7 +160,90 @@ class StreamRecordConverterTest {
         assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), equalTo("INSERT"));
         assertThat(event.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(record.dynamodb().approximateCreationDateTime().toEpochMilli()));
 
+        assertThat(event.get(partitionKeyAttrName, String.class), notNullValue());
+        assertThat(event.get(sortKeyAttrName, String.class), notNullValue());
+
         verifyNoInteractions(changeEventErrorCounter);
+        verify(bytesReceivedSummary).record(record.dynamodb().sizeBytes());
+        verify(bytesProcessedSummary).record(record.dynamodb().sizeBytes());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Hello world.",
+            "I'm sorry.",
+            "I'm sorry, but I don't have access to that.",
+            "Re: colons",
+            "and/or",
+            "c:\\Home",
+            "I take\nup multiple\nlines",
+            "String with some \"backquotes\"."
+    })
+    void test_writeSingleRecordToBuffer_with_other_data(final String additionalString) throws Exception {
+
+        final Map<String, AttributeValue> additionalData = Map.of("otherData", AttributeValue.builder().s(additionalString).build());
+        List<software.amazon.awssdk.services.dynamodb.model.Record> records = buildRecords(1, Instant.now(), additionalData);
+        final ArgumentCaptor<Record> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        software.amazon.awssdk.services.dynamodb.model.Record record = records.get(0);
+        final StreamRecordConverter objectUnderTest = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
+        doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
+
+        objectUnderTest.writeToBuffer(null, records);
+
+        verify(bufferAccumulator).add(any(Record.class));
+        verify(bufferAccumulator).flush();
+        verify(changeEventSuccessCounter).increment(anyDouble());
+        assertThat(recordArgumentCaptor.getValue().getData(), notNullValue());
+        JacksonEvent event = (JacksonEvent) recordArgumentCaptor.getValue().getData();
+
+        assertThat(event.getMetadata(), notNullValue());
+        String partitionKey = record.dynamodb().keys().get(partitionKeyAttrName).s();
+        String sortKey = record.dynamodb().keys().get(sortKeyAttrName).s();
+        assertThat(event.getMetadata().getAttribute(PARTITION_KEY_METADATA_ATTRIBUTE), equalTo(partitionKey));
+        assertThat(event.getMetadata().getAttribute(SORT_KEY_METADATA_ATTRIBUTE), equalTo(sortKey));
+        assertThat(event.getMetadata().getAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE), equalTo(partitionKey + "|" + sortKey));
+        assertThat(event.getMetadata().getAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE), equalTo(OpenSearchBulkActions.INDEX.toString()));
+        assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), equalTo("INSERT"));
+        assertThat(event.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(record.dynamodb().approximateCreationDateTime().toEpochMilli()));
+
+        assertThat(event.get(partitionKeyAttrName, String.class), notNullValue());
+        assertThat(event.get(sortKeyAttrName, String.class), notNullValue());
+        assertThat(event.get("otherData", String.class), equalTo(additionalString));
+
+        verifyNoInteractions(changeEventErrorCounter);
+        verify(bytesReceivedSummary).record(record.dynamodb().sizeBytes());
+        verify(bytesProcessedSummary).record(record.dynamodb().sizeBytes());
+    }
+
+    @Test
+    void test_writeSingleRecordToBuffer_with_bad_input_does_not_write() throws Exception {
+
+        final Map<String, AttributeValue> badData = Map.of("otherData", AttributeValue.builder().build());
+        List<software.amazon.awssdk.services.dynamodb.model.Record> badRecords = buildRecords(2, Instant.now(), badData);
+
+        final StreamRecordConverter objectUnderTest = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
+
+        objectUnderTest.writeToBuffer(null, badRecords);
+
+        verify(bufferAccumulator, never()).add(any(Record.class));
+    }
+
+    @Test
+    void test_writeSingleRecordToBuffer_with_mixed_input_writes_good_records() throws Exception {
+
+        final Map<String, AttributeValue> badData = Map.of("otherData", AttributeValue.builder().build());
+        List<software.amazon.awssdk.services.dynamodb.model.Record> badRecords = buildRecords(2, Instant.now(), badData);
+        List<software.amazon.awssdk.services.dynamodb.model.Record> goodRecords = buildRecords(5, Instant.now());
+
+        final StreamRecordConverter objectUnderTest = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics);
+
+        List<software.amazon.awssdk.services.dynamodb.model.Record> mixedRecords = new ArrayList<>();
+        mixedRecords.addAll(badRecords);
+        mixedRecords.addAll(goodRecords);
+
+        objectUnderTest.writeToBuffer(null, mixedRecords);
+
+        verify(bufferAccumulator, times(goodRecords.size())).add(any(Record.class));
     }
 
     @Test
@@ -180,7 +283,7 @@ class StreamRecordConverterTest {
         assertThat(firstEventForSecond.getMetadata().getAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE), equalTo(OpenSearchBulkActions.INDEX.toString()));
         assertThat(firstEventForSecond.getMetadata().getAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), equalTo("INSERT"));
         assertThat(firstEventForSecond.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(timestamp.toEpochMilli()));
-        assertThat(firstEventForSecond.getMetadata().getAttribute(EVENT_DYNAMODB_ITEM_VERSION), equalTo(timestamp.toEpochMilli() * 1000));
+        assertThat(firstEventForSecond.getMetadata().getAttribute(EVENT_VERSION_FROM_TIMESTAMP), equalTo(timestamp.toEpochMilli() * 1000));
         assertThat(firstEventForSecond.getEventHandle(), notNullValue());
         assertThat(firstEventForSecond.getEventHandle().getExternalOriginationTime(), equalTo(timestamp));
 
@@ -195,7 +298,7 @@ class StreamRecordConverterTest {
         assertThat(secondEventForSameSecond.getMetadata().getAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE), equalTo(OpenSearchBulkActions.INDEX.toString()));
         assertThat(secondEventForSameSecond.getMetadata().getAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), equalTo("INSERT"));
         assertThat(secondEventForSameSecond.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(timestamp.toEpochMilli()));
-        assertThat(secondEventForSameSecond.getMetadata().getAttribute(EVENT_DYNAMODB_ITEM_VERSION), equalTo(timestamp.toEpochMilli() * 1000 + 1));
+        assertThat(secondEventForSameSecond.getMetadata().getAttribute(EVENT_VERSION_FROM_TIMESTAMP), equalTo(timestamp.toEpochMilli() * 1000 + 1));
         assertThat(secondEventForSameSecond.getEventHandle(), notNullValue());
         assertThat(secondEventForSameSecond.getEventHandle().getExternalOriginationTime(), equalTo(timestamp));
 
@@ -210,7 +313,7 @@ class StreamRecordConverterTest {
         assertThat(thirdEventWithOlderSecond.getMetadata().getAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE), equalTo(OpenSearchBulkActions.INDEX.toString()));
         assertThat(thirdEventWithOlderSecond.getMetadata().getAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), equalTo("INSERT"));
         assertThat(thirdEventWithOlderSecond.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(olderSecond.toEpochMilli()));
-        assertThat(thirdEventWithOlderSecond.getMetadata().getAttribute(EVENT_DYNAMODB_ITEM_VERSION), equalTo(olderSecond.toEpochMilli() * 1000));
+        assertThat(thirdEventWithOlderSecond.getMetadata().getAttribute(EVENT_VERSION_FROM_TIMESTAMP), equalTo(olderSecond.toEpochMilli() * 1000));
         assertThat(thirdEventWithOlderSecond.getEventHandle(), notNullValue());
         assertThat(thirdEventWithOlderSecond.getEventHandle().getExternalOriginationTime(), equalTo(olderSecond));
 
@@ -225,29 +328,49 @@ class StreamRecordConverterTest {
         assertThat(fourthEventWithNewerSecond.getMetadata().getAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE), equalTo(OpenSearchBulkActions.INDEX.toString()));
         assertThat(fourthEventWithNewerSecond.getMetadata().getAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), equalTo("INSERT"));
         assertThat(fourthEventWithNewerSecond.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(newerSecond.toEpochMilli()));
-        assertThat(fourthEventWithNewerSecond.getMetadata().getAttribute(EVENT_DYNAMODB_ITEM_VERSION), equalTo(newerSecond.toEpochMilli() * 1000));
+        assertThat(fourthEventWithNewerSecond.getMetadata().getAttribute(EVENT_VERSION_FROM_TIMESTAMP), equalTo(newerSecond.toEpochMilli() * 1000));
         assertThat(fourthEventWithNewerSecond.getEventHandle(), notNullValue());
         assertThat(fourthEventWithNewerSecond.getEventHandle().getExternalOriginationTime(), equalTo(newerSecond));
 
         verifyNoInteractions(changeEventErrorCounter);
+        verify(bytesReceivedSummary, times(4)).record(anyDouble());
+        verify(bytesProcessedSummary, times(4)).record(anyDouble());
     }
 
     private List<software.amazon.awssdk.services.dynamodb.model.Record> buildRecords(int count, final Instant creationTime) {
+        return buildRecords(count, creationTime, Collections.emptyMap());
+    }
+
+    private List<software.amazon.awssdk.services.dynamodb.model.Record> buildRecords(
+            int count,
+            final Instant creationTime,
+            final Map<String, AttributeValue> additionalData) {
         List<software.amazon.awssdk.services.dynamodb.model.Record> records = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            records.add(buildRecord(creationTime));
+            records.add(buildRecord(creationTime, additionalData));
         }
 
         return records;
     }
 
     private software.amazon.awssdk.services.dynamodb.model.Record buildRecord(final Instant creationTime) {
-        Map<String, AttributeValue> data = Map.of(
+        return buildRecord(creationTime, Collections.emptyMap());
+    }
+
+    private software.amazon.awssdk.services.dynamodb.model.Record buildRecord(final Instant creationTime,
+                                                                              Map<String, AttributeValue> additionalData) {
+        Map<String, AttributeValue> keysData = Map.of(
                 partitionKeyAttrName, AttributeValue.builder().s(UUID.randomUUID().toString()).build(),
                 sortKeyAttrName, AttributeValue.builder().s(UUID.randomUUID().toString()).build());
+
+        final Map<String, AttributeValue> data = new HashMap<>();
+        data.putAll(keysData);
+        data.putAll(additionalData);
+
         StreamRecord streamRecord = StreamRecord.builder()
+                .sizeBytes(RANDOM.nextLong())
                 .newImage(data)
-                .keys(data)
+                .keys(keysData)
                 .sequenceNumber(UUID.randomUUID().toString())
                 .approximateCreationDateTime(creationTime)
                 .build();

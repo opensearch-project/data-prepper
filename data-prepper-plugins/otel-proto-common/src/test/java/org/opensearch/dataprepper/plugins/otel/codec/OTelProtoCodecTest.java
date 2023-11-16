@@ -80,6 +80,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -98,6 +99,7 @@ public class OTelProtoCodecTest {
     private static final String TEST_REQUEST_HISTOGRAM_METRICS_JSON_FILE = "test-histogram-metrics.json";
     private static final String TEST_REQUEST_LOGS_JSON_FILE = "test-request-log.json";
     private static final String TEST_REQUEST_LOGS_IS_JSON_FILE = "test-request-log-is.json";
+    private static final String TEST_REQUEST_MULTIPLE_TRACES_FILE = "test-request-multiple-traces.json";
 
 
     private static final Long TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
@@ -153,6 +155,58 @@ public class OTelProtoCodecTest {
 
     @Nested
     class OTelProtoDecoderTest {
+        @Test
+        public void testSplitExportTraceServiceRequestWithMultipleTraces() throws Exception {
+            final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_MULTIPLE_TRACES_FILE);
+            final Map<String, ExportTraceServiceRequest> map = decoderUnderTest.splitExportTraceServiceRequestByTraceId(exportTraceServiceRequest);
+            assertThat(map.size(), is(equalTo(3)));
+            for (Map.Entry<String, ExportTraceServiceRequest> entry: map.entrySet()) {
+                String expectedTraceId = new String(Hex.decodeHex(entry.getKey()), StandardCharsets.UTF_8);
+                ExportTraceServiceRequest request = entry.getValue();
+                if (expectedTraceId.equals("TRACEID1")) {
+                    assertThat(request.getResourceSpansList().size(), equalTo(1));
+                    ResourceSpans rs = request.getResourceSpansList().get(0);
+                    assertThat(rs.getScopeSpansList().size(), equalTo(1));
+                    assertThat(rs.getInstrumentationLibrarySpansList().size(), equalTo(0));
+                    ScopeSpans ss = rs.getScopeSpansList().get(0);
+                    assertThat(ss.getSpansList().size(), equalTo(1));
+                    io.opentelemetry.proto.trace.v1.Span span = ss.getSpansList().get(0);
+                    String spanId = span.getSpanId().toStringUtf8();
+                    assertTrue(spanId.equals("TRACEID1-SPAN1"));
+                } else if (expectedTraceId.equals("TRACEID2")) {
+                    assertThat(request.getResourceSpansList().size(), equalTo(1));
+                    ResourceSpans rs = request.getResourceSpansList().get(0);
+                    assertThat(rs.getScopeSpansList().size(), equalTo(2));
+                    assertThat(rs.getInstrumentationLibrarySpansList().size(), equalTo(2));
+
+                    ScopeSpans ss = rs.getScopeSpansList().get(0);
+                    assertThat(ss.getSpansList().size(), equalTo(1));
+                    io.opentelemetry.proto.trace.v1.Span span = ss.getSpansList().get(0);
+                    String spanId = span.getSpanId().toStringUtf8();
+                    assertTrue(spanId.equals("TRACEID2-SPAN1"));
+
+                    ss = rs.getScopeSpansList().get(1);
+                    assertThat(ss.getSpansList().size(), equalTo(1));
+                    span = ss.getSpansList().get(0);
+                    spanId = span.getSpanId().toStringUtf8();
+                    assertTrue(spanId.equals("TRACEID2-SPAN2"));
+
+                } else if (expectedTraceId.equals("TRACEID3")) {
+                    assertThat(request.getResourceSpansList().size(), equalTo(1));
+                    ResourceSpans rs = request.getResourceSpansList().get(0);
+                    assertThat(rs.getScopeSpansList().size(), equalTo(1));
+                    assertThat(rs.getInstrumentationLibrarySpansList().size(), equalTo(0));
+                    ScopeSpans ss = rs.getScopeSpansList().get(0);
+                    assertThat(ss.getSpansList().size(), equalTo(1));
+                    io.opentelemetry.proto.trace.v1.Span span = ss.getSpansList().get(0);
+                    String spanId = span.getSpanId().toStringUtf8();
+                    assertTrue(spanId.equals("TRACEID3-SPAN1"));
+                } else {
+                    assertTrue("Failed".equals("Unknown TraceId"));
+                }
+            }
+        }
+
         @Test
         public void testParseExportTraceServiceRequest() throws IOException {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_TRACE_JSON_FILE);

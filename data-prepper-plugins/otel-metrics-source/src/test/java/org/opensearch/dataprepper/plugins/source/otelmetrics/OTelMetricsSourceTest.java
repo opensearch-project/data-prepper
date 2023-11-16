@@ -116,6 +116,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.SSL;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelMetricDecoder;
 
 @ExtendWith(MockitoExtension.class)
 class OTelMetricsSourceTest {
@@ -200,6 +201,7 @@ class OTelMetricsSourceTest {
         pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        assertTrue(SOURCE.getDecoder() instanceof OTelMetricDecoder);
     }
 
     @AfterEach
@@ -209,6 +211,7 @@ class OTelMetricsSourceTest {
 
     private void configureObjectUnderTest() {
         SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        assertTrue(SOURCE.getDecoder() instanceof OTelMetricDecoder);
     }
 
     @Test
@@ -576,6 +579,7 @@ class OTelMetricsSourceTest {
 
             oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
             SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
+            assertTrue(SOURCE.getDecoder() instanceof OTelMetricDecoder);
         }
 
         @Test
