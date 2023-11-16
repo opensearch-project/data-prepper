@@ -68,7 +68,7 @@ public class MongoDBSourceTest {
 
     @Test
     void testConstructorValidations() {
-        when(mongoDBConfig.getIngestionMode()).thenReturn("export_stream");
+        when(mongoDBConfig.getIngestionMode()).thenReturn(MongoDBConfig.IngestionMode.EXPORT_STREAM);
         assertThrows(IllegalArgumentException.class, () -> new MongoDBSource(
                 mongoDBConfig,
                 pluginMetrics,
@@ -81,7 +81,7 @@ public class MongoDBSourceTest {
 
     @Test
     void testExportConstructor() {
-        when(mongoDBConfig.getIngestionMode()).thenReturn("export");
+        when(mongoDBConfig.getIngestionMode()).thenReturn(MongoDBConfig.IngestionMode.EXPORT);
         doNothing().when(sourceCoordinator).giveUpPartitions();
         MongoDBSource mongoDBSource = new MongoDBSource(
                 mongoDBConfig,

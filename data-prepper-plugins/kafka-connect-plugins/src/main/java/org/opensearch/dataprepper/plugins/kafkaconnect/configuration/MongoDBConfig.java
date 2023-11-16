@@ -5,11 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.kafkaconnect.configuration;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.kafkaconnect.util.Connector;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +22,6 @@ public class MongoDBConfig extends ConnectorConfig {
     private static final String MONGODB_CONNECTION_STRING_FORMAT = "mongodb://%s:%s/?replicaSet=rs0&directConnection=true";
     private static final String DEFAULT_PORT = "27017";
     private static final String DEFAULT_SNAPSHOT_MODE = "never";
-    private static final String DEFAULT_INGESTION_MODE = "export_stream";
     private static final Boolean SSL_ENABLED = false;
     private static final Boolean SSL_INVALID_HOST_ALLOWED = false;
     private static final String DEFAULT_SNAPSHOT_FETCH_SIZE = "1000";
@@ -32,7 +33,7 @@ public class MongoDBConfig extends ConnectorConfig {
     @JsonProperty("credentials")
     private CredentialsConfig credentialsConfig;
     @JsonProperty("ingestion_mode")
-    private String ingestionMode = DEFAULT_INGESTION_MODE;
+    private IngestionMode ingestionMode = IngestionMode.EXPORT_STREAM;
     @JsonProperty("export_config")
     private ExportConfig exportConfig = new ExportConfig();
     @JsonProperty("snapshot_fetch_size")
@@ -53,7 +54,7 @@ public class MongoDBConfig extends ConnectorConfig {
         }).collect(Collectors.toList());
     }
 
-    public String getIngestionMode() {
+    public IngestionMode getIngestionMode() {
         return this.ingestionMode;
     }
 
@@ -104,6 +105,29 @@ public class MongoDBConfig extends ConnectorConfig {
         config.put("transforms.unwrap.delete.handling.mode", "rewrite");
         config.put("transforms.unwrap.add.fields", "op,rs,collection,source.ts_ms,source.db,source.snapshot,ts_ms");
         return config;
+    }
+
+    public enum IngestionMode {
+        EXPORT_STREAM("export_stream"),
+        EXPORT("export"),
+        STREAM("stream");
+
+        private static final Map<String, IngestionMode> OPTIONS_MAP = Arrays.stream(IngestionMode.values())
+                .collect(Collectors.toMap(
+                        value -> value.type,
+                        value -> value
+                ));
+
+        private final String type;
+
+        IngestionMode(final String type) {
+            this.type = type;
+        }
+
+        @JsonCreator
+        public static IngestionMode fromTypeValue(final String type) {
+            return OPTIONS_MAP.get(type.toLowerCase());
+        }
     }
 
     public static class CollectionConfig {

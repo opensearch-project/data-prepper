@@ -101,11 +101,13 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
     @Override
     public boolean shouldStartKafkaConnect() {
         final MongoDBConfig mongoDBConfig = (MongoDBConfig) this.connectorConfig;
-        return mongoDBConfig.getIngestionMode().equals("export_stream") || mongoDBConfig.getIngestionMode().equals("stream");
+        return mongoDBConfig.getIngestionMode() == MongoDBConfig.IngestionMode.EXPORT_STREAM
+                || mongoDBConfig.getIngestionMode() == MongoDBConfig.IngestionMode.STREAM;
     }
 
     private boolean shouldStartInitialLoad() {
         final MongoDBConfig mongoDBConfig = (MongoDBConfig) this.connectorConfig;
-        return mongoDBConfig.getIngestionMode().equals("export_stream") || mongoDBConfig.getIngestionMode().equals("export");
+        return mongoDBConfig.getIngestionMode() == MongoDBConfig.IngestionMode.EXPORT_STREAM
+                || mongoDBConfig.getIngestionMode() == MongoDBConfig.IngestionMode.EXPORT;
     }
 }

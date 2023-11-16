@@ -48,7 +48,7 @@ public class MongoDBConfigTest {
     public void test_get_mongodb_config_props() throws IOException {
         MongoDBConfig testConfig = buildTestConfig("sample-mongodb-pipeline.yaml");
         assertThat(testConfig, notNullValue());
-        assertThat(testConfig.getIngestionMode(), is("export_stream"));
+        assertThat(testConfig.getIngestionMode(), is(MongoDBConfig.IngestionMode.EXPORT_STREAM));
         assertThat(testConfig.getCredentialsConfig().getUsername(), is("debezium"));
         assertThat(testConfig.getHostname(), is("localhost"));
         assertThat(testConfig.getPort(), is("27017"));
