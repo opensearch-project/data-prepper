@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.BackoffCalculator;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
 import java.time.Duration;
@@ -28,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -58,6 +60,9 @@ class StreamSchedulerTest {
 
     @Mock
     private DynamoDBSourceConfig dynamoDBSourceConfig;
+
+    @Mock
+    private BackoffCalculator backoffCalculator;
 
     private StreamScheduler scheduler;
 
@@ -112,10 +117,16 @@ class StreamSchedulerTest {
 
     @Test
     public void test_normal_run() throws InterruptedException {
+        when(backoffCalculator.calculateBackoffToAcquireNextShard(eq(0), eq(new AtomicInteger(1))))
+                .thenReturn(1L);
+
+        when(backoffCalculator.calculateBackoffToAcquireNextShard(eq(1), any(AtomicInteger.class)))
+                .thenReturn(10000L);
+
         when(consumerFactory.createConsumer(any(StreamPartition.class), eq(null), any(Duration.class))).thenReturn(() -> System.out.println("Hello"));
         when(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).thenReturn(Optional.of(streamPartition)).thenReturn(Optional.empty());
 
-        scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
+        scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, backoffCalculator);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -123,6 +134,11 @@ class StreamSchedulerTest {
         Thread.sleep(2000);
         executorService.shutdown();
         future.cancel(true);
+
+        // Should acquire the stream partition
+        verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
+        // Should start a new consumer
+        verify(consumerFactory).createConsumer(any(StreamPartition.class), eq(null), any(Duration.class));
 
         // Should mask the stream partition as completed.
         verify(coordinator).completePartition(any(StreamPartition.class));
@@ -135,6 +151,12 @@ class StreamSchedulerTest {
 
     @Test
     public void test_normal_run_with_acknowledgments() throws InterruptedException {
+        when(backoffCalculator.calculateBackoffToAcquireNextShard(eq(0), eq(new AtomicInteger(1))))
+                .thenReturn(1L);
+
+        when(backoffCalculator.calculateBackoffToAcquireNextShard(eq(1), any(AtomicInteger.class)))
+                .thenReturn(10000L);
+
         given(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willReturn(Optional.of(streamPartition)).willReturn(Optional.empty());
         given(dynamoDBSourceConfig.isAcknowledgmentsEnabled()).willReturn(true);
 
@@ -150,7 +172,7 @@ class StreamSchedulerTest {
 
         when(consumerFactory.createConsumer(any(StreamPartition.class), eq(acknowledgementSet), eq(shardAcknowledgmentTimeout))).thenReturn(() -> System.out.println("Hello"));
 
-        scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
+        scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, backoffCalculator);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -159,6 +181,11 @@ class StreamSchedulerTest {
         executorService.shutdown();
         future.cancel(true);
         assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
+
+        // Should acquire the stream partition
+        verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
+        // Should start a new consumer
+        verify(consumerFactory).createConsumer(any(StreamPartition.class), any(AcknowledgementSet.class), any(Duration.class));
 
         // Should mask the stream partition as completed.
         verify(coordinator).completePartition(any(StreamPartition.class));
@@ -172,7 +199,7 @@ class StreamSchedulerTest {
     @Test
     void run_catches_exception_and_retries_when_exception_is_thrown_during_processing() throws InterruptedException {
         given(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
-        scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
+        scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, backoffCalculator);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> scheduler.run());
