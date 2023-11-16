@@ -47,7 +47,8 @@ public class BackoffCalculatorTest {
                 Arguments.of(4, 2, 2_000, 6_000),
                 Arguments.of(5, 6, 6_000, 10_000),
                 Arguments.of(6, 6, 14_000, 15_000),
-                Arguments.of(8, 2, MAX_BACKOFF_NO_SHARDS_ACQUIRED.toMillis(), MAX_BACKOFF_NO_SHARDS_ACQUIRED.toMillis())
+                Arguments.of(8, 2, MAX_BACKOFF_NO_SHARDS_ACQUIRED.toMillis(), MAX_BACKOFF_NO_SHARDS_ACQUIRED.toMillis()),
+                Arguments.of(70, 2, MAX_BACKOFF_NO_SHARDS_ACQUIRED.toMillis(), MAX_BACKOFF_NO_SHARDS_ACQUIRED.toMillis())
         );
     }
 }

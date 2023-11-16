@@ -44,16 +44,16 @@ public class BackoffCalculator {
         // This limits calls to the coordination store
         if (noAvailableShardCount > 0) {
             if (noAvailableShardCount % 50 == 0 && shardsAcquired.get() == 0) {
-                String errorMessage = String.format("No new shards acquired after %s attempts.", noAvailableShardCount);
+                String errorMessage = String.format("No new shards acquired after %s attempts. This means that all shards are currently being consumed", noAvailableShardCount);
 
                 if (isExportConfigured) {
-                    errorMessage += " It is possible that the export is still in progress. New shards will not be consumed until the export is fully processed.";
+                    errorMessage += ", or that the export is still in progress. New shards will not be consumed until the export is fully processed.";
                 }
                 LOG.info(errorMessage);
             }
 
             final long jitterMillis = MIN_JITTER.toMillis() + RANDOM.nextInt((int) (MAX_JITTER.toMillis() - MIN_JITTER.toMillis() + 1));
-            return max(1, min(STARTING_BACKOFF.toMillis() * pow(BACKOFF_RATE, noAvailableShardCount - 1) + jitterMillis, MAX_BACKOFF_NO_SHARDS_ACQUIRED.toMillis()));
+            return max(1, min(STARTING_BACKOFF.toMillis() * pow(BACKOFF_RATE, (int) min(noAvailableShardCount - 1, 8)) + jitterMillis, MAX_BACKOFF_NO_SHARDS_ACQUIRED.toMillis()));
         }
 
         // When shards are being acquired we backoff linearly based on how many shards this node is actively processing, to encourage a fast start but still a balance of shards between nodes
