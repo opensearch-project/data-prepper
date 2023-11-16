@@ -231,13 +231,15 @@ public class DynamoDbClientWrapper {
 
                     // For ASSIGNED partitions we are sorting based on partitionOwnershipTimeout, so if any item has partitionOwnershipTimeout
                     // in the future, we can know that the remaining items will not be available.
-                    if (SourcePartitionStatus.ASSIGNED.equals(sourcePartitionStatus) && Instant.now().isBefore(item.getPartitionOwnershipTimeout())) {
+                    if (SourcePartitionStatus.ASSIGNED.equals(sourcePartitionStatus) && item.getPartitionOwnershipTimeout() != null &&
+                            Instant.now().isBefore(item.getPartitionOwnershipTimeout())) {
                         return Optional.empty();
                     }
 
                     // For CLOSED partitions we are sorting based on reOpenAt time, so if any item has reOpenAt in the future,
                     // we can know that the remaining items will not be ready to be acquired again.
-                    if (SourcePartitionStatus.CLOSED.equals(sourcePartitionStatus) && Instant.now().isBefore(item.getReOpenAt())) {
+                    if (SourcePartitionStatus.CLOSED.equals(sourcePartitionStatus) && item.getReOpenAt() != null &&
+                            Instant.now().isBefore(item.getReOpenAt())) {
                         return Optional.empty();
                     }
 

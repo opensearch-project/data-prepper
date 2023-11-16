@@ -58,7 +58,7 @@ public class ShardConsumerFactory {
                                    final AcknowledgementSet acknowledgementSet,
                                    final Duration shardAcknowledgmentTimeout) {
 
-        LOG.info("Try to start a Shard Consumer for " + streamPartition.getShardId());
+        LOG.info("Starting to consume shard " + streamPartition.getShardId());
 
         // Check and get the current state.
         Optional<StreamProgressState> progressState = streamPartition.getProgressState();
@@ -82,8 +82,7 @@ public class ShardConsumerFactory {
 
         String shardIterator = getShardIterator(streamPartition.getStreamArn(), streamPartition.getShardId(), sequenceNumber);
         if (shardIterator == null) {
-            LOG.info("Unable to get a shard iterator, looks like the shard has expired");
-            LOG.error("Failed to start a Shard Consumer for " + streamPartition.getShardId());
+            LOG.error("Failed to start consuming shard '{}'. Unable to get a shard iterator for this shard, this shard may have expired", streamPartition.getShardId());
             return null;
         }
 

@@ -99,6 +99,8 @@ public class ShardConsumer implements Runnable {
 
     private final Duration shardAcknowledgmentTimeout;
 
+    private final String shardId;
+
     private ShardConsumer(Builder builder) {
         this.dynamoDbStreamsClient = builder.dynamoDbStreamsClient;
         this.checkpointer = builder.checkpointer;
@@ -111,6 +113,7 @@ public class ShardConsumer implements Runnable {
         recordConverter = new StreamRecordConverter(bufferAccumulator, builder.tableInfo, builder.pluginMetrics);
         this.acknowledgementSet = builder.acknowledgementSet;
         this.shardAcknowledgmentTimeout = builder.dataFileAcknowledgmentTimeout;
+        this.shardId = builder.shardId;
     }
 
     public static Builder builder(final DynamoDbStreamsClient dynamoDbStreamsClient, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
@@ -138,6 +141,8 @@ public class ShardConsumer implements Runnable {
 
         private boolean waitForExport;
 
+        private String shardId;
+
         private AcknowledgementSet acknowledgementSet;
         private Duration dataFileAcknowledgmentTimeout;
 
@@ -149,6 +154,11 @@ public class ShardConsumer implements Runnable {
 
         public Builder tableInfo(TableInfo tableInfo) {
             this.tableInfo = tableInfo;
+            return this;
+        }
+
+        public Builder shardId(final String shardId) {
+            this.shardId = shardId;
             return this;
         }
 
@@ -260,18 +270,20 @@ public class ShardConsumer implements Runnable {
             }
         }
 
+        // interrupted
+        if (shouldStop) {
+            // Do last checkpoint and then quit
+            LOG.warn("Processing for shard {} was interrupted by a shutdown signal, giving up shard", shardId);
+            checkpointer.checkpoint(sequenceNumber);
+            throw new RuntimeException("Consuming shard was interrupted from shutdown");
+        }
+
         if (acknowledgementSet != null) {
             checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
             acknowledgementSet.complete();
         }
 
-        // interrupted
-        if (shouldStop) {
-            // Do last checkpoint and then quit
-            LOG.error("Should Stop flag is set to True, looks like shutdown has triggered");
-            checkpointer.checkpoint(sequenceNumber);
-            throw new RuntimeException("Shard Consumer is interrupted");
-        }
+        LOG.info("Completed writing shard {} to buffer after reaching the end of the shard", shardId);
 
         if (waitForExport) {
             waitForExport();

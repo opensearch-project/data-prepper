@@ -15,7 +15,9 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Optional;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,16 +25,30 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
+import static com.google.common.math.LongMath.pow;
+import static com.google.common.primitives.Longs.min;
+import static java.lang.Math.max;
+
 /**
  * A scheduler to manage all the stream related work in one place
  */
 public class StreamScheduler implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(StreamScheduler.class);
+    private static final Logger SHARD_COUNT_LOGGER = LoggerFactory.getLogger("ShardCountLogger");
+
+    private static final Random RANDOM = new Random();
 
     /**
      * Max number of shards each node can handle in parallel
      */
     private static final int MAX_JOB_COUNT = 150;
+
+    static final Duration STARTING_BACKOFF = Duration.ofMillis(500);
+    static final Duration MAX_BACKOFF_WITH_SHARDS = Duration.ofSeconds(15);
+    static final Duration MAX_BACKOFF_NO_SHARDS_ACQUIRED = Duration.ofSeconds(30);
+    static final int BACKOFF_RATE = 2;
+    static final Duration MAX_JITTER = Duration.ofSeconds(2);
+    static final Duration MIN_JITTER = Duration.ofSeconds(-2);
 
     /**
      * Default interval to acquire a lease from coordination store
@@ -51,6 +67,7 @@ public class StreamScheduler implements Runnable {
     private final AtomicLong shardsInProcessing;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final DynamoDBSourceConfig dynamoDBSourceConfig;
+    private int noAvailableShardsCount = 0;
 
 
     public StreamScheduler(final EnhancedSourceCoordinator coordinator,
@@ -93,6 +110,9 @@ public class StreamScheduler implements Runnable {
             if (acknowledgmentsEnabled) {
                 runConsumer.whenComplete((v, ex) -> {
                     numOfWorkers.decrementAndGet();
+                    if (ex != null) {
+                        coordinator.giveUpPartition(streamPartition);
+                    }
                     if (numOfWorkers.get() == 0) {
                         activeChangeEventConsumers.decrementAndGet();
                     }
@@ -102,6 +122,10 @@ public class StreamScheduler implements Runnable {
                 runConsumer.whenComplete(completeConsumer(streamPartition));
             }
             numOfWorkers.incrementAndGet();
+            if (numOfWorkers.get() % 10 == 0) {
+                SHARD_COUNT_LOGGER.info("Actively processing {} shards", numOfWorkers.get());
+            }
+
             if (numOfWorkers.get() >= 1) {
                 activeChangeEventConsumers.incrementAndGet();
             }
@@ -120,13 +144,14 @@ public class StreamScheduler implements Runnable {
                 if (numOfWorkers.get() < MAX_JOB_COUNT) {
                     final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
                     if (sourcePartition.isPresent()) {
+                        noAvailableShardsCount = 0;
                         StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
                         processStreamPartition(streamPartition);
                     }
                 }
 
                 try {
-                    Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
+                    Thread.sleep(calculateBackoffToAcquireNextShard(++noAvailableShardsCount));
                 } catch (final InterruptedException e) {
                     LOG.info("InterruptedException occurred");
                     break;
@@ -162,15 +187,30 @@ public class StreamScheduler implements Runnable {
             if (ex == null) {
                 LOG.info("Shard consumer for {} is completed", streamPartition.getShardId());
                 coordinator.completePartition(streamPartition);
-
             } else {
                 // Do nothing
                 // The consumer must have already done one last checkpointing.
-                LOG.debug("Shard consumer completed with exception");
-                LOG.error(ex.toString());
+                LOG.error("Received an exception while processing shard {}, giving up shard: {}", streamPartition.getShardId(), ex);
                 coordinator.giveUpPartition(streamPartition);
             }
         };
+    }
+
+    private long calculateBackoffToAcquireNextShard(final int noAvailableShardCount) {
+
+        // When no shards are available to process we backoff exponentially based on how many consecutive attempts have been made without getting a shard
+        // This limits calls to the coordination store
+        if (noAvailableShardCount > 0) {
+            if (noAvailableShardCount % 10 == 0) {
+                LOG.info("No shards acquired after {} attempts", noAvailableShardCount);
+            }
+
+            final long jitterMillis = MIN_JITTER.toMillis() + RANDOM.nextInt((int) (MAX_JITTER.toMillis() - MIN_JITTER.toMillis() + 1));
+            return max(1, min(STARTING_BACKOFF.toMillis() * pow(BACKOFF_RATE, noAvailableShardCount - 1) + jitterMillis, MAX_BACKOFF_NO_SHARDS_ACQUIRED.toMillis()));
+        }
+
+        // When shards are being acquired we backoff linearly based on how many shards this node is actively processing, to encourage a fast start but still a balance of shards between nodes
+        return min(MAX_BACKOFF_WITH_SHARDS.toMillis(), numOfWorkers.get() * STARTING_BACKOFF.toMillis());
     }
 
 }
