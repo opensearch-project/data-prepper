@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +27,7 @@ public class ExportRecordConverter extends RecordConverter {
     private static final Logger LOG = LoggerFactory.getLogger(ExportRecordConverter.class);
 
     private static final String ITEM_KEY = "Item";
+    static final Duration VERSION_OVERLAP_TIME_FOR_EXPORT = Duration.ofMinutes(5);
 
     static final String EXPORT_RECORDS_PROCESSED_COUNT = "exportRecordsProcessed";
     static final String EXPORT_RECORDS_PROCESSING_ERROR_COUNT = "exportRecordProcessingErrors";
@@ -36,19 +38,24 @@ public class ExportRecordConverter extends RecordConverter {
     IonObjectMapper MAPPER = new IonObjectMapper();
 
     private final PluginMetrics pluginMetrics;
+    private final long exportStartTime;
 
     private final Counter exportRecordSuccessCounter;
     private final Counter exportRecordErrorCounter;
     private final DistributionSummary bytesReceivedSummary;
     private final DistributionSummary bytesProcessedSummary;
 
-    public ExportRecordConverter(final BufferAccumulator<Record<Event>> bufferAccumulator, TableInfo tableInfo, PluginMetrics pluginMetrics) {
+    public ExportRecordConverter(final BufferAccumulator<Record<Event>> bufferAccumulator,
+                                 final TableInfo tableInfo,
+                                 final PluginMetrics pluginMetrics,
+                                 final long exportStartTime) {
         super(bufferAccumulator, tableInfo);
         this.pluginMetrics = pluginMetrics;
         this.exportRecordSuccessCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT);
         this.exportRecordErrorCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSING_ERROR_COUNT);
         this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
         this.bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
+        this.exportStartTime = exportStartTime;
     }
 
     private Map<String, Object> convertToMap(String jsonData) {
@@ -65,7 +72,8 @@ public class ExportRecordConverter extends RecordConverter {
         return "EXPORT";
     }
 
-    public void writeToBuffer(final AcknowledgementSet acknowledgementSet, List<String> lines) {
+    public void writeToBuffer(final AcknowledgementSet acknowledgementSet,
+                              final List<String> lines) {
 
         int eventCount = 0;
         for (String line : lines) {
@@ -73,7 +81,9 @@ public class ExportRecordConverter extends RecordConverter {
             bytesReceivedSummary.record(bytes);
             Map data = (Map<String, Object>) convertToMap(line).get(ITEM_KEY);
             try {
-                addToBuffer(acknowledgementSet, data);
+                // The version number is the export time minus some overlap to ensure new stream events still get priority
+                final long eventVersionNumber = (exportStartTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis()) * 1_000;
+                addToBuffer(acknowledgementSet, data, exportStartTime, eventVersionNumber);
                 bytesProcessedSummary.record(bytes);
                 eventCount++;
             } catch (Exception e) {

@@ -44,7 +44,7 @@ public class LeaderScheduler implements Runnable {
     /**
      * Default interval to run lease check and shard discovery
      */
-    private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 60_000;
+    private static final Duration DEFAULT_LEASE_INTERVAL = Duration.ofMinutes(1);
 
     private final List<TableConfig> tableConfigs;
 
@@ -53,16 +53,26 @@ public class LeaderScheduler implements Runnable {
     private final DynamoDbClient dynamoDbClient;
 
     private final ShardManager shardManager;
+    private final Duration leaseInterval;
 
     private LeaderPartition leaderPartition;
 
     private List<String> streamArns;
 
     public LeaderScheduler(EnhancedSourceCoordinator coordinator, DynamoDbClient dynamoDbClient, ShardManager shardManager, List<TableConfig> tableConfigs) {
+        this(coordinator, dynamoDbClient, shardManager, tableConfigs, DEFAULT_LEASE_INTERVAL);
+    }
+
+    LeaderScheduler(EnhancedSourceCoordinator coordinator,
+                    DynamoDbClient dynamoDbClient,
+                    ShardManager shardManager,
+                    List<TableConfig> tableConfigs,
+                    Duration leaseInterval) {
         this.tableConfigs = tableConfigs;
         this.coordinator = coordinator;
         this.dynamoDbClient = dynamoDbClient;
         this.shardManager = shardManager;
+        this.leaseInterval = leaseInterval;
     }
 
     @Override
@@ -114,11 +124,13 @@ public class LeaderScheduler implements Runnable {
             } catch (Exception e) {
                 LOG.error("Exception occurred in primary scheduling loop", e);
             } finally {
-                // Extend the timeout
-                // will always be a leader until shutdown
-                coordinator.saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
+                if(leaderPartition != null) {
+                    // Extend the timeout
+                    // will always be a leader until shutdown
+                    coordinator.saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
+                }
                 try {
-                    Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
+                    Thread.sleep(leaseInterval.toMillis());
                 } catch (final InterruptedException e) {
                     LOG.info("InterruptedException occurred");
                     break;
@@ -253,7 +265,7 @@ public class LeaderScheduler implements Runnable {
         if (tableConfig.getStreamConfig() != null) {
             // Validate if DynamoDB Stream is turn on or not
             if (describeTableResult.table().streamSpecification() == null) {
-                String errorMessage = "Steam is not enabled for table " + tableConfig.getTableArn();
+                String errorMessage = "Stream is not enabled for table " + tableConfig.getTableArn();
                 LOG.error(errorMessage);
                 throw new InvalidPluginConfigurationException(errorMessage);
             }

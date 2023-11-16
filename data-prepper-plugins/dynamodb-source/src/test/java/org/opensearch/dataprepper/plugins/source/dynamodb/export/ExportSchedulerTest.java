@@ -107,6 +107,7 @@ class ExportSchedulerTest {
         lenient().when(manifestFileReader.parseSummaryFile(anyString(), anyString())).thenReturn(summary);
         lenient().when(summary.getS3Bucket()).thenReturn(bucketName);
         lenient().when(summary.getManifestFilesS3Key()).thenReturn(manifestKey);
+        lenient().when(summary.getExportTime()).thenReturn(exportTime.toString());
         lenient().when(manifestFileReader.parseDataFile(anyString(), anyString())).thenReturn(Map.of("Key1", 100, "Key2", 200));
 
         lenient().when(coordinator.createPartition(any(EnhancedSourcePartition.class))).thenReturn(true);

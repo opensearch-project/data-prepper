@@ -21,6 +21,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 
 import java.util.Map;
+import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -52,6 +53,10 @@ class ComponentPluginArgumentsContextTest {
             super(name, settings);
         }
     }
+
+    private static class ArgumentClass1 { }
+
+    private static class ArgumentClass2 { }
 
     @Test
     void createArguments_with_unavailable_argument_should_throw() {
@@ -124,6 +129,51 @@ class ComponentPluginArgumentsContextTest {
 
         assertThat(objectUnderTest.createArguments(new Class[] { PluginConfigObservable.class }),
                 equalTo(new Object[] {pluginConfigObservable}));
+    }
+
+    @Test
+    void createArguments_with_single_class_from_TypeArgumentSuppliers() {
+        final ArgumentClass1 argumentInstance1 = mock(ArgumentClass1.class);
+        final Map<Class<?>, Supplier<Object>> typeArgumentSuppliers = Map.of(ArgumentClass1.class, () -> argumentInstance1);
+
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
+                .withPluginSetting(pluginSetting)
+                .withTypeArgumentSuppliers(typeArgumentSuppliers)
+                .build();
+
+        assertThat(objectUnderTest.createArguments(new Class[] { ArgumentClass1.class }),
+                equalTo(new Object[] { argumentInstance1 }));
+    }
+
+    @Test
+    void createArguments_with_single_null_value_from_TypeArgumentSuppliers() {
+        final Map<Class<?>, Supplier<Object>> typeArgumentSuppliers = Map.of(ArgumentClass1.class, () -> null);
+
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
+                .withPluginSetting(pluginSetting)
+                .withTypeArgumentSuppliers(typeArgumentSuppliers)
+                .build();
+
+        assertThat(objectUnderTest.createArguments(new Class[] { ArgumentClass1.class }),
+                equalTo(new Object[] { null }));
+    }
+
+    @Test
+    void createArguments_with_multiple_classes_from_TypeArgumentSuppliers() {
+        final ArgumentClass1 argumentInstance1 = mock(ArgumentClass1.class);
+        final ArgumentClass2 argumentInstance2 = mock(ArgumentClass2.class);
+        final Map<Class<?>, Supplier<Object>> typeArgumentSuppliers = Map.of(
+                ArgumentClass1.class, () -> argumentInstance1,
+                ArgumentClass2.class, () -> argumentInstance2
+        );
+
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
+                .withPluginSetting(pluginSetting)
+                .withTypeArgumentSuppliers(typeArgumentSuppliers)
+                .build();
+
+        assertThat(objectUnderTest.createArguments(new Class[] { ArgumentClass2.class, ArgumentClass1.class }),
+                equalTo(new Object[] {argumentInstance2, argumentInstance1}));
     }
 
     @Test

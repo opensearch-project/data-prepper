@@ -99,6 +99,10 @@ public class ShardConsumer implements Runnable {
 
     private final Duration shardAcknowledgmentTimeout;
 
+    private final String shardId;
+
+    private long recordsWrittenToBuffer;
+
     private ShardConsumer(Builder builder) {
         this.dynamoDbStreamsClient = builder.dynamoDbStreamsClient;
         this.checkpointer = builder.checkpointer;
@@ -111,6 +115,8 @@ public class ShardConsumer implements Runnable {
         recordConverter = new StreamRecordConverter(bufferAccumulator, builder.tableInfo, builder.pluginMetrics);
         this.acknowledgementSet = builder.acknowledgementSet;
         this.shardAcknowledgmentTimeout = builder.dataFileAcknowledgmentTimeout;
+        this.shardId = builder.shardId;
+        this.recordsWrittenToBuffer = 0;
     }
 
     public static Builder builder(final DynamoDbStreamsClient dynamoDbStreamsClient, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
@@ -138,6 +144,8 @@ public class ShardConsumer implements Runnable {
 
         private boolean waitForExport;
 
+        private String shardId;
+
         private AcknowledgementSet acknowledgementSet;
         private Duration dataFileAcknowledgmentTimeout;
 
@@ -149,6 +157,11 @@ public class ShardConsumer implements Runnable {
 
         public Builder tableInfo(TableInfo tableInfo) {
             this.tableInfo = tableInfo;
+            return this;
+        }
+
+        public Builder shardId(final String shardId) {
+            this.shardId = shardId;
             return this;
         }
 
@@ -220,7 +233,9 @@ public class ShardConsumer implements Runnable {
             }
 
             if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
-                LOG.debug("Perform regular checkpointing for Shard Consumer");
+                if (shardId != null) {
+                    LOG.info("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
+                }
                 checkpointer.checkpoint(sequenceNumber);
                 lastCheckpointTime = System.currentTimeMillis();
             }
@@ -245,6 +260,7 @@ public class ShardConsumer implements Runnable {
                         .filter(record -> record.dynamodb().approximateCreationDateTime().isAfter(startTime))
                         .collect(Collectors.toList());
                 recordConverter.writeToBuffer(acknowledgementSet, records);
+                recordsWrittenToBuffer += records.size();
                 long delay = System.currentTimeMillis() - lastEventTime.toEpochMilli();
                 interval = delay > GET_RECORD_DELAY_THRESHOLD_MILLS ? MINIMUM_GET_RECORD_INTERVAL_MILLS : GET_RECORD_INTERVAL_MILLS;
 
@@ -260,17 +276,21 @@ public class ShardConsumer implements Runnable {
             }
         }
 
+        // interrupted
+        if (shouldStop) {
+            // Do last checkpoint and then quit
+            LOG.warn("Processing for shard {} was interrupted by a shutdown signal, giving up shard", shardId);
+            checkpointer.checkpoint(sequenceNumber);
+            throw new RuntimeException("Consuming shard was interrupted from shutdown");
+        }
+
         if (acknowledgementSet != null) {
             checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
             acknowledgementSet.complete();
         }
 
-        // interrupted
-        if (shouldStop) {
-            // Do last checkpoint and then quit
-            LOG.error("Should Stop flag is set to True, looks like shutdown has triggered");
-            checkpointer.checkpoint(sequenceNumber);
-            throw new RuntimeException("Shard Consumer is interrupted");
+        if (shardId != null) {
+            LOG.info("Completed writing shard {} to buffer after reaching the end of the shard", shardId);
         }
 
         if (waitForExport) {
@@ -337,10 +357,10 @@ public class ShardConsumer implements Runnable {
 
             Instant lastEventTime = response.records().get(response.records().size() - 1).dynamodb().approximateCreationDateTime();
             if (lastEventTime.isBefore(startTime)) {
-                LOG.info("LastShardIterator is provided, and Last Event Time is earlier than export time, skip processing");
+                LOG.info("LastShardIterator is provided, and Last Event Time is earlier than {}, skip processing", startTime);
                 return true;
             } else {
-                LOG.info("LastShardIterator is provided, and Last Event Time is later than export time, start processing");
+                LOG.info("LastShardIterator is provided, and Last Event Time is later than {}, start processing", startTime);
                 return false;
             }
         }
