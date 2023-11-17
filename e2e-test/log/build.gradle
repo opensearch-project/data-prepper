@@ -45,6 +45,14 @@ List<LogTestConfiguration> logTestConfigurations = [
                 'data_prepper.yml'
         ),
         new LogTestConfiguration(
+                'basicLogWithAwsSecretsEndToEndTest',
+                'Runs the basic grok with AWS secrets end-to-end test.',
+                'org.opensearch.dataprepper.integration.log.EndToEndBasicLogTest.testPipelineEndToEnd*',
+                'data-prepper-basic-log-with-aws-secrets',
+                'basic-grok-e2e-pipeline-with-aws-secrets.yml',
+                'data_prepper.yml'
+        ),
+        new LogTestConfiguration(
                 'parallelGrokStringSubstituteTest',
                 'Runs the parallel grok and string substitute end-to-end test.',
                 'org.opensearch.dataprepper.integration.log.ParallelGrokStringSubstituteLogTest.testPipelineEndToEnd*',
@@ -63,8 +71,12 @@ logTestConfigurations.each { testConfiguration ->
         exposePorts('tcp', [2021, 4900])
         hostConfig.portBindings = ['2021:2021', '4900:4900']
         hostConfig.binds = [
+                "${System.getProperty('user.home')}/.aws" : '/root/.aws',
                 (project.file("src/integrationTest/resources/${testConfiguration.pipelineConfiguration}").toString())   : '/usr/share/data-prepper/pipelines/log-pipeline.yaml',
                 (project.file("src/integrationTest/resources/${testConfiguration.dataPrepperConfiguration}").toString()): '/usr/share/data-prepper/config/data-prepper-config.yaml'
+        ]
+        envVars = [
+                'AWS_PROFILE' : System.getenv('AWS_PROFILE') ?: ''
         ]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
         targetImageId dataPrepperDockerImage.imageId
