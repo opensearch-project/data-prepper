@@ -996,7 +996,7 @@ public class OpenSearchSinkIT {
         expectedContent.put(testField, testValue);
 
         assertThat(retSources.size(), equalTo(1));
-        assertThat(retSources.containsAll(Arrays.asList(expectedContent)), equalTo(true));
+        assertThat(retSources.get(0), equalTo(expectedContent));
         sink.shutdown();
     }
 
