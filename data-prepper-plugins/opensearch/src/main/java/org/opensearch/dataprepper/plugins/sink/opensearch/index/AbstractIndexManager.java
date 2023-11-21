@@ -14,6 +14,8 @@ import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import org.opensearch.client.opensearch.indices.CreateIndexRequest;
+import org.opensearch.client.opensearch.indices.ExistsAliasRequest;
+import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
 import org.slf4j.Logger;
@@ -50,6 +52,8 @@ public abstract class AbstractIndexManager implements IndexManager {
     protected IsmPolicyManagementStrategy ismPolicyManagementStrategy;
     private final TemplateStrategy templateStrategy;
     protected String indexPrefix;
+    private Boolean isIndexAlias;
+    private boolean isIndexAliasChecked;
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractIndexManager.class);
 
@@ -110,6 +114,10 @@ public abstract class AbstractIndexManager implements IndexManager {
         final DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
         final String suffix = (dateFormatter != null) ? dateFormatter.format(getCurrentUtcTime()) : "";
         return indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "") + suffix;
+    }
+
+    private void initalizeIsIndexAlias(final String indexAlias) {
+
     }
 
     private void initializeIndexPrefixAndSuffix(final String indexAlias){
@@ -174,6 +182,26 @@ public abstract class AbstractIndexManager implements IndexManager {
 
     public static ZonedDateTime getCurrentUtcTime() {
         return LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(UTC_ZONE_ID);
+    }
+
+    @Override
+    public Boolean isIndexAlias(final String dynamicIndexAlias) throws IOException {
+        if (isIndexAliasChecked == false) {
+            try {
+                // Try to get the OpenSearch version. This fails on older OpenDistro versions, that do not support
+                // `require_alias` as a bulk API parameter. All OpenSearch versions do, as this was introduced in
+                // ES 7.10.
+                openSearchClient.info();
+                ExistsAliasRequest request = new ExistsAliasRequest.Builder().name(dynamicIndexAlias).build();
+                BooleanResponse response = openSearchClient.indices().existsAlias(request);
+                isIndexAlias = response.value() && checkISMEnabled();
+            } catch (RuntimeException ex) {
+                isIndexAlias = null;
+            } finally {
+                isIndexAliasChecked = true;
+            }
+        }
+        return isIndexAlias;
     }
 
     final boolean checkISMEnabled() throws IOException {
