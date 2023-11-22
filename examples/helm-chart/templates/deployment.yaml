@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "data-prepper.fullname" . }}
+  labels:
+    {{- include "data-prepper.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "data-prepper.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "data-prepper.labels" . | nindent 8 }}
+	{{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "data-prepper.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          env:
+          {{- if .Values.javaDebug }}
+            - name: JAVA_OPTS
+              value: -Dlog4j2.debug=true
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+          {{- range .Values.ports }}
+            - name: {{ .name }}
+              containerPort: {{ .port }}
+              protocol: TCP
+          {{- end }}
+            - name: server
+              containerPort: {{ (.Values.dataPrepperConfig).serverPort | default 4900 }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /list
+              port: server
+              {{- if not ( empty (.Values.dataPrepperConfig).ssl ) }}
+              scheme: HTTPS
+              {{- end }}
+            periodSeconds: 10
+            initialDelaySeconds: 2
+            failureThreshold: 2
+          readinessProbe:
+            httpGet:
+              path: /list
+              port: server
+              {{- if not ( empty (.Values.dataPrepperConfig).ssl ) }}
+              scheme: HTTPS
+              {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data-prepper-config
+              mountPath: /usr/share/data-prepper/config
+              readOnly: true
+            - name: data-prepper-pipelines
+              mountPath: /usr/share/data-prepper/pipelines
+              readOnly: true
+          {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: data-prepper-config
+          secret:
+            secretName: {{ include "data-prepper.fullname" . }}
+            items:
+              - key: data-prepper-config
+                path: data-prepper-config.yaml
+        - name: data-prepper-pipelines
+          secret:
+            secretName: {{ include "data-prepper.fullname" . }}
+            items:
+              - key: pipelines
+                path: pipelines.yaml
+      {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: data-prepper
+description: OpenSearch Data Prepper
+
+type: application
+
+version: 0.1.0
+
+appVersion: 2.5.0
