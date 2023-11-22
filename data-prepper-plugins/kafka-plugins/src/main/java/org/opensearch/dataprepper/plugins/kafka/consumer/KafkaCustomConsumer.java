@@ -224,14 +224,20 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
         if (Objects.isNull(commitTracker) && errLogRateLimiter.isAllowed(System.currentTimeMillis())) {
             LOG.error("Commit tracker not found for TopicPartition: {}", topicPartition);
+            return;
         }
 
-        final OffsetAndMetadata offsetAndMetadata =
-                partitionCommitTrackerMap.get(partitionId).addCompletedOffsets(offsetRange);
+        final OffsetAndMetadata offsetAndMetadata = commitTracker.addCompletedOffsets(offsetRange);
         updateOffsetsToCommit(topicPartition, offsetAndMetadata);
     }
 
     private void resetOffsets() {
+        // resetting offsets is similar to committing acknowledged offsets. Throttle the frequency of resets by
+        // checking current time with last commit time. Same "lastCommitTime" and commit interval are used in both cases
+        long currentTimeMillis = System.currentTimeMillis();
+        if ((currentTimeMillis - lastCommitTime) < topicConfig.getCommitInterval().toMillis()) {
+            return;
+        }
         if (partitionsToReset.size() > 0) {
             partitionsToReset.forEach(partition -> {
                 try {
@@ -244,6 +250,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                         consumer.seek(partition, offsetAndMetadata);
                     }
                     partitionCommitTrackerMap.remove(partition.partition());
+                    final long epoch = getCurrentTimeNanos();
+                    ownedPartitionsEpoch.put(partition, epoch);
                 } catch (Exception e) {
                     LOG.error("Failed to seek to last committed offset upon negative acknowledgement {}", partition, e);
                 }
@@ -493,7 +501,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                     continue;
                 }
                 LOG.info("Assigned partition {}", topicPartition);
-                partitionCommitTrackerMap.remove(topicPartition.partition());
                 ownedPartitionsEpoch.put(topicPartition, epoch);
             }
         }
