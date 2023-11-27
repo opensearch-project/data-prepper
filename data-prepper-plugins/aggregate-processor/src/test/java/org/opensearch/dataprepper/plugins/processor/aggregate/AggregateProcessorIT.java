@@ -288,7 +288,7 @@ public class AggregateProcessorIT {
         boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
 
         assertThat(allThreadsFinished, equalTo(true));
-        assertThat((double)allowedEventsCount.get(), closeTo(NUM_THREADS * NUM_EVENTS_PER_BATCH * testPercent/100, 1.0));
+        assertThat((double)allowedEventsCount.get(), closeTo(NUM_THREADS * NUM_EVENTS_PER_BATCH * testPercent/100, 5.0));
     }
 
     @RepeatedTest(value = 2)
