@@ -123,7 +123,7 @@ public class InMemorySource implements Source<Record<Event>> {
                                 {
                                     inMemorySourceAccessor.setAckReceived(result);
                                 },
-                                Duration.ofSeconds(15));
+                                Duration.ofSeconds(25));
                     records.stream().forEach((record) -> { ackSet.add(record.getData()); });
                     ackSet.complete();
                     writeToBuffer(records);

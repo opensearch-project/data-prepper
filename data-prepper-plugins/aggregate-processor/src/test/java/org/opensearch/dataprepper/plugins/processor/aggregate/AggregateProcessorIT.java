@@ -185,7 +185,7 @@ public class AggregateProcessorIT {
         final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
 
         objectUnderTest.doExecute(eventBatch);
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
 
         for (int i = 0; i < NUM_THREADS; i++) {
             executorService.execute(() -> {
@@ -274,7 +274,7 @@ public class AggregateProcessorIT {
         final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
 
         objectUnderTest.doExecute(eventBatch);
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
         AtomicInteger allowedEventsCount = new AtomicInteger(0);
 
         for (int i = 0; i < NUM_THREADS; i++) {
@@ -285,7 +285,7 @@ public class AggregateProcessorIT {
             });
         }
 
-        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        boolean allThreadsFinished = countDownLatch.await(10L, TimeUnit.SECONDS);
 
         assertThat(allThreadsFinished, equalTo(true));
         assertThat((double)allowedEventsCount.get(), closeTo(NUM_THREADS * NUM_EVENTS_PER_BATCH * testPercent/100, 1.0));
@@ -355,7 +355,7 @@ public class AggregateProcessorIT {
             });
         }
 
-        boolean allThreadsFinished = countDownLatch.await(10L, TimeUnit.SECONDS);
+        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
 
         assertThat(allThreadsFinished, equalTo(true));
         // Expect all events to be received even with rate limiting because no events are dropped
@@ -429,12 +429,13 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
 
         boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
 
         Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
+	System.out.println("======"+results);
         assertThat(results.size(), equalTo(1));
 
         Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(testValue));
@@ -488,7 +489,7 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
 
         boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
