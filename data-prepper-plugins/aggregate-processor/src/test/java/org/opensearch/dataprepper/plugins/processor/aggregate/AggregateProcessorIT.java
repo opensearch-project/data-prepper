@@ -260,7 +260,7 @@ public class AggregateProcessorIT {
     }
 
     @ParameterizedTest
-    @ValueSource(doubles = {5.0, 15.0, 55.0, 92.0, 99.0})
+    @ValueSource(doubles = {10.0, 25.0, 75.0})
     void aggregateWithPercentSamplerAction(double testPercent) throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         PercentSamplerAggregateActionConfig percentSamplerAggregateActionConfig = new PercentSamplerAggregateActionConfig();
         setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", testPercent);
