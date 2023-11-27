@@ -339,7 +339,7 @@ public class SqsWorker implements Runnable {
                 final int failedDeleteCount = deleteMessageBatchResponse.failed().size();
                 sqsMessagesDeleteFailedCounter.increment(failedDeleteCount);
 
-                if(LOG.isErrorEnabled()) {
+                if(LOG.isErrorEnabled() && failedDeleteCount > 0) {
                     final String failedMessages = deleteMessageBatchResponse.failed().stream()
                             .map(failed -> failed.toString())
                             .collect(Collectors.joining(", "));
