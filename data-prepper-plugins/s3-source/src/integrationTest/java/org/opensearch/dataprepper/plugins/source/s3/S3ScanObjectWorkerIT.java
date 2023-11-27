@@ -231,8 +231,8 @@ public class S3ScanObjectWorkerIT {
         final String keyPrefix = "s3source/s3-scan/" + recordsGenerator.getFileExtension() + "/" + Instant.now().toEpochMilli();
 
         final String buketOptionYaml = "name: " + bucket + "\n" +
-                "key_prefix:\n" +
-                "  include:\n" +
+                "filter:\n" +
+                "  include_prefix:\n" +
                 "    - " + keyPrefix + "\n" +
                 "  exclude_suffix:\n" +
                 "    - .csv\n" +
@@ -247,7 +247,7 @@ public class S3ScanObjectWorkerIT {
         final ScanOptions startTimeAndRangeScanOptions = new ScanOptions.Builder()
                 .setBucketOption(objectMapper.readValue(buketOptionYaml, S3ScanBucketOption.class))
                 .setStartDateTime(LocalDateTime.now().minusDays(1))
-                .setRange(Duration.parse("P2DT10M"))
+                .setEndDateTime(LocalDateTime.now().plus(Duration.ofMinutes(5)))
                 .build();
 
         final ScanObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator,
@@ -279,8 +279,8 @@ public class S3ScanObjectWorkerIT {
         String keyPrefix = "s3source/s3-scan/" + recordsGenerator.getFileExtension() + "/" + Instant.now().toEpochMilli();
         final String key = getKeyString(keyPrefix,recordsGenerator, shouldCompress);
         final String buketOptionYaml = "name: " + bucket + "\n" +
-                "key_prefix:\n" +
-                "  include:\n" +
+                "filter:\n" +
+                "  include_prefix:\n" +
                 "    - " + keyPrefix;
         scanOptions.setBucketOption(objectMapper.readValue(buketOptionYaml, S3ScanBucketOption.class));
 
@@ -320,10 +320,10 @@ public class S3ScanObjectWorkerIT {
 
         when(s3SourceConfig.isDeleteS3ObjectsOnRead()).thenReturn(deleteS3Objects);
         String keyPrefix = "s3source/s3-scan/" + recordsGenerator.getFileExtension() + "/" + Instant.now().toEpochMilli();
-        final String key = getKeyString(keyPrefix,recordsGenerator, shouldCompress);
+        final String key = getKeyString(keyPrefix, recordsGenerator, shouldCompress);
         final String buketOptionYaml = "name: " + bucket + "\n" +
-                "key_prefix:\n" +
-                "  include:\n" +
+                "filter:\n" +
+                "  include_prefix:\n" +
                 "    - " + keyPrefix;
 
         final ScanOptions.Builder startTimeAndEndTimeScanOptions = ScanOptions.builder()
@@ -386,17 +386,17 @@ public class S3ScanObjectWorkerIT {
             final List<Integer> recordsToAccumulateList = List.of( 100);
             final List<Boolean> booleanList = List.of(Boolean.TRUE);
 
-            final ScanOptions.Builder startTimeAndRangeScanOptions = ScanOptions.builder()
-                    .setStartDateTime(LocalDateTime.now())
-                    .setRange(Duration.parse("P2DT10H"));
-            final ScanOptions.Builder endTimeAndRangeScanOptions = ScanOptions.builder()
-                    .setEndDateTime(LocalDateTime.now().plus(Duration.ofHours(1)))
-                    .setRange(Duration.parse("P7DT10H"));
+            final ScanOptions.Builder startTimeScanOptions = ScanOptions.builder()
+                    .setStartDateTime(LocalDateTime.now());
+            final ScanOptions.Builder endTimeScanOptions = ScanOptions.builder()
+                    .setEndDateTime(LocalDateTime.now().plus(Duration.ofHours(1)));
             final ScanOptions.Builder startTimeAndEndTimeScanOptions = ScanOptions.builder()
                     .setStartDateTime(LocalDateTime.now().minus(Duration.ofMinutes(10)))
                     .setEndDateTime(LocalDateTime.now().plus(Duration.ofHours(1)));
+            final ScanOptions.Builder rangeScanOptions = ScanOptions.builder()
+                    .setRange(Duration.parse("P7DT10H"));
 
-            List<ScanOptions.Builder> scanOptions = List.of(startTimeAndRangeScanOptions,endTimeAndRangeScanOptions,startTimeAndEndTimeScanOptions);
+            List<ScanOptions.Builder> scanOptions = List.of(startTimeScanOptions, endTimeScanOptions, startTimeAndEndTimeScanOptions, rangeScanOptions);
             return recordsGenerators
                     .stream()
                     .flatMap(recordsGenerator -> numberOfRecordsList
