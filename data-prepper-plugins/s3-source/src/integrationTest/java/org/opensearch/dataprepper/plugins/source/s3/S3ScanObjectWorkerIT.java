@@ -311,8 +311,7 @@ public class S3ScanObjectWorkerIT {
         executorService.shutdownNow();
     }
 
-    // TODO: Implement logic to get ack with S3 scan test setup
-    @Disabled
+    @Disabled("TODO: Implement logic to get ack with S3 scan test setup")
     @ParameterizedTest
     @ValueSource(strings = {"true", "false"})
     void parseS3Object_correctly_with_bucket_scan_and_loads_data_into_Buffer_and_deletes_s3_object(final boolean deleteS3Objects) throws Exception {
