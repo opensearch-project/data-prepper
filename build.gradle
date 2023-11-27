@@ -116,6 +116,12 @@ subprojects {
                 }
                 because 'the build fails if the Log4j API is not update along with log4j-core'
             }
+            implementation('org.apache.zookeeper:zookeeper') {
+                version {
+                    require '3.7.2'
+                }
+                because 'Fixes CVE-2023-44981'
+            }
             implementation('com.google.code.gson:gson') {
                 version {
                     require '2.8.9'
@@ -196,9 +202,9 @@ subprojects {
             }
             implementation('org.json:json') {
                 version {
-                    require '20230618'
+                    require '20231013'
                 }
-                because 'CVE from transitive dependencies'
+                because 'CVE-2023-5072, CVE from transitive dependencies'
             }
         }
     }
