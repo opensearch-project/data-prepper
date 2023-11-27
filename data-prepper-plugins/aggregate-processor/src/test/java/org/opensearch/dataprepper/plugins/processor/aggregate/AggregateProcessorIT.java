@@ -199,6 +199,7 @@ public class AggregateProcessorIT {
         }
 
         boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
+	Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
 
         assertThat(allThreadsFinished, equalTo(true));
         assertThat(aggregatedResult.size(), equalTo(NUM_UNIQUE_EVENTS_PER_BATCH));
@@ -383,11 +384,11 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
 
         boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
 
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
         Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
         assertThat(results.size(), equalTo(1));
 
@@ -429,13 +430,12 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
 
         boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
 
         Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
-	System.out.println("======"+results);
         assertThat(results.size(), equalTo(1));
 
         Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(testValue));
@@ -489,10 +489,10 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
 
         boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
 
         Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
         assertThat(results.size(), equalTo(1));
@@ -544,9 +544,9 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
         boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
         List<Event> errorEventList = eventBatch.stream().map(Record::getData).filter(event -> {
             Event ev = ((Event)event);
             return ev.get("status", Integer.class) == ERROR_STATUS;
