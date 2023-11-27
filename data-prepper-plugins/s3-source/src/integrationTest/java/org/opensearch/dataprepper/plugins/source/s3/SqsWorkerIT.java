@@ -9,7 +9,6 @@ import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -117,20 +116,13 @@ class SqsWorkerIT {
         when(s3SourceConfig.getSqsOptions()).thenReturn(sqsOptions);
         lenient().when(s3SourceConfig.getOnErrorOption()).thenReturn(OnErrorOption.DELETE_MESSAGES);
         lenient().when(s3SourceConfig.getNotificationSource()).thenReturn(NotificationSourceOption.S3);
+
+        // Clear SQS queue messages before running each test
+        clearSqsQueue();
     }
 
     private SqsWorker createObjectUnderTest() {
         return new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
-    }
-
-    @AfterEach
-    void processRemainingMessages() {
-        final SqsWorker objectUnderTest = createObjectUnderTest();
-        int sqsMessagesProcessed;
-        do {
-            sqsMessagesProcessed = objectUnderTest.processSqsMessages();
-        }
-        while (sqsMessagesProcessed > 0);
     }
 
     /**
@@ -292,7 +284,7 @@ class SqsWorkerIT {
 
     @ParameterizedTest
     @ValueSource(ints = {1})
-    void processSqsMessages_with_acks_and_progress_check_callbacks(final int numberOfObjectsToWrite) throws IOException, InterruptedException {
+    void processSqsMessages_with_acks_and_progress_check_callbacks(final int numberOfObjectsToWrite) throws IOException {
         writeToS3(numberOfObjectsToWrite);
 
         when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
@@ -366,7 +358,7 @@ class SqsWorkerIT {
 
     @ParameterizedTest
     @ValueSource(ints = {1})
-    void processSqsMessages_with_acks_and_progress_check_callbacks_expires(final int numberOfObjectsToWrite) throws IOException, InterruptedException {
+    void processSqsMessages_with_acks_and_progress_check_callbacks_expires(final int numberOfObjectsToWrite) throws IOException {
         writeToS3(numberOfObjectsToWrite);
 
         when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
@@ -471,5 +463,14 @@ class SqsWorkerIT {
             // isCompressionEnabled is set to false since we test for compression in S3ObjectWorkerIT
             s3ObjectGenerator.write(numberOfRecords, key, newlineDelimitedRecordsGenerator, false);
         }
+    }
+
+    private void clearSqsQueue() {
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        int sqsMessagesProcessed;
+        do {
+            sqsMessagesProcessed = objectUnderTest.processSqsMessages();
+        }
+        while (sqsMessagesProcessed > 0);
     }
 }
