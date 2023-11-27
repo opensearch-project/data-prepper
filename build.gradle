@@ -98,6 +98,12 @@ subprojects {
         testImplementation testLibs.hamcrest
         testImplementation testLibs.awaitility
         constraints {
+            implementation('org.apache.avro:avro') {
+                version {
+                    require '1.11.3'
+                }
+                because 'Fixes CVE-2023-39410.'
+            }
             implementation('org.apache.httpcomponents:httpclient') {
                 version {
                     require '4.5.14'
