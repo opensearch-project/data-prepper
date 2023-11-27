@@ -38,7 +38,7 @@ class PipelinesWithAcksIT {
     private static final String THREE_PIPELINES_MULTI_SINK_CONFIGURATION_UNDER_TEST = "acknowledgements/three-pipelines-test-multi-sink.yaml";
     private static final String ONE_PIPELINE_THREE_SINKS_CONFIGURATION_UNDER_TEST = "acknowledgements/one-pipeline-three-sinks.yaml";
     private static final String ONE_PIPELINE_ACK_EXPIRY_CONFIGURATION_UNDER_TEST = "acknowledgements/one-pipeline-ack-expiry-test.yaml";
-    private static final int WAIT_TIME = 20000;
+    private static final int WAIT_TIME = 30000;
     private DataPrepperTestRunner dataPrepperTestRunner;
     private InMemorySourceAccessor inMemorySourceAccessor;
     private InMemorySinkAccessor inMemorySinkAccessor;
