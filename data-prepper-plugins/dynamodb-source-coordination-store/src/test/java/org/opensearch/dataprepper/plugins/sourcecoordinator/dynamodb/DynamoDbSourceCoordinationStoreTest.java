@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -27,11 +29,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -94,8 +98,9 @@ public class DynamoDbSourceCoordinationStoreTest {
         assertThat(result.get(), equalTo(sourcePartitionStoreItem));
     }
 
-    @Test
-    void tryCreatePartitionItem_calls_dynamoDbClientWrapper_correctly() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void tryCreatePartitionItem_calls_dynamoDbClientWrapper_correctly(final boolean isReadOnlyItem) {
         final String sourceIdentifier = UUID.randomUUID().toString();
         final String sourcePartitionKey = UUID.randomUUID().toString();
         final SourcePartitionStatus sourcePartitionStatus = SourcePartitionStatus.UNASSIGNED;
@@ -107,9 +112,9 @@ public class DynamoDbSourceCoordinationStoreTest {
 
         final Duration ttl = Duration.ofSeconds(30);
         final Long nowPlusTtl = Instant.now().plus(ttl).getEpochSecond();
-        given(dynamoStoreSettings.getTtl()).willReturn(ttl);
+        lenient().when(dynamoStoreSettings.getTtl()).thenReturn(ttl);
 
-        final boolean result = createObjectUnderTest().tryCreatePartitionItem(sourceIdentifier, sourcePartitionKey, sourcePartitionStatus, closedCount, partitionProgressState);
+        final boolean result = createObjectUnderTest().tryCreatePartitionItem(sourceIdentifier, sourcePartitionKey, sourcePartitionStatus, closedCount, partitionProgressState, isReadOnlyItem);
 
         assertThat(result, equalTo(true));
 
@@ -122,7 +127,12 @@ public class DynamoDbSourceCoordinationStoreTest {
         assertThat(createdItem.getPartitionProgressState(), equalTo(partitionProgressState));
         assertThat(createdItem.getSourceStatusCombinationKey(), equalTo(sourceIdentifier + "|" + sourcePartitionStatus));
         assertThat(createdItem.getPartitionPriority(), notNullValue());
-        assertThat(createdItem.getExpirationTime(), greaterThanOrEqualTo(nowPlusTtl));
+
+        if (isReadOnlyItem) {
+            assertThat(createdItem.getExpirationTime(), nullValue());
+        } else {
+            assertThat(createdItem.getExpirationTime(), greaterThanOrEqualTo(nowPlusTtl));
+        }
     }
 
     @Test

@@ -134,7 +134,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     public void initialize() {
         sourceCoordinationStore.initializeStore();
         initialized = true;
-        sourceCoordinationStore.tryCreatePartitionItem(sourceIdentifierWithGlobalStateType, GLOBAL_STATE_SOURCE_PARTITION_KEY_FOR_CREATING_PARTITIONS, SourcePartitionStatus.UNASSIGNED, 0L, null);
+        sourceCoordinationStore.tryCreatePartitionItem(sourceIdentifierWithGlobalStateType, GLOBAL_STATE_SOURCE_PARTITION_KEY_FOR_CREATING_PARTITIONS, SourcePartitionStatus.UNASSIGNED, 0L, null, false);
     }
 
     @Override
@@ -195,7 +195,8 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
                     partitionIdentifier.getPartitionKey(),
                     SourcePartitionStatus.UNASSIGNED,
                     0L,
-                    null
+                    null,
+                    false
             );
 
             if (partitionCreated) {
