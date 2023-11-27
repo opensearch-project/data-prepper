@@ -250,7 +250,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         // Default to Global State only.
         final Optional<SourcePartitionStoreItem> sourceItem = coordinationStore.getSourcePartitionItem(this.sourceIdentifier + "|" + DEFAULT_GLOBAL_STATE_PARTITION_TYPE, partitionKey);
         if (!sourceItem.isPresent()) {
-            LOG.error("Global state {} is not found.", partitionKey);
+            LOG.warn("Global partition item with sourcePartitionKey '{}' could not be found.", partitionKey);
             return Optional.empty();
         }
         return Optional.of(partitionFactory.apply(sourceItem.get()));
