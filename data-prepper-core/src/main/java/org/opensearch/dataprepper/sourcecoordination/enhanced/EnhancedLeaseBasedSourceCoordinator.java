@@ -101,14 +101,14 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         // Don't need the status for Global state which is not for lease.
         SourcePartitionStatus status = partition.getPartitionType() == null ? null : SourcePartitionStatus.UNASSIGNED;
 
-        boolean partitionCreated = coordinationStore.tryCreatePartitionItem(
+        return coordinationStore.tryCreatePartitionItem(
                 this.sourceIdentifier + "|" + partitionType,
                 partition.getPartitionKey(),
                 status,
                 0L,
-                partition.convertPartitionProgressStatetoString(partition.getProgressState())
-        );
-        return partitionCreated;
+                partition.convertPartitionProgressStatetoString(partition.getProgressState()),
+                // For now, global items with no partitionType will be considered ReadOnly, but this should be directly in EnhancedSourcePartition in the future
+                partition.getPartitionType() == null);
 
     }
 
@@ -250,7 +250,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         // Default to Global State only.
         final Optional<SourcePartitionStoreItem> sourceItem = coordinationStore.getSourcePartitionItem(this.sourceIdentifier + "|" + DEFAULT_GLOBAL_STATE_PARTITION_TYPE, partitionKey);
         if (!sourceItem.isPresent()) {
-            LOG.error("Global state {} is not found.", partitionKey);
+            LOG.warn("Global partition item with sourcePartitionKey '{}' could not be found.", partitionKey);
             return Optional.empty();
         }
         return Optional.of(partitionFactory.apply(sourceItem.get()));

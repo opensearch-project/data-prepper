@@ -68,7 +68,8 @@ public class InMemorySourceCoordinationStore implements SourceCoordinationStore 
                                           final String partitionKey,
                                           final SourcePartitionStatus sourcePartitionStatus,
                                           final Long closedCount,
-                                          final String partitionProgressState) {
+                                          final String partitionProgressState,
+                                          final boolean isReadOnlyItem) {
         synchronized (this) {
             if (inMemoryPartitionAccessor.getItem(sourceIdentifier, partitionKey).isEmpty()) {
                 final InMemorySourcePartitionStoreItem inMemorySourcePartitionStoreItem = new InMemorySourcePartitionStoreItem();
