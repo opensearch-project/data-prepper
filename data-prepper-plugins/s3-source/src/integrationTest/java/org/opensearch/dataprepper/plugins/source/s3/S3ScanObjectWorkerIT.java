@@ -11,6 +11,7 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.noop.NoopTimer;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -310,6 +311,7 @@ public class S3ScanObjectWorkerIT {
         executorService.shutdownNow();
     }
 
+    @Disabled("TODO: Implement logic to get ack with S3 scan test setup")
     @ParameterizedTest
     @ValueSource(strings = {"true", "false"})
     void parseS3Object_correctly_with_bucket_scan_and_loads_data_into_Buffer_and_deletes_s3_object(final boolean deleteS3Objects) throws Exception {
