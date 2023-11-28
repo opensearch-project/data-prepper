@@ -26,7 +26,7 @@ import java.time.Duration;
  */
 @DataPrepperPlugin(name = "in_memory", pluginType = Source.class, pluginConfigurationType = InMemoryConfig.class)
 public class InMemorySource implements Source<Record<Event>> {
-    public static final Duration ACK_EXPIRY_TIME = Duration.ofSeconds(35);
+    public static final Duration ACK_EXPIRY_TIME = Duration.ofSeconds(60);
     private static final Logger LOG = LoggerFactory.getLogger(InMemorySource.class);
 
     private final String testingKey;
