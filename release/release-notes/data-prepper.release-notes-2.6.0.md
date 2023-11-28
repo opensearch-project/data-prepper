@@ -26,6 +26,7 @@
 * No permissions for writing to Amazon OpenSearch Serverless collection only shows errors after `max_retries` limit is reached ([#3508](https://github.com/opensearch-project/data-prepper/issues/3508))
 * Bulk Operation Retry Strategy should print cause of error ([#3504](https://github.com/opensearch-project/data-prepper/issues/3504))
 * NullPointer exception in `DefaultKafkaClusterConfigSupplier` get API ([#3528](https://github.com/opensearch-project/data-prepper/issues/3528))
+* Check if failedDeleteCount is positive before logging an SQS error ([#3686](https://github.com/opensearch-project/data-prepper/issues/3686))
 * Docker image jre-jammy contains Berkeley DB ([#3543](https://github.com/opensearch-project/data-prepper/issues/3543))
 * Race condition in DefaultEventHandle ([#3617](https://github.com/opensearch-project/data-prepper/issues/3617))
 
