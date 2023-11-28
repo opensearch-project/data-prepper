@@ -46,6 +46,7 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -163,7 +164,7 @@ public class LeaseBasedSourceCoordinatorTest {
         doNothing().when(sourceCoordinationStore).initializeStore();
         given(sourceCoordinationStore.tryCreatePartitionItem(
                 fullSourceIdentifierForGlobalState, GLOBAL_STATE_SOURCE_PARTITION_KEY_FOR_CREATING_PARTITIONS,
-                SourcePartitionStatus.UNASSIGNED, 0L, null)).willReturn(true);
+                SourcePartitionStatus.UNASSIGNED, 0L, null, false)).willReturn(true);
         objectUnderTest.initialize();
         return objectUnderTest;
     }
@@ -175,7 +176,7 @@ public class LeaseBasedSourceCoordinatorTest {
 
         verify(sourceCoordinationStore).initializeStore();
         verify(sourceCoordinationStore).tryCreatePartitionItem(fullSourceIdentifierForGlobalState, GLOBAL_STATE_SOURCE_PARTITION_KEY_FOR_CREATING_PARTITIONS,
-                SourcePartitionStatus.UNASSIGNED, 0L, null);
+                SourcePartitionStatus.UNASSIGNED, 0L, null, false);
     }
 
     @Test
@@ -200,7 +201,7 @@ public class LeaseBasedSourceCoordinatorTest {
         doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(globalStateForPartitionCreationItem);
         given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifierForPartition, partitionIdentifierToSkip.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
         given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifierForPartition, partitionIdentifier.getPartitionKey())).willReturn(Optional.empty());
-        given(sourceCoordinationStore.tryCreatePartitionItem(fullSourceIdentifierForPartition, partitionIdentifier.getPartitionKey(), SourcePartitionStatus.UNASSIGNED, 0L, null)).willReturn(true);
+        given(sourceCoordinationStore.tryCreatePartitionItem(fullSourceIdentifierForPartition, partitionIdentifier.getPartitionKey(), SourcePartitionStatus.UNASSIGNED, 0L, null, false)).willReturn(true);
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(partitionCreationSupplier);
 
@@ -242,7 +243,7 @@ public class LeaseBasedSourceCoordinatorTest {
 
         assertThat(result.isEmpty(), equalTo(true));
 
-        verify(sourceCoordinationStore, never()).tryCreatePartitionItem(anyString(), anyString(), any(), anyLong(), anyString());
+        verify(sourceCoordinationStore, never()).tryCreatePartitionItem(anyString(), anyString(), any(), anyLong(), anyString(), eq(false));
 
         verify(partitionCreationSupplierInvocationsCounter).increment();
         verify(noPartitionsAcquiredCounter).increment();
@@ -271,7 +272,7 @@ public class LeaseBasedSourceCoordinatorTest {
         given(globalStateForPartitionCreationItem.getPartitionOwner()).willReturn(sourceIdentifierWithPartitionPrefix + ":" + InetAddress.getLocalHost().getHostName());
         given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifierForGlobalState, GLOBAL_STATE_SOURCE_PARTITION_KEY_FOR_CREATING_PARTITIONS)).willReturn(Optional.of(globalStateForPartitionCreationItem));
         given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifierForPartition, partitionIdentifier.getPartitionKey())).willReturn(Optional.empty());
-        given(sourceCoordinationStore.tryCreatePartitionItem(fullSourceIdentifierForPartition, partitionIdentifier.getPartitionKey(), SourcePartitionStatus.UNASSIGNED, 0L, null)).willReturn(false);
+        given(sourceCoordinationStore.tryCreatePartitionItem(fullSourceIdentifierForPartition, partitionIdentifier.getPartitionKey(), SourcePartitionStatus.UNASSIGNED, 0L, null, false)).willReturn(false);
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(partitionCreationSupplier);
 
@@ -381,7 +382,7 @@ public class LeaseBasedSourceCoordinatorTest {
         verify(partitionManager).setActivePartition(result.get());
         verify(sourceCoordinationStore, never()).getSourcePartitionItem(anyString(), anyString());
         verify(sourceCoordinationStore, never()).tryUpdateSourcePartitionItem(any(SourcePartitionStoreItem.class));
-        verify(sourceCoordinationStore, never()).tryCreatePartitionItem(anyString(), anyString(), any(), anyLong(), anyString());
+        verify(sourceCoordinationStore, never()).tryCreatePartitionItem(anyString(), anyString(), any(), anyLong(), anyString(), eq(false));
 
         verify(partitionsAcquiredCounter).increment();
 
