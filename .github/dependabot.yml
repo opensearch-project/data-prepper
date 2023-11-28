@@ -27,7 +27,37 @@ updates:
     interval: monthly
 
 - package-ecosystem: gradle
+  directory: "/data-prepper-main"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-test-common"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/e2e-test"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/performance-test"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/release"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
   directory: "/data-prepper-plugins/aggregate-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/anomaly-detector-processor"
   schedule:
     interval: monthly
 
@@ -37,7 +67,32 @@ updates:
     interval: monthly
 
 - package-ecosystem: gradle
+  directory: "/data-prepper-plugins/avro-codecs"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/aws-plugin"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/aws-plugin-api"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/aws-sqs-common"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
   directory: "/data-prepper-plugins/blocking-buffer"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/buffer-common"
   schedule:
     interval: monthly
 
@@ -47,7 +102,37 @@ updates:
     interval: monthly
 
 - package-ecosystem: gradle
+  directory: "/data-prepper-plugins/csv-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/date-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/dissect-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
   directory: "/data-prepper-plugins/drop-events-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/dynamodb-source"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/dynamodb-source-coordination-store"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/failures-common"
   schedule:
     interval: monthly
 
@@ -62,37 +147,62 @@ updates:
     interval: monthly
 
 - package-ecosystem: gradle
+  directory: "/data-prepper-plugins/in-memory-source-coordination-store"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/kafka-connect-plugins"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/kafka-plugins"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/key-value-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/log-generator-source"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/mapdb-processor-state"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/mutate-event-processors"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/mutate-string-processors"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/newline-codecs"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/obfuscate-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
   directory: "/data-prepper-plugins/opensearch"
   schedule:
     interval: monthly
 
 - package-ecosystem: gradle
-  directory: "/data-prepper-plugins/mapdb-prepper-state"
-  schedule:
-    interval: monthly
-
-- package-ecosystem: gradle
-  directory: "/data-prepper-plugins/otel-trace-raw-processor"
-  schedule:
-    interval: monthly
-
-- package-ecosystem: gradle
-  directory: "/data-prepper-plugins/otel-trace-raw-prepper"
-  schedule:
-    interval: monthly
-
-- package-ecosystem: gradle
-  directory: "/data-prepper-plugins/otel-trace-group-processor"
-  schedule:
-    interval: monthly
-
-- package-ecosystem: gradle
-  directory: "/data-prepper-plugins/otel-trace-group-prepper"
-  schedule:
-    interval: monthly
-
-- package-ecosystem: gradle
-  directory: "/data-prepper-plugins/otel-trace-source"
+  directory: "/data-prepper-plugins/otel-logs-source"
   schedule:
     interval: monthly
 
@@ -107,6 +217,71 @@ updates:
     interval: monthly
 
 - package-ecosystem: gradle
+  directory: "/data-prepper-plugins/otel-proto-common"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/otel-trace-group-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/otel-trace-raw-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/otel-trace-source"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/parquet-codecs"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/parse-json-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/rss-source"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/s3-sink"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/s3-source"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
   directory: "/data-prepper-plugins/service-map-stateful"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/trace-peer-forwarder-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/translate-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/type-conversion-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/user-agent-processor"
   schedule:
     interval: monthly
