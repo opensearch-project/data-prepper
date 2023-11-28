@@ -3,7 +3,7 @@ services:
   data-prepper:
     restart: unless-stopped
     container_name: data-prepper
-    image: opensearchproject/data-prepper:2
+    image: opensearchproject/data-prepper:2.5.0
     volumes:
       - ../trace_analytics_no_ssl_2x.yml:/usr/share/data-prepper/pipelines/pipelines.yaml
       - ../data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
@@ -31,7 +31,7 @@ services:
       - my_network
   jaeger-agent:
     container_name: jaeger-agent
-    image: jaegertracing/jaeger-agent:latest
+    image: jaegertracing/jaeger-agent:1.51.0
     command: [ "--reporter.grpc.host-port=otel-collector:14250" ]
     ports:
       - "5775:5775/udp"
@@ -41,7 +41,7 @@ services:
     networks:
       - my_network
   jaeger-hot-rod:
-    image: jaegertracing/example-hotrod:latest
+    image: jaegertracing/example-hotrod:1.41.0
     command: [ "all" ]
     environment:
       - JAEGER_AGENT_HOST=jaeger-agent
@@ -54,7 +54,7 @@ services:
       - my_network
   opensearch:
     container_name: node-0.example.com
-    image: opensearchproject/opensearch:2
+    image: opensearchproject/opensearch:2.9.0
     environment:
       - discovery.type=single-node
       - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
@@ -72,7 +72,7 @@ services:
     networks:
       - my_network
   dashboards:
-    image: opensearchproject/opensearch-dashboards:2
+    image: opensearchproject/opensearch-dashboards:2.11.0
     container_name: opensearch-dashboards
     ports:
       - 5601:5601
