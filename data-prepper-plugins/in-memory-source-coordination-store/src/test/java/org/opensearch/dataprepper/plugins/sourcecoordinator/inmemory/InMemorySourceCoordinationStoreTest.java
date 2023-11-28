@@ -109,7 +109,7 @@ public class InMemorySourceCoordinationStoreTest {
         given(inMemoryPartitionAccessor.getItem(sourceIdentifier, partitionKey)).willReturn(Optional.of(mock(SourcePartitionStoreItem.class)));
         final InMemorySourceCoordinationStore objectUnderTest = createObjectUnderTest();
 
-        final boolean created = objectUnderTest.tryCreatePartitionItem(sourceIdentifier, partitionKey, status, closedCount, partitionProgressState);
+        final boolean created = objectUnderTest.tryCreatePartitionItem(sourceIdentifier, partitionKey, status, closedCount, partitionProgressState, false);
         assertThat(created, equalTo(false));
         verify(inMemoryPartitionAccessor, never()).queuePartition(any());
     }
@@ -129,7 +129,7 @@ public class InMemorySourceCoordinationStoreTest {
         doNothing().when(inMemoryPartitionAccessor).queuePartition(argumentCaptor.capture());
         final InMemorySourceCoordinationStore objectUnderTest = createObjectUnderTest();
 
-        final boolean created = objectUnderTest.tryCreatePartitionItem(sourceIdentifier, partitionKey, status, closedCount, partitionProgressState);
+        final boolean created = objectUnderTest.tryCreatePartitionItem(sourceIdentifier, partitionKey, status, closedCount, partitionProgressState, false);
         assertThat(created, equalTo(true));
 
         final InMemorySourcePartitionStoreItem createdItem = argumentCaptor.getValue();

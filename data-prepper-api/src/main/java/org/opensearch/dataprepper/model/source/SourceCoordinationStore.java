@@ -39,7 +39,8 @@ public interface SourceCoordinationStore {
                                    final String partitionKey,
                                    final SourcePartitionStatus sourcePartitionStatus,
                                    final Long closedCount,
-                                   final String partitionProgressState);
+                                   final String partitionProgressState,
+                                   final boolean isReadOnlyItem);
 
     /**
      * The following scenarios should qualify a partition as available to be acquired
