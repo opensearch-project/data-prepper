@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.Dat
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.ExportSummary;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.LoadStatus;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -74,11 +75,15 @@ public class ExportScheduler implements Runnable {
     private final Counter exportS3ObjectsTotalCounter;
     private final Counter exportRecordsTotalCounter;
 
-    public ExportScheduler(EnhancedSourceCoordinator enhancedSourceCoordinator, DynamoDbClient dynamoDBClient, ManifestFileReader manifestFileReader, PluginMetrics pluginMetrics) {
+    public ExportScheduler(final EnhancedSourceCoordinator enhancedSourceCoordinator,
+                           final DynamoDbClient dynamoDBClient,
+                           final ManifestFileReader manifestFileReader,
+                           final PluginMetrics pluginMetrics,
+                           final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics) {
         this.enhancedSourceCoordinator = enhancedSourceCoordinator;
         this.dynamoDBClient = dynamoDBClient;
         this.pluginMetrics = pluginMetrics;
-        this.exportTaskManager = new ExportTaskManager(dynamoDBClient);
+        this.exportTaskManager = new ExportTaskManager(dynamoDBClient, dynamoDBSourceAggregateMetrics);
 
         this.manifestFileReader = manifestFileReader;
         executor = Executors.newCachedThreadPool();
@@ -213,7 +218,7 @@ public class ExportScheduler implements Runnable {
 
     private void closeExportPartitionWithError(ExportPartition exportPartition) {
         LOG.error("The export from DynamoDb to S3 failed, it will be retried");
-        exportJobFailureCounter.increment(1);
+        exportJobFailureCounter.increment();
         ExportProgressState exportProgressState = exportPartition.getProgressState().get();
         // Clear current Arn, so that a new export can be submitted.
         exportProgressState.setExportArn(null);

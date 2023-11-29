@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.leader.ShardManager;
 import org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumerFactory;
 import org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamScheduler;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.BackoffCalculator;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -54,6 +55,8 @@ public class DynamoDBService {
 
     private final PluginMetrics pluginMetrics;
 
+    private final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics;
+
     private final AcknowledgementSetManager acknowledgementSetManager;
 
 
@@ -66,6 +69,7 @@ public class DynamoDBService {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.dynamoDBSourceConfig = sourceConfig;
+        this.dynamoDBSourceAggregateMetrics = new DynamoDBSourceAggregateMetrics();
 
         // Initialize AWS clients
         dynamoDbClient = clientFactory.buildDynamoDBClient();
@@ -73,7 +77,7 @@ public class DynamoDBService {
         s3Client = clientFactory.buildS3Client();
 
         // A shard manager is responsible to retrieve the shard information from streams.
-        shardManager = new ShardManager(dynamoDbStreamsClient);
+        shardManager = new ShardManager(dynamoDbStreamsClient, dynamoDBSourceAggregateMetrics);
         tableConfigs = sourceConfig.getTableConfigs();
         executor = Executors.newFixedThreadPool(4);
     }
@@ -89,12 +93,12 @@ public class DynamoDBService {
 
         LOG.info("Start running DynamoDB service");
         ManifestFileReader manifestFileReader = new ManifestFileReader(new S3ObjectReader(s3Client));
-        Runnable exportScheduler = new ExportScheduler(coordinator, dynamoDbClient, manifestFileReader, pluginMetrics);
+        Runnable exportScheduler = new ExportScheduler(coordinator, dynamoDbClient, manifestFileReader, pluginMetrics, dynamoDBSourceAggregateMetrics);
 
         DataFileLoaderFactory loaderFactory = new DataFileLoaderFactory(coordinator, s3Client, pluginMetrics, buffer);
         Runnable fileLoaderScheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
 
-        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, buffer);
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer);
         Runnable streamScheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, new BackoffCalculator(dynamoDBSourceConfig.getTableConfigs().get(0).getExportConfig() != null));
         // leader scheduler will handle the initialization
         Runnable leaderScheduler = new LeaderScheduler(coordinator, dynamoDbClient, shardManager, tableConfigs);

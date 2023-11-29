@@ -1,9 +1,11 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.leader;
 
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamResponse;
+import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
 import software.amazon.awssdk.services.dynamodb.model.Shard;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
@@ -43,10 +45,13 @@ public class ShardManager {
 
 
     private final DynamoDbStreamsClient streamsClient;
+    private final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics;
 
 
-    public ShardManager(final DynamoDbStreamsClient streamsClient) {
+    public ShardManager(final DynamoDbStreamsClient streamsClient,
+                        final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics) {
         this.streamsClient = streamsClient;
+        this.dynamoDBSourceAggregateMetrics = dynamoDBSourceAggregateMetrics;
         streamMap = new HashMap<>();
         endingSequenceNumberMap = new HashMap<>();
     }
@@ -148,22 +153,30 @@ public class ShardManager {
         long startTime = System.currentTimeMillis();
         // Get all the shard IDs from the stream.
         List<Shard> shards = new ArrayList<>();
-        do {
-            DescribeStreamRequest req = DescribeStreamRequest.builder()
-                    .streamArn(streamArn)
-                    .limit(MAX_SHARD_COUNT)
-                    .exclusiveStartShardId(lastEvaluatedShardId)
-                    .build();
 
-            DescribeStreamResponse describeStreamResult = streamsClient.describeStream(req);
-            shards.addAll(describeStreamResult.streamDescription().shards());
+        try {
+            do {
+                DescribeStreamRequest req = DescribeStreamRequest.builder()
+                        .streamArn(streamArn)
+                        .limit(MAX_SHARD_COUNT)
+                        .exclusiveStartShardId(lastEvaluatedShardId)
+                        .build();
 
-            // If LastEvaluatedShardId is set,
-            // at least one more page of shard IDs to retrieve
-            lastEvaluatedShardId = describeStreamResult.streamDescription().lastEvaluatedShardId();
+                dynamoDBSourceAggregateMetrics.getStreamApiInvocations().increment();
+                DescribeStreamResponse describeStreamResult = streamsClient.describeStream(req);
+                shards.addAll(describeStreamResult.streamDescription().shards());
+
+                // If LastEvaluatedShardId is set,
+                // at least one more page of shard IDs to retrieve
+                lastEvaluatedShardId = describeStreamResult.streamDescription().lastEvaluatedShardId();
 
 
-        } while (lastEvaluatedShardId != null);
+            } while (lastEvaluatedShardId != null);
+        } catch(final InternalServerErrorException e) {
+            LOG.error("Received an internal server exception from DynamoDB while listing shards: {}", e.getMessage());
+            dynamoDBSourceAggregateMetrics.getStream5xxErrors().increment();
+            return shards;
+        }
 
         long endTime = System.currentTimeMillis();
         LOG.info("Listing shards (DescribeStream call) took {} milliseconds with {} shards found", endTime - startTime, shards.size());

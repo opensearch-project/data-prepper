@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkException;
@@ -14,6 +15,7 @@ import software.amazon.awssdk.services.dynamodb.model.DescribeExportResponse;
 import software.amazon.awssdk.services.dynamodb.model.ExportFormat;
 import software.amazon.awssdk.services.dynamodb.model.ExportTableToPointInTimeRequest;
 import software.amazon.awssdk.services.dynamodb.model.ExportTableToPointInTimeResponse;
+import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
 import software.amazon.awssdk.services.dynamodb.model.S3SseAlgorithm;
 
 import java.time.Instant;
@@ -25,10 +27,12 @@ public class ExportTaskManager {
     private static final ExportFormat DEFAULT_EXPORT_FORMAT = ExportFormat.ION;
 
     private final DynamoDbClient dynamoDBClient;
+    private final DynamoDBSourceAggregateMetrics dynamoAggregateMetrics;
 
-
-    public ExportTaskManager(DynamoDbClient dynamoDBClient) {
+    public ExportTaskManager(final DynamoDbClient dynamoDBClient,
+                             final DynamoDBSourceAggregateMetrics dynamoAggregateMetrics) {
         this.dynamoDBClient = dynamoDBClient;
+        this.dynamoAggregateMetrics = dynamoAggregateMetrics;
     }
 
     public String submitExportJob(String tableArn, String bucket, String prefix, String kmsKeyId, Instant exportTime) {
@@ -46,12 +50,17 @@ public class ExportTaskManager {
 
 
         try {
+            dynamoAggregateMetrics.getExportApiInvocations().increment();
             ExportTableToPointInTimeResponse response = dynamoDBClient.exportTableToPointInTime(req);
 
             String exportArn = response.exportDescription().exportArn();
             String status = response.exportDescription().exportStatusAsString();
             LOG.debug("Export Job submitted with ARN {} and status {}", exportArn, status);
             return exportArn;
+        } catch (final InternalServerErrorException e) {
+            dynamoAggregateMetrics.getExport5xxErrors().increment();
+            LOG.error("Failed to submit an export job with error: {}", e.getMessage());
+            return null;
         } catch (SdkException e) {
             LOG.error("Failed to submit an export job with error " + e.getMessage());
             return null;
@@ -64,9 +73,13 @@ public class ExportTaskManager {
 
         String manifestKey = null;
         try {
+            dynamoAggregateMetrics.getExportApiInvocations().increment();
             DescribeExportResponse resp = dynamoDBClient.describeExport(request);
             manifestKey = resp.exportDescription().exportManifest();
 
+        } catch (final InternalServerErrorException e) {
+            dynamoAggregateMetrics.getExport5xxErrors().increment();
+            LOG.error("Unable to get manifest file for export " + exportArn);
         } catch (SdkException e) {
             LOG.error("Unable to get manifest file for export " + exportArn);
         }
