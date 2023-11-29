@@ -31,6 +31,15 @@ dependencies {
     testImplementation testLibs.slf4j.simple
     testImplementation 'software.amazon.awssdk:s3-transfer-manager'
     testImplementation 'software.amazon.awssdk.crt:aws-crt:0.25.0'
+
+    constraints {
+        implementation('com.nimbusds:nimbus-jose-jwt') {
+            version {
+                require '9.37.1'
+            }
+            because 'Fixes CVE-2021-31684 and CVE-2023-1370 by using a newer shaded version of json-smart.'
+        }
+    }
 }
 
 test {
