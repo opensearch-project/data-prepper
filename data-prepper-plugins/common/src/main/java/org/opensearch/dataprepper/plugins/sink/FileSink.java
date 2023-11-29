@@ -120,14 +120,11 @@ public class FileSink implements Sink<Record<Object>> {
 
     @Override
     public void initialize() {
+        final StandardOpenOption[] openOptions = appendMode ?
+                new StandardOpenOption[] {StandardOpenOption.APPEND, StandardOpenOption.CREATE, StandardOpenOption.WRITE} :
+                new StandardOpenOption[] {};
         try {
-            if (appendMode) {
-
-
-                writer = Files.newBufferedWriter(Paths.get(outputFilePath), StandardCharsets.UTF_8, StandardOpenOption.APPEND, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-            } else {
-                writer = Files.newBufferedWriter(Paths.get(outputFilePath), StandardCharsets.UTF_8);
-            }
+            writer = Files.newBufferedWriter(Paths.get(outputFilePath), StandardCharsets.UTF_8, openOptions);
         } catch (final IOException ex) {
             throw new RuntimeException(format("Encountered exception opening/creating file %s", outputFilePath), ex);
         }
