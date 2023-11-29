@@ -3,7 +3,7 @@ services:
   data-prepper:
     restart: unless-stopped
     container_name: data-prepper
-    image: opensearchproject/data-prepper:2.5.0
+    image: opensearchproject/data-prepper:2
     volumes:
       - ../trace_analytics_no_ssl_2x.yml:/usr/share/data-prepper/pipelines/pipelines.yaml
       - ../data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
@@ -72,7 +72,7 @@ services:
     networks:
       - my_network
   dashboards:
-    image: opensearchproject/opensearch-dashboards:2.11.0
+    image: opensearchproject/opensearch-dashboards:2.9.0
     container_name: opensearch-dashboards
     ports:
       - 5601:5601
