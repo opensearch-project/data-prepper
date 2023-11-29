@@ -7,8 +7,7 @@ package org.opensearch.dataprepper.model.sink;
 
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Statistic;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -17,6 +16,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
 
@@ -30,10 +31,10 @@ import java.util.UUID;
 
 import static org.awaitility.Awaitility.await;
 
-public class AbstractSinkTest {
+class AbstractSinkTest {
     private int count;
     @Test
-    public void testMetrics() {
+    void testMetrics() {
         final String sinkName = "testSink";
         final String pipelineName = "pipelineName";
         MetricsTestUtil.initMetrics();
@@ -41,7 +42,7 @@ public class AbstractSinkTest {
         pluginSetting.setPipelineName(pipelineName);
         AbstractSink<Record<String>> abstractSink = new AbstractSinkImpl(pluginSetting);
         abstractSink.initialize();
-        Assert.assertEquals(abstractSink.isReady(), true);
+        assertEquals(abstractSink.isReady(), true);
         abstractSink.updateLatencyMetrics(Arrays.asList(
                 new Record<>(UUID.randomUUID().toString())));
         abstractSink.output(Arrays.asList(
@@ -57,20 +58,20 @@ public class AbstractSinkTest {
         final List<Measurement> elapsedTimeMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(sinkName).add(MetricNames.TIME_ELAPSED).toString());
 
-        Assert.assertEquals(1, recordsInMeasurements.size());
-        Assert.assertEquals(5.0, recordsInMeasurements.get(0).getValue(), 0);
-        Assert.assertEquals(3, elapsedTimeMeasurements.size());
-        Assert.assertEquals(1.0, MetricsTestUtil.getMeasurementFromList(elapsedTimeMeasurements, Statistic.COUNT).getValue(), 0);
-        Assert.assertTrue(MetricsTestUtil.isBetween(
+        assertEquals(1, recordsInMeasurements.size());
+        assertEquals(5.0, recordsInMeasurements.get(0).getValue(), 0);
+        assertEquals(3, elapsedTimeMeasurements.size());
+        assertEquals(1.0, MetricsTestUtil.getMeasurementFromList(elapsedTimeMeasurements, Statistic.COUNT).getValue(), 0);
+        assertTrue(MetricsTestUtil.isBetween(
                 MetricsTestUtil.getMeasurementFromList(elapsedTimeMeasurements, Statistic.TOTAL_TIME).getValue(),
                 0.2,
                 0.3));
-        Assert.assertEquals(abstractSink.getRetryThreadState(), null);
+        assertEquals(abstractSink.getRetryThreadState(), null);
         abstractSink.shutdown();
     }
 
     @Test
-    public void testSinkNotReady() {
+    void testSinkNotReady() {
         final String sinkName = "testSink";
         final String pipelineName = "pipelineName";
         MetricsTestUtil.initMetrics();
@@ -78,19 +79,19 @@ public class AbstractSinkTest {
         pluginSetting.setPipelineName(pipelineName);
         AbstractSink<Record<String>> abstractSink = new AbstractSinkNotReadyImpl(pluginSetting);
         abstractSink.initialize();
-        Assert.assertEquals(abstractSink.isReady(), false);
-        Assert.assertEquals(abstractSink.getRetryThreadState(), Thread.State.RUNNABLE);
+        assertEquals(abstractSink.isReady(), false);
+        assertEquals(abstractSink.getRetryThreadState(), Thread.State.RUNNABLE);
         // Do another intialize to make sure the sink is still not ready
         abstractSink.initialize();
-        Assert.assertEquals(abstractSink.isReady(), false);
+        assertEquals(abstractSink.isReady(), false);
         await().atMost(Duration.ofSeconds(5))
                 .until(abstractSink::isReady);
-        Assert.assertEquals(abstractSink.getRetryThreadState(), Thread.State.TERMINATED);
+        assertEquals(abstractSink.getRetryThreadState(), Thread.State.TERMINATED);
         abstractSink.shutdown();
     }
 
     @Test
-    public void testSinkWithRegisterEventReleaseHandler() {
+    void testSinkWithRegisterEventReleaseHandler() {
         final String sinkName = "testSink";
         final String pipelineName = "pipelineName";
         MetricsTestUtil.initMetrics();
@@ -98,7 +99,7 @@ public class AbstractSinkTest {
         pluginSetting.setPipelineName(pipelineName);
         AbstractSink<Record<Event>> abstractSink = new AbstractEventSinkImpl(pluginSetting);
         abstractSink.initialize();
-        Assert.assertEquals(abstractSink.isReady(), true);
+        assertEquals(abstractSink.isReady(), true);
         count = 0;
         Event event = JacksonEvent.builder()
                 .withEventType("event")
@@ -116,7 +117,7 @@ public class AbstractSinkTest {
 
     private static class AbstractEventSinkImpl extends AbstractSink<Record<Event>> {
 
-        public AbstractEventSinkImpl(PluginSetting pluginSetting) {
+        AbstractEventSinkImpl(PluginSetting pluginSetting) {
             super(pluginSetting, 10, 1000);
         }
 
@@ -146,7 +147,7 @@ public class AbstractSinkTest {
 
     private static class AbstractSinkImpl extends AbstractSink<Record<String>> {
 
-        public AbstractSinkImpl(PluginSetting pluginSetting) {
+        AbstractSinkImpl(PluginSetting pluginSetting) {
             super(pluginSetting, 10, 1000);
         }
 
@@ -178,7 +179,7 @@ public class AbstractSinkTest {
 
         boolean initialized;
         int initCount;
-        public AbstractSinkNotReadyImpl(PluginSetting pluginSetting) {
+        AbstractSinkNotReadyImpl(PluginSetting pluginSetting) {
             super(pluginSetting);
             initialized = false;
             initCount = 0;
