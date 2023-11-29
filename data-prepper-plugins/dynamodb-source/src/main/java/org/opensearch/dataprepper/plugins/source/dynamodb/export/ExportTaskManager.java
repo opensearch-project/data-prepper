@@ -79,9 +79,9 @@ public class ExportTaskManager {
 
         } catch (final InternalServerErrorException e) {
             dynamoAggregateMetrics.getExport5xxErrors().increment();
-            LOG.error("Unable to get manifest file for export " + exportArn);
+            LOG.error("Unable to get manifest file for export {}: {}", exportArn, e.getMessage());
         } catch (SdkException e) {
-            LOG.error("Unable to get manifest file for export " + exportArn);
+            LOG.error("Unable to get manifest file for export {}: {}", exportArn, e.getMessage());
         }
         return manifestKey;
     }
