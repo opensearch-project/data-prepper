@@ -45,6 +45,11 @@ class FileSinkTests {
     // TODO: remove with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     private final List<Record<Object>> TEST_STRING_RECORDS = Arrays.asList(TEST_STRING_RECORD_1, TEST_STRING_RECORD_2);
     private List<Record<Object>> TEST_RECORDS;
+
+    private Record<Object> TEST_RECORD1;
+
+    private Record<Object> TEST_RECORD2;
+
     private FileSinkConfig fileSinkConfig;
     private SinkContext sinkContext;
 
@@ -60,12 +65,14 @@ class FileSinkTests {
                 .withData(Map.of(TEST_KEY, TEST_DATA_1))
                 .build();
         event.getMetadata().addTags(List.of(tagStr1, tagStr2));
-        TEST_RECORDS.add(new Record<>(event));
+        TEST_RECORD1 = new Record<>(event);
+        TEST_RECORDS.add(TEST_RECORD1);
         event = JacksonEvent.builder()
                 .withEventType("event")
                 .withData(Map.of(TEST_KEY, TEST_DATA_2))
                 .build();
-        TEST_RECORDS.add(new Record<>(event));
+        TEST_RECORD2 = new Record<>(event);
+        TEST_RECORDS.add(TEST_RECORD2);
     }
 
     private FileSink createObjectUnderTest() {
@@ -105,6 +112,55 @@ class FileSinkTests {
 
             final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
             Assertions.assertTrue(outputData.contains(TEST_DATA_1));
+            Assertions.assertTrue(outputData.contains(TEST_DATA_2));
+        }
+
+        @Test
+        void testValidFilePathStringRecordInAppendMode() throws IOException {
+            when(sinkContext.getTagsTargetKey()).thenReturn(null);
+            when(fileSinkConfig.getAppendMode()).thenReturn(true);
+            FileSink fileSink = createObjectUnderTest();
+            fileSink.initialize();
+
+            Assertions.assertTrue(fileSink.isReady());
+            fileSink.output(List.of(TEST_RECORD1));
+            fileSink.shutdown();
+            String outputData = readDocFromFile(TEST_OUTPUT_FILE);
+            Assertions.assertTrue(outputData.contains(TEST_DATA_1));
+            Assertions.assertFalse(outputData.contains(TEST_DATA_2));
+
+            fileSink = createObjectUnderTest();
+            fileSink.initialize();
+            Assertions.assertTrue(fileSink.isReady());
+            fileSink.output(List.of(TEST_RECORD2));
+            fileSink.shutdown();
+
+            outputData = readDocFromFile(TEST_OUTPUT_FILE);
+            Assertions.assertTrue(outputData.contains(TEST_DATA_1));
+            Assertions.assertTrue(outputData.contains(TEST_DATA_2));
+        }
+
+        @Test
+        void testValidFilePathStringRecordInAppendModeFalse() throws IOException {
+            when(sinkContext.getTagsTargetKey()).thenReturn(null);
+            FileSink fileSink = createObjectUnderTest();
+            fileSink.initialize();
+
+            Assertions.assertTrue(fileSink.isReady());
+            fileSink.output(List.of(TEST_RECORD1));
+            fileSink.shutdown();
+            String outputData = readDocFromFile(TEST_OUTPUT_FILE);
+            Assertions.assertTrue(outputData.contains(TEST_DATA_1));
+            Assertions.assertFalse(outputData.contains(TEST_DATA_2));
+
+            fileSink = createObjectUnderTest();
+            fileSink.initialize();
+            Assertions.assertTrue(fileSink.isReady());
+            fileSink.output(List.of(TEST_RECORD2));
+            fileSink.shutdown();
+
+            outputData = readDocFromFile(TEST_OUTPUT_FILE);
+            Assertions.assertFalse(outputData.contains(TEST_DATA_1));
             Assertions.assertTrue(outputData.contains(TEST_DATA_2));
         }
 

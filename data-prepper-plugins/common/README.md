@@ -40,6 +40,7 @@ Temporarily, `type` can either be `event` or `string`. If you would like to use 
 A sink plugin to write output data to the specified file path.
 
 - path (String): absolute output file path
+- append (Boolean): set to `true` if the file should be opened for write in append mode. `false` otherwise. Default is `false`
 
 ## `stdin`
 
