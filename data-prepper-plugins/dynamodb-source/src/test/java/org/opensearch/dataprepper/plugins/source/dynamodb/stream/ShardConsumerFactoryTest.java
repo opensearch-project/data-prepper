@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,8 +20,10 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorResponse;
+import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
 import java.time.Instant;
@@ -29,10 +32,13 @@ import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ShardConsumerFactoryTest {
@@ -46,6 +52,11 @@ class ShardConsumerFactoryTest {
     @Mock
     private PluginMetrics pluginMetrics;
 
+    @Mock
+    private DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics;
+
+    @Mock
+    private Counter streamApiInvocations;
 
     private StreamPartition streamPartition;
 
@@ -88,6 +99,7 @@ class ShardConsumerFactoryTest {
                 .build();
         lenient().when(tableInfoGlobalState.getProgressState()).thenReturn(Optional.of(metadata.toMap()));
 
+        when(dynamoDBSourceAggregateMetrics.getStreamApiInvocations()).thenReturn(streamApiInvocations);
     }
 
     @Test
@@ -98,11 +110,12 @@ class ShardConsumerFactoryTest {
         state.setStartTime(Instant.now().toEpochMilli());
         streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
 
-        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, buffer);
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer);
         Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
         assertThat(consumer, notNullValue());
         verify(dynamoDbStreamsClient).getShardIterator(any(GetShardIteratorRequest.class));
 
+        verify(streamApiInvocations).increment();
     }
 
     @Test
@@ -114,12 +127,32 @@ class ShardConsumerFactoryTest {
         state.setEndingSequenceNumber(UUID.randomUUID().toString());
         streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
 
-        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, buffer);
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer);
         Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
         assertThat(consumer, notNullValue());
         // Should get iterators twice
         verify(dynamoDbStreamsClient, times(2)).getShardIterator(any(GetShardIteratorRequest.class));
 
+        verify(streamApiInvocations, times(2)).increment();
+
+    }
+
+    @Test
+    void stream5xxErrors_is_incremented_when_get_shard_iterator_throws_internal_exception() {
+        StreamProgressState state = new StreamProgressState();
+        state.setWaitForExport(false);
+        state.setStartTime(Instant.now().toEpochMilli());
+        streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
+
+        when(dynamoDbStreamsClient.getShardIterator(any(GetShardIteratorRequest.class))).thenThrow(InternalServerErrorException.class);
+        final Counter stream5xxErrors = mock(Counter.class);
+        when(dynamoDBSourceAggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
+
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer);
+        Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
+        assertThat(consumer, nullValue());
+        verify(stream5xxErrors).increment();
+        verify(streamApiInvocations).increment();
     }
 
 }

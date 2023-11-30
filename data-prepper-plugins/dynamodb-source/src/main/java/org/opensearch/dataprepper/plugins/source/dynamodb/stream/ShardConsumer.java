@@ -13,10 +13,12 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse;
+import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
 import java.time.Duration;
@@ -101,6 +103,8 @@ public class ShardConsumer implements Runnable {
 
     private final String shardId;
 
+    private final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics;
+
     private long recordsWrittenToBuffer;
 
     private ShardConsumer(Builder builder) {
@@ -117,10 +121,14 @@ public class ShardConsumer implements Runnable {
         this.shardAcknowledgmentTimeout = builder.dataFileAcknowledgmentTimeout;
         this.shardId = builder.shardId;
         this.recordsWrittenToBuffer = 0;
+        this.dynamoDBSourceAggregateMetrics = builder.dynamoDBSourceAggregateMetrics;
     }
 
-    public static Builder builder(final DynamoDbStreamsClient dynamoDbStreamsClient, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
-        return new Builder(dynamoDbStreamsClient, pluginMetrics, buffer);
+    public static Builder builder(final DynamoDbStreamsClient dynamoDbStreamsClient,
+                                  final PluginMetrics pluginMetrics,
+                                  final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics,
+                                  final Buffer<Record<Event>> buffer) {
+        return new Builder(dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer);
     }
 
 
@@ -129,6 +137,8 @@ public class ShardConsumer implements Runnable {
         private final DynamoDbStreamsClient dynamoDbStreamsClient;
 
         private final PluginMetrics pluginMetrics;
+
+        private final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics;
 
         private final Buffer<Record<Event>> buffer;
 
@@ -149,9 +159,13 @@ public class ShardConsumer implements Runnable {
         private AcknowledgementSet acknowledgementSet;
         private Duration dataFileAcknowledgmentTimeout;
 
-        public Builder(final DynamoDbStreamsClient dynamoDbStreamsClient, final PluginMetrics pluginMetrics, final Buffer<Record<Event>> buffer) {
+        public Builder(final DynamoDbStreamsClient dynamoDbStreamsClient,
+                       final PluginMetrics pluginMetrics,
+                       final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics,
+                       final Buffer<Record<Event>> buffer) {
             this.dynamoDbStreamsClient = dynamoDbStreamsClient;
             this.pluginMetrics = pluginMetrics;
+            this.dynamoDBSourceAggregateMetrics = dynamoDBSourceAggregateMetrics;
             this.buffer = buffer;
         }
 
@@ -303,9 +317,13 @@ public class ShardConsumer implements Runnable {
                 .build();
 
         try {
+            dynamoDBSourceAggregateMetrics.getStreamApiInvocations().increment();
             GetRecordsResponse response = dynamoDbStreamsClient.getRecords(req);
             return response;
-        } catch (Exception e) {
+        } catch(final InternalServerErrorException ex) {
+            dynamoDBSourceAggregateMetrics.getStream5xxErrors().increment();
+            throw new RuntimeException(ex.getMessage());
+        } catch (final Exception e) {
             throw new RuntimeException(e.getMessage());
         }
 

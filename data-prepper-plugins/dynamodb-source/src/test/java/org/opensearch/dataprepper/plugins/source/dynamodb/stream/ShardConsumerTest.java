@@ -25,9 +25,11 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse;
+import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
 import software.amazon.awssdk.services.dynamodb.model.OperationType;
 import software.amazon.awssdk.services.dynamodb.model.Record;
 import software.amazon.awssdk.services.dynamodb.model.StreamRecord;
@@ -42,11 +44,11 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -68,6 +70,15 @@ class ShardConsumerTest {
 
     @Mock
     private PluginMetrics pluginMetrics;
+
+    @Mock
+    private DynamoDBSourceAggregateMetrics aggregateMetrics;
+
+    @Mock
+    private Counter stream5xxErrors;
+
+    @Mock
+    private Counter streamApiInvocations;
 
     @Mock
     private Buffer<org.opensearch.dataprepper.model.record.Record<Event>> buffer;
@@ -134,8 +145,8 @@ class ShardConsumerTest {
         lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(EnhancedSourcePartition.class), eq(null));
         lenient().doNothing().when(coordinator).giveUpPartition(any(EnhancedSourcePartition.class));
 
-        doNothing().when(bufferAccumulator).add(any(org.opensearch.dataprepper.model.record.Record.class));
-        doNothing().when(bufferAccumulator).flush();
+        lenient().doNothing().when(bufferAccumulator).add(any(org.opensearch.dataprepper.model.record.Record.class));
+        lenient().doNothing().when(bufferAccumulator).flush();
 
         checkpointer = new StreamCheckpointer(coordinator, streamPartition);
 
@@ -144,10 +155,12 @@ class ShardConsumerTest {
                 .records(records)
                 .nextShardIterator(null)
                 .build();
-        when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenReturn(response);
+        lenient().when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenReturn(response);
 
         given(pluginMetrics.counter(anyString())).willReturn(testCounter);
         given(pluginMetrics.summary(anyString())).willReturn(testSummary);
+
+        when(aggregateMetrics.getStreamApiInvocations()).thenReturn(streamApiInvocations);
     }
 
 
@@ -158,7 +171,7 @@ class ShardConsumerTest {
                 final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)
         ) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
-            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, buffer)
+            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer)
                     .shardIterator(shardIterator)
                     .checkpointer(checkpointer)
                     .tableInfo(tableInfo)
@@ -177,6 +190,8 @@ class ShardConsumerTest {
         verify(bufferAccumulator).flush();
         // Should complete the consumer as reach to end of shard
         verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE));
+
+        verify(streamApiInvocations).increment();
     }
 
     @Test
@@ -189,7 +204,7 @@ class ShardConsumerTest {
                 final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)
         ) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
-            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, buffer)
+            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer)
                     .shardIterator(shardIterator)
                     .checkpointer(checkpointer)
                     .tableInfo(tableInfo)
@@ -213,6 +228,32 @@ class ShardConsumerTest {
         verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE));
 
         verify(acknowledgementSet).complete();
+
+        verify(streamApiInvocations).increment();
+    }
+
+    @Test
+    void test_run_shardConsumer_catches_5xx_exception_and_increments_metric() {
+        ShardConsumer shardConsumer;
+        when(aggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
+        try (
+                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer)
+                    .shardIterator(shardIterator)
+                    .checkpointer(checkpointer)
+                    .tableInfo(tableInfo)
+                    .startTime(null)
+                    .waitForExport(false)
+                    .build();
+        }
+
+        when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenThrow(InternalServerErrorException.class);
+
+        assertThrows(RuntimeException.class, shardConsumer::run);
+
+        verify(stream5xxErrors).increment();
+        verify(streamApiInvocations).increment();
     }
 
     /**

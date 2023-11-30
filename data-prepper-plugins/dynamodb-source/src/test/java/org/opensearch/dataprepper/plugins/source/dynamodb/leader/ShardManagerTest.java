@@ -5,13 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.leader;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamResponse;
+import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
 import software.amazon.awssdk.services.dynamodb.model.SequenceNumberRange;
 import software.amazon.awssdk.services.dynamodb.model.Shard;
 import software.amazon.awssdk.services.dynamodb.model.StreamDescription;
@@ -27,12 +30,23 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 
 @ExtendWith(MockitoExtension.class)
 class ShardManagerTest {
     @Mock
     private DynamoDbStreamsClient dynamoDbStreamsClient;
+
+    @Mock
+    private DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics;
+
+    @Mock
+    private Counter stream5xxErrors;
+
+    @Mock
+    private Counter streamApiInvocations;
 
     private ShardManager shardManager;
 
@@ -80,8 +94,9 @@ class ShardManagerTest {
                 .build();
 
         lenient().when(dynamoDbStreamsClient.describeStream(any(DescribeStreamRequest.class))).thenReturn(response);
-        shardManager = new ShardManager(dynamoDbStreamsClient);
+        shardManager = new ShardManager(dynamoDbStreamsClient, dynamoDBSourceAggregateMetrics);
 
+        when(dynamoDBSourceAggregateMetrics.getStreamApiInvocations()).thenReturn(streamApiInvocations);
     }
 
     @Test
@@ -100,6 +115,21 @@ class ShardManagerTest {
 
         List<String> childShardIds3 = shardManager.findChildShardIds(streamArn, "shardId-005");
         assertThat(childShardIds3, nullValue());
+
+        verify(streamApiInvocations).increment();
+    }
+
+    @Test
+    void stream5xxError_is_incremented_when_describe_stream_throws_internal_error() {
+        when(dynamoDbStreamsClient.describeStream(any(DescribeStreamRequest.class))).thenThrow(InternalServerErrorException.class);
+        when(dynamoDBSourceAggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
+
+        final List<Shard> shards = shardManager.runDiscovery(streamArn);
+        assertThat(shards, notNullValue());
+        assertThat(shards.isEmpty(), equalTo(true));
+
+        verify(stream5xxErrors).increment();
+        verify(streamApiInvocations).increment();
     }
 
 }
