@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
@@ -41,6 +42,8 @@ public class FileSink implements Sink<Record<Object>> {
     private boolean initialized;
     private final String tagsTargetKey;
 
+    private final boolean appendMode;
+
     /**
      * Mandatory constructor for Data Prepper Component - This constructor is used by Data Prepper
      * runtime engine to construct an instance of {@link FileSink} using an instance of {@link PluginSetting} which
@@ -54,6 +57,7 @@ public class FileSink implements Sink<Record<Object>> {
     public FileSink(final FileSinkConfig fileSinkConfig, final SinkContext sinkContext) {
         this.outputFilePath = fileSinkConfig.getPath();
         isStopRequested = false;
+        this.appendMode = fileSinkConfig.getAppendMode();
         initialized = false;
         lock = new ReentrantLock(true);
         tagsTargetKey = Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null;
@@ -116,8 +120,11 @@ public class FileSink implements Sink<Record<Object>> {
 
     @Override
     public void initialize() {
+        final StandardOpenOption[] openOptions = appendMode ?
+                new StandardOpenOption[] {StandardOpenOption.APPEND, StandardOpenOption.CREATE, StandardOpenOption.WRITE} :
+                new StandardOpenOption[] {};
         try {
-            writer = Files.newBufferedWriter(Paths.get(outputFilePath), StandardCharsets.UTF_8);
+            writer = Files.newBufferedWriter(Paths.get(outputFilePath), StandardCharsets.UTF_8, openOptions);
         } catch (final IOException ex) {
             throw new RuntimeException(format("Encountered exception opening/creating file %s", outputFilePath), ex);
         }

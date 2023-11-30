@@ -72,10 +72,11 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
                                           final String sourcePartitionKey,
                                           final SourcePartitionStatus sourcePartitionStatus,
                                           final Long closedCount,
-                                          final String partitionProgressState) {
+                                          final String partitionProgressState,
+                                          final boolean isReadOnlyItem) {
         final DynamoDbSourcePartitionItem newPartitionItem = new DynamoDbSourcePartitionItem();
 
-        if (Objects.nonNull(dynamoStoreSettings.getTtl())) {
+        if (!isReadOnlyItem && Objects.nonNull(dynamoStoreSettings.getTtl())) {
             newPartitionItem.setExpirationTime(Instant.now().plus(dynamoStoreSettings.getTtl()).getEpochSecond());
         }
         newPartitionItem.setSourceIdentifier(sourceIdentifier);

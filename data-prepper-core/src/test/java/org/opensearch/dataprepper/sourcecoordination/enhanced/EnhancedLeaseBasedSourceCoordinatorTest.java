@@ -121,12 +121,12 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
         // A normal type.
         TestEnhancedSourcePartition partition = new TestEnhancedSourcePartition(false);
         coordinator.createPartition(partition);
-        verify(sourceCoordinationStore).tryCreatePartitionItem(eq(sourceIdentifier + "|" + DEFAULT_PARTITION_TYPE), anyString(), eq(SourcePartitionStatus.UNASSIGNED), anyLong(), eq(null));
+        verify(sourceCoordinationStore).tryCreatePartitionItem(eq(sourceIdentifier + "|" + DEFAULT_PARTITION_TYPE), anyString(), eq(SourcePartitionStatus.UNASSIGNED), anyLong(), eq(null), eq(false));
 
         // GlobalState.
         TestEnhancedSourcePartition globalState = new TestEnhancedSourcePartition(true);
         coordinator.createPartition(globalState);
-        verify(sourceCoordinationStore).tryCreatePartitionItem(eq(sourceIdentifier + "|GLOBAL"), anyString(), eq(null), anyLong(), eq(null));
+        verify(sourceCoordinationStore).tryCreatePartitionItem(eq(sourceIdentifier + "|GLOBAL"), anyString(), eq(null), anyLong(), eq(null), eq(true));
 
     }
 

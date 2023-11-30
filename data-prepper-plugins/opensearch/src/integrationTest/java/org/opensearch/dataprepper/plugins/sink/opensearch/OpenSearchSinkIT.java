@@ -25,6 +25,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.opensearch.client.Request;
@@ -99,6 +100,9 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchInteg
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.wipeAllTemplates;
 
 public class OpenSearchSinkIT {
+    private static final int LUCENE_CHAR_LENGTH_LIMIT = 32_766;
+    private static final String TEST_STRING_WITH_SPECIAL_CHARS = "Hello! Data-Prepper? #Example123";
+    private static final String TEST_STRING_WITH_NON_LATIN_CHARS = "Привет,Γειά σας,こんにちは,你好";
     private static final String PLUGIN_NAME = "opensearch";
     private static final String PIPELINE_NAME = "integTestPipeline";
     private static final String TEST_CUSTOM_INDEX_POLICY_FILE = "test-custom-index-policy-file.json";
@@ -970,6 +974,33 @@ public class OpenSearchSinkIT {
     }
 
     @ParameterizedTest
+    @MethodSource("getAttributeTestSpecialAndExtremeValues")
+    public void testEventOutputWithSpecialAndExtremeValues(final Object testValue) throws IOException, InterruptedException {
+        final String testIndexAlias = "test-alias";
+        final String testField = "value";
+        final Map<String, Object> data = new HashMap<>();
+        data.put(testField, testValue);
+        final Event testEvent = JacksonEvent.builder()
+                .withData(data)
+                .withEventType("event")
+                .build();
+
+        final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
+        final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        final Map<String, Object> expectedContent = new HashMap<>();
+        expectedContent.put(testField, testValue);
+
+        assertThat(retSources.size(), equalTo(1));
+        assertThat(retSources.get(0), equalTo(expectedContent));
+        sink.shutdown();
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"info/ids/id", "id"})
     public void testOpenSearchDocumentId(final String testDocumentIdField) throws IOException, InterruptedException {
         final String expectedId = UUID.randomUUID().toString();
@@ -1435,5 +1466,26 @@ public class OpenSearchSinkIT {
 
     private static boolean isES6() {
         return DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(OpenSearchIntegrationHelper.getVersion()) >= 0;
+    }
+
+    private static Stream<Object> getAttributeTestSpecialAndExtremeValues() {
+        return Stream.of(
+                null,
+                Arguments.of(Long.MAX_VALUE),
+                Arguments.of(Long.MIN_VALUE),
+                Arguments.of(Integer.MAX_VALUE),
+                Arguments.of(Integer.MIN_VALUE),
+                Arguments.of(RandomStringUtils.randomAlphabetic(LUCENE_CHAR_LENGTH_LIMIT)),
+                Arguments.of(TEST_STRING_WITH_SPECIAL_CHARS),
+                Arguments.of(TEST_STRING_WITH_NON_LATIN_CHARS),
+                Arguments.of(Double.MIN_VALUE),
+                Arguments.of(-Double.MIN_VALUE),
+                Arguments.of((double) Float.MAX_VALUE),
+                Arguments.of((double) Float.MIN_VALUE),
+                Arguments.of((double) -Float.MAX_VALUE),
+                Arguments.of((double) -Float.MIN_VALUE),
+                Arguments.of(Boolean.TRUE),
+                Arguments.of(Boolean.FALSE)
+                );
     }
 }

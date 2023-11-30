@@ -43,7 +43,7 @@ public class DataFileScheduler implements Runnable {
     /**
      * Default interval to acquire a lease from coordination store
      */
-    private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 15_000;
+    private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 2_000;
 
     static final String EXPORT_S3_OBJECTS_PROCESSED_COUNT = "exportS3ObjectsProcessed";
     static final String ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE = "activeExportS3ObjectConsumers";
@@ -111,6 +111,9 @@ public class DataFileScheduler implements Runnable {
             runLoader.whenComplete(completeDataLoader(dataFilePartition));
         } else {
             runLoader.whenComplete((v, ex) -> {
+                if (ex != null) {
+                    coordinator.giveUpPartition(dataFilePartition);
+                }
                 numOfWorkers.decrementAndGet();
             });
         }
@@ -147,7 +150,7 @@ public class DataFileScheduler implements Runnable {
                 }
             }
         }
-        LOG.warn("Data file scheduler is interrupted, Stop all data file loaders...");
+        LOG.warn("Data file scheduler is interrupted, stopping all data file loaders...");
         // Cannot call executor.shutdownNow() here
         // Otherwise the final checkpoint will fail due to SDK interruption.
         executor.shutdown();
