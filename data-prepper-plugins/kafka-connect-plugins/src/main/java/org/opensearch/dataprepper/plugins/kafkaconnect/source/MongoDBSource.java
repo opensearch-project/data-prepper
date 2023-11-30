@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.plugins.kafkaconnect.source.mongoDB.MongoDBSna
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -35,6 +36,7 @@ import java.util.Objects;
 @DataPrepperPlugin(name = "mongodb", pluginType = Source.class, pluginConfigurationType = MongoDBConfig.class)
 public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoordination {
     private static final Logger LOG = LoggerFactory.getLogger(MongoDBSource.class);
+    private static final String COLLECTION_SPLITTER = "\\.";
 
     private final AwsCredentialsSupplier awsCredentialsSupplier;
 
@@ -61,6 +63,7 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
         this.byteDecoder = new JsonDecoder();
+        this.validateCollections();
     }
 
     @Override
@@ -109,5 +112,16 @@ public class MongoDBSource extends KafkaConnectSource implements UsesSourceCoord
         final MongoDBConfig mongoDBConfig = (MongoDBConfig) this.connectorConfig;
         return mongoDBConfig.getIngestionMode() == MongoDBConfig.IngestionMode.EXPORT_STREAM
                 || mongoDBConfig.getIngestionMode() == MongoDBConfig.IngestionMode.EXPORT;
+    }
+
+    private void validateCollections() {
+        MongoDBConfig config = (MongoDBConfig) this.connectorConfig;
+        List<MongoDBConfig.CollectionConfig> collectionConfigs = config.getCollections();
+        collectionConfigs.forEach(collectionConfig -> {
+            List<String> collection = List.of(collectionConfig.getCollectionName().split(COLLECTION_SPLITTER));
+            if (collection.size() < 2) {
+                throw new IllegalArgumentException("Invalid Collection Name. Must be in db.collection format");
+            }
+        });
     }
 }

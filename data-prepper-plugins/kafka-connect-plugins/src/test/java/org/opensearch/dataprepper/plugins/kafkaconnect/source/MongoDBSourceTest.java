@@ -23,6 +23,8 @@ import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.MongoDBConf
 import org.opensearch.dataprepper.plugins.kafkaconnect.source.mongoDB.MongoDBService;
 import org.opensearch.dataprepper.plugins.kafkaconnect.source.mongoDB.MongoDBSnapshotProgressState;
 
+import java.util.List;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -69,6 +71,22 @@ public class MongoDBSourceTest {
     @Test
     void testConstructorValidations() {
         when(mongoDBConfig.getIngestionMode()).thenReturn(MongoDBConfig.IngestionMode.EXPORT_STREAM);
+        assertThrows(IllegalArgumentException.class, () -> new MongoDBSource(
+                mongoDBConfig,
+                pluginMetrics,
+                pipelineDescription,
+                acknowledgementSetManager,
+                awsCredentialsSupplier,
+                null,
+                null));
+    }
+
+    @Test
+    void testConstructorValidations_invalidCollectionName() {
+        MongoDBConfig.CollectionConfig collectionConfig = mock(MongoDBConfig.CollectionConfig.class);
+        when(collectionConfig.getCollectionName()).thenReturn("invalidName");
+        when(mongoDBConfig.getIngestionMode()).thenReturn(MongoDBConfig.IngestionMode.EXPORT);
+        when(mongoDBConfig.getCollections()).thenReturn(List.of(collectionConfig));
         assertThrows(IllegalArgumentException.class, () -> new MongoDBSource(
                 mongoDBConfig,
                 pluginMetrics,

@@ -50,8 +50,10 @@ public class MongoDBSnapshotWorker implements Runnable {
     private static final String EVENT_SOURCE_OPERATION = "__op";
     private static final String EVENT_SOURCE_TS_MS = "__source_ts_ms";
     private static final String EVENT_TYPE = "EXPORT";
-    private static int DEFAULT_BUFFER_WRITE_TIMEOUT_MS = 5000;
+    private static final String PARTITION_KEY_SPLITTER = "\\|";
+    private static final String COLLECTION_SPLITTER = "\\.";
     private final SourceCoordinator<MongoDBSnapshotProgressState> sourceCoordinator;
+    private static int DEFAULT_BUFFER_WRITE_TIMEOUT_MS = 5000;
     private final Buffer<Record<Object>> buffer;
     private final MongoDBPartitionCreationSupplier mongoDBPartitionCreationSupplier;
     private final AcknowledgementSetManager acknowledgementSetManager;
@@ -126,11 +128,11 @@ public class MongoDBSnapshotWorker implements Runnable {
     }
 
     private void startProcessPartition(SourcePartition<MongoDBSnapshotProgressState> partition) {
-        List<String> partitionKeys = List.of(partition.getPartitionKey().split("\\|"));
+        List<String> partitionKeys = List.of(partition.getPartitionKey().split(PARTITION_KEY_SPLITTER));
         if (partitionKeys.size() < 4) {
             throw new RuntimeException("Invalid Partition Key. Must as db.collection|gte|lte format.");
         }
-        List<String> collection = List.of(partitionKeys.get(0).split("\\."));
+        List<String> collection = List.of(partitionKeys.get(0).split(COLLECTION_SPLITTER));
         final String gte = partitionKeys.get(1);
         final String lte = partitionKeys.get(2);
         final String className = partitionKeys.get(3);

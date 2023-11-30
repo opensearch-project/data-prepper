@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.kafkaconnect.source.mongoDB;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import org.bson.conversions.Bson;
+import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.MongoDBConfig;
 
@@ -16,9 +17,9 @@ import static com.mongodb.client.model.Filters.gte;
 import static com.mongodb.client.model.Filters.lte;
 
 public class MongoDBHelper {
+    private static final String MONGO_CONNECTION_STRING_TEMPLATE = "mongodb://%s:%s@%s:%s/?replicaSet=rs0&directConnection=true&readpreference=%s&ssl=%s&tlsAllowInvalidHostnames=%s";
 
     public static MongoClient getMongoClient(final MongoDBConfig mongoDBConfig) {
-        String template = "mongodb://%s:%s@%s:%s/?replicaSet=rs0&directConnection=true&readpreference=%s&ssl=%s&tlsAllowInvalidHostnames=%s";
         String username = mongoDBConfig.getCredentialsConfig().getUsername();
         String password = mongoDBConfig.getCredentialsConfig().getPassword();
         String hostname = mongoDBConfig.getHostname();
@@ -26,7 +27,7 @@ public class MongoDBHelper {
         String ssl = mongoDBConfig.getSSLEnabled().toString();
         String invalidHostAllowed = mongoDBConfig.getSSLInvalidHostAllowed().toString();
         String readPreference = mongoDBConfig.getExportConfig().getReadPreference();
-        String connectionString = String.format(template, username, password, hostname, port, readPreference, ssl, invalidHostAllowed);
+        String connectionString = String.format(MONGO_CONNECTION_STRING_TEMPLATE, username, password, hostname, port, readPreference, ssl, invalidHostAllowed);
 
         return MongoClients.create(connectionString);
     }
@@ -57,6 +58,11 @@ public class MongoDBHelper {
                 return and(
                         gte("_id", new ObjectId(gte)),
                         lte("_id", new ObjectId(lte))
+                );
+            case "org.bson.types.Decimal128":
+                return and(
+                        gte("_id", Decimal128.parse(gte)),
+                        lte("_id", Decimal128.parse(lte))
                 );
             default:
                 throw new RuntimeException("Unexpected _id class supported: " + className);

@@ -29,7 +29,9 @@ import java.util.stream.Collectors;
 public class MongoDBPartitionCreationSupplier implements Function<Map<String, Object>, List<PartitionIdentifier>> {
     public static final String GLOBAL_STATE_PARTITIONED_COLLECTION_KEY = "partitionedCollections";
     private static final Logger LOG = LoggerFactory.getLogger(MongoDBPartitionCreationSupplier.class);
-    private static final String DOCUMENTDB_PARTITION_KEY_FORMAT = "%s|%s|%s|%s"; // partition format: <db.collection>|<gte>|<lt>|<className>
+    private static final String MONGODB_PARTITION_KEY_FORMAT = "%s|%s|%s|%s"; // partition format: <db.collection>|<gte>|<lt>|<className>
+    private static final String COLLECTION_SPLITTER = "\\.";
+
     private final MongoDBConfig mongoDBConfig;
 
     public MongoDBPartitionCreationSupplier(final MongoDBConfig mongoDBConfig) {
@@ -69,9 +71,9 @@ public class MongoDBPartitionCreationSupplier implements Function<Map<String, Ob
 
     private List<PartitionIdentifier> buildPartitions(final String collectionName) {
         List<PartitionIdentifier> collectionPartitions = new ArrayList<>();
-        List<String> collection = List.of(collectionName.split("\\."));
+        List<String> collection = List.of(collectionName.split(COLLECTION_SPLITTER));
         if (collection.size() < 2) {
-            throw new IllegalArgumentException("Invalid Collection Name. Must as db.collection format");
+            throw new IllegalArgumentException("Invalid Collection Name. Must be in db.collection format");
         }
         try (MongoClient mongoClient = MongoDBHelper.getMongoClient(mongoDBConfig)) {
             MongoDatabase db = mongoClient.getDatabase(collection.get(0));
@@ -109,7 +111,7 @@ public class MongoDBPartitionCreationSupplier implements Function<Map<String, Ob
                     collectionPartitions.add(
                             PartitionIdentifier
                                     .builder()
-                                    .withPartitionKey(String.format(DOCUMENTDB_PARTITION_KEY_FORMAT, collectionName, gteValue, lteValue, className))
+                                    .withPartitionKey(String.format(MONGODB_PARTITION_KEY_FORMAT, collectionName, gteValue, lteValue, className))
                                     .build());
 
                     startIterable = col.find(Filters.gt("_id", lteValue))
@@ -117,6 +119,7 @@ public class MongoDBPartitionCreationSupplier implements Function<Map<String, Ob
                             .sort(new Document("_id", 1))
                             .limit(1);
                 } catch (Exception e) {
+                    LOG.error("Failed to read start cursor when build partitions", e);
                     throw new RuntimeException(e);
                 }
             }
