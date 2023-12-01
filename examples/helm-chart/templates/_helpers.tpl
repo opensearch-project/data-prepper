@@ -60,3 +60,11 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Content-based name for configuration so it triggers a redeploy
+*/}}
+{{- define "data-prepper.secretName" -}}
+{{- include "data-prepper.fullname" . }}-{{ trunc 253 (sha256sum (cat .Values.dataPrepperConfig .Values.pipelineConfig )) -}}
+{{- end }}
+

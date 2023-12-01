@@ -82,7 +82,7 @@ spec:
       volumes:
         - name: data-prepper-config
           secret:
-            secretName: {{ include "data-prepper.fullname" . }}
+            secretName: {{ include "data-prepper.secretName" . }}
             items:
               - key: data-prepper-config
                 path: data-prepper-config.yaml
