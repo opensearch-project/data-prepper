@@ -11,7 +11,7 @@ dependencies {
     implementation 'software.amazon.awssdk:apache-client'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
     testImplementation 'org.json:json:20230227'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
     testImplementation project(':data-prepper-plugins:common')
 }
 
