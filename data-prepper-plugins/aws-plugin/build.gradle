@@ -7,7 +7,7 @@ dependencies {
     implementation 'software.amazon.awssdk:secretsmanager'
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:arns'
-    implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 }
