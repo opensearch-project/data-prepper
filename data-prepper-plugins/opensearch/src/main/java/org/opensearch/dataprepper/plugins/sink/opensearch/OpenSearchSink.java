@@ -40,9 +40,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessOptionsFactory;
 import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater;
 import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdaterFactory;
+import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessOptionsFactory;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
@@ -295,16 +295,28 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
     if (StringUtils.equals(action, OpenSearchBulkActions.UPDATE.toString()) ||
         StringUtils.equals(action, OpenSearchBulkActions.UPSERT.toString())) {
+
+        JsonNode filteredJsonNode = jsonNode;
+        try {
+          if (isUsingDocumentFilters()) {
+            filteredJsonNode = objectMapper.reader().readTree(document.getSerializedJson());
+          }
+        } catch (final IOException e) {
+          throw new RuntimeException(
+                  String.format("An exception occurred while deserializing a document for the %s action: %s", action, e.getMessage()));
+        }
+
+
           final UpdateOperation.Builder<Object> updateOperationBuilder = (action.toLowerCase() == OpenSearchBulkActions.UPSERT.toString()) ?
               new UpdateOperation.Builder<>()
                   .index(indexName)
-                  .document(jsonNode)
-                  .upsert(jsonNode)
+                  .document(filteredJsonNode)
+                  .upsert(filteredJsonNode)
                   .versionType(versionType)
                   .version(version) :
               new UpdateOperation.Builder<>()
                   .index(indexName)
-                  .document(jsonNode)
+                  .document(filteredJsonNode)
                   .versionType(versionType)
                   .version(version);
           docId.ifPresent(updateOperationBuilder::id);
@@ -416,7 +428,15 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           StringUtils.equals(action, OpenSearchBulkActions.DELETE.toString())) {
             serializedJsonNode = SerializedJson.fromJsonNode(event.getJsonNode(), document);
       }
-      BulkOperation bulkOperation = getBulkOperationForAction(eventAction, document, version, indexName, event.getJsonNode());
+      BulkOperation bulkOperation;
+
+      try {
+        bulkOperation = getBulkOperationForAction(eventAction, document, version, indexName, event.getJsonNode());
+      } catch (final Exception e) {
+        LOG.error("An exception occurred while constructing the bulk operation for a document: ", e);
+        logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
+        continue;
+      }
 
       BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle(), serializedJsonNode);
       final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);
@@ -582,5 +602,18 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             .withPipelineName(pluginSetting.getPipelineName())
             .withPluginId(pluginSetting.getName())
             .build();
+  }
+
+  /**
+   * This function is used for update and upsert bulk actions to determine whether the original JsonNode needs to be filtered down
+   * based on the user's sink configuration. If a new parameter manipulates the document before sending to OpenSearch, it needs to be added to
+   * this list to get applied for update and upsert actions
+   * @return whether the doc
+   */
+  private boolean isUsingDocumentFilters() {
+    return documentRootKey != null ||
+            (sinkContext.getIncludeKeys() != null && !sinkContext.getIncludeKeys().isEmpty()) ||
+            (sinkContext.getExcludeKeys() != null && !sinkContext.getExcludeKeys().isEmpty()) ||
+            sinkContext.getTagsTargetKey() != null;
   }
 }
