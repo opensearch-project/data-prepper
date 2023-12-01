@@ -81,17 +81,11 @@ spec:
           {{- end }}
       volumes:
         - name: data-prepper-config
-          secret:
-            secretName: {{ include "data-prepper.secretName" . }}
-            items:
-              - key: data-prepper-config
-                path: data-prepper-config.yaml
+          configMap:
+            name: {{ include "data-prepper.configName" . }}
         - name: data-prepper-pipelines
           secret:
-            secretName: {{ include "data-prepper.secretName" . }}
-            items:
-              - key: pipelines
-                path: pipelines.yaml
+            secretName: {{ include "data-prepper.configName" . }}
       {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -107,3 +101,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+

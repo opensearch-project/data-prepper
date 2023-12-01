@@ -37,6 +37,9 @@ securityContext: {}
 service:
   type: ClusterIP
 
+dataPrepperConfig: {}
+pipelineConfig: {}
+
 ports:
 - name: http
   port: 2021
@@ -100,3 +103,4 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
