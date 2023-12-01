@@ -21,7 +21,7 @@ dependencies {
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:regions'
     implementation 'software.amazon.awssdk:s3'
-    implementation 'com.google.protobuf:protobuf-java-util:3.19.4'
+    implementation 'com.google.protobuf:protobuf-java-util:3.25.1'
     implementation 'com.linecorp.armeria:armeria:1.15.0'
     implementation 'com.linecorp.armeria:armeria-grpc:1.15.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
