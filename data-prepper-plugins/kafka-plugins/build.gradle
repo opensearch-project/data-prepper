@@ -48,8 +48,8 @@ dependencies {
     testImplementation project(':data-prepper-plugins:blocking-buffer')
     testImplementation project(':data-prepper-core')
     testImplementation 'org.mockito:mockito-inline:4.1.0'
-    testImplementation 'org.apache.kafka:kafka_2.13:3.4.0'
-    testImplementation 'org.apache.kafka:kafka_2.13:3.4.0:test'
+    testImplementation 'org.apache.kafka:kafka_2.13:3.6.0'
+    testImplementation 'org.apache.kafka:kafka_2.13:3.6.0:test'
     testImplementation 'org.apache.curator:curator-test:5.5.0'
     testImplementation 'io.confluent:kafka-schema-registry:7.4.0'
     testImplementation testLibs.junit.vintage
