@@ -10,7 +10,7 @@ plugins {
 
 dependencies {
     implementation project(':data-prepper-api')
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.0'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.0'
     implementation 'io.micrometer:micrometer-core'
     implementation project(path: ':data-prepper-api')
     implementation project(path: ':data-prepper-plugins:mutate-event-processors')
