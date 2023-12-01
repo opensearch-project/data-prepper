@@ -19,7 +19,7 @@ dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.8.21'
     testImplementation testLibs.junit.vintage
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
-    testImplementation 'junit:junit:4.13.2'
+    testImplementation testLibs.junit.vintage
 }
 
 jacocoTestCoverageVerification {
