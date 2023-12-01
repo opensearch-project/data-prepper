@@ -29,7 +29,7 @@ dependencies {
     implementation 'io.debezium:debezium-api:2.3.0.Final'
     implementation 'io.debezium:debezium-core:2.3.0.Final'
     implementation 'io.debezium:debezium-storage-kafka:2.3.0.Final'
-    implementation 'io.debezium:debezium-storage-file:2.3.0.Final'
+    implementation 'io.debezium:debezium-storage-file:2.4.1.Final'
     // Debezium MySQL Connector
     implementation 'org.antlr:antlr4-runtime:4.10.1'
     implementation 'io.debezium:debezium-connector-mysql:2.3.0.Final'
