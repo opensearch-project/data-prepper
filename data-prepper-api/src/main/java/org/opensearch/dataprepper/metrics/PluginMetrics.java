@@ -43,6 +43,16 @@ public class PluginMetrics {
                 .add(componentId).toString());
     }
 
+    /**
+     * Provides reference to APIs that register timer, counter, gauge into global registry.
+     *
+     * @param metricsPrefix the prefix to provide to metrics
+     * @return The {@link PluginMetrics}
+     */
+    public static PluginMetrics fromPrefix(final String metricsPrefix) {
+        return new PluginMetrics(metricsPrefix);
+    }
+
     private  PluginMetrics(final String metricsPrefix) {
         this.metricsPrefix = metricsPrefix;
     }

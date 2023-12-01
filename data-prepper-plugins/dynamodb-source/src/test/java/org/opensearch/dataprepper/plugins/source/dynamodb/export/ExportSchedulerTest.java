@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.ExportSummary;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.DescribeExportRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeExportResponse;
@@ -26,6 +27,7 @@ import software.amazon.awssdk.services.dynamodb.model.ExportFormat;
 import software.amazon.awssdk.services.dynamodb.model.ExportStatus;
 import software.amazon.awssdk.services.dynamodb.model.ExportTableToPointInTimeRequest;
 import software.amazon.awssdk.services.dynamodb.model.ExportTableToPointInTimeResponse;
+import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
 
 import java.time.Instant;
 import java.util.Map;
@@ -68,6 +70,12 @@ class ExportSchedulerTest {
 
     @Mock
     private PluginMetrics pluginMetrics;
+
+    @Mock
+    private DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics;
+
+    @Mock
+    private Counter exportApiInvocations;
 
     private ExportScheduler scheduler;
 
@@ -119,6 +127,7 @@ class ExportSchedulerTest {
 
     @Test
     public void test_run_exportJob_correctly() throws InterruptedException {
+        when(dynamoDBSourceAggregateMetrics.getExportApiInvocations()).thenReturn(exportApiInvocations);
         when(exportPartition.getTableArn()).thenReturn(tableArn);
         when(exportPartition.getExportTime()).thenReturn(exportTime);
 
@@ -151,7 +160,7 @@ class ExportSchedulerTest {
         DescribeExportResponse describeExportResponse = DescribeExportResponse.builder().exportDescription(desc).build();
         when(dynamoDBClient.describeExport(any(DescribeExportRequest.class))).thenReturn(describeExportResponse);
 
-        scheduler = new ExportScheduler(coordinator, dynamoDBClient, manifestFileReader, pluginMetrics);
+        scheduler = new ExportScheduler(coordinator, dynamoDBClient, manifestFileReader, pluginMetrics, dynamoDBSourceAggregateMetrics);
 
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.submit(scheduler);
@@ -168,6 +177,7 @@ class ExportSchedulerTest {
         verify(exportJobSuccess).increment();
         verify(exportFilesTotal).increment(2);
         verify(exportRecordsTotal).increment(300);
+        verify(exportApiInvocations, times(2)).increment();
         verifyNoInteractions(exportJobErrors);
 
         executor.shutdownNow();
@@ -178,7 +188,7 @@ class ExportSchedulerTest {
     void run_catches_exception_and_retries_when_exception_is_thrown_during_processing() throws InterruptedException {
         given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
 
-        scheduler = new ExportScheduler(coordinator, dynamoDBClient, manifestFileReader, pluginMetrics);
+        scheduler = new ExportScheduler(coordinator, dynamoDBClient, manifestFileReader, pluginMetrics, dynamoDBSourceAggregateMetrics);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> scheduler.run());
@@ -189,4 +199,41 @@ class ExportSchedulerTest {
         assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
     }
 
+    @Test
+    void export5xxErrors_is_incremented_when_export_apis_throw_internal_errors() throws InterruptedException {
+        final Counter export5xxErrors = mock(Counter.class);
+        when(dynamoDBSourceAggregateMetrics.getExport5xxErrors()).thenReturn(export5xxErrors);
+
+        when(dynamoDBSourceAggregateMetrics.getExportApiInvocations()).thenReturn(exportApiInvocations);
+        when(exportPartition.getTableArn()).thenReturn(tableArn);
+        when(exportPartition.getExportTime()).thenReturn(exportTime);
+
+        ExportProgressState state = new ExportProgressState();
+        state.setBucket(bucketName);
+        state.setPrefix(prefix);
+        when(exportPartition.getProgressState()).thenReturn(Optional.of(state));
+
+        given(pluginMetrics.counter(EXPORT_JOB_SUCCESS_COUNT)).willReturn(exportJobSuccess);
+        given(pluginMetrics.counter(EXPORT_JOB_FAILURE_COUNT)).willReturn(exportJobErrors);
+        given(pluginMetrics.counter(EXPORT_S3_OBJECTS_TOTAL_COUNT)).willReturn(exportFilesTotal);
+        given(pluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT)).willReturn(exportRecordsTotal);
+
+        given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).willReturn(Optional.of(exportPartition)).willReturn(Optional.empty());
+
+        when(dynamoDBClient.exportTableToPointInTime(any(ExportTableToPointInTimeRequest.class))).thenThrow(InternalServerErrorException.class);
+        //when(dynamoDBClient.describeExport(any(DescribeExportRequest.class))).thenThrow(InternalServerErrorException.class);
+
+        scheduler = new ExportScheduler(coordinator, dynamoDBClient, manifestFileReader, pluginMetrics, dynamoDBSourceAggregateMetrics);
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.submit(scheduler);
+
+        Thread.sleep(500);
+
+        verify(exportApiInvocations).increment();
+        verify(export5xxErrors).increment();
+        verify(exportJobErrors).increment();
+
+        executor.shutdownNow();
+    }
 }

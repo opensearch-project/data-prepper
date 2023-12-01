@@ -16,12 +16,14 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.TableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorResponse;
+import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
 import software.amazon.awssdk.services.dynamodb.model.ShardIteratorType;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
@@ -40,16 +42,19 @@ public class ShardConsumerFactory {
 
     private final EnhancedSourceCoordinator enhancedSourceCoordinator;
     private final PluginMetrics pluginMetrics;
+    private final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics;
     private final Buffer<Record<Event>> buffer;
 
 
     public ShardConsumerFactory(final EnhancedSourceCoordinator enhancedSourceCoordinator,
                                 final DynamoDbStreamsClient streamsClient,
                                 final PluginMetrics pluginMetrics,
+                                final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics,
                                 final Buffer<Record<Event>> buffer) {
         this.streamsClient = streamsClient;
         this.enhancedSourceCoordinator = enhancedSourceCoordinator;
         this.pluginMetrics = pluginMetrics;
+        this.dynamoDBSourceAggregateMetrics = dynamoDBSourceAggregateMetrics;
         this.buffer = buffer;
 
     }
@@ -92,7 +97,7 @@ public class ShardConsumerFactory {
 
         LOG.debug("Create shard consumer for {} with shardIter {}", streamPartition.getShardId(), shardIterator);
         LOG.debug("Create shard consumer for {} with lastShardIter {}", streamPartition.getShardId(), lastShardIterator);
-        ShardConsumer shardConsumer = ShardConsumer.builder(streamsClient, pluginMetrics, buffer)
+        ShardConsumer shardConsumer = ShardConsumer.builder(streamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer)
                 .tableInfo(tableInfo)
                 .checkpointer(checkpointer)
                 .shardIterator(shardIterator)
@@ -149,9 +154,13 @@ public class ShardConsumerFactory {
         }
 
         try {
+            dynamoDBSourceAggregateMetrics.getStreamApiInvocations().increment();
             GetShardIteratorResponse getShardIteratorResult = streamsClient.getShardIterator(getShardIteratorRequest);
-            String currentShardIter = getShardIteratorResult.shardIterator();
-            return currentShardIter;
+            return getShardIteratorResult.shardIterator();
+        } catch (final InternalServerErrorException e) {
+            dynamoDBSourceAggregateMetrics.getStream5xxErrors().increment();
+            LOG.error("Received an internal server error from DynamoDB while getting a shard iterator: {}", e.getMessage());
+            return null;
         } catch (SdkException e) {
             LOG.error("Exception when trying to get the shard iterator due to {}", e.getMessage());
             return null;
