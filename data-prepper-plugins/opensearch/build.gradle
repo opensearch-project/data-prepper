@@ -16,7 +16,7 @@ dependencies {
     implementation libs.opensearch.java
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.2'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.0'
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:http-client-spi'
