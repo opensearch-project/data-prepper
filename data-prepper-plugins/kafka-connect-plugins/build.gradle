@@ -26,7 +26,7 @@ dependencies {
         exclude group: 'org.glassfish.jersey.ext', module: 'jersey-bean-validation'
     }
     // Common Debezium Connector
-    implementation 'io.debezium:debezium-api:2.3.0.Final'
+    implementation 'io.debezium:debezium-api:2.4.1.Final'
     implementation 'io.debezium:debezium-core:2.3.0.Final'
     implementation 'io.debezium:debezium-storage-kafka:2.3.0.Final'
     implementation 'io.debezium:debezium-storage-file:2.3.0.Final'
