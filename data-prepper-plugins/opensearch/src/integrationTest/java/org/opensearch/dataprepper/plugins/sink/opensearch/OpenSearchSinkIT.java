@@ -812,6 +812,72 @@ public class OpenSearchSinkIT {
     }
 
     @Test
+    public void testBulkActionUpdateWithDocumentRootKey() throws IOException, InterruptedException {
+        final String testIndexAlias = "test-alias-upd1";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
+
+        final String testIdField = "someId";
+        final String testId = "foo";
+        final String documentRootKey = "root_key";
+
+        final String originalValue = "Original";
+        final String updatedValue = "Updated";
+
+
+        final String createJsonEvent = "{\"" + testIdField + "\": \"" + testId + "\", \"" + documentRootKey + "\": { \"value\": \"" + originalValue + "\"}}";
+
+        List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(createJsonEvent));
+
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
+
+        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ROOT_KEY, documentRootKey);
+        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        List<Map<String, Object>> aList = new ArrayList<>();
+        Map<String, Object> actionMap = new HashMap<>();
+        actionMap.put("type", OpenSearchBulkActions.CREATE.toString());
+
+
+        aList.add(actionMap);
+        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        assertThat(retSources.size(), equalTo(1));
+        assertThat(retSources.get(0).containsKey(documentRootKey), equalTo(false));
+        assertThat((String) retSources.get(0).get("value"), equalTo(originalValue));
+        assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
+
+        // verify metrics
+        final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+        assertThat(bulkRequestLatencies.size(), equalTo(3));
+        // COUNT
+        Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+
+        final String updateJsonEvent = "{\"" + testIdField + "\": \"" + testId + "\", \"" + documentRootKey + "\": { \"value\": \"" + updatedValue + "\"}}";
+
+        testRecords = Collections.singletonList(jsonStringToRecord(updateJsonEvent));
+        aList = new ArrayList<>();
+        actionMap = new HashMap<>();
+        actionMap.put("type", OpenSearchBulkActions.UPDATE.toString());
+        aList.add(actionMap);
+        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        retSources = getSearchResponseDocSources(testIndexAlias);
+
+        assertThat(retSources.size(), equalTo(1));
+        Map<String, Object> source = retSources.get(0);
+        assertThat(source.containsKey(documentRootKey), equalTo(false));
+        assertThat((String) source.get("value"), equalTo(updatedValue));
+        assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
+    }
+
+    @Test
     public void testBulkActionUpsertWithActions() throws IOException, InterruptedException {
         final String testIndexAlias = "test-alias-upd2";
         final String testTemplateFile = Objects.requireNonNull(
