@@ -24,6 +24,18 @@ dependencies {
     testRuntimeOnly testLibs.junit.engine
 
     constraints {
+        gatling('ch.qos.logback:logback-classic') {
+            version {
+                require '1.4.12'
+            }
+            because 'Fixes CVE-2023-6378'
+        }
+        gatling('ch.qos.logback:logback-core') {
+            version {
+                require '1.4.12'
+            }
+            because 'Keeps the version synced with logback-classic.'
+        }
         zinc('org.scala-sbt:io_2.13') {
             version {
                 require '1.9.7'
