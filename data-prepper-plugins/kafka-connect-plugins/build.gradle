@@ -39,7 +39,7 @@ dependencies {
     implementation 'com.github.luben:zstd-jni:1.5.0-2'
     // Debezium Postgres connector
     implementation 'io.debezium:debezium-connector-postgres:2.3.0.Final'
-    implementation 'org.postgresql:postgresql:42.5.1'
+    implementation 'org.postgresql:postgresql:42.7.0'
     implementation 'com.google.protobuf:protobuf-java:3.19.6'
     // Debezium Mongodb connector
     implementation 'io.debezium:debezium-connector-mongodb:2.3.0.Final'
