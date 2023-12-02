@@ -3,29 +3,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.parsejson;
+package org.opensearch.dataprepper.plugins.processor.parse.ion;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.opensearch.dataprepper.plugins.processor.parsejson.ParseJsonProcessorConfig.DEFAULT_SOURCE;
-import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
-
 import java.util.List;
 
-public class ParseJsonProcessorConfigTest {
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
-    private ParseJsonProcessorConfig createObjectUnderTest() {
-        return new ParseJsonProcessorConfig();
+public class ParseIonProcessorConfigTest {
+
+    private ParseIonProcessorConfig createObjectUnderTest() {
+        return new ParseIonProcessorConfig();
     }
 
     @Test
-    public void test_when_defaultParseJsonProcessorConfig_then_returns_default_values() {
-        final ParseJsonProcessorConfig objectUnderTest = createObjectUnderTest();
+    public void test_when_defaultParseIonProcessorConfig_then_returns_default_values() {
+        final ParseIonProcessorConfig objectUnderTest = createObjectUnderTest();
 
-        assertThat(objectUnderTest.getSource(), equalTo(DEFAULT_SOURCE));
+        assertThat(objectUnderTest.getSource(), equalTo(ParseIonProcessorConfig.DEFAULT_SOURCE));
         assertThat(objectUnderTest.getDestination(), equalTo(null));
         assertThat(objectUnderTest.getPointer(), equalTo(null));
         assertThat(objectUnderTest.getTagsOnFailure(), equalTo(null));
@@ -34,28 +33,28 @@ public class ParseJsonProcessorConfigTest {
 
     @Nested
     class Validation {
-        final ParseJsonProcessorConfig config = createObjectUnderTest();
+        final ParseIonProcessorConfig config = createObjectUnderTest();
 
         @Test
         void test_when_destinationIsWhiteSpaceOrFrontSlash_then_isValidDestinationFalse()
                 throws NoSuchFieldException, IllegalAccessException {
-            setField(ParseJsonProcessorConfig.class, config, "destination", "good destination");
+            setField(ParseIonProcessorConfig.class, config, "destination", "good destination");
 
             assertThat(config.isValidDestination(), equalTo(true));
 
-            setField(ParseJsonProcessorConfig.class, config, "destination", "");
+            setField(ParseIonProcessorConfig.class, config, "destination", "");
 
             assertThat(config.isValidDestination(), equalTo(false));
 
-            setField(ParseJsonProcessorConfig.class, config, "destination", "    ");
+            setField(ParseIonProcessorConfig.class, config, "destination", "    ");
 
             assertThat(config.isValidDestination(), equalTo(false));
 
-            setField(ParseJsonProcessorConfig.class, config, "destination", "   /   ");
+            setField(ParseIonProcessorConfig.class, config, "destination", "   /   ");
 
             assertThat(config.isValidDestination(), equalTo(false));
             List<String> tagsList = List.of("tag1", "tag2");
-            setField(ParseJsonProcessorConfig.class, config, "tagsOnFailure", tagsList);
+            setField(ParseIonProcessorConfig.class, config, "tagsOnFailure", tagsList);
 
             assertThat(config.getTagsOnFailure(), equalTo(tagsList));
         }

@@ -3,16 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.parsejson;
+package org.opensearch.dataprepper.plugins.processor.parse.ion;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
+import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 
-import java.util.Objects;
 import java.util.List;
+import java.util.Objects;
 
-public class ParseJsonProcessorConfig {
+public class ParseIonProcessorConfig implements CommonParseConfig {
     static final String DEFAULT_SOURCE = "message";
 
     @NotBlank
@@ -34,43 +35,30 @@ public class ParseJsonProcessorConfig {
     @JsonProperty("overwrite_if_destination_exists")
     private boolean overwriteIfDestinationExists = true;
 
-    /**
-     * The field of the Event that contains the JSON data.
-     *
-     * @return The name of the source field.
-     */
+    @Override
     public String getSource() {
         return source;
     }
 
-    /**
-     * The destination that the parsed JSON is written to. Defaults to the root of the Event.
-     * If the destination field already exists, it will be overwritten.
-     *
-     * @return The name of the destination field.
-     */
+    @Override
     public String getDestination() {
         return destination;
     }
 
-    /**
-     * An optional setting used to specify a JSON Pointer. Pointer points to the JSON key that will be parsed into the destination.
-     * There is no pointer by default, meaning that the entirety of source will be parsed. If the target key would overwrite an existing
-     * key in the Event then the absolute path of the target key will be placed into destination
-     *
-     * Note: (should this be configurable/what about double conflicts?)
-     * @return String representing JSON Pointer
-     */
+    @Override
     public String getPointer() {
         return pointer;
     }
 
+    @Override
     public List<String> getTagsOnFailure() {
         return tagsOnFailure;
     }
 
+    @Override
     public String getParseWhen() { return parseWhen; }
 
+    @Override
     public boolean getOverwriteIfDestinationExists() {
         return overwriteIfDestinationExists;
     }
