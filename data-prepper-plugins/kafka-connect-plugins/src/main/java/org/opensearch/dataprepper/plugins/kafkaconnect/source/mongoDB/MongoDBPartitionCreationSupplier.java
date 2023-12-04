@@ -107,11 +107,13 @@ public class MongoDBPartitionCreationSupplier implements Function<Map<String, Ob
                     }
 
                     Object lteValue = endDoc.get("_id");
-                    LOG.info("Chunk of " + collectionName + ": {gte: " + gteValue.toString() + ", lte: " + lteValue.toString() + "}");
+                    String gteValueString = MongoDBHelper.getPartitionStringFromMongoDBId(gteValue, className);
+                    String lteValueString = MongoDBHelper.getPartitionStringFromMongoDBId(lteValue, className);
+                    LOG.info("Chunk of " + collectionName + ": {gte: " + gteValueString + ", lte: " + lteValueString + "}");
                     collectionPartitions.add(
                             PartitionIdentifier
                                     .builder()
-                                    .withPartitionKey(String.format(MONGODB_PARTITION_KEY_FORMAT, collectionName, gteValue, lteValue, className))
+                                    .withPartitionKey(String.format(MONGODB_PARTITION_KEY_FORMAT, collectionName, gteValueString, lteValueString, className))
                                     .build());
 
                     startIterable = col.find(Filters.gt("_id", lteValue))
