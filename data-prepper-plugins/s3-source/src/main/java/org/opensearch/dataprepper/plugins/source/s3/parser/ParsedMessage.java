@@ -17,6 +17,7 @@ public class ParsedMessage {
     private boolean failedParsing;
     private String bucketName;
     private String objectKey;
+    private long objectSize;
     private String eventName;
     private DateTime eventTime;
     private boolean emptyNotification;
@@ -33,6 +34,7 @@ public class ParsedMessage {
         this.message = message;
         this.bucketName = notificationRecords.get(0).getS3().getBucket().getName();
         this.objectKey = notificationRecords.get(0).getS3().getObject().getUrlDecodedKey();
+        this.objectSize = notificationRecords.get(0).getS3().getObject().getSizeAsLong();
         this.eventName = notificationRecords.get(0).getEventName();
         this.eventTime = notificationRecords.get(0).getEventTime();
         this.failedParsing = false;
@@ -43,6 +45,7 @@ public class ParsedMessage {
         this.message = message;
         this.bucketName = eventBridgeNotification.getDetail().getBucket().getName();
         this.objectKey = eventBridgeNotification.getDetail().getObject().getUrlDecodedKey();
+        this.objectSize = eventBridgeNotification.getDetail().getObject().getSize();
         this.detailType = eventBridgeNotification.getDetailType();
         this.eventTime = eventBridgeNotification.getTime();
     }
@@ -61,6 +64,10 @@ public class ParsedMessage {
 
     public String getObjectKey() {
         return objectKey;
+    }
+
+    public long getObjectSize() {
+        return objectSize;
     }
 
     public String getEventName() {
