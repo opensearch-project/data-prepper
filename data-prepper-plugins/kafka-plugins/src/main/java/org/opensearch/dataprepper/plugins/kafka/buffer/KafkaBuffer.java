@@ -117,7 +117,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
 
     @Override
     public Map.Entry<Collection<Record<Event>>, CheckpointState> doRead(int timeoutInMillis) {
-        return innerBuffer.doRead(timeoutInMillis);
+        return innerBuffer.read(timeoutInMillis);
     }
 
     @Override

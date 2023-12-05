@@ -71,8 +71,10 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
 
         try {
             doWrite(record, timeoutInMillis);
-            recordsWrittenCounter.increment();
-            recordsInBuffer.incrementAndGet();
+            if (!isByteBuffer()) {
+                recordsWrittenCounter.increment();
+                recordsInBuffer.incrementAndGet();
+            }
             postProcess(recordsInBuffer.get());
         } catch (TimeoutException e) {
             recordsWriteFailed.increment();
@@ -98,8 +100,11 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         final int size = records.size();
         try {
             doWriteAll(records, timeoutInMillis);
-            recordsWrittenCounter.increment(size);
-            recordsInBuffer.addAndGet(size);
+            // we do not know how many records when the buffer is bytebuffer
+            if (!isByteBuffer()) {
+                recordsWrittenCounter.increment(size);
+                recordsInBuffer.addAndGet(size);
+            }
             postProcess(recordsInBuffer.get());
         } catch (Exception e) {
             recordsWriteFailed.increment(size);
@@ -127,9 +132,12 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     @Override
     public Map.Entry<Collection<T>, CheckpointState> read(int timeoutInMillis) {
         final Map.Entry<Collection<T>, CheckpointState> readResult = readTimer.record(() -> doRead(timeoutInMillis));
-        recordsReadCounter.increment(readResult.getKey().size() * 1.0);
-        recordsInFlight.addAndGet(readResult.getValue().getNumRecordsToBeChecked());
-        recordsInBuffer.addAndGet(-1 * readResult.getValue().getNumRecordsToBeChecked());
+        // we do not know how many records when the buffer is bytebuffer
+        if (!isByteBuffer()) {
+            recordsReadCounter.increment(readResult.getKey().size() * 1.0);
+            recordsInFlight.addAndGet(readResult.getValue().getNumRecordsToBeChecked());
+            recordsInBuffer.addAndGet(-1 * readResult.getValue().getNumRecordsToBeChecked());
+        }
         postProcess(recordsInBuffer.get());
         return readResult;
     }
