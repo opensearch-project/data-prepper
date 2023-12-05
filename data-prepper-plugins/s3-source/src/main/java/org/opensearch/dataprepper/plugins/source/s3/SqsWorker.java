@@ -53,7 +53,7 @@ public class SqsWorker implements Runnable {
     static final String SQS_MESSAGES_DELETED_METRIC_NAME = "sqsMessagesDeleted";
     static final String SQS_MESSAGES_FAILED_METRIC_NAME = "sqsMessagesFailed";
     static final String SQS_MESSAGES_DELETE_FAILED_METRIC_NAME = "sqsMessagesDeleteFailed";
-    static final String S3_OBJECTS_WITH_SIZE_ZERO_METRIC_NAME = "s3ObjectsWithSizeZero";
+    static final String S3_OBJECTS_EMPTY_METRIC_NAME = "s3ObjectsEmpty";
     static final String SQS_MESSAGE_DELAY_METRIC_NAME = "sqsMessageDelay";
     static final String SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangedCount";
     static final String SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangeFailedCount";
@@ -68,7 +68,7 @@ public class SqsWorker implements Runnable {
     private final Counter sqsMessagesReceivedCounter;
     private final Counter sqsMessagesDeletedCounter;
     private final Counter sqsMessagesFailedCounter;
-    private final Counter s3ObjectsWithSizeZeroCounter;
+    private final Counter s3ObjectsEmptyCounter;
     private final Counter sqsMessagesDeleteFailedCounter;
     private final Counter acknowledgementSetCallbackCounter;
     private final Counter sqsVisibilityTimeoutChangedCount;
@@ -104,7 +104,7 @@ public class SqsWorker implements Runnable {
         sqsMessagesReceivedCounter = pluginMetrics.counter(SQS_MESSAGES_RECEIVED_METRIC_NAME);
         sqsMessagesDeletedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETED_METRIC_NAME);
         sqsMessagesFailedCounter = pluginMetrics.counter(SQS_MESSAGES_FAILED_METRIC_NAME);
-        s3ObjectsWithSizeZeroCounter = pluginMetrics.counter(S3_OBJECTS_WITH_SIZE_ZERO_METRIC_NAME);
+        s3ObjectsEmptyCounter = pluginMetrics.counter(S3_OBJECTS_EMPTY_METRIC_NAME);
         sqsMessagesDeleteFailedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETE_FAILED_METRIC_NAME);
         sqsMessageDelayTimer = pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME);
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME);
@@ -218,7 +218,7 @@ public class SqsWorker implements Runnable {
                     deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(parsedMessage.getMessage()));
                 }
             } else if (parsedMessage.getObjectSize() == 0L) {
-                s3ObjectsWithSizeZeroCounter.increment();
+                s3ObjectsEmptyCounter.increment();
                 LOG.debug("Received empty S3 object: {} in the SQS message. " +
                                 "The S3 object is skipped and the SQS message will be deleted.",
                         parsedMessage.getObjectKey());

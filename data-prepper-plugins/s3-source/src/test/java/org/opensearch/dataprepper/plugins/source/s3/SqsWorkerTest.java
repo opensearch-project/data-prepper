@@ -75,7 +75,7 @@ import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_MESSAGE
 import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_MESSAGES_FAILED_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_MESSAGES_RECEIVED_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_MESSAGE_DELAY_METRIC_NAME;
-import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.S3_OBJECTS_WITH_SIZE_ZERO_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.S3_OBJECTS_EMPTY_METRIC_NAME;
 
 class SqsWorkerTest {
     private SqsWorker sqsWorker;
@@ -89,7 +89,7 @@ class SqsWorkerTest {
     private Counter sqsMessagesDeletedCounter;
     private Counter sqsMessagesFailedCounter;
     private Counter sqsMessagesDeleteFailedCounter;
-    private Counter s3ObjectsWithSizeZeroCounter;
+    private Counter s3ObjectsEmptyCounter;
     private Timer sqsMessageDelayTimer;
     private AcknowledgementSetManager acknowledgementSetManager;
     private AcknowledgementSet acknowledgementSet;
@@ -122,13 +122,13 @@ class SqsWorkerTest {
         sqsMessagesDeletedCounter = mock(Counter.class);
         sqsMessagesFailedCounter = mock(Counter.class);
         sqsMessagesDeleteFailedCounter = mock(Counter.class);
-        s3ObjectsWithSizeZeroCounter = mock(Counter.class);
+        s3ObjectsEmptyCounter = mock(Counter.class);
         sqsMessageDelayTimer = mock(Timer.class);
         when(pluginMetrics.counter(SQS_MESSAGES_RECEIVED_METRIC_NAME)).thenReturn(sqsMessagesReceivedCounter);
         when(pluginMetrics.counter(SQS_MESSAGES_DELETED_METRIC_NAME)).thenReturn(sqsMessagesDeletedCounter);
         when(pluginMetrics.counter(SQS_MESSAGES_FAILED_METRIC_NAME)).thenReturn(sqsMessagesFailedCounter);
         when(pluginMetrics.counter(SQS_MESSAGES_DELETE_FAILED_METRIC_NAME)).thenReturn(sqsMessagesDeleteFailedCounter);
-        when(pluginMetrics.counter(S3_OBJECTS_WITH_SIZE_ZERO_METRIC_NAME)).thenReturn(s3ObjectsWithSizeZeroCounter);
+        when(pluginMetrics.counter(S3_OBJECTS_EMPTY_METRIC_NAME)).thenReturn(s3ObjectsEmptyCounter);
         when(pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME)).thenReturn(sqsMessageDelayTimer);
 
         sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
@@ -139,7 +139,7 @@ class SqsWorkerTest {
         verifyNoMoreInteractions(sqsMessagesReceivedCounter);
         verifyNoMoreInteractions(sqsMessagesDeletedCounter);
         verifyNoMoreInteractions(sqsMessagesFailedCounter);
-        verifyNoMoreInteractions(s3ObjectsWithSizeZeroCounter);
+        verifyNoMoreInteractions(s3ObjectsEmptyCounter);
         verifyNoMoreInteractions(sqsMessageDelayTimer);
     }
 
@@ -308,7 +308,7 @@ class SqsWorkerTest {
 
             verify(sqsMessagesReceivedCounter).increment(1);
             verify(sqsMessagesDeletedCounter).increment(1);
-            verify(s3ObjectsWithSizeZeroCounter).increment();
+            verify(s3ObjectsEmptyCounter).increment();
         }
 
         @Test
@@ -341,7 +341,7 @@ class SqsWorkerTest {
 
             verify(sqsMessagesReceivedCounter).increment(1);
             verify(sqsMessagesDeletedCounter).increment(1);
-            verify(s3ObjectsWithSizeZeroCounter).increment();
+            verify(s3ObjectsEmptyCounter).increment();
         }
 
         @ParameterizedTest
