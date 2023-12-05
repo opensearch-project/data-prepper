@@ -75,6 +75,7 @@ import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_MESSAGE
 import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_MESSAGES_FAILED_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_MESSAGES_RECEIVED_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_MESSAGE_DELAY_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.ZERO_SIZED_OBJECT_COUNT_METRIC_NAME;
 
 class SqsWorkerTest {
     private SqsWorker sqsWorker;
@@ -88,6 +89,7 @@ class SqsWorkerTest {
     private Counter sqsMessagesDeletedCounter;
     private Counter sqsMessagesFailedCounter;
     private Counter sqsMessagesDeleteFailedCounter;
+    private Counter zeroSizedObjectCounter;
     private Timer sqsMessageDelayTimer;
     private AcknowledgementSetManager acknowledgementSetManager;
     private AcknowledgementSet acknowledgementSet;
@@ -120,11 +122,13 @@ class SqsWorkerTest {
         sqsMessagesDeletedCounter = mock(Counter.class);
         sqsMessagesFailedCounter = mock(Counter.class);
         sqsMessagesDeleteFailedCounter = mock(Counter.class);
+        zeroSizedObjectCounter = mock(Counter.class);
         sqsMessageDelayTimer = mock(Timer.class);
         when(pluginMetrics.counter(SQS_MESSAGES_RECEIVED_METRIC_NAME)).thenReturn(sqsMessagesReceivedCounter);
         when(pluginMetrics.counter(SQS_MESSAGES_DELETED_METRIC_NAME)).thenReturn(sqsMessagesDeletedCounter);
         when(pluginMetrics.counter(SQS_MESSAGES_FAILED_METRIC_NAME)).thenReturn(sqsMessagesFailedCounter);
         when(pluginMetrics.counter(SQS_MESSAGES_DELETE_FAILED_METRIC_NAME)).thenReturn(sqsMessagesDeleteFailedCounter);
+        when(pluginMetrics.counter(ZERO_SIZED_OBJECT_COUNT_METRIC_NAME)).thenReturn(zeroSizedObjectCounter);
         when(pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME)).thenReturn(sqsMessageDelayTimer);
 
         sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
@@ -135,6 +139,7 @@ class SqsWorkerTest {
         verifyNoMoreInteractions(sqsMessagesReceivedCounter);
         verifyNoMoreInteractions(sqsMessagesDeletedCounter);
         verifyNoMoreInteractions(sqsMessagesFailedCounter);
+        verifyNoMoreInteractions(zeroSizedObjectCounter);
         verifyNoMoreInteractions(sqsMessageDelayTimer);
     }
 
@@ -303,8 +308,41 @@ class SqsWorkerTest {
 
             verify(sqsMessagesReceivedCounter).increment(1);
             verify(sqsMessagesDeletedCounter).increment(1);
+            verify(zeroSizedObjectCounter).increment();
         }
 
+        @Test
+        void processSqsMessages_should_not_interact_with_S3Service_and_delete_message_if_EmptyFolderEvent() {
+            final String messageId = UUID.randomUUID().toString();
+            final String receiptHandle = UUID.randomUUID().toString();
+            final Message message = mock(Message.class);
+            when(message.body()).thenReturn(createEmptyFolderEventNotification(Instant.now()));
+            when(message.messageId()).thenReturn(messageId);
+            when(message.receiptHandle()).thenReturn(receiptHandle);
+
+            final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
+            when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
+            when(receiveMessageResponse.messages()).thenReturn(Collections.singletonList(message));
+
+            final int messagesProcessed = sqsWorker.processSqsMessages();
+            assertThat(messagesProcessed, equalTo(1));
+            verifyNoInteractions(s3Service);
+
+            final ArgumentCaptor<DeleteMessageBatchRequest> deleteMessageBatchRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteMessageBatchRequest.class);
+            verify(sqsClient).deleteMessageBatch(deleteMessageBatchRequestArgumentCaptor.capture());
+            final DeleteMessageBatchRequest actualDeleteMessageBatchRequest = deleteMessageBatchRequestArgumentCaptor.getValue();
+
+            assertThat(actualDeleteMessageBatchRequest, notNullValue());
+            assertThat(actualDeleteMessageBatchRequest.entries().size(), equalTo(1));
+            assertThat(actualDeleteMessageBatchRequest.queueUrl(), equalTo(s3SourceConfig.getSqsOptions().getSqsUrl()));
+            assertThat(actualDeleteMessageBatchRequest.entries().get(0).id(), equalTo(messageId));
+            assertThat(actualDeleteMessageBatchRequest.entries().get(0).receiptHandle(), equalTo(receiptHandle));
+            assertThat(messagesProcessed, equalTo(1));
+
+            verify(sqsMessagesReceivedCounter).increment(1);
+            verify(sqsMessagesDeletedCounter).increment(1);
+            verify(zeroSizedObjectCounter).increment();
+        }
 
         @ParameterizedTest
         @ValueSource(strings = {"ObjectRemoved:Delete", "ObjectRemoved:DeleteMarkerCreated"})
@@ -596,6 +634,15 @@ class SqsWorkerTest {
 
     private static String createPutNotification(final Instant startTime) {
         return createEventNotification("ObjectCreated:Put", startTime);
+    }
+
+    private static String createEmptyFolderEventNotification(final Instant startTime) {
+        return "{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"us-east-1\"," +
+                "\"eventTime\":\"" + startTime + "\",\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"AWS:AROAX:xxxxxx\"}," +
+                "\"requestParameters\":{\"sourceIPAddress\":\"52.95.4.23\"},\"responseElements\":{\"x-amz-request-id\":\"ABCD\"," +
+                "\"x-amz-id-2\":\"abcd\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"any-event\"," +
+                "\"bucket\":{\"name\":\"my-osi-bucket\",\"ownerIdentity\":{\"principalId\":\"ID\"},\"arn\":\"arn:aws:s3:::bucketName\"}," +
+                "\"object\":{\"key\":\"empty-folder/\",\"size\":0,\"eTag\":\"abcd\",\"sequencer\":\"ABCD\"}}}]}";
     }
 
     private static String createEventNotification(final String eventName, final Instant startTime) {
