@@ -29,7 +29,7 @@ dependencies {
     implementation 'joda-time:joda-time:2.11.1'
     implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.2'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     implementation 'org.xerial.snappy:snappy-java:1.1.10.1'
     implementation 'org.apache.parquet:parquet-common:1.13.1'
     implementation 'dev.failsafe:failsafe:3.3.2'
