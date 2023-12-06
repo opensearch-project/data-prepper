@@ -205,7 +205,7 @@ class KafkaBufferTest {
         kafkaBuffer.doWrite(record, 10000);
         kafkaBuffer.doRead(10000);
         verify(producer).produceRecords(record);
-        verify(blockingBuffer).doRead(anyInt());
+        verify(blockingBuffer).read(anyInt());
     }
 
     @Test
