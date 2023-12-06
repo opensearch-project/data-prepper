@@ -8,6 +8,7 @@ import org.opensearch.dataprepper.plugins.source.s3.S3EventNotification;
 import software.amazon.awssdk.services.sqs.model.Message;
 
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -16,6 +17,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class ParsedMessageTest {
+    private static final Random RANDOM = new Random();
     private Message message;
     private S3EventNotification.S3Entity s3Entity;
     private S3EventNotification.S3BucketEntity s3BucketEntity;
@@ -53,10 +55,12 @@ class ParsedMessageTest {
         final String  testDecodedObjectKey = UUID.randomUUID().toString();
         final String  testEventName = UUID.randomUUID().toString();
         final DateTime testEventTime = DateTime.now();
+        final long testSize = RANDOM.nextLong();
 
         when(s3EventNotificationRecord.getS3()).thenReturn(s3Entity);
         when(s3Entity.getBucket()).thenReturn(s3BucketEntity);
         when(s3Entity.getObject()).thenReturn(s3ObjectEntity);
+        when(s3ObjectEntity.getSizeAsLong()).thenReturn(testSize);
         when(s3BucketEntity.getName()).thenReturn(testBucketName);
         when(s3ObjectEntity.getUrlDecodedKey()).thenReturn(testDecodedObjectKey);
         when(s3EventNotificationRecord.getEventName()).thenReturn(testEventName);
@@ -67,6 +71,7 @@ class ParsedMessageTest {
         assertThat(parsedMessage.getMessage(), equalTo(message));
         assertThat(parsedMessage.getBucketName(), equalTo(testBucketName));
         assertThat(parsedMessage.getObjectKey(), equalTo(testDecodedObjectKey));
+        assertThat(parsedMessage.getObjectSize(), equalTo(testSize));
         assertThat(parsedMessage.getEventName(), equalTo(testEventName));
         assertThat(parsedMessage.getEventTime(), equalTo(testEventTime));
         assertThat(parsedMessage.isFailedParsing(), equalTo(false));
@@ -79,6 +84,7 @@ class ParsedMessageTest {
         final String  testDecodedObjectKey = UUID.randomUUID().toString();
         final String  testDetailType = UUID.randomUUID().toString();
         final DateTime testEventTime = DateTime.now();
+        final int testSize = RANDOM.nextInt();
 
         when(s3EventBridgeNotification.getDetail()).thenReturn(detail);
         when(s3EventBridgeNotification.getDetail().getBucket()).thenReturn(bucket);
@@ -86,6 +92,7 @@ class ParsedMessageTest {
 
         when(bucket.getName()).thenReturn(testBucketName);
         when(object.getUrlDecodedKey()).thenReturn(testDecodedObjectKey);
+        when(object.getSize()).thenReturn(testSize);
         when(s3EventBridgeNotification.getDetailType()).thenReturn(testDetailType);
         when(s3EventBridgeNotification.getTime()).thenReturn(testEventTime);
 
@@ -94,6 +101,7 @@ class ParsedMessageTest {
         assertThat(parsedMessage.getMessage(), equalTo(message));
         assertThat(parsedMessage.getBucketName(), equalTo(testBucketName));
         assertThat(parsedMessage.getObjectKey(), equalTo(testDecodedObjectKey));
+        assertThat(parsedMessage.getObjectSize(), equalTo((long) testSize));
         assertThat(parsedMessage.getDetailType(), equalTo(testDetailType));
         assertThat(parsedMessage.getEventTime(), equalTo(testEventTime));
         assertThat(parsedMessage.isFailedParsing(), equalTo(false));
