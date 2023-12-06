@@ -51,7 +51,7 @@ dependencies {
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-core')
     testImplementation 'org.yaml:snakeyaml:2.0'
-    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.14.2'
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation testLibs.mockito.inline
 }
 
