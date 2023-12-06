@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.parsejson;
+package org.opensearch.dataprepper.plugins.processor.parse.json;
 
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.processor.parse.AbstractParseProcessor;
+import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,22 +33,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class ParseJsonProcessorTest {
+public class ParseJsonProcessorTest {
     private static final String DEEPLY_NESTED_KEY_NAME = "base";
 
-    @Mock
-    private ParseJsonProcessorConfig processorConfig;
+    protected CommonParseConfig processorConfig;
 
     @Mock
-    private PluginMetrics pluginMetrics;
+    private ParseJsonProcessorConfig jsonProcessorConfig;
 
     @Mock
-    private ExpressionEvaluator expressionEvaluator;
+    protected PluginMetrics pluginMetrics;
 
-    private ParseJsonProcessor parseJsonProcessor;
+    @Mock
+    protected ExpressionEvaluator expressionEvaluator;
+
+    protected AbstractParseProcessor parseJsonProcessor;
 
     @BeforeEach
-    void setup() {
+    public void setup() {
+        processorConfig = jsonProcessorConfig;
         ParseJsonProcessorConfig defaultConfig = new ParseJsonProcessorConfig();
         when(processorConfig.getSource()).thenReturn(defaultConfig.getSource());
         when(processorConfig.getDestination()).thenReturn(defaultConfig.getDestination());
@@ -55,8 +60,8 @@ class ParseJsonProcessorTest {
         when(processorConfig.getOverwriteIfDestinationExists()).thenReturn(true);
     }
 
-    private ParseJsonProcessor createObjectUnderTest() {
-        return new ParseJsonProcessor(pluginMetrics, processorConfig, expressionEvaluator);
+    protected AbstractParseProcessor createObjectUnderTest() {
+        return new ParseJsonProcessor(pluginMetrics, jsonProcessorConfig, expressionEvaluator);
     }
 
     @Test
@@ -394,7 +399,7 @@ class ParseJsonProcessorTest {
         return Collections.singletonMap(key, deepJsonMapHelper(currentLayer+1, numberOfLayers));
     }
 
-    private Event createAndParseMessageEvent(final String message) {
+    protected Event createAndParseMessageEvent(final String message) {
         final Record<Event> eventUnderTest = createMessageEvent(message);
         final List<Record<Event>> editedEvents = (List<Record<Event>>) parseJsonProcessor.doExecute(
                 Collections.singletonList(eventUnderTest));

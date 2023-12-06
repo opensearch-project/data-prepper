@@ -15,6 +15,7 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-ion'
     implementation 'org.apache.parquet:parquet-common:1.13.1'
     testImplementation project(':data-prepper-test-common')
 }
