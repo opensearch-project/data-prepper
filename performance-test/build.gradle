@@ -26,13 +26,13 @@ dependencies {
     constraints {
         gatling('ch.qos.logback:logback-classic') {
             version {
-                require '1.4.12'
+                require '1.4.14'
             }
             because 'Fixes CVE-2023-6378'
         }
         gatling('ch.qos.logback:logback-core') {
             version {
-                require '1.4.12'
+                require '1.4.14'
             }
             because 'Keeps the version synced with logback-classic.'
         }
