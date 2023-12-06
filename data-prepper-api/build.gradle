@@ -7,7 +7,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.15.3'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
     implementation 'org.apache.parquet:parquet-common:1.13.1'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation libs.commons.lang3
