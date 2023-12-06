@@ -9,7 +9,7 @@ dependencies {
     implementation 'org.apache.parquet:parquet-common:1.13.1'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
-    testImplementation 'org.json:json:20230227'
+    testImplementation 'org.json:json:20231013'
     testImplementation project(':data-prepper-plugins:common')
 }
 
