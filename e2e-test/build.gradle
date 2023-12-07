@@ -15,7 +15,7 @@ import com.bmuschko.gradle.docker.tasks.network.DockerRemoveNetwork
 import org.opensearch.dataprepper.gradle.end_to_end.DockerProviderTask
 
 plugins {
-    id 'com.bmuschko.docker-remote-api' version '9.3.2'
+    id 'com.bmuschko.docker-remote-api' version '9.4.0'
 }
 
 
