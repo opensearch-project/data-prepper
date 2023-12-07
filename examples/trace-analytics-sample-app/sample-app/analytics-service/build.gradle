@@ -31,7 +31,7 @@ configurations.all {
             details.useVersion '10.1.14'
             details.because('Fixes CVE-2023-44487')
         } else if (details.requested.group == 'ch.qos.logback') {
-            details.useVersion '1.4.12'
+            details.useVersion '1.4.14'
             details.because('Fixes CVE-2023-6378')
         }
     }
