@@ -2,6 +2,9 @@
 
 ---
 
+### Enhancements
+* Add aggregate metrics for ddb source export and stream ([#3728](https://github.com/opensearch-project/data-prepper/pull/3728))
+
 ### Bug Fixes
 * Update and upsert bulk actions do not include changes from document_root_key, exclude_keys, etc. ([#3745](https://github.com/opensearch-project/data-prepper/issues/3745))
 * S3 source processes SQS notification when S3 folder is created ([#3727](https://github.com/opensearch-project/data-prepper/issues/3727))
