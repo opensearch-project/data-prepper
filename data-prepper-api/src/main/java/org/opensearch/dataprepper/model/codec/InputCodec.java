@@ -38,13 +38,8 @@ public interface InputCodec {
             Consumer<Record<Event>> eventConsumer) throws IOException {
         Objects.requireNonNull(inputFile);
         Objects.requireNonNull(eventConsumer);
-        InputStream inputStream = inputFile.newStream();
-        try {
+        try (InputStream inputStream = inputFile.newStream()) {
             parse(decompressionEngine.createInputStream(inputStream), eventConsumer);
-            inputStream.close();
-        } catch (Exception e) {
-            inputStream.close();
-            throw e;
         }
     }
 }
