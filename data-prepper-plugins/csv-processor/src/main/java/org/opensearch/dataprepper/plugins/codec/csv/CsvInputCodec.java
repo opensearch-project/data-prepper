@@ -52,11 +52,6 @@ public class CsvInputCodec implements InputCodec {
         }
     }
 
-    @Override
-    public void parse(final InputFile inputFile, DecompressionEngine decompressionEngine, Consumer<Record<Event>> eventConsumer) throws IOException {
-        parse(decompressionEngine.createInputStream(inputFile.newStream()), eventConsumer);
-    }
-
     private void parseBufferedReader(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
         final CsvMapper mapper = createCsvMapper();
         final CsvSchema schema;

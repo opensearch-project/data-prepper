@@ -48,11 +48,6 @@ public class NewlineDelimitedInputCodec implements InputCodec {
         }
     }
 
-    @Override
-    public void parse(final InputFile inputFile, final DecompressionEngine decompressionEngine, final Consumer<Record<Event>> eventConsumer) throws IOException {
-        parse(decompressionEngine.createInputStream(inputFile.newStream()), eventConsumer);
-    }
-
     private void parseBufferedReader(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
         final boolean doAddHeaderToOutgoingEvents = Objects.nonNull(headerDestination);
         boolean hasReadHeader = false;

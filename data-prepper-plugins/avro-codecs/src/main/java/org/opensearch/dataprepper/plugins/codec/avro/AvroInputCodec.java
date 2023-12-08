@@ -47,14 +47,6 @@ public class AvroInputCodec implements InputCodec {
         parseAvroStream(inputStream, eventConsumer);
     }
 
-    @Override
-    public void parse(final InputFile inputFile, final DecompressionEngine decompressionEngine, final Consumer<Record<Event>> eventConsumer) throws IOException {
-        Objects.requireNonNull(inputFile);
-        Objects.requireNonNull(eventConsumer);
-
-        parse(decompressionEngine.createInputStream(inputFile.newStream()), eventConsumer);
-    }
-
     private void parseAvroStream(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer) {
 
         try {

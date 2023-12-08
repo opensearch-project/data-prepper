@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.codec.JsonDecoder;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -22,16 +23,5 @@ import java.util.function.Consumer;
  */
 @DataPrepperPlugin(name = "json", pluginType = InputCodec.class)
 public class JsonInputCodec extends JsonDecoder implements InputCodec {
-
-    @Override
-    public void parse(
-            final InputFile inputFile,
-            final DecompressionEngine decompressionEngine,
-            final Consumer<Record<Event>> eventConsumer) throws IOException {
-        Objects.requireNonNull(inputFile);
-        Objects.requireNonNull(eventConsumer);
-
-        parse(decompressionEngine.createInputStream(inputFile.newStream()), eventConsumer);
-    }
 
 }
