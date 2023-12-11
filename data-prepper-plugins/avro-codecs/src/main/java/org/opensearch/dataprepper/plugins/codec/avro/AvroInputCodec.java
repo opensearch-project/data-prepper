@@ -13,9 +13,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.util.Utf8;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
-import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
@@ -45,14 +43,6 @@ public class AvroInputCodec implements InputCodec {
         Objects.requireNonNull(inputStream);
         Objects.requireNonNull(eventConsumer);
         parseAvroStream(inputStream, eventConsumer);
-    }
-
-    @Override
-    public void parse(final InputFile inputFile, final DecompressionEngine decompressionEngine, final Consumer<Record<Event>> eventConsumer) throws IOException {
-        Objects.requireNonNull(inputFile);
-        Objects.requireNonNull(eventConsumer);
-
-        parse(decompressionEngine.createInputStream(inputFile.newStream()), eventConsumer);
     }
 
     private void parseAvroStream(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer) {
