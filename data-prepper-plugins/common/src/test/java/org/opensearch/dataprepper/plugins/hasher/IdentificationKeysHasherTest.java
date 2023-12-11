@@ -124,4 +124,46 @@ public class IdentificationKeysHasherTest {
 
         assertThat(result, is(not(equalTo(secondResult))));
     }
+
+    @Test
+    void getKeyMap_returns_input_map() {
+        final Map<Object, Object> expectedKeyMap = Map.of(
+                UUID.randomUUID().toString(), UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(), UUID.randomUUID().toString()
+        );
+
+        final IdentificationKeysHasher.IdentificationKeysMap objectUnderTest = new IdentificationKeysHasher.IdentificationKeysMap(expectedKeyMap);
+
+        assertThat(objectUnderTest.getKeyMap(), equalTo(expectedKeyMap));
+    }
+
+    @Test
+    void hashCode_returns_same_value_for_same_maps() {
+        final Map<Object, Object> input = Map.of(
+                UUID.randomUUID().toString(), UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(), UUID.randomUUID().toString()
+        );
+
+        final IdentificationKeysHasher.IdentificationKeysMap objectUnderTest1 = new IdentificationKeysHasher.IdentificationKeysMap(input);
+        final IdentificationKeysHasher.IdentificationKeysMap objectUnderTest2 = new IdentificationKeysHasher.IdentificationKeysMap(input);
+
+        assertThat(objectUnderTest1.hashCode(), equalTo(objectUnderTest2.hashCode()));
+    }
+
+    @Test
+    void hashCode_returns_different_value_for_know_different_maps() {
+        final IdentificationKeysHasher.IdentificationKeysMap objectUnderTest1 = new IdentificationKeysHasher.IdentificationKeysMap(
+                Map.of(
+                        "aaa", "bbb",
+                        "ccc", "ddd"
+                ));
+        final IdentificationKeysHasher.IdentificationKeysMap objectUnderTest2 = new IdentificationKeysHasher.IdentificationKeysMap(
+                Map.of(
+                        "1", "22",
+                        "3", "4"
+                )
+        );
+
+        assertThat(objectUnderTest1.hashCode(), not(equalTo(objectUnderTest2.hashCode())));
+    }
 }
