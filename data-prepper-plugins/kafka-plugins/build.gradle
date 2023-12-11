@@ -63,6 +63,15 @@ dependencies {
     testImplementation libs.protobuf.util
     testImplementation libs.commons.io
     testImplementation libs.armeria.grpc
+
+    constraints {
+        implementation('org.mozilla:rhino') {
+            version {
+                require '1.7.12'
+            }
+            because 'Fixes SNYK-JAVA-ORGMOZILLA-1314295.'
+        }
+    }
 }
 
 
