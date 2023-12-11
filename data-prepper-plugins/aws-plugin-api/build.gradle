@@ -2,6 +2,8 @@
 dependencies {
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:apache-client'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.2'
+    implementation 'com.amazonaws:aws-java-sdk-sts:1.12.395'
 }
 
 test {

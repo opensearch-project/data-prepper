@@ -27,6 +27,13 @@ public class AwsAuthenticationOptions {
     @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
     private Map<String, String> awsStsHeaderOverrides;
 
+    @JsonProperty("sigv4")
+    private boolean awsSigv4;
+
+    public boolean isAwsSigv4() {
+        return awsSigv4;
+    }
+
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
     }
@@ -42,4 +49,6 @@ public class AwsAuthenticationOptions {
     public Map<String, String> getAwsStsHeaderOverrides() {
         return awsStsHeaderOverrides;
     }
+
+
 }

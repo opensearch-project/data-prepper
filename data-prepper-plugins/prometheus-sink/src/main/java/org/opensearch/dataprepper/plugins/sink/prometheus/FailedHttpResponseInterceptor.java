@@ -13,6 +13,8 @@ import java.io.IOException;
 
 public class FailedHttpResponseInterceptor implements HttpResponseInterceptor {
 
+    public static final int STATUS_CODE_200 = 200;
+
     private final String url;
 
     public FailedHttpResponseInterceptor(final String url){
@@ -20,7 +22,9 @@ public class FailedHttpResponseInterceptor implements HttpResponseInterceptor {
     }
 
     @Override
-    public void process(HttpResponse response, EntityDetails entity, HttpContext context) throws IOException {
-       //TODO: implementation
+    public void process(final HttpResponse response, final EntityDetails entity, final HttpContext context) throws IOException {
+        if (response.getCode() != STATUS_CODE_200) {
+            throw new IOException(String.format("url:  %s , status code: %s", url,response.getCode()));
+        }
     }
 }
