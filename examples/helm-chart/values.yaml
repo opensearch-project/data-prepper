@@ -25,24 +25,29 @@ podAnnotations: {}
 podLabels: {}
 
 podSecurityContext: {}
-  # fsGroup: 2000
 
 securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+
 service:
   type: ClusterIP
 
 dataPrepperConfig: {}
 pipelineConfig: {}
 
+serviceMonitor:
+  enabled: false
+  extraLabels: {}
+  metricsEndpoints:
+    - port: server
+      path: /metrics/sys
+    - port: server
+      path: /metrics/prometheus
+
 ports:
 - name: http
   port: 2021
+- name: server
+  port: 4900
 - name: otel-traces
   port: 21890
 - name: otel-metrics
@@ -54,17 +59,12 @@ ingress:
   enabled: false
   className: ''
   annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
   hosts:
   - host: chart-example.local
     paths:
     - path: /
       pathType: ImplementationSpecific
   tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
