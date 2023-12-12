@@ -19,6 +19,7 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -56,6 +57,9 @@ public class S3DlqWriterConfig {
     @Size(min = 2, max = 1224, message = "sts_external_id length should be between 2 and 1224 characters")
     private String stsExternalId;
 
+    @JsonProperty("sts_header_overrides")
+    private Map<String, String> stsHeaderOverrides;
+
     public String getBucket() {
         if (bucket.startsWith(S3_PREFIX)) {
             return bucket.substring(S3_PREFIX.length());
@@ -89,6 +93,11 @@ public class S3DlqWriterConfig {
 
         if (stsExternalId != null && !stsExternalId.isEmpty()) {
             assumeRoleRequestBuilder = assumeRoleRequestBuilder.externalId(stsExternalId);
+        }
+
+        if(stsHeaderOverrides != null && !stsHeaderOverrides.isEmpty()) {
+            assumeRoleRequestBuilder = assumeRoleRequestBuilder
+                    .overrideConfiguration(configuration -> stsHeaderOverrides.forEach(configuration::putHeader));
         }
 
         return StsAssumeRoleCredentialsProvider.builder()
