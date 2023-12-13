@@ -20,7 +20,7 @@ dependencies {
     implementation 'com.apptasticsoftware:rssreader:3.5.0'
     testImplementation libs.commons.lang3
     testImplementation project(':data-prepper-test-common')
-    testImplementation 'org.mock-server:mockserver-junit-jupiter-no-dependencies:5.14.0'
+    testImplementation 'org.mock-server:mockserver-junit-jupiter-no-dependencies:5.15.0'
     testImplementation libs.commons.io
 }
 
