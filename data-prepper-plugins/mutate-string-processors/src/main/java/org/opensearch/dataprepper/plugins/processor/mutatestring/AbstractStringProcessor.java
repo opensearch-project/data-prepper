@@ -11,11 +11,17 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.record.Record;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Collection;
 import java.util.List;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+
 public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Record<Event>, Record<Event>> {
     private final List<T> entries;
+    static final Logger LOG = LoggerFactory.getLogger(AbstractStringProcessor.class);
 
     @DataPrepperPluginConstructor
     public AbstractStringProcessor(final PluginMetrics pluginMetrics, final StringProcessorConfig<T> config) {
@@ -35,18 +41,20 @@ public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Recor
 
     private void performStringAction(final Event recordEvent)
     {
-        for(T entry : entries) {
+        try {
+            for(T entry : entries) {
+                final String key = getKey(entry);
 
+                if(recordEvent.containsKey(key)) {
+                    final Object value = recordEvent.get(key, Object.class);
 
-            final String key = getKey(entry);
-
-            if(recordEvent.containsKey(key)) {
-                final Object value = recordEvent.get(key, Object.class);
-
-                if(value instanceof String) {
-                    performKeyAction(recordEvent, entry, (String) value);
+                    if(value instanceof String) {
+                        performKeyAction(recordEvent, entry, (String) value);
+                    }
                 }
             }
+        } catch (Exception e) {
+            LOG.error(EVENT, "Exception while performing String action", e);
         }
     }
 
