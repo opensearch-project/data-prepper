@@ -9,7 +9,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
 import java.time.Duration;
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * AcknowledgmentSet keeps track of set of events that
@@ -72,5 +72,5 @@ public interface AcknowledgementSet {
      * @param progressCheckInterval frequency of invocation of progress check callback
      * @since 2.6
      */
-    public void addProgressCheck(final Consumer<ProgressCheck> progressCheckCallback, final Duration progressCheckInterval);
+    public void addProgressCheck(final Function<ProgressCheck, Boolean> progressCheckCallback, final Duration progressCheckInterval);
 }

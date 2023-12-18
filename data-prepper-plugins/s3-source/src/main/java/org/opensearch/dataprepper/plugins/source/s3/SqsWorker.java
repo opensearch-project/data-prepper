@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.http.HttpStatusCode;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
@@ -248,7 +249,8 @@ public class SqsWorker implements Runnable {
             AcknowledgementSet acknowledgementSet = null;
             final int visibilityTimeout = (int)sqsOptions.getVisibilityTimeout().getSeconds();
             final int maxVisibilityTimeout = (int)sqsOptions.getVisibilityDuplicateProtectionTimeout().getSeconds();
-            final int progressCheckInterval = visibilityTimeout/2 - 1;
+            //final int progressCheckInterval = visibilityTimeout/2 - 1;
+            final int progressCheckInterval = visibilityTimeout + 10;
             if (endToEndAcknowledgementsEnabled) {
                 int expiryTimeout = visibilityTimeout - 2;
                 final boolean visibilityDuplicateProtectionEnabled = sqsOptions.getVisibilityDuplicateProtection();
@@ -263,6 +265,9 @@ public class SqsWorker implements Runnable {
                             parsedMessageVisibilityTimesMap.remove(parsedMessage);
                         }
                         if (result == true) {
+                            try {
+                                Thread.sleep(40*1000);
+                            } catch (Exception e){}
                             deleteSqsMessages(waitingForAcknowledgements);
                         }
                     },
@@ -273,7 +278,7 @@ public class SqsWorker implements Runnable {
                             final int newVisibilityTimeoutSeconds = visibilityTimeout;
                             int newValue = parsedMessageVisibilityTimesMap.getOrDefault(parsedMessage, visibilityTimeout) + progressCheckInterval;
                             if (newValue >= maxVisibilityTimeout) {
-                                return;
+                                return false;
                             }
                             parsedMessageVisibilityTimesMap.put(parsedMessage, newValue);
                             final ChangeMessageVisibilityRequest changeMessageVisibilityRequest = ChangeMessageVisibilityRequest.builder()
@@ -283,13 +288,23 @@ public class SqsWorker implements Runnable {
                                     .build();
 
                             try {
+                                try {
+                                    Thread.sleep(40*1000);
+                                } catch (Exception e){}
                                 sqsClient.changeMessageVisibility(changeMessageVisibilityRequest);
                                 sqsVisibilityTimeoutChangedCount.increment();
                                 LOG.info("Set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds);
+                            } catch (SqsException e) {
+                                if (e.statusCode() != HttpStatusCode.BAD_REQUEST) {
+                                    LOG.error("Failed to set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds, e);
+                                }
+                                sqsVisibilityTimeoutChangeFailedCount.increment();
+                                return e.statusCode() == HttpStatusCode.BAD_REQUEST;
                             } catch (Exception e) {
                                 LOG.error("Failed to set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds, e);
                                 sqsVisibilityTimeoutChangeFailedCount.increment();
                             }
+                            return true;
 
                         },
                         Duration.ofSeconds(progressCheckInterval));
