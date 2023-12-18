@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;   
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,6 +43,7 @@ class DateProcessorConfigTest {
         void setUp() {
             random = UUID.randomUUID().toString();
             mockDateMatch = mock(DateProcessorConfig.DateMatch.class);
+            when(mockDateMatch.isValidPatterns()).thenReturn(true);
         }
 
         @Test
@@ -65,6 +67,23 @@ class DateProcessorConfigTest {
             reflectivelySetField(dateProcessorConfig, "match", dateMatches);
 
             assertThat(dateProcessorConfig.isValidMatchAndFromTimestampReceived(), equalTo(false));
+        }
+
+        @Test
+        void testValidAndInvalidOutputFormats() throws NoSuchFieldException, IllegalAccessException {
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", random);
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(false));
+
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_second");
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_milli");
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_nano");
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_xyz");
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(false));
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "yyyy-MM-dd'T'HH:mm:ss.nnnnnnnnnXXX");
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
         }
 
         @Test
