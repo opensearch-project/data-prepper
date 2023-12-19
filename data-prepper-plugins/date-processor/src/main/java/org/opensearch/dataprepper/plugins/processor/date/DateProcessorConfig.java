@@ -44,6 +44,7 @@ public class DateProcessorConfig {
             return patterns;
         }
 
+        @JsonIgnore
         public boolean isValidPatterns() {
             for (final String pattern: patterns) {
                 if (!isValidPattern(pattern)) {
