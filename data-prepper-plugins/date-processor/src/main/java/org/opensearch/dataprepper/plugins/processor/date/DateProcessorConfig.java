@@ -46,6 +46,16 @@ public class DateProcessorConfig {
 
         @JsonIgnore
         public boolean isValidPatterns() {
+            // For now, allow only one of the three "epoch_" pattern
+            int count = 0;
+            for (final String pattern: patterns) {
+                if (pattern.startsWith("epoch_")) {
+                    count++;
+                }
+                if (count > 1) {
+                    return false;
+                }
+            }
             for (final String pattern: patterns) {
                 if (!isValidPattern(pattern)) {
                     return false;

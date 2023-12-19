@@ -97,6 +97,16 @@ class DateProcessorConfigTest {
         }
 
         @Test
+        void isValidMatch_should_return_false_if_match_has_multiple_epoch_patterns() throws NoSuchFieldException, IllegalAccessException {
+            when(mockDateMatch.getPatterns()).thenReturn(List.of("epoch_second", "epoch_milli"));
+
+            List<DateProcessorConfig.DateMatch> dateMatches = Arrays.asList(mockDateMatch, mockDateMatch);
+            reflectivelySetField(dateProcessorConfig, "match", dateMatches);
+
+            assertThat(dateProcessorConfig.isValidMatch(), equalTo(false));
+        }
+
+        @Test
         void isValidMatch_should_return_false_if_match_has_multiple_entries() throws NoSuchFieldException, IllegalAccessException {
             when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(random));
 
