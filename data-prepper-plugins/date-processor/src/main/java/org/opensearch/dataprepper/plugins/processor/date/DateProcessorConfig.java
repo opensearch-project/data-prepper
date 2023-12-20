@@ -209,7 +209,7 @@ public class DateProcessorConfig {
         return true;
     }
 
-    @AssertTrue(message = "match can have a minimum and maximum of 1 entry and at least one pattern.")
+    @AssertTrue(message = "Invalid output format.")
     boolean isValidOutputFormat() {
         return DateMatch.isValidPattern(outputFormat);
     }
@@ -217,7 +217,7 @@ public class DateProcessorConfig {
     @AssertTrue(message = "Invalid source_timezone provided.")
     boolean isSourceTimezoneValid() {
         try {
-            sourceZoneId = buildZoneId(sourceTimezone);
+            sourceZoneId  = buildZoneId(sourceTimezone);
             return true;
         } catch (Exception e) {
             return false;
