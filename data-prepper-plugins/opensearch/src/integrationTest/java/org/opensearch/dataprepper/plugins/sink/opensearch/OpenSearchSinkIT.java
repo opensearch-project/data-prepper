@@ -127,6 +127,7 @@ public class OpenSearchSinkIT {
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
 
+    @Mock
     private ExpressionEvaluator expressionEvaluator;
 
     public OpenSearchSink createObjectUnderTest(PluginSetting pluginSetting, boolean doInitialize) {
@@ -217,6 +218,7 @@ public class OpenSearchSinkIT {
     @Test
     @DisabledIf(value = "isES6", disabledReason = TRACE_INGESTION_TEST_DISABLED_REASON)
     public void testInstantiateSinkRawSpanReservedAliasAlreadyUsedAsIndex() throws IOException {
+
         final String reservedIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
         final Request request = new Request(HttpMethod.PUT, reservedIndexAlias);
         client.performRequest(request);
@@ -1016,9 +1018,9 @@ public class OpenSearchSinkIT {
     @Test
     @DisabledIf(value = "isES6", disabledReason = TRACE_INGESTION_TEST_DISABLED_REASON)
     public void testEventOutput() throws IOException, InterruptedException {
-
+        final String spanId = UUID.randomUUID().toString();
         final Event testEvent = JacksonEvent.builder()
-                .withData("{\"log\": \"foobar\"}")
+                .withData("{\"log\": \"foobar\", \"spanId\": \""+spanId+"\"}")
                 .withEventType("event")
                 .build();
 
@@ -1032,6 +1034,7 @@ public class OpenSearchSinkIT {
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
         final Map<String, Object> expectedContent = new HashMap<>();
         expectedContent.put("log", "foobar");
+        expectedContent.put("spanId", spanId);
 
         assertThat(retSources.size(), equalTo(1));
         assertThat(retSources.containsAll(Arrays.asList(expectedContent)), equalTo(true));
@@ -1112,6 +1115,61 @@ public class OpenSearchSinkIT {
         final List<String> routingFields = getSearchResponseRoutingFields(testIndexAlias);
         for (String routingField : routingFields) {
             assertThat(routingField, equalTo(expectedRoutingField));
+        }
+        sink.shutdown();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"info/ids/rid", "rid"})
+    public void testOpenSearchRoutingFieldWithExpressions(final String testRoutingField) throws IOException, InterruptedException {
+        final String expectedRoutingField = UUID.randomUUID().toString();
+        final String testIndexAlias = "test_index";
+        final Event testEvent = JacksonEvent.builder()
+                .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
+                .withEventType("event")
+                .build();
+        testEvent.put(testRoutingField, expectedRoutingField);
+
+        final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
+        pluginSetting.getSettings().put(IndexConfiguration.ROUTING_FIELD, "${/"+testRoutingField+"}");
+        when(expressionEvaluator.isValidFormatExpression(any(String.class))).thenReturn(true);
+        final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+
+        final List<String> routingFields = getSearchResponseRoutingFields(testIndexAlias);
+        for (String routingField : routingFields) {
+            assertThat(routingField, equalTo(expectedRoutingField));
+        }
+        sink.shutdown();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"info/ids/rid", "rid"})
+    public void testOpenSearchRoutingFieldWithMixedExpressions(final String testRoutingField) throws IOException, InterruptedException {
+        final String routingField = UUID.randomUUID().toString();
+        final String testIndexAlias = "test_index";
+        final Event testEvent = JacksonEvent.builder()
+                .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
+                .withEventType("event")
+                .build();
+        testEvent.put(testRoutingField, routingField);
+
+        final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+        final String prefix = RandomStringUtils.randomAlphabetic(5);
+        final String suffix = RandomStringUtils.randomAlphabetic(6);
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
+        pluginSetting.getSettings().put(IndexConfiguration.ROUTING_FIELD, prefix+"-${/"+testRoutingField+"}-"+suffix);
+        when(expressionEvaluator.isValidFormatExpression(any(String.class))).thenReturn(true);
+        final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        final String expectedRoutingField = prefix+"-"+routingField+"-"+suffix;
+
+        final List<String> routingFields = getSearchResponseRoutingFields(testIndexAlias);
+        for (String field : routingFields) {
+            assertThat(field, equalTo(expectedRoutingField));
         }
         sink.shutdown();
     }

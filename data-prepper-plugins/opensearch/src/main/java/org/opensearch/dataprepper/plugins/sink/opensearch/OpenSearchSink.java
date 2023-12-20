@@ -473,7 +473,14 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       }
     }
 
-    String routing = (routingField != null) ? event.get(routingField, String.class) : null;
+    String routing = null;
+    if (routingField != null) {
+        if (expressionEvaluator.isValidFormatExpression(routingField)) {
+            routing = event.formatString(routingField, expressionEvaluator);
+        } else {
+            routing = event.get(routingField, String.class);
+        }
+    }
 
     final String document = DocumentBuilder.build(event, documentRootKey, sinkContext.getTagsTargetKey(), sinkContext.getIncludeKeys(), sinkContext.getExcludeKeys());
 
