@@ -26,11 +26,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class DefaultAcknowledgementSet implements AcknowledgementSet {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAcknowledgementSet.class);
     private final Consumer<Boolean> callback;
-    private Consumer<ProgressCheck> progressCheckCallback;
+    private Function<ProgressCheck, Boolean> progressCheckCallback;
     private final Instant expiryTime;
     private final ScheduledExecutorService scheduledExecutor;
     // This lock protects all the non-final members
@@ -60,7 +61,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         lock = new ReentrantLock(true);
     }
 
-    public void addProgressCheck(final Consumer<ProgressCheck> progressCheckCallback, final Duration progressCheckInterval) {
+    public void addProgressCheck(final Function<ProgressCheck, Boolean> progressCheckCallback, final Duration progressCheckInterval) {
         this.progressCheckCallback = progressCheckCallback;
         this.progressCheckFuture = scheduledExecutor.scheduleAtFixedRate(this::checkProgress, 0L, progressCheckInterval.toMillis(), TimeUnit.MILLISECONDS);
     }
@@ -68,9 +69,18 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     public void checkProgress() {
         lock.lock();
         int numberOfEventsPending = pendingAcknowledgments.size();
+        Function<ProgressCheck, Boolean> callback = progressCheckCallback;
         lock.unlock();
-        if (progressCheckCallback != null) {
-            progressCheckCallback.accept(new DefaultProgressCheck((double)numberOfEventsPending/totalEventsAdded.get()));
+        if (callback != null) {
+            result = callback.apply(new DefaultProgressCheck((double)numberOfEventsPending/totalEventsAdded.get()));
+            if (result == false) {
+                lock.lock();
+                if (progressCheckFuture != null) {
+                    progressCheckFuture.cancel(false);
+                }
+                progressCheckCallback = null;
+                lock.unlock();
+            }
         }
     }
 
@@ -116,6 +126,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
             if (Instant.now().isAfter(expiryTime)) {
                 if (progressCheckFuture != null) {
                     progressCheckFuture.cancel(false);
+                    progressCheckCallback = null;
                 }
                 if (callbackFuture != null) {
                     callbackFuture.cancel(true);
@@ -170,6 +181,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
                 if (completed && pendingAcknowledgments.size() == 0) {
                     if (progressCheckFuture != null) {
                         progressCheckFuture.cancel(false);
+                        progressCheckCallback = null;
                     }
                     callbackFuture = scheduledExecutor.submit(() -> callback.accept(this.result));
                     return true;
