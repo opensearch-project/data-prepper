@@ -10,7 +10,8 @@ metadata:
     {{- end }}
 spec:
   selector:
-    {{- include "data-prepper.selectorLabels" . | nindent 4 }}
+    matchLabels:
+    {{- include "data-prepper.selectorLabels" . | nindent 6 }}
   endpoints:
   {{- toYaml .Values.serviceMonitor.metricsEndpoints | nindent 2 }}
 {{- end }}
