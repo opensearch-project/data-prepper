@@ -12,11 +12,13 @@ import jakarta.validation.constraints.AssertTrue;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
+import java.time.format.DateTimeFormatter;
 
 public class DateProcessorConfig {
     static final Boolean DEFAULT_FROM_TIME_RECEIVED = false;
     static final Boolean DEFAULT_TO_ORIGINATION_METADATA = false;
     static final String DEFAULT_DESTINATION = "@timestamp";
+    static final String DEFAULT_OUTPUT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
     static final String DEFAULT_SOURCE_TIMEZONE = ZoneId.systemDefault().toString();
     static final String DEFAULT_DESTINATION_TIMEZONE = ZoneId.systemDefault().toString();
 
@@ -41,6 +43,41 @@ public class DateProcessorConfig {
         public List<String> getPatterns() {
             return patterns;
         }
+
+        @JsonIgnore
+        public boolean isValidPatterns() {
+            // For now, allow only one of the three "epoch_" pattern
+            int count = 0;
+            for (final String pattern: patterns) {
+                if (pattern.startsWith("epoch_")) {
+                    count++;
+                }
+                if (count > 1) {
+                    return false;
+                }
+            }
+            for (final String pattern: patterns) {
+                if (!isValidPattern(pattern)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public static boolean isValidPattern(final String pattern) {
+            if (pattern.equals("epoch_second") ||
+                pattern.equals("epoch_milli") ||
+                pattern.equals("epoch_nano")) {
+                    return true;
+            }
+            try {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
     }
 
     @JsonProperty("from_time_received")
@@ -54,6 +91,9 @@ public class DateProcessorConfig {
 
     @JsonProperty("destination")
     private String destination = DEFAULT_DESTINATION;
+
+    @JsonProperty("output_format")
+    private String outputFormat = DEFAULT_OUTPUT_FORMAT;
 
     @JsonProperty("source_timezone")
     private String sourceTimezone = DEFAULT_SOURCE_TIMEZONE;
@@ -75,6 +115,10 @@ public class DateProcessorConfig {
 
     @JsonIgnore
     private Locale sourceLocale;
+
+    public String getOutputFormat() {
+        return outputFormat;
+    }
 
     public Boolean getFromTimeReceived() {
         return fromTimeReceived;
@@ -160,15 +204,20 @@ public class DateProcessorConfig {
             if (match.size() != 1)
                 return false;
 
-            return match.get(0).getPatterns() != null && !match.get(0).getPatterns().isEmpty();
+            return match.get(0).getPatterns() != null && !match.get(0).getPatterns().isEmpty() && match.get(0).isValidPatterns();
         }
         return true;
+    }
+
+    @AssertTrue(message = "Invalid output format.")
+    boolean isValidOutputFormat() {
+        return DateMatch.isValidPattern(outputFormat);
     }
 
     @AssertTrue(message = "Invalid source_timezone provided.")
     boolean isSourceTimezoneValid() {
         try {
-            sourceZoneId = buildZoneId(sourceTimezone);
+            sourceZoneId  = buildZoneId(sourceTimezone);
             return true;
         } catch (Exception e) {
             return false;

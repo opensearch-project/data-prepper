@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;   
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,6 +43,7 @@ class DateProcessorConfigTest {
         void setUp() {
             random = UUID.randomUUID().toString();
             mockDateMatch = mock(DateProcessorConfig.DateMatch.class);
+            when(mockDateMatch.isValidPatterns()).thenReturn(true);
         }
 
         @Test
@@ -68,6 +70,23 @@ class DateProcessorConfigTest {
         }
 
         @Test
+        void testValidAndInvalidOutputFormats() throws NoSuchFieldException, IllegalAccessException {
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", random);
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(false));
+
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_second");
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_milli");
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_nano");
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_xyz");
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(false));
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "yyyy-MM-dd'T'HH:mm:ss.nnnnnnnnnXXX");
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
+        }
+
+        @Test
         void isValidMatch_should_return_true_if_match_has_single_entry() throws NoSuchFieldException, IllegalAccessException {
             when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(random));
 
@@ -75,6 +94,16 @@ class DateProcessorConfigTest {
             reflectivelySetField(dateProcessorConfig, "match", dateMatches);
 
             assertThat(dateProcessorConfig.isValidMatch(), equalTo(true));
+        }
+
+        @Test
+        void isValidMatch_should_return_false_if_match_has_multiple_epoch_patterns() throws NoSuchFieldException, IllegalAccessException {
+            when(mockDateMatch.getPatterns()).thenReturn(List.of("epoch_second", "epoch_milli"));
+
+            List<DateProcessorConfig.DateMatch> dateMatches = Arrays.asList(mockDateMatch, mockDateMatch);
+            reflectivelySetField(dateProcessorConfig, "match", dateMatches);
+
+            assertThat(dateProcessorConfig.isValidMatch(), equalTo(false));
         }
 
         @Test

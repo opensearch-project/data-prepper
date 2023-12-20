@@ -18,12 +18,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -35,6 +38,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
+import java.util.Random;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -83,6 +88,7 @@ class DateProcessorTests {
         lenient().when(pluginMetrics.counter(DateProcessor.DATE_PROCESSING_MATCH_SUCCESS)).thenReturn(dateProcessingMatchSuccessCounter);
         lenient().when(pluginMetrics.counter(DateProcessor.DATE_PROCESSING_MATCH_FAILURE)).thenReturn(dateProcessingMatchFailureCounter);
         when(mockDateProcessorConfig.getDateWhen()).thenReturn(null);
+        lenient().when(mockDateProcessorConfig.getOutputFormat()).thenReturn(DateProcessorConfig.DEFAULT_OUTPUT_FORMAT);
         expectedInstant = Instant.now();
         expectedDateTime = LocalDateTime.ofInstant(expectedInstant, ZoneId.systemDefault());
     }
@@ -214,6 +220,34 @@ class DateProcessorTests {
     }
 
     @Test
+    void match_with_epoch_second_pattern() {
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        String epochSecondsPattern = "epoch_second";
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(epochSecondsPattern));
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
+
+        dateProcessor = createObjectUnderTest();
+
+        LocalDate localDate = LocalDate.now(ZoneId.of("UTC"));
+        testData = getTestData();
+        long epochSeconds = Instant.now().getEpochSecond();
+        testData.put("logDate", epochSeconds);
+
+        final Record<Event> record = buildRecordWithEvent(testData);
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
+        ZonedDateTime actualZonedDateTime =  processedRecords.get(0).getData().get(TIMESTAMP_KEY, ZonedDateTime.class);
+        LocalDateTime localDateTime = localDate.atTime(LocalTime.now());
+        ZonedDateTime expectedZonedDateTime = localDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds), ZoneId.systemDefault()).atZone(ZoneId.systemDefault());
+        actualZonedDateTime = actualZonedDateTime.withZoneSameInstant(ZoneId.of("UTC"));
+
+        Assertions.assertTrue(actualZonedDateTime.isEqual(expectedZonedDateTime));
+        verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+    }
+
+    @Test
     void match_with_missing_hours_minutes_seconds_adds_zeros_test() {
         when(mockDateMatch.getKey()).thenReturn("logDate");
         when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(pattern1));
@@ -237,6 +271,72 @@ class DateProcessorTests {
         ZonedDateTime expectedZonedDateTime = localDate.atStartOfDay().atZone(ZoneId.of("UTC"));
 
         Assertions.assertTrue(actualZonedDateTime.isEqual(expectedZonedDateTime));
+        verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+    }
+
+    private static Stream<Arguments> getInputOutputFormats() {
+        Instant now = Instant.now();
+        long epochSeconds = now.getEpochSecond();
+        Random random = new Random();
+        long millis = random.nextInt(1000);
+        long nanos = random.nextInt(1000_000_000);
+        long epochMillis = epochSeconds * 1000L + millis;
+        long epochNanos = epochSeconds * 1000_000_000L + nanos;
+
+        ZonedDateTime zdtSeconds = ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds), java.time.ZoneId.of("UTC"));
+        ZonedDateTime zdtMillis = ZonedDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), java.time.ZoneId.of("UTC"));
+        ZonedDateTime zdtNanos = ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds, nanos), java.time.ZoneId.of("UTC"));
+        String testFormat = "yyyy-MMM-dd HH:mm:ss.SSS";
+        String testNanosFormat = "yyyy-MMM-dd HH:mm:ss.nnnnnnnnnXXX";
+        String defaultFormat = DateProcessorConfig.DEFAULT_OUTPUT_FORMAT;
+        return Stream.of(
+                Arguments.of("epoch_second", epochSeconds, "epoch_milli", epochSeconds * 1000L),
+                Arguments.of("epoch_second", epochSeconds, "epoch_nano", epochSeconds * 1000_000_000L),
+                Arguments.of("epoch_second", epochSeconds, testFormat, zdtSeconds.format(DateTimeFormatter.ofPattern(testFormat))),
+                Arguments.of("epoch_second", epochSeconds, defaultFormat, zdtSeconds.format(DateTimeFormatter.ofPattern(defaultFormat))),
+                Arguments.of("epoch_milli", epochMillis, "epoch_second", epochSeconds),
+                Arguments.of("epoch_milli", epochMillis, "epoch_nano", epochMillis * 1000_000),
+                Arguments.of("epoch_milli", epochMillis, testFormat, zdtMillis.format(DateTimeFormatter.ofPattern(testFormat))),
+                Arguments.of("epoch_milli", epochMillis, defaultFormat, zdtMillis.format(DateTimeFormatter.ofPattern(defaultFormat))),
+                Arguments.of("epoch_nano", epochNanos, "epoch_second", epochSeconds),
+                Arguments.of("epoch_nano", epochNanos, "epoch_milli", epochNanos/1000_000),
+                Arguments.of("epoch_nano", epochNanos, testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat))),
+                Arguments.of("epoch_nano", epochNanos, defaultFormat, zdtNanos.format(DateTimeFormatter.ofPattern(defaultFormat))),
+                Arguments.of(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_second", epochSeconds),
+                Arguments.of(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_milli", epochNanos/1000_000),
+                Arguments.of(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_nano", epochNanos),
+                Arguments.of(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), defaultFormat, zdtNanos.format(DateTimeFormatter.ofPattern(defaultFormat)))
+        );
+    }
+    @ParameterizedTest
+    @MethodSource("getInputOutputFormats")
+    void match_with_different_input_output_formats(String inputFormat, Object input, String outputFormat, Object expectedOutput) {
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(inputFormat));
+        when(mockDateProcessorConfig.getOutputFormat()).thenReturn(outputFormat);
+
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
+
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
+        if (!inputFormat.startsWith("epoch_")) {
+            when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
+        }
+        dateProcessor = createObjectUnderTest();
+        testData = getTestData();
+        testData.put("logDate", input);
+        final Record<Event> record = buildRecordWithEvent(testData);
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
+        if (outputFormat.equals("epoch_second") ||
+            outputFormat.equals("epoch_milli") ||
+            outputFormat.equals("epoch_nano")) {
+                Long actualOutput = processedRecords.get(0).getData().get(TIMESTAMP_KEY, Long.class);
+                assertThat(actualOutput, equalTo((Long)expectedOutput));
+        } else {
+            String actualOutput= processedRecords.get(0).getData().get(TIMESTAMP_KEY, String.class);
+            assertThat(actualOutput, equalTo((String)expectedOutput));
+        }
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
     }
 
