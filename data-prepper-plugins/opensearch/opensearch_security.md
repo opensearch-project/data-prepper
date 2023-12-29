@@ -8,7 +8,7 @@ sink:
   - opensearch:
       ...
       username: "admin"
-      password: "admin"
+      password: "<admin password>"
 ```
 
 or by using user credential assigned with a role that has the below required permissions.

@@ -9,7 +9,7 @@ grok-pipeline:
     - opensearch:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
-        password: "admin"
+        password: "myStrongPassword123!"
         index: "test-grok-index"
 
 entry-pipeline:
@@ -32,7 +32,7 @@ raw-pipeline:
     - opensearch:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
-        password: "admin"
+        password: "myStrongPassword123!"
         index_type: trace-analytics-raw
 
 service-map-pipeline:
@@ -46,5 +46,5 @@ service-map-pipeline:
     - opensearch:
         hosts: ["https://node-0.example.com:9200"]
         username: "admin"
-        password: "admin"
+        password: "myStrongPassword123!"
         index_type: trace-analytics-service-map
