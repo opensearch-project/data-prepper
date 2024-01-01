@@ -12,7 +12,7 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'com.amazonaws:aws-java-sdk-s3:1.12.395'
-    implementation 'com.amazonaws:aws-java-sdk-sts:1.12.395'
+    implementation 'com.amazonaws:aws-java-sdk-sts:1.12.629'
     implementation 'io.micrometer:micrometer-core'
     implementation project(path: ':data-prepper-api')
     implementation project(path: ':data-prepper-plugins:mutate-event-processors')
