@@ -32,7 +32,7 @@ dependencies {
     implementation 'software.amazon.msk:aws-msk-iam-auth:1.1.6'
     implementation 'software.amazon.glue:schema-registry-serde:1.1.15'
     implementation 'com.amazonaws:aws-java-sdk-glue:1.12.506'
-    implementation 'io.confluent:kafka-json-schema-serializer:7.4.0'
+    implementation 'io.confluent:kafka-json-schema-serializer:7.5.3'
     implementation project(':data-prepper-plugins:failures-common')
     implementation 'org.apache.kafka:connect-json:3.4.0'
     implementation 'com.github.fge:json-schema-validator:2.2.14'
