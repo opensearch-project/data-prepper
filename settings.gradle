@@ -28,7 +28,7 @@ dependencyResolutionManagement {
             library('opentelemetry-proto', 'io.opentelemetry.proto', 'opentelemetry-proto').versionRef('opentelemetry')
             version('opensearchJava', '2.8.1')
             library('opensearch-java', 'org.opensearch.client', 'opensearch-java').versionRef('opensearchJava')
-            version('opensearch', '1.3.13')
+            version('opensearch', '1.3.14')
             library('opensearch-client', 'org.opensearch.client', 'opensearch-rest-client').versionRef('opensearch')
             library('opensearch-rhlc', 'org.opensearch.client', 'opensearch-rest-high-level-client').versionRef('opensearch')
             version('spring', '5.3.28')
