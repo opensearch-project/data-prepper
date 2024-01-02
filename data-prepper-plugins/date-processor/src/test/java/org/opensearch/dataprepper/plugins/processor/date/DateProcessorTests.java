@@ -43,6 +43,7 @@ import java.util.Random;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -283,31 +284,32 @@ class DateProcessorTests {
         long epochMillis = epochSeconds * 1000L + millis;
         long epochNanos = epochSeconds * 1000_000_000L + nanos;
 
-        ZonedDateTime zdtSeconds = ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds), java.time.ZoneId.of("UTC"));
-        ZonedDateTime zdtMillis = ZonedDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), java.time.ZoneId.of("UTC"));
-        ZonedDateTime zdtNanos = ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds, nanos), java.time.ZoneId.of("UTC"));
+        ZonedDateTime zdtSeconds = ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds), java.time.ZoneId.systemDefault());
+        ZonedDateTime zdtMillis = ZonedDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), java.time.ZoneId.systemDefault());
+        ZonedDateTime zdtNanos = ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds, nanos), java.time.ZoneId.systemDefault());
         String testFormat = "yyyy-MMM-dd HH:mm:ss.SSS";
         String testNanosFormat = "yyyy-MMM-dd HH:mm:ss.nnnnnnnnnXXX";
         String defaultFormat = DateProcessorConfig.DEFAULT_OUTPUT_FORMAT;
         return Stream.of(
-                Arguments.of("epoch_second", epochSeconds, "epoch_milli", epochSeconds * 1000L),
-                Arguments.of("epoch_second", epochSeconds, "epoch_nano", epochSeconds * 1000_000_000L),
-                Arguments.of("epoch_second", epochSeconds, testFormat, zdtSeconds.format(DateTimeFormatter.ofPattern(testFormat))),
-                Arguments.of("epoch_second", epochSeconds, defaultFormat, zdtSeconds.format(DateTimeFormatter.ofPattern(defaultFormat))),
-                Arguments.of("epoch_milli", epochMillis, "epoch_second", epochSeconds),
-                Arguments.of("epoch_milli", epochMillis, "epoch_nano", epochMillis * 1000_000),
-                Arguments.of("epoch_milli", epochMillis, testFormat, zdtMillis.format(DateTimeFormatter.ofPattern(testFormat))),
-                Arguments.of("epoch_milli", epochMillis, defaultFormat, zdtMillis.format(DateTimeFormatter.ofPattern(defaultFormat))),
-                Arguments.of("epoch_nano", epochNanos, "epoch_second", epochSeconds),
-                Arguments.of("epoch_nano", epochNanos, "epoch_milli", epochNanos/1000_000),
-                Arguments.of("epoch_nano", epochNanos, testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat))),
-                Arguments.of("epoch_nano", epochNanos, defaultFormat, zdtNanos.format(DateTimeFormatter.ofPattern(defaultFormat))),
-                Arguments.of(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_second", epochSeconds),
-                Arguments.of(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_milli", epochNanos/1000_000),
-                Arguments.of(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_nano", epochNanos),
-                Arguments.of(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), defaultFormat, zdtNanos.format(DateTimeFormatter.ofPattern(defaultFormat)))
+                arguments("epoch_second", epochSeconds, "epoch_milli", Long.toString(epochSeconds * 1000L)),
+                arguments("epoch_second", epochSeconds, "epoch_nano", Long.toString(epochSeconds * 1000_000_000L)),
+                arguments("epoch_second", epochSeconds, testFormat, zdtSeconds.format(DateTimeFormatter.ofPattern(testFormat))),
+                arguments("epoch_second", epochSeconds, defaultFormat, zdtSeconds.format(DateTimeFormatter.ofPattern(defaultFormat))),
+                arguments("epoch_milli", epochMillis, "epoch_second", Long.toString(epochSeconds)),
+                arguments("epoch_milli", epochMillis, "epoch_nano", Long.toString(epochMillis * 1000_000)),
+                arguments("epoch_milli", epochMillis, testFormat, zdtMillis.format(DateTimeFormatter.ofPattern(testFormat))),
+                arguments("epoch_milli", epochMillis, defaultFormat, zdtMillis.format(DateTimeFormatter.ofPattern(defaultFormat))),
+                arguments("epoch_nano", epochNanos, "epoch_second", Long.toString(epochSeconds)),
+                arguments("epoch_nano", epochNanos, "epoch_milli", Long.toString(epochNanos/1000_000)),
+                arguments("epoch_nano", epochNanos, testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat))),
+                arguments("epoch_nano", epochNanos, defaultFormat, zdtNanos.format(DateTimeFormatter.ofPattern(defaultFormat))),
+                arguments(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_second", Long.toString(epochSeconds)),
+                arguments(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_milli", Long.toString(epochNanos/1000_000)),
+                arguments(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_nano", Long.toString(epochNanos)),
+                arguments(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), defaultFormat, zdtNanos.format(DateTimeFormatter.ofPattern(defaultFormat)))
         );
     }
+    
     @ParameterizedTest
     @MethodSource("getInputOutputFormats")
     void match_with_different_input_output_formats(String inputFormat, Object input, String outputFormat, Object expectedOutput) {
@@ -328,15 +330,8 @@ class DateProcessorTests {
         testData.put("logDate", input);
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
-        if (outputFormat.equals("epoch_second") ||
-            outputFormat.equals("epoch_milli") ||
-            outputFormat.equals("epoch_nano")) {
-                Long actualOutput = processedRecords.get(0).getData().get(TIMESTAMP_KEY, Long.class);
-                assertThat(actualOutput, equalTo((Long)expectedOutput));
-        } else {
-            String actualOutput= processedRecords.get(0).getData().get(TIMESTAMP_KEY, String.class);
-            assertThat(actualOutput, equalTo((String)expectedOutput));
-        }
+        Object actualOutput = processedRecords.get(0).getData().get(TIMESTAMP_KEY, Object.class);
+        assertThat(actualOutput, equalTo(expectedOutput));
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
     }
 
