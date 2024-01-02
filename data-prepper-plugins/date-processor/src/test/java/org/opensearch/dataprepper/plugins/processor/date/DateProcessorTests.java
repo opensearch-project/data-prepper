@@ -330,7 +330,7 @@ class DateProcessorTests {
         testData.put("logDate", input);
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
-        Object actualOutput = processedRecords.get(0).getData().get(TIMESTAMP_KEY, Object.class);
+        String actualOutput = processedRecords.get(0).getData().get(TIMESTAMP_KEY, String.class);
         assertThat(actualOutput, equalTo(expectedOutput));
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
     }
