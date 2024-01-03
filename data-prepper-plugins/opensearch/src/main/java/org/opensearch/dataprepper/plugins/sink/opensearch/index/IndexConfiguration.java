@@ -56,6 +56,7 @@ public class IndexConfiguration {
     public static final String DOCUMENT_ID_FIELD = "document_id_field";
     public static final String DOCUMENT_ID = "document_id";
     public static final String ROUTING_FIELD = "routing_field";
+    public static final String ROUTING = "routing";
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
     public static final boolean DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION = false;
@@ -81,6 +82,7 @@ public class IndexConfiguration {
     private final String documentIdField;
     private final String documentId;
     private final String routingField;
+    private final String routing;
     private final long bulkSize;
     private final boolean estimateBulkSizeUsingCompression;
     private int maxLocalCompressionsForEstimation;
@@ -144,6 +146,7 @@ public class IndexConfiguration {
         this.maxLocalCompressionsForEstimation = builder.maxLocalCompressionsForEstimation;
         this.flushTimeout = builder.flushTimeout;
         this.routingField = builder.routingField;
+        this.routing = builder.routing;
 
         String documentIdField = builder.documentIdField;
         String documentId = builder.documentId;
@@ -255,8 +258,12 @@ public class IndexConfiguration {
         }
 
         final String routingField = pluginSetting.getStringOrDefault(ROUTING_FIELD, null);
+        final String routing = pluginSetting.getStringOrDefault(ROUTING, null);
         if (routingField != null) {
+            LOG.warn("routing_field is deprecated in favor of routing, and support for document_field will be removed in a future major version release.");
             builder = builder.withRoutingField(routingField);
+        } else if (routing != null) {
+            builder = builder.withRouting(routing);
         }
 
         final String ismPolicyFile = pluginSetting.getStringOrDefault(ISM_POLICY_FILE, null);
@@ -323,6 +330,10 @@ public class IndexConfiguration {
 
     public String getRoutingField() {
         return routingField;
+    }
+
+    public String getRouting() {
+        return routing;
     }
 
     public long getBulkSize() {
@@ -447,6 +458,7 @@ public class IndexConfiguration {
         private int numShards;
         private int numReplicas;
         private String routingField;
+        private String routing;
         private String documentIdField;
         private String documentId;
         private long bulkSize = DEFAULT_BULK_SIZE;
@@ -514,6 +526,11 @@ public class IndexConfiguration {
 
         public Builder withRoutingField(final String routingField) {
             this.routingField = routingField;
+            return this;
+        }
+
+        public Builder withRouting(final String routing) {
+            this.routing = routing;
             return this;
         }
 

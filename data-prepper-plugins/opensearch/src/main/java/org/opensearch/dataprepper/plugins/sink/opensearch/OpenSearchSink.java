@@ -112,6 +112,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String documentIdField;
   private final String documentId;
   private final String routingField;
+  private final String routing;
   private final String action;
   private final List<Map<String, Object>> actions;
   private final String documentRootKey;
@@ -163,6 +164,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
     this.documentId = openSearchSinkConfig.getIndexConfiguration().getDocumentId();
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
+    this.routing = openSearchSinkConfig.getIndexConfiguration().getRouting();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.actions = openSearchSinkConfig.getIndexConfiguration().getActions();
     this.documentRootKey = openSearchSinkConfig.getIndexConfiguration().getDocumentRootKey();
@@ -473,18 +475,20 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       }
     }
 
-    String routing = null;
+    String routingValue = null;
     if (routingField != null) {
-        if (expressionEvaluator.isValidFormatExpression(routingField)) {
-            routing = event.formatString(routingField, expressionEvaluator);
+        routingValue = event.get(routingField, String.class);
+    } else if (routing != null) {
+        if (expressionEvaluator.isValidFormatExpression(routing)) {
+            routingValue = event.formatString(routing, expressionEvaluator);
         } else {
-            routing = event.get(routingField, String.class);
+            routingValue = event.get(routing, String.class);
         }
     }
 
     final String document = DocumentBuilder.build(event, documentRootKey, sinkContext.getTagsTargetKey(), sinkContext.getIncludeKeys(), sinkContext.getExcludeKeys());
 
-    return SerializedJson.fromStringAndOptionals(document, docId, routing);
+    return SerializedJson.fromStringAndOptionals(document, docId, routingValue);
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {
