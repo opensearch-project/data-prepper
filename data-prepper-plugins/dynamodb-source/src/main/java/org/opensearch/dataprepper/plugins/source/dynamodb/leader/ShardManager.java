@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.source.dynamodb.leader;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamResponse;
 import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
@@ -175,6 +176,10 @@ public class ShardManager {
         } catch(final InternalServerErrorException e) {
             LOG.error("Received an internal server exception from DynamoDB while listing shards: {}", e.getMessage());
             dynamoDBSourceAggregateMetrics.getStream5xxErrors().increment();
+            return shards;
+        } catch (final SdkException e) {
+            LOG.error("Received an exception from DynamoDB while listing shards: {}", e.getMessage());
+            dynamoDBSourceAggregateMetrics.getStream4xxErrors().increment();
             return shards;
         }
 
