@@ -260,7 +260,7 @@ public class IndexConfiguration {
         final String routingField = pluginSetting.getStringOrDefault(ROUTING_FIELD, null);
         final String routing = pluginSetting.getStringOrDefault(ROUTING, null);
         if (routingField != null) {
-            LOG.warn("routing_field is deprecated in favor of routing, and support for document_field will be removed in a future major version release.");
+            LOG.warn("routing_field is deprecated in favor of routing, and support for routing_field will be removed in a future major version release.");
             builder = builder.withRoutingField(routingField);
         } else if (routing != null) {
             builder = builder.withRouting(routing);
