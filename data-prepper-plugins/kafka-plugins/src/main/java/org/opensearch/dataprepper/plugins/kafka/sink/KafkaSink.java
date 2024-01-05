@@ -152,7 +152,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         final TopicProducerConfig topic = kafkaSinkConfig.getTopic();
         if (topic.isCreateTopic()) {
             final TopicService topicService = new TopicService(kafkaSinkConfig);
-            topicService.createTopic(kafkaSinkConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor());
+            topicService.createTopic(kafkaSinkConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor(), topic.getMaxMessageBytes());
             topicService.closeAdminClient();
         }
 

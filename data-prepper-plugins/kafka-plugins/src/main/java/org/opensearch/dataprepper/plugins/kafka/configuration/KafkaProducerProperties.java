@@ -6,7 +6,22 @@ import java.time.Duration;
 import java.util.List;
 
 public class KafkaProducerProperties {
-    private static final String DEFAULT_BYTE_CAPACITY = "50mb";
+    static final String DEFAULT_BYTE_CAPACITY = "50mb";
+    static final Duration DEFAULT_DELIVERY_TIMEOUT_MS = Duration.ofMillis(120000);
+    static final Long DEFAULT_LINGER_MS = 0L;
+    static final Duration DEFAULT_MAX_BLOCK_MS = Duration.ofMillis(60000);
+    static final Duration DEFAULT_CONNECTION_MAX_IDLE_MS = Duration.ofMillis(540000);
+    static final Duration DEFAULT_REQUEST_TIMEOUT_MS = Duration.ofMillis(30000);
+    static final Duration DEFAULT_SOCKET_CONNECTION_SETUP_MAX_TIMEOUT = Duration.ofMillis(30000);
+    static final Duration DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT = Duration.ofMillis(10000);
+    static final Duration DEFAULT_METADATA_MAX_AGE_MS = Duration.ofMillis(300000);
+    static final Duration DEFAULT_METADATA_MAX_IDLE_MS = Duration.ofMillis(300000);
+    static final Duration DEFAULT_METRICS_SAMPLE_WINDOW_MS = Duration.ofMillis(300000);
+    static final Duration DEFAULT_PARTITIONER_AVAILABILITY_TIMEOUT_MS = Duration.ofMillis(0);
+    static final Duration DEFAULT_RECONNECT_BACKOFF_MAX_MS = Duration.ofMillis(1000);
+    static final Duration DEFAULT_RECONNECT_BACKOFF_MS = Duration.ofMillis(50);
+    static final Duration DEFAULT_RETRY_BACKOFF_MS = Duration.ofMillis(100);
+    static final int DEFAULT_MAX_REQUEST_SIZE = 1024*1024;
 
     @JsonProperty("buffer_memory")
     private String bufferMemory = DEFAULT_BYTE_CAPACITY;
@@ -27,19 +42,19 @@ public class KafkaProducerProperties {
     private String clientId;
 
     @JsonProperty("connections_max_idle")
-    private Duration connectionsMaxIdleMs;
+    private Duration connectionsMaxIdleMs = DEFAULT_CONNECTION_MAX_IDLE_MS;
 
     @JsonProperty("delivery_timeout")
-    private Duration deliveryTimeoutMs;
+    private Duration deliveryTimeoutMs = DEFAULT_DELIVERY_TIMEOUT_MS;
 
     @JsonProperty("linger_ms")
-    private Long lingerMs;
+    private Long lingerMs = DEFAULT_LINGER_MS;
 
     @JsonProperty("max_block")
-    private Duration maxBlockMs;
+    private Duration maxBlockMs = DEFAULT_MAX_BLOCK_MS;
 
     @JsonProperty("max_request_size")
-    private int maxRequestSize;
+    private int maxRequestSize = DEFAULT_MAX_REQUEST_SIZE;
 
     @JsonProperty("partitioner_class")
     private Class partitionerClass;
@@ -51,16 +66,16 @@ public class KafkaProducerProperties {
     private String receiveBufferBytes=DEFAULT_BYTE_CAPACITY;
 
     @JsonProperty("request_timeout")
-    private Duration requestTimeoutMs;
+    private Duration requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS;
 
     @JsonProperty("send_buffer")
     private String sendBufferBytes=DEFAULT_BYTE_CAPACITY;
 
     @JsonProperty("socket_connection_setup_timeout_max")
-    private Duration socketConnectionSetupMaxTimeout;
+    private Duration socketConnectionSetupMaxTimeout = DEFAULT_SOCKET_CONNECTION_SETUP_MAX_TIMEOUT;
 
     @JsonProperty("socket_connection_setup_timeout")
-    private Duration socketConnectionSetupTimeout;
+    private Duration socketConnectionSetupTimeout = DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT;
 
     @JsonProperty("acks")
     private String acks;
@@ -75,10 +90,10 @@ public class KafkaProducerProperties {
     private int maxInFlightRequestsPerConnection;
 
     @JsonProperty("metadata_max_age")
-    private Duration metadataMaxAgeMs;
+    private Duration metadataMaxAgeMs = DEFAULT_METADATA_MAX_AGE_MS;
 
     @JsonProperty("metadata_max_idle")
-    private Duration metadataMaxIdleMs;
+    private Duration metadataMaxIdleMs = DEFAULT_METADATA_MAX_IDLE_MS;
 
     @JsonProperty("metric_reporters")
     private List metricReporters;
@@ -90,22 +105,22 @@ public class KafkaProducerProperties {
     private String metricsRecordingLevel;
 
     @JsonProperty("metrics_sample_window")
-    private Duration metricsSampleWindowMs;
+    private Duration metricsSampleWindowMs = DEFAULT_METRICS_SAMPLE_WINDOW_MS;
 
     @JsonProperty("partitioner_adaptive_partitioning_enable")
     private boolean partitionerAdaptivePartitioningEnable;
 
     @JsonProperty("partitioner_availability_timeout")
-    private Duration partitionerAvailabilityTimeoutMs;
+    private Duration partitionerAvailabilityTimeoutMs = DEFAULT_PARTITIONER_AVAILABILITY_TIMEOUT_MS;
 
     @JsonProperty("reconnect_backoff_max")
-    private Duration reconnectBackoffMaxMs;
+    private Duration reconnectBackoffMaxMs = DEFAULT_RECONNECT_BACKOFF_MAX_MS;
 
     @JsonProperty("reconnect_backoff")
-    private Duration reconnectBackoffMs;
+    private Duration reconnectBackoffMs = DEFAULT_RECONNECT_BACKOFF_MS;
 
     @JsonProperty("retry_backoff")
-    private Duration retryBackoffMs;
+    private Duration retryBackoffMs = DEFAULT_RETRY_BACKOFF_MS;
 
 
     public String getCompressionType() {

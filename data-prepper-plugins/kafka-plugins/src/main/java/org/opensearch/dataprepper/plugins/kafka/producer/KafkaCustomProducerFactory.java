@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.kafka.producer;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Serializer;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -36,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 
 public class KafkaCustomProducerFactory {
@@ -55,6 +57,10 @@ public class KafkaCustomProducerFactory {
         KeyFactory keyFactory = new KeyFactory(awsContext);
         prepareTopicAndSchema(kafkaProducerConfig);
         Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaProducerConfig);
+        Optional<Long> maxMessageBytes = kafkaProducerConfig.getTopic().getMaxMessageBytes();
+        if (maxMessageBytes.isPresent()) {
+            properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, (int)(long)maxMessageBytes.get());
+        }
         KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, LOG);
         properties = Objects.requireNonNull(properties);
         TopicConfig topic = kafkaProducerConfig.getTopic();
@@ -91,7 +97,7 @@ public class KafkaCustomProducerFactory {
         final TopicProducerConfig topic = kafkaProducerConfig.getTopic();
         if (!topic.isCreateTopic()) {
             final TopicService topicService = new TopicService(kafkaProducerConfig);
-            topicService.createTopic(kafkaProducerConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor());
+            topicService.createTopic(kafkaProducerConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor(), topic.getMaxMessageBytes());
             topicService.closeAdminClient();
         }
 
