@@ -63,6 +63,7 @@ public class ExportTaskManager {
             return null;
         } catch (SdkException e) {
             LOG.error("Failed to submit an export job with error " + e.getMessage());
+            dynamoAggregateMetrics.getExport4xxErrors().increment();
             return null;
         }
 
@@ -82,6 +83,7 @@ public class ExportTaskManager {
             LOG.error("Unable to get manifest file for export {}: {}", exportArn, e.getMessage());
         } catch (SdkException e) {
             LOG.error("Unable to get manifest file for export {}: {}", exportArn, e.getMessage());
+            dynamoAggregateMetrics.getExport4xxErrors().increment();
         }
         return manifestKey;
     }

@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
@@ -81,6 +82,7 @@ public class ShardConsumer implements Runnable {
 
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+    static final String SHARD_PROGRESS = "shardProgress";
 
 
     private final DynamoDbStreamsClient dynamoDbStreamsClient;
@@ -105,9 +107,12 @@ public class ShardConsumer implements Runnable {
 
     private final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics;
 
+    private final Counter shardProgress;
+
     private long recordsWrittenToBuffer;
 
     private ShardConsumer(Builder builder) {
+        this.shardProgress = builder.pluginMetrics.counter(SHARD_PROGRESS);
         this.dynamoDbStreamsClient = builder.dynamoDbStreamsClient;
         this.checkpointer = builder.checkpointer;
         this.shardIterator = builder.shardIterator;
@@ -226,6 +231,7 @@ public class ShardConsumer implements Runnable {
         LOG.debug("Shard Consumer start to run...");
         // Check should skip processing or not.
         if (shouldSkip()) {
+            shardProgress.increment();
             if (acknowledgementSet != null) {
                 checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
                 acknowledgementSet.complete();
@@ -272,12 +278,14 @@ public class ShardConsumer implements Runnable {
                         .filter(record -> record.dynamodb().approximateCreationDateTime().isAfter(startTime))
                         .collect(Collectors.toList());
                 recordConverter.writeToBuffer(acknowledgementSet, records);
+                shardProgress.increment();
                 recordsWrittenToBuffer += records.size();
                 long delay = System.currentTimeMillis() - lastEventTime.toEpochMilli();
                 interval = delay > GET_RECORD_DELAY_THRESHOLD_MILLS ? MINIMUM_GET_RECORD_INTERVAL_MILLS : GET_RECORD_INTERVAL_MILLS;
 
             } else {
                 interval = GET_RECORD_INTERVAL_MILLS;
+                shardProgress.increment();
             }
 
             try {
@@ -324,6 +332,7 @@ public class ShardConsumer implements Runnable {
             dynamoDBSourceAggregateMetrics.getStream5xxErrors().increment();
             throw new RuntimeException(ex.getMessage());
         } catch (final Exception e) {
+            dynamoDBSourceAggregateMetrics.getStream4xxErrors().increment();
             throw new RuntimeException(e.getMessage());
         }
 
@@ -335,6 +344,7 @@ public class ShardConsumer implements Runnable {
         while (!checkpointer.isExportDone()) {
             LOG.debug("Export is in progress, wait...");
             try {
+                shardProgress.increment();
                 Thread.sleep(DEFAULT_WAIT_FOR_EXPORT_INTERVAL_MILLS);
                 // The wait for export may take a long time
                 // Need to extend the timeout of the ownership in the coordination store.
