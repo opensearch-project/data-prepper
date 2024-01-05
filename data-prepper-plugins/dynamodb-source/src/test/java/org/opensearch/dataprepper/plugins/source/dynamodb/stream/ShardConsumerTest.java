@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse;
 import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
@@ -57,6 +58,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.BUFFER_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.DEFAULT_BUFFER_BATCH_SIZE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.SHARD_PROGRESS;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamCheckpointer.CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE;
 
 @ExtendWith(MockitoExtension.class)
@@ -78,7 +80,13 @@ class ShardConsumerTest {
     private Counter stream5xxErrors;
 
     @Mock
+    private Counter stream4xxErrors;
+
+    @Mock
     private Counter streamApiInvocations;
+
+    @Mock
+    private Counter shardProgress;
 
     @Mock
     private Buffer<org.opensearch.dataprepper.model.record.Record<Event>> buffer;
@@ -157,7 +165,9 @@ class ShardConsumerTest {
                 .build();
         lenient().when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenReturn(response);
 
-        given(pluginMetrics.counter(anyString())).willReturn(testCounter);
+        given(pluginMetrics.counter(SHARD_PROGRESS)).willReturn(shardProgress);
+        given(pluginMetrics.counter("changeEventsProcessed")).willReturn(testCounter);
+        given(pluginMetrics.counter("changeEventsProcessingErrors")).willReturn(testCounter);
         given(pluginMetrics.summary(anyString())).willReturn(testSummary);
 
         when(aggregateMetrics.getStreamApiInvocations()).thenReturn(streamApiInvocations);
@@ -192,6 +202,7 @@ class ShardConsumerTest {
         verify(coordinator).saveProgressStateForPartition(any(StreamPartition.class), eq(CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE));
 
         verify(streamApiInvocations).increment();
+        verify(shardProgress).increment();
     }
 
     @Test
@@ -230,6 +241,7 @@ class ShardConsumerTest {
         verify(acknowledgementSet).complete();
 
         verify(streamApiInvocations).increment();
+        verify(shardProgress).increment();
     }
 
     @Test
@@ -253,6 +265,30 @@ class ShardConsumerTest {
         assertThrows(RuntimeException.class, shardConsumer::run);
 
         verify(stream5xxErrors).increment();
+        verify(streamApiInvocations).increment();
+    }
+
+    @Test
+    void test_run_shardConsumer_catches_4xx_exception_and_increments_metric() {
+        ShardConsumer shardConsumer;
+        when(aggregateMetrics.getStream4xxErrors()).thenReturn(stream4xxErrors);
+        try (
+                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer)
+                    .shardIterator(shardIterator)
+                    .checkpointer(checkpointer)
+                    .tableInfo(tableInfo)
+                    .startTime(null)
+                    .waitForExport(false)
+                    .build();
+        }
+
+        when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenThrow(DynamoDbException.class);
+
+        assertThrows(RuntimeException.class, shardConsumer::run);
+
+        verify(stream4xxErrors).increment();
         verify(streamApiInvocations).increment();
     }
 
