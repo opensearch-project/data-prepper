@@ -29,7 +29,8 @@ public class AwsSecretPlugin implements ExtensionPlugin {
     @DataPrepperPluginConstructor
     public AwsSecretPlugin(final AwsSecretPluginConfig awsSecretPluginConfig) {
         if (awsSecretPluginConfig != null) {
-            secretsSupplier = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
+            final SecretValueDecoder secretValueDecoder = new SecretValueDecoder();
+            secretsSupplier = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
             this.pluginConfigPublisher = new AwsSecretsPluginConfigPublisher();
             pluginConfigValueTranslator = new AwsSecretsPluginConfigValueTranslator(secretsSupplier);
             scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();

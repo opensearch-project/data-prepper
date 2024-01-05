@@ -18,12 +18,16 @@ public class AwsSecretsSupplier implements SecretsSupplier {
     static final TypeReference<Map<String, String>> MAP_TYPE_REFERENCE = new TypeReference<>() {
     };
 
+    private final SecretValueDecoder secretValueDecoder;
     private final ObjectMapper objectMapper;
     private final Map<String, AwsSecretManagerConfiguration> awsSecretManagerConfigurationMap;
     private final Map<String, SecretsManagerClient> secretsManagerClientMap;
     private final ConcurrentMap<String, Object> secretIdToValue;
 
-    public AwsSecretsSupplier(final AwsSecretPluginConfig awsSecretPluginConfig, final ObjectMapper objectMapper) {
+    public AwsSecretsSupplier(
+            final SecretValueDecoder secretValueDecoder,
+            final AwsSecretPluginConfig awsSecretPluginConfig, final ObjectMapper objectMapper) {
+        this.secretValueDecoder = secretValueDecoder;
         this.objectMapper = objectMapper;
         awsSecretManagerConfigurationMap = awsSecretPluginConfig
                 .getAwsSecretManagerConfigurationMap();
@@ -112,9 +116,9 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         }
 
         try {
-            return objectMapper.readValue(getSecretValueResponse.secretString(), MAP_TYPE_REFERENCE);
+            return objectMapper.readValue(secretValueDecoder.decode(getSecretValueResponse), MAP_TYPE_REFERENCE);
         } catch (JsonProcessingException e) {
-            return getSecretValueResponse.secretString();
+            return secretValueDecoder.decode(getSecretValueResponse);
         }
     }
 }

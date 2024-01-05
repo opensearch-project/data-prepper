@@ -21,6 +21,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -35,6 +36,9 @@ class AwsSecretsSupplierTest {
 
     @Mock
     private AwsSecretManagerConfiguration awsSecretManagerConfiguration;
+
+    @Mock
+    private SecretValueDecoder secretValueDecoder;
 
     @Mock
     private AwsSecretPluginConfig awsSecretPluginConfig;
@@ -60,11 +64,11 @@ class AwsSecretsSupplierTest {
                 Map.of(TEST_AWS_SECRET_CONFIGURATION_NAME, awsSecretManagerConfiguration)
         );
         when(awsSecretManagerConfiguration.createSecretManagerClient()).thenReturn(secretsManagerClient);
-        when(getSecretValueResponse.secretString()).thenReturn(OBJECT_MAPPER.writeValueAsString(
+        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(OBJECT_MAPPER.writeValueAsString(
                 Map.of(TEST_KEY, TEST_VALUE)
         ));
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
-        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
+        objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
     }
 
     @Test
@@ -86,8 +90,8 @@ class AwsSecretsSupplierTest {
 
     @Test
     void testRetrieveValueInvalidKeyValuePair() {
-        when(getSecretValueResponse.secretString()).thenReturn(TEST_VALUE);
-        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
+        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(TEST_VALUE);
+        objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
         final Exception exception = assertThrows(IllegalArgumentException.class,
                 () -> objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME, TEST_KEY));
         assertThat(exception.getMessage(), equalTo(String.format("The value under secretId: %s is not a valid json.",
@@ -107,8 +111,8 @@ class AwsSecretsSupplierTest {
         final String testValue = "{\"a\":\"b\"}";
         when(mockedObjectMapper.readValue(eq(testValue), eq(MAP_TYPE_REFERENCE))).thenReturn(Map.of("a", "b"));
         when(mockedObjectMapper.writeValueAsString(ArgumentMatchers.any())).thenThrow(mockedJsonProcessingException);
-        when(getSecretValueResponse.secretString()).thenReturn(testValue);
-        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig, mockedObjectMapper);
+        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(testValue);
+        objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, mockedObjectMapper);
         final Exception exception = assertThrows(IllegalArgumentException.class,
                 () -> objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME));
         assertThat(exception.getMessage(), equalTo(String.format("Unable to read the value under secretId: %s as string.",
@@ -118,26 +122,27 @@ class AwsSecretsSupplierTest {
     @ParameterizedTest
     @ValueSource(strings = {TEST_VALUE, "{\"a\":\"b\"}"})
     void testRetrieveValueWithoutKey(String testValue) {
-        when(getSecretValueResponse.secretString()).thenReturn(testValue);
-        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
+        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(testValue);
+        objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
         assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(testValue));
     }
 
     @Test
     void testConstructorWithGetSecretValueFailure() {
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenThrow(secretsManagerException);
-        assertThrows(RuntimeException.class, () -> new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER));
+        assertThrows(RuntimeException.class, () -> new AwsSecretsSupplier(
+                secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER));
     }
 
     @Test
     void testRefreshSecretsWithKey() {
         final String testValue = "{\"key\":\"oldValue\"}";
-        when(getSecretValueResponse.secretString()).thenReturn(testValue);
-        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
+        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(testValue);
+        objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
         assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "key"),
                 equalTo("oldValue"));
         final String newTestValue = "{\"key\":\"newValue\"}";
-        when(getSecretValueResponse.secretString()).thenReturn(newTestValue);
+        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(newTestValue);
         objectUnderTest.refresh(TEST_AWS_SECRET_CONFIGURATION_NAME);
         assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "key"),
                 equalTo("newValue"));
@@ -146,11 +151,11 @@ class AwsSecretsSupplierTest {
     @Test
     void testRefreshSecretsWithoutKey() {
         final String testValue = UUID.randomUUID().toString();
-        when(getSecretValueResponse.secretString()).thenReturn(testValue);
-        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
+        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(testValue);
+        objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
         assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(testValue));
         final String newTestValue = testValue + "-mutated";
-        when(getSecretValueResponse.secretString()).thenReturn(newTestValue);
+        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(newTestValue);
         objectUnderTest.refresh(TEST_AWS_SECRET_CONFIGURATION_NAME);
         assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(newTestValue));
     }
