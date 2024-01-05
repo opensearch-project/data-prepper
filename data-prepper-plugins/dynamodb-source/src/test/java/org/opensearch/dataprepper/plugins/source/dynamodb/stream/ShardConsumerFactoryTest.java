@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorResponse;
 import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
@@ -152,6 +153,24 @@ class ShardConsumerFactoryTest {
         Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
         assertThat(consumer, nullValue());
         verify(stream5xxErrors).increment();
+        verify(streamApiInvocations).increment();
+    }
+
+    @Test
+    void stream4xxErrors_is_incremented_when_get_shard_iterator_throws_dynamodb_exception() {
+        StreamProgressState state = new StreamProgressState();
+        state.setWaitForExport(false);
+        state.setStartTime(Instant.now().toEpochMilli());
+        streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
+
+        when(dynamoDbStreamsClient.getShardIterator(any(GetShardIteratorRequest.class))).thenThrow(DynamoDbException.class);
+        final Counter stream4xxErrors = mock(Counter.class);
+        when(dynamoDBSourceAggregateMetrics.getStream4xxErrors()).thenReturn(stream4xxErrors);
+
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer);
+        Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
+        assertThat(consumer, nullValue());
+        verify(stream4xxErrors).increment();
         verify(streamApiInvocations).increment();
     }
 
