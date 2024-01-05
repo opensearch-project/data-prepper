@@ -3,6 +3,7 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'io.micrometer:micrometer-core'
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:secretsmanager'
     implementation 'software.amazon.awssdk:sts'
