@@ -88,6 +88,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.closeTo;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -1120,7 +1121,7 @@ public class OpenSearchSinkIT {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"info/ids/rid", "rid"})
+    @ValueSource(strings = {"", "info/ids/rid", "rid"})
     public void testOpenSearchRouting(final String testRouting) throws IOException, InterruptedException {
         final String expectedRouting = UUID.randomUUID().toString();
         final String testIndexAlias = "test_index";
@@ -1128,18 +1129,26 @@ public class OpenSearchSinkIT {
                 .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
                 .withEventType("event")
                 .build();
-        testEvent.put(testRouting, expectedRouting);
+        if (!testRouting.isEmpty()) {
+            testEvent.put(testRouting, expectedRouting);
+        }
 
         final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
         final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
-        pluginSetting.getSettings().put(IndexConfiguration.ROUTING_FIELD, testRouting);
+        if (!testRouting.isEmpty()) {
+            pluginSetting.getSettings().put(IndexConfiguration.ROUTING, "${"+testRouting+"}");
+        }
         final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
 
         final List<String> routingFields = getSearchResponseRoutingFields(testIndexAlias);
         for (String routingField : routingFields) {
-            assertThat(routingField, equalTo(expectedRouting));
+            if (!testRouting.isEmpty()) {
+                assertThat(routingField, equalTo(expectedRouting));
+            } else {
+                assertTrue(Objects.isNull(routingField));
+            }
         }
         sink.shutdown();
     }
