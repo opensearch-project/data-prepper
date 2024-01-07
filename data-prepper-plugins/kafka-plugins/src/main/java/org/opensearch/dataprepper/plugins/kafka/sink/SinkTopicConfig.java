@@ -12,8 +12,6 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfi
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.opensearch.dataprepper.model.types.ByteCount;
 
-import java.util.Optional;
-
 public class SinkTopicConfig extends CommonTopicConfig implements TopicProducerConfig {
     private static final Integer DEFAULT_NUM_OF_PARTITIONS = 1;
     private static final Short DEFAULT_REPLICATION_FACTOR = 1;
@@ -64,16 +62,16 @@ public class SinkTopicConfig extends CommonTopicConfig implements TopicProducerC
     }
 
     @Override
-    public Optional<Long> getMaxMessageBytes() {
+    public Long getMaxMessageBytes() {
         long value = maxMessageBytes.getBytes();
         long defaultValue = DEFAULT_MAX_MESSAGE_BYTES.getBytes();
         if (value < defaultValue || value > 4 * defaultValue) {
             throw new RuntimeException("Invalid Max Message Bytes");
         }
         if (value == defaultValue) {
-            return Optional.empty();
+            return null;
         }
-        return Optional.of(value);
+        return null;
     }
 
     @Override

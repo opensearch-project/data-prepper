@@ -18,7 +18,6 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfi
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
-import java.util.Optional;
 
 class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig, TopicConsumerConfig {
     static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
@@ -218,16 +217,16 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     }
 
     @Override
-    public Optional<Long> getMaxMessageBytes() {
+    public Long getMaxMessageBytes() {
         long value = maxMessageBytes.getBytes();
         long defaultValue = DEFAULT_MAX_MESSAGE_BYTES.getBytes();
         if (value < defaultValue || value > 4 * defaultValue) {
             throw new RuntimeException("Invalid Max Message Bytes");
         }
         if (value == defaultValue) {
-            return Optional.empty();
+            return null;
         }
-        return Optional.of(value);
+        return Long.valueOf(value);
     }
 
     @Override

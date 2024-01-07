@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 public class TopicService {
     private static final Logger LOG = LoggerFactory.getLogger(TopicService.class);
@@ -26,12 +25,12 @@ public class TopicService {
         this.adminClient = AdminClient.create(SinkPropertyConfigurer.getPropertiesForAdminClient(kafkaProducerConfig));
     }
 
-    public void createTopic(final String topicName, final Integer numberOfPartitions, final Short replicationFactor, final Optional<Long> maxMessageBytes) {
+    public void createTopic(final String topicName, final Integer numberOfPartitions, final Short replicationFactor, final Long maxMessageBytes) {
         try {
             final NewTopic newTopic = new NewTopic(topicName, numberOfPartitions, replicationFactor);
-            if (maxMessageBytes.isPresent()) {
+            if (maxMessageBytes != null) {
                 Map<String, String> configOptions = new HashMap<>();
-                configOptions.put(TopicConfig.MAX_MESSAGE_BYTES_CONFIG, Long.toString(maxMessageBytes.get()));
+                configOptions.put(TopicConfig.MAX_MESSAGE_BYTES_CONFIG, Long.toString(maxMessageBytes));
                 newTopic.configs(configOptions);
             }
 

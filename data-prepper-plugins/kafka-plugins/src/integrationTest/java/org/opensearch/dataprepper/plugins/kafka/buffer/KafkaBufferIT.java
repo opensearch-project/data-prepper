@@ -14,10 +14,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.codec.JsonDecoder;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -26,6 +25,8 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.util.TestConsumer;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +56,12 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 public class KafkaBufferIT {
@@ -68,6 +74,9 @@ public class KafkaBufferIT {
     private PluginFactory pluginFactory;
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
+    @Mock
+    private AcknowledgementSet acknowledgementSet;
+
     private Random random;
 
     private BufferTopicConfig topicConfig;
@@ -81,6 +90,12 @@ public class KafkaBufferIT {
     @BeforeEach
     void setUp() {
         random = new Random();
+        acknowledgementSetManager = mock(AcknowledgementSetManager.class);
+        acknowledgementSet = mock(AcknowledgementSet.class);
+        lenient().doAnswer((a) -> {
+            return null;
+        }).when(acknowledgementSet).complete();
+        lenient().when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
         when(pluginSetting.getPipelineName()).thenReturn(UUID.randomUUID().toString());
@@ -118,6 +133,78 @@ public class KafkaBufferIT {
         KafkaBuffer objectUnderTest = createObjectUnderTest();
 
         Record<Event> record = createRecord();
+        objectUnderTest.write(record, 1_000);
+
+        Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = objectUnderTest.read(10_000);
+
+        assertThat(readResult, notNullValue());
+        assertThat(readResult.getKey(), notNullValue());
+        assertThat(readResult.getKey().size(), equalTo(1));
+
+        Record<Event> onlyResult = readResult.getKey().stream().iterator().next();
+
+        assertThat(onlyResult, notNullValue());
+        assertThat(onlyResult.getData(), notNullValue());
+        // TODO: The metadata is not included. It needs to be included in the Buffer, though not in the Sink. This may be something we make configurable in the consumer/producer - whether to serialize the metadata or not.
+        //assertThat(onlyResult.getData().getMetadata(), equalTo(record.getData().getMetadata()));
+        assertThat(onlyResult.getData().toMap(), equalTo(record.getData().toMap()));
+    }
+
+    @Test
+    void write_and_read_max_request_test() throws TimeoutException, NoSuchFieldException, IllegalAccessException {
+        KafkaProducerProperties kafkaProducerProperties = new KafkaProducerProperties();
+        setField(KafkaProducerProperties.class, kafkaProducerProperties, "maxRequestSize", 4*1024*1024);
+        final Map<String, Object> topicConfigMap = Map.of(
+                "name", topicName,
+                "group_id", "buffergroup-" + RandomStringUtils.randomAlphabetic(6),
+                "create_topic", false
+        );
+        final Map<String, Object> bufferConfigMap = Map.of(
+                "topics", List.of(topicConfigMap),
+                "producer_properties", kafkaProducerProperties,
+                "bootstrap_servers", List.of(bootstrapServersCommaDelimited),
+                "encryption", Map.of("type", "none")
+        );
+        kafkaBufferConfig = objectMapper.convertValue(bufferConfigMap, KafkaBufferConfig.class);
+        KafkaBuffer objectUnderTest = createObjectUnderTest();
+
+        Record<Event> record = createLargeRecord();
+        objectUnderTest.write(record, 1_000);
+
+        Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = objectUnderTest.read(10_000);
+
+        assertThat(readResult, notNullValue());
+        assertThat(readResult.getKey(), notNullValue());
+        assertThat(readResult.getKey().size(), equalTo(1));
+
+        Record<Event> onlyResult = readResult.getKey().stream().iterator().next();
+
+        assertThat(onlyResult, notNullValue());
+        assertThat(onlyResult.getData(), notNullValue());
+        // TODO: The metadata is not included. It needs to be included in the Buffer, though not in the Sink. This may be something we make configurable in the consumer/producer - whether to serialize the metadata or not.
+        //assertThat(onlyResult.getData().getMetadata(), equalTo(record.getData().getMetadata()));
+        assertThat(onlyResult.getData().toMap(), equalTo(record.getData().toMap()));
+    }
+
+    @Test
+    void write_and_read_max_message_bytes() throws TimeoutException, NoSuchFieldException, IllegalAccessException {
+        KafkaProducerProperties kafkaProducerProperties = new KafkaProducerProperties();
+        final Map<String, Object> topicConfigMap = Map.of(
+                "name", topicName,
+                "max_message_bytes", 4*1024*1024,
+                "group_id", "buffergroup-" + RandomStringUtils.randomAlphabetic(6),
+                "create_topic", false
+        );
+        final Map<String, Object> bufferConfigMap = Map.of(
+                "topics", List.of(topicConfigMap),
+                "producer_properties", kafkaProducerProperties,
+                "bootstrap_servers", List.of(bootstrapServersCommaDelimited),
+                "encryption", Map.of("type", "none")
+        );
+        kafkaBufferConfig = objectMapper.convertValue(bufferConfigMap, KafkaBufferConfig.class);
+        KafkaBuffer objectUnderTest = createObjectUnderTest();
+
+        Record<Event> record = createLargeRecord();
         objectUnderTest.write(record, 1_000);
 
         Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = objectUnderTest.read(10_000);
@@ -360,6 +447,11 @@ public class KafkaBufferIT {
         final byte[] writtenBytes = new byte[128];
         random.nextBytes(writtenBytes);
         return writtenBytes;
+    }
+
+    private Record<Event> createLargeRecord() {
+        Event event = JacksonEvent.fromMessage(RandomStringUtils.randomAlphabetic(3_000_000));
+        return new Record<>(event);
     }
 
     private Record<Event> createRecord() {

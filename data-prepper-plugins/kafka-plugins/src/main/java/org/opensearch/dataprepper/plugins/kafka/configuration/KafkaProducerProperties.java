@@ -21,7 +21,7 @@ public class KafkaProducerProperties {
     static final Duration DEFAULT_RECONNECT_BACKOFF_MAX_MS = Duration.ofMillis(1000);
     static final Duration DEFAULT_RECONNECT_BACKOFF_MS = Duration.ofMillis(50);
     static final Duration DEFAULT_RETRY_BACKOFF_MS = Duration.ofMillis(100);
-    static final int DEFAULT_MAX_REQUEST_SIZE = 1024*1024;
+    public static final int DEFAULT_MAX_REQUEST_SIZE = 1024*1024;
 
     @JsonProperty("buffer_memory")
     private String bufferMemory = DEFAULT_BYTE_CAPACITY;
