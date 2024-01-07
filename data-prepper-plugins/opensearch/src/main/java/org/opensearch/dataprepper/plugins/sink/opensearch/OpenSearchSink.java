@@ -461,8 +461,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     lastFlushTimeMap.put(threadId, lastFlushTime);
   }
 
-  private SerializedJson getDocument(final Event event) {
-
+  SerializedJson getDocument(final Event event) {
     String docId = null;
 
     if (Objects.nonNull(documentIdField)) {
