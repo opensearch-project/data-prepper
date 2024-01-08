@@ -196,6 +196,57 @@ When you run Data Prepper with this `pipeline.yaml`, you should see the followin
 ### Configuration
 * `with_keys` - (required) - A list of keys to trim the whitespace from
 
+## TruncateStringProcessor
+A processor that truncates string by removing user configured number of characters at beginning or at the end or both sides of a string.
+
+### Basic Usage
+To get started, create the following `pipeline.yaml`.
+```yaml
+pipeline:
+  source:
+    file:
+      path: "/full/path/to/logs_json.log"
+      record_type: "event"
+      format: "json"
+  processor:
+    - trucate_string:
+        entries:
+          - source: "message"
+            length: 5
+  sink:
+    - stdout:
+```
+
+Create the following file named `logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
+
+```json
+{"message": "hello,world"}
+```
+When you run Data Prepper with this `pipeline.yaml`, you should see the following output:
+
+```json
+{"message":["hello"]}
+```
+
+If the above yaml file has additional config of `start_at: 2`, then the output would be following:
+
+```json
+{"message":["llo,w"]}
+```
+
+If the above yaml file has additional config of `start_at: 2`, and does not have `length: 5` in the config, then the output would be following:
+
+```json
+{"message":["llo,world"]}
+```
+
+### Configuration
+* `entries` - (required) - A list of entries to add to an event
+    * `source` - (required) - The key to be modified
+    * `start_at` - (optional) - starting index of the string. Defaults to 0.
+    * `length` - (optional) - length of the string after truncation. Defaults to end of the string.
+Either `start_at` or `length` or both must be present
+  
 ---
 
 ## Developer Guide

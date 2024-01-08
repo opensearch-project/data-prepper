@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.mockito.Mock;
@@ -51,9 +52,9 @@ class TruncateStringProcessorTests {
 
     @ParameterizedTest
     @ArgumentsSource(TruncateStringArgumentsProvider.class)
-    void testTruncateStringProcessor(final String message, final int truncateLength, final String truncatedMessage) {
+    void testTruncateStringProcessor(final String message, final Integer startAt, final Integer truncateLength, final String truncatedMessage) {
 
-        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", truncateLength, null)));
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", startAt, truncateLength, null)));
 
         final TruncateStringProcessor truncateStringProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent(message);
@@ -63,8 +64,8 @@ class TruncateStringProcessorTests {
     }
 
     public void testLengthNotDefinedThrowsError() {
-        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, null)));
-        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", null, null)));
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, null, null)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", null, null, null)));
 
         assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest());
     }
@@ -74,7 +75,7 @@ class TruncateStringProcessorTests {
         final String truncateWhen = UUID.randomUUID().toString();
         final String message = UUID.randomUUID().toString();
 
-        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", 5, truncateWhen)));
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, 5, truncateWhen)));
 
         final TruncateStringProcessor truncateStringProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent(message);
@@ -85,8 +86,8 @@ class TruncateStringProcessorTests {
     }
 
 
-    private TruncateStringProcessorConfig.Entry createEntry(final String source, final Integer length, final String truncateWhen) {
-        return new TruncateStringProcessorConfig.Entry(source, length, truncateWhen);
+    private TruncateStringProcessorConfig.Entry createEntry(final String source, final Integer startAt, final Integer length, final String truncateWhen) {
+        return new TruncateStringProcessorConfig.Entry(source, startAt, length, truncateWhen);
     }
 
     private Record<Event> createEvent(final String message) {
@@ -103,10 +104,18 @@ class TruncateStringProcessorTests {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
             return Stream.of(
-                    Arguments.arguments("hello,world,no-truncate", 100, "hello,world,no-truncate"),
-                    Arguments.arguments("hello,world,truncate", 11, "hello,world"),
-                    Arguments.arguments("hello,world", 1, "h"),
-                    Arguments.arguments("hello", 0, "")
+                    arguments("hello,world,no-truncate", 0, 100, "hello,world,no-truncate"),
+                    arguments("hello,world,no-truncate", 6, 100, "world,no-truncate"),
+                    arguments("hello,world,no-truncate", 6, 16, "world,no-truncat"),
+                    arguments("hello,world,no-truncate", 6, 17, "world,no-truncate"),
+                    arguments("hello,world,no-truncate", 6, 18, "world,no-truncate"),
+                    arguments("hello,world,no-truncate", 6, 5, "world"),
+                    arguments("hello,world,no-truncate", 6, null, "world,no-truncate"),
+
+                    arguments("hello,world,no-truncate", null, 100, "hello,world,no-truncate"),
+                    arguments("hello,world,truncate", null, 11, "hello,world"),
+                    arguments("hello,world", null, 1, "h"),
+                    arguments("hello", null, 0, "")
             );
         }
     }

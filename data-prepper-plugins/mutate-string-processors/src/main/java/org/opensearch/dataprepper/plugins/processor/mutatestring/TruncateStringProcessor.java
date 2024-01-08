@@ -13,7 +13,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.Processor;
 
 /**
- * This processor takes in a key and changes its value to a string with the leading and trailing spaces trimmed.
+ * This processor takes in a key and truncates its value to a string with
+ * characters from the front or at the end or at both removed.
  * If the value is not a string, no action is performed.
  */
 @DataPrepperPlugin(name = "truncate_string", pluginType = Processor.class, pluginConfigurationType = TruncateStringProcessorConfig.class)
@@ -31,7 +32,11 @@ public class TruncateStringProcessor extends AbstractStringProcessor<TruncateStr
         if (entry.getTruncateWhen() != null && !expressionEvaluator.evaluateConditional(entry.getTruncateWhen(), recordEvent)) {
             return;
         }
-        recordEvent.put(entry.getSource(), value.substring(0, entry.getLength()));
+        int startIndex = entry.getStartAt() == null ? 0 : entry.getStartAt();
+        Integer length = entry.getLength();
+        String truncatedValue = (length == null || startIndex+length >= value.length()) ? value.substring(startIndex) : value.substring(startIndex, startIndex + length);
+
+        recordEvent.put(entry.getSource(), truncatedValue);
     }
 
     @Override
