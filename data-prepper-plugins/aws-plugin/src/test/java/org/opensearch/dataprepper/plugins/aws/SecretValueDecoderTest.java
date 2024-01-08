@@ -7,13 +7,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
 
+import java.util.UUID;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SecretValueDecoderTest {
-    private static final String TEST_SECRET = "hello world";
     @Mock
     private GetSecretValueResponse getSecretValueResponse;
 
@@ -21,13 +22,15 @@ class SecretValueDecoderTest {
 
     @Test
     void testDecodeSecretString() {
-        when(getSecretValueResponse.secretString()).thenReturn(TEST_SECRET);
-        assertThat(objectUnderTest.decode(getSecretValueResponse), equalTo(TEST_SECRET));
+        final String testSecret = UUID.randomUUID().toString();
+        when(getSecretValueResponse.secretString()).thenReturn(testSecret);
+        assertThat(objectUnderTest.decode(getSecretValueResponse), equalTo(testSecret));
     }
 
     @Test
     void testDecodeSecretBinary() {
-        when(getSecretValueResponse.secretBinary()).thenReturn(SdkBytes.fromUtf8String(TEST_SECRET));
-        assertThat(objectUnderTest.decode(getSecretValueResponse), equalTo(TEST_SECRET));
+        final String testSecret = UUID.randomUUID().toString();
+        when(getSecretValueResponse.secretBinary()).thenReturn(SdkBytes.fromUtf8String(testSecret));
+        assertThat(objectUnderTest.decode(getSecretValueResponse), equalTo(testSecret));
     }
 }
