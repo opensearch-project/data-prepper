@@ -61,7 +61,7 @@ public class KafkaCustomProducerFactory {
         KafkaProducerProperties producerProperties = kafkaProducerConfig.getKafkaProducerProperties();
         if (producerProperties != null) {
             int producerMaxRequestSize = producerProperties.getMaxRequestSize();
-            if (producerMaxRequestSize != KafkaProducerProperties.DEFAULT_MAX_REQUEST_SIZE) {
+            if (producerMaxRequestSize > KafkaProducerProperties.DEFAULT_MAX_REQUEST_SIZE) {
                 maxRequestSize = Integer.valueOf(producerMaxRequestSize);
             }
         }
