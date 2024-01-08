@@ -117,6 +117,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
             return;
         }
         try {
+            // TODO: Looks like this call to prepareTopicAndSchema is unnecessary as it is 
+            // done in createProducer().
             prepareTopicAndSchema();
             final KafkaCustomProducer producer = createProducer();
             records.forEach(record -> {
@@ -152,7 +154,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         final TopicProducerConfig topic = kafkaSinkConfig.getTopic();
         if (topic.isCreateTopic()) {
             final TopicService topicService = new TopicService(kafkaSinkConfig);
-            topicService.createTopic(kafkaSinkConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor(), topic.getMaxMessageBytes());
+            topicService.createTopic(kafkaSinkConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor(), null);
             topicService.closeAdminClient();
         }
 

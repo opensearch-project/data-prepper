@@ -36,7 +36,6 @@ class BufferTopicConfigTest {
         assertThat(objectUnderTest.getConsumerMaxPollRecords(), equalTo(BufferTopicConfig.DEFAULT_CONSUMER_MAX_POLL_RECORDS));
         assertThat(objectUnderTest.getWorkers(), equalTo(BufferTopicConfig.DEFAULT_NUM_OF_WORKERS));
         assertThat(objectUnderTest.getHeartBeatInterval(), equalTo(BufferTopicConfig.DEFAULT_HEART_BEAT_INTERVAL_DURATION));
-        assertThat(objectUnderTest.getMaxMessageBytes(), equalTo(null));
     }
 
     @Test
@@ -53,22 +52,6 @@ class BufferTopicConfigTest {
 
         setField(BufferTopicConfig.class, objectUnderTest, "fetchMaxBytes", ByteCount.zeroBytes());
         assertThrows(RuntimeException.class, () -> objectUnderTest.getFetchMaxBytes());
-    }
-
-    @Test
-    void valid_max_message_bytes() throws NoSuchFieldException, IllegalAccessException {
-        BufferTopicConfig objectUnderTest = createObjectUnderTest();
-
-        setField(BufferTopicConfig.class, objectUnderTest, "maxMessageBytes", ByteCount.parse("2mb"));
-        assertThat(objectUnderTest.getMaxMessageBytes(), equalTo(2 * 1024 * 1024L));
-    }
-
-    @Test
-    void invalid_get_max_message_bytes() throws NoSuchFieldException, IllegalAccessException {
-        BufferTopicConfig objectUnderTest = createObjectUnderTest();
-
-        setField(BufferTopicConfig.class, objectUnderTest, "maxMessageBytes", ByteCount.parse("5mb"));
-        assertThrows(RuntimeException.class, () -> objectUnderTest.getMaxMessageBytes());
     }
 
 }

@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.kafka.producer;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Serializer;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -70,16 +69,8 @@ public class KafkaCustomProducerFactory {
         Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaProducerConfig);
         properties = Objects.requireNonNull(properties);
         KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, LOG);
-        TopicProducerConfig topic = kafkaProducerConfig.getTopic();
 
-        Long maxMessageBytes = topic.getMaxMessageBytes();
-        if (maxMessageBytes != null) {
-            if (maxRequestSize == null) {
-                properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, (int)(long)maxMessageBytes);
-            } else {
-                properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, Math.max(maxRequestSize, (int)(long)maxMessageBytes));
-            }
-        }
+        TopicProducerConfig topic = kafkaProducerConfig.getTopic();
         KafkaDataConfig dataConfig = new KafkaDataConfigAdapter(keyFactory, topic);
         Serializer<Object> keyDeserializer = (Serializer<Object>) serializationFactory.getSerializer(PlaintextKafkaDataConfig.plaintextDataConfig(dataConfig));
         Serializer<Object> valueSerializer = (Serializer<Object>) serializationFactory.getSerializer(dataConfig);
@@ -113,13 +104,9 @@ public class KafkaCustomProducerFactory {
         final TopicProducerConfig topic = kafkaProducerConfig.getTopic();
         if (!topic.isCreateTopic()) {
             final TopicService topicService = new TopicService(kafkaProducerConfig);
-            Long maxMessageBytes = topic.getMaxMessageBytes();
-            if (maxMessageBytes == null) {
-                if (maxRequestSize != null) {
-                    maxMessageBytes = Long.valueOf((long)maxRequestSize);
-                }
-            } else if (maxRequestSize != null) {
-                maxMessageBytes = Long.valueOf((long)Math.max(maxMessageBytes, maxRequestSize));
+            Long maxMessageBytes = null;
+            if (maxRequestSize != null) {
+                maxMessageBytes = Long.valueOf(maxRequestSize);
             }
             topicService.createTopic(kafkaProducerConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor(), maxMessageBytes);
             topicService.closeAdminClient();

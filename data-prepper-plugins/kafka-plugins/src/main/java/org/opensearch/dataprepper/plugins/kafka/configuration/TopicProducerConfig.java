@@ -13,6 +13,5 @@ public interface TopicProducerConfig extends TopicConfig {
     Integer getNumberOfPartitions();
     Short getReplicationFactor();
     Long getRetentionPeriod();
-    Long getMaxMessageBytes();
     boolean isCreateTopic();
 }

@@ -187,42 +187,6 @@ public class KafkaBufferIT {
     }
 
     @Test
-    void write_and_read_max_message_bytes() throws TimeoutException, NoSuchFieldException, IllegalAccessException {
-        KafkaProducerProperties kafkaProducerProperties = new KafkaProducerProperties();
-        final Map<String, Object> topicConfigMap = Map.of(
-                "name", topicName,
-                "max_message_bytes", 4*1024*1024,
-                "group_id", "buffergroup-" + RandomStringUtils.randomAlphabetic(6),
-                "create_topic", false
-        );
-        final Map<String, Object> bufferConfigMap = Map.of(
-                "topics", List.of(topicConfigMap),
-                "producer_properties", kafkaProducerProperties,
-                "bootstrap_servers", List.of(bootstrapServersCommaDelimited),
-                "encryption", Map.of("type", "none")
-        );
-        kafkaBufferConfig = objectMapper.convertValue(bufferConfigMap, KafkaBufferConfig.class);
-        KafkaBuffer objectUnderTest = createObjectUnderTest();
-
-        Record<Event> record = createLargeRecord();
-        objectUnderTest.write(record, 1_000);
-
-        Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = objectUnderTest.read(10_000);
-
-        assertThat(readResult, notNullValue());
-        assertThat(readResult.getKey(), notNullValue());
-        assertThat(readResult.getKey().size(), equalTo(1));
-
-        Record<Event> onlyResult = readResult.getKey().stream().iterator().next();
-
-        assertThat(onlyResult, notNullValue());
-        assertThat(onlyResult.getData(), notNullValue());
-        // TODO: The metadata is not included. It needs to be included in the Buffer, though not in the Sink. This may be something we make configurable in the consumer/producer - whether to serialize the metadata or not.
-        //assertThat(onlyResult.getData().getMetadata(), equalTo(record.getData().getMetadata()));
-        assertThat(onlyResult.getData().toMap(), equalTo(record.getData().toMap()));
-    }
-
-    @Test
     void writeBytes_and_read() throws Exception {
         byteDecoder = new JsonDecoder();
 

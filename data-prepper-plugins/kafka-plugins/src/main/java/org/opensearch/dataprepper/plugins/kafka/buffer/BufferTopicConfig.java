@@ -28,7 +28,6 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     static final ByteCount DEFAULT_FETCH_MAX_BYTES = ByteCount.parse("50mb");
     static final Duration DEFAULT_FETCH_MAX_WAIT = Duration.ofMillis(500);
     static final ByteCount DEFAULT_FETCH_MIN_BYTES = ByteCount.parse("1b");
-    static final ByteCount DEFAULT_MAX_MESSAGE_BYTES = ByteCount.parse("1mb");
     static final ByteCount DEFAULT_MAX_PARTITION_FETCH_BYTES = ByteCount.parse("1mb");
     static final Duration DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(45);
     static final String DEFAULT_AUTO_OFFSET_RESET = "earliest";
@@ -37,7 +36,6 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     static final Integer DEFAULT_CONSUMER_MAX_POLL_RECORDS = 500;
     static final Integer DEFAULT_NUM_OF_WORKERS = 2;
     static final Duration DEFAULT_HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
-
 
     @JsonProperty("encryption_key")
     private String encryptionKey;
@@ -102,9 +100,6 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
 
     @JsonProperty("fetch_max_bytes")
     private ByteCount fetchMaxBytes = DEFAULT_FETCH_MAX_BYTES;
-
-    @JsonProperty("max_message_bytes")
-    private ByteCount maxMessageBytes = DEFAULT_MAX_MESSAGE_BYTES;
 
     @JsonProperty("fetch_max_wait")
     @Valid
@@ -214,19 +209,6 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
             throw new RuntimeException("Invalid Fetch Max Bytes");
         }
         return value;
-    }
-
-    @Override
-    public Long getMaxMessageBytes() {
-        long value = maxMessageBytes.getBytes();
-        long defaultValue = DEFAULT_MAX_MESSAGE_BYTES.getBytes();
-        if (value < defaultValue || value > 4 * defaultValue) {
-            throw new RuntimeException("Invalid Max Message Bytes");
-        }
-        if (value == defaultValue) {
-            return null;
-        }
-        return Long.valueOf(value);
     }
 
     @Override

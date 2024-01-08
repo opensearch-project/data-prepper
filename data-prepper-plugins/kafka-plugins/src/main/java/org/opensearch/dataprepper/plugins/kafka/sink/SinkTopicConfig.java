@@ -62,19 +62,6 @@ public class SinkTopicConfig extends CommonTopicConfig implements TopicProducerC
     }
 
     @Override
-    public Long getMaxMessageBytes() {
-        long value = maxMessageBytes.getBytes();
-        long defaultValue = DEFAULT_MAX_MESSAGE_BYTES.getBytes();
-        if (value < defaultValue || value > 4 * defaultValue) {
-            throw new RuntimeException("Invalid Max Message Bytes");
-        }
-        if (value == defaultValue) {
-            return null;
-        }
-        return null;
-    }
-
-    @Override
     public Long getRetentionPeriod() {
         return retentionPeriod;
     }
