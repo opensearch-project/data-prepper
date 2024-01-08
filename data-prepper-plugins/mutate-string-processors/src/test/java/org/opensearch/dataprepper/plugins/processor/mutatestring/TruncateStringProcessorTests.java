@@ -63,11 +63,13 @@ class TruncateStringProcessorTests {
         assertThat(truncatedRecords.get(0).getData().get("message", Object.class), equalTo(truncatedMessage));
     }
 
-    public void testLengthNotDefinedThrowsError() {
-        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, null, null)));
-        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", null, null, null)));
+    @Test
+    public void testInputValidation() {
+        assertThat(createEntry("message", null, null, null).hasStartAtOrLength(), equalTo(false));
+        assertThat(createEntry("message", null, -5, null).hasStartAtOrLength(), equalTo(false));
+        assertThat(createEntry("message", -5, null, null).hasStartAtOrLength(), equalTo(false));
+        assertThat(createEntry("message", -5, -6, null).hasStartAtOrLength(), equalTo(false));
 
-        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest());
     }
 
     @Test

@@ -42,9 +42,18 @@ public class TruncateStringProcessorConfig implements StringProcessorConfig<Trun
             return length;
         }
 
-        @AssertTrue(message = "At least one of start_at or length or both must be specified")
+        @AssertTrue(message = "At least one of start_at or length or both must be specified and the values must be positive integers")
         public boolean hasStartAtOrLength() {
-            return length != null || startAt != null;
+            if (length == null && startAt == null) {
+                return false;
+            }
+            if (length != null && length < 0) {
+                return false;
+            }
+            if (startAt != null && startAt < 0) {
+                return false;
+            }
+            return true;
         }  
 
         public String getTruncateWhen() { return truncateWhen; }
