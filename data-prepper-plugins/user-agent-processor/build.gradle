@@ -11,7 +11,7 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation "com.github.ua-parser:uap-java:1.5.4"
+    implementation "com.github.ua-parser:uap-java:1.6.1"
 }
 
 jacocoTestCoverageVerification {
