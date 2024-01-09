@@ -41,7 +41,7 @@ dependencies {
     implementation 'software.amazon.awssdk:apache-client'
 
     testImplementation testLibs.mockito.inline
-    testImplementation 'org.yaml:snakeyaml:2.0'
+    testImplementation 'org.yaml:snakeyaml:2.2'
     testImplementation testLibs.spring.test
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation project(':data-prepper-test-common')
