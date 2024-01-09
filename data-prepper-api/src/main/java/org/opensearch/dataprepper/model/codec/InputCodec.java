@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Consumer;
+import java.util.Objects;
 
 public interface InputCodec {
     /**
@@ -31,8 +32,14 @@ public interface InputCodec {
      * @param eventConsumer The consumer which handles each event from the stream
      * @throws IOException throws IOException when invalid input is received or incorrect codec name is provided
      */
-    void parse(
+    default void parse(
             InputFile inputFile,
             DecompressionEngine decompressionEngine,
-            Consumer<Record<Event>> eventConsumer) throws IOException;
+            Consumer<Record<Event>> eventConsumer) throws IOException {
+        Objects.requireNonNull(inputFile);
+        Objects.requireNonNull(eventConsumer);
+        try (InputStream inputStream = inputFile.newStream()) {
+            parse(decompressionEngine.createInputStream(inputStream), eventConsumer);
+        }
+    }
 }
