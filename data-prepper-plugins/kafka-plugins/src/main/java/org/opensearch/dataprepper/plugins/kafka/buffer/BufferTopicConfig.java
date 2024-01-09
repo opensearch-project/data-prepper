@@ -37,7 +37,6 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     static final Integer DEFAULT_NUM_OF_WORKERS = 2;
     static final Duration DEFAULT_HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
 
-
     @JsonProperty("encryption_key")
     private String encryptionKey;
 
