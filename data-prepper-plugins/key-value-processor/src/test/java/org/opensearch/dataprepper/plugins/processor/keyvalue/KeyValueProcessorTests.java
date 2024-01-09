@@ -88,6 +88,18 @@ public class KeyValueProcessorTests {
     }
 
     @Test
+    void testKeyValueProcessorWithoutMessage() {
+        final Map<String, Object> testData = new HashMap();
+        testData.put("notMessage", "not a message");
+        final Record<Event> record = buildRecordWithEvent(testData);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.size(), equalTo(1));
+        assertThat(editedRecords.get(0), notNullValue());
+        LinkedHashMap<String, Object> parsed_message = editedRecords.get(0).getData().get("parsed_message", LinkedHashMap.class);
+        assertThat(parsed_message, equalTo(null));
+    }
+
+    @Test
     void testMultipleKvToObjectKeyValueProcessor() {
         final Record<Event> record = getMessage("key1=value1&key2=value2");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
