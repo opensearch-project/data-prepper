@@ -53,4 +53,5 @@ class BufferTopicConfigTest {
         setField(BufferTopicConfig.class, objectUnderTest, "fetchMaxBytes", ByteCount.zeroBytes());
         assertThrows(RuntimeException.class, () -> objectUnderTest.getFetchMaxBytes());
     }
+
 }
