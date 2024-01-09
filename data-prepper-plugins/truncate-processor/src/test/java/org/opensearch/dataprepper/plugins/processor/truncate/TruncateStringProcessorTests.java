@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.mutatestring;
+package org.opensearch.dataprepper.plugins.processor.truncate;
 
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -51,12 +51,12 @@ class TruncateStringProcessorTests {
 
     @ParameterizedTest
     @ArgumentsSource(TruncateStringArgumentsProvider.class)
-    void testTruncateStringProcessor(final String message, final Integer startAt, final Integer truncateLength, final String truncatedMessage) {
+    void testTruncateStringProcessor(final Object messageValue, final Integer startAt, final Integer truncateLength, final Object truncatedMessage) {
 
-        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", startAt, truncateLength, null)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", startAt, truncateLength, null)));
 
         final TruncateStringProcessor truncateStringProcessor = createObjectUnderTest();
-        final Record<Event> record = createEvent(message);
+        final Record<Event> record = createEvent(messageValue);
         final List<Record<Event>> truncatedRecords = (List<Record<Event>>) truncateStringProcessor.doExecute(Collections.singletonList(record));
         assertThat(truncatedRecords.get(0).getData().get("message", Object.class), notNullValue());
         assertThat(truncatedRecords.get(0).getData().get("message", Object.class), equalTo(truncatedMessage));
@@ -76,7 +76,7 @@ class TruncateStringProcessorTests {
         final String truncateWhen = UUID.randomUUID().toString();
         final String message = UUID.randomUUID().toString();
 
-        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, 5, truncateWhen)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", null, 5, truncateWhen)));
 
         final TruncateStringProcessor truncateStringProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent(message);
@@ -91,7 +91,7 @@ class TruncateStringProcessorTests {
         return new TruncateStringProcessorConfig.Entry(source, startAt, length, truncateWhen);
     }
 
-    private Record<Event> createEvent(final String message) {
+    private Record<Event> createEvent(final Object message) {
         final Map<String, Object> eventData = new HashMap<>();
         eventData.put("message", message);
         return new Record<>(JacksonEvent.builder()
@@ -116,7 +116,9 @@ class TruncateStringProcessorTests {
                     arguments("hello,world,no-truncate", null, 100, "hello,world,no-truncate"),
                     arguments("hello,world,truncate", null, 11, "hello,world"),
                     arguments("hello,world", null, 1, "h"),
-                    arguments("hello", null, 0, "")
+                    arguments("hello", null, 0, ""),
+                    arguments(List.of("hello_one", "hello_two", "hello_three"), null, 5, List.of("hello", "hello", "hello")),
+                    arguments(List.of("hello_one", 2, "hello_three"), null, 5, List.of("hello", 2, "hello"))
             );
         }
     }

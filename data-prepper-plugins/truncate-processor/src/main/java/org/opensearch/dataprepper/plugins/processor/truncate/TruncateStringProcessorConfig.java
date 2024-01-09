@@ -3,9 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.mutatestring;
+package org.opensearch.dataprepper.plugins.processor.truncate;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -14,7 +13,7 @@ import jakarta.validation.constraints.AssertTrue;
 
 import java.util.List;
 
-public class TruncateStringProcessorConfig implements StringProcessorConfig<TruncateStringProcessorConfig.Entry> {
+public class TruncateStringProcessorConfig {
     public static class Entry {
 
         @NotEmpty
@@ -66,12 +65,6 @@ public class TruncateStringProcessorConfig implements StringProcessorConfig<Trun
         }
 
         public Entry() {}
-    }
-
-    @Override
-    @JsonIgnore
-    public List<Entry> getIterativeConfig() {
-        return entries;
     }
 
     private List<@Valid Entry> entries;
