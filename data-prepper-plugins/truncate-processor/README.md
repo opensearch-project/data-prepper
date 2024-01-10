@@ -89,4 +89,3 @@ the output would be
     * `start_at` - (optional) - starting index of the string. Defaults to 0.
     * `length` - (optional) - length of the string after truncation. Defaults to end of the string.
 Either `start_at` or `length` or both must be present
-  
