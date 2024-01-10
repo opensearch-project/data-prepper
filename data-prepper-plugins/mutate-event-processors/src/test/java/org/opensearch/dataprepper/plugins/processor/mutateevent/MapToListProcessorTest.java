@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -97,7 +98,7 @@ class MapToListProcessorTest {
     }
 
     @Test
-    void testSourceNotExistSkipProcessing() {
+    void testEventNotProcessedWhenSourceNotExistInEvent() {
         when(mockConfig.getSource()).thenReturn("my-other-map");
 
         final MapToListProcessor processor = createObjectUnderTest();
@@ -152,6 +153,23 @@ class MapToListProcessorTest {
         assertThat(resultEvent.containsKey("my-map/key2"), is(false));
         assertThat(resultEvent.containsKey("my-map/key3"), is(true));
         assertThat(resultEvent.get("my-map/key3", String.class), is("value3"));
+    }
+
+    @Test
+    public void testEventNotProcessedWhenTheWhenConditionIsFalse() {
+        final String whenCondition = UUID.randomUUID().toString();
+        when(mockConfig.getMapToListWhen()).thenReturn(whenCondition);
+
+        final MapToListProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord();
+        when(expressionEvaluator.evaluateConditional(whenCondition, testRecord.getData())).thenReturn(false);
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        assertThat(resultEvent.containsKey("my-list"), is(false));
+        assertSourceMapUnchanged(resultEvent);
     }
 
     private MapToListProcessor createObjectUnderTest() {
