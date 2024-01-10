@@ -62,12 +62,11 @@ pipeline:
       record_type: "event"
       format: "json"
   processor:
-    - trucate_string:
-        entries:
-          - source: "message"
-            length: 5
-            start_at: 7
-            truncate_when: '/id == 1'
+    - trucate:
+        source: "message"
+        length: 5
+        start_at: 7
+        truncate_when: '/id == 1'
   sink:
     - stdout:
 ```
@@ -84,8 +83,8 @@ the output would be
 ```
 
 ### Configuration
-* `entries` - (required) - A list of entries to add to an event
-    * `source` - (required) - The key to be modified
-    * `start_at` - (optional) - starting index of the string. Defaults to 0.
-    * `length` - (optional) - length of the string after truncation. Defaults to end of the string.
+* `source` - (required) - The key to be modified
+* `truncate_when` - (optional) - a condition, when it is true the truncate operation is performed.
+* `start_at` - (optional) - starting index of the string. Defaults to 0.
+* `length` - (optional) - length of the string after truncation. Defaults to end of the string.
 Either `start_at` or `length` or both must be present
