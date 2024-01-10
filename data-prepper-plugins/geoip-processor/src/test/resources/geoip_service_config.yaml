@@ -1,0 +1,6 @@
+extensions:
+  geoip_service:
+    maxmind:
+      database_paths: ["path1", "path2"]
+      database_refresh_interval: "P10D"
+      cache_size: 2048

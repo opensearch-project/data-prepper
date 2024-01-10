@@ -26,6 +26,7 @@ dependencies {
     implementation 'com.maxmind.db:maxmind-db:3.0.0'
 
     implementation libs.commons.lang3
+    testImplementation project(':data-prepper-core')
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation project(':data-prepper-test-common')
