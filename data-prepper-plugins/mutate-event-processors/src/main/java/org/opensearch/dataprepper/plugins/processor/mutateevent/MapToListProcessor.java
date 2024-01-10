@@ -20,9 +20,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @DataPrepperPlugin(name = "map_to_list", pluginType = Processor.class, pluginConfigurationType = MapToListProcessorConfig.class)
 public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -31,14 +34,15 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
     private static final Logger LOG = LoggerFactory.getLogger(MapToListProcessor.class);
     private final MapToListProcessorConfig config;
-
     private final ExpressionEvaluator expressionEvaluator;
+    private final Set<String> excludeKeySet = new HashSet<>();
 
     @DataPrepperPluginConstructor
     public MapToListProcessor(final PluginMetrics pluginMetrics, final MapToListProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.config = config;
         this.expressionEvaluator = expressionEvaluator;
+        excludeKeySet.addAll(config.getExcludeKeys());
     }
 
     @Override
@@ -52,22 +56,33 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
 
             try {
                 final Object sourceObject = recordEvent.get(config.getSource(), Object.class);
-
                 final Map<String, Object> sourceMap = OBJECT_MAPPER.convertValue(sourceObject, MAP_TYPE_REFERENCE);
-
                 final List<Map<String, Object>> targetList = new ArrayList<>();
 
                 for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
+                    if (excludeKeySet.contains(entry.getKey())) {
+                        continue;
+                    }
                     targetList.add(Map.of(
                             config.getKeyName(), entry.getKey(),
                             config.getValueName(), entry.getValue()
                     ));
                 }
 
+                if (config.getRemoveProcessedFields()) {
+                    Map<String, Object> modifiedSourceMap = new HashMap<>();
+                    for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
+                        if (excludeKeySet.contains(entry.getKey())) {
+                            modifiedSourceMap.put(entry.getKey(), entry.getValue());
+                        }
+                    }
+                    recordEvent.put(config.getSource(), modifiedSourceMap);
+                }
+
                 recordEvent.put(config.getTarget(), targetList);
             } catch (Exception e) {
                 LOG.error("Fail to perform Map to List operation", e);
-                //TODO: add tagging
+                //TODO: add tagging on failure
             }
         }
         return records;
