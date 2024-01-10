@@ -2,6 +2,7 @@ log-pipeline:
   source:
     mongodb:
       hostname: localhost
+      ingestion_mode: export_stream
       credentials:
         plaintext:
           username: debezium

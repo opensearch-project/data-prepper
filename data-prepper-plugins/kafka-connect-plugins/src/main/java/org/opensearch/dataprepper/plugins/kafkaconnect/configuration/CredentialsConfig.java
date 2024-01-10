@@ -62,7 +62,7 @@ public class CredentialsConfig {
         return password;
     }
 
-    static class PlainText {
+    public static class PlainText {
         private String username;
         private String password;
 
@@ -74,7 +74,7 @@ public class CredentialsConfig {
         }
     }
 
-    static class SecretManager {
+    public static class SecretManager {
         private String region;
         private String secretId;
         private String stsRoleArn;

@@ -38,10 +38,26 @@ public class MongoDBConfigTest {
         assertThat(actualConfig.get("mongodb.connection.string"), is("mongodb://localhost:27017/?replicaSet=rs0&directConnection=true"));
         assertThat(actualConfig.get("mongodb.user"), is("debezium"));
         assertThat(actualConfig.get("mongodb.password"), is("dbz"));
-        assertThat(actualConfig.get("snapshot.mode"), is("initial"));
+        assertThat(actualConfig.get("snapshot.mode"), is("never"));
         assertThat(actualConfig.get("topic.prefix"), is("prefix1"));
         assertThat(actualConfig.get("collection.include.list"), is("test.customers"));
         assertThat(actualConfig.get("mongodb.ssl.enabled"), is("false"));
+    }
+
+    @Test
+    public void test_get_mongodb_config_props() throws IOException {
+        MongoDBConfig testConfig = buildTestConfig("sample-mongodb-pipeline.yaml");
+        assertThat(testConfig, notNullValue());
+        assertThat(testConfig.getIngestionMode(), is(MongoDBConfig.IngestionMode.EXPORT_STREAM));
+        assertThat(testConfig.getCredentialsConfig().getUsername(), is("debezium"));
+        assertThat(testConfig.getHostname(), is("localhost"));
+        assertThat(testConfig.getPort(), is("27017"));
+        assertThat(testConfig.getSSLEnabled(), is(false));
+        assertThat(testConfig.getSSLInvalidHostAllowed(), is(false));
+        assertThat(testConfig.getCollections().size(), is(1));
+        assertThat(testConfig.getExportConfig().getAcknowledgements(), is(false));
+        assertThat(testConfig.getExportConfig().getItemsPerPartition(), is(4000));
+        assertThat(testConfig.getExportConfig().getReadPreference(), is("secondaryPreferred"));
     }
 
     private MongoDBConfig buildTestConfig(final String resourceFileName) throws IOException {

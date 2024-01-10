@@ -5,11 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.kafkaconnect.configuration;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.kafkaconnect.util.Connector;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +21,7 @@ public class MongoDBConfig extends ConnectorConfig {
     public static final String CONNECTOR_CLASS = "io.debezium.connector.mongodb.MongoDbConnector";
     private static final String MONGODB_CONNECTION_STRING_FORMAT = "mongodb://%s:%s/?replicaSet=rs0&directConnection=true";
     private static final String DEFAULT_PORT = "27017";
-    private static final String DEFAULT_SNAPSHOT_MODE = "initial";
+    private static final String DEFAULT_SNAPSHOT_MODE = "never";
     private static final Boolean SSL_ENABLED = false;
     private static final Boolean SSL_INVALID_HOST_ALLOWED = false;
     private static final String DEFAULT_SNAPSHOT_FETCH_SIZE = "1000";
@@ -30,8 +32,10 @@ public class MongoDBConfig extends ConnectorConfig {
     private String port = DEFAULT_PORT;
     @JsonProperty("credentials")
     private CredentialsConfig credentialsConfig;
-    @JsonProperty("snapshot_mode")
-    private String snapshotMode = DEFAULT_SNAPSHOT_MODE;
+    @JsonProperty("ingestion_mode")
+    private IngestionMode ingestionMode = IngestionMode.EXPORT_STREAM;
+    @JsonProperty("export_config")
+    private ExportConfig exportConfig = new ExportConfig();
     @JsonProperty("snapshot_fetch_size")
     private String snapshotFetchSize = DEFAULT_SNAPSHOT_FETCH_SIZE;
     @JsonProperty("collections")
@@ -50,13 +54,45 @@ public class MongoDBConfig extends ConnectorConfig {
         }).collect(Collectors.toList());
     }
 
+    public IngestionMode getIngestionMode() {
+        return this.ingestionMode;
+    }
+
+    public CredentialsConfig getCredentialsConfig() {
+        return this.credentialsConfig;
+    }
+
+    public String getHostname() {
+        return this.hostname;
+    }
+
+    public String getPort() {
+        return this.port;
+    }
+
+    public Boolean getSSLEnabled() {
+        return this.ssl;
+    }
+
+    public Boolean getSSLInvalidHostAllowed() {
+        return this.sslInvalidHostAllowed;
+    }
+
+    public List<CollectionConfig> getCollections() {
+        return this.collections;
+    }
+
+    public ExportConfig getExportConfig() {
+        return this.exportConfig;
+    }
+
     private Map<String, String> buildConfig(final CollectionConfig collection) {
         Map<String, String> config = new HashMap<>();
         config.put("connector.class", CONNECTOR_CLASS);
         config.put("mongodb.connection.string", String.format(MONGODB_CONNECTION_STRING_FORMAT, hostname, port));
         config.put("mongodb.user", credentialsConfig.getUsername());
         config.put("mongodb.password", credentialsConfig.getPassword());
-        config.put("snapshot.mode", snapshotMode);
+        config.put("snapshot.mode", DEFAULT_SNAPSHOT_MODE);
         config.put("snapshot.fetch.size", snapshotFetchSize);
         config.put("topic.prefix", collection.getTopicPrefix());
         config.put("collection.include.list", collection.getCollectionName());
@@ -71,7 +107,30 @@ public class MongoDBConfig extends ConnectorConfig {
         return config;
     }
 
-    private static class CollectionConfig {
+    public enum IngestionMode {
+        EXPORT_STREAM("export_stream"),
+        EXPORT("export"),
+        STREAM("stream");
+
+        private static final Map<String, IngestionMode> OPTIONS_MAP = Arrays.stream(IngestionMode.values())
+                .collect(Collectors.toMap(
+                        value -> value.type,
+                        value -> value
+                ));
+
+        private final String type;
+
+        IngestionMode(final String type) {
+            this.type = type;
+        }
+
+        @JsonCreator
+        public static IngestionMode fromTypeValue(final String type) {
+            return OPTIONS_MAP.get(type.toLowerCase());
+        }
+    }
+
+    public static class CollectionConfig {
         @JsonProperty("topic_prefix")
         @NotNull
         private String topicPrefix;
@@ -86,6 +145,29 @@ public class MongoDBConfig extends ConnectorConfig {
 
         public String getTopicPrefix() {
             return topicPrefix;
+        }
+    }
+
+    public static class ExportConfig {
+        private static int DEFAULT_ITEMS_PER_PARTITION = 4000;
+        private static String DEFAULT_READ_PREFERENCE = "secondaryPreferred";
+        @JsonProperty("acknowledgments")
+        private Boolean acknowledgments = false;
+        @JsonProperty("items_per_partition")
+        private Integer itemsPerPartition = DEFAULT_ITEMS_PER_PARTITION;
+        @JsonProperty("read_preference")
+        private String readPreference = DEFAULT_READ_PREFERENCE;
+
+        public boolean getAcknowledgements() {
+            return this.acknowledgments;
+        }
+
+        public Integer getItemsPerPartition() {
+            return this.itemsPerPartition;
+        }
+
+        public String getReadPreference() {
+            return this.readPreference;
         }
     }
 }
