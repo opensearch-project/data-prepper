@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.buffer.blockingbuffer;
 
+import com.google.common.base.Stopwatch;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.buffer.AbstractBuffer;
@@ -12,8 +14,6 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
-import com.google.common.base.Stopwatch;
-import com.google.common.util.concurrent.AtomicDouble;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,9 +50,9 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
     private static final String BLOCKING_BUFFER = "BlockingBuffer";
     private static final String BUFFER_USAGE_METRIC = "bufferUsage";
+    public static final String CAPACITY_USED_METRIC = "capacityUsed";
     private final int bufferCapacity;
     private final int batchSize;
-    private final AtomicDouble bufferUsage;
     private final BlockingQueue<T> blockingQueue;
     private final String pipelineName;
 
@@ -67,12 +67,16 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
      */
     public BlockingBuffer(final int bufferCapacity, final int batchSize, final String pipelineName) {
         super(BLOCKING_BUFFER, pipelineName);
-        bufferUsage = pluginMetrics.gauge(BUFFER_USAGE_METRIC, new AtomicDouble());
         this.bufferCapacity = bufferCapacity;
         this.batchSize = batchSize;
         this.blockingQueue = new LinkedBlockingQueue<>(bufferCapacity);
         this.capacitySemaphore = new Semaphore(bufferCapacity);
         this.pipelineName = pipelineName;
+
+        PluginMetrics pluginMetrics = PluginMetrics.fromNames(BLOCKING_BUFFER, pipelineName);
+
+        pluginMetrics.gauge(CAPACITY_USED_METRIC, capacitySemaphore, capacity -> bufferCapacity - capacity.availablePermits());
+        pluginMetrics.gauge(BUFFER_USAGE_METRIC, capacitySemaphore, capacity -> ((double) bufferCapacity - capacity.availablePermits()) / bufferCapacity * 100);
     }
 
     /**
@@ -194,15 +198,6 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         settings.put(ATTRIBUTE_BUFFER_CAPACITY, DEFAULT_BUFFER_CAPACITY);
         settings.put(ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE);
         return new PluginSetting(PLUGIN_NAME, settings);
-    }
-
-    @Override
-    public void postProcess(final Long recordsInBuffer) {
-        // adding bounds to address race conditions and reporting negative buffer usage
-        final Double nonNegativeTotalRecords = recordsInBuffer.doubleValue() < 0 ? 0 : recordsInBuffer.doubleValue();
-        final Double boundedTotalRecords = nonNegativeTotalRecords > bufferCapacity ? bufferCapacity : nonNegativeTotalRecords;
-        final Double usage = boundedTotalRecords / bufferCapacity * 100;
-        bufferUsage.set(usage);
     }
 
     @Override
