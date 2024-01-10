@@ -162,6 +162,7 @@ public class ShardConsumerFactory {
             LOG.error("Received an internal server error from DynamoDB while getting a shard iterator: {}", e.getMessage());
             return null;
         } catch (SdkException e) {
+            dynamoDBSourceAggregateMetrics.getStream4xxErrors().increment();
             LOG.error("Exception when trying to get the shard iterator due to {}", e.getMessage());
             return null;
         }

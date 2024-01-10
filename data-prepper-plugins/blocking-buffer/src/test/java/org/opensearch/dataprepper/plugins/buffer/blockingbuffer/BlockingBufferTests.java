@@ -217,6 +217,8 @@ public class BlockingBufferTests {
             assertThat(record.getData(), equalTo("TEST" + i));
             i++;
         }
+        verifyBufferUsageMetric(38.46153846153847);
+        blockingBuffer.checkpoint(partialReadResult.getValue());
         verifyBufferUsageMetric(15.384615384615385);
         final Map.Entry<Collection<Record<String>>, CheckpointState> finalReadResult = blockingBuffer.read(readTimeout);
         final Collection<Record<String>> finalBatch = finalReadResult.getKey();
@@ -227,6 +229,8 @@ public class BlockingBufferTests {
             assertThat(record.getData(), equalTo("TEST" + i));
             i++;
         }
+        verifyBufferUsageMetric(15.384615384615385);
+        blockingBuffer.checkpoint(finalReadResult.getValue());
         verifyBufferUsageMetric(0.0);
     }
 

@@ -34,9 +34,9 @@ import java.util.Properties;
 @SuppressWarnings("deprecation")
 public abstract class KafkaConnectSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaConnectSource.class);
-    private final ConnectorConfig connectorConfig;
-    private final KafkaConnectConfig kafkaConnectConfig;
+    public final ConnectorConfig connectorConfig;
     private final String pipelineName;
+    private KafkaConnectConfig kafkaConnectConfig;
     private KafkaConnect kafkaConnect;
 
     public KafkaConnectSource(final ConnectorConfig connectorConfig,
@@ -44,39 +44,49 @@ public abstract class KafkaConnectSource implements Source<Record<Object>> {
                               final PipelineDescription pipelineDescription,
                               final KafkaClusterConfigSupplier kafkaClusterConfigSupplier,
                               final KafkaConnectConfigSupplier kafkaConnectConfigSupplier) {
-        if (kafkaClusterConfigSupplier == null || kafkaConnectConfigSupplier == null) {
-            throw new IllegalArgumentException("Extensions: KafkaClusterConfig and KafkaConnectConfig cannot be null");
-        }
         this.connectorConfig = connectorConfig;
         this.pipelineName = pipelineDescription.getPipelineName();
-        this.kafkaConnectConfig = kafkaConnectConfigSupplier.getConfig();
-        this.updateConfig(kafkaClusterConfigSupplier);
-        this.kafkaConnect = KafkaConnect.getPipelineInstance(
-                pipelineName,
-                pluginMetrics,
-                kafkaConnectConfig.getConnectStartTimeout(),
-                kafkaConnectConfig.getConnectorStartTimeout());
+        if (shouldStartKafkaConnect()) {
+            if (kafkaClusterConfigSupplier == null || kafkaConnectConfigSupplier == null) {
+                throw new IllegalArgumentException("Extensions: KafkaClusterConfig and KafkaConnectConfig cannot be null");
+            }
+            this.kafkaConnectConfig = kafkaConnectConfigSupplier.getConfig();
+            this.updateConfig(kafkaClusterConfigSupplier);
+            this.kafkaConnect = KafkaConnect.getPipelineInstance(
+                    pipelineName,
+                    pluginMetrics,
+                    kafkaConnectConfig.getConnectStartTimeout(),
+                    kafkaConnectConfig.getConnectorStartTimeout());
+        }
     }
 
     @Override
     public void start(Buffer<Record<Object>> buffer) {
-        LOG.info("Starting Kafka Connect Source for pipeline: {}", pipelineName);
-        // Please make sure buildWokerProperties is always first to execute.
-        final WorkerProperties workerProperties = this.kafkaConnectConfig.getWorkerProperties();
-        Map<String, String> workerProps = workerProperties.buildKafkaConnectPropertyMap();
-        if (workerProps.get(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG) == null || workerProps.get(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG).isEmpty()) {
-            throw new IllegalArgumentException("Bootstrap Servers cannot be null or empty");
+        if (shouldStartKafkaConnect()) {
+            LOG.info("Starting Kafka Connect Source for pipeline: {}", pipelineName);
+            // Please make sure buildWokerProperties is always first to execute.
+            final WorkerProperties workerProperties = this.kafkaConnectConfig.getWorkerProperties();
+            Map<String, String> workerProps = workerProperties.buildKafkaConnectPropertyMap();
+            if (workerProps.get(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG) == null || workerProps.get(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG).isEmpty()) {
+                throw new IllegalArgumentException("Bootstrap Servers cannot be null or empty");
+            }
+            final List<Connector> connectors = this.connectorConfig.buildConnectors();
+            kafkaConnect.addConnectors(connectors);
+            kafkaConnect.initialize(workerProps);
+            kafkaConnect.start();
         }
-        final List<Connector> connectors = this.connectorConfig.buildConnectors();
-        kafkaConnect.addConnectors(connectors);
-        kafkaConnect.initialize(workerProps);
-        kafkaConnect.start();
     }
 
     @Override
     public void stop() {
-        LOG.info("Stopping Kafka Connect Source for pipeline: {}", pipelineName);
-        kafkaConnect.stop();
+        if (shouldStartKafkaConnect()) {
+            LOG.info("Stopping Kafka Connect Source for pipeline: {}", pipelineName);
+            kafkaConnect.stop();
+        }
+    }
+
+    public boolean shouldStartKafkaConnect() {
+        return true;
     }
 
     private void updateConfig(final KafkaClusterConfigSupplier kafkaClusterConfigSupplier) {

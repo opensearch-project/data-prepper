@@ -184,16 +184,25 @@ Snapshot Mode [ref](https://debezium.io/documentation/reference/stable/connector
 | table_name     | YES      |         | String | The table name to ingest, using *schemaName.tableName* format.                                                     |
 
 ### MongoDB
-| Option          | Required | Default  | Type         | Description                                                                                                         |
-|-----------------|----------|----------|--------------|---------------------------------------------------------------------------------------------------------------------|
-| hostname        | YES      |          | String       | The hostname of MySQL.                                                                                             |
-| port            | NO       | 27017    | String       | The port of MySQL.                                                                                                 |
-| ssl             | NO       | FALSE    | Boolean      | Connector will use SSL to connect to MongoDB instances.                                                            |
-| snapshot_mode   | NO       | initial  | String       | MongoDB snapshot mode.                                                                                             |
-| credentials     | YES      |          | Credentials  | The Credentials to access the database.                                                                             |
-| collections     | YES      |          | List\<Collection\> | The collections to ingest CDC data.                                                                            |
-| force_update    | NO       | FALSE    | Boolean      | When restarting or updating a pipeline, whether to force all connectors to update their config even if the connector name already exists. By default, if the connector name exists, the config will not be updated. The connector name is `<topic_prefix>.<table_name>`. |
+| Option         | Required | Default       | Type               | Description                                                                                                                                                                                                                                                              |
+|----------------|----------|---------------|--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| hostname       | YES      |               | String             | The hostname of MongoDB server.                                                                                                                                                                                                                                                   |
+| port           | NO       | 27017         | String             | The port of MongoDB server.                                                                                                                                                                                                                                                       |
+| ssl            | NO       | FALSE         | Boolean            | Connector will use SSL to connect to MongoDB instances.                                                                                                                                                                                                                  |
+| ingestion_mode | NO       | export_stream | String             | MongoDB ingestion mode. Available options: export_stream, stream, export                                                                                                                                                                                                 |
+| export_config  | NO       |               | ExportConfig       | The Export Config                                                                                                                                                                                                                                           |
+| credentials    | YES      |               | Credentials        | The Credentials to access the database.                                                                                                                                                                                                                                  |
+| collections    | YES      |               | List\<Collection\> | The collections to ingest CDC data.                                                                                                                                                                                                                                      |
+| force_update   | NO       | FALSE         | Boolean            | When restarting or updating a pipeline, whether to force all connectors to update their config even if the connector name already exists. By default, if the connector name exists, the config will not be updated. The connector name is `<topic_prefix>.<table_name>`. |
 Snapshot Mode [ref](https://debezium.io/documentation/reference/stable/connectors/mongodb.html#mongodb-property-snapshot-mode)
+
+#### ExportConfig
+| Option              | Required   | Default            | Type    | Description                                                                                                                                                                                            |
+|---------------------|------------|--------------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| acknowledgments     | No         | FALSE              | Boolean | When true, enables the opensearch source to receive end-to-end acknowledgments when events are received by OpenSearch sinks. Default is false.                                                         |
+| items_per_partition | No         | 4000               | Long    | Number of Items per partition during initial export.                                                                                                                                                   |
+| read_preference     | No         | secondaryPreferred | String  | Operations typically read data from secondary members of the replica set. If the replica set has only one single primary member and no other members, operations read data from the primary member.    |
+
 
 #### Collection
 
@@ -272,7 +281,14 @@ Each connector contains following metrics:
 - `source-record-active-count-avg`: Average number of records polled by the task but not yet completely written to Kafka
 - `source-record-active-count`: Most recent number of records polled by the task but not yet completely written to Kafka
 
-## Developer Guide
+## MongoDB Export Metric
+MongoDB export has the following metrics:
+- `exportRecordsSuccessTotal`: Number of records writes to the Buffer layer successfully.
+- `exportRecordsFailedTotal`: Number of records failed to write to the Buffer layer.
+- `exportPartitionSuccessTotal`: Number of partition been processed successfully
+- `exportPartitionFailureTotal`: Number of partition failed to be processed.
+
+# Developer Guide
 This plugin is compatible with Java 14. See
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
 - [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)

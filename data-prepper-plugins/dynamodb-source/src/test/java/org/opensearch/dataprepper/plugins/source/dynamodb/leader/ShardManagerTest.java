@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamResponse;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
 import software.amazon.awssdk.services.dynamodb.model.SequenceNumberRange;
 import software.amazon.awssdk.services.dynamodb.model.Shard;
@@ -44,6 +45,9 @@ class ShardManagerTest {
 
     @Mock
     private Counter stream5xxErrors;
+
+    @Mock
+    private Counter stream4xxErrors;
 
     @Mock
     private Counter streamApiInvocations;
@@ -129,6 +133,19 @@ class ShardManagerTest {
         assertThat(shards.isEmpty(), equalTo(true));
 
         verify(stream5xxErrors).increment();
+        verify(streamApiInvocations).increment();
+    }
+
+    @Test
+    void stream4xxErrors_is_incremented_when_describe_stream_throws_DynamoDBException() {
+        when(dynamoDbStreamsClient.describeStream(any(DescribeStreamRequest.class))).thenThrow(DynamoDbException.class);
+        when(dynamoDBSourceAggregateMetrics.getStream4xxErrors()).thenReturn(stream4xxErrors);
+
+        final List<Shard> shards = shardManager.runDiscovery(streamArn);
+        assertThat(shards, notNullValue());
+        assertThat(shards.isEmpty(), equalTo(true));
+
+        verify(stream4xxErrors).increment();
         verify(streamApiInvocations).increment();
     }
 
