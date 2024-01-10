@@ -12,10 +12,9 @@ pipeline:
       record_type: "event"
       format: "json"
   processor:
-    - trucate_string:
-        entries:
-          - source: "message"
-            length: 5
+    - truncate:
+        source: "message"
+        length: 5
   sink:
     - stdout:
 ```
@@ -62,7 +61,7 @@ pipeline:
       record_type: "event"
       format: "json"
   processor:
-    - trucate:
+    - truncate:
         source: "message"
         length: 5
         start_at: 7
