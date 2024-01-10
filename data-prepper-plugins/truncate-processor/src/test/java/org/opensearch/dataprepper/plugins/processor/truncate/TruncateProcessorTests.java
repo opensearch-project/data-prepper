@@ -53,7 +53,7 @@ class TruncateProcessorTests {
     @ArgumentsSource(TruncateArgumentsProvider.class)
     void testTruncateProcessor(final Object messageValue, final Integer startAt, final Integer truncateLength, final Object truncatedMessage) {
 
-        when(config.getSource()).thenReturn("message");
+        when(config.getSourceKeys()).thenReturn(List.of("message"));
         when(config.getStartAt()).thenReturn(startAt);
         when(config.getLength()).thenReturn(truncateLength);
         when(config.getTruncateWhen()).thenReturn(null);
@@ -70,7 +70,7 @@ class TruncateProcessorTests {
         final String truncateWhen = UUID.randomUUID().toString();
         final String message = UUID.randomUUID().toString();
 
-        when(config.getSource()).thenReturn("message");
+        when(config.getSourceKeys()).thenReturn(List.of("message"));
         when(config.getStartAt()).thenReturn(null);
         when(config.getLength()).thenReturn(5);
         when(config.getTruncateWhen()).thenReturn(truncateWhen);

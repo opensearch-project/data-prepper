@@ -29,14 +29,14 @@ public class TruncateProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final String truncateWhen;
     private final int startIndex;
     private final Integer length;
-    private final String source;
+    private final List<String> sourceKeys;
 
     @DataPrepperPluginConstructor
     public TruncateProcessor(final PluginMetrics pluginMetrics, final TruncateProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.expressionEvaluator = expressionEvaluator;
         this.truncateWhen = config.getTruncateWhen();
-        this.source = config.getSource();
+        this.sourceKeys = config.getSourceKeys();
         this.startIndex = config.getStartAt() == null ? 0 : config.getStartAt();
         this.length = config.getLength();
     }
@@ -57,23 +57,25 @@ public class TruncateProcessor extends AbstractProcessor<Record<Event>, Record<E
             if (truncateWhen != null && !expressionEvaluator.evaluateConditional(truncateWhen, recordEvent)) {
                 continue;
             }
-            if (!recordEvent.containsKey(source)) {
-                continue;
-            }
-
-            final Object value = recordEvent.get(source, Object.class);
-            if (value instanceof String) {
-                recordEvent.put(source, getTruncatedValue((String)value));
-            } else if (value instanceof List) {
-                List<Object> result = new ArrayList<>();
-                for (Object listItem: (List)value) {
-                    if (listItem instanceof String) {
-                        result.add(getTruncatedValue((String)listItem));
-                    } else {
-                        result.add(listItem);
-                    }
+            for (String sourceKey: sourceKeys) {
+                if (!recordEvent.containsKey(sourceKey)) {
+                    continue;
                 }
-                recordEvent.put(source, result);
+
+                final Object value = recordEvent.get(sourceKey, Object.class);
+                if (value instanceof String) {
+                    recordEvent.put(sourceKey, getTruncatedValue((String)value));
+                } else if (value instanceof List) {
+                    List<Object> result = new ArrayList<>();
+                    for (Object listItem: (List)value) {
+                        if (listItem instanceof String) {
+                            result.add(getTruncatedValue((String)listItem));
+                        } else {
+                            result.add(listItem);
+                        }
+                    }
+                    recordEvent.put(sourceKey, result);
+                }
             }
         }
 

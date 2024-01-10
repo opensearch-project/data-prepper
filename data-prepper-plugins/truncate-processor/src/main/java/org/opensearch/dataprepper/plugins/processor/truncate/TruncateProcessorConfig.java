@@ -10,10 +10,13 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.AssertTrue; 
 
+import java.util.List;
+
 public class TruncateProcessorConfig {
     @NotEmpty
     @NotNull
-    private String source;
+    @JsonProperty("source_keys")
+    private List<String> sourceKeys;
 
     @JsonProperty("length")
     private Integer length;
@@ -24,8 +27,8 @@ public class TruncateProcessorConfig {
     @JsonProperty("truncate_when")
     private String truncateWhen;
 
-    public String getSource() {
-        return source;
+    public List<String> getSourceKeys() {
+        return sourceKeys;
     }
 
     public Integer getStartAt() {
@@ -36,7 +39,7 @@ public class TruncateProcessorConfig {
         return length;
     }
 
-    @AssertTrue(message = "At least one of start_at or length or both must be specified and the values must be positive integers")
+    @AssertTrue(message = "At least one of source or source_keys must be specified. At least one of start_at or length or both must be specified and the values must be positive integers")
     public boolean isValidConfig() {
         if (length == null && startAt == null) {
             return false;
