@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 @DataPrepperPlugin(name = "map_to_list", pluginType = Processor.class, pluginConfigurationType = MapToListProcessorConfig.class)
@@ -50,13 +49,12 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            if (Objects.nonNull(config.getMapToListWhen()) && !expressionEvaluator.evaluateConditional(config.getMapToListWhen(), recordEvent)) {
+            if (config.getMapToListWhen() != null && !expressionEvaluator.evaluateConditional(config.getMapToListWhen(), recordEvent)) {
                 continue;
             }
 
             try {
-                final Object sourceObject = recordEvent.get(config.getSource(), Object.class);
-                final Map<String, Object> sourceMap = OBJECT_MAPPER.convertValue(sourceObject, MAP_TYPE_REFERENCE);
+                final Map<String, Object> sourceMap = recordEvent.get(config.getSource(), Map.class);
                 final List<Map<String, Object>> targetList = new ArrayList<>();
 
                 for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {

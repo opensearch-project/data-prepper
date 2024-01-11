@@ -494,6 +494,63 @@ the last element will be kept:
 * `flattened_element` - (optional) - Valid options are "first" and "last", default is "first". This specifies which element, first one or last one, to keep if `flatten` option is true.
 
 
+## map_to_list Processor
+A processor that converts a map of key-value pairs to a list of objects, each contains the key and value in separate fields.
+
+For example, if the input event has the following data:
+```json
+{
+  "my-map": {
+    "key1": "value1",
+    "key2": "value2",
+    "key3": "value3"
+  }
+}
+```
+with `map_to_list` processor configured to:
+```yaml
+...
+processor:
+  - map_to_list:
+      source: "my-map"
+      target: "my-list"
+...
+```
+The processed event will have the following data:
+```json
+{
+  "my-list": [
+    {
+      "key": "key1",
+      "value": "value1"
+    },
+    {
+      "key": "key2",
+      "value": "value2"
+    },
+    {
+      "key": "key3",
+      "value": "value3"
+    }
+  ],
+  "my-map": {
+    "key1": "value1",
+    "key2": "value2",
+    "key3": "value3"
+  }
+}
+```
+
+### Configuration
+* `source` - (required): the source map to perform the operation
+* `target` - (required): the target list to put the converted list
+* `key_name` - (optional): the key name of the field to hold the original key, default is "key"
+* `value_name` - (optional): the key name of the field to hold the original value, default is "value"
+* `exclude_keys` - (optional): the keys in source map that will be excluded from processing, default is empty list
+* `remove_processed_fields` - (optional): default is false; if true, will remove processed fields from source map
+* `map_to_list_when` - (optional): used to configure a condition for event processing based on certain property of the incoming event. Default is null (all events will be processed).
+
+
 ## Developer Guide
 This plugin is compatible with Java 11 and 17. Refer to the following developer guides for plugin development:
 - [Developer Guide](https://github.com/opensearch-project/data-prepper/blob/main/docs/developer_guide.md)
