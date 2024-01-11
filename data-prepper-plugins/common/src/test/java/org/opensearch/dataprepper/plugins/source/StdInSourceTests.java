@@ -5,14 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.TestBuffer;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -28,7 +28,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class StdInSourceTests {
+class StdInSourceTests {
     private static final String SOURCE_CONTENT = "THIS IS A TEST\nexit";
     private static final String READ_CONTENT = "THIS IS A TEST";
     private static final String TEST_PIPELINE_NAME = "test-pipeline";
@@ -36,27 +36,27 @@ public class StdInSourceTests {
 
     private InputStream defaultInputStream;
 
-    @Before
-    public void setup() {
+    @BeforeEach
+    void setup() {
         defaultInputStream = System.in;
         final ByteArrayInputStream streamForTests = new ByteArrayInputStream(
                 SOURCE_CONTENT.getBytes(StandardCharsets.UTF_8));
         System.setIn(streamForTests);
     }
 
-    @After
-    public void tearDown() {
+    @AfterEach
+    void tearDown() {
         System.setIn(defaultInputStream);
     }
 
     @Test
-    public void testStdInSourceCreationUsingParameters() {
+    void testStdInSourceCreationUsingParameters() {
         final StdInSource stdInSource = new StdInSource(TEST_WRITE_TIMEOUT, TEST_PIPELINE_NAME);
         assertThat(stdInSource, notNullValue());
     }
 
     @Test
-    public void testStdInSourceCreationUsingPluginSetting() {
+    void testStdInSourceCreationUsingPluginSetting() {
         final PluginSetting pluginSetting = new PluginSetting("stdin", null);
         pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
         final StdInSource stdInSource = new StdInSource(pluginSetting);
@@ -64,7 +64,7 @@ public class StdInSourceTests {
     }
 
     @Test
-    public void testStdInSourceCreationWithNullPipelineName() {
+    void testStdInSourceCreationWithNullPipelineName() {
         try {
             new StdInSource(TEST_WRITE_TIMEOUT, null);
         } catch (NullPointerException ex) {
@@ -73,7 +73,7 @@ public class StdInSourceTests {
     }
 
     @Test
-    public void testStdInSourceCreationWithNullPluginSetting() {
+    void testStdInSourceCreationWithNullPluginSetting() {
         try {
             new StdInSource(null);
         } catch (NullPointerException ex) {
@@ -82,7 +82,7 @@ public class StdInSourceTests {
     }
 
     @Test
-    public void testStdInSourceWithNullBuffer() {
+    void testStdInSourceWithNullBuffer() {
         final StdInSource stdInSource = new StdInSource(TEST_WRITE_TIMEOUT, TEST_PIPELINE_NAME);
         try {
             stdInSource.start(null);
@@ -93,7 +93,7 @@ public class StdInSourceTests {
     }
 
     @Test
-    public void testStdInSourceSuccessfulWriteToBuffer() {
+    void testStdInSourceSuccessfulWriteToBuffer() {
         final Queue<Record<Event>> bufferQueue = new LinkedList<>();
         final TestBuffer buffer = new TestBuffer(bufferQueue, 1);
         final StdInSource stdInSource = new StdInSource(TEST_WRITE_TIMEOUT, TEST_PIPELINE_NAME);
@@ -108,7 +108,7 @@ public class StdInSourceTests {
     }
 
     @Test
-    public void testStdInSourceWhenStopped() {
+    void testStdInSourceWhenStopped() {
         final Queue<Record<Event>> bufferQueue = new LinkedList<>();
         final TestBuffer buffer = new TestBuffer(bufferQueue, 1);
         final StdInSource stdInSource = new StdInSource(TEST_WRITE_TIMEOUT, TEST_PIPELINE_NAME);
@@ -119,7 +119,7 @@ public class StdInSourceTests {
     }
 
     @Test
-    public void testStdInSourceWhenBufferTimesout() {
+    void testStdInSourceWhenBufferTimesout() {
         final Queue<Record<Event>> bufferQueue = new LinkedList<>();
         final TestBuffer buffer = new TestBuffer(bufferQueue, 1, true);
         final StdInSource stdInSource = new StdInSource(TEST_WRITE_TIMEOUT, TEST_PIPELINE_NAME);

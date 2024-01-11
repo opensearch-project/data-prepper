@@ -5,29 +5,32 @@
 
 package org.opensearch.dataprepper.plugins.processor.state;
 
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BiFunction;
 
-public class MapDbProcessorStateTest extends ProcessorStateTest {
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-    @Rule
-    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+class MapDbProcessorStateTest extends ProcessorStateTest {
 
-    @Override
-    public void setProcessorState() throws Exception {
-        this.processorState = new MapDbProcessorState<>(temporaryFolder.newFolder(), "testDb", 16);
+    @TempDir
+    File temporaryFile;
+
+    @BeforeEach
+    public void setProcessorState() {
+        this.processorState = new MapDbProcessorState<>(temporaryFile, "testDb", 16);
     }
 
     @Test
-    public void testIterateSegment() throws IOException {
+    void testIterateSegment() throws IOException {
         final byte[] key1 = new byte[]{-64, 0, -64, 0};
         final byte[] key2 = new byte[]{0};
         final byte[] key3 = new byte[]{64, 64, 64, 64};
@@ -57,13 +60,13 @@ public class MapDbProcessorStateTest extends ProcessorStateTest {
             }
         }, 2, 1);
 
-        Assert.assertEquals(2, values.size());
-        Assert.assertEquals(2, values2.size());
-        Assert.assertTrue(values.containsAll(Arrays.asList(
+        assertEquals(2, values.size());
+        assertEquals(2, values2.size());
+        assertTrue(values.containsAll(Arrays.asList(
                 data1.stringVal,
                 data2.stringVal
         )));
-        Assert.assertTrue(values2.containsAll(Arrays.asList(
+        assertTrue(values2.containsAll(Arrays.asList(
                 data3.stringVal,
                 data4.stringVal
         )));
