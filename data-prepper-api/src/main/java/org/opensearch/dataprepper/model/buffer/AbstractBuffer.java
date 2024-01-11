@@ -35,7 +35,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     private final Timer readTimer;
     private final Timer checkpointTimer;
 
-    AbstractBuffer(final PluginSetting pluginSetting) {
+    public AbstractBuffer(final PluginSetting pluginSetting) {
         this(PluginMetrics.fromPluginSetting(pluginSetting), pluginSetting.getPipelineName());
     }
 
