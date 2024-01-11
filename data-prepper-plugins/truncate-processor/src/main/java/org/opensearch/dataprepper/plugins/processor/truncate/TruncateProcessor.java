@@ -26,22 +26,16 @@ import java.util.List;
 @DataPrepperPlugin(name = "truncate", pluginType = Processor.class, pluginConfigurationType = TruncateProcessorConfig.class)
 public class TruncateProcessor extends AbstractProcessor<Record<Event>, Record<Event>>{
     private final ExpressionEvaluator expressionEvaluator;
-    private final String truncateWhen;
-    private final int startIndex;
-    private final Integer length;
-    private final List<String> sourceKeys;
+    private final List<TruncateProcessorConfig.Entry> entries;
 
     @DataPrepperPluginConstructor
     public TruncateProcessor(final PluginMetrics pluginMetrics, final TruncateProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.expressionEvaluator = expressionEvaluator;
-        this.truncateWhen = config.getTruncateWhen();
-        this.sourceKeys = config.getSourceKeys();
-        this.startIndex = config.getStartAt() == null ? 0 : config.getStartAt();
-        this.length = config.getLength();
+        this.entries = config.getEntries();
     }
 
-    private String getTruncatedValue(final String value) {
+    private String getTruncatedValue(final String value, final int startIndex, final Integer length) {
         String truncatedValue = 
             (length == null || startIndex+length >= value.length()) ? 
             value.substring(startIndex) : 
@@ -54,27 +48,33 @@ public class TruncateProcessor extends AbstractProcessor<Record<Event>, Record<E
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            if (truncateWhen != null && !expressionEvaluator.evaluateConditional(truncateWhen, recordEvent)) {
-                continue;
-            }
-            for (String sourceKey: sourceKeys) {
-                if (!recordEvent.containsKey(sourceKey)) {
+            for (TruncateProcessorConfig.Entry entry: entries) {
+                final List<String> sourceKeys = entry.getSourceKeys();
+                final String truncateWhen = entry.getTruncateWhen();
+                final int startIndex = entry.getStartAt() == null ? 0 : entry.getStartAt();
+                final Integer length = entry.getLength();
+                if (truncateWhen != null && !expressionEvaluator.evaluateConditional(truncateWhen, recordEvent)) {
                     continue;
                 }
-
-                final Object value = recordEvent.get(sourceKey, Object.class);
-                if (value instanceof String) {
-                    recordEvent.put(sourceKey, getTruncatedValue((String)value));
-                } else if (value instanceof List) {
-                    List<Object> result = new ArrayList<>();
-                    for (Object listItem: (List)value) {
-                        if (listItem instanceof String) {
-                            result.add(getTruncatedValue((String)listItem));
-                        } else {
-                            result.add(listItem);
-                        }
+                for (String sourceKey: sourceKeys) {
+                    if (!recordEvent.containsKey(sourceKey)) {
+                        continue;
                     }
-                    recordEvent.put(sourceKey, result);
+
+                    final Object value = recordEvent.get(sourceKey, Object.class);
+                    if (value instanceof String) {
+                        recordEvent.put(sourceKey, getTruncatedValue((String)value, startIndex, length));
+                    } else if (value instanceof List) {
+                        List<Object> result = new ArrayList<>();
+                        for (Object listItem: (List)value) {
+                            if (listItem instanceof String) {
+                                result.add(getTruncatedValue((String)listItem, startIndex, length));
+                            } else {
+                                result.add(listItem);
+                            }
+                        }
+                        recordEvent.put(sourceKey, result);
+                    }
                 }
             }
         }

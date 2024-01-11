@@ -32,72 +32,84 @@ class TruncateProcessorConfigTests {
 
     @Test
     void testDefaults() {
-        assertThat(truncateProcessorConfig.getSourceKeys(), equalTo(null));
-        assertThat(truncateProcessorConfig.getStartAt(), equalTo(null));
-        assertThat(truncateProcessorConfig.getLength(), equalTo(null));
-        assertThat(truncateProcessorConfig.getTruncateWhen(), equalTo(null));
+        assertThat(truncateProcessorConfig.getEntries(), equalTo(null));
+    }
+
+    @Test
+    void testEntryDefaults() {
+        TruncateProcessorConfig.Entry entry = new TruncateProcessorConfig.Entry();
+        assertThat(entry.getStartAt(), equalTo(null));
+        assertThat(entry.getLength(), equalTo(null));
+        assertThat(entry.getTruncateWhen(), equalTo(null));
     }
     
     @Test
     void testValidConfiguration_withStartAt() throws NoSuchFieldException, IllegalAccessException {
+        TruncateProcessorConfig.Entry entry = new TruncateProcessorConfig.Entry();
         String source = RandomStringUtils.randomAlphabetic(10);
         List<String> sourceKeys = List.of(source);
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "sourceKeys", sourceKeys);
+        setField(TruncateProcessorConfig.Entry.class, entry, "sourceKeys", sourceKeys);
         int startAt = random.nextInt(100);
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "startAt", startAt);
-        assertThat(truncateProcessorConfig.getSourceKeys(), equalTo(sourceKeys));
-        assertThat(truncateProcessorConfig.getStartAt(), equalTo(startAt));
-        assertTrue(truncateProcessorConfig.isValidConfig());
+        setField(TruncateProcessorConfig.Entry.class, entry, "startAt", startAt);
+        assertThat(entry.getSourceKeys(), equalTo(sourceKeys));
+        assertThat(entry.getStartAt(), equalTo(startAt));
+        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "entries", List.of(entry));
+        assertTrue(entry.isValidConfig());
     }
     
     @Test
     void testValidConfiguration_withLength() throws NoSuchFieldException, IllegalAccessException {
+        TruncateProcessorConfig.Entry entry = new TruncateProcessorConfig.Entry();
         String source1 = RandomStringUtils.randomAlphabetic(10);
         String source2 = RandomStringUtils.randomAlphabetic(10);
         List<String> sourceKeys = List.of(source1, source2);
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "sourceKeys", sourceKeys);
+        setField(TruncateProcessorConfig.Entry.class, entry, "sourceKeys", sourceKeys);
         int length = random.nextInt(100);
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "length", length);
-        assertThat(truncateProcessorConfig.getSourceKeys(), equalTo(sourceKeys));
-        assertThat(truncateProcessorConfig.getLength(), equalTo(length));
-        assertTrue(truncateProcessorConfig.isValidConfig());
+        setField(TruncateProcessorConfig.Entry.class, entry, "length", length);
+        assertThat(entry.getSourceKeys(), equalTo(sourceKeys));
+        assertThat(entry.getLength(), equalTo(length));
+        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "entries", List.of(entry));
+        assertTrue(entry.isValidConfig());
     }
 
     @Test
     void testValidConfiguration_withLength_withTruncateWhen() throws NoSuchFieldException, IllegalAccessException {
+        TruncateProcessorConfig.Entry entry = new TruncateProcessorConfig.Entry();
         String source = RandomStringUtils.randomAlphabetic(10);
         String condition = RandomStringUtils.randomAlphabetic(10);
         List<String> sourceKeys = List.of(source);
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "sourceKeys", sourceKeys);
+        setField(TruncateProcessorConfig.Entry.class, entry, "sourceKeys", sourceKeys);
         int length = random.nextInt(100);
         int startAt = random.nextInt(100);
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "length", length);
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "startAt", startAt);
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "truncateWhen", condition);
-        assertThat(truncateProcessorConfig.getSourceKeys(), equalTo(sourceKeys));
-        assertThat(truncateProcessorConfig.getLength(), equalTo(length));
-        assertThat(truncateProcessorConfig.getStartAt(), equalTo(startAt));
-        assertThat(truncateProcessorConfig.getTruncateWhen(), equalTo(condition));
-        assertTrue(truncateProcessorConfig.isValidConfig());
+        setField(TruncateProcessorConfig.Entry.class, entry, "length", length);
+        setField(TruncateProcessorConfig.Entry.class, entry, "startAt", startAt);
+        setField(TruncateProcessorConfig.Entry.class, entry, "truncateWhen", condition);
+        assertThat(entry.getSourceKeys(), equalTo(sourceKeys));
+        assertThat(entry.getLength(), equalTo(length));
+        assertThat(entry.getStartAt(), equalTo(startAt));
+        assertThat(entry.getTruncateWhen(), equalTo(condition));
+        assertTrue(entry.isValidConfig());
     }
 
     @Test
     void testInvalidConfiguration_StartAt_Length_BothNull() throws NoSuchFieldException, IllegalAccessException { 
+        TruncateProcessorConfig.Entry entry = new TruncateProcessorConfig.Entry();
         String source = RandomStringUtils.randomAlphabetic(10);
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "sourceKeys", List.of(source));
-        assertFalse(truncateProcessorConfig.isValidConfig());
+        setField(TruncateProcessorConfig.Entry.class, entry, "sourceKeys", List.of(source));
+        assertFalse(entry.isValidConfig());
     }
 
     @Test
     void testInvalidConfiguration_StartAt_Length_Negative() throws NoSuchFieldException, IllegalAccessException { 
+        TruncateProcessorConfig.Entry entry = new TruncateProcessorConfig.Entry();
         String source = RandomStringUtils.randomAlphabetic(10);
         int length = random.nextInt(100);
         int startAt = random.nextInt(100);
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "sourceKeys", List.of(source));
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "startAt", -startAt);
-        assertFalse(truncateProcessorConfig.isValidConfig());
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "startAt", startAt);
-        setField(TruncateProcessorConfig.class, truncateProcessorConfig, "length", -length);
-        assertFalse(truncateProcessorConfig.isValidConfig());
+        setField(TruncateProcessorConfig.Entry.class, entry, "sourceKeys", List.of(source));
+        setField(TruncateProcessorConfig.Entry.class, entry, "startAt", -startAt);
+        assertFalse(entry.isValidConfig());
+        setField(TruncateProcessorConfig.Entry.class, entry, "startAt", startAt);
+        setField(TruncateProcessorConfig.Entry.class, entry, "length", -length);
+        assertFalse(entry.isValidConfig());
     }
 }
