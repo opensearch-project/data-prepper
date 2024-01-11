@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collections;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -56,6 +57,7 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 import static org.opensearch.dataprepper.model.sink.SinkLatencyMetrics.EXTERNAL_LATENCY;
 import static org.opensearch.dataprepper.model.sink.SinkLatencyMetrics.INTERNAL_LATENCY;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.BULKREQUEST_ERRORS;
@@ -128,30 +130,31 @@ public class OpenSearchSinkTest {
 
         final RetryConfiguration retryConfiguration = mock(RetryConfiguration.class);
         when(retryConfiguration.getDlq()).thenReturn(Optional.empty());
-        when(retryConfiguration.getDlqFile()).thenReturn(null);
+        lenient().when(retryConfiguration.getDlqFile()).thenReturn(null);
 
         final ConnectionConfiguration connectionConfiguration = mock(ConnectionConfiguration.class);
         final RestHighLevelClient restHighLevelClient = mock(RestHighLevelClient.class);
-        when(connectionConfiguration.createClient(awsCredentialsSupplier)).thenReturn(restHighLevelClient);
-        when(connectionConfiguration.createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier)).thenReturn(openSearchClient);
+        lenient().when(connectionConfiguration.createClient(awsCredentialsSupplier)).thenReturn(restHighLevelClient);
+        lenient().when(connectionConfiguration.createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier)).thenReturn(openSearchClient);
 
         when(indexConfiguration.getAction()).thenReturn("index");
         when(indexConfiguration.getDocumentId()).thenReturn(null);
         when(indexConfiguration.getDocumentIdField()).thenReturn(null);
         when(indexConfiguration.getRoutingField()).thenReturn(null);
+        when(indexConfiguration.getRouting()).thenReturn(null);
         when(indexConfiguration.getActions()).thenReturn(null);
         when(indexConfiguration.getDocumentRootKey()).thenReturn(null);
-        when(indexConfiguration.getVersionType()).thenReturn(null);
-        when(indexConfiguration.getVersionExpression()).thenReturn(null);
-        when(indexConfiguration.getIndexAlias()).thenReturn(UUID.randomUUID().toString());
-        when(indexConfiguration.getTemplateType()).thenReturn(TemplateType.V1);
+        lenient().when(indexConfiguration.getVersionType()).thenReturn(null);
+        lenient().when(indexConfiguration.getVersionExpression()).thenReturn(null);
+        lenient().when(indexConfiguration.getIndexAlias()).thenReturn(UUID.randomUUID().toString());
+        lenient().when(indexConfiguration.getTemplateType()).thenReturn(TemplateType.V1);
         when(indexConfiguration.getIndexType()).thenReturn(IndexType.CUSTOM);
         when(indexConfiguration.getBulkSize()).thenReturn(DEFAULT_BULK_SIZE);
         when(indexConfiguration.getFlushTimeout()).thenReturn(DEFAULT_FLUSH_TIMEOUT);
 
         when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         when(openSearchSinkConfiguration.getRetryConfiguration()).thenReturn(retryConfiguration);
-        when(openSearchSinkConfiguration.getConnectionConfiguration()).thenReturn(connectionConfiguration);
+        lenient().when(openSearchSinkConfiguration.getConnectionConfiguration()).thenReturn(connectionConfiguration);
 
         when(pluginMetrics.counter(MetricNames.RECORDS_IN)).thenReturn(mock(Counter.class));
         when(pluginMetrics.timer(MetricNames.TIME_ELAPSED)).thenReturn(mock(Timer.class));
@@ -236,6 +239,38 @@ public class OpenSearchSinkTest {
         assertThat(failedDlqDataResult.getMessage().startsWith("Unable to convert the result of evaluating document_version"), equalTo(true));
 
         verify(dynamicDocumentVersionDroppedEvents).increment();
+    }
+
+    @Test
+    void test_routing_field_in_document() throws IOException {
+        String routingFieldKey = UUID.randomUUID().toString();
+        String routingKey = UUID.randomUUID().toString();
+        String routingFieldValue = UUID.randomUUID().toString();
+        when(indexConfiguration.getRoutingField()).thenReturn(routingFieldKey);
+        when(indexConfiguration.getRouting()).thenReturn(routingKey);
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        final Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(Collections.singletonMap(routingFieldKey, routingFieldValue))
+                .build();
+        assertThat(objectUnderTest.getDocument(event).getRoutingField(), equalTo(Optional.of(routingFieldValue)));
+
+    }
+
+    @Test
+    void test_routing_in_document() throws IOException {
+        String routingValue = UUID.randomUUID().toString();
+        String routingKey = UUID.randomUUID().toString();
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        final Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(Collections.singletonMap(routingKey, routingValue))
+                .build();
+        assertThat(objectUnderTest.getDocument(event).getRoutingField(), equalTo(Optional.empty()));
+
+        when(indexConfiguration.getRouting()).thenReturn("${"+routingKey+"}");
+        final OpenSearchSink objectUnderTest2 = createObjectUnderTest();
+        assertThat(objectUnderTest2.getDocument(event).getRoutingField(), equalTo(Optional.of(routingValue)));
     }
 
     @Test
