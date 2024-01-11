@@ -44,6 +44,16 @@ For example, you can configure the port and use HTTPS with a custom certificate 
 * `aws_service` - The AWS service name to use in signing. Required with `aws_sigv4` authentication.
 
 
+### Using with Amazon OpenSearch Ingestion
+
+This performance tool also works with [Amazon OpenSearch Ingestion](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/ingestion.html).
+
+Setup your AWS credentials to meet your needs. Then run a command similar to the following:
+
+```
+./gradlew -Dhost=<your-custom-dns>.<aws-region>.osis.amazonaws.com -Dprotocol=https -Dpath=<your-path> -Dport=443 -Dauthentication=aws_sigv4 -Daws_region=<aws-region> -Daws_service=osis :performance-test:gatlingRun-org.opensearch.dataprepper.test.performance.SingleRequestSimulation
+```
+
 ### Verify Gatling scenarios compile
 ```shell
 ./gradlew :performance-test:compileGatlingJava
