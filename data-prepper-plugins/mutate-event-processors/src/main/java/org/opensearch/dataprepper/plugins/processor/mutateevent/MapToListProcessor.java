@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -28,9 +26,6 @@ import java.util.Set;
 
 @DataPrepperPlugin(name = "map_to_list", pluginType = Processor.class, pluginConfigurationType = MapToListProcessorConfig.class)
 public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
     private static final Logger LOG = LoggerFactory.getLogger(MapToListProcessor.class);
     private final MapToListProcessorConfig config;
     private final ExpressionEvaluator expressionEvaluator;
@@ -57,8 +52,12 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
                 final Map<String, Object> sourceMap = recordEvent.get(config.getSource(), Map.class);
                 final List<Map<String, Object>> targetList = new ArrayList<>();
 
+                Map<String, Object> modifiedSourceMap = new HashMap<>();
                 for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
                     if (excludeKeySet.contains(entry.getKey())) {
+                        if (config.getRemoveProcessedFields()) {
+                            modifiedSourceMap.put(entry.getKey(), entry.getValue());
+                        }
                         continue;
                     }
                     targetList.add(Map.of(
@@ -68,12 +67,6 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
                 }
 
                 if (config.getRemoveProcessedFields()) {
-                    Map<String, Object> modifiedSourceMap = new HashMap<>();
-                    for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
-                        if (excludeKeySet.contains(entry.getKey())) {
-                            modifiedSourceMap.put(entry.getKey(), entry.getValue());
-                        }
-                    }
                     recordEvent.put(config.getSource(), modifiedSourceMap);
                 }
 
