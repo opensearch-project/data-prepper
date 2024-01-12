@@ -45,6 +45,45 @@ pipeline:
 
 The OpenSearch sink will reserve `otel-v1-apm-service-map` as index for record ingestion.
 
+### Log analytics
+
+```
+pipeline:
+  ...
+  sink:
+    opensearch:
+      hosts: ["https://localhost:9200"]
+      cert: path/to/cert
+      username: YOUR_USERNAME_HERE
+      password: YOUR_PASSWORD_HERE
+      index_type: log-analytics
+      dlq_file: /your/local/dlq-file
+      max_retries: 20
+      bulk_size: 4
+```
+
+The OpenSearch sink will reserve `logs-otel-v1-*` as index pattern and `logs-otel-v1` as index alias for record ingestion.
+
+### Metric analytics
+
+```
+pipeline:
+  ...
+  sink:
+    opensearch:
+      hosts: ["https://localhost:9200"]
+      cert: path/to/cert
+      username: YOUR_USERNAME_HERE
+      password: YOUR_PASSWORD_HERE
+      index_type: metric-analytics
+      dlq_file: /your/local/dlq-file
+      max_retries: 20
+      bulk_size: 4
+```
+
+The OpenSearch sink will reserve `metric-otel-v1-*` as index pattern and `metric-otel-v1` as index alias for record ingestion.
+
+
 ### Amazon OpenSearch Service
 
 The OpenSearch sink can also be configured for an Amazon OpenSearch Service domain. See [security](security.md) for details.
@@ -93,7 +132,7 @@ Default is null.
 
 - `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
-- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling.
+- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `metric-analytics`, `log-analytics`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling.
 
 - `enable_request_compression` (optional): A boolean that enables or disables request compression when sending requests to OpenSearch. For `distribution_version` set to `es6`, default value is `false`, otherwise default value is `true`.
 
