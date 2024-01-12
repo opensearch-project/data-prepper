@@ -10,6 +10,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.util.Random;
+
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
@@ -18,6 +21,8 @@ import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ByteCountTest {
+    private final Random random = new Random();
+
     @ParameterizedTest
     @ValueSource(strings = {
             ".1b",
@@ -173,5 +178,88 @@ class ByteCountTest {
     void zeroBytes_returns_same_instance() {
         assertThat(ByteCount.zeroBytes(), notNullValue());
         assertThat(ByteCount.zeroBytes(), sameInstance(ByteCount.zeroBytes()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, 1, 2, 500, 512, 1000, 1024, Integer.MAX_VALUE, (long) Integer.MAX_VALUE + 100})
+    void hashCode_returns_same_value_for_same_bytes(final long bytes) {
+        assertThat(ByteCount.ofBytes(bytes).hashCode(),
+                equalTo(ByteCount.ofBytes(bytes).hashCode()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, 1, 2, 500, 512, 1000, 1024, Integer.MAX_VALUE, (long) Integer.MAX_VALUE + 100})
+    void hashCode_returns_different_value_for_known_differences(final long bytes) {
+        assertThat(ByteCount.ofBytes(bytes).hashCode(),
+                not(equalTo(ByteCount.ofBytes(bytes+1).hashCode())));
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, 1, 2, 500, 512, 1000, 1024, Integer.MAX_VALUE, (long) Integer.MAX_VALUE + 100})
+    void equals_returns_true_for_same_value(final long bytes) {
+        assertThat(ByteCount.ofBytes(bytes).equals(ByteCount.ofBytes(bytes)),
+                equalTo(true));
+    }
+
+    @Test
+    void equals_returns_false_for_null_other_object() {
+        assertThat(ByteCount.ofBytes(1024).equals(null),
+                equalTo(false));
+    }
+
+    @Test
+    void equals_returns_false_for_other_type() {
+        assertThat(ByteCount.ofBytes(1024).equals("1kb"),
+                equalTo(false));
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, 1, 2, 500, 512, 1000, 1024, Integer.MAX_VALUE, (long) Integer.MAX_VALUE + 100})
+    void equals_returns_false_for_unequal_values(final long bytes) {
+        assertThat(ByteCount.ofBytes(bytes).equals(ByteCount.ofBytes(bytes+1)),
+                equalTo(false));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "0b, 0b",
+            "0kb, 0b",
+            "0mb, 0b",
+            "0gb, 0b",
+            "1b, 1b",
+            "8b, 8b",
+            "1024b, 1024b",
+            "2048b, 2048b",
+            "0.25kb, 256b",
+            "0.5kb, 512b",
+            "1kb, 1024b",
+            "2kb, 2048b",
+            "1.25kb, 1280b",
+            "1.5kb, 1536b",
+            "1024kb, 1048576b",
+            "2048kb, 2097152b",
+            "0.5mb, 524288b",
+            "1mb, 1048576b",
+            "2mb, 2097152b",
+            "5mb, 5242880b",
+            "1024mb, 1073741824b",
+            "0.5gb, 536870912b",
+            "1gb, 1073741824b",
+            "1.5gb, 1610612736b",
+            "2gb, 2147483648b",
+            "200gb, 214748364800b"
+    })
+    void toString_returns_expected_byte_string(final String byteString, final String expectedString) {
+        final ByteCount objectUnderTest = ByteCount.parse(byteString);
+        assertThat(objectUnderTest.toString(), equalTo(expectedString));
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, 1, 2, 500, 512, 1000, 1024, Integer.MAX_VALUE, (long) Integer.MAX_VALUE + 100})
+    void toString_returns_string_that_parses_to_the_same_value(final long bytes) {
+        final ByteCount objectUnderTest = ByteCount.ofBytes(bytes);
+        final ByteCount parsedByteCount = ByteCount.parse(objectUnderTest.toString());
+        assertThat(parsedByteCount, equalTo(objectUnderTest));
+        assertThat(parsedByteCount.hashCode(), equalTo(objectUnderTest.hashCode()));
     }
 }

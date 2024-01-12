@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.model.types;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -119,5 +120,49 @@ public class ByteCount {
 
     private static boolean isFractional(final BigDecimal value) {
         return value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0;
+    }
+
+    /**
+     * Returns a hash code consistent with {@link ByteCount#equals(Object)}.
+     *
+     * @return The hash code
+     * @since 2.7
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(bytes);
+    }
+
+    /**
+     * Returns whether this and another instance are equal {@link ByteCount} values.
+     * Two objects are equal if the bytes are equal. It does not matter how they
+     * were originally parsed.
+     *
+     * @param otherObject The other object to compare against.
+     * @return True if and only if the values are equal.
+     * @since 2.7
+     */
+    @Override
+    public boolean equals(final Object otherObject) {
+        if(! (otherObject instanceof ByteCount))
+            return false;
+
+        return ((ByteCount) otherObject).bytes == bytes;
+    }
+
+    /**
+     * Returns a string representation of this {@link ByteCount}. This
+     * representation can be parsed by {@link ByteCount#parse(String)}.
+     * <p>
+     * The exact string return could change between versions, but this
+     * API will provide consistency that the value is accurate and can
+     * be parsed by {@link ByteCount#parse(String)}.
+     *
+     * @return The string representation of this byte count.
+     * @since 2.7
+     */
+    @Override
+    public String toString() {
+        return bytes + "b";
     }
 }
