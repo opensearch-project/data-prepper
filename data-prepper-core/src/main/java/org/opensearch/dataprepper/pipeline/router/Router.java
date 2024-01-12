@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.pipeline.router;
 
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
 
 import java.util.Collection;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * Provides routing of event records over a collection of {@link DataFlowComponent} objects.
@@ -20,10 +22,12 @@ import java.util.function.BiConsumer;
 public class Router {
     private final RouteEventEvaluator routeEventEvaluator;
     private final DataFlowComponentRouter dataFlowComponentRouter;
+    private final Consumer<Event> unroutedEventHandler;
 
-    Router(final RouteEventEvaluator routeEventEvaluator, final DataFlowComponentRouter dataFlowComponentRouter) {
+    Router(final RouteEventEvaluator routeEventEvaluator, final DataFlowComponentRouter dataFlowComponentRouter, final Consumer<Event> handler) {
         this.routeEventEvaluator = Objects.requireNonNull(routeEventEvaluator);
         this.dataFlowComponentRouter = dataFlowComponentRouter;
+        this.unroutedEventHandler = handler;
     }
 
     public <C> void route(
@@ -37,6 +41,14 @@ public class Router {
         Objects.requireNonNull(componentRecordsConsumer);
 
         final Map<Record, Set<String>> recordsToRoutes = routeEventEvaluator.evaluateEventRoutes(allRecords);
+        for (Map.Entry<Record, Set<String>> entry : recordsToRoutes.entrySet()) {
+            if (entry.getValue().size() == 0) {
+                Record record = entry.getKey();
+                if (record.getData() instanceof Event) {
+                    unroutedEventHandler.accept((Event)record.getData());
+                }
+            }
+        }
 
         for (DataFlowComponent<C> dataFlowComponent : dataFlowComponents) {
             dataFlowComponentRouter.route(allRecords, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);

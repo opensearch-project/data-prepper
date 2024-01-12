@@ -13,10 +13,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -58,7 +62,7 @@ class RouterTest {
     }
 
     private Router createObjectUnderTest() {
-        return new Router(routeEventEvaluator, dataFlowComponentRouter);
+        return new Router(routeEventEvaluator, dataFlowComponentRouter, event -> event.getEventHandle().release(true));
     }
 
     @Test
@@ -144,6 +148,40 @@ class RouterTest {
     }
 
     @Nested
+    class WithUnroutedRecords {
+        @Test
+        void route_with_multiple_DataFlowComponents2() {
+            Event event1 = mock(Event.class);
+            Event event2 = mock(Event.class);
+            Event event3 = mock(Event.class);
+            EventHandle eventHandle3 = mock(EventHandle.class);
+            Record record1 = mock(Record.class);
+            Record record2 = mock(Record.class);
+            Record record3 = mock(Record.class);
+            when(record3.getData()).thenReturn(event3);
+            List<Record> recordsIn = List.of(record1, record2, record3);
+            Map<Record, Set<String>> recordsToRoutes = new HashMap<>();
+            recordsToRoutes.put(record1, Set.of(UUID.randomUUID().toString()));
+            recordsToRoutes.put(record2, Set.of(UUID.randomUUID().toString()));
+            recordsToRoutes.put(record3, Set.of());
+            when(event3.getEventHandle()).thenReturn(eventHandle3);
+            when(routeEventEvaluator.evaluateEventRoutes(recordsIn)).thenReturn(recordsToRoutes);
+            dataFlowComponents = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
+                final DataFlowComponent dataFlowComponent = mock(DataFlowComponent.class);
+                dataFlowComponents.add(dataFlowComponent);
+            }
+
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
+
+            for (DataFlowComponent<TestComponent> dataFlowComponent : dataFlowComponents) {
+                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
+            }
+            verify(event3.getEventHandle()).release(true);
+        }
+    }
+
+    @Nested
     class WithRecords {
 
         private Map<Record, Set<String>> recordsToRoutes;
@@ -187,6 +225,7 @@ class RouterTest {
                 verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
             }
         }
+
 
         @Test
         void route_with_multiple_DataFlowComponents_And_Strategy() {
