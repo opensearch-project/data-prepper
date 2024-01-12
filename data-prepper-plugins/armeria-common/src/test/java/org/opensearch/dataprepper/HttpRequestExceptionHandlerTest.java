@@ -6,8 +6,12 @@
 package org.opensearch.dataprepper;
 
 import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.server.HttpStatusException;
 import com.linecorp.armeria.server.RequestTimeoutException;
 import com.linecorp.armeria.server.ServiceRequestContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
@@ -24,7 +28,11 @@ import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -161,6 +169,18 @@ class HttpRequestExceptionHandlerTest {
 
         // verify metrics
         verify(requestsTooLargeCounter, times(2)).increment();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {413, 429})
+    void handleException_with_HttpStatusException(final int statusCode) throws ExecutionException, InterruptedException {
+        final HttpStatus httpStatus = HttpStatus.valueOf(statusCode);
+        final HttpStatusException httpStatusException = mock(HttpStatusException.class);
+        when(httpStatusException.httpStatus()).thenReturn(httpStatus);
+        final HttpResponse httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, httpStatusException);
+
+        assertThat(httpResponse, notNullValue());
+        assertThat(httpResponse.aggregate().get().status(), equalTo(httpStatus));
     }
 
     @Test

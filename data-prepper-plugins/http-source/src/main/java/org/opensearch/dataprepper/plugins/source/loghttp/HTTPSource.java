@@ -124,6 +124,9 @@ public class HTTPSource implements Source<Record<Log>> {
 
             sb.maxNumConnections(sourceConfig.getMaxConnectionCount());
             sb.requestTimeout(Duration.ofMillis(sourceConfig.getRequestTimeoutInMillis()));
+            if(sourceConfig.getMaxRequestLength() != null) {
+                sb.maxRequestLength(sourceConfig.getMaxRequestLength().getBytes());
+            }
             final int threads = sourceConfig.getThreadCount();
             final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
             sb.blockingTaskExecutor(blockingTaskExecutor, true);

@@ -159,6 +159,9 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
             }
 
             sb.requestTimeoutMillis(oTelMetricsSourceConfig.getRequestTimeoutInMillis());
+            if(oTelMetricsSourceConfig.getMaxRequestLength() != null) {
+                sb.maxRequestLength(oTelMetricsSourceConfig.getMaxRequestLength().getBytes());
+            }
 
             // ACM Cert for SSL takes preference
             if (oTelMetricsSourceConfig.isSsl() || oTelMetricsSourceConfig.useAcmCertForSSL()) {

@@ -141,6 +141,9 @@ public class OTelLogsSource implements Source<Record<Object>> {
                 sb.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
             }
             sb.requestTimeoutMillis(oTelLogsSourceConfig.getRequestTimeoutInMillis());
+            if(oTelLogsSourceConfig.getMaxRequestLength() != null) {
+                sb.maxRequestLength(oTelLogsSourceConfig.getMaxRequestLength().getBytes());
+            }
 
             // ACM Cert for SSL takes preference
             if (oTelLogsSourceConfig.isSsl() || oTelLogsSourceConfig.useAcmCertForSSL()) {
