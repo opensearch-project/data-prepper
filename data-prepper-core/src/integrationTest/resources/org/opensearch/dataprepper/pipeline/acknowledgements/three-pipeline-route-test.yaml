@@ -6,7 +6,7 @@ three-pipelines-route-test-1:
       acknowledgments: true
   route:
     - 2xx_route: '/status >= 200 and /status < 300'
-    - other_route: '/status >= 300 or /status < 200'
+    - other_route: '/status >= 300'
   sink:
     - pipeline:
         name: "three-pipelines-route-test-2"

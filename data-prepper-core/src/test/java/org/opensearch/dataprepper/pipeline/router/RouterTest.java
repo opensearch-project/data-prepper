@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class RouterTest {
@@ -49,6 +51,8 @@ class RouterTest {
     @Mock
     private RouterGetRecordStrategy getRecordStrategy;
 
+    private Consumer<Event> noRouteHandler;
+
     private Collection<Record> recordsIn;
 
     private static class TestComponent {
@@ -62,7 +66,9 @@ class RouterTest {
     }
 
     private Router createObjectUnderTest() {
-        return new Router(routeEventEvaluator, dataFlowComponentRouter, event -> event.getEventHandle().release(true));
+        //noRouteHandler = event -> event.getEventHandle().release(true);
+        noRouteHandler = mock(Consumer.class);
+        return new Router(routeEventEvaluator, dataFlowComponentRouter, noRouteHandler);
     }
 
     @Test
@@ -150,7 +156,7 @@ class RouterTest {
     @Nested
     class WithUnroutedRecords {
         @Test
-        void route_with_multiple_DataFlowComponents2() {
+        void route_with_multiple_DataFlowComponents_with_unrouted_events() {
             Event event1 = mock(Event.class);
             Event event2 = mock(Event.class);
             Event event3 = mock(Event.class);
@@ -158,13 +164,16 @@ class RouterTest {
             Record record1 = mock(Record.class);
             Record record2 = mock(Record.class);
             Record record3 = mock(Record.class);
+            Record record4 = mock(Record.class);
             when(record3.getData()).thenReturn(event3);
+            Object notAnEvent = mock(Object.class);
+            when(record4.getData()).thenReturn(notAnEvent);
             List<Record> recordsIn = List.of(record1, record2, record3);
             Map<Record, Set<String>> recordsToRoutes = new HashMap<>();
             recordsToRoutes.put(record1, Set.of(UUID.randomUUID().toString()));
             recordsToRoutes.put(record2, Set.of(UUID.randomUUID().toString()));
             recordsToRoutes.put(record3, Set.of());
-            when(event3.getEventHandle()).thenReturn(eventHandle3);
+            recordsToRoutes.put(record4, Set.of());
             when(routeEventEvaluator.evaluateEventRoutes(recordsIn)).thenReturn(recordsToRoutes);
             dataFlowComponents = new ArrayList<>();
             for (int i = 0; i < 5; i++) {
@@ -177,7 +186,9 @@ class RouterTest {
             for (DataFlowComponent<TestComponent> dataFlowComponent : dataFlowComponents) {
                 verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
             }
-            verify(event3.getEventHandle()).release(true);
+            // Verify noRouteHandler gets invoked only for record3 and not
+            // for record4, because record4 has non-Event type data
+            verify(noRouteHandler, times(1)).accept(any());
         }
     }
 

@@ -23,6 +23,7 @@ import java.time.Instant;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
@@ -130,7 +131,7 @@ class PipelinesWithAcksIT {
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
-            assertThat(outputRecords.size(), equalTo(numRecords));
+            assertThat(outputRecords.size(), lessThanOrEqualTo(numRecords));
         });
         assertTrue(inMemorySourceAccessor.getAckReceived());
     }

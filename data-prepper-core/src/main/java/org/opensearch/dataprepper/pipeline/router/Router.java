@@ -22,12 +22,12 @@ import java.util.function.Consumer;
 public class Router {
     private final RouteEventEvaluator routeEventEvaluator;
     private final DataFlowComponentRouter dataFlowComponentRouter;
-    private final Consumer<Event> unroutedEventHandler;
+    private final Consumer<Event> noRouteHandler;
 
-    Router(final RouteEventEvaluator routeEventEvaluator, final DataFlowComponentRouter dataFlowComponentRouter, final Consumer<Event> handler) {
+    Router(final RouteEventEvaluator routeEventEvaluator, final DataFlowComponentRouter dataFlowComponentRouter, final Consumer<Event> noRouteHandler) {
         this.routeEventEvaluator = Objects.requireNonNull(routeEventEvaluator);
         this.dataFlowComponentRouter = dataFlowComponentRouter;
-        this.unroutedEventHandler = handler;
+        this.noRouteHandler = noRouteHandler;
     }
 
     public <C> void route(
@@ -41,11 +41,13 @@ public class Router {
         Objects.requireNonNull(componentRecordsConsumer);
 
         final Map<Record, Set<String>> recordsToRoutes = routeEventEvaluator.evaluateEventRoutes(allRecords);
+
+        // If there are any events that are not getting routed to any sink, invoke no route handler on it.
         for (Map.Entry<Record, Set<String>> entry : recordsToRoutes.entrySet()) {
             if (entry.getValue().size() == 0) {
                 Record record = entry.getKey();
-                if (record.getData() instanceof Event) {
-                    unroutedEventHandler.accept((Event)record.getData());
+                if ((record.getData() instanceof Event) && (noRouteHandler != null)) {
+                    noRouteHandler.accept((Event)record.getData());
                 }
             }
         }
