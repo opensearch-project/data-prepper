@@ -27,7 +27,7 @@ pipeline:
 
 The OpenSearch sink will reserve `otel-v1-apm-span-*` as index pattern and `otel-v1-apm-span` as index alias for record ingestion.
 
-### </a>Service map trace analytics
+### Service map trace analytics
 
 ```
 pipeline:
