@@ -161,6 +161,9 @@ public class OTelTraceSource implements Source<Record<Object>> {
             }
 
             sb.requestTimeoutMillis(oTelTraceSourceConfig.getRequestTimeoutInMillis());
+            if(oTelTraceSourceConfig.getMaxRequestLength() != null) {
+                sb.maxRequestLength(oTelTraceSourceConfig.getMaxRequestLength().getBytes());
+            }
 
             // ACM Cert for SSL takes preference
             if (oTelTraceSourceConfig.isSsl() || oTelTraceSourceConfig.useAcmCertForSSL()) {

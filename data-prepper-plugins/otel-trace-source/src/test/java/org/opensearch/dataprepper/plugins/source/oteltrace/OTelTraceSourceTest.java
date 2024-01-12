@@ -56,6 +56,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
+import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -1056,6 +1057,27 @@ class OTelTraceSourceTest {
 
         verifyNoInteractions(buffer);
     }
+
+    @Test
+    void request_that_exceeds_maxRequestLength_returns_413() throws InvalidProtocolBufferException {
+        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelTraceSourceConfig.getMaxRequestLength()).thenReturn(ByteCount.ofBytes(4));
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:21890")
+                                .method(HttpMethod.POST)
+                                .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.copyOf(JsonFormat.printer().print(createExportTraceRequest()).getBytes()))
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.REQUEST_ENTITY_TOO_LARGE, throwable))
+                .join();
+    }
+
 
     static class BufferExceptionToStatusArgumentsProvider implements ArgumentsProvider {
         @Override

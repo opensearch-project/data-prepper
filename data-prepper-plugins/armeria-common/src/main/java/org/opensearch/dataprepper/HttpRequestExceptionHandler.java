@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper;
 
 import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.server.HttpStatusException;
 import com.linecorp.armeria.server.RequestTimeoutException;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.annotation.ExceptionHandlerFunction;
@@ -56,6 +57,9 @@ public class HttpRequestExceptionHandler implements ExceptionHandlerFunction {
     }
 
     private HttpStatus handleException(final Throwable e) {
+        if(e instanceof HttpStatusException) {
+            return ((HttpStatusException) e).httpStatus();
+        }
         if (e instanceof IOException) {
             badRequestsCounter.increment();
             return HttpStatus.BAD_REQUEST;

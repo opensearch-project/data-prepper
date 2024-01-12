@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -91,6 +92,9 @@ public class HTTPSourceConfig {
 
     @JsonProperty(COMPRESSION)
     private CompressionOption compression = CompressionOption.NONE;
+
+    @JsonProperty("max_request_length")
+    private ByteCount maxRequestLength;
 
     private PluginModel authentication;
 
@@ -216,5 +220,9 @@ public class HTTPSourceConfig {
 
     public CompressionOption getCompression() {
         return compression;
+    }
+
+    public ByteCount getMaxRequestLength() {
+        return maxRequestLength;
     }
 }

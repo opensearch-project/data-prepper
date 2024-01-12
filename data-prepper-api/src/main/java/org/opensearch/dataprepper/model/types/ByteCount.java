@@ -95,6 +95,20 @@ public class ByteCount {
         return new ByteCount(byteCount.longValue());
     }
 
+    /**
+     * Returns a {@link ByteCount} with the total number of bytes provided.
+     *
+     * @param bytes The number of bytes
+     * @return A new {@link ByteCount}
+     * @since 2.7
+     */
+    public static ByteCount ofBytes(final long bytes) {
+        if(bytes < 0)
+            throw new IllegalArgumentException("The argument provided for bytes is negative.");
+
+        return new ByteCount(bytes);
+    }
+
     public static ByteCount zeroBytes() {
         return ZERO_BYTES;
     }
