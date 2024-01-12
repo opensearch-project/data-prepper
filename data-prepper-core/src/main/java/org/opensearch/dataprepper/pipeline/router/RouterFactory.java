@@ -22,6 +22,15 @@ public class RouterFactory {
 
     public Router createRouter(final Set<ConditionalRoute> routes) {
         final RouteEventEvaluator routeEventEvaluator = new RouteEventEvaluator(expressionEvaluator, routes);
-        return new Router(routeEventEvaluator, dataFlowComponentRouter, event -> event.getEventHandle().release(true));
+        return new Router(routeEventEvaluator, dataFlowComponentRouter,
+                event -> {
+                    // Release unrouted events ONLY if routes are defined.
+                    // If routes are not used in the config, then all
+                    // events will have zero size for the routes set and
+                    // we shouldn't be releasing such events here
+                    if (routes.size() > 0) {
+                        event.getEventHandle().release(true);
+                    }
+                });
     }
 }
