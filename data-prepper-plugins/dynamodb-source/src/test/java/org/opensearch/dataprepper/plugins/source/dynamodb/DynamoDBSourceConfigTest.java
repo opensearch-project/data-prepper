@@ -11,6 +11,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.AwsAuthenticationConfig;
+import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamStartPosition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.TableConfig;
 import software.amazon.awssdk.regions.Region;
 
@@ -39,18 +40,13 @@ class DynamoDBSourceConfigTest {
                 "      s3_prefix: \"xxx/\"\n" +
                 "  - table_arn: \"arn:aws:dynamodb:us-west-2:123456789012:table/table-c\"\n" +
                 "    stream:\n" +
-                "      start_position: \"BEGINNING\"  \n" +
+                "      start_position: \"LATEST\"  \n" +
                 "aws:\n" +
                 "  region: \"us-west-2\"\n" +
-                "  sts_role_arn: \"arn:aws:iam::123456789012:role/DataPrepperRole\"\n" +
-                "coordinator:\n" +
-                "  dynamodb:\n" +
-                "    table_name: \"coordinator-table\"\n" +
-                "    region: \"us-west-2\"";
+                "  sts_role_arn: \"arn:aws:iam::123456789012:role/DataPrepperRole\"";
         final DynamoDBSourceConfig sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, DynamoDBSourceConfig.class);
 
         assertThat(sourceConfiguration.getAwsAuthenticationConfig(), notNullValue());
-        assertThat(sourceConfiguration.getCoordinationStoreConfig(), notNullValue());
         assertThat(sourceConfiguration.getTableConfigs(), notNullValue());
         assertThat(sourceConfiguration.getTableConfigs().size(), equalTo(3));
 
@@ -71,7 +67,7 @@ class DynamoDBSourceConfigTest {
 
         TableConfig streamOnlyConfig = sourceConfiguration.getTableConfigs().get(2);
         assertThat(streamOnlyConfig.getStreamConfig(), notNullValue());
-        assertThat(streamOnlyConfig.getStreamConfig().getStartPosition(), equalTo("BEGINNING"));
+        assertThat(streamOnlyConfig.getStreamConfig().getStartPosition(), equalTo(StreamStartPosition.LATEST));
         assertNull(streamOnlyConfig.getExportConfig());
 
         AwsAuthenticationConfig awsAuthenticationConfig = sourceConfiguration.getAwsAuthenticationConfig();

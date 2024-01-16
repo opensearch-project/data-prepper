@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ResponseTimeoutException;
@@ -72,6 +73,7 @@ import java.util.zip.GZIPOutputStream;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
@@ -742,4 +744,32 @@ class HTTPSourceTest {
         //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
         Assertions.assertThrows(RuntimeException.class, () -> secondSource.start(testBuffer));
     }
+
+    @Test
+    public void request_that_exceeds_maxRequestLength_returns_413() {
+        lenient().when(sourceConfig.getMaxRequestLength()).thenReturn(ByteCount.ofBytes(4));
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        // Prepare
+        final String testData = "[{\"log\": \"somelog\"}]";
+
+        assertThat((long) testData.getBytes().length, greaterThan(sourceConfig.getMaxRequestLength().getBytes()));
+        HTTPSourceUnderTest.start(testBuffer);
+        refreshMeasurements();
+
+        // When
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:2021")
+                                .method(HttpMethod.POST)
+                                .path("/log/ingest")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.ofUtf8(testData))
+                .aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.REQUEST_ENTITY_TOO_LARGE)).join();
+
+        // Then
+        Assertions.assertTrue(testBuffer.isEmpty());
+    }
+
 }

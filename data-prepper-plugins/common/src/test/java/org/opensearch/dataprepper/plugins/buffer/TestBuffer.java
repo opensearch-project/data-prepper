@@ -91,4 +91,5 @@ public class TestBuffer implements Buffer<Record<Event>> {
     public int size() {
         return buffer.size();
     }
+
 }

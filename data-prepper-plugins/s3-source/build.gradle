@@ -26,16 +26,17 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation libs.commons.io
     implementation libs.commons.compress
-    implementation 'joda-time:joda-time:2.11.1'
+    implementation 'joda-time:joda-time:2.12.5'
     implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.2'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     implementation 'org.xerial.snappy:snappy-java:1.1.10.1'
     implementation 'org.apache.parquet:parquet-common:1.13.1'
     implementation 'dev.failsafe:failsafe:3.3.2'
-    implementation 'org.apache.httpcomponents:httpcore:4.4.15'
+    implementation 'org.apache.httpcomponents:httpcore:4.4.16'
     testImplementation libs.commons.lang3
-    testImplementation 'com.github.tomakehurst:wiremock:3.0.0-beta-8'
+    testImplementation 'com.github.tomakehurst:wiremock:3.0.1'
+    testImplementation 'org.eclipse.jetty:jetty-bom:11.0.17'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation testLibs.junit.vintage
     testImplementation project(':data-prepper-test-common')
@@ -46,7 +47,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:in-memory-source-coordination-store')
     testImplementation project(':data-prepper-core')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
-    testImplementation 'org.apache.avro:avro:1.11.0'
+    testImplementation libs.avro.core
     testImplementation testLibs.hadoop.common
     testImplementation 'org.apache.parquet:parquet-avro:1.13.1'
     testImplementation 'org.apache.parquet:parquet-column:1.13.1'

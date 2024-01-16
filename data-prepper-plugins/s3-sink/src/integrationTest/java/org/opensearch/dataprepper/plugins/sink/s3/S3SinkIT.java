@@ -23,7 +23,6 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -262,7 +261,6 @@ public class S3SinkIT {
                 .withEventType(EventType.LOG.toString())
                 .build();
         final JacksonEvent event = JacksonLog.builder().withData(eventData).withEventMetadata(defaultEventMetadata).build();
-        event.setEventHandle(mock(EventHandle.class));
         return JacksonEvent.builder()
                 .withData(eventData)
                 .withEventMetadata(defaultEventMetadata)

@@ -62,6 +62,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
@@ -69,6 +70,7 @@ import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -209,6 +211,7 @@ class OTelLogsSourceTest {
 
     private void configureObjectUnderTest() {
         SOURCE = new OTelLogsSource(oTelLogsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        assertTrue(SOURCE.getDecoder() instanceof OTelLogsDecoder);
     }
 
     @Test
@@ -757,6 +760,25 @@ class OTelLogsSourceTest {
 
         assertThat(actualException.getStatus(), notNullValue());
         assertThat(actualException.getStatus().getCode(), equalTo(expectedStatusCode));
+    }
+
+    @Test
+    void request_that_exceeds_maxRequestLength_returns_413() throws InvalidProtocolBufferException {
+        when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelLogsSourceConfig.getMaxRequestLength()).thenReturn(ByteCount.ofBytes(4));
+        SOURCE.start(buffer);
+
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:21892")
+                                .method(HttpMethod.POST)
+                                .path("/opentelemetry.proto.collector.logs.v1.LogsService/Export")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes()))
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.REQUEST_ENTITY_TOO_LARGE, throwable))
+                .join();
     }
 
     static class BufferExceptionToStatusArgumentsProvider implements ArgumentsProvider {

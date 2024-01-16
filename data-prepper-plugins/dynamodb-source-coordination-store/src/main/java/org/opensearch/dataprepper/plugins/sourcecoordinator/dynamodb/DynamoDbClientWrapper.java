@@ -42,6 +42,8 @@ import software.amazon.awssdk.services.dynamodb.waiters.DynamoDbWaiter;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -51,6 +53,7 @@ import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.Dyna
 public class DynamoDbClientWrapper {
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamoDbClientWrapper.class);
+    private static final int DEFAULT_QUERY_LIMIT = 1000;
     static final String SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX = "source-status";
     static final String TTL_ATTRIBUTE_NAME = "expirationTime";
 
@@ -90,7 +93,7 @@ public class DynamoDbClientWrapper {
             }
         }
 
-        try(final DynamoDbWaiter dynamoDbWaiter = DynamoDbWaiter.create()) {
+        try (final DynamoDbWaiter dynamoDbWaiter = DynamoDbWaiter.create()) {
             final DescribeTableRequest describeTableRequest = DescribeTableRequest.builder().tableName(dynamoStoreSettings.getTableName()).build();
             final ResponseOrException<DescribeTableResponse> response = dynamoDbWaiter
                     .waitUntilTableExists(describeTableRequest)
@@ -228,13 +231,15 @@ public class DynamoDbClientWrapper {
 
                     // For ASSIGNED partitions we are sorting based on partitionOwnershipTimeout, so if any item has partitionOwnershipTimeout
                     // in the future, we can know that the remaining items will not be available.
-                    if (SourcePartitionStatus.ASSIGNED.equals(sourcePartitionStatus) && Instant.now().isBefore(item.getPartitionOwnershipTimeout())) {
+                    if (SourcePartitionStatus.ASSIGNED.equals(sourcePartitionStatus) && item.getPartitionOwnershipTimeout() != null &&
+                            Instant.now().isBefore(item.getPartitionOwnershipTimeout())) {
                         return Optional.empty();
                     }
 
                     // For CLOSED partitions we are sorting based on reOpenAt time, so if any item has reOpenAt in the future,
                     // we can know that the remaining items will not be ready to be acquired again.
-                    if (SourcePartitionStatus.CLOSED.equals(sourcePartitionStatus) && Instant.now().isBefore(item.getReOpenAt())) {
+                    if (SourcePartitionStatus.CLOSED.equals(sourcePartitionStatus) && item.getReOpenAt() != null &&
+                            Instant.now().isBefore(item.getReOpenAt())) {
                         return Optional.empty();
                     }
 
@@ -252,12 +257,36 @@ public class DynamoDbClientWrapper {
                     }
                 }
             }
-        } catch( final Exception e){
+        } catch (final Exception e) {
             LOG.error("An exception occurred while attempting to acquire a DynamoDb partition item for {}", sourceStatusCombinationKey, e);
             return Optional.empty();
         }
 
         return Optional.empty();
+    }
+
+
+    public List<SourcePartitionStoreItem> queryPartitionsByStatus(final String sourceStatusCombinationKey, final String partitionPriority) {
+        List<SourcePartitionStoreItem> result = new ArrayList<>();
+        try {
+            final DynamoDbIndex<DynamoDbSourcePartitionItem> sourceStatusIndex = table.index(SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX);
+            final QueryEnhancedRequest queryEnhancedRequest = QueryEnhancedRequest.builder()
+                    .limit(DEFAULT_QUERY_LIMIT)
+                    .queryConditional(QueryConditional.sortGreaterThan(Key.builder().partitionValue(sourceStatusCombinationKey).sortValue(partitionPriority).build()))
+                    .build();
+
+            final SdkIterable<Page<DynamoDbSourcePartitionItem>> availableItems = sourceStatusIndex.query(queryEnhancedRequest);
+
+            for (final Page<DynamoDbSourcePartitionItem> page : availableItems) {
+                for (final DynamoDbSourcePartitionItem item : page.items()) {
+                    result.add(item);
+                }
+            }
+        } catch (final Exception e) {
+            LOG.error("An exception occurred while attempting to query partition items with {} due to {}", sourceStatusCombinationKey, e);
+        }
+
+        return result;
     }
 }
 

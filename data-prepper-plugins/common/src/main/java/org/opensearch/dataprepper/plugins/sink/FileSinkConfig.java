@@ -13,7 +13,14 @@ public class FileSinkConfig {
     @NotEmpty
     private String path = "src/resources/file-test-sample-output.txt";
 
+    @JsonProperty("append")
+    private boolean appendMode = false;
+
     public String getPath() {
         return path;
+    }
+
+    public boolean getAppendMode() {
+        return appendMode;
     }
 }

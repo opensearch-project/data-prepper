@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public class LegacyIndexTemplate implements IndexTemplate {
+class LegacyIndexTemplate implements IndexTemplate {
 
     public static final String SETTINGS_KEY = "settings";
     private final Map<String, Object> templateMap;

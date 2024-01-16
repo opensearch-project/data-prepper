@@ -36,6 +36,8 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +60,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
     private final CertificateProviderFactory certificateProviderFactory;
     private final GrpcRequestExceptionHandler requestExceptionHandler;
     private Server server;
+    private ByteDecoder byteDecoder;
 
     @DataPrepperPluginConstructor
     public OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig,
@@ -77,6 +80,12 @@ public class OTelLogsSource implements Source<Record<Object>> {
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
         this.requestExceptionHandler = new GrpcRequestExceptionHandler(pluginMetrics);
+        this.byteDecoder = new OTelLogsDecoder();
+    }
+
+    @Override
+    public ByteDecoder getDecoder() {
+        return byteDecoder;
     }
 
     @Override
@@ -132,6 +141,9 @@ public class OTelLogsSource implements Source<Record<Object>> {
                 sb.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
             }
             sb.requestTimeoutMillis(oTelLogsSourceConfig.getRequestTimeoutInMillis());
+            if(oTelLogsSourceConfig.getMaxRequestLength() != null) {
+                sb.maxRequestLength(oTelLogsSourceConfig.getMaxRequestLength().getBytes());
+            }
 
             // ACM Cert for SSL takes preference
             if (oTelLogsSourceConfig.isSsl() || oTelLogsSourceConfig.useAcmCertForSSL()) {

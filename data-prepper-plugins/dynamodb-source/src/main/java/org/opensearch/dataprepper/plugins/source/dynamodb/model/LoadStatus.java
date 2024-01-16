@@ -18,11 +18,11 @@ public class LoadStatus {
 
     private int loadedFiles;
 
-    private int totalRecords;
+    private long totalRecords;
 
-    private int loadedRecords;
+    private long loadedRecords;
 
-    public LoadStatus(int totalFiles, int loadedFiles, int totalRecords, int loadedRecords) {
+    public LoadStatus(int totalFiles, int loadedFiles, long totalRecords, long loadedRecords) {
         this.totalFiles = totalFiles;
         this.loadedFiles = loadedFiles;
         this.totalRecords = totalRecords;
@@ -45,7 +45,7 @@ public class LoadStatus {
         this.loadedFiles = loadedFiles;
     }
 
-    public int getTotalRecords() {
+    public long getTotalRecords() {
         return totalRecords;
     }
 
@@ -53,11 +53,11 @@ public class LoadStatus {
         this.totalRecords = totalRecords;
     }
 
-    public int getLoadedRecords() {
+    public long getLoadedRecords() {
         return loadedRecords;
     }
 
-    public void setLoadedRecords(int loadedRecords) {
+    public void setLoadedRecords(long loadedRecords) {
         this.loadedRecords = loadedRecords;
     }
 
@@ -72,10 +72,10 @@ public class LoadStatus {
 
     public static LoadStatus fromMap(Map<String, Object> map) {
         return new LoadStatus(
-                (int) map.get(TOTAL_FILES),
-                (int) map.get(LOADED_FILES),
-                (int) map.get(TOTAL_RECORDS),
-                (int) map.get(LOADED_RECORDS)
+                ((Number) map.get(TOTAL_FILES)).intValue(),
+                ((Number) map.get(LOADED_FILES)).intValue(),
+                ((Number) map.get(TOTAL_RECORDS)).longValue(),
+                ((Number) map.get(LOADED_RECORDS)).longValue()
         );
     }
 }

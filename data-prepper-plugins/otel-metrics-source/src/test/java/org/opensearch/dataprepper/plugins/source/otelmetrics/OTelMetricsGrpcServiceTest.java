@@ -37,6 +37,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
@@ -76,6 +77,9 @@ public class OTelMetricsGrpcServiceTest {
 
     @Captor
     private ArgumentCaptor<Record> recordCaptor;
+
+    @Captor
+    ArgumentCaptor<byte[]> bytesCaptor;
 
     private OTelMetricsGrpcService sut;
 
@@ -120,6 +124,29 @@ public class OTelMetricsGrpcServiceTest {
 
         Record capturedRecord = recordCaptor.getValue();
         assertEquals(METRICS_REQUEST, capturedRecord.getData());
+    }
+
+    @Test
+    public void export_Success_with_ByteBuffer_responseObserverOnCompleted() throws Exception {
+        when(buffer.isByteBuffer()).thenReturn(true);
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            sut.export(METRICS_REQUEST, responseObserver);
+        }
+
+        verify(buffer, times(1)).writeBytes(bytesCaptor.capture(), eq(null), anyInt());
+        verify(responseObserver, times(1)).onNext(ExportMetricsServiceResponse.newBuilder().build());
+        verify(responseObserver, times(1)).onCompleted();
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(successRequestsCounter, times(1)).increment();
+
+        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(payloadSize, times(1)).record(payloadLengthCaptor.capture());
+        assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(METRICS_REQUEST.getSerializedSize()));
+        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
+
+        final byte[] capturedBytes = (byte[]) bytesCaptor.getValue();
+        assertThat(capturedBytes.length, equalTo(METRICS_REQUEST.toByteArray().length));
     }
 
     @Test

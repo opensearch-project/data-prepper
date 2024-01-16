@@ -22,6 +22,27 @@ dependencies {
     gatlingImplementation 'software.amazon.awssdk:auth:2.20.67'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     testRuntimeOnly testLibs.junit.engine
+
+    constraints {
+        gatling('ch.qos.logback:logback-classic') {
+            version {
+                require '1.4.14'
+            }
+            because 'Fixes CVE-2023-6378'
+        }
+        gatling('ch.qos.logback:logback-core') {
+            version {
+                require '1.4.14'
+            }
+            because 'Keeps the version synced with logback-classic.'
+        }
+        zinc('org.scala-sbt:io_2.13') {
+            version {
+                require '1.9.7'
+            }
+            because 'Fixes CVE-2023-46122'
+        }
+    }
 }
 
 test {

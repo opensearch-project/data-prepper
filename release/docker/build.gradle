@@ -12,6 +12,7 @@ docker {
     tag "${project.rootProject.name}", "${project.version}"
     files project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archivePath
     files "${project.projectDir}/config/default-data-prepper-config.yaml", "${project.projectDir}/config/default-keystore.p12"
+    files 'adoptium.repo'
     buildArgs(['ARCHIVE_FILE' : project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archiveFileName.get(),
                'ARCHIVE_FILE_UNPACKED' : project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archiveFileName.get().replace('.tar.gz', ''),
                'CONFIG_FILEPATH' : '/usr/share/data-prepper/config/data-prepper-config.yaml',

@@ -10,7 +10,7 @@ plugins {
 
 dependencies {
     implementation project(':data-prepper-api')
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.0'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'com.amazonaws:aws-java-sdk-s3:1.12.395'
     implementation 'com.amazonaws:aws-java-sdk-sts:1.12.395'
     implementation 'io.micrometer:micrometer-core'

@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.nio.file.Paths;
 
+import static org.apache.commons.io.FilenameUtils.separatorsToSystem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.is;
@@ -84,7 +85,7 @@ class DataPrepperArgsTest {
         final String configFile = Paths.get("src", "test", "resources", "logstash-conf/").toString();
 
         assertThat(args, is(notNullValue()));
-        assertThat(args.getPipelineConfigFileLocation(), is(configFile));
+        assertThat(separatorsToSystem(args.getPipelineConfigFileLocation()), is(separatorsToSystem(configFile)));
         assertThat(args.getDataPrepperConfigFileLocation(), is(DP_CONFIG_YAML_FILE_PATH));
     }
 

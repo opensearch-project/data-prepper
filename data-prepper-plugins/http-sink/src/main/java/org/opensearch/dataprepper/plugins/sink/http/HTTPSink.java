@@ -12,6 +12,7 @@ import org.apache.hc.core5.util.TimeValue;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -20,7 +21,9 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
@@ -36,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 
 @DataPrepperPlugin(name = "http", pluginType = Sink.class, pluginConfigurationType = HttpSinkConfiguration.class)
@@ -56,13 +60,19 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
 
     private DlqPushHandler dlqPushHandler;
 
+    private final OutputCodec codec;
+
+    private final SinkContext sinkContext;
+
     @DataPrepperPluginConstructor
     public HTTPSink(final PluginSetting pluginSetting,
                     final HttpSinkConfiguration httpSinkConfiguration,
                     final PluginFactory pluginFactory,
                     final PipelineDescription pipelineDescription,
+                    final SinkContext sinkContext,
                     final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
+        this.sinkContext = sinkContext != null ? sinkContext : new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
         final PluginModel codecConfiguration = httpSinkConfiguration.getCodec();
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
                 codecConfiguration.getPluginSettings());
@@ -74,19 +84,17 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
             this.bufferFactory = new InMemoryBufferFactory();
         }
 
-        if(httpSinkConfiguration.getDlqFile() != null)
-            this.dlqPushHandler = new DlqPushHandler(httpSinkConfiguration.getDlqFile(), pluginFactory,
-                    null, null, null, null);
-
-        else if(Objects.nonNull(httpSinkConfiguration.getDlq()))
-            this.dlqPushHandler = new DlqPushHandler(httpSinkConfiguration.getDlqFile(), pluginFactory,
-                    httpSinkConfiguration.getDlq().getPluginSettings().get(BUCKET).toString(), httpSinkConfiguration.getAwsAuthenticationOptions()
-                    .getAwsStsRoleArn(), httpSinkConfiguration.getAwsAuthenticationOptions().getAwsRegion().toString(),
-                    httpSinkConfiguration.getDlq().getPluginSettings().get(KEY_PATH).toString());
-
+        this.dlqPushHandler = new DlqPushHandler(httpSinkConfiguration.getDlqFile(), pluginFactory,
+                String.valueOf(httpSinkConfiguration.getDlqPluginSetting().get(BUCKET)),
+                httpSinkConfiguration.getDlqStsRoleARN()
+                ,httpSinkConfiguration.getDlqStsRegion(),
+                String.valueOf(httpSinkConfiguration.getDlqPluginSetting().get(KEY_PATH)));
 
         final HttpRequestRetryStrategy httpRequestRetryStrategy = new DefaultHttpRequestRetryStrategy(httpSinkConfiguration.getMaxUploadRetries(),
                 TimeValue.of(httpSinkConfiguration.getHttpRetryInterval()));
+        if((!httpSinkConfiguration.isInsecure()) && (httpSinkConfiguration.isHttpUrl())){
+            throw new InvalidPluginConfigurationException ("Cannot configure http url with insecure as false");
+        }
 
         final HttpClientBuilder httpClientBuilder = HttpClients.custom()
                 .setRetryStrategy(httpRequestRetryStrategy);
@@ -98,6 +106,7 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
         if(httpSinkConfiguration.isAwsSigv4() && httpSinkConfiguration.isValidAWSUrl()){
             HttpSinkAwsService.attachSigV4(httpSinkConfiguration, httpClientBuilder, awsCredentialsSupplier);
         }
+        this.codec = pluginFactory.loadPlugin(OutputCodec.class, codecPluginSettings);
         this.httpSinkService = new HttpSinkService(
                 httpSinkConfiguration,
                 bufferFactory,
@@ -106,7 +115,9 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
                 webhookService,
                 httpClientBuilder,
                 pluginMetrics,
-                pluginSetting);
+                pluginSetting,
+                codec,
+                OutputCodecContext.fromSinkContext(sinkContext));
     }
 
     @Override

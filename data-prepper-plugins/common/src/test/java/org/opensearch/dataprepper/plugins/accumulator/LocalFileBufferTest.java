@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @ExtendWith(MockitoExtension.class)
 class LocalFileBufferTest {
+    public static final int MAX_EVENTS = 55;
 
     public static final String KEY = UUID.randomUUID().toString() + ".log";
     public static final String PREFIX = "local";
@@ -40,8 +41,10 @@ class LocalFileBufferTest {
 
     @Test
     void test_with_write_events_into_buffer() throws IOException {
-        while (localFileBuffer.getEventCount() < 55) {
-            localFileBuffer.writeEvent(generateByteArray());
+        int i = 0;
+        while (localFileBuffer.getEventCount() < MAX_EVENTS) {
+            localFileBuffer.getOutputStream().write(generateByteArray());
+            localFileBuffer.setEventCount(++i);
         }
         assertThat(localFileBuffer.getSize(), greaterThan(1l));
         assertThat(localFileBuffer.getEventCount(), equalTo(55));

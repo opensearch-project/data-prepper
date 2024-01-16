@@ -5,8 +5,9 @@
 
 package org.opensearch.dataprepper.model.record;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,9 +15,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.model.record.RecordMetadata.RECORD_TYPE;
 
-public class RecordTests {
+class RecordTests {
     private static final String TEST_DATA = "TEST";
     private static final String TEST_RECORD_TYPE = "OTEL";
     private static final String TEST_RECORD_METADATA_V_TYPE = "VERSION";
@@ -25,7 +27,7 @@ public class RecordTests {
     private static final String TEST_RECORD_VERSION = "1.0";
 
     @Test
-    public void testRecordOperations() {
+    void testRecordOperations() {
         final Record<String> stringRecord = new Record<>(TEST_DATA);
         assertThat(stringRecord.getData(), is(equalTo(TEST_DATA)));
         final RecordMetadata recordMetadata = stringRecord.getMetadata();
@@ -36,7 +38,7 @@ public class RecordTests {
     }
 
     @Test
-    public void testRecordWithMetadata() {
+    void testRecordWithMetadata() {
         final Record<String> stringRecord = new Record<>(TEST_DATA, RecordMetadata.defaultMetadata());
         assertThat(stringRecord.getData(), is(equalTo(TEST_DATA)));
         final RecordMetadata recordMetadata = stringRecord.getMetadata();
@@ -47,7 +49,7 @@ public class RecordTests {
     }
 
     @Test
-    public void testRecordUsingDefaultMetadataAndNoMetadata() {
+    void testRecordUsingDefaultMetadataAndNoMetadata() {
         final Record<String> recordWithMetadata = new Record<>(TEST_DATA, RecordMetadata.defaultMetadata());
         final Record<String> recordWithDefaultMetadata = new Record<>(TEST_DATA);
         assertThat(recordWithMetadata.getData(), is(equalTo(recordWithDefaultMetadata.getData())));
@@ -58,7 +60,7 @@ public class RecordTests {
     }
 
     @Test
-    public void testRecordCreationWithMetadata() {
+    void testRecordCreationWithMetadata() {
         final Map<String, Object> metadataObjectMap = new HashMap<>();
         metadataObjectMap.put(RECORD_TYPE, TEST_RECORD_TYPE);
         metadataObjectMap.put(TEST_RECORD_METADATA_V_TYPE, TEST_RECORD_VERSION);
@@ -72,8 +74,9 @@ public class RecordTests {
         assertThat(actualMetadataObjectMap, is(equalTo(metadataObjectMap)));
     }
 
-    @Test(expected = RuntimeException.class)
-    public void testRecordMetadataWithoutRecordType() {
-        final RecordMetadata recordMetadata = RecordMetadata.of(new HashMap<>());
+    @Test
+    void testRecordMetadataWithoutRecordType() {
+        final Map<String, Object> emptyMap = Collections.emptyMap();
+        assertThrows(RuntimeException.class, () -> RecordMetadata.of(emptyMap));
     }
 }

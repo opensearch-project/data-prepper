@@ -14,6 +14,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.lang.reflect.Field;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -68,6 +69,7 @@ public class S3DlqWriterConfigTest {
         final S3DlqWriterConfig config = new S3DlqWriterConfig();
         reflectivelySetField(config, "stsRoleArn", stsRoleArn);
         reflectivelySetField(config, "stsExternalId", UUID.randomUUID().toString());
+        reflectivelySetField(config, "stsHeaderOverrides", Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString()));
         final S3Client s3Client = config.getS3Client();
         assertThat(s3Client, is(notNullValue()));
     }

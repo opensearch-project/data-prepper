@@ -10,24 +10,41 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.BackoffCalculator;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamScheduler.ACTIVE_CHANGE_EVENT_CONSUMERS;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamScheduler.SHARDS_IN_PROCESSING;
 
 @ExtendWith(MockitoExtension.class)
 class StreamSchedulerTest {
@@ -38,9 +55,14 @@ class StreamSchedulerTest {
     @Mock
     private DynamoDbStreamsClient dynamoDbStreamsClient;
 
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
-    private ShardManager shardManager;
+    private DynamoDBSourceConfig dynamoDBSourceConfig;
+
+    @Mock
+    private BackoffCalculator backoffCalculator;
 
     private StreamScheduler scheduler;
 
@@ -50,6 +72,15 @@ class StreamSchedulerTest {
 
     @Mock
     private ShardConsumerFactory consumerFactory;
+
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private AtomicLong activeShardConsumers;
+
+    @Mock
+    private AtomicLong activeShardsInProcessing;
 
 
     private final String tableName = UUID.randomUUID().toString();
@@ -73,38 +104,109 @@ class StreamSchedulerTest {
 
         streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
         // Mock Coordinator methods
-        lenient().when(coordinator.createPartition(any(SourcePartition.class))).thenReturn(true);
-        lenient().doNothing().when(coordinator).completePartition(any(SourcePartition.class));
-        lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(SourcePartition.class));
-        lenient().doNothing().when(coordinator).giveUpPartition(any(SourcePartition.class));
+        lenient().when(coordinator.createPartition(any(EnhancedSourcePartition.class))).thenReturn(true);
+        lenient().doNothing().when(coordinator).completePartition(any(EnhancedSourcePartition.class));
+        lenient().doNothing().when(coordinator).saveProgressStateForPartition(any(EnhancedSourcePartition.class), eq(null));
+        lenient().doNothing().when(coordinator).giveUpPartition(any(EnhancedSourcePartition.class));
 
-        lenient().when(consumerFactory.createConsumer(any(StreamPartition.class))).thenReturn(() -> System.out.println("Hello"));
-        lenient().when(shardManager.getChildShardIds(anyString(), anyString())).thenReturn(List.of(shardId));
+        when(pluginMetrics.gauge(eq(ACTIVE_CHANGE_EVENT_CONSUMERS), any(AtomicLong.class))).thenReturn(activeShardConsumers);
+        when(pluginMetrics.gauge(eq(SHARDS_IN_PROCESSING), any(AtomicLong.class))).thenReturn(activeShardsInProcessing);
 
     }
 
 
     @Test
     public void test_normal_run() throws InterruptedException {
-        given(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willReturn(Optional.of(streamPartition)).willReturn(Optional.empty());
+        when(backoffCalculator.calculateBackoffToAcquireNextShard(eq(0), eq(new AtomicInteger(1))))
+                .thenReturn(1L);
 
-        scheduler = new StreamScheduler(coordinator, consumerFactory, shardManager);
+        when(backoffCalculator.calculateBackoffToAcquireNextShard(eq(1), any(AtomicInteger.class)))
+                .thenReturn(10000L);
 
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        executor.submit(scheduler);
+        when(consumerFactory.createConsumer(any(StreamPartition.class), eq(null), any(Duration.class))).thenReturn(() -> System.out.println("Hello"));
+        when(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).thenReturn(Optional.of(streamPartition)).thenReturn(Optional.empty());
 
-        // Need to run a while
-        Thread.sleep(500);
+        scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, backoffCalculator);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+        final Future<?> future = executorService.submit(() -> scheduler.run());
+        Thread.sleep(2000);
+        executorService.shutdown();
+        future.cancel(true);
+
         // Should acquire the stream partition
         verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
         // Should start a new consumer
-        verify(consumerFactory).createConsumer(any(StreamPartition.class));
-        // Should create stream partition for child shards.
-        verify(coordinator).createPartition(any(StreamPartition.class));
+        verify(consumerFactory).createConsumer(any(StreamPartition.class), eq(null), any(Duration.class));
+
         // Should mask the stream partition as completed.
         verify(coordinator).completePartition(any(StreamPartition.class));
 
-        executor.shutdownNow();
+        verify(activeShardsInProcessing).incrementAndGet();
+        verify(activeShardsInProcessing).decrementAndGet();
 
+        executorService.shutdownNow();
+    }
+
+    @Test
+    public void test_normal_run_with_acknowledgments() throws InterruptedException {
+        when(backoffCalculator.calculateBackoffToAcquireNextShard(eq(0), eq(new AtomicInteger(1))))
+                .thenReturn(1L);
+
+        when(backoffCalculator.calculateBackoffToAcquireNextShard(eq(1), any(AtomicInteger.class)))
+                .thenReturn(10000L);
+
+        given(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willReturn(Optional.of(streamPartition)).willReturn(Optional.empty());
+        given(dynamoDBSourceConfig.isAcknowledgmentsEnabled()).willReturn(true);
+
+        final Duration shardAcknowledgmentTimeout = Duration.ofSeconds(30);
+        given(dynamoDBSourceConfig.getShardAcknowledgmentTimeout()).willReturn(shardAcknowledgmentTimeout);
+
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        doAnswer(invocation -> {
+            Consumer<Boolean> consumer = invocation.getArgument(0);
+            consumer.accept(true);
+            return acknowledgementSet;
+        }).when(acknowledgementSetManager).create(any(Consumer.class), eq(shardAcknowledgmentTimeout));
+
+        when(consumerFactory.createConsumer(any(StreamPartition.class), eq(acknowledgementSet), eq(shardAcknowledgmentTimeout))).thenReturn(() -> System.out.println("Hello"));
+
+        scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, backoffCalculator);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+        final Future<?> future = executorService.submit(() -> scheduler.run());
+        Thread.sleep(3000);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
+
+        // Should acquire the stream partition
+        verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
+        // Should start a new consumer
+        verify(consumerFactory).createConsumer(any(StreamPartition.class), any(AcknowledgementSet.class), any(Duration.class));
+
+        // Should mask the stream partition as completed.
+        verify(coordinator).completePartition(any(StreamPartition.class));
+
+        verify(activeShardsInProcessing).incrementAndGet();
+        verify(activeShardsInProcessing).decrementAndGet();
+
+        executorService.shutdownNow();
+    }
+
+    @Test
+    void run_catches_exception_and_retries_when_exception_is_thrown_during_processing() throws InterruptedException {
+        given(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
+        scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, backoffCalculator);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> scheduler.run());
+        Thread.sleep(100);
+        assertThat(future.isDone(), equalTo(false));
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
     }
 }

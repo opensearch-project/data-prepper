@@ -51,6 +51,14 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
     }
 
+    public void rawExport(final ExportMetricsServiceRequest request) {
+        try {
+            if (buffer.isByteBuffer()) {
+                buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
+            }
+        } catch (Exception e) {
+        }
+    }
 
     @Override
     public void export(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
@@ -70,7 +78,11 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
 
     private void processRequest(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
         try {
-            buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
+            if (buffer.isByteBuffer()) {
+                buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
+            } else {
+                buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
+            }
         } catch (Exception e) {
             if (ServiceRequestContext.current().isTimedOut()) {
                 LOG.warn("Exception writing to buffer but request already timed out.", e);

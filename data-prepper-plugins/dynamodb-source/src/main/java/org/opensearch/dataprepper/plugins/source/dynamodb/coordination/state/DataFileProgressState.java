@@ -16,6 +16,9 @@ public class DataFileProgressState {
     @JsonProperty("loadedRecords")
     private int loaded;
 
+    @JsonProperty("exportStartTime")
+    private long startTime;
+
     public int getTotal() {
         return total;
     }
@@ -30,5 +33,13 @@ public class DataFileProgressState {
 
     public void setLoaded(int loaded) {
         this.loaded = loaded;
+    }
+
+    public void setStartTime(long startTime) {
+        this.startTime = startTime;
+    }
+
+    public long getStartTime() {
+        return startTime;
     }
 }

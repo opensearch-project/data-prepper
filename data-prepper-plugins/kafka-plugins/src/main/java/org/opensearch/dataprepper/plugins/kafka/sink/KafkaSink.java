@@ -5,8 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.kafka.sink;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -17,21 +18,20 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
+import org.opensearch.dataprepper.plugins.kafka.common.serialization.CommonSerializationFactory;
+import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.producer.KafkaSinkProducer;
+import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
+import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
 import org.opensearch.dataprepper.plugins.kafka.service.TopicService;
 import org.opensearch.dataprepper.plugins.kafka.util.RestUtils;
-import org.opensearch.dataprepper.plugins.kafka.util.SinkPropertyConfigurer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
-import java.util.Objects;
-import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -48,6 +48,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSink.class);
 
     private final KafkaSinkConfig kafkaSinkConfig;
+    private final KafkaCustomProducerFactory kafkaCustomProducerFactory;
 
     private volatile boolean sinkInitialized;
 
@@ -61,6 +62,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private final PluginSetting pluginSetting;
 
+    private final PluginMetrics pluginMetrics;
+
     private final ExpressionEvaluator expressionEvaluator;
 
     private final Lock reentrantLock;
@@ -70,15 +73,19 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     @DataPrepperPluginConstructor
     public KafkaSink(final PluginSetting pluginSetting, final KafkaSinkConfig kafkaSinkConfig, final PluginFactory pluginFactory,
-                     final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext) {
+                     final PluginMetrics pluginMetrics, final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext,
+                     AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
         this.pluginSetting = pluginSetting;
+        this.pluginMetrics = pluginMetrics;
         this.kafkaSinkConfig = kafkaSinkConfig;
         this.pluginFactory = pluginFactory;
         this.expressionEvaluator = expressionEvaluator;
         reentrantLock = new ReentrantLock();
         this.sinkContext = sinkContext;
 
+        SerializationFactory serializationFactory = new CommonSerializationFactory();
+        kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier);
 
     }
 
@@ -110,8 +117,10 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
             return;
         }
         try {
+            // TODO: Looks like this call to prepareTopicAndSchema is unnecessary as it is 
+            // done in createProducer().
             prepareTopicAndSchema();
-            final KafkaSinkProducer producer = createProducer();
+            final KafkaCustomProducer producer = createProducer();
             records.forEach(record -> {
                 producerWorker = new ProducerWorker(producer, record);
                 executorService.submit(producerWorker);
@@ -142,22 +151,19 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     }
 
     private void checkTopicCreationCriteriaAndCreateTopic() {
-        final TopicConfig topic = kafkaSinkConfig.getTopic();
-        if (topic.isCreate()) {
+        final TopicProducerConfig topic = kafkaSinkConfig.getTopic();
+        if (topic.isCreateTopic()) {
             final TopicService topicService = new TopicService(kafkaSinkConfig);
-            topicService.createTopic(kafkaSinkConfig.getTopic().getName(), topic.getNumberOfPartions(), topic.getReplicationFactor());
+            topicService.createTopic(kafkaSinkConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor(), null);
             topicService.closeAdminClient();
         }
 
 
     }
 
-    public KafkaSinkProducer createProducer() {
-        Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig);
-        properties = Objects.requireNonNull(properties);
-        return new KafkaSinkProducer(new KafkaProducer<>(properties),
-                kafkaSinkConfig, new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting),
-                expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null);
+    public KafkaCustomProducer createProducer() {
+        // TODO: Add the DLQSink here. new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting)
+        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, pluginFactory, pluginSetting, expressionEvaluator, sinkContext, pluginMetrics, true);
     }
 
 

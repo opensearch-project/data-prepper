@@ -8,120 +8,121 @@ import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
-import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
 
 /**
- * End-to-end test docker network
+ * Represents the configurations needed for any end-to-end log test.
  */
-
-def BASIC_GROK_PIPELINE_YAML = "basic-grok-e2e-pipeline.yml"
-def PARALLEL_GROK_SUBSTITUTE_PIPELINE_YAML = "parallel-grok-substitute-e2e-pipeline.yml"
-def DATA_PREPPER_CONFIG_YAML = "data_prepper.yml"
-
-/**
- * DataPrepper Docker tasks
- */
-task buildDataPrepperDockerImage(type: DockerBuildImage) {
-    dependsOn createDataPrepperDockerFile
-    dockerFile  = file('build/docker/Dockerfile')
-    images.add('e2e-test-log-pipeline-image')
+class LogTestConfiguration {
+    LogTestConfiguration(
+            String testName,
+            String description,
+            String testFilters,
+            String containerName,
+            String pipelineConfiguration,
+            String dataPrepperConfiguration) {
+        this.testName = testName
+        this.description = description
+        this.testFilters = testFilters
+        this.containerName = containerName
+        this.pipelineConfiguration = pipelineConfiguration
+        this.dataPrepperConfiguration = dataPrepperConfiguration
+    }
+    String testName
+    String description
+    String testFilters
+    String containerName
+    String pipelineConfiguration
+    String dataPrepperConfiguration
 }
 
-def createDataPrepperDockerContainer(final String taskBaseName, final String dataPrepperName, final int sourcePort,
-                                     final int serverPort, final String pipelineConfigYAML, final String dataPrepperConfigYAML) {
-    return tasks.create("create${taskBaseName}", DockerCreateContainer) {
-        dependsOn buildDataPrepperDockerImage
+List<LogTestConfiguration> logTestConfigurations = [
+        new LogTestConfiguration(
+                'basicLogEndToEndTest',
+                'Runs the basic grok end-to-end test.',
+                'org.opensearch.dataprepper.integration.log.EndToEndBasicLogTest.testPipelineEndToEnd*',
+                'data-prepper-basic-log',
+                'basic-grok-e2e-pipeline.yml',
+                'data_prepper.yml'
+        ),
+        new LogTestConfiguration(
+                'basicLogWithAwsSecretsEndToEndTest',
+                'Runs the basic grok with AWS secrets end-to-end test.',
+                'org.opensearch.dataprepper.integration.log.EndToEndBasicLogTest.testPipelineEndToEnd*',
+                'data-prepper-basic-log-with-aws-secrets',
+                'basic-grok-e2e-pipeline-with-aws-secrets.yml',
+                'data_prepper.yml'
+        ),
+        new LogTestConfiguration(
+                'parallelGrokStringSubstituteTest',
+                'Runs the parallel grok and string substitute end-to-end test.',
+                'org.opensearch.dataprepper.integration.log.ParallelGrokStringSubstituteLogTest.testPipelineEndToEnd*',
+                'data-prepper-parallel-log',
+                'parallel-grok-substitute-e2e-pipeline.yml',
+                'data_prepper.yml'
+        )
+]
+
+
+logTestConfigurations.each { testConfiguration ->
+    tasks.register("create${testConfiguration.testName}", DockerCreateContainer) {
+        dependsOn dataPrepperDockerImage
         dependsOn createDataPrepperNetwork
-        containerName = dataPrepperName
-        exposePorts("tcp", [2021, 4900])
-        hostConfig.portBindings = [String.format('%d:2021', sourcePort), String.format('%d:4900', serverPort)]
-        hostConfig.binds = [(project.file("src/integrationTest/resources/${pipelineConfigYAML}").toString()):"/app/data-prepper/pipelines/pipelines.yaml",
-                            (project.file("src/integrationTest/resources/${dataPrepperConfigYAML}").toString()):"/app/data-prepper/config/data-prepper-config.yaml"]
+        containerName = testConfiguration.containerName
+        exposePorts('tcp', [2021, 4900])
+        hostConfig.portBindings = ['2021:2021', '4900:4900']
+        hostConfig.binds = [
+                "${System.getProperty('user.home')}/.aws" : '/root/.aws',
+                (project.file("src/integrationTest/resources/${testConfiguration.pipelineConfiguration}").toString())   : '/usr/share/data-prepper/pipelines/log-pipeline.yaml',
+                (project.file("src/integrationTest/resources/${testConfiguration.dataPrepperConfiguration}").toString()): '/usr/share/data-prepper/config/data-prepper-config.yaml'
+        ]
+        envVars = [
+                'AWS_PROFILE' : System.getenv('AWS_PROFILE') ?: ''
+        ]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
-        cmd = ['java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute']
-        targetImageId buildDataPrepperDockerImage.getImageId()
-    }
-}
-
-def startDataPrepperDockerContainer(final DockerCreateContainer createDataPrepperDockerContainerTask) {
-    return tasks.create("start${createDataPrepperDockerContainerTask.getName()}", DockerStartContainer) {
-        dependsOn createDataPrepperDockerContainerTask
-        targetContainerId createDataPrepperDockerContainerTask.getContainerId()
-    }
-}
-
-def stopDataPrepperDockerContainer(final DockerStartContainer startDataPrepperDockerContainerTask) {
-    return tasks.create("stop${startDataPrepperDockerContainerTask.getName()}", DockerStopContainer) {
-        targetContainerId startDataPrepperDockerContainerTask.getContainerId()
-    }
-}
-
-def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDockerContainerTask) {
-    return tasks.create("remove${stopDataPrepperDockerContainerTask.getName()}", DockerRemoveContainer) {
-        targetContainerId stopDataPrepperDockerContainerTask.getContainerId()
-    }
-}
-
-/**
- * End to end test. Spins up OpenSearch and DataPrepper docker containers, then runs the integ test
- * Stops the docker containers when finished
- */
-task basicLogEndToEndTest(type: Test) {
-    dependsOn build
-    dependsOn startOpenSearchDockerContainer
-    def createDataPrepperTask = createDataPrepperDockerContainer(
-            "basicLogDataPrepper", "dataprepper", 2021, 4900, "${BASIC_GROK_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_YAML}")
-    def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
-    dependsOn startDataPrepperTask
-    startDataPrepperTask.mustRunAfter 'startOpenSearchDockerContainer'
-    // wait for data-preppers to be ready
-    doFirst {
-        sleep(15*1000)
+        targetImageId dataPrepperDockerImage.imageId
     }
 
-    description = 'Runs the basic grok end-to-end test.'
-    group = 'verification'
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    classpath = sourceSets.integrationTest.runtimeClasspath
-
-    filter {
-        includeTestsMatching "org.opensearch.dataprepper.integration.log.EndToEndBasicLogTest.testPipelineEndToEnd*"
+    tasks.register("start${testConfiguration.testName}", DockerStartContainer) {
+        dependsOn "create${testConfiguration.testName}"
+        dependsOn 'startOpenSearchDockerContainer'
+        mustRunAfter 'startOpenSearchDockerContainer'
+        targetContainerId tasks.getByName("create${testConfiguration.testName}").getContainerId()
     }
 
-    finalizedBy stopOpenSearchDockerContainer
-    def stopDataPrepperTask = stopDataPrepperDockerContainer(startDataPrepperTask as DockerStartContainer)
-    finalizedBy stopDataPrepperTask
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepperTask as DockerStopContainer)
-    finalizedBy removeDataPrepperNetwork
-}
-
-task parallelGrokStringSubstituteTest(type: Test) {
-    dependsOn build
-    dependsOn startOpenSearchDockerContainer
-    def createDataPrepperTask = createDataPrepperDockerContainer(
-            "ParallelGrokSubstLogDataPrepper", "dataprepper-pgsts-test", 2021, 4900, "${PARALLEL_GROK_SUBSTITUTE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_YAML}")
-    def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
-    dependsOn startDataPrepperTask
-    startDataPrepperTask.mustRunAfter 'startOpenSearchDockerContainer'
-    // wait for data-preppers to be ready
-    doFirst {
-        sleep(15*1000)
+    tasks.register("stop${testConfiguration.testName}", DockerStopContainer) {
+        dependsOn "${testConfiguration.testName}"
+        targetContainerId tasks.getByName("create${testConfiguration.testName}").getContainerId()
     }
 
-    description = 'Runs the parallel grok and string substitute end-to-end test.'
-    group = 'verification'
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    classpath = sourceSets.integrationTest.runtimeClasspath
-
-    filter {
-        includeTestsMatching "org.opensearch.dataprepper.integration.log.ParallelGrokStringSubstituteLogTest.testPipelineEndToEnd*"
+    tasks.register("remove${testConfiguration.testName}", DockerRemoveContainer) {
+        dependsOn "stop${testConfiguration.testName}"
+        targetContainerId tasks.getByName("stop${testConfiguration.testName}").getContainerId()
     }
 
-    finalizedBy stopOpenSearchDockerContainer
-    def stopDataPrepperTask = stopDataPrepperDockerContainer(startDataPrepperTask as DockerStartContainer)
-    finalizedBy stopDataPrepperTask
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepperTask as DockerStopContainer)
-    finalizedBy removeDataPrepperNetwork
+    tasks.register(testConfiguration.testName, Test) {
+        dependsOn build
+        dependsOn startOpenSearchDockerContainer
+        dependsOn "start${testConfiguration.testName}"
+
+        // Wait for Data Prepper image to be ready
+        doFirst {
+            sleep(15 * 1000)
+        }
+
+        description = testConfiguration.description
+        group = 'verification'
+        testClassesDirs = sourceSets.integrationTest.output.classesDirs
+        classpath = sourceSets.integrationTest.runtimeClasspath
+
+        filter {
+            includeTestsMatching testConfiguration.testFilters
+        }
+
+        finalizedBy stopOpenSearchDockerContainer
+        finalizedBy "remove${testConfiguration.testName}"
+        finalizedBy removeDataPrepperNetwork
+    }
+
 }
 
 dependencies {

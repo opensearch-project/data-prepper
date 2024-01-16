@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase {
@@ -93,11 +94,18 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
             throw new BadRequestException(e.getMessage(), e);
         }
 
-        final List<Record<Object>> records = spans.stream().map(span -> new Record<Object>(span)).collect(Collectors.toList());
-
         try {
-            buffer.writeAll(records, bufferWriteTimeoutInMillis);
-        } catch (Exception e) {
+            if (buffer.isByteBuffer()) {
+                Map<String, ExportTraceServiceRequest> requestsMap = oTelProtoDecoder.splitExportTraceServiceRequestByTraceId(request);
+                ExportTraceServiceRequest tmp;
+                for (Map.Entry<String, ExportTraceServiceRequest> entry: requestsMap.entrySet()) {
+                    buffer.writeBytes(entry.getValue().toByteArray(), entry.getKey(), bufferWriteTimeoutInMillis);
+                }
+            } else {
+                final List<Record<Object>> records = spans.stream().map(span -> new Record<Object>(span)).collect(Collectors.toList());
+                buffer.writeAll(records, bufferWriteTimeoutInMillis);
+            }
+        } catch (final Exception e) {
             if (ServiceRequestContext.current().isTimedOut()) {
                 LOG.warn("Exception writing to buffer but request already timed out.", e);
                 return;

@@ -7,7 +7,37 @@ This source allows Data Prepper to use Kafka as source. This source reads record
 For usage and configuration, please refer to the documentation [here] (https://opensearch.org/docs/2.9/data-prepper/pipelines/configuration/sources/sources/kafka-source).
 
 
-## Integration Tests
+## Developer guide
+
+### Integration tests
+
+#### Run Kafka
+
+You can run Kafka 3.5.1 using the KRaft protocol.
+
+```
+docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/kraft up -d
+```
+
+To run Kafka 2.8.1, you must run using Zookeeper.
+
+```
+docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/zookeeper up -d
+```
+
+#### Run tests
+
+Not all integration tests currently work with Docker. But, you can run the following.
+
+```
+./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaSourceJsonTypeIT
+```
+
+See the Old integration tests section to run other tests. However, these are more involved.
+
+### Old integration tests
+
+**NOTE** We are trying to move away from these.
 
 Before running the integration tests, make sure Kafka server is started
 1. Start Zookeeper
@@ -17,7 +47,7 @@ bin/zookeeper-server-start.sh config/zookeeper.properties
 2. Start Kafka Server with the following configuration
 Configuration in config/server.properties
 ```
-isteners=SASL_SSL://localhost:9093,PLAINTEXT://localhost:9092,SSL://localhost:9094,SASL_PLAINTEXT://localhost:9095
+listeners=SASL_SSL://localhost:9093,PLAINTEXT://localhost:9092,SSL://localhost:9094,SASL_PLAINTEXT://localhost:9095
 security.inter.broker.protocol=SASL_SSL
 sasl.mechanism.inter.broker.protocol=PLAIN
 sasl.enabled.mechanisms=PLAIN
@@ -57,13 +87,86 @@ bin/kafka-server-start.sh config/server.properties
 7. Command to run msk glue integration tests
 
 ```
-./gradlew     data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=<msk-bootstrap-servers> -Dtests.kafka.glue_registry_name=<glue-registry-name> -Dtests.kafka.glue_avro_schema_name=<glue-registry-avro-schema-name> -Dtests.kafka.glue_json_schema_name=<glue-registry-json-schema-name> -Dtests.msk.region=<msk-region> -Dtests.msk.arn=<msk-arn>  --tests "*TestAvroRecordConsumer*" 
+./gradlew     data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=<msk-bootstrap-servers> -Dtests.kafka.glue_registry_name=<glue-registry-name> -Dtests.kafka.glue_avro_schema_name=<glue-registry-avro-schema-name> -Dtests.kafka.glue_json_schema_name=<glue-registry-json-schema-name> -Dtests.msk.region=<msk-region> -Dtests.msk.arn=<msk-arn>  --tests "*TestAvroRecordConsumer*"
 
 ```
 
-## Developer Guide
+8. Command to run confluent integration tests (without schema registry)
 
-This plugin is compatible with Java 11. See
+```
+./gradlew    data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=<confluent-bootstrap-servers> -Dtests.kafka.topic_name=<topic-name> -Dtests.kafka.username=<confluent-cloud-api-key> -Dtests.kafka.password=<confluent-cloud-api-secret> --tests "*KafkaProducerConsumerIT*"
+```
 
-- [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
-- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)
+9. Command to run confluent integration tests with schema registry
+Before issuing the command, make sure the `json-topic-name` and `avro-topic-name` are already created on the Confluent cloud and schemas are correctly set
+
+```
+./gradlew      data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=<confluent-bootstrap-servers> -Dtest.kafka.schema_registry_url=<confluent-schema-reg-url> -Dtest.kafka.schema_registry_userinfo="<confluent-schema-reg-api-key>:<confluent-schema-reg-secret>" -Dtests.kafka.json_topic_name=<json-topic-name> -Dtests.kafka.avro_topic_name=<avro-topic-name> -Dtests.kafka.username=<confluent-cloud-api-key> -Dtests.kafka.password=<confluent-cloud-api-secret> --tests "*ConfluentKafkaProducerConsumerWithSchemaRegistryIT*"
+```
+
+Schema for `json-topic-name-value` should be
+```
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "title": "Not included",
+          "type": "null"
+        },
+        {
+          "type": "integer"
+        }
+      ]
+    },
+    "name": {
+      "oneOf": [
+        {
+          "title": "Not included",
+          "type": "null"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "value": {
+      "oneOf": [
+        {
+          "title": "Not included",
+          "type": "null"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    }
+  },
+  "title": "User Record",
+  "type": "object"
+}
+```
+
+Schema for `avro-topic-name-value` should be
+```
+{
+  "fields": [
+    {
+      "name": "message",
+      "type": "string"
+    },
+    {
+      "name": "ident",
+      "type": "int"
+    },
+    {
+      "name": "score",
+      "type": "double"
+    }
+  ],
+  "name": "sampleAvroRecord",
+  "type": "record"
+}
+```

@@ -1,0 +1,14 @@
+log-pipeline:
+  source:
+    postgresql:
+      hostname: localhost
+      credentials:
+        plaintext:
+          username: debezium
+          password: dbz
+      tables:
+        - topic_prefix: psql
+          database: postgres
+          table: public.customers
+  sink:
+    - noop:

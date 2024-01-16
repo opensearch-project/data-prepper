@@ -26,9 +26,11 @@ import java.util.Random;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasKey;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -36,6 +38,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ComposableIndexTemplate.INDEX_SETTINGS_KEY;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ComposableIndexTemplate.TEMPLATE_KEY;
 
 @ExtendWith(MockitoExtension.class)
 class ComposableIndexTemplateStrategyTest {
@@ -187,6 +191,91 @@ class ComposableIndexTemplateStrategyTest {
             assertThat(optionalVersion, notNullValue());
             assertThat(optionalVersion.isPresent(), equalTo(true));
             assertThat(optionalVersion.get(), equalTo((long) version));
+        }
+
+        @Test
+        void putCustomSetting_with_no_existing_template_adds_template_and_settings() {
+            final org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplate indexTemplate =
+                    createObjectUnderTest().createIndexTemplate(providedTemplateMap);
+
+            String customKey = UUID.randomUUID().toString();
+            String customValue = UUID.randomUUID().toString();
+
+            indexTemplate.putCustomSetting(customKey, customValue);
+
+            Map<String, Object> indexTemplateMap = ((ComposableIndexTemplate) indexTemplate).getIndexTemplateMap();
+
+            assertThat(indexTemplateMap, hasKey(TEMPLATE_KEY));
+            assertThat(indexTemplateMap.get(TEMPLATE_KEY), instanceOf(Map.class));
+            Map<String, Object> templateMap = (Map<String, Object>) indexTemplateMap.get(TEMPLATE_KEY);
+            assertThat(templateMap, hasKey(INDEX_SETTINGS_KEY));
+            assertThat(templateMap.get(INDEX_SETTINGS_KEY), instanceOf(Map.class));
+            Map<String, Object> settingsMap = (Map<String, Object>) templateMap.get(INDEX_SETTINGS_KEY);
+            assertThat(settingsMap, hasKey(customKey));
+            assertThat(settingsMap.get(customKey), equalTo(customValue));
+        }
+
+        @Test
+        void putCustomSetting_with_existing_template_adds_settings_to_that_template() {
+            String existingKey = UUID.randomUUID().toString();
+            String existingValue = UUID.randomUUID().toString();
+            Map<String, Object> template = new HashMap<>();
+            template.put(existingKey, existingValue);
+            providedTemplateMap.put(TEMPLATE_KEY, template);
+
+            final org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplate indexTemplate =
+                    createObjectUnderTest().createIndexTemplate(providedTemplateMap);
+
+            String customKey = UUID.randomUUID().toString();
+            String customValue = UUID.randomUUID().toString();
+
+            indexTemplate.putCustomSetting(customKey, customValue);
+
+            Map<String, Object> indexTemplateMap = ((ComposableIndexTemplate) indexTemplate).getIndexTemplateMap();
+
+            assertThat(indexTemplateMap, hasKey(TEMPLATE_KEY));
+            assertThat(indexTemplateMap.get(TEMPLATE_KEY), instanceOf(Map.class));
+            Map<String, Object> templateMap = (Map<String, Object>) indexTemplateMap.get(TEMPLATE_KEY);
+            assertThat(templateMap, hasKey(INDEX_SETTINGS_KEY));
+            assertThat(templateMap, hasKey(existingKey));
+            assertThat(templateMap.get(existingKey), equalTo(existingValue));
+            assertThat(templateMap.get(INDEX_SETTINGS_KEY), instanceOf(Map.class));
+            Map<String, Object> settingsMap = (Map<String, Object>) templateMap.get(INDEX_SETTINGS_KEY);
+            assertThat(settingsMap, hasKey(customKey));
+            assertThat(settingsMap.get(customKey), equalTo(customValue));
+        }
+
+        @Test
+        void putCustomSetting_with_existing_template_and_settings_puts_settings_to_that_settings() {
+            String existingKey = UUID.randomUUID().toString();
+            String existingValue = UUID.randomUUID().toString();
+            Map<String, Object> template = new HashMap<>();
+            HashMap<Object, Object> existingSettings = new HashMap<>();
+            existingSettings.put(existingKey, existingValue);
+            template.put(INDEX_SETTINGS_KEY, existingSettings);
+
+            providedTemplateMap.put(TEMPLATE_KEY, template);
+
+            final org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplate indexTemplate =
+                    createObjectUnderTest().createIndexTemplate(providedTemplateMap);
+
+            String customKey = UUID.randomUUID().toString();
+            String customValue = UUID.randomUUID().toString();
+
+            indexTemplate.putCustomSetting(customKey, customValue);
+
+            Map<String, Object> indexTemplateMap = ((ComposableIndexTemplate) indexTemplate).getIndexTemplateMap();
+
+            assertThat(indexTemplateMap, hasKey(TEMPLATE_KEY));
+            assertThat(indexTemplateMap.get(TEMPLATE_KEY), instanceOf(Map.class));
+            Map<String, Object> templateMap = (Map<String, Object>) indexTemplateMap.get(TEMPLATE_KEY);
+            assertThat(templateMap, hasKey(INDEX_SETTINGS_KEY));
+            assertThat(templateMap.get(INDEX_SETTINGS_KEY), instanceOf(Map.class));
+            Map<String, Object> settingsMap = (Map<String, Object>) templateMap.get(INDEX_SETTINGS_KEY);
+            assertThat(settingsMap, hasKey(customKey));
+            assertThat(settingsMap.get(customKey), equalTo(customValue));
+            assertThat(settingsMap, hasKey(existingKey));
+            assertThat(settingsMap.get(existingKey), equalTo(existingValue));
         }
     }
 }

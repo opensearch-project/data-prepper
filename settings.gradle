@@ -17,18 +17,20 @@ dependencyResolutionManagement {
         libs {
             version('slf4j', '2.0.6')
             library('slf4j-api', 'org.slf4j', 'slf4j-api').versionRef('slf4j')
-            version('armeria', '1.25.2')
+            version('armeria', '1.26.4')
             library('armeria-core', 'com.linecorp.armeria', 'armeria').versionRef('armeria')
             library('armeria-grpc', 'com.linecorp.armeria', 'armeria-grpc').versionRef('armeria')
             library('armeria-junit', 'com.linecorp.armeria', 'armeria-junit5').versionRef('armeria')
+            version('grpc', '1.58.0')
+            library('grpc-inprocess', 'io.grpc', 'grpc-inprocess').versionRef('grpc')
             version('protobuf', '3.24.3')
             library('protobuf-core', 'com.google.protobuf', 'protobuf-java').versionRef('protobuf')
             library('protobuf-util', 'com.google.protobuf', 'protobuf-java-util').versionRef('protobuf')
             version('opentelemetry', '0.16.0-alpha')
             library('opentelemetry-proto', 'io.opentelemetry.proto', 'opentelemetry-proto').versionRef('opentelemetry')
-            version('opensearchJava', '2.5.0')
+            version('opensearchJava', '2.8.1')
             library('opensearch-java', 'org.opensearch.client', 'opensearch-java').versionRef('opensearchJava')
-            version('opensearch', '1.3.8')
+            version('opensearch', '1.3.14')
             library('opensearch-client', 'org.opensearch.client', 'opensearch-rest-client').versionRef('opensearch')
             library('opensearch-rhlc', 'org.opensearch.client', 'opensearch-rest-high-level-client').versionRef('opensearch')
             version('spring', '5.3.28')
@@ -39,13 +41,17 @@ dependencyResolutionManagement {
             library('bouncycastle-bcpkix', 'org.bouncycastle', 'bcpkix-jdk18on').versionRef('bouncycastle')
             version('guava', '32.1.2-jre')
             library('guava-core', 'com.google.guava', 'guava').versionRef('guava')
-            library('commons-lang3', 'org.apache.commons', 'commons-lang3').version('3.13.0')
-            library('commons-io', 'commons-io', 'commons-io').version('2.13.0')
+            version('reflections', '0.9.12')
+            library('reflections-core', 'org.reflections', 'reflections').versionRef('reflections')
+            library('commons-lang3', 'org.apache.commons', 'commons-lang3').version('3.14.0')
+            library('commons-io', 'commons-io', 'commons-io').version('2.15.1')
             library('commons-codec', 'commons-codec', 'commons-codec').version('1.16.0')
             library('commons-compress', 'org.apache.commons', 'commons-compress').version('1.24.0')
             version('hadoop', '3.3.6')
             library('hadoop-common', 'org.apache.hadoop', 'hadoop-common').versionRef('hadoop')
             library('hadoop-mapreduce', 'org.apache.hadoop', 'hadoop-mapreduce-client-core').versionRef('hadoop')
+            version('avro', '1.11.3')
+            library('avro-core', 'org.apache.avro', 'avro').versionRef('avro')
         }
         testLibs {
             version('junit', '5.8.2')
@@ -96,8 +102,7 @@ include 'data-prepper-plugins:drop-events-processor'
 include 'data-prepper-plugins:key-value-processor'
 include 'data-prepper-plugins:type-conversion-processor'
 include 'data-prepper-plugins:mutate-event-processors'
-include 'data-prepper-plugins:geoip-processor'
-include 'data-prepper-plugins:cloudwatch-metrics-source'
+//include 'data-prepper-plugins:geoip-processor'
 include 'data-prepper-plugins:grok-processor'
 include 'data-prepper-plugins:aggregate-processor'
 include 'data-prepper-plugins:log-generator-source'
@@ -117,6 +122,7 @@ include 'data-prepper-plugins:csv-processor'
 include 'data-prepper-plugins:parse-json-processor'
 include 'data-prepper-plugins:trace-peer-forwarder-processor'
 include 'data-prepper-plugins:translate-processor'
+include 'data-prepper-plugins:truncate-processor'
 include 'data-prepper-plugins:dynamodb-source-coordination-store'
 include 'release'
 include 'release:archives'
@@ -128,7 +134,7 @@ include 'data-prepper-plugins:failures-common'
 include 'data-prepper-plugins:newline-codecs'
 include 'data-prepper-plugins:avro-codecs'
 include 'data-prepper-plugins:kafka-plugins'
-include 'data-prepper-plugins:opensearch-source'
+include 'data-prepper-plugins:kafka-connect-plugins'
 include 'data-prepper-plugins:user-agent-processor'
 include 'data-prepper-plugins:in-memory-source-coordination-store'
 include 'data-prepper-plugins:aws-plugin-api'
@@ -137,10 +143,10 @@ include 'data-prepper-plugins:obfuscate-processor'
 include 'data-prepper-plugins:parquet-codecs'
 include 'data-prepper-plugins:aws-sqs-common'
 include 'data-prepper-plugins:buffer-common'
-include 'data-prepper-plugins:sqs-source'
-include 'data-prepper-plugins:cloudwatch-logs'
-include 'data-prepper-plugins:http-sink'
-include 'data-prepper-plugins:sns-sink'
-include 'data-prepper-plugins:prometheus-sink'
+//include 'data-prepper-plugins:sqs-source'
+//include 'data-prepper-plugins:cloudwatch-logs'
+//include 'data-prepper-plugins:http-sink'
+//include 'data-prepper-plugins:sns-sink'
+//include 'data-prepper-plugins:prometheus-sink'
 include 'data-prepper-plugins:dissect-processor'
 include 'data-prepper-plugins:dynamodb-source'

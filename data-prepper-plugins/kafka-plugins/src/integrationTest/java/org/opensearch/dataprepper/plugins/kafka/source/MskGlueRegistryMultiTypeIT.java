@@ -33,12 +33,14 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.MskBrokerConnectionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,7 +49,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -97,11 +98,14 @@ public class MskGlueRegistryMultiTypeIT {
     private AwsConfig.AwsMskConfig awsMskConfig;
 
     @Mock
-    private KafkaSourceConfig.EncryptionConfig encryptionConfig;
+    private EncryptionConfig encryptionConfig;
+
+    @Mock
+    private KafkaClusterConfigSupplier kafkaClusterConfigSupplier;
 
     private KafkaSource kafkaSource;
-    private TopicConfig jsonTopic;
-    private TopicConfig avroTopic;
+    private SourceTopicConfig jsonTopic;
+    private SourceTopicConfig avroTopic;
 
     private Counter counter;
 
@@ -124,7 +128,7 @@ public class MskGlueRegistryMultiTypeIT {
 
 
     public KafkaSource createObjectUnderTest() {
-        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription);
+        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, kafkaClusterConfigSupplier);
     }
 
     @BeforeEach
@@ -157,22 +161,27 @@ public class MskGlueRegistryMultiTypeIT {
 
         final String testGroup = "TestGroup_"+RandomStringUtils.randomAlphabetic(6);
         final String testTopic = "TestTopic_"+RandomStringUtils.randomAlphabetic(5);
-        avroTopic = mock(TopicConfig.class);
-        jsonTopic = mock(TopicConfig.class);
+        avroTopic = mock(SourceTopicConfig.class);
+        jsonTopic = mock(SourceTopicConfig.class);
         when(avroTopic.getName()).thenReturn(testTopic);
         when(avroTopic.getGroupId()).thenReturn(testGroup);
         when(avroTopic.getWorkers()).thenReturn(1);
         when(avroTopic.getAutoCommit()).thenReturn(false);
         when(avroTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(avroTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
-        when(avroTopic.getSessionTimeOut()).thenReturn(Duration.ofSeconds(5));
+        when(avroTopic.getMaxPollInterval()).thenReturn(Duration.ofSeconds(300));
+        when(avroTopic.getSessionTimeOut()).thenReturn(Duration.ofSeconds(10));
         when(avroTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
+        when(avroTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
         when(jsonTopic.getName()).thenReturn(testTopic);
+        when(jsonTopic.getMaxPollInterval()).thenReturn(Duration.ofSeconds(300));
         when(jsonTopic.getGroupId()).thenReturn(testGroup);
         when(jsonTopic.getWorkers()).thenReturn(1);
         when(jsonTopic.getAutoCommit()).thenReturn(false);
         when(jsonTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(jsonTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
+        when(jsonTopic.getSessionTimeOut()).thenReturn(Duration.ofSeconds(10));
+        when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
         when(jsonTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
         testRegistryName = System.getProperty("tests.kafka.glue_registry_name");
@@ -180,8 +189,8 @@ public class MskGlueRegistryMultiTypeIT {
         testAvroSchemaName = System.getProperty("tests.kafka.glue_avro_schema_name");
         testMskArn = System.getProperty("tests.msk.arn");
         testMskRegion = System.getProperty("tests.msk.region");
-        when(sourceConfig.getBootStrapServers()).thenReturn(bootstrapServers);
-        encryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
+        when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
+        encryptionConfig = mock(EncryptionConfig.class);
         when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
         System.setProperty("software.amazon.awssdk.http.service.impl", "software.amazon.awssdk.http.urlconnection.UrlConnectionSdkHttpService");
     }
@@ -191,7 +200,7 @@ public class MskGlueRegistryMultiTypeIT {
         final int numRecords = 1;
         when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
+        when(sourceConfig.getTopics()).thenReturn((List) List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
         when(saslAuthConfig.getAwsIamAuthConfig()).thenReturn(AwsIamAuthConfig.DEFAULT);
@@ -233,10 +242,10 @@ public class MskGlueRegistryMultiTypeIT {
 	for (int i = 0; i < numRecords; i++) {
             Record<Event> record = receivedRecords.get(i);
             Event event = (Event)record.getData();
-            Map<String, Object> val = event.get("message-"+i, Map.class);
-            assertThat(val.get("username"), equalTo(TEST_USER+i));
-            assertThat(val.get("message"), equalTo(TEST_MESSAGE+i));
-            assertThat(((Number)val.get("timestamp")).intValue(), equalTo(TEST_TIMESTAMP_INT+i));
+            assertThat(event.get("username", String.class), equalTo(TEST_USER+i));
+            assertThat(event.get("message", String.class), equalTo(TEST_MESSAGE+i));
+            assertThat(event.get("timestamp", Number.class).intValue(), equalTo(TEST_TIMESTAMP_INT+i));
+            assertThat(event.get("kafka_key", String.class), equalTo("message-"+i));
 	}
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
@@ -258,7 +267,7 @@ public class MskGlueRegistryMultiTypeIT {
         final int numRecords = 1;
         when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
         when(avroTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(sourceConfig.getTopics()).thenReturn(List.of(avroTopic));
+        when(sourceConfig.getTopics()).thenReturn((List) List.of(avroTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
         when(saslAuthConfig.getAwsIamAuthConfig()).thenReturn(AwsIamAuthConfig.DEFAULT);
@@ -300,10 +309,10 @@ public class MskGlueRegistryMultiTypeIT {
 	for (int i = 0; i < numRecords; i++) {
             Record<Event> record = receivedRecords.get(i);
             Event event = (Event)record.getData();
-            Map<String, Object> val = event.get(TEST_USER+i, Map.class);
-            assertThat(val.get("username"), equalTo(TEST_USER+i));
-            assertThat(val.get("message"), equalTo(TEST_MESSAGE+i));
-            assertThat(((Number)val.get("timestamp")).longValue(), equalTo(TEST_TIMESTAMP+i));
+            assertThat(event.get("username", String.class), equalTo(TEST_USER+i));
+            assertThat(event.get("message", String.class), equalTo(TEST_MESSAGE+i));
+            assertThat(event.get("timestamp", Number.class).longValue(), equalTo(TEST_TIMESTAMP+i));
+            assertThat(event.get("kafka_key", String.class), equalTo(TEST_USER+i));
 	}
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {

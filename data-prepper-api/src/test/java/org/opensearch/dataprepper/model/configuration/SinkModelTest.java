@@ -87,7 +87,7 @@ class SinkModelTest {
 
         final String expectedJson = createStringFromInputStream(this.getClass().getResourceAsStream("sink_plugin.yaml"));
 
-        assertThat("---\n" + actualJson, equalTo(expectedJson));
+        assertThat("---" + System.lineSeparator() + actualJson, equalTo(expectedJson));
         assertThat(sinkModel.getTagsTargetKey(), equalTo(tagsTargetKey));
 
     }
@@ -140,7 +140,7 @@ class SinkModelTest {
 
         final String expectedJson = createStringFromInputStream(this.getClass().getResourceAsStream("/serialized_with_plugin_settings.yaml"));
 
-        assertThat("---\n" + actualJson, equalTo(expectedJson));
+        assertThat("---" + System.lineSeparator() + actualJson, equalTo(expectedJson));
     }
 
     @Test

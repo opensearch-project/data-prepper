@@ -236,6 +236,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             final Map<String, Object> outputMap = new HashMap<>();
             final Event recordEvent = record.getData();
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
+            if (groupsRaw == null) {
+                continue;
+            }
             final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
 
             if (keyValueProcessorConfig.getRecursive()) {

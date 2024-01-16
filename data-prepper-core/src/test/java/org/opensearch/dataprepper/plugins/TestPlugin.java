@@ -17,13 +17,19 @@ import org.opensearch.dataprepper.plugin.TestPluginConfiguration;
 @DataPrepperPlugin(name = "test_plugin", pluginType = TestPluggableInterface.class, pluginConfigurationType = TestPluginConfiguration.class)
 public class TestPlugin implements TestPluggableInterface {
     private final TestPluginConfiguration configuration;
+    private final Object obj;
 
     @DataPrepperPluginConstructor
     public TestPlugin(final TestPluginConfiguration configuration) {
         this.configuration = configuration;
+        this.obj = null;
     }
 
     public TestPluginConfiguration getConfiguration() {
         return configuration;
+    }
+
+    public Object getObject() {
+        return obj;
     }
 }

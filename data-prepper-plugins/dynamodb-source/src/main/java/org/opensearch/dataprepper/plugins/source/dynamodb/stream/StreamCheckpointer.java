@@ -5,13 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.SourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -20,6 +21,8 @@ import java.util.Optional;
  */
 public class StreamCheckpointer {
     private static final Logger LOG = LoggerFactory.getLogger(StreamCheckpointer.class);
+
+    static final Duration CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE = Duration.ofMinutes(5);
 
     private final EnhancedSourceCoordinator coordinator;
 
@@ -32,15 +35,12 @@ public class StreamCheckpointer {
 
     private void setSequenceNumber(String sequenceNumber) {
         // Must only update progress if sequence number is not empty
-        // A blank sequence number means the current sequence number in the progress state has not changed
+        // A blank sequence number means the current sequence number in the progress state has not changed, do nothing
         if (sequenceNumber != null && !sequenceNumber.isEmpty()) {
             Optional<StreamProgressState> progressState = streamPartition.getProgressState();
             if (progressState.isPresent()) {
                 progressState.get().setSequenceNumber(sequenceNumber);
-            } else {
-
             }
-
         }
     }
 
@@ -51,44 +51,18 @@ public class StreamCheckpointer {
      *
      * @param sequenceNumber The last sequence number
      */
-
     public void checkpoint(String sequenceNumber) {
         LOG.debug("Checkpoint shard " + streamPartition.getShardId() + " with sequenceNumber " + sequenceNumber);
         setSequenceNumber(sequenceNumber);
-        coordinator.saveProgressStateForPartition(streamPartition);
-
-    }
-
-    /**
-     * This method is to mark the shard partition as COMPLETED with the final sequence number
-     * Note that this should be called when reaching the end of shard.
-     *
-     * @param sequenceNumber The last sequence number
-     */
-
-    public void complete(String sequenceNumber) {
-        LOG.debug("Complete the read of shard " + streamPartition.getShardId() + " with final sequenceNumber " + sequenceNumber);
-        setSequenceNumber(sequenceNumber);
-        coordinator.completePartition(streamPartition);
-
-    }
-
-    /**
-     * This method is to release the lease of the stream partition.
-     * Normally this should only be called due to failures or interruption.
-     *
-     * @param sequenceNumber The last sequence number
-     */
-    public void release(String sequenceNumber) {
-        LOG.debug("Release the ownership of shard " + streamPartition.getShardId() + " with final sequenceNumber " + sequenceNumber);
-        setSequenceNumber(sequenceNumber);
-        coordinator.giveUpPartition(streamPartition);
-
+        coordinator.saveProgressStateForPartition(streamPartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
     }
 
     public boolean isExportDone() {
-        Optional<SourcePartition> globalPartition = coordinator.getPartition(streamPartition.getStreamArn());
+        Optional<EnhancedSourcePartition> globalPartition = coordinator.getPartition(streamPartition.getStreamArn());
         return globalPartition.isPresent();
     }
 
+    public void updateShardForAcknowledgmentWait(final Duration acknowledgmentSetTimeout) {
+        coordinator.saveProgressStateForPartition(streamPartition, acknowledgmentSetTimeout);
+    }
 }

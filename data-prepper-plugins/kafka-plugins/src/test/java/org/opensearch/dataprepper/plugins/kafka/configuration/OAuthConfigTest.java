@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -5,6 +10,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.kafka.source.KafkaSourceConfig;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;

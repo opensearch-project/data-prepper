@@ -28,6 +28,7 @@ import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
+import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResponse;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResultEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
@@ -40,7 +41,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -50,7 +53,10 @@ public class SqsWorker implements Runnable {
     static final String SQS_MESSAGES_DELETED_METRIC_NAME = "sqsMessagesDeleted";
     static final String SQS_MESSAGES_FAILED_METRIC_NAME = "sqsMessagesFailed";
     static final String SQS_MESSAGES_DELETE_FAILED_METRIC_NAME = "sqsMessagesDeleteFailed";
+    static final String S3_OBJECTS_EMPTY_METRIC_NAME = "s3ObjectsEmpty";
     static final String SQS_MESSAGE_DELAY_METRIC_NAME = "sqsMessageDelay";
+    static final String SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangedCount";
+    static final String SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangeFailedCount";
     static final String ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
 
     private final S3SourceConfig s3SourceConfig;
@@ -62,8 +68,11 @@ public class SqsWorker implements Runnable {
     private final Counter sqsMessagesReceivedCounter;
     private final Counter sqsMessagesDeletedCounter;
     private final Counter sqsMessagesFailedCounter;
+    private final Counter s3ObjectsEmptyCounter;
     private final Counter sqsMessagesDeleteFailedCounter;
     private final Counter acknowledgementSetCallbackCounter;
+    private final Counter sqsVisibilityTimeoutChangedCount;
+    private final Counter sqsVisibilityTimeoutChangeFailedCount;
     private final Timer sqsMessageDelayTimer;
     private final Backoff standardBackoff;
     private int failedAttemptCount;
@@ -72,6 +81,7 @@ public class SqsWorker implements Runnable {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private volatile boolean isStopped = false;
+    private Map<ParsedMessage, Integer> parsedMessageVisibilityTimesMap;
 
     public SqsWorker(final AcknowledgementSetManager acknowledgementSetManager,
                      final SqsClient sqsClient,
@@ -89,13 +99,17 @@ public class SqsWorker implements Runnable {
         objectCreatedFilter = new S3ObjectCreatedFilter();
         evenBridgeObjectCreatedFilter = new EventBridgeObjectCreatedFilter();
         failedAttemptCount = 0;
+        parsedMessageVisibilityTimesMap = new HashMap<>();
 
         sqsMessagesReceivedCounter = pluginMetrics.counter(SQS_MESSAGES_RECEIVED_METRIC_NAME);
         sqsMessagesDeletedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETED_METRIC_NAME);
         sqsMessagesFailedCounter = pluginMetrics.counter(SQS_MESSAGES_FAILED_METRIC_NAME);
+        s3ObjectsEmptyCounter = pluginMetrics.counter(S3_OBJECTS_EMPTY_METRIC_NAME);
         sqsMessagesDeleteFailedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETE_FAILED_METRIC_NAME);
         sqsMessageDelayTimer = pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME);
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME);
+        sqsVisibilityTimeoutChangedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME);
+        sqsVisibilityTimeoutChangeFailedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME);
     }
 
     @Override
@@ -203,6 +217,12 @@ public class SqsWorker implements Runnable {
                 if (s3SourceConfig.getOnErrorOption().equals(OnErrorOption.DELETE_MESSAGES)) {
                     deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(parsedMessage.getMessage()));
                 }
+            } else if (parsedMessage.getObjectSize() == 0L) {
+                s3ObjectsEmptyCounter.increment();
+                LOG.debug("Received empty S3 object: {} in the SQS message. " +
+                                "The S3 object is skipped and the SQS message will be deleted.",
+                        parsedMessage.getObjectKey());
+                deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(parsedMessage.getMessage()));
             } else {
                 if (s3SourceConfig.getNotificationSource().equals(NotificationSourceOption.S3)
                         && !parsedMessage.isEmptyNotification()
@@ -226,16 +246,54 @@ public class SqsWorker implements Runnable {
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
             List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
+            final int visibilityTimeout = (int)sqsOptions.getVisibilityTimeout().getSeconds();
+            final int maxVisibilityTimeout = (int)sqsOptions.getVisibilityDuplicateProtectionTimeout().getSeconds();
+            final int progressCheckInterval = visibilityTimeout/2 - 1;
             if (endToEndAcknowledgementsEnabled) {
-                // Acknowledgement Set timeout is slightly smaller than the visibility timeout;
-                int timeout = (int) sqsOptions.getVisibilityTimeout().getSeconds() - 2;
-                acknowledgementSet = acknowledgementSetManager.create((result) -> {
-                    acknowledgementSetCallbackCounter.increment();
-                    // Delete only if this is positive acknowledgement
-                    if (result == true) {
-                        deleteSqsMessages(waitingForAcknowledgements);
-                    }
-                }, Duration.ofSeconds(timeout));
+                int expiryTimeout = visibilityTimeout - 2;
+                final boolean visibilityDuplicateProtectionEnabled = sqsOptions.getVisibilityDuplicateProtection();
+                if (visibilityDuplicateProtectionEnabled) {
+                    expiryTimeout = maxVisibilityTimeout;
+                }
+                acknowledgementSet = acknowledgementSetManager.create(
+                    (result) -> {
+                        acknowledgementSetCallbackCounter.increment();
+                        // Delete only if this is positive acknowledgement
+                        if (visibilityDuplicateProtectionEnabled) {
+                            parsedMessageVisibilityTimesMap.remove(parsedMessage);
+                        }
+                        if (result == true) {
+                            deleteSqsMessages(waitingForAcknowledgements);
+                        }
+                    },
+                    Duration.ofSeconds(expiryTimeout));
+                if (visibilityDuplicateProtectionEnabled) {
+                    acknowledgementSet.addProgressCheck(
+                        (ratio) -> {
+                            final int newVisibilityTimeoutSeconds = visibilityTimeout;
+                            int newValue = parsedMessageVisibilityTimesMap.getOrDefault(parsedMessage, visibilityTimeout) + progressCheckInterval;
+                            if (newValue >= maxVisibilityTimeout) {
+                                return;
+                            }
+                            parsedMessageVisibilityTimesMap.put(parsedMessage, newValue);
+                            final ChangeMessageVisibilityRequest changeMessageVisibilityRequest = ChangeMessageVisibilityRequest.builder()
+                                    .visibilityTimeout(newVisibilityTimeoutSeconds)
+                                    .queueUrl(sqsOptions.getSqsUrl())
+                                    .receiptHandle(parsedMessage.getMessage().receiptHandle())
+                                    .build();
+
+                            try {
+                                sqsClient.changeMessageVisibility(changeMessageVisibilityRequest);
+                                sqsVisibilityTimeoutChangedCount.increment();
+                                LOG.info("Set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds);
+                            } catch (Exception e) {
+                                LOG.error("Failed to set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds, e);
+                                sqsVisibilityTimeoutChangeFailedCount.increment();
+                            }
+
+                        },
+                        Duration.ofSeconds(progressCheckInterval));
+                }
             }
             final S3ObjectReference s3ObjectReference = populateS3Reference(parsedMessage.getBucketName(), parsedMessage.getObjectKey());
             final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(parsedMessage, s3ObjectReference, acknowledgementSet);
@@ -290,7 +348,7 @@ public class SqsWorker implements Runnable {
                 final int failedDeleteCount = deleteMessageBatchResponse.failed().size();
                 sqsMessagesDeleteFailedCounter.increment(failedDeleteCount);
 
-                if(LOG.isErrorEnabled()) {
+                if(LOG.isErrorEnabled() && failedDeleteCount > 0) {
                     final String failedMessages = deleteMessageBatchResponse.failed().stream()
                             .map(failed -> failed.toString())
                             .collect(Collectors.joining(", "));

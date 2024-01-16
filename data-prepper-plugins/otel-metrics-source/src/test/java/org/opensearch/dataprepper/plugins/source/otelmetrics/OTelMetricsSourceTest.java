@@ -57,6 +57,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
+import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
@@ -116,6 +117,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.SSL;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelMetricDecoder;
 
 @ExtendWith(MockitoExtension.class)
 class OTelMetricsSourceTest {
@@ -200,6 +202,7 @@ class OTelMetricsSourceTest {
         pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        assertTrue(SOURCE.getDecoder() instanceof OTelMetricDecoder);
     }
 
     @AfterEach
@@ -209,6 +212,7 @@ class OTelMetricsSourceTest {
 
     private void configureObjectUnderTest() {
         SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        assertTrue(SOURCE.getDecoder() instanceof OTelMetricDecoder);
     }
 
     @Test
@@ -576,6 +580,7 @@ class OTelMetricsSourceTest {
 
             oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
             SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
+            assertTrue(SOURCE.getDecoder() instanceof OTelMetricDecoder);
         }
 
         @Test
@@ -973,6 +978,25 @@ class OTelMetricsSourceTest {
 
         assertThat(actualException.getStatus(), notNullValue());
         assertThat(actualException.getStatus().getCode(), equalTo(expectedStatusCode));
+    }
+
+    @Test
+    void request_that_exceeds_maxRequestLength_returns_413() throws InvalidProtocolBufferException {
+        when(oTelMetricsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelMetricsSourceConfig.getMaxRequestLength()).thenReturn(ByteCount.ofBytes(4));
+        SOURCE.start(buffer);
+
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:21891")
+                                .method(HttpMethod.POST)
+                                .path("/opentelemetry.proto.collector.metrics.v1.MetricsService/Export")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.copyOf(JsonFormat.printer().print(METRICS_REQUEST).getBytes()))
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.REQUEST_ENTITY_TOO_LARGE, throwable))
+                .join();
     }
 
     static class BufferExceptionToStatusArgumentsProvider implements ArgumentsProvider {

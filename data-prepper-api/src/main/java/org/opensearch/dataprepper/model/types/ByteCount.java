@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
  */
 public class ByteCount {
     private static final Pattern BYTE_PATTERN = Pattern.compile("^(?<value>\\d+\\.?\\d*)(?<unit>[a-z]+)?\\z");
+    private static final ByteCount ZERO_BYTES = new ByteCount(0);
     private final long bytes;
 
     private ByteCount(final long bytes) {
@@ -92,6 +93,24 @@ public class ByteCount {
         }
 
         return new ByteCount(byteCount.longValue());
+    }
+
+    /**
+     * Returns a {@link ByteCount} with the total number of bytes provided.
+     *
+     * @param bytes The number of bytes
+     * @return A new {@link ByteCount}
+     * @since 2.7
+     */
+    public static ByteCount ofBytes(final long bytes) {
+        if(bytes < 0)
+            throw new IllegalArgumentException("The argument provided for bytes is negative.");
+
+        return new ByteCount(bytes);
+    }
+
+    public static ByteCount zeroBytes() {
+        return ZERO_BYTES;
     }
 
     private static BigDecimal scaleToBytes(final BigDecimal value, final Unit unit) {

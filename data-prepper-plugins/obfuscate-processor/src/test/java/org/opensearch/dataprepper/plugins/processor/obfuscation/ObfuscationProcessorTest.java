@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -27,9 +28,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -53,6 +56,9 @@ class ObfuscationProcessorTest {
     @Mock
     private ObfuscationProcessorConfig mockConfig;
 
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
+
     private ObfuscationProcessor obfuscationProcessor;
 
     static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
@@ -70,12 +76,51 @@ class ObfuscationProcessorTest {
 
     @BeforeEach
     void setup() {
-        final ObfuscationProcessorConfig defaultConfig = new ObfuscationProcessorConfig("message", null, null, null);
+        final ObfuscationProcessorConfig defaultConfig = new ObfuscationProcessorConfig("message", null, null, null, null);
         lenient().when(mockConfig.getSource()).thenReturn(defaultConfig.getSource());
         lenient().when(mockConfig.getAction()).thenReturn(defaultConfig.getAction());
         lenient().when(mockConfig.getPatterns()).thenReturn(defaultConfig.getPatterns());
         lenient().when(mockConfig.getTarget()).thenReturn(defaultConfig.getTarget());
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory);
+        lenient().when(mockConfig.getObfuscateWhen()).thenReturn(null);
+        lenient().when(mockConfig.getTagsOnMatchFailure()).thenReturn(List.of(UUID.randomUUID().toString()));
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
+    }
+
+    @Test
+    void obfuscate_when_evaluates_to_false_does_not_modify_event() {
+        final String expression = "/test == success";
+        final Record<Event> record = createRecord(UUID.randomUUID().toString());
+        when(mockConfig.getObfuscateWhen()).thenReturn(expression);
+        when(expressionEvaluator.evaluateConditional(expression, record.getData())).thenReturn(false);
+
+        final ObfuscationProcessor objectUnderTest = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
+
+        final Map<String, Object> expectedEventMap = record.getData().toMap();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.size(), equalTo(1));
+        assertThat(editedRecords.get(0).getData().toMap(), equalTo(expectedEventMap));
+    }
+
+    @Test
+    void event_is_tagged_with_match_failure_tags_when_it_does_not_match_any_patterns_and_when_condition_is_true() {
+        final Record<Event> record = createRecord(UUID.randomUUID().toString());
+
+        final String expression = UUID.randomUUID().toString();
+        when(mockConfig.getObfuscateWhen()).thenReturn(expression);
+        when(expressionEvaluator.evaluateConditional(expression, record.getData())).thenReturn(true);
+        when(mockConfig.getPatterns()).thenReturn(List.of(UUID.randomUUID().toString()));
+
+        final ObfuscationProcessor objectUnderTest = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
+
+        final Map<String, Object> expectedEventMap = record.getData().toMap();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.size(), equalTo(1));
+        assertThat(editedRecords.get(0).getData().toMap(), equalTo(expectedEventMap));
+        assertThat(editedRecords.get(0).getData().getMetadata().getTags(), notNullValue());
+        assertThat(editedRecords.get(0).getData().getMetadata().getTags().size(), equalTo(1));
+        assertThat(editedRecords.get(0).getData().getMetadata().getTags().contains(mockConfig.getTagsOnMatchFailure().get(0)), equalTo(true));
     }
 
 
@@ -102,7 +147,7 @@ class ObfuscationProcessorTest {
 
         when(mockFactory.loadPlugin(eq(ObfuscationAction.class), any(PluginSetting.class)))
                 .thenReturn(mockAction);
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory);
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
 
         final Record<Event> record = createRecord("Hello");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) obfuscationProcessor.doExecute(Collections.singletonList(record));
@@ -117,7 +162,7 @@ class ObfuscationProcessorTest {
     @ValueSource(strings = {"hello", "hello, world", "This is a message", "123", "你好"})
     void testProcessorWithTarget(String message) {
         when(mockConfig.getTarget()).thenReturn("new_message");
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory);
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
 
         final Record<Event> record = createRecord(message);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) obfuscationProcessor.doExecute(Collections.singletonList(record));
@@ -135,7 +180,7 @@ class ObfuscationProcessorTest {
     @Test
     void testProcessorWithUnknownSource() {
         when(mockConfig.getSource()).thenReturn("email");
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory);
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
 
         final Record<Event> record = createRecord("Hello");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) obfuscationProcessor.doExecute(Collections.singletonList(record));
@@ -158,7 +203,7 @@ class ObfuscationProcessorTest {
     })
     void testProcessorWithPattern(String message, String pattern, String expected) {
         when(mockConfig.getPatterns()).thenReturn(List.of(pattern));
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory);
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
 
         final Record<Event> record = createRecord(message);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) obfuscationProcessor.doExecute(Collections.singletonList(record));
@@ -171,13 +216,13 @@ class ObfuscationProcessorTest {
     @Test
     void testProcessorWithUnknownPattern() {
         when(mockConfig.getPatterns()).thenReturn(List.of("%{UNKNOWN}"));
-        assertThrows(InvalidPluginConfigurationException.class, () -> new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory));
+        assertThrows(InvalidPluginConfigurationException.class, () -> new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator));
     }
 
     @Test
     void testProcessorInvalidPattern() {
         when(mockConfig.getPatterns()).thenReturn(List.of("["));
-        assertThrows(InvalidPluginConfigurationException.class, () -> new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory));
+        assertThrows(InvalidPluginConfigurationException.class, () -> new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator));
     }
 
     @ParameterizedTest
@@ -194,7 +239,7 @@ class ObfuscationProcessorTest {
     })
     void testProcessorWithEmailAddressPattern(String message, String expected) {
         when(mockConfig.getPatterns()).thenReturn(List.of("%{EMAIL_ADDRESS}"));
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory);
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
 
         final Record<Event> record = createRecord(message);
 
@@ -221,7 +266,7 @@ class ObfuscationProcessorTest {
     })
     void testProcessorWithUSPhoneNumberPattern(String message, String expected) {
         when(mockConfig.getPatterns()).thenReturn(List.of("%{US_PHONE_NUMBER}"));
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory);
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
 
         final Record<Event> record = createRecord(message);
 
@@ -247,7 +292,7 @@ class ObfuscationProcessorTest {
     })
     void testProcessorWithCreditNumberPattern(String message, String expected) {
         when(mockConfig.getPatterns()).thenReturn(List.of("%{CREDIT_CARD_NUMBER}"));
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory);
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
 
         final Record<Event> record = createRecord(message);
 
@@ -271,7 +316,7 @@ class ObfuscationProcessorTest {
     })
     void testProcessorWithIPAddressV4Pattern(String message, String expected) {
         when(mockConfig.getPatterns()).thenReturn(List.of("%{IP_ADDRESS_V4}"));
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory);
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
 
         final Record<Event> record = createRecord(message);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) obfuscationProcessor.doExecute(Collections.singletonList(record));
@@ -291,7 +336,7 @@ class ObfuscationProcessorTest {
     })
     void testProcessorWithUSSSNPattern(String message, String expected) {
         when(mockConfig.getPatterns()).thenReturn(List.of("%{US_SSN_NUMBER}"));
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory);
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
 
         final Record<Event> record = createRecord(message);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) obfuscationProcessor.doExecute(Collections.singletonList(record));
@@ -314,7 +359,7 @@ class ObfuscationProcessorTest {
     })
     void testProcessorWithBaseNumberPattern(String message, String expected) {
         when(mockConfig.getPatterns()).thenReturn(List.of("%{BASE_NUMBER}"));
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory);
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
 
         final Record<Event> record = createRecord(message);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) obfuscationProcessor.doExecute(Collections.singletonList(record));
@@ -333,7 +378,7 @@ class ObfuscationProcessorTest {
     })
     void testProcessorWithMultiplePatterns(String message, String expected) {
         when(mockConfig.getPatterns()).thenReturn(List.of("%{EMAIL_ADDRESS}", "%{IP_ADDRESS_V4}"));
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory);
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
 
         final Record<Event> record = createRecord(message);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) obfuscationProcessor.doExecute(Collections.singletonList(record));

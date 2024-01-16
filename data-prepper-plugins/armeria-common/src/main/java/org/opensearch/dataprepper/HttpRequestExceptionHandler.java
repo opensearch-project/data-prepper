@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper;
 
 import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.server.HttpStatusException;
 import com.linecorp.armeria.server.RequestTimeoutException;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.annotation.ExceptionHandlerFunction;
@@ -15,11 +16,14 @@ import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import io.micrometer.core.instrument.Counter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
 
 public class HttpRequestExceptionHandler implements ExceptionHandlerFunction {
+    private static final Logger LOG = LoggerFactory.getLogger(HttpRequestExceptionHandler.class);
     static final String ARMERIA_REQUEST_TIMEOUT_MESSAGE = "Timeout waiting for request to be served. This is usually due to the buffer being full.";
 
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
@@ -53,6 +57,9 @@ public class HttpRequestExceptionHandler implements ExceptionHandlerFunction {
     }
 
     private HttpStatus handleException(final Throwable e) {
+        if(e instanceof HttpStatusException) {
+            return ((HttpStatusException) e).httpStatus();
+        }
         if (e instanceof IOException) {
             badRequestsCounter.increment();
             return HttpStatus.BAD_REQUEST;
@@ -65,6 +72,7 @@ public class HttpRequestExceptionHandler implements ExceptionHandlerFunction {
         }
 
         internalServerErrorCounter.increment();
+        LOG.error("Unexpected exception handling HTTP request", e);
         return HttpStatus.INTERNAL_SERVER_ERROR;
     }
 }

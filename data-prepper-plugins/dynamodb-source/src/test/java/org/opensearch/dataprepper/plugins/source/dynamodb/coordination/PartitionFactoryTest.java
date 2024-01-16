@@ -10,10 +10,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.InitPartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 
 import java.time.Instant;
@@ -68,7 +69,7 @@ class PartitionFactoryTest {
         when(sourcePartitionStoreItem.getPartitionProgressState()).thenReturn(state);
 
         PartitionFactory factory = new PartitionFactory();
-        SourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
+        EnhancedSourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
         assertThat(sourcePartition, notNullValue());
         ExportPartition exportPartition = (ExportPartition) sourcePartition;
         assertThat(exportPartition.getTableArn(), equalTo(tableArn));
@@ -95,7 +96,7 @@ class PartitionFactoryTest {
 
 
         PartitionFactory factory = new PartitionFactory();
-        SourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
+        EnhancedSourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
         assertThat(sourcePartition, notNullValue());
         StreamPartition streamPartition = (StreamPartition) sourcePartition;
         assertThat(streamPartition.getStreamArn(), equalTo(streamArn));
@@ -122,7 +123,7 @@ class PartitionFactoryTest {
 
 
         PartitionFactory factory = new PartitionFactory();
-        SourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
+        EnhancedSourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
         assertThat(sourcePartition, notNullValue());
         DataFilePartition dataFilePartition = (DataFilePartition) sourcePartition;
         assertThat(dataFilePartition.getExportArn(), equalTo(exportArn));
@@ -150,7 +151,7 @@ class PartitionFactoryTest {
 
 
         PartitionFactory factory = new PartitionFactory();
-        SourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
+        EnhancedSourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
         assertThat(sourcePartition, notNullValue());
         GlobalState globalState = (GlobalState) sourcePartition;
         assertThat(globalState.getPartitionKey(), equalTo(partitionKey));
@@ -164,17 +165,16 @@ class PartitionFactoryTest {
     }
 
     @Test
-    void testCreateInitPartition() {
-        String sourceId = sourceIdentifier + "|" + InitPartition.PARTITION_TYPE;
+    void testCreateLeaderPartition() {
+        String sourceId = sourceIdentifier + "|" + LeaderPartition.PARTITION_TYPE;
         when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceId);
 
         PartitionFactory factory = new PartitionFactory();
-        SourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
+        EnhancedSourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
         assertThat(sourcePartition, notNullValue());
-        InitPartition exportPartition = (InitPartition) sourcePartition;
-        assertThat(exportPartition.getPartitionKey(), equalTo("GLOBAL"));
-        assertThat(exportPartition.getPartitionType(), equalTo(InitPartition.PARTITION_TYPE));
-
-
+        LeaderPartition leaderPartition = (LeaderPartition) sourcePartition;
+        assertThat(leaderPartition.getPartitionKey(), equalTo("GLOBAL"));
+        assertThat(leaderPartition.getPartitionType(), equalTo(LeaderPartition.PARTITION_TYPE));
+        
     }
 }

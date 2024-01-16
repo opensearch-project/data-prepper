@@ -9,28 +9,32 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
 import org.opensearch.dataprepper.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.pipeline.common.TestProcessor;
 import org.opensearch.dataprepper.pipeline.router.Router;
+import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
 import org.opensearch.dataprepper.pipeline.router.RouterGetRecordStrategy;
 import org.opensearch.dataprepper.plugins.TestSink;
 import org.opensearch.dataprepper.plugins.TestSource;
 import org.opensearch.dataprepper.plugins.TestSourceWithCoordination;
+import org.opensearch.dataprepper.plugins.TestSourceWithEnhancedCoordination;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
-import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
-import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 
 import java.time.Duration;
@@ -48,13 +52,13 @@ import java.util.stream.IntStream;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
@@ -80,7 +84,7 @@ class PipelineTests {
     private Duration peerForwarderDrainTimeout;
     private EventFactory eventFactory;
     private JacksonEvent event;
-    private EventHandle eventHandle;
+    private DefaultEventHandle eventHandle;
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @BeforeEach
@@ -107,7 +111,8 @@ class PipelineTests {
         final TestSink testSink = new TestSink();
         final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
         when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
-        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+        final Buffer buffer = spy(new BlockingBuffer(TEST_PIPELINE_NAME));
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, buffer,
                 Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router, eventFactory, 
                 acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
                 processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
@@ -119,6 +124,7 @@ class PipelineTests {
         testPipeline.shutdown();
         assertThat("Pipeline isStopRequested is expected to be true", testPipeline.isStopRequested(), is(true));
         assertThat("Sink shutdown should be called", testSink.isShutdown, is(true));
+        verify(buffer).shutdown();
     }
 
     @Test
@@ -327,6 +333,30 @@ class PipelineTests {
     }
 
     @Test
+    void testExecuteOnSourceWithRequiredEnhancedSourceCoordination_sets_enhanced_source_coordinator() {
+        final Source<Record<String>> testSource = new TestSourceWithEnhancedCoordination();
+        final Source<Record<String>> sourceSpy = spy(testSource);
+
+        final Sink<Record<String>> testSink = new TestSink();
+        final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
+
+        final EnhancedSourceCoordinator sourceCoordinator = mock(EnhancedSourceCoordinator.class);
+        given(sourceCoordinatorFactory.provideEnhancedSourceCoordinator(((TestSourceWithEnhancedCoordination)testSource).getPartitionFactory(), UUID.randomUUID().toString())).willReturn(sourceCoordinator);
+        when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
+        try {
+            testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+                    Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router, eventFactory,
+                    acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
+                    processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+            testPipeline.execute();
+            Thread.sleep(TEST_READ_BATCH_TIMEOUT);
+        } catch (final InterruptedException e) {
+            verify((UsesEnhancedSourceCoordination)sourceSpy).getPartitionFactory();
+            verify((UsesEnhancedSourceCoordination)sourceSpy).setEnhancedSourceCoordinator(sourceCoordinator);
+        }
+    }
+
+    @Test
     void testGetSource() {
         final Source<Record<String>> testSource = new TestSource();
         final TestSink testSink = new TestSink();
@@ -362,6 +392,7 @@ class PipelineTests {
         private List<Record> records;
         private List<DataFlowComponent<Sink>> dataFlowComponents;
         private Source mockSource;
+        private AcknowledgementSet acknowledgementSet;
 
         @BeforeEach
         void setUp() {
@@ -397,8 +428,10 @@ class PipelineTests {
                 RouterCopyRecordStrategy routerCopyRecordStrategy = (RouterCopyRecordStrategy)a.getArgument(2);
                 Record rec = records.get(0);
                 event = mock(JacksonEvent.class);
-                eventHandle = mock(EventHandle.class);
+                eventHandle = mock(DefaultEventHandle.class);
+                acknowledgementSet = mock(AcknowledgementSet.class);
                 when(event.getEventHandle()).thenReturn(eventHandle);
+                when(eventHandle.getAcknowledgementSet()).thenReturn(acknowledgementSet);
                 when(rec.getData()).thenReturn(event);
                 routerCopyRecordStrategy.getRecord(rec);
                 routerCopyRecordStrategy.getRecord(rec);
@@ -408,7 +441,7 @@ class PipelineTests {
             Pipeline pipeline = createObjectUnderTest();
             when(mockSource.areAcknowledgementsEnabled()).thenReturn(true);
             pipeline.publishToSinks(records);
-            verify(acknowledgementSetManager).acquireEventReference(any(EventHandle.class));
+            verify(acknowledgementSetManager).acquireEventReference(any(DefaultEventHandle.class));
 
             verify(router)
                     .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
@@ -422,7 +455,7 @@ class PipelineTests {
                 RouterCopyRecordStrategy routerCopyRecordStrategy = (RouterCopyRecordStrategy)a.getArgument(2);
                 Record rec = records.get(0);
                 event = mock(JacksonEvent.class);
-                eventHandle = mock(EventHandle.class);
+                eventHandle = mock(DefaultEventHandle.class);
                 when(event.getEventHandle()).thenReturn(null);
                 when(rec.getData()).thenReturn(event);
                 routerCopyRecordStrategy.getRecord(rec);

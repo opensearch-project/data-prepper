@@ -7,29 +7,30 @@ package org.opensearch.dataprepper.plugins.source.dynamodb;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.DefaultEnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.PartitionFactory;
+import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.LeaderPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.function.Function;
 
 @DataPrepperPlugin(name = "dynamodb", pluginType = Source.class, pluginConfigurationType = DynamoDBSourceConfig.class)
-public class DynamoDBSource implements Source<Record<Event>> {
+public class DynamoDBSource implements Source<Record<Event>>, UsesEnhancedSourceCoordination {
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamoDBSource.class);
-
-    private static final String SOURCE_COORDINATOR_METRIC_PREFIX = "source-coordinator";
 
     private final PluginMetrics pluginMetrics;
 
@@ -37,41 +38,39 @@ public class DynamoDBSource implements Source<Record<Event>> {
 
     private final PluginFactory pluginFactory;
 
-    private final SourceCoordinationStore coordinationStore;
+    private final ClientFactory clientFactory;
 
-    private final EnhancedSourceCoordinator coordinator;
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
-    private final DynamoDBService dynamoDBService;
+    private EnhancedSourceCoordinator coordinator;
+
+    private DynamoDBService dynamoDBService;
 
 
     @DataPrepperPluginConstructor
-    public DynamoDBSource(PluginMetrics pluginMetrics, final DynamoDBSourceConfig sourceConfig, final PluginFactory pluginFactory, final PluginSetting pluginSetting, final AwsCredentialsSupplier awsCredentialsSupplier) {
+    public DynamoDBSource(final PluginMetrics pluginMetrics,
+                          final DynamoDBSourceConfig sourceConfig,
+                          final PluginFactory pluginFactory,
+                          final AwsCredentialsSupplier awsCredentialsSupplier,
+                          final AcknowledgementSetManager acknowledgementSetManager) {
         LOG.info("Create DynamoDB Source");
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
         this.pluginFactory = pluginFactory;
+        this.acknowledgementSetManager = acknowledgementSetManager;
 
-
-        // Load Coordination Store via PluginFactory
-        // This part will be updated.
-        PluginSetting sourceCoordinationStoreSetting = new PluginSetting(sourceConfig.getCoordinationStoreConfig().getPluginName(), sourceConfig.getCoordinationStoreConfig().getPluginSettings());
-        sourceCoordinationStoreSetting.setPipelineName(SOURCE_COORDINATOR_METRIC_PREFIX);
-        coordinationStore = pluginFactory.loadPlugin(SourceCoordinationStore.class, sourceCoordinationStoreSetting);
-        String pipelineName = pluginSetting.getPipelineName();
-
-        // Create and initialize coordinator
-        coordinator = new DefaultEnhancedSourceCoordinator(coordinationStore, pipelineName, new PartitionFactory());
-        coordinator.initialize();
-
-        ClientFactory clientFactory = new ClientFactory(awsCredentialsSupplier, sourceConfig.getAwsAuthenticationConfig());
-
-        // Create DynamoDB Service
-        dynamoDBService = new DynamoDBService(coordinator, clientFactory, sourceConfig, pluginMetrics);
-        dynamoDBService.init();
+        clientFactory = new ClientFactory(awsCredentialsSupplier, sourceConfig.getAwsAuthenticationConfig(), sourceConfig.getTableConfigs().get(0).getExportConfig());
     }
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
+        Objects.requireNonNull(coordinator);
+
+        coordinator.createPartition(new LeaderPartition());
+
+        // Create DynamoDB Service
+        dynamoDBService = new DynamoDBService(coordinator, clientFactory, sourceConfig, pluginMetrics, acknowledgementSetManager);
+
         LOG.info("Start DynamoDB service");
         dynamoDBService.start(buffer);
     }
@@ -86,4 +85,14 @@ public class DynamoDBSource implements Source<Record<Event>> {
 
     }
 
+    @Override
+    public void setEnhancedSourceCoordinator(final EnhancedSourceCoordinator sourceCoordinator) {
+        coordinator = sourceCoordinator;
+        coordinator.initialize();
+    }
+
+    @Override
+    public Function<SourcePartitionStoreItem, EnhancedSourcePartition> getPartitionFactory() {
+        return new PartitionFactory();
+    }
 }

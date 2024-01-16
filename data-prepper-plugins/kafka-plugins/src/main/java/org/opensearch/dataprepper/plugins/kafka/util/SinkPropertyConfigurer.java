@@ -6,20 +6,18 @@
 package org.opensearch.dataprepper.plugins.kafka.util;
 
 
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.TopicConfig;
-import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.connect.json.JsonSerializer;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 
 /**
@@ -107,26 +105,27 @@ public class SinkPropertyConfigurer {
 
     public static final String RETRY_BACKOFF_MS = "retry.backoff.ms";
 
-    public static Properties getProducerProperties(final KafkaSinkConfig kafkaSinkConfig) {
+    public static Properties getProducerProperties(final KafkaProducerConfig kafkaProducerConfig) {
         final Properties properties = new Properties();
 
-        setCommonServerProperties(properties, kafkaSinkConfig);
+        setCommonServerProperties(properties, kafkaProducerConfig);
 
-        setPropertiesForSerializer(properties, kafkaSinkConfig.getSerdeFormat());
-
-        if (kafkaSinkConfig.getSchemaConfig() != null) {
-            setSchemaProps(kafkaSinkConfig.getSerdeFormat(), kafkaSinkConfig.getSchemaConfig(), properties);
+        if (kafkaProducerConfig.getSchemaConfig() != null) {
+            setSchemaProps(kafkaProducerConfig.getSerdeFormat(), kafkaProducerConfig.getSchemaConfig(), properties);
         }
-        if (kafkaSinkConfig.getKafkaProducerProperties() != null) {
-            setPropertiesProviderByKafkaProducer(kafkaSinkConfig.getKafkaProducerProperties(), properties);
+        if (kafkaProducerConfig.getKafkaProducerProperties() != null) {
+            setPropertiesProviderByKafkaProducer(kafkaProducerConfig.getKafkaProducerProperties(), properties);
         }
 
-        setAuthProperties(kafkaSinkConfig, properties);
+        setAuthProperties(kafkaProducerConfig, properties);
 
         return properties;
     }
 
-    private static void setAuthProperties(final KafkaSinkConfig kafkaSinkConfig, final Properties properties) {
+    private static void setAuthProperties(final KafkaProducerConfig kafkaSinkConfig, final Properties properties) {
+        if(kafkaSinkConfig.getAuthConfig() == null)
+            return;
+
         if (kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig() != null) {
             final String sslEndpointAlgorithm = kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getSslEndpointAlgorithm();
             if (null != sslEndpointAlgorithm && !sslEndpointAlgorithm.isEmpty() && sslEndpointAlgorithm.equalsIgnoreCase("https")) {
@@ -144,20 +143,11 @@ public class SinkPropertyConfigurer {
 
     }
 
-    private static void setCommonServerProperties(final Properties properties, final KafkaSinkConfig kafkaSinkConfig) {
-        properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, kafkaSinkConfig.getBootStrapServers());
-        properties.put(CommonClientConfigs.SESSION_TIMEOUT_MS_CONFIG, SESSION_TIMEOUT_MS_CONFIG);
-    }
-
-    private static void setPropertiesForSerializer(final Properties properties, final String serdeFormat) {
-        properties.put(KEY_SERIALIZER, StringSerializer.class.getName());
-        if (serdeFormat.equalsIgnoreCase(MessageFormat.JSON.toString())) {
-            properties.put(VALUE_SERIALIZER, JsonSerializer.class.getName());
-        } else if (serdeFormat.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
-            properties.put(VALUE_SERIALIZER, KafkaAvroSerializer.class.getName());
-        } else {
-            properties.put(VALUE_SERIALIZER, StringSerializer.class.getName());
+    private static void setCommonServerProperties(final Properties properties, final KafkaProducerConfig kafkaSinkConfig) {
+        if (Objects.nonNull(kafkaSinkConfig.getBootstrapServers())){
+            properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, String.join(",", kafkaSinkConfig.getBootstrapServers()));
         }
+        properties.put(CommonClientConfigs.SESSION_TIMEOUT_MS_CONFIG, SESSION_TIMEOUT_MS_CONFIG);
     }
 
     private static void validateForRegistryURL(final String serdeFormat, final SchemaConfig schemaConfig) {
@@ -323,11 +313,11 @@ public class SinkPropertyConfigurer {
         LOG.info("Producer properties ends");
     }
 
-    public static Properties getPropertiesForAdmintClient(final KafkaSinkConfig kafkaSinkConfig) {
+    public static Properties getPropertiesForAdminClient(final KafkaProducerConfig kafkaProducerConfig) {
         Properties properties = new Properties();
-        setCommonServerProperties(properties, kafkaSinkConfig);
-        setAuthProperties(kafkaSinkConfig, properties);
-        properties.put(TopicConfig.RETENTION_MS_CONFIG,kafkaSinkConfig.getTopic().getRetentionPeriod());
+        setCommonServerProperties(properties, kafkaProducerConfig);
+        KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, LOG);
+        properties.put(TopicConfig.RETENTION_MS_CONFIG,kafkaProducerConfig.getTopic().getRetentionPeriod());
         return properties;
     }
 

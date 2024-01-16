@@ -7,21 +7,24 @@
 import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
+import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
 import com.bmuschko.gradle.docker.tasks.image.Dockerfile
 import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
 import com.bmuschko.gradle.docker.tasks.network.DockerCreateNetwork
 import com.bmuschko.gradle.docker.tasks.network.DockerRemoveNetwork
+import org.opensearch.dataprepper.gradle.end_to_end.DockerProviderTask
 
 plugins {
-    id 'com.bmuschko.docker-remote-api' version '9.3.2'
+    id 'com.bmuschko.docker-remote-api' version '9.4.0'
 }
+
 
 subprojects {
     apply plugin: 'com.bmuschko.docker-remote-api'
 
     ext {
         dataPrepperJarImageFilepath = 'bin/data-prepper/'
-        targetJavaVersion = project.hasProperty('endToEndJavaVersion') ? project.getProperty('endToEndJavaVersion') : '11'
+        targetJavaVersion = project.hasProperty('endToEndJavaVersion') ? project.getProperty('endToEndJavaVersion') : 'docker'
         targetOpenTelemetryVersion = project.hasProperty('openTelemetryVersion') ? project.getProperty('openTelemetryVersion') : "${libs.versions.opentelemetry.get()}"
         dataPrepperBaseImage = "eclipse-temurin:${targetJavaVersion}-jre"
     }
@@ -46,29 +49,49 @@ subprojects {
         integrationTestRuntime.extendsFrom testRuntime
     }
 
-    task copyDataPrepperJar(type: Copy) {
-        dependsOn project(':data-prepper-main').jar
-        dependsOn project(':data-prepper-plugins').jar
+    tasks.register('copyDataPrepperArchive', Copy) {
+        dependsOn ':release:archives:linux:linuxx64DistTar'
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-        from project(':data-prepper-main').jar.archivePath
-        from project(':data-prepper-main').configurations.runtimeClasspath
-        into("${project.buildDir}/docker/${dataPrepperJarImageFilepath}")
+        from project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archivePath
+        into("${project.buildDir}/docker/")
     }
 
-    task createDataPrepperDockerFile(type: Dockerfile) {
-        dependsOn copyDataPrepperJar
+    tasks.register('createDataPrepperDockerFile', Dockerfile) {
+        dependsOn copyDataPrepperArchive
+        dependsOn ':release:archives:linux:linuxx64DistTar'
         destFile = project.file('build/docker/Dockerfile')
+
         from(dataPrepperBaseImage)
-        workingDir('/app/data-prepper')
-        copyFile("${dataPrepperJarImageFilepath}", '/app/data-prepper/lib')
-        defaultCommand('java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute')
+        runCommand('mkdir -p /var/log/data-prepper')
+        addFile(project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archiveFileName.get(), '/usr/share')
+        runCommand("mv /usr/share/${project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archiveFileName.get().replace('.tar.gz', '')} /usr/share/data-prepper")
+        workingDir('/usr/share/data-prepper')
+        defaultCommand('bin/data-prepper')
     }
 
-    task createDataPrepperNetwork(type: DockerCreateNetwork) {
+    tasks.register('buildDataPrepperDockerImage', DockerBuildImage) {
+        dependsOn createDataPrepperDockerFile
+        dockerFile = file('build/docker/Dockerfile')
+        images.add('e2e-test-data-prepper')
+    }
+
+
+    tasks.register('dataPrepperDockerImage', DockerProviderTask) {
+        if(targetJavaVersion == 'docker') {
+            dependsOn ':release:docker:docker'
+            imageId = "${project.rootProject.name}:${project.version}"
+        }
+        else {
+            dependsOn 'createDataPrepperDockerFile'
+            imageId = buildDataPrepperDockerImage.getImageId()
+        }
+    }
+
+    tasks.register('createDataPrepperNetwork', DockerCreateNetwork) {
         networkName = 'data_prepper_network'
     }
 
-    task removeDataPrepperNetwork(type: DockerRemoveNetwork) {
+    tasks.register('removeDataPrepperNetwork', DockerRemoveNetwork) {
         dependsOn createDataPrepperNetwork
         networkId = createDataPrepperNetwork.getNetworkId()
     }
@@ -76,11 +99,11 @@ subprojects {
     /**
      * OpenSearch Docker tasks
      */
-    task pullOpenSearchDockerImage(type: DockerPullImage) {
+    tasks.register('pullOpenSearchDockerImage', DockerPullImage) {
         image = "opensearchproject/opensearch:${libs.versions.opensearch.get()}"
     }
 
-    task createOpenSearchDockerContainer(type: DockerCreateContainer) {
+    tasks.register('createOpenSearchDockerContainer', DockerCreateContainer) {
         dependsOn createDataPrepperNetwork
         dependsOn pullOpenSearchDockerImage
         targetImageId pullOpenSearchDockerImage.image
@@ -88,23 +111,23 @@ subprojects {
         hostConfig.portBindings = ['9200:9200', '9600:9600']
         hostConfig.autoRemove = true
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
-        envVars = ['discovery.type':'single-node']
+        envVars = ['discovery.type': 'single-node']
     }
 
-    task startOpenSearchDockerContainer(type: DockerStartContainer) {
+    tasks.register('startOpenSearchDockerContainer', DockerStartContainer) {
         dependsOn createOpenSearchDockerContainer
         targetContainerId createOpenSearchDockerContainer.getContainerId()
 
         doLast {
-            sleep(90*1000)
+            sleep(90 * 1000)
         }
     }
 
-    task stopOpenSearchDockerContainer(type: DockerStopContainer) {
+    tasks.register('stopOpenSearchDockerContainer', DockerStopContainer) {
         targetContainerId createOpenSearchDockerContainer.getContainerId()
 
         doLast {
-            sleep(5*1000)
+            sleep(5 * 1000)
         }
     }
 

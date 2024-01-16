@@ -4,6 +4,8 @@
  */
 package org.opensearch.dataprepper.plugins.sink.http.dlq;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -52,6 +54,8 @@ public class DlqPushHandler {
 
     private DlqProvider dlqProvider;
 
+    private ObjectWriter objectWriter;
+
     public DlqPushHandler(final String dlqFile,
                           final PluginFactory pluginFactory,
                           final String bucket,
@@ -60,6 +64,7 @@ public class DlqPushHandler {
                           final String dlqPathPrefix) {
         if(dlqFile != null) {
             this.dlqFile = dlqFile;
+            this.objectWriter = new ObjectMapper().writer();
         }else{
             this.dlqProvider = getDlqProvider(pluginFactory,bucket,stsRoleArn,awsRegion,dlqPathPrefix);
         }
@@ -76,7 +81,8 @@ public class DlqPushHandler {
     private void writeToFile(Object failedData) {
         try(BufferedWriter dlqFileWriter = Files.newBufferedWriter(Paths.get(dlqFile),
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-            dlqFileWriter.write(failedData.toString());
+            dlqFileWriter.write(objectWriter.writeValueAsString(failedData)+"\n");
+
         } catch (IOException e) {
             LOG.error("Exception while writing failed data to DLQ file Exception: ",e);
         }

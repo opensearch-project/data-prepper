@@ -12,7 +12,7 @@ jobs:
   build:
     strategy:
       matrix:
-        java: [11, 17]
+        java: [11, 17, 21]
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -25,7 +25,7 @@ jobs:
     - name: Checkout Data Prepper
       uses: actions/checkout@v2
     - name: Build with Gradle
-      run: ./gradlew --parallel build
+      run: ./gradlew --parallel --max-workers 2 build
     - name: Upload Unit Test Results
       if: always()
       uses: actions/upload-artifact@v3

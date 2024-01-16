@@ -43,6 +43,7 @@ import java.util.concurrent.TimeoutException;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
@@ -93,6 +94,9 @@ public class OTelLogsGrpcServiceTest {
     @Captor
     ArgumentCaptor<Collection<Record<OpenTelemetryLog>>> recordsCaptor;
 
+    @Captor
+    ArgumentCaptor<byte[]> bytesCaptor;
+
     private OTelLogsGrpcService objectUnderTest;
 
     @BeforeEach
@@ -136,6 +140,31 @@ public class OTelLogsGrpcServiceTest {
         final List<Record<OpenTelemetryLog>> capturedRecords = (List<Record<OpenTelemetryLog>>) recordsCaptor.getValue();
         assertThat(capturedRecords.size(), equalTo(1));
     }
+ 
+    @Test
+    public void export_with_ByteBuffer_responseObserverOnCompleted() throws Exception {
+        when(buffer.isByteBuffer()).thenReturn(true);
+        objectUnderTest = generateOTelLogsGrpcService(new OTelProtoCodec.OTelProtoDecoder());
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            objectUnderTest.export(LOGS_REQUEST, responseObserver);
+        }
+
+        verify(buffer, times(1)).writeBytes(bytesCaptor.capture(), eq(null), anyInt());
+        verify(responseObserver, times(1)).onNext(ExportLogsServiceResponse.newBuilder().build());
+        verify(responseObserver, times(1)).onCompleted();
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(successRequestsCounter, times(1)).increment();
+        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
+        assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(LOGS_REQUEST.getSerializedSize()));
+        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
+
+        final byte[] capturedBytes = (byte[]) bytesCaptor.getValue();
+        assertThat(capturedBytes.length, equalTo(LOGS_REQUEST.toByteArray().length));
+    }
+
     @Test
     public void export_BufferTimeout_responseObserverOnError() throws Exception {
         objectUnderTest = generateOTelLogsGrpcService(new OTelProtoCodec.OTelProtoDecoder());

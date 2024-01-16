@@ -20,7 +20,7 @@ import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
@@ -68,7 +68,7 @@ public class InMemorySourceCoordinationStoreTest {
     }
 
     @Test
-    void tryAcquireAvailablePartition_gets_item_from_inMemoryPartitionAccessor_and_modifies_it_correctly() {
+    void tryAcquireAvailablePartition_gets_item_from_inMemoryPartitionAccessor_and_modifies_it_correctly() throws InterruptedException {
         final String sourceIdentifier = UUID.randomUUID().toString();
         final String ownerId = UUID.randomUUID().toString();
         final Duration ownershipTimeout = Duration.ofMinutes(2);
@@ -79,12 +79,11 @@ public class InMemorySourceCoordinationStoreTest {
         given(inMemoryPartitionAccessor.getNextItem()).willReturn(Optional.of(item));
 
         final InMemorySourceCoordinationStore objectUnderTest = createObjectUnderTest();
-
         final Optional<SourcePartitionStoreItem> result = objectUnderTest.tryAcquireAvailablePartition(sourceIdentifier, ownerId, ownershipTimeout);
         assertThat(result.isPresent(), equalTo(true));
         assertThat(result.get(), equalTo(item));
         assertThat(result.get().getSourcePartitionStatus(), equalTo(SourcePartitionStatus.ASSIGNED));
-        assertThat(result.get().getPartitionOwnershipTimeout(), greaterThan(now.plus(ownershipTimeout)));
+        assertThat(result.get().getPartitionOwnershipTimeout(), greaterThanOrEqualTo(now.plus(ownershipTimeout)));
         assertThat(result.get().getPartitionOwner(), equalTo(ownerId));
 
     }
@@ -110,7 +109,7 @@ public class InMemorySourceCoordinationStoreTest {
         given(inMemoryPartitionAccessor.getItem(sourceIdentifier, partitionKey)).willReturn(Optional.of(mock(SourcePartitionStoreItem.class)));
         final InMemorySourceCoordinationStore objectUnderTest = createObjectUnderTest();
 
-        final boolean created = objectUnderTest.tryCreatePartitionItem(sourceIdentifier, partitionKey, status, closedCount, partitionProgressState);
+        final boolean created = objectUnderTest.tryCreatePartitionItem(sourceIdentifier, partitionKey, status, closedCount, partitionProgressState, false);
         assertThat(created, equalTo(false));
         verify(inMemoryPartitionAccessor, never()).queuePartition(any());
     }
@@ -130,7 +129,7 @@ public class InMemorySourceCoordinationStoreTest {
         doNothing().when(inMemoryPartitionAccessor).queuePartition(argumentCaptor.capture());
         final InMemorySourceCoordinationStore objectUnderTest = createObjectUnderTest();
 
-        final boolean created = objectUnderTest.tryCreatePartitionItem(sourceIdentifier, partitionKey, status, closedCount, partitionProgressState);
+        final boolean created = objectUnderTest.tryCreatePartitionItem(sourceIdentifier, partitionKey, status, closedCount, partitionProgressState, false);
         assertThat(created, equalTo(true));
 
         final InMemorySourcePartitionStoreItem createdItem = argumentCaptor.getValue();

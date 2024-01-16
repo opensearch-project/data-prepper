@@ -1,4 +1,4 @@
-pipeline1:
+pipeline-expiry-test:
   delay: 2
   source:
     in_memory:

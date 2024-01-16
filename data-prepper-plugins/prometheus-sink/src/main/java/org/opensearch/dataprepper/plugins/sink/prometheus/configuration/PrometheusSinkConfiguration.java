@@ -9,8 +9,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
+import org.opensearch.dataprepper.plugins.sink.prometheus.util.PrometheusSinkUtil;
 
+import java.net.URL;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,7 @@ public class PrometheusSinkConfiguration {
 
     private static final int DEFAULT_UPLOAD_RETRIES = 5;
 
-    static final boolean DEFAULT_SSL = false;
+    static final boolean DEFAULT_INSECURE = false;
 
     private static final String S3_PREFIX = "s3://";
 
@@ -29,22 +30,35 @@ public class PrometheusSinkConfiguration {
     static final String SSL = "ssl";
     static final String AWS_REGION = "awsRegion";
 
-
     public static final String STS_REGION = "sts_region";
 
     public static final String STS_ROLE_ARN = "sts_role_arn";
     static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
-    static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
+    public static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
     public static final String SSL_IS_ENABLED = "%s is enabled";
 
     public static final Duration DEFAULT_HTTP_RETRY_INTERVAL = Duration.ofSeconds(30);
 
+    private static final String HTTPS = "https";
+
+    private static final String HTTP = "http";
+
+    private static final String AWS_HOST_AMAZONAWS_COM = "amazonaws.com";
+
+    private static final String AWS_HOST_API_AWS = "api.aws";
+
+    private static final String AWS_HOST_ON_AWS = "on.aws";
+
+    private static final String DEFAULT_ENCODING = "snappy";
+
+    private static final String DEFAULT_CONTENT_TYPE = "application/x-protobuf";
+
+    private static final String DEFAULT_REMOTE_WRITE_VERSION = "0.1.0";
+
+
     @NotNull
     @JsonProperty("url")
     private String url;
-
-    @JsonProperty("codec")
-    private PluginModel codec;
 
     @JsonProperty("http_method")
     private HTTPMethodOptions httpMethod = HTTPMethodOptions.POST;
@@ -63,16 +77,6 @@ public class PrometheusSinkConfiguration {
 
     @JsonProperty("ssl_key_file")
     private String sslKeyFile;
-
-    @JsonProperty("aws_sigv4")
-    private boolean awsSigv4;
-
-    @JsonProperty("buffer_type")
-    private BufferTypeOptions bufferType = BufferTypeOptions.INMEMORY;
-
-    @NotNull
-    @JsonProperty("threshold")
-    private ThresholdOptions thresholdOptions;
 
     @JsonProperty("max_retries")
     private int maxUploadRetries = DEFAULT_UPLOAD_RETRIES;
@@ -102,12 +106,26 @@ public class PrometheusSinkConfiguration {
     @JsonProperty("acm_cert_issue_time_out_millis")
     private long acmCertIssueTimeOutMillis = DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS;
 
-    @JsonProperty("ssl")
-    private boolean ssl = DEFAULT_SSL;
+    @JsonProperty("insecure")
+    private boolean insecure = DEFAULT_INSECURE;
+
+    @JsonProperty("insecure_skip_verify")
+    private boolean insecureSkipVerify = DEFAULT_INSECURE;
 
     @JsonProperty("http_retry_interval")
     private Duration httpRetryInterval = DEFAULT_HTTP_RETRY_INTERVAL;
 
+    @JsonProperty("encoding")
+    private String encoding = DEFAULT_ENCODING;
+
+    @JsonProperty("content_type")
+    private String contentType = DEFAULT_CONTENT_TYPE;
+
+    @JsonProperty("remote_write_version")
+    private String remoteWriteVersion = DEFAULT_REMOTE_WRITE_VERSION;
+
+    @JsonProperty("request_timout")
+    private Duration requestTimout;
 
     private boolean sslCertAndKeyFileInS3;
 
@@ -115,9 +133,8 @@ public class PrometheusSinkConfiguration {
         return url;
     }
 
-    public boolean isSsl() {
-        return ssl;
-    }
+    public boolean isInsecureSkipVerify() {
+        return insecureSkipVerify; }
 
     public Duration getHttpRetryInterval() {
         return httpRetryInterval;
@@ -144,7 +161,7 @@ public class PrometheusSinkConfiguration {
         if (useAcmCertForSSL) {
             validateSSLArgument(String.format(SSL_IS_ENABLED, useAcmCertForSSL), acmCertificateArn, acmCertificateArn);
             validateSSLArgument(String.format(SSL_IS_ENABLED, useAcmCertForSSL), awsAuthenticationOptions.getAwsRegion().toString(), AWS_REGION);
-        } else if(ssl) {
+        } else if(!insecureSkipVerify) {
             validateSSLCertificateFiles();
             certAndKeyFileInS3 = isSSLCertificateLocatedInS3();
             if (certAndKeyFileInS3) {
@@ -173,10 +190,6 @@ public class PrometheusSinkConfiguration {
         return acmCertificateArn;
     }
 
-    public PluginModel getCodec() {
-        return codec;
-    }
-
     public HTTPMethodOptions getHttpMethod() {
         return httpMethod;
     }
@@ -201,18 +214,6 @@ public class PrometheusSinkConfiguration {
         return sslKeyFile;
     }
 
-    public boolean isAwsSigv4() {
-        return awsSigv4;
-    }
-
-    public BufferTypeOptions getBufferType() {
-        return bufferType;
-    }
-
-    public ThresholdOptions getThresholdOptions() {
-        return thresholdOptions;
-    }
-
     public int getMaxUploadRetries() {
         return maxUploadRetries;
     }
@@ -233,6 +234,13 @@ public class PrometheusSinkConfiguration {
         return dlq;
     }
 
+    public boolean isValidAWSUrl() {
+        URL parsedUrl = PrometheusSinkUtil.getURLByUrlString(url);
+        if(parsedUrl.getProtocol().equals(HTTPS) && (parsedUrl.getHost().contains(AWS_HOST_AMAZONAWS_COM) ||parsedUrl.getHost().contains(AWS_HOST_API_AWS) || parsedUrl.getHost().contains(AWS_HOST_ON_AWS))){
+            return true;
+        }
+        return false;
+    }
 
     public String getDlqStsRoleARN(){
         return Objects.nonNull(getDlqPluginSetting().get(STS_ROLE_ARN)) ?
@@ -248,5 +256,30 @@ public class PrometheusSinkConfiguration {
 
     public  Map<String, Object> getDlqPluginSetting(){
         return dlq != null ? dlq.getPluginSettings() : Map.of();
+    }
+
+    public String getEncoding() {
+        return encoding;
+    }
+
+    public String getContentType() {
+        return contentType;
+    }
+
+    public String getRemoteWriteVersion() {
+        return remoteWriteVersion;
+    }
+
+    public boolean isInsecure() {
+        return insecure;
+    }
+
+    public Duration getRequestTimout() {
+        return requestTimout;
+    }
+
+    public boolean isHttpUrl() {
+        URL parsedUrl = PrometheusSinkUtil.getURLByUrlString(url);
+        return parsedUrl.getProtocol().equals(HTTP);
     }
 }

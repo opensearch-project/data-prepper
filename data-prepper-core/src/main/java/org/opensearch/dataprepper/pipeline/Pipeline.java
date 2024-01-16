@@ -15,7 +15,11 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
@@ -38,6 +42,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -236,6 +241,10 @@ public class Pipeline {
                 final Class<?> partionProgressModelClass = ((UsesSourceCoordination) source).getPartitionProgressStateClass();
                 final SourceCoordinator sourceCoordinator = sourceCoordinatorFactory.provideSourceCoordinator(partionProgressModelClass, name);
                 ((UsesSourceCoordination) source).setSourceCoordinator(sourceCoordinator);
+            } else if (source instanceof UsesEnhancedSourceCoordination) {
+                final Function<SourcePartitionStoreItem, EnhancedSourcePartition> partitionFactory = ((UsesEnhancedSourceCoordination) source).getPartitionFactory();
+                final EnhancedSourceCoordinator enhancedSourceCoordinator = sourceCoordinatorFactory.provideEnhancedSourceCoordinator(partitionFactory, name);
+                ((UsesEnhancedSourceCoordination) source).setEnhancedSourceCoordinator(enhancedSourceCoordinator);
             }
 
             sinkExecutorService.submit(() -> {
@@ -266,9 +275,9 @@ public class Pipeline {
      * 6. Stopping the sink ExecutorService
      */
     public synchronized void shutdown() {
-        LOG.info("Pipeline [{}] - Received shutdown signal with processor shutdown timeout {} and sink shutdown timeout {}." +
-                        " Initiating the shutdown process",
-                name, processorShutdownTimeout, sinkShutdownTimeout);
+        LOG.info("Pipeline [{}] - Received shutdown signal with buffer drain timeout {}, processor shutdown timeout {}, " +
+                        "and sink shutdown timeout {}. Initiating the shutdown process",
+                name, buffer.getDrainTimeout(), processorShutdownTimeout, sinkShutdownTimeout);
         try {
             source.stop();
             stopRequested.set(true);
@@ -277,9 +286,11 @@ public class Pipeline {
                     "proceeding with termination of process workers", name, ex);
         }
 
-        shutdownExecutorService(processorExecutorService, processorShutdownTimeout.toMillis(), "processor");
+        shutdownExecutorService(processorExecutorService, buffer.getDrainTimeout().toMillis() + processorShutdownTimeout.toMillis(), "processor");
 
         processorSets.forEach(processorSet -> processorSet.forEach(Processor::shutdown));
+        buffer.shutdown();
+
         sinks.stream()
                 .map(DataFlowComponent::getComponent)
                 .forEach(Sink::shutdown);
@@ -333,8 +344,11 @@ public class Pipeline {
                     InactiveAcknowledgementSetManager.getInstance(),
                 sinks);
         router.route(records, sinks, getRecordStrategy, (sink, events) ->
-                sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events), null))
-        );
+                sinkFutures.add(sinkExecutorService.submit(() -> {
+                    sink.updateLatencyMetrics(events);
+                    sink.output(events);
+                }, null))
+            );
         return sinkFutures;
     }
 }

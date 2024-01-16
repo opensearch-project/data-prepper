@@ -27,6 +27,8 @@ public class DefaultEventMetadata implements EventMetadata {
 
     private final Instant timeReceived;
 
+    private Instant externalOriginationTime;
+
     private Map<String, Object> attributes;
 
     private Set<String> tags;
@@ -43,6 +45,7 @@ public class DefaultEventMetadata implements EventMetadata {
         this.attributes = builder.attributes == null ? new HashMap<>() : new HashMap<>(builder.attributes);
 
         this.tags = builder.tags == null ? new HashSet<>() : new HashSet(builder.tags);
+        this.externalOriginationTime = null;
     }
 
     private DefaultEventMetadata(final EventMetadata eventMetadata) {
@@ -50,6 +53,7 @@ public class DefaultEventMetadata implements EventMetadata {
         this.timeReceived = eventMetadata.getTimeReceived();
         this.attributes = new HashMap<>(eventMetadata.getAttributes());
         this.tags = new HashSet<>(eventMetadata.getTags());
+        this.externalOriginationTime = null;
     }
 
     @Override
@@ -60,6 +64,16 @@ public class DefaultEventMetadata implements EventMetadata {
     @Override
     public Instant getTimeReceived() {
         return timeReceived;
+    }
+
+    @Override
+    public Instant getExternalOriginationTime() {
+        return externalOriginationTime;
+    }
+
+    @Override
+    public void setExternalOriginationTime(Instant externalOriginationTime) {
+        this.externalOriginationTime = externalOriginationTime;
     }
 
     @Override

@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
 
 import java.util.Collection;
 
@@ -22,6 +23,7 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
     protected static final int DEFAULT_WAIT_TIME_MS = 1000;
     protected final PluginMetrics pluginMetrics;
     private final Counter recordsInCounter;
+    private final SinkLatencyMetrics latencyMetrics;
     private final Timer timeElapsedTimer;
     private Thread retryThread;
     private int maxRetries;
@@ -31,6 +33,7 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
         this.pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
         recordsInCounter = pluginMetrics.counter(MetricNames.RECORDS_IN);
         timeElapsedTimer = pluginMetrics.timer(MetricNames.TIME_ELAPSED);
+        this.latencyMetrics = new SinkLatencyMetrics(pluginMetrics);
         retryThread = null;
         this.maxRetries = numRetries;
         this.waitTimeMs = waitTimeMs;
@@ -74,6 +77,20 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
     public void shutdown() {
         if (retryThread != null) {
             retryThread.stop();
+        }
+    }
+
+    @Override
+    public void updateLatencyMetrics(Collection<T> records) {
+        for (final Record record : records) {
+            if (record.getData() instanceof Event) {
+                Event event = (Event)record.getData();
+                event.getEventHandle().onRelease((eventHandle, result) -> {
+                    if (result) {
+                        latencyMetrics.update(eventHandle);
+                    }
+                });
+            }
         }
     }
 

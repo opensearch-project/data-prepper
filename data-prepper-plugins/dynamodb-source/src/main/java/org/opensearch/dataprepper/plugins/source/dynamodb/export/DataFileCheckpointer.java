@@ -5,12 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.DataFileProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -19,6 +20,8 @@ import java.util.Optional;
  */
 public class DataFileCheckpointer {
     private static final Logger LOG = LoggerFactory.getLogger(DataFileCheckpointer.class);
+
+    static final Duration CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE = Duration.ofMinutes(5);
 
 
     private final EnhancedSourceCoordinator enhancedSourceCoordinator;
@@ -47,7 +50,7 @@ public class DataFileCheckpointer {
     public void checkpoint(int lineNumber) {
         LOG.debug("Checkpoint data file " + dataFilePartition.getKey() + " with line number " + lineNumber);
         setProgressState(lineNumber);
-        enhancedSourceCoordinator.saveProgressStateForPartition(dataFilePartition);
+        enhancedSourceCoordinator.saveProgressStateForPartition(dataFilePartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
     }
 
     /**
@@ -74,5 +77,8 @@ public class DataFileCheckpointer {
         enhancedSourceCoordinator.giveUpPartition(dataFilePartition);
     }
 
+    public void updateDatafileForAcknowledgmentWait(final Duration acknowledgmentSetTimeout) {
+        enhancedSourceCoordinator.saveProgressStateForPartition(dataFilePartition, acknowledgmentSetTimeout);
+    }
 
 }

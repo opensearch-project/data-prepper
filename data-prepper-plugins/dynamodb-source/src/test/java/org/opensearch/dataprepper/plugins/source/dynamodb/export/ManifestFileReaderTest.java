@@ -50,7 +50,7 @@ class ManifestFileReaderTest {
         final String manifestFilesS3Key = UUID.randomUUID().toString();
         final String outputFormat = "DYNAMODB_JSON";
         long billedSizeBytes = random.nextLong();
-        int itemCount = random.nextInt(10000);
+        long itemCount = random.nextLong();
 
 
         String summaryData = String.format("{\"version\":\"%s\",\"exportArn\": \"%s\",\"startTime\":\"%s\",\"endTime\":\"%s\",\"tableArn\":\"%s\",\"tableId\":\"%s\",\"exportTime\":\"%s\",\"s3Bucket\":\"%s\",\"s3Prefix\":\"%s\",\"s3SseAlgorithm\":\"%s\",\"s3SseKmsKeyId\":null,\"manifestFilesS3Key\":\"%s\",\"billedSizeBytes\":%d,\"itemCount\":%d,\"outputFormat\":\"%s\"}",

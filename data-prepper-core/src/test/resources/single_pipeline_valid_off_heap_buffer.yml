@@ -1,0 +1,7 @@
+test-pipeline-1:
+  source:
+    stdin:
+  buffer:
+    test_off_heap:
+  sink:
+    - stdout:

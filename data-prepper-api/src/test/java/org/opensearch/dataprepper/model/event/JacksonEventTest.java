@@ -30,18 +30,17 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
 
 public class JacksonEventTest {
-
-    class TestEventHandle implements EventHandle {
-        @Override
-        public void release(boolean result) {
-        }
-    }
 
     private Event event;
 
@@ -393,6 +392,8 @@ public class JacksonEventTest {
                 .build();
 
         assertThat(event.getMetadata().getEventType(), is(equalTo(eventType)));
+        assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(notNullValue()));
     }
 
     @Test
@@ -406,6 +407,8 @@ public class JacksonEventTest {
                 .build();
 
         assertThat(event.getMetadata().getTimeReceived(), is(equalTo(now)));
+        assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(equalTo(now)));
     }
 
     @Test
@@ -417,6 +420,8 @@ public class JacksonEventTest {
 
         assertThat(event, is(notNullValue()));
         assertThat(event.get("message", String.class), is(equalTo(message)));
+        assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(notNullValue()));
     }
 
     @Test
@@ -531,14 +536,16 @@ public class JacksonEventTest {
     }
 
     @Test
-    public void testBuild_withFormatStringWithExpressionEvaluator() {
+    public void formatString_with_expression_evaluator_catches_exception_when_Event_get_throws_exception() {
 
         final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
         final String expressionStatement = UUID.randomUUID().toString();
+        final String invalidKeyExpression = "getMetadata(\"metadata-key\")";
+        final String invalidKeyExpressionResult = UUID.randomUUID().toString();
         final String expressionEvaluationResult = UUID.randomUUID().toString();
 
-        final String formatString = "${foo}-${" + expressionStatement + "}-test-string";
-        final String finalString = "bar-" + expressionEvaluationResult + "-test-string";
+        final String formatString = "${" + invalidKeyExpression + "}-${" + expressionStatement + "}-test-string";
+        final String finalString = invalidKeyExpressionResult + "-" + expressionEvaluationResult + "-test-string";
 
         event = JacksonEvent.builder()
                 .withEventType(eventType)
@@ -550,6 +557,35 @@ public class JacksonEventTest {
 
         when(expressionEvaluator.isValidExpressionStatement("foo")).thenReturn(false);
         when(expressionEvaluator.isValidExpressionStatement(expressionStatement)).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement(invalidKeyExpression)).thenReturn(true);
+        when(expressionEvaluator.evaluate(invalidKeyExpression, event)).thenReturn(invalidKeyExpressionResult);
+        when(expressionEvaluator.evaluate(expressionStatement, event)).thenReturn(expressionEvaluationResult);
+
+        assertThat(event.formatString(formatString, expressionEvaluator), is(equalTo(finalString)));
+    }
+
+    @Test
+    public void testBuild_withFormatStringWithExpressionEvaluator() {
+
+        final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+        final String expressionStatement = UUID.randomUUID().toString();
+        final String expressionEvaluationResult = UUID.randomUUID().toString();
+        final String eventKey = "foo";
+
+        final String formatString = "${" + eventKey + "}-${" + expressionStatement + "}-test-string";
+        final String finalString = "bar-" + expressionEvaluationResult + "-test-string";
+
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+
+        final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
+
+        verify(expressionEvaluator, times(0)).isValidExpressionStatement(eventKey);
+        when(expressionEvaluator.isValidExpressionStatement(expressionStatement)).thenReturn(true);
+        verify(expressionEvaluator, never()).evaluate(eq("foo"), any(Event.class));
         when(expressionEvaluator.evaluate(expressionStatement, event)).thenReturn(expressionEvaluationResult);
 
         assertThat(event.formatString(formatString, expressionEvaluator), is(equalTo(finalString)));
@@ -623,6 +659,8 @@ public class JacksonEventTest {
 
         assertThat(createdEvent, notNullValue());
         assertThat(createdEvent, not(sameInstance(originalEvent)));
+        assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(notNullValue()));
 
         assertThat(createdEvent.toMap(), equalTo(dataObject));
         assertThat(createdEvent.getJsonNode(), not(sameInstance(originalEvent.getJsonNode())));
@@ -650,19 +688,6 @@ public class JacksonEventTest {
 
         assertThat(createdEvent.getMetadata(), notNullValue());
         assertThat(createdEvent.getMetadata(), equalTo(eventMetadata));
-    }
-
-    @Test
-    void testEventHandleGetAndSet() {
-        EventHandle testEventHandle = new TestEventHandle();
-        final String jsonString = "{\"foo\": \"bar\"}";
-
-        final JacksonEvent event = JacksonEvent.builder()
-                .withEventType(eventType)
-                .withData(jsonString)
-                .build();
-        event.setEventHandle(testEventHandle);
-        assertThat(event.getEventHandle(), equalTo(testEventHandle));
     }
 
     @Test
@@ -774,6 +799,11 @@ public class JacksonEventTest {
 
     }
 
+    @ParameterizedTest
+    @CsvSource(value = {"test_key, true", "/test_key, true", "inv(alid, false", "getMetadata(\"test_key\"), false"})
+    void isValidEventKey_returns_expected_result(final String key, final boolean isValid) {
+        assertThat(JacksonEvent.isValidEventKey(key), equalTo(isValid));
+    }
 
     private static Map<String, Object> createComplexDataMap() {
         final Map<String, Object> dataObject = new HashMap<>();

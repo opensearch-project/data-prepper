@@ -19,6 +19,8 @@ import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
+import org.opensearch.dataprepper.model.codec.JsonDecoder;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
@@ -54,6 +56,7 @@ public class HTTPSource implements Source<Record<Log>> {
     private Server server;
     private final PluginMetrics pluginMetrics;
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
+    private ByteDecoder byteDecoder;
 
     @DataPrepperPluginConstructor
     public HTTPSource(final HTTPSourceConfig sourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
@@ -61,6 +64,7 @@ public class HTTPSource implements Source<Record<Log>> {
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.pipelineName = pipelineDescription.getPipelineName();
+        this.byteDecoder = new JsonDecoder();
         this.certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
         final PluginModel authenticationConfiguration = sourceConfig.getAuthentication();
         final PluginSetting authenticationPluginSetting;
@@ -120,6 +124,9 @@ public class HTTPSource implements Source<Record<Log>> {
 
             sb.maxNumConnections(sourceConfig.getMaxConnectionCount());
             sb.requestTimeout(Duration.ofMillis(sourceConfig.getRequestTimeoutInMillis()));
+            if(sourceConfig.getMaxRequestLength() != null) {
+                sb.maxRequestLength(sourceConfig.getMaxRequestLength().getBytes());
+            }
             final int threads = sourceConfig.getThreadCount();
             final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
             sb.blockingTaskExecutor(blockingTaskExecutor, true);
@@ -130,7 +137,7 @@ public class HTTPSource implements Source<Record<Log>> {
 
             final String httpSourcePath = sourceConfig.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
             sb.decorator(httpSourcePath, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
-            final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getBufferTimeoutInMillis(), buffer, pluginMetrics);
+            final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getBufferTimeoutInMillis(), buffer, byteDecoder, pluginMetrics);
 
             if (CompressionOption.NONE.equals(sourceConfig.getCompression())) {
                 sb.annotatedService(httpSourcePath, logHTTPService, httpRequestExceptionHandler);
@@ -159,6 +166,11 @@ public class HTTPSource implements Source<Record<Log>> {
             throw new RuntimeException(ex);
         }
         LOG.info("Started http source on port " + sourceConfig.getPort() + "...");
+    }
+
+    @Override
+    public ByteDecoder getDecoder() {
+        return byteDecoder;
     }
 
     @Override

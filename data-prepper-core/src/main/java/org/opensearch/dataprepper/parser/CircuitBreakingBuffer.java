@@ -5,13 +5,12 @@
 
 package org.opensearch.dataprepper.parser;
 
-import org.opensearch.dataprepper.breaker.CircuitBreaker;
-import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.buffer.DelegatingBuffer;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collection;
-import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 import static java.util.Objects.requireNonNull;
@@ -23,8 +22,7 @@ import static java.util.Objects.requireNonNull;
  * @param <T> The type of record.
  * @since 2.1
  */
-class CircuitBreakingBuffer<T extends Record<?>> implements Buffer<T> {
-    private final Buffer<T> buffer;
+class CircuitBreakingBuffer<T extends Record<?>> extends DelegatingBuffer<T> implements Buffer<T> {
     private final CircuitBreaker circuitBreaker;
 
     /**
@@ -34,7 +32,7 @@ class CircuitBreakingBuffer<T extends Record<?>> implements Buffer<T> {
      * @param circuitBreaker The circuit breaker to check
      */
     public CircuitBreakingBuffer(final Buffer<T> buffer, final CircuitBreaker circuitBreaker) {
-        this.buffer = requireNonNull(buffer);
+        super(buffer);
         this.circuitBreaker = requireNonNull(circuitBreaker);
     }
 
@@ -42,33 +40,25 @@ class CircuitBreakingBuffer<T extends Record<?>> implements Buffer<T> {
     public void write(final T record, final int timeoutInMillis) throws TimeoutException {
         checkBreaker();
 
-        buffer.write(record, timeoutInMillis);
+        super.write(record, timeoutInMillis);
     }
 
     @Override
     public void writeAll(final Collection<T> records, final int timeoutInMillis) throws Exception {
         checkBreaker();
 
-        buffer.writeAll(records, timeoutInMillis);
+        super.writeAll(records, timeoutInMillis);
+    }
+
+    @Override
+    public void writeBytes(final byte[] bytes, final String key, final int timeoutInMillis) throws Exception {
+        checkBreaker();
+
+        super.writeBytes(bytes, key, timeoutInMillis);
     }
 
     private void checkBreaker() throws TimeoutException {
         if(circuitBreaker.isOpen())
             throw new TimeoutException("Circuit breaker is open. Unable to write to buffer.");
-    }
-
-    @Override
-    public Map.Entry<Collection<T>, CheckpointState> read(final int timeoutInMillis) {
-        return buffer.read(timeoutInMillis);
-    }
-
-    @Override
-    public void checkpoint(final CheckpointState checkpointState) {
-        buffer.checkpoint(checkpointState);
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return buffer.isEmpty();
     }
 }

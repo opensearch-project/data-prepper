@@ -15,8 +15,10 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import java.util.Collections;
 import java.util.StringJoiner;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -38,6 +40,18 @@ public class PluginMetricsTest {
         when(pluginSetting.getPipelineName()).thenReturn(PIPELINE_NAME);
 
         objectUnderTest = PluginMetrics.fromPluginSetting(pluginSetting);
+    }
+
+    @Test
+    public void testCounterWithMetricsPrefix() {
+
+        final String prefix = UUID.randomUUID().toString();
+
+        objectUnderTest = PluginMetrics.fromPrefix(prefix);
+        final Counter counter = objectUnderTest.counter("counter");
+        assertEquals(
+                prefix + MetricNames.DELIMITER + "counter",
+                counter.getId().getName());
     }
 
     @Test
@@ -124,6 +138,18 @@ public class PluginMetricsTest {
                         .add("gauge").toString()).meter());
         assertEquals(3, gauge.length());
     }
+
+    @Test
+    public void testReferenceGaugeWithTags() {
+        final String testString = "abc";
+        final String gauge = objectUnderTest.gaugeWithTags("gauge", emptyList(), testString, String::length);
+        assertNotNull(
+                Metrics.globalRegistry.get(new StringJoiner(MetricNames.DELIMITER)
+                        .add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add("gauge").toString()).meter());
+        assertEquals(3, gauge.length());
+    }
+
 
     @Test
     public void testEmptyPipelineName() {

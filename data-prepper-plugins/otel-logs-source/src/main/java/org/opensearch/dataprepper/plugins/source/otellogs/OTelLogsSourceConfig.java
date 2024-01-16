@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.StringUtils;
+import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 
@@ -99,6 +100,9 @@ public class OTelLogsSourceConfig {
 
     @JsonProperty(COMPRESSION)
     private CompressionOption compression = CompressionOption.NONE;
+
+    @JsonProperty("max_request_length")
+    private ByteCount maxRequestLength;
 
     @AssertTrue(message = "path should start with /")
     boolean isPathValid() {
@@ -208,6 +212,10 @@ public class OTelLogsSourceConfig {
 
     public CompressionOption getCompression() {
         return compression;
+    }
+
+    public ByteCount getMaxRequestLength() {
+        return maxRequestLength;
     }
 }
 

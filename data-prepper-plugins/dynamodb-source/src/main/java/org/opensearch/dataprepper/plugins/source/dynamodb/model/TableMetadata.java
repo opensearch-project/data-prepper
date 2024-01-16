@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.model;
 
+import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamStartPosition;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,12 +19,11 @@ public class TableMetadata {
     private static final String REQUIRE_EXPORT_KEY = "export";
     private static final String REQUIRE_STREAM_KEY = "stream";
 
-
     private final String partitionKeyAttributeName;
 
     private final String sortKeyAttributeName;
 
-    private final String streamStartPosition;
+    private final StreamStartPosition streamStartPosition;
 
     private final String streamArn;
 
@@ -34,6 +35,8 @@ public class TableMetadata {
 
     private final String exportPrefix;
 
+    private final String exportKmsKeyId;
+
     private TableMetadata(Builder builder) {
         this.partitionKeyAttributeName = builder.partitionKeyAttributeName;
         this.sortKeyAttributeName = builder.sortKeyAttributeName;
@@ -43,6 +46,7 @@ public class TableMetadata {
         this.exportBucket = builder.exportBucket;
         this.exportPrefix = builder.exportPrefix;
         this.streamStartPosition = builder.streamStartPosition;
+        this.exportKmsKeyId = builder.exportKmsKeyId;
 
     }
 
@@ -68,7 +72,9 @@ public class TableMetadata {
 
         private String exportPrefix;
 
-        private String streamStartPosition;
+        private String exportKmsKeyId;
+
+        private StreamStartPosition streamStartPosition;
 
 
         public Builder partitionKeyAttributeName(String partitionKeyAttributeName) {
@@ -106,7 +112,12 @@ public class TableMetadata {
             return this;
         }
 
-        public Builder streamStartPosition(String streamStartPosition) {
+        public Builder exportKmsKeyId(String exportKmsKeyId) {
+            this.exportKmsKeyId = exportKmsKeyId;
+            return this;
+        }
+
+        public Builder streamStartPosition(StreamStartPosition streamStartPosition) {
             this.streamStartPosition = streamStartPosition;
             return this;
         }
@@ -160,7 +171,7 @@ public class TableMetadata {
         return exportRequired;
     }
 
-    public String getStreamStartPosition() {
+    public StreamStartPosition getStreamStartPosition() {
         return streamStartPosition;
     }
 
@@ -170,5 +181,9 @@ public class TableMetadata {
 
     public String getExportPrefix() {
         return exportPrefix;
+    }
+
+    public String getExportKmsKeyId() {
+        return exportKmsKeyId;
     }
 }

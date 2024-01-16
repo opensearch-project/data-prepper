@@ -59,10 +59,10 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.s3.S3ObjectWorker.RECORDS_TO_ACCUMULATE_TO_SAVE_STATE;
 
 @ExtendWith(MockitoExtension.class)
 class S3ObjectWorkerTest {
@@ -306,14 +306,12 @@ class S3ObjectWorkerTest {
         final Record<Event> record = mock(Record.class);
         final Event event = mock(Event.class);
         when(record.getData()).thenReturn(event);
-        when(bufferAccumulator.getTotalWritten()).thenReturn(RECORDS_TO_ACCUMULATE_TO_SAVE_STATE + 1);
-
         consumerUnderTest.accept(record);
 
         final InOrder inOrder = inOrder(eventConsumer, bufferAccumulator, sourceCoordinator);
         inOrder.verify(eventConsumer).accept(event, s3ObjectReference);
         inOrder.verify(bufferAccumulator).add(record);
-        inOrder.verify(sourceCoordinator).saveProgressStateForPartition(testPartitionKey, null);
+        inOrder.verify(sourceCoordinator, times(0)).saveProgressStateForPartition(testPartitionKey, null);
     }
 
     @Test

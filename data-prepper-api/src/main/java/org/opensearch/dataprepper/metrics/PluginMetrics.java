@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.metrics;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
@@ -40,6 +41,16 @@ public class PluginMetrics {
         return new PluginMetrics(new StringJoiner(MetricNames.DELIMITER)
                 .add(componentScope)
                 .add(componentId).toString());
+    }
+
+    /**
+     * Provides reference to APIs that register timer, counter, gauge into global registry.
+     *
+     * @param metricsPrefix the prefix to provide to metrics
+     * @return The {@link PluginMetrics}
+     */
+    public static PluginMetrics fromPrefix(final String metricsPrefix) {
+        return new PluginMetrics(metricsPrefix);
     }
 
     private  PluginMetrics(final String metricsPrefix) {
@@ -78,8 +89,11 @@ public class PluginMetrics {
         return Metrics.gauge(getMeterName(name), obj, valueFunction);
     }
 
+    public <T> T gaugeWithTags(String name, Iterable<Tag> tags, T obj, ToDoubleFunction<T> valueFunction) {
+        return Metrics.gauge(getMeterName(name), tags, obj, valueFunction);
+    }
+
     private String getMeterName(final String name) {
         return new StringJoiner(MetricNames.DELIMITER).add(metricsPrefix).add(name).toString();
     }
-
 }

@@ -13,7 +13,6 @@ import java.util.Map;
  * The <b>RecordMetadata</b> class provides a wrapper around the ImmutableMap making metadata management easier for the
  * user to access.
  */
-@Deprecated
 public class RecordMetadata {
     private static final RecordMetadata DEFAULT_METADATA = new RecordMetadata();
 

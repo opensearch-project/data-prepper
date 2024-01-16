@@ -5,11 +5,17 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.AbortableInputStream;
@@ -34,6 +40,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
@@ -44,6 +51,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.AWS_OPTION;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_ROOT_KEY;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_VERSION_EXPRESSION;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.SERVERLESS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.TEMPLATE_TYPE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
@@ -52,6 +60,8 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexCons
 
 @SuppressWarnings("unchecked")
 public class IndexConfigurationTests {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private static final String DEFAULT_TEMPLATE_FILE = "test-template-withshards.json";
     private static final String TEST_CUSTOM_INDEX_POLICY_FILE = "test-custom-index-policy-file.json";
 
@@ -193,7 +203,7 @@ public class IndexConfigurationTests {
     }
 
     @Test
-    public void testValidCustomWithNoTemplateFile() throws MalformedURLException {
+    public void testValidCustomWithNoTemplateFile() {
         final String testIndexAlias = "foo";
         IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexAlias(testIndexAlias)
@@ -264,6 +274,43 @@ public class IndexConfigurationTests {
     }
 
     @Test
+    public void testValidCustomWithTemplateContent() throws JsonProcessingException {
+        final String testIndexAlias = "test";
+        IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexAlias(testIndexAlias)
+                .withTemplateContent(createTemplateContent())
+                .withBulkSize(10)
+                .build();
+
+        assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
+        assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
+        assertEquals(10, indexConfiguration.getBulkSize());
+        assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
+        assertThat(indexConfiguration.getIndexTemplate(), equalTo(OBJECT_MAPPER.readValue(createTemplateContent(), new TypeReference<>() {})));
+    }
+
+    @Test
+    public void readIndexConfigWithTemplateFileAndTemplateContentUsesTemplateContent() throws JsonProcessingException {
+        final PluginSetting pluginSetting = generatePluginSetting("custom", "test", "test-file", createTemplateContent(), null, null, null);
+
+        final IndexConfiguration objectUnderTest = IndexConfiguration.readIndexConfig(pluginSetting);
+
+        assertThat(objectUnderTest, notNullValue());
+        assertThat(objectUnderTest.getIndexTemplate(), notNullValue());
+        assertThat(objectUnderTest.getIndexTemplate(), equalTo(OBJECT_MAPPER.readValue(createTemplateContent(), new TypeReference<>() {})));
+    }
+
+    @Test
+    public void invalidTemplateContentThrowsInvalidPluginConfigurationException() {
+        final String invalidTemplateContent = UUID.randomUUID().toString();
+
+        final PluginSetting pluginSetting = generatePluginSetting("custom", null, null, invalidTemplateContent, null, null, null);
+
+        assertThrows(InvalidPluginConfigurationException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
+
+    }
+
+    @Test
     public void testInvalidCustom() {
         // Missing index alias
         final IndexConfiguration.Builder invalidBuilder = new IndexConfiguration.Builder();
@@ -274,7 +321,7 @@ public class IndexConfigurationTests {
     @Test
     public void testReadIndexConfig_RawIndexType() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null, null, null, null);
+                IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null, null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         final URL expTemplateFile = indexConfiguration
@@ -292,7 +339,7 @@ public class IndexConfigurationTests {
     @Test
     public void testReadIndexConfig_InvalidIndexTypeValueString() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                "i-am-an-illegitimate-index-type", null, null, null, null, null);
+                "i-am-an-illegitimate-index-type", null, null, null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         assertThrows(IllegalArgumentException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
     }
@@ -300,7 +347,7 @@ public class IndexConfigurationTests {
     @Test
     public void testReadIndexConfig_ServiceMapIndexType() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null, null, null, null);
+                IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null, null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         final URL expTemplateFile = indexConfiguration
@@ -324,7 +371,7 @@ public class IndexConfigurationTests {
         final long testFlushTimeout = 30_000L;
         final String testIdField = "someId";
         final PluginSetting pluginSetting = generatePluginSetting(
-                null, testIndexAlias, defaultTemplateFilePath, testBulkSize, testFlushTimeout, testIdField);
+                null, testIndexAlias, defaultTemplateFilePath, null, testBulkSize, testFlushTimeout, testIdField);
         pluginSetting.getSettings().put(IndexConfiguration.ESTIMATE_BULK_SIZE_USING_COMPRESSION, true);
         pluginSetting.getSettings().put(IndexConfiguration.MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION, 5);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
@@ -348,7 +395,7 @@ public class IndexConfigurationTests {
         final long testFlushTimeout = 30_000L;
         final String testIdField = "someId";
         final Map<String, Object> metadata = initializeConfigMetaData(
-                testIndexType, testIndexAlias, defaultTemplateFilePath, testBulkSize, testFlushTimeout, testIdField);
+                testIndexType, testIndexAlias, defaultTemplateFilePath, null, testBulkSize, testFlushTimeout, testIdField);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
@@ -363,8 +410,9 @@ public class IndexConfigurationTests {
     public void testReadIndexConfig_awsOptionServerlessDefault() {
         final String testIndexAlias = "foo";
         final Map<String, Object> metadata = initializeConfigMetaData(
-                null, testIndexAlias, null, null, null, null);
+                null, testIndexAlias, null, null, null, null, null);
         metadata.put(AWS_OPTION, Map.of(SERVERLESS, true));
+        metadata.put(TEMPLATE_TYPE, TemplateType.V1.getTypeName());
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.MANAGEMENT_DISABLED, indexConfiguration.getIndexType());
@@ -375,19 +423,21 @@ public class IndexConfigurationTests {
     public void testReadIndexConfig_awsServerlessIndexTypeOverride() {
         final String testIndexAlias = "foo";
         final Map<String, Object> metadata = initializeConfigMetaData(
-                IndexType.CUSTOM.getValue(), testIndexAlias, null, null, null, null);
+                IndexType.CUSTOM.getValue(), testIndexAlias, null, null, null, null, null);
         metadata.put(AWS_OPTION, Map.of(SERVERLESS, true));
+        metadata.put(TEMPLATE_TYPE, TemplateType.V1.getTypeName());
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
+        assertEquals(TemplateType.INDEX_TEMPLATE, indexConfiguration.getTemplateType());
         assertEquals(true, indexConfiguration.getServerless());
     }
 
     @Test
     public void testReadIndexConfig_distributionVersionDefault() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                null, "foo", null, null, null, null);
+                null, "foo", null,null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(indexConfiguration.getDistributionVersion(), DistributionVersion.DEFAULT);
@@ -396,7 +446,7 @@ public class IndexConfigurationTests {
     @Test
     public void testReadIndexConfig_es6Override() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                null, "foo", null, null, null, null);
+                null, "foo", null, null, null, null, null);
         metadata.put(DISTRIBUTION_VERSION, "es6");
         metadata.put(TEMPLATE_TYPE, TemplateType.INDEX_TEMPLATE.getTypeName());
         final PluginSetting pluginSetting = getPluginSetting(metadata);
@@ -409,7 +459,7 @@ public class IndexConfigurationTests {
     @Test
     public void testReadIndexConfig_documentRootKey() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-            IndexType.CUSTOM.getValue(), "foo", null, null, null, null);
+            IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
         final String expectedRootKey = UUID.randomUUID().toString();
         metadata.put(DOCUMENT_ROOT_KEY, expectedRootKey);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
@@ -420,16 +470,51 @@ public class IndexConfigurationTests {
     @Test
     public void testReadIndexConfig_emptyDocumentRootKey() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-            IndexType.CUSTOM.getValue(), "foo", null, null, null, null);
+            IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
         metadata.put(DOCUMENT_ROOT_KEY, "");
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         assertThrows(IllegalArgumentException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"${key}", "${getMetadata(\"key\")}"})
+    public void testReadIndexConfig_withValidDocumentVersionExpression(final String versionExpression) {
+
+        final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
+        when(expressionEvaluator.isValidFormatExpression(versionExpression)).thenReturn(true);
+
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
+        metadata.put(DOCUMENT_VERSION_EXPRESSION, versionExpression);
+
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting, expressionEvaluator);
+
+        assertThat(indexConfiguration, notNullValue());
+        assertThat(indexConfiguration.getVersionExpression(), equalTo(versionExpression));
+    }
+
+    @Test
+    public void testReadIndexConfig_withInvalidDocumentVersionExpression_throws_InvalidPluginConfigurationException() {
+        final String versionExpression = UUID.randomUUID().toString();
+
+        final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
+        when(expressionEvaluator.isValidFormatExpression(versionExpression)).thenReturn(false);
+
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
+        metadata.put(DOCUMENT_VERSION_EXPRESSION, versionExpression);
+
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+
+        assertThrows(InvalidPluginConfigurationException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting, expressionEvaluator));
+    }
+
     @Test
     void getTemplateType_defaults_to_V1() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                IndexType.CUSTOM.getValue(), "foo", null, null, null, null);
+                IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertThat(indexConfiguration.getTemplateType(), equalTo(TemplateType.V1));
@@ -439,7 +524,7 @@ public class IndexConfigurationTests {
     @EnumSource(TemplateType.class)
     void getTemplateType_with_configured_templateType(final TemplateType templateType) {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                IndexType.CUSTOM.getValue(), "foo", null, null, null, null);
+                IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
         metadata.put(TEMPLATE_TYPE, templateType.getTypeName());
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
@@ -447,9 +532,9 @@ public class IndexConfigurationTests {
     }
 
     private PluginSetting generatePluginSetting(
-            final String indexType, final String indexAlias, final String templateFilePath,
+            final String indexType, final String indexAlias, final String templateFilePath, final String templateContent,
             final Long bulkSize, final Long flushTimeout, final String documentIdField) {
-        final Map<String, Object> metadata = initializeConfigMetaData(indexType, indexAlias, templateFilePath, bulkSize, flushTimeout, documentIdField);
+        final Map<String, Object> metadata = initializeConfigMetaData(indexType, indexAlias, templateFilePath, templateContent, bulkSize, flushTimeout, documentIdField);
         return getPluginSetting(metadata);
     }
 
@@ -458,7 +543,7 @@ public class IndexConfigurationTests {
     }
 
     private Map<String, Object> initializeConfigMetaData(
-            String indexType, String indexAlias, String templateFilePath, Long bulkSize, Long flushTimeout, String documentId) {
+            String indexType, String indexAlias, String templateFilePath, String templateContent, Long bulkSize, Long flushTimeout, String documentId) {
         final Map<String, Object> metadata = new HashMap<>();
         if (indexType != null) {
             metadata.put(IndexConfiguration.INDEX_TYPE, indexType);
@@ -469,6 +554,11 @@ public class IndexConfigurationTests {
         if (templateFilePath != null) {
             metadata.put(IndexConfiguration.TEMPLATE_FILE, templateFilePath);
         }
+
+        if (templateContent != null) {
+            metadata.put(IndexConfiguration.TEMPLATE_CONTENT, templateContent);
+        }
+
         if (bulkSize != null) {
             metadata.put(IndexConfiguration.BULK_SIZE, bulkSize);
         }
@@ -479,5 +569,13 @@ public class IndexConfigurationTests {
             metadata.put(IndexConfiguration.DOCUMENT_ID, documentId);
         }
         return metadata;
+    }
+
+    private String createTemplateContent() {
+        return "{\"index_patterns\":[\"test-*\"]," +
+                "\"template\":{\"aliases\":{\"my_test_logs\":{}}," +
+                "\"settings\":{\"number_of_shards\":5,\"number_of_replicas\":2,\"refresh_interval\":-1}," +
+                "\"mappings\":{\"properties\":{\"timestamp\":{\"type\":\"date\",\"format\":\"yyyy-MM-ddHH:mm:ss||yyyy-MM-dd||epoch_millis\"}," +
+                "\"value\":{\"type\":\"double\"}}}}}";
     }
 }

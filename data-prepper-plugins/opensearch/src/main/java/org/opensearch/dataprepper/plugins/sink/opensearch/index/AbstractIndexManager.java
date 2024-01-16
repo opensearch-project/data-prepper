@@ -7,12 +7,15 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
+import org.apache.http.HttpStatus;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import org.opensearch.client.opensearch.indices.CreateIndexRequest;
+import org.opensearch.client.opensearch.indices.ExistsAliasRequest;
+import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
 import org.slf4j.Logger;
@@ -39,6 +42,7 @@ public abstract class AbstractIndexManager implements IndexManager {
             = "Invalid alias name [%s], an index exists with the same name as the alias";
     public static final String INVALID_INDEX_ALIAS_ERROR
             = "invalid_index_name_exception";
+    static final Set<Integer> NO_ISM_HTTP_STATUS = Set.of(HttpStatus.SC_NOT_FOUND, HttpStatus.SC_BAD_REQUEST);
     private static final String TIME_PATTERN_STARTING_SYMBOLS = "%{";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     protected RestHighLevelClient restHighLevelClient;
@@ -48,6 +52,8 @@ public abstract class AbstractIndexManager implements IndexManager {
     protected IsmPolicyManagementStrategy ismPolicyManagementStrategy;
     private final TemplateStrategy templateStrategy;
     protected String indexPrefix;
+    private Boolean isIndexAlias;
+    private boolean isIndexAliasChecked;
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractIndexManager.class);
 
@@ -108,6 +114,10 @@ public abstract class AbstractIndexManager implements IndexManager {
         final DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
         final String suffix = (dateFormatter != null) ? dateFormatter.format(getCurrentUtcTime()) : "";
         return indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "") + suffix;
+    }
+
+    private void initalizeIsIndexAlias(final String indexAlias) {
+
     }
 
     private void initializeIndexPrefixAndSuffix(final String indexAlias){
@@ -174,13 +184,40 @@ public abstract class AbstractIndexManager implements IndexManager {
         return LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(UTC_ZONE_ID);
     }
 
+    @Override
+    public Boolean isIndexAlias(final String dynamicIndexAlias) throws IOException {
+        if (isIndexAliasChecked == false) {
+            try {
+                // Try to get the OpenSearch version. This fails on older OpenDistro versions, that do not support
+                // `require_alias` as a bulk API parameter. All OpenSearch versions do, as this was introduced in
+                // ES 7.10.
+                openSearchClient.info();
+                ExistsAliasRequest request = new ExistsAliasRequest.Builder().name(dynamicIndexAlias).build();
+                BooleanResponse response = openSearchClient.indices().existsAlias(request);
+                isIndexAlias = response.value() && checkISMEnabled();
+            } catch (RuntimeException ex) {
+                isIndexAlias = null;
+            } finally {
+                isIndexAliasChecked = true;
+            }
+        }
+        return isIndexAlias;
+    }
+
     final boolean checkISMEnabled() throws IOException {
         final GetClusterSettingsRequest request = new GetClusterSettingsRequest.Builder()
                 .includeDefaults(true)
                 .build();
-        final GetClusterSettingsResponse response = openSearchClient.cluster().getSettings(request);
-        final String enabled = getISMEnabled(response);
-        return enabled != null && enabled.equals("true");
+        try {
+            final GetClusterSettingsResponse response = openSearchClient.cluster().getSettings(request);
+            final String enabled = getISMEnabled(response);
+            return enabled != null && enabled.equals("true");
+        } catch (OpenSearchException ex) {
+            if (NO_ISM_HTTP_STATUS.contains(ex.status())) {
+                return false;
+            }
+            throw ex;
+        }
     }
 
     private String getISMEnabled(final GetClusterSettingsResponse response) {

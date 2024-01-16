@@ -10,9 +10,8 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
-import org.opensearch.dataprepper.event.DefaultEventFactory;
 import org.opensearch.dataprepper.plugins.TestSink;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -25,13 +24,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,6 +43,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class DefaultPluginFactoryTest {
 
@@ -55,17 +58,15 @@ class DefaultPluginFactoryTest {
     private PluginBeanFactoryProvider beanFactoryProvider;
     private BeanFactory beanFactory;
     private String pipelineName;
-    private DefaultAcknowledgementSetManager acknowledgementSetManager;
-    private DefaultEventFactory eventFactory;
+    private PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
+    private PluginConfigObservable pluginConfigObservable;
+    private ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers;
 
     @BeforeEach
     void setUp() {
         pluginProviderLoader = mock(PluginProviderLoader.class);
         pluginCreator = mock(PluginCreator.class);
         pluginConfigurationConverter = mock(PluginConfigurationConverter.class);
-
-        acknowledgementSetManager = mock(DefaultAcknowledgementSetManager.class);
-        eventFactory = mock(DefaultEventFactory.class);
         pluginProviders = new ArrayList<>();
         given(pluginProviderLoader.getPluginProviders()).willReturn(pluginProviders);
         firstPluginProvider = mock(PluginProvider.class);
@@ -80,10 +81,22 @@ class DefaultPluginFactoryTest {
 
         beanFactoryProvider = mock(PluginBeanFactoryProvider.class);
         beanFactory = mock(BeanFactory.class);
+        pluginConfigurationObservableFactory = mock(PluginConfigurationObservableFactory.class);
+        given(pluginConfigurationObservableFactory.createDefaultPluginConfigObservable(
+                eq(pluginConfigurationConverter),
+                any(Class.class),
+                any(PluginSetting.class)
+        )).willReturn(pluginConfigObservable);
+
+        applicationContextToTypedSuppliers = mock(ApplicationContextToTypedSuppliers.class);
     }
 
     private DefaultPluginFactory createObjectUnderTest() {
-        return new DefaultPluginFactory(pluginProviderLoader, pluginCreator, pluginConfigurationConverter, beanFactoryProvider, eventFactory, acknowledgementSetManager);
+        return new DefaultPluginFactory(
+                pluginProviderLoader, pluginCreator, pluginConfigurationConverter,
+                beanFactoryProvider,
+                pluginConfigurationObservableFactory,
+                applicationContextToTypedSuppliers);
     }
 
     @Test
@@ -109,6 +122,15 @@ class DefaultPluginFactoryTest {
         given(pluginProviderLoader.getPluginProviders()).willReturn(Collections.emptyList());
 
         assertThrows(RuntimeException.class,
+                this::createObjectUnderTest);
+        verifyNoInteractions(beanFactoryProvider);
+    }
+
+    @Test
+    void constructor_should_throw_if_pluginConfigurationObservableFactory_is_null() {
+        pluginConfigurationObservableFactory = null;
+
+        assertThrows(NullPointerException.class,
                 this::createObjectUnderTest);
         verifyNoInteractions(beanFactoryProvider);
     }
@@ -247,6 +269,32 @@ class DefaultPluginFactoryTest {
         }
 
         @Test
+        void loadPlugin_with_varargs_should_return_a_single_instance_when_the_the_numberOfInstances_is_1() {
+            final Object object = new Object();
+            final TestSink expectedInstance = mock(TestSink.class);
+            final Object convertedConfiguration = mock(Object.class);
+            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+                    .willReturn(convertedConfiguration);
+            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(pluginName), eq(object)))
+                    .willReturn(expectedInstance);
+
+            final Object plugin = createObjectUnderTest().loadPlugin(baseClass, pluginSetting, object);
+
+            verify(beanFactoryProvider).get();
+            final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
+            verify(pluginCreator).newPluginInstance(eq(expectedPluginClass), pluginArgumentsContextArgCapture.capture(), eq(pluginName), eq(object));
+            final ComponentPluginArgumentsContext actualPluginArgumentsContext = pluginArgumentsContextArgCapture.getValue();
+            final List<Class> classes = List.of(PipelineDescription.class);
+            final Object[] pipelineDescriptionObj = actualPluginArgumentsContext.createArguments(classes.toArray(new Class[1]));
+            assertThat(pipelineDescriptionObj.length, equalTo(1));
+            assertThat(pipelineDescriptionObj[0], instanceOf(PipelineDescription.class));
+            final PipelineDescription actualPipelineDescription = (PipelineDescription)pipelineDescriptionObj[0];
+            assertThat(actualPipelineDescription.getPipelineName(), is(pipelineName));
+            assertThat(plugin, notNullValue());
+            assertThat(plugin, equalTo(expectedInstance));
+        }
+
+        @Test
         void loadPlugins_should_return_an_instance_for_the_total_count() {
             final TestSink expectedInstance1 = mock(TestSink.class);
             final TestSink expectedInstance2 = mock(TestSink.class);
@@ -283,6 +331,38 @@ class DefaultPluginFactoryTest {
             assertThat(plugins.get(0), equalTo(expectedInstance1));
             assertThat(plugins.get(1), equalTo(expectedInstance2));
             assertThat(plugins.get(2), equalTo(expectedInstance3));
+        }
+
+
+        @Test
+        void loadPlugins_should_return_a_single_instance_with_values_from_ApplicationContextToTypedSuppliers() {
+            final TestSink expectedInstance = mock(TestSink.class);
+            final Object convertedConfiguration = mock(Object.class);
+            final String suppliedAdditionalArgument = UUID.randomUUID().toString();
+            Map<Class<?>, Supplier<Object>> additionalArgumentsSuppliers = Map.of(String.class, () -> suppliedAdditionalArgument);
+            when(applicationContextToTypedSuppliers.getArgumentsSuppliers()).thenReturn(additionalArgumentsSuppliers);
+            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+                    .willReturn(convertedConfiguration);
+            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(pluginName)))
+                    .willReturn(expectedInstance);
+
+            final List<?> plugins = createObjectUnderTest().loadPlugins(
+                    baseClass, pluginSetting, c -> 1);
+
+            verify(beanFactoryProvider).get();
+            final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
+            verify(pluginCreator).newPluginInstance(eq(expectedPluginClass), pluginArgumentsContextArgCapture.capture(), eq(pluginName));
+            final ComponentPluginArgumentsContext actualPluginArgumentsContext = pluginArgumentsContextArgCapture.getValue();
+            final List<Class> classes = List.of(PipelineDescription.class, String.class);
+            final Object[] pipelineDescriptionObj = actualPluginArgumentsContext.createArguments(classes.toArray(new Class[2]));
+            assertThat(pipelineDescriptionObj.length, equalTo(2));
+            assertThat(pipelineDescriptionObj[0], instanceOf(PipelineDescription.class));
+            assertThat(pipelineDescriptionObj[1], sameInstance(suppliedAdditionalArgument));
+            final PipelineDescription actualPipelineDescription = (PipelineDescription)pipelineDescriptionObj[0];
+            assertThat(actualPipelineDescription.getPipelineName(), is(pipelineName));
+            assertThat(plugins, notNullValue());
+            assertThat(plugins.size(), equalTo(1));
+            assertThat(plugins.get(0), equalTo(expectedInstance));
         }
     }
 

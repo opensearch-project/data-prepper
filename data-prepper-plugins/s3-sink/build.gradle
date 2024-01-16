@@ -11,14 +11,14 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation libs.commons.compress
-    implementation 'joda-time:joda-time:2.11.1'
+    implementation 'joda-time:joda-time:2.12.5'
     implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.21'
     implementation project(':data-prepper-plugins:avro-codecs')
-    implementation 'org.apache.avro:avro:1.11.1'
+    implementation libs.avro.core
     implementation libs.hadoop.common
     implementation 'org.apache.parquet:parquet-avro:1.13.1'
     implementation 'software.amazon.awssdk:apache-client'
@@ -31,6 +31,15 @@ dependencies {
     testImplementation testLibs.slf4j.simple
     testImplementation 'software.amazon.awssdk:s3-transfer-manager'
     testImplementation 'software.amazon.awssdk.crt:aws-crt:0.25.0'
+
+    constraints {
+        implementation('com.nimbusds:nimbus-jose-jwt') {
+            version {
+                require '9.37.1'
+            }
+            because 'Fixes CVE-2021-31684 and CVE-2023-1370 by using a newer shaded version of json-smart.'
+        }
+    }
 }
 
 test {

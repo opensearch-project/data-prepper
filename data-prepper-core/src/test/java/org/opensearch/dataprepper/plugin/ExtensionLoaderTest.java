@@ -196,7 +196,7 @@ class ExtensionLoaderTest {
         verify(pluginCreator).newPluginInstance(
                 eq(pluginClass),
                 contextArgumentCaptor.capture(),
-                anyString());
+                any());
 
         final PluginArgumentsContext actualPluginArgumentsContext = contextArgumentCaptor.getValue();
 

@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.plugins.TestPlugin;
+import org.opensearch.dataprepper.plugins.TestObjectPlugin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -40,6 +41,7 @@ class DefaultPluginFactoryIT {
     @Mock
     private DataPrepperConfiguration dataPrepperConfiguration;
     private String pluginName;
+    private String objectPluginName;
     private String pipelineName;
 
     private DefaultEventFactory eventFactory;
@@ -49,6 +51,7 @@ class DefaultPluginFactoryIT {
     @BeforeEach
     void setUp() {
         pluginName = "test_plugin";
+        objectPluginName = "test_object_plugin";
         pipelineName = UUID.randomUUID().toString();
     }
 
@@ -94,6 +97,31 @@ class DefaultPluginFactoryIT {
     }
 
     @Test
+    void loadPlugin_should_return_a_new_plugin_instance_with_the_expected_configuration_variable_args() {
+
+        final String requiredStringValue = UUID.randomUUID().toString();
+        final String optionalStringValue = UUID.randomUUID().toString();
+
+        final Map<String, Object> pluginSettingMap = new HashMap<>();
+        pluginSettingMap.put("required_string", requiredStringValue);
+        pluginSettingMap.put("optional_string", optionalStringValue);
+        final PluginSetting pluginSetting = createObjectPluginSettings(pluginSettingMap);
+
+        final Object object = new Object();
+        final TestPluggableInterface plugin = createObjectUnderTest().loadPlugin(TestPluggableInterface.class, pluginSetting, object);
+
+        assertThat(plugin, instanceOf(TestObjectPlugin.class));
+
+        final TestObjectPlugin testPlugin = (TestObjectPlugin) plugin;
+
+        final TestPluginConfiguration configuration = testPlugin.getConfiguration();
+
+        assertThat(testPlugin.getObject(), equalTo(object));
+        assertThat(configuration.getRequiredString(), equalTo(requiredStringValue));
+        assertThat(configuration.getOptionalString(), equalTo(optionalStringValue));
+    }
+
+    @Test
     void loadPlugin_should_throw_when_a_plugin_configuration_is_invalid() {
         final String optionalStringValue = UUID.randomUUID().toString();
 
@@ -112,6 +140,12 @@ class DefaultPluginFactoryIT {
 
     private PluginSetting createPluginSettings(final Map<String, Object> pluginSettingMap) {
         final PluginSetting pluginSetting = new PluginSetting(pluginName, pluginSettingMap);
+        pluginSetting.setPipelineName(pipelineName);
+        return pluginSetting;
+    }
+
+    private PluginSetting createObjectPluginSettings(final Map<String, Object> pluginSettingMap) {
+        final PluginSetting pluginSetting = new PluginSetting(objectPluginName, pluginSettingMap);
         pluginSetting.setPipelineName(pipelineName);
         return pluginSetting;
     }

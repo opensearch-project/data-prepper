@@ -20,7 +20,9 @@ import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -31,12 +33,10 @@ import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -60,7 +60,7 @@ public class KafkaSinkPlainTextTypeIT {
     private KafkaSinkConfig kafkaSinkConfig;
 
     @Mock
-    private TopicConfig topicConfig;
+    private TopicProducerConfig topicConfig;
 
     private KafkaSink kafkaSink;
 
@@ -71,6 +71,9 @@ public class KafkaSinkPlainTextTypeIT {
 
     @Mock
     private PluginFactory pluginFactory;
+
+    @Mock
+    private PluginMetrics pluginMetrics;
 
     private SinkContext sinkContext;
 
@@ -83,6 +86,9 @@ public class KafkaSinkPlainTextTypeIT {
     @Mock
     private ExpressionEvaluator evaluator;
 
+    @Mock
+    private AwsCredentialsSupplier awsCredentialsSupplier;
+
     private PlainTextAuthConfig plainTextAuthConfig;
     private AuthConfig.SaslAuthConfig saslAuthConfig;
     private AuthConfig authConfig;
@@ -91,7 +97,7 @@ public class KafkaSinkPlainTextTypeIT {
 
 
     public KafkaSink createObjectUnderTest() {
-        return new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactory, evaluator, sinkContext);
+        return new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactory, pluginMetrics, evaluator, sinkContext, awsCredentialsSupplier);
     }
 
     @BeforeEach
@@ -117,20 +123,12 @@ public class KafkaSinkPlainTextTypeIT {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT.toString());
         when(kafkaSinkConfig.getPartitionKey()).thenReturn("test-${name}");
 
-        final String testGroup = "TestGroup_" + RandomStringUtils.randomAlphabetic(5);
         testTopic = "TestTopic_" + RandomStringUtils.randomAlphabetic(5);
 
-        topicConfig = mock(TopicConfig.class);
+        topicConfig = mock(TopicProducerConfig.class);
         when(topicConfig.getName()).thenReturn(testTopic);
-        when(topicConfig.getGroupId()).thenReturn(testGroup);
-        when(topicConfig.getWorkers()).thenReturn(1);
-        when(topicConfig.getSessionTimeOut()).thenReturn(Duration.ofSeconds(45));
-        when(topicConfig.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
-        when(topicConfig.getAutoCommit()).thenReturn(false);
-        when(topicConfig.getAutoOffsetReset()).thenReturn("earliest");
-        when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
-        when(kafkaSinkConfig.getBootStrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
+        when(kafkaSinkConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     }
 
@@ -140,8 +138,7 @@ public class KafkaSinkPlainTextTypeIT {
         configureJasConfForSASLPlainText();
 
         final int numRecords = 1;
-        when(topicConfig.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(topicConfig.isCreate()).thenReturn(false);
+        when(topicConfig.isCreateTopic()).thenReturn(false);
         when(kafkaSinkConfig.getTopic()).thenReturn(topicConfig);
         when(kafkaSinkConfig.getAuthConfig()).thenReturn(authConfig);
         kafkaSink = createObjectUnderTest();
@@ -217,16 +214,9 @@ public class KafkaSinkPlainTextTypeIT {
     }
 
     private void consumeTestMessages(List<Record<Event>> recList) {
+        final String testGroup = "TestGroup_" + RandomStringUtils.randomAlphabetic(5);
 
-        props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
-                topicConfig.getCommitInterval().toSecondsPart());
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-                topicConfig.getAutoOffsetReset());
-        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
-                topicConfig.getAutoCommit());
-        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
-                topicConfig.getConsumerMaxPollRecords());
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, topicConfig.getGroupId());
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, testGroup);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
                 StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,

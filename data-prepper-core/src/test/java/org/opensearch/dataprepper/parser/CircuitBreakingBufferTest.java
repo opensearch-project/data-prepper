@@ -14,15 +14,18 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.breaker.CircuitBreaker;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -62,6 +65,29 @@ class CircuitBreakingBufferTest {
     void constructor_should_throw_with_null_circuitBreaker() {
         circuitBreaker = null;
         assertThrows(NullPointerException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void getDrainTimeout_returns_buffer_drain_timeout() {
+        final Duration duration = Duration.ofMillis(new Random().nextLong());
+        when(buffer.getDrainTimeout()).thenReturn(duration);
+
+        final Duration result = createObjectUnderTest().getDrainTimeout();
+        assertThat(result, equalTo(duration));
+    }
+
+    @Test
+    void shutdown_calls_buffer_shutdown() {
+        createObjectUnderTest().shutdown();
+        verify(buffer).shutdown();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void isByteBuffer_returns_value_of_inner_buffer(boolean innerIsByteBuffer) {
+        when(buffer.isByteBuffer()).thenReturn(innerIsByteBuffer);
+
+        assertThat(createObjectUnderTest().isByteBuffer(), equalTo(innerIsByteBuffer));
     }
 
     @Nested
@@ -137,6 +163,40 @@ class CircuitBreakingBufferTest {
 
             final List<Record<?>> records = Collections.singletonList(record);
             assertThrows(TimeoutException.class, () -> createObjectUnderTest().writeAll(records, timeoutMillis));
+
+            verifyNoInteractions(buffer);
+            verify(circuitBreaker).isOpen();
+        }
+    }
+
+    @Nested
+    class WithBytes {
+        private byte[] bytes;
+
+        private String key;
+
+        @BeforeEach
+        void setUp() {
+            bytes = UUID.randomUUID().toString().getBytes();
+            key = UUID.randomUUID().toString();
+        }
+
+        @Test
+        void writeBytes_should_check_CircuitBreaker_and_call_inner_write_if_not_open() throws Exception {
+            when(circuitBreaker.isOpen()).thenReturn(false);
+
+            createObjectUnderTest().writeBytes(bytes, key, timeoutMillis);
+
+            verify(buffer).writeBytes(bytes, key, timeoutMillis);
+            verify(circuitBreaker).isOpen();
+        }
+
+        @Test
+        void writeBytes_should_check_CircuitBreaker_and_throw_if_open() {
+            when(circuitBreaker.isOpen()).thenReturn(true);
+
+            CircuitBreakingBuffer<Record<?>> objectUnderTest = createObjectUnderTest();
+            assertThrows(TimeoutException.class, () -> objectUnderTest.writeBytes(bytes, key, timeoutMillis));
 
             verifyNoInteractions(buffer);
             verify(circuitBreaker).isOpen();

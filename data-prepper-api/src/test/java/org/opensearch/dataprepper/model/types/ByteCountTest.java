@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.types;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -13,6 +14,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ByteCountTest {
@@ -144,5 +146,32 @@ class ByteCountTest {
         final ByteCount byteCount = ByteCount.parse(byteString);
         assertThat(byteCount, notNullValue());
         assertThat(byteCount.getBytes(), equalTo(expectedBytes));
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, 1, 2, 1024, Integer.MAX_VALUE, (long) Integer.MAX_VALUE + 100})
+    void ofBytes_returns_with_same_bytes(final long bytes) {
+        final ByteCount byteCount = ByteCount.ofBytes(bytes);
+
+        assertThat(byteCount, notNullValue());
+        assertThat(byteCount.getBytes(), equalTo(bytes));
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {-1, -2, -1024, Integer.MIN_VALUE, (long) Integer.MIN_VALUE - 100})
+    void ofBytes_throws_with_invalid_bytes(final long bytes) {
+        assertThrows(IllegalArgumentException.class, () -> ByteCount.ofBytes(bytes));
+    }
+
+    @Test
+    void zeroBytes_returns_bytes_with_getBytes_equal_to_0() {
+        assertThat(ByteCount.zeroBytes(), notNullValue());
+        assertThat(ByteCount.zeroBytes().getBytes(), equalTo(0L));
+    }
+
+    @Test
+    void zeroBytes_returns_same_instance() {
+        assertThat(ByteCount.zeroBytes(), notNullValue());
+        assertThat(ByteCount.zeroBytes(), sameInstance(ByteCount.zeroBytes()));
     }
 }

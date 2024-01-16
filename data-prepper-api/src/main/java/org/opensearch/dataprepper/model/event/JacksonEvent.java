@@ -91,11 +91,13 @@ public class JacksonEvent implements Event {
         }
 
         this.jsonNode = getInitialJsonNode(builder.data);
+        this.eventHandle = new DefaultEventHandle(eventMetadata.getTimeReceived());
     }
 
     protected JacksonEvent(final JacksonEvent otherEvent) {
         this.jsonNode = otherEvent.jsonNode.deepCopy();
         this.eventMetadata = DefaultEventMetadata.fromEventMetadata(otherEvent.eventMetadata);
+        this.eventHandle = new DefaultEventHandle(eventMetadata.getTimeReceived());
     }
 
     public static Event fromMessage(String message) {
@@ -119,7 +121,8 @@ public class JacksonEvent implements Event {
         return mapper.valueToTree(data);
     }
 
-    protected JsonNode getJsonNode() {
+    @Override
+    public JsonNode getJsonNode() {
         return jsonNode;
     }
 
@@ -149,10 +152,6 @@ public class JacksonEvent implements Event {
                 }
             }
         }
-    }
-
-    public void setEventHandle(EventHandle handle) {
-        this.eventHandle = handle;
     }
 
     @Override
@@ -331,12 +330,18 @@ public class JacksonEvent implements Event {
             result += format.substring(fromIndex, position);
             String name = format.substring(position + 2, endPosition);
 
-            Object val;
-            if (Objects.nonNull(expressionEvaluator) && expressionEvaluator.isValidExpressionStatement(name)) {
-                val = expressionEvaluator.evaluate(name, this);
-            } else {
+            Object val = null;
+
+            try {
                 val = this.get(name, Object.class);
-                if (val == null) {
+            } catch (final Exception ignored) {
+                // Exception likely indicates use of a Data Prepper expression
+            }
+
+            if (val == null) {
+                if (expressionEvaluator != null && expressionEvaluator.isValidExpressionStatement(name)) {
+                    val = expressionEvaluator.evaluate(name, this);
+                } else {
                     throw new EventKeyNotFoundException(String.format("The key %s could not be found in the Event when formatting", name));
                 }
             }
@@ -382,12 +387,21 @@ public class JacksonEvent implements Event {
         return mapper.convertValue(jsonNode, MAP_TYPE_REFERENCE);
     }
 
+
+    public static boolean isValidEventKey(final String key) {
+        try {
+            checkKey(key);
+            return true;
+        } catch (final Exception e) {
+            return false;
+        }
+    }
     private String checkAndTrimKey(final String key) {
         checkKey(key);
         return trimKey(key);
     }
 
-    private void checkKey(final String key) {
+    private static void checkKey(final String key) {
         checkNotNull(key, "key cannot be null");
         checkArgument(!key.isEmpty(), "key cannot be an empty string");
         if (key.length() > MAX_KEY_LENGTH) {
@@ -404,7 +418,7 @@ public class JacksonEvent implements Event {
         return trimmedLeadingSlash.endsWith(SEPARATOR) ? trimmedLeadingSlash.substring(0, trimmedLeadingSlash.length() - 2) : trimmedLeadingSlash;
     }
 
-    private boolean isValidKey(final String key) {
+    private static boolean isValidKey(final String key) {
         for (int i = 0; i < key.length(); i++) {
             char c = key.charAt(i);
 

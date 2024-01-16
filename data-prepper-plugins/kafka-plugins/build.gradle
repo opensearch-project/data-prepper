@@ -5,36 +5,49 @@
 
 plugins {
     id 'java'
+    id 'com.google.protobuf' version '0.9.4'
 }
 
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:buffer-common')
+    implementation project(':data-prepper-plugins:blocking-buffer')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation 'org.apache.kafka:kafka-clients:3.4.0'
-    implementation 'org.apache.avro:avro:1.11.0'
+    implementation libs.avro.core
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
     implementation libs.commons.lang3
-    implementation 'io.confluent:kafka-avro-serializer:7.3.3'
-    implementation 'io.confluent:kafka-schema-registry-client:7.3.3'
-    implementation 'io.confluent:kafka-avro-serializer:7.3.3'
-    implementation 'io.confluent:kafka-schema-registry-client:7.3.3'
-    implementation 'io.confluent:kafka-schema-registry:7.3.3:tests'
+    implementation 'io.confluent:kafka-avro-serializer:7.4.0'
+    implementation 'io.confluent:kafka-schema-registry-client:7.4.0'
+    implementation ('io.confluent:kafka-schema-registry:7.4.0:tests') {
+        exclude group: 'org.glassfish.jersey.containers', module: 'jersey-container-servlet'
+        exclude group: 'org.glassfish.jersey.inject', module: 'jersey-hk2'
+        exclude group: 'org.glassfish.jersey.ext', module: 'jersey-bean-validation'
+    }
+    implementation 'software.amazon.awssdk:sts'
+    implementation 'software.amazon.awssdk:auth'
+    implementation 'software.amazon.awssdk:kafka'
+    implementation 'software.amazon.awssdk:kms'
     implementation 'software.amazon.msk:aws-msk-iam-auth:1.1.6'
-    implementation 'software.amazon.awssdk:sts:2.20.103'
-    implementation 'software.amazon.awssdk:auth:2.20.103'
-    implementation 'software.amazon.awssdk:kafka:2.20.103'
     implementation 'software.amazon.glue:schema-registry-serde:1.1.15'
     implementation 'com.amazonaws:aws-java-sdk-glue:1.12.506'
     implementation 'io.confluent:kafka-json-schema-serializer:7.4.0'
-    testImplementation 'org.mockito:mockito-inline:4.1.0'
-    testImplementation 'org.yaml:snakeyaml:2.0'
+    implementation project(':data-prepper-plugins:failures-common')
+    implementation 'org.apache.kafka:connect-json:3.4.0'
+    implementation 'com.github.fge:json-schema-validator:2.2.14'
+    implementation 'commons-collections:commons-collections:3.2.2'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:apache-client'
+
+    testImplementation testLibs.mockito.inline
+    testImplementation 'org.yaml:snakeyaml:2.2'
     testImplementation testLibs.spring.test
-    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.2'
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-plugins:blocking-buffer')
     testImplementation project(':data-prepper-core')
-    testImplementation 'org.mockito:mockito-inline:4.1.0'
+    testImplementation testLibs.mockito.inline
     testImplementation 'org.apache.kafka:kafka_2.13:3.4.0'
     testImplementation 'org.apache.kafka:kafka_2.13:3.4.0:test'
     testImplementation 'org.apache.curator:curator-test:5.5.0'
@@ -43,15 +56,29 @@ dependencies {
     testImplementation 'org.apache.kafka:kafka-clients:3.4.0:test'
     testImplementation 'org.apache.kafka:connect-json:3.4.0'
     testImplementation('com.kjetland:mbknor-jackson-jsonschema_2.13:1.0.39')
-    implementation project(':data-prepper-plugins:failures-common')
     testImplementation group: 'org.powermock', name: 'powermock-api-mockito2', version: '2.0.9'
-    implementation 'org.apache.kafka:connect-json:3.4.0'
-    implementation 'com.github.fge:json-schema-validator:2.2.14'
-    implementation 'commons-collections:commons-collections:3.2.2'
-    implementation 'software.amazon.awssdk:s3'
-    implementation 'software.amazon.awssdk:apache-client'
+    testImplementation project(':data-prepper-plugins:otel-metrics-source')
+    testImplementation project(':data-prepper-plugins:otel-proto-common')
+    testImplementation libs.opentelemetry.proto
+    testImplementation libs.protobuf.util
+    testImplementation libs.commons.io
+    testImplementation libs.armeria.grpc
+
+    constraints {
+        implementation('org.mozilla:rhino') {
+            version {
+                require '1.7.12'
+            }
+            because 'Fixes SNYK-JAVA-ORGMOZILLA-1314295.'
+        }
+    }
+}
 
 
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.25.0'
+    }
 }
 
 test {
@@ -81,6 +108,11 @@ task integrationTest(type: Test) {
 
     classpath = sourceSets.integrationTest.runtimeClasspath
     systemProperty 'tests.kafka.bootstrap_servers', System.getProperty('tests.kafka.bootstrap_servers')
+    systemProperty 'tests.kafka.topic_name', System.getProperty('tests.kafka.topic_name')
+    systemProperty 'tests.kafka.json_topic_name', System.getProperty('tests.kafka.json_topic_name')
+    systemProperty 'tests.kafka.avro_topic_name', System.getProperty('tests.kafka.avro_topic_name')
+    systemProperty 'tests.kafka.schema_registry_url', System.getProperty('tests.kafka.schema_registry_url')
+    systemProperty 'tests.kafka.schema_registry_userinfo', System.getProperty('tests.kafka.schema_registry_userinfo')
     systemProperty 'tests.kafka.saslssl_bootstrap_servers', System.getProperty('tests.kafka.saslssl_bootstrap_servers')
     systemProperty 'tests.kafka.ssl_bootstrap_servers', System.getProperty('tests.kafka.ssl_bootstrap_servers')
     systemProperty 'tests.kafka.saslplain_bootstrap_servers', System.getProperty('tests.kafka.saslplain_bootstrap_servers')

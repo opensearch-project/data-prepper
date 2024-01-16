@@ -64,5 +64,9 @@
         -->
         <module name="ModifierOrder" />
 
+        <module name="ImportControl">
+            <property name="file" value="${config_loc}/import-control.xml"/>
+        </module>
+
     </module>
 </module>
