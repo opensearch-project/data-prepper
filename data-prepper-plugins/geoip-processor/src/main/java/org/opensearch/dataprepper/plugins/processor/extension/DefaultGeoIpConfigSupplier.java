@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.extension;
 
+import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorService;
+
 public class DefaultGeoIpConfigSupplier implements GeoIpConfigSupplier {
     private final GeoIpServiceConfig geoIpServiceConfig;
 
@@ -13,7 +15,8 @@ public class DefaultGeoIpConfigSupplier implements GeoIpConfigSupplier {
     }
 
     @Override
-    public GeoIpServiceConfig getGeoIpServiceConfig() {
-        return this.geoIpServiceConfig;
+    public GeoIPProcessorService getGeoIPProcessorService() {
+        //TODO: use GeoIpServiceConfig and return GeoIPProcessorService
+        return null;
     }
 }

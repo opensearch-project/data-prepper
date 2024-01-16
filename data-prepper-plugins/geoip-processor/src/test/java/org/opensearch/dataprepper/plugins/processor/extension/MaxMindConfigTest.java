@@ -7,8 +7,8 @@ package org.opensearch.dataprepper.plugins.processor.extension;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
-import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.List;
 
@@ -28,27 +28,22 @@ class MaxMindConfigTest {
         assertThat(maxMindConfig.getDatabasePaths().size(), equalTo(0));
         assertThat(maxMindConfig.getDatabaseRefreshInterval(), equalTo(Duration.ofDays(7)));
         assertThat(maxMindConfig.getCacheSize(), equalTo(4096));
+        assertThat(maxMindConfig.getAwsAuthenticationOptionsConfig(), equalTo(null));
     }
 
     @Test
     void testCustomConfig() throws NoSuchFieldException, IllegalAccessException {
-        reflectivelySetField(maxMindConfig, "databaseRefreshInterval", Duration.ofDays(10));
-        reflectivelySetField(maxMindConfig, "cacheSize", 2048);
-        reflectivelySetField(maxMindConfig, "databasePaths", List.of("path1", "path2", "path3"));
+        ReflectivelySetField.setField(MaxMindConfig.class, maxMindConfig, "databaseRefreshInterval", Duration.ofDays(10));
+        ReflectivelySetField.setField(MaxMindConfig.class, maxMindConfig, "cacheSize", 2048);
+        ReflectivelySetField.setField(MaxMindConfig.class, maxMindConfig, "databasePaths", List.of("path1", "path2", "path3"));
+
+        final AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig = new AwsAuthenticationOptionsConfig();
+        ReflectivelySetField.setField(MaxMindConfig.class, maxMindConfig, "awsAuthenticationOptionsConfig", awsAuthenticationOptionsConfig);
 
         assertThat(maxMindConfig.getDatabaseRefreshInterval(), equalTo(Duration.ofDays(10)));
         assertThat(maxMindConfig.getCacheSize(), equalTo(2048));
         assertThat(maxMindConfig.getDatabasePaths().size(), equalTo(3));
-    }
-
-    private void reflectivelySetField(final MaxMindConfig maxMindConfig, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
-        final Field field = MaxMindConfig.class.getDeclaredField(fieldName);
-        try {
-            field.setAccessible(true);
-            field.set(maxMindConfig, value);
-        } finally {
-            field.setAccessible(false);
-        }
+        assertThat(maxMindConfig.getAwsAuthenticationOptionsConfig(), equalTo(awsAuthenticationOptionsConfig));
     }
 
 }
