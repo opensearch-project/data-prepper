@@ -218,11 +218,8 @@ class RouterTest {
             for (int i = 0; i < 5; i++) {
                 final DataFlowComponent dataFlowComponent = mock(DataFlowComponent.class);
                 dataFlowComponents.add(dataFlowComponent);
-                if (i == 0) {
-                    when(dataFlowComponent.getRoutes()).thenReturn(Set.of());
-                } else {
-                    when(dataFlowComponent.getRoutes()).thenReturn(Set.of("aa"));
-                }
+                final Set<String> routes = i ==0 ? Collections.emptySet() : Set.of(UUID.randomUUID().toString());
+                when(dataFlowComponent.getRoutes()).thenReturn(routes);
             }
             when(getRecordStrategy.getAllRecords(any())).thenReturn(recordsIn);
 
