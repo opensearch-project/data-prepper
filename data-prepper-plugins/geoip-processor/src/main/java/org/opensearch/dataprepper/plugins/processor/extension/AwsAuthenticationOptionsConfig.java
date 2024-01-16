@@ -1,9 +1,9 @@
 /*
  * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
+ *  PDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.configuration;
+package org.opensearch.dataprepper.plugins.processor.extension;
 
 import java.util.Map;
 import java.util.UUID;
@@ -20,8 +20,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 /**
  * An implementation class AWS Authentication configuration
  */
-public class AwsAuthenticationOptions {
-
+public class AwsAuthenticationOptionsConfig {
     @JsonProperty("region")
     @Size(min = 1, message = "Region cannot be empty string")
     private String awsRegion;
@@ -66,8 +65,10 @@ public class AwsAuthenticationOptions {
                         configuration -> awsStsHeaderOverrides.forEach(configuration::putHeader));
             }
 
-            awsCredentialsProvider = StsAssumeRoleCredentialsProvider.builder().stsClient(stsClient)
-                    .refreshRequest(assumeRoleRequestBuilder.build()).build();
+            awsCredentialsProvider = StsAssumeRoleCredentialsProvider.builder()
+                    .stsClient(stsClient)
+                    .refreshRequest(assumeRoleRequestBuilder.build())
+                    .build();
 
         } else {
             awsCredentialsProvider = DefaultCredentialsProvider.create();

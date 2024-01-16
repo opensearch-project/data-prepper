@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.configuration.KeysConfig;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIpConfigSupplier;
-import org.opensearch.dataprepper.plugins.processor.extension.GeoIpServiceConfig;
 import org.opensearch.dataprepper.plugins.processor.utils.IPValidationcheck;
 import org.opensearch.dataprepper.logging.DataPrepperMarkers;
 import org.slf4j.Logger;
@@ -44,7 +43,6 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   private final GeoIPProcessorConfig geoIPProcessorConfig;
   private final String tempPath;
   private final List<String> tagsOnSourceNotFoundFailure;
-  private final GeoIpServiceConfig geoIpServiceConfig;
   private GeoIPProcessorService geoIPProcessorService;
   private static final String TEMP_PATH_FOLDER = "GeoIP";
 
@@ -64,8 +62,8 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
     tagsOnSourceNotFoundFailure = geoCodingProcessorConfig.getTagsOnSourceNotFoundFailure();
     this.geoIpProcessingMatchCounter = pluginMetrics.counter(GEO_IP_PROCESSING_MATCH);
     this.geoIpProcessingMismatchCounter = pluginMetrics.counter(GEO_IP_PROCESSING_MISMATCH);
-    // TODO: use this config and clean up MaxMind service config from pipeline.yaml
-    geoIpServiceConfig = geoIpConfigSupplier.getGeoIpServiceConfig();
+    // TODO: use this service and clean up MaxMind service config from pipeline.yaml
+    //geoIPProcessorService = geoIpConfigSupplier.getGeoIPProcessorService();
   }
 
   /**

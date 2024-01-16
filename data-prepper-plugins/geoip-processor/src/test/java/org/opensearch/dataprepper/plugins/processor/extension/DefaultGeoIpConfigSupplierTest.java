@@ -20,8 +20,8 @@ class DefaultGeoIpConfigSupplierTest {
     }
 
     @Test
-    void testGetGeoIpServiceConfig() {
-        assertThat(createObjectUnderTest().getGeoIpServiceConfig(), equalTo(geoIpServiceConfig));
+    void getGeoIPProcessorService_returnsNull_whenGeoIpServiceConfigIsNull() {
+        assertThat(createObjectUnderTest().getGeoIPProcessorService(), equalTo(null));
     }
 
 }

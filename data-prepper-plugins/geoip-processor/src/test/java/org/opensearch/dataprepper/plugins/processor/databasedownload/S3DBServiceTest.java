@@ -11,7 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorConfig;
-import org.opensearch.dataprepper.plugins.processor.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.processor.extension.AwsAuthenticationOptionsConfig;
 import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.DownloadFailedException;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
@@ -36,8 +36,8 @@ class S3DBServiceTest {
 
     @BeforeEach
     void setUp() {
-        AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
-        when(geoIPProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
+        AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig = mock(AwsAuthenticationOptionsConfig.class);
+        when(geoIPProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptionsConfig);
         when(geoIPProcessorConfig.getAwsAuthenticationOptions().getAwsRegion()).thenReturn(Region.of(S3_REGION));
         AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
         when(geoIPProcessorConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration()).thenReturn(awsCredentialsProvider);

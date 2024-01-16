@@ -4,3 +4,6 @@ extensions:
       database_paths: ["path1", "path2"]
       database_refresh_interval: "P10D"
       cache_size: 2048
+      aws:
+        region: "us-east-1"
+        sts_role_arn: "arn:aws:iam::123456789:role/data-prepper-execution-role"
