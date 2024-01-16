@@ -1,0 +1,37 @@
+three-pipelines-unrouted-test-1:
+  delay: 2
+  source:
+    in_memory:
+      testing_key: PipelinesWithAcksIT
+      acknowledgments: true
+  route:
+    - 1xx_route: '/status >= 700 and /status < 800'
+    - other_route: '/status >= 800 and /status < 900'
+  sink:
+    - pipeline:
+        name: "three-pipelines-unrouted-test-2"
+        routes:
+          - 1xx_route
+    - pipeline:
+        name: "three-pipelines-unrouted-test-3"
+        routes:
+          - other_route
+
+three-pipelines-unrouted-test-2:
+  source:
+    pipeline:
+      name: "three-pipelines-unrouted-test-1"
+  sink:
+    - in_memory:
+        testing_key: PipelinesWithAcksIT
+        acknowledgments: true
+
+three-pipelines-unrouted-test-3:
+  source:
+    pipeline:
+      name: "three-pipelines-unrouted-test-1"
+  sink:
+    - in_memory:
+        testing_key: PipelinesWithAcksIT
+        acknowledgments: true
+

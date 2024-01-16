@@ -22,6 +22,7 @@ public class RouterFactory {
 
     public Router createRouter(final Set<ConditionalRoute> routes) {
         final RouteEventEvaluator routeEventEvaluator = new RouteEventEvaluator(expressionEvaluator, routes);
-        return new Router(routeEventEvaluator, dataFlowComponentRouter);
+        return new Router(routeEventEvaluator, dataFlowComponentRouter,
+                event -> event.getEventHandle().release(true));
     }
 }
