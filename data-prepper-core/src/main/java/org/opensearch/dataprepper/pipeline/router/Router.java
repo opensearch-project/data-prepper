@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.parser.DataFlowComponent;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -42,18 +43,19 @@ public class Router {
 
         final Map<Record, Set<String>> recordsToRoutes = routeEventEvaluator.evaluateEventRoutes(allRecords);
 
-        // If there are any events that are not getting routed to any sink, invoke no route handler on it.
-        for (Map.Entry<Record, Set<String>> entry : recordsToRoutes.entrySet()) {
-            if (entry.getValue().size() == 0) {
-                Record record = entry.getKey();
-                if ((record.getData() instanceof Event) && (noRouteHandler != null)) {
-                    noRouteHandler.accept((Event)record.getData());
-                }
-            }
-        }
+        Set<Record> recordsUnRouted = new HashSet<>(allRecords);
 
         for (DataFlowComponent<C> dataFlowComponent : dataFlowComponents) {
-            dataFlowComponentRouter.route(allRecords, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
+            dataFlowComponentRouter.route(allRecords, dataFlowComponent, recordsToRoutes, getRecordStrategy, (component, records) -> { 
+                recordsUnRouted.removeAll(records);
+                componentRecordsConsumer.accept(component, records);
+            });
+        }
+
+        for (Record record: recordsUnRouted) {
+            if (record.getData() instanceof Event) {
+                noRouteHandler.accept((Event)record.getData());
+            }
         }
     }
 }

@@ -35,6 +35,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
@@ -66,9 +67,13 @@ class RouterTest {
     }
 
     private Router createObjectUnderTest() {
-        //noRouteHandler = event -> event.getEventHandle().release(true);
         noRouteHandler = mock(Consumer.class);
         return new Router(routeEventEvaluator, dataFlowComponentRouter, noRouteHandler);
+    }
+
+    private Router createObjectUnderTestWithDataFlowComponentRouter() {
+        noRouteHandler = mock(Consumer.class);
+        return new Router(routeEventEvaluator, new DataFlowComponentRouter(), noRouteHandler);
     }
 
     @Test
@@ -133,7 +138,7 @@ class RouterTest {
 
             createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
-            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
+            verify(dataFlowComponentRouter).route(eq(recordsIn), eq(dataFlowComponent), eq(recordsToRoutes), eq(getRecordStrategy), any(BiConsumer.class));
         }
 
         @Test
@@ -148,7 +153,7 @@ class RouterTest {
             createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
             for (DataFlowComponent<TestComponent> dataFlowComponent : dataFlowComponents) {
-                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
+                verify(dataFlowComponentRouter).route(eq(recordsIn), eq(dataFlowComponent), eq(recordsToRoutes), eq(getRecordStrategy), any(BiConsumer.class));
             }
         }
     }
@@ -168,7 +173,7 @@ class RouterTest {
             when(record3.getData()).thenReturn(event3);
             Object notAnEvent = mock(Object.class);
             when(record4.getData()).thenReturn(notAnEvent);
-            List<Record> recordsIn = List.of(record1, record2, record3);
+            List<Record> recordsIn = List.of(record1, record2, record3, record4);
             Map<Record, Set<String>> recordsToRoutes = new HashMap<>();
             recordsToRoutes.put(record1, Set.of(UUID.randomUUID().toString()));
             recordsToRoutes.put(record2, Set.of(UUID.randomUUID().toString()));
@@ -184,11 +189,46 @@ class RouterTest {
             createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
             for (DataFlowComponent<TestComponent> dataFlowComponent : dataFlowComponents) {
-                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
+                verify(dataFlowComponentRouter).route(eq(recordsIn), eq(dataFlowComponent), eq(recordsToRoutes), eq(getRecordStrategy), any(BiConsumer.class));
             }
             // Verify noRouteHandler gets invoked only for record3 and not
             // for record4, because record4 has non-Event type data
             verify(noRouteHandler, times(1)).accept(any());
+        }
+
+        @Test
+        void route_with_multiple_DataFlowComponents_with_unrouted_events_and_sink_with_noroutes() {
+            Event event1 = mock(Event.class);
+            Event event2 = mock(Event.class);
+            Event event3 = mock(Event.class);
+            EventHandle eventHandle3 = mock(EventHandle.class);
+            Record record1 = mock(Record.class);
+            Record record2 = mock(Record.class);
+            Record record3 = mock(Record.class);
+            Record record4 = mock(Record.class);
+            Object notAnEvent = mock(Object.class);
+            List<Record> recordsIn = List.of(record1, record2, record3, record4);
+            Map<Record, Set<String>> recordsToRoutes = new HashMap<>();
+            recordsToRoutes.put(record1, Set.of(UUID.randomUUID().toString()));
+            recordsToRoutes.put(record2, Set.of(UUID.randomUUID().toString()));
+            recordsToRoutes.put(record3, Set.of());
+            recordsToRoutes.put(record4, Set.of());
+            when(routeEventEvaluator.evaluateEventRoutes(recordsIn)).thenReturn(recordsToRoutes);
+            dataFlowComponents = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
+                final DataFlowComponent dataFlowComponent = mock(DataFlowComponent.class);
+                dataFlowComponents.add(dataFlowComponent);
+                if (i == 0) {
+                    when(dataFlowComponent.getRoutes()).thenReturn(Set.of());
+                } else {
+                    when(dataFlowComponent.getRoutes()).thenReturn(Set.of("aa"));
+                }
+            }
+            when(getRecordStrategy.getAllRecords(any())).thenReturn(recordsIn);
+
+            createObjectUnderTestWithDataFlowComponentRouter().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
+
+            verify(noRouteHandler, times(0)).accept(any());
         }
     }
 
@@ -218,7 +258,7 @@ class RouterTest {
 
             createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
-            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
+            verify(dataFlowComponentRouter).route(eq(recordsIn), eq(dataFlowComponent), eq(recordsToRoutes), eq(getRecordStrategy), any(BiConsumer.class));
         }
 
         @Test
@@ -233,7 +273,7 @@ class RouterTest {
             createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
             for (DataFlowComponent<TestComponent> dataFlowComponent : dataFlowComponents) {
-                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
+                verify(dataFlowComponentRouter).route(eq(recordsIn), eq(dataFlowComponent), eq(recordsToRoutes), eq(getRecordStrategy), any(BiConsumer.class));
             }
         }
 
@@ -246,7 +286,7 @@ class RouterTest {
                 dataFlowComponents.add(dataFlowComponent);
             }
             createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
-            verify(dataFlowComponentRouter, times(5)).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
+            verify(dataFlowComponentRouter, times(5)).route(eq(recordsIn), eq(dataFlowComponent), eq(recordsToRoutes), eq(getRecordStrategy), any(BiConsumer.class));
         }
     }
 }
