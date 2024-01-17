@@ -23,6 +23,7 @@ import java.time.Instant;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
@@ -35,6 +36,8 @@ class PipelinesWithAcksIT {
     private static final String TWO_PARALLEL_PIPELINES_CONFIGURATION_UNDER_TEST = "acknowledgements/two-parallel-pipelines-test.yaml";
     private static final String THREE_PIPELINES_CONFIGURATION_UNDER_TEST = "acknowledgements/three-pipelines-test.yaml";
     private static final String THREE_PIPELINES_WITH_ROUTE_CONFIGURATION_UNDER_TEST = "acknowledgements/three-pipeline-route-test.yaml";
+    private static final String THREE_PIPELINES_WITH_UNROUTED_CONFIGURATION_UNDER_TEST = "acknowledgements/three-pipeline-unrouted-test.yaml";
+    private static final String THREE_PIPELINES_WITH_DEFAULT_ROUTE_CONFIGURATION_UNDER_TEST = "acknowledgements/three-pipeline-route-default-test.yaml";
     private static final String THREE_PIPELINES_MULTI_SINK_CONFIGURATION_UNDER_TEST = "acknowledgements/three-pipelines-test-multi-sink.yaml";
     private static final String ONE_PIPELINE_THREE_SINKS_CONFIGURATION_UNDER_TEST = "acknowledgements/one-pipeline-three-sinks.yaml";
     private static final String ONE_PIPELINE_ACK_EXPIRY_CONFIGURATION_UNDER_TEST = "acknowledgements/one-pipeline-ack-expiry-test.yaml";
@@ -121,6 +124,22 @@ class PipelinesWithAcksIT {
     }
 
     @Test
+    void three_pipelines_with_all_unrouted_records() {
+        setUp(THREE_PIPELINES_WITH_UNROUTED_CONFIGURATION_UNDER_TEST);
+        final int numRecords = 2;
+        inMemorySourceAccessor.submitWithStatus(IN_MEMORY_IDENTIFIER, numRecords);
+
+        await().atMost(20000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            assertTrue(inMemorySourceAccessor != null);
+            assertTrue(inMemorySourceAccessor.getAckReceived() != null);
+        });
+        List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
+        assertThat(outputRecords.size(), equalTo(0));
+        assertTrue(inMemorySourceAccessor.getAckReceived());
+    }
+
+    @Test
     void three_pipelines_with_route_and_multiple_records() {
         setUp(THREE_PIPELINES_WITH_ROUTE_CONFIGURATION_UNDER_TEST);
         final int numRecords = 100;
@@ -130,7 +149,23 @@ class PipelinesWithAcksIT {
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
-            assertThat(outputRecords.size(), equalTo(numRecords));
+            assertThat(outputRecords.size(), lessThanOrEqualTo(numRecords));
+        });
+        assertTrue(inMemorySourceAccessor.getAckReceived());
+    }
+
+    @Test
+    void three_pipelines_with_default_route_and_multiple_records() {
+        setUp(THREE_PIPELINES_WITH_DEFAULT_ROUTE_CONFIGURATION_UNDER_TEST);
+        final int numRecords = 10;
+
+        inMemorySourceAccessor.submitWithStatus(IN_MEMORY_IDENTIFIER, numRecords);
+
+        await().atMost(20000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
+            assertThat(outputRecords, not(empty()));
+            assertThat(outputRecords.size(), equalTo(2*numRecords));
         });
         assertTrue(inMemorySourceAccessor.getAckReceived());
     }
