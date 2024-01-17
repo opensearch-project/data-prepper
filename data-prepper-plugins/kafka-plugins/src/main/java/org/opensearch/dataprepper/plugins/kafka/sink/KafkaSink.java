@@ -161,7 +161,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     }
 
-    public KafkaCustomProducer createProducer() {
+    private KafkaCustomProducer createProducer() {
         // TODO: Add the DLQSink here. new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting)
         return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, pluginFactory, pluginSetting, expressionEvaluator, sinkContext, pluginMetrics, true);
     }

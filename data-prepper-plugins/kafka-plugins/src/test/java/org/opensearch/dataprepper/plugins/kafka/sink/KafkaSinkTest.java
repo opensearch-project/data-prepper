@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -28,6 +29,8 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
+import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
+import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.yaml.snakeyaml.Yaml;
@@ -48,7 +51,9 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -58,10 +63,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class KafkaSinkTest {
-
-
-    KafkaSink kafkaSink;
-
+    @Mock
+    KafkaCustomProducer kafkaCustomProducer;
 
     KafkaSinkConfig kafkaSinkConfig;
 
@@ -79,8 +82,6 @@ public class KafkaSinkTest {
 
 
     Event event;
-
-    KafkaSink spySink;
 
     private static final Integer totalWorkers = 1;
 
@@ -118,16 +119,11 @@ public class KafkaSinkTest {
         when(pluginSetting.getPipelineName()).thenReturn("Kafka-sink");
         event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         when(sinkContext.getTagsTargetKey()).thenReturn("tag");
-        kafkaSink = new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactoryMock, pluginMetrics, mock(ExpressionEvaluator.class), sinkContext, awsCredentialsSupplier);
-        spySink = spy(kafkaSink);
         executorsMockedStatic = mockStatic(Executors.class);
         props = new Properties();
         props.put("bootstrap.servers", "127.0.0.1:9093");
         props.put("key.serializer", StringSerializer.class.getName());
         props.put("value.serializer", StringSerializer.class.getName());
-        ReflectionTestUtils.setField(spySink, "executorService", executorService);
-
-
     }
 
     @AfterEach
@@ -135,13 +131,28 @@ public class KafkaSinkTest {
         executorsMockedStatic.close();
     }
 
+    private KafkaSink createObjectUnderTest() {
+        final KafkaSink objectUnderTest;
+        try(final MockedConstruction<KafkaCustomProducerFactory> ignored = mockConstruction(KafkaCustomProducerFactory.class, (mock, context) -> {
+           when(mock.createProducer(any(), any(), any(), any(), any(), any(), anyBoolean())).thenReturn(kafkaCustomProducer);
+        })) {
+            objectUnderTest = new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactoryMock, pluginMetrics, mock(ExpressionEvaluator.class), sinkContext, awsCredentialsSupplier);
+        }
+        ReflectionTestUtils.setField(objectUnderTest, "executorService", executorService);
+        return spy(objectUnderTest);
+
+    }
+
     @Test
     public void doOutputTest() {
         ReflectionTestUtils.setField(kafkaSinkConfig, "schemaConfig", null);
         when(executorService.submit(any(ProducerWorker.class))).thenReturn(futureTask);
         final Collection records = Arrays.asList(new Record(event));
-        spySink.doOutput(records);
-        verify(spySink).doOutput(records);
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+
+        objectUnderTest.doOutput(records);
+
+        verify(objectUnderTest).doOutput(records);
     }
 
 
@@ -149,21 +160,24 @@ public class KafkaSinkTest {
     public void doOutputExceptionTest() {
         final Collection records = Arrays.asList(new Record(event));
         when(executorService.submit(any(ProducerWorker.class))).thenThrow(new RuntimeException());
-        assertThrows(RuntimeException.class, () -> spySink.doOutput(records));
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+        assertThrows(RuntimeException.class, () -> objectUnderTest.doOutput(records));
     }
 
     @Test
     public void doOutputEmptyRecordsTest() {
         final Collection records = Arrays.asList();
-        spySink.doOutput(records);
-        verify(spySink).doOutput(records);
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+        objectUnderTest.doOutput(records);
+        verify(objectUnderTest).doOutput(records);
 
     }
 
     @Test
     public void shutdownTest() {
-        spySink.shutdown();
-        verify(spySink).shutdown();
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+        objectUnderTest.shutdown();
+        verify(objectUnderTest).shutdown();
     }
 
     @Test
@@ -173,28 +187,31 @@ public class KafkaSinkTest {
 
         when(executorService.awaitTermination(
                 1000L, TimeUnit.MILLISECONDS)).thenThrow(interruptedException);
-        spySink.shutdown();
 
+        createObjectUnderTest().shutdown();
     }
 
 
     @Test
     public void doInitializeTest() {
-        spySink.doInitialize();
-        verify(spySink).doInitialize();
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+        objectUnderTest.doInitialize();
+        verify(objectUnderTest).doInitialize();
     }
 
     @Test
     public void doInitializeNullPointerExceptionTest() {
         when(Executors.newFixedThreadPool(totalWorkers)).thenThrow(NullPointerException.class);
-        assertThrows(NullPointerException.class, () -> spySink.doInitialize());
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+        assertThrows(NullPointerException.class, () -> objectUnderTest.doInitialize());
     }
 
 
     @Test
     public void isReadyTest() {
-        ReflectionTestUtils.setField(kafkaSink, "sinkInitialized", true);
-        assertEquals(true, kafkaSink.isReady());
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+        ReflectionTestUtils.setField(objectUnderTest, "sinkInitialized", true);
+        assertEquals(true, objectUnderTest.isReady());
     }
 
     @Test
@@ -213,6 +230,8 @@ public class KafkaSinkTest {
 
         when(executorService.submit(any(ProducerWorker.class))).thenReturn(futureTask);
         final Collection records = Arrays.asList(new Record(event));
-        assertThrows(RuntimeException.class, () -> spySink.doOutput(records));
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+
+        assertThrows(RuntimeException.class, () -> objectUnderTest.doOutput(records));
     }
 }
