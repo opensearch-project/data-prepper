@@ -123,7 +123,7 @@ raw-pipeline:
         hosts: [ "https://localhost:9200" ]
         # Change to your credentials
         username: "admin"
-        password: "admin"
+        password: "<admin password>"
         # Add a certificate file if you are accessing an OpenSearch cluster with a self-signed certificate  
         #cert: /path/to/cert
         # If you are connecting to an Amazon OpenSearch Service domain without
@@ -137,7 +137,7 @@ raw-pipeline:
         index_type: trace-analytics-raw
         # Change to your credentials
         username: "admin"
-        password: "admin"
+        password: "<admin password>"
         # Add a certificate file if you are accessing an OpenSearch cluster with a self-signed certificate  
         #cert: /path/to/cert
         # If you are connecting to an Amazon OpenSearch Service domain without
@@ -174,7 +174,7 @@ service-map-pipeline:
         index_type: trace-analytics-service-map
         # Change to your credentials
         username: "admin"
-        password: "admin"
+        password: "<admin password>"
         # Add a certificate file if you are accessing an OpenSearch cluster with a self-signed certificate  
         #cert: /path/to/cert
         # If you are connecting to an Amazon OpenSearch Service domain without
