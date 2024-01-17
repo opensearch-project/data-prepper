@@ -28,7 +28,7 @@ dependencies {
     implementation project(':data-prepper-plugins:buffer-common')
     implementation project(':data-prepper-plugins:blocking-buffer')
     implementation project(':data-prepper-plugins:aws-plugin-api')
-    implementation 'org.apache.kafka:kafka-clients:3.4.0'
+    implementation 'org.apache.kafka:kafka-clients:3.6.1'
     implementation libs.avro.core
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
@@ -67,7 +67,7 @@ dependencies {
     testImplementation 'org.apache.kafka:kafka_2.13:3.4.0:test'
     testImplementation 'org.apache.curator:curator-test:5.5.0'
     testImplementation 'io.confluent:kafka-schema-registry:7.4.0'
-    testImplementation 'org.apache.kafka:kafka-clients:3.4.0:test'
+    testImplementation 'org.apache.kafka:kafka-clients:3.6.1:test'
     testImplementation 'org.apache.kafka:connect-json:3.4.0'
     testImplementation('com.kjetland:mbknor-jackson-jsonschema_2.13:1.0.39')
     testImplementation group: 'org.powermock', name: 'powermock-api-mockito2', version: '2.0.9'
