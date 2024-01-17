@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.processor.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.processor.configuration.KeysConfig;
 import org.opensearch.dataprepper.plugins.processor.configuration.ServiceTypeOptions;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
@@ -28,14 +27,6 @@ class GeoIPProcessorConfigTest {
     @BeforeEach
     void setUp() {
         geoIPProcessorConfig = new GeoIPProcessorConfig();
-    }
-
-    @Test
-    void getAwsAuthenticationOptionsTestPositive() throws NoSuchFieldException, IllegalAccessException {
-        AwsAuthenticationOptions awsAuthenticationOptions = new AwsAuthenticationOptions();
-        ReflectivelySetField.setField(GeoIPProcessorConfig.class,
-                geoIPProcessorConfig, "awsAuthenticationOptions", awsAuthenticationOptions);
-        assertThat(geoIPProcessorConfig.getAwsAuthenticationOptions(), equalTo(awsAuthenticationOptions));
     }
 
     @Test

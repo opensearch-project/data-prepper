@@ -10,7 +10,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.processor.configuration.KeysConfig;
 import org.opensearch.dataprepper.plugins.processor.configuration.ServiceTypeOptions;
-import org.opensearch.dataprepper.plugins.processor.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.processor.extension.AwsAuthenticationOptionsConfig;
 
 import java.util.List;
 
@@ -22,7 +22,7 @@ public class GeoIPProcessorConfig {
     @JsonProperty("aws")
     @NotNull
     @Valid
-    private AwsAuthenticationOptions awsAuthenticationOptions;
+    private AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig;
 
     @JsonProperty("keys")
     @NotNull
@@ -39,8 +39,8 @@ public class GeoIPProcessorConfig {
      * Aws Authentication configuration Options
      * @return AwsAuthenticationOptions
      */
-    public AwsAuthenticationOptions getAwsAuthenticationOptions() {
-        return awsAuthenticationOptions;
+    public AwsAuthenticationOptionsConfig getAwsAuthenticationOptions() {
+        return awsAuthenticationOptionsConfig;
     }
 
     /**
