@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.kafka.buffer;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.util.TestConsumer;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
+
+import org.opensearch.dataprepper.plugins.kafka.util.TestProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -283,7 +286,8 @@ public class KafkaBufferIT {
 
     @Nested
     class Encrypted {
-        private Cipher cipher;
+        private Cipher decryptCipher;
+        private Cipher encryptCipher;
 
         @BeforeEach
         void setUp() throws NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
@@ -291,8 +295,10 @@ public class KafkaBufferIT {
             aesKeyGenerator.init(256);
             final SecretKey secretKey = aesKeyGenerator.generateKey();
 
-            cipher = Cipher.getInstance("AES");
-            cipher.init(Cipher.DECRYPT_MODE, secretKey);
+            decryptCipher = Cipher.getInstance("AES");
+            decryptCipher.init(Cipher.DECRYPT_MODE, secretKey);
+            encryptCipher = Cipher.getInstance("AES");
+            encryptCipher.init(Cipher.ENCRYPT_MODE, secretKey);
             final byte[] base64Bytes = Base64.getEncoder().encode(secretKey.getEncoded());
             final String aesKey = new String(base64Bytes);
 
@@ -359,7 +365,7 @@ public class KafkaBufferIT {
             assertThat(innerData, notNullValue());
             assertThrows(JsonParseException.class, () -> objectMapper.readValue(innerData, Map.class));
 
-            final byte[] deserializedBytes = cipher.doFinal(innerData);
+            final byte[] deserializedBytes = decryptCipher.doFinal(innerData);
 
             final Map<String, Object> actualEventData = objectMapper.readValue(deserializedBytes, Map.class);
             assertThat(actualEventData, notNullValue());
@@ -401,9 +407,46 @@ public class KafkaBufferIT {
             assertThat(innerData, notNullValue());
             assertThat(innerData, not(equalTo(writtenBytes)));
 
-            final byte[] decryptedBytes = cipher.doFinal(innerData);
+            final byte[] decryptedBytes = decryptCipher.doFinal(innerData);
 
             assertThat(decryptedBytes, equalTo(writtenBytes));
+        }
+
+        @Test
+        void read_decrypts_data_from_the_predefined_key() throws IllegalBlockSizeException, BadPaddingException {
+            final KafkaBuffer objectUnderTest = createObjectUnderTest();
+            final TestProducer testProducer = new TestProducer(bootstrapServersCommaDelimited, topicName);
+
+            final Record<Event> record = createRecord();
+            final byte[] unencryptedBytes = record.getData().toJsonString().getBytes();
+            final byte[] encryptedBytes = encryptCipher.doFinal(unencryptedBytes);
+
+            final KafkaBufferMessage.BufferData bufferedData = KafkaBufferMessage.BufferData.newBuilder()
+                    .setMessageFormat(KafkaBufferMessage.MessageFormat.MESSAGE_FORMAT_BYTES)
+                    .setData(ByteString.copyFrom(encryptedBytes))
+                    .build();
+
+            final byte[] unencryptedKeyBytes = createRandomBytes();
+            final byte[] encryptedKeyBytes = encryptCipher.doFinal(unencryptedKeyBytes);
+
+            final KafkaBufferMessage.BufferData keyData = KafkaBufferMessage.BufferData.newBuilder()
+                    .setMessageFormat(KafkaBufferMessage.MessageFormat.MESSAGE_FORMAT_BYTES)
+                    .setData(ByteString.copyFrom(encryptedKeyBytes))
+                    .build();
+
+            testProducer.publishRecord(keyData.toByteArray(), bufferedData.toByteArray());
+
+            final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = objectUnderTest.read(10_000);
+
+            assertThat(readResult, notNullValue());
+            assertThat(readResult.getKey(), notNullValue());
+            assertThat(readResult.getKey().size(), equalTo(1));
+
+            final Record<Event> onlyResult = readResult.getKey().stream().iterator().next();
+
+            assertThat(onlyResult, notNullValue());
+            assertThat(onlyResult.getData(), notNullValue());
+            assertThat(onlyResult.getData().toMap(), equalTo(record.getData().toMap()));
         }
     }
 
