@@ -50,9 +50,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -61,7 +61,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class OTelTraceGroupProcessorTests {
+class OTelTraceGroupProcessorTests {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String TEST_PIPELINE_NAME = "testPipelineName";
@@ -117,7 +117,7 @@ public class OTelTraceGroupProcessorTests {
     private AwsCredentialsSupplier awsCredentialsSupplier;
 
     @BeforeEach
-    public void setUp() throws Exception{
+    void setUp() throws Exception{
         MetricsTestUtil.initMetrics();
         connectionConfigurationMockedStatic = Mockito.mockStatic(ConnectionConfiguration.class);
         connectionConfigurationMockedStatic.when(() -> ConnectionConfiguration.readConnectionConfiguration(any(PluginSetting.class)))
@@ -160,14 +160,14 @@ public class OTelTraceGroupProcessorTests {
     }
 
     @AfterEach
-    public void tearDown() {
+    void tearDown() {
         otelTraceGroupProcessor.shutdown();
         connectionConfigurationMockedStatic.close();
         executorService.shutdown();
     }
 
     @Test
-    public void testShutDown() throws IOException {
+    void testShutDown() throws IOException {
         // Act
         otelTraceGroupProcessor.shutdown();
 
@@ -176,7 +176,7 @@ public class OTelTraceGroupProcessorTests {
     }
 
     @Test
-    public void testTraceGroupFillSuccess() throws IOException {
+    void testTraceGroupFillSuccess() throws IOException {
         // Arrange
         Record<Span> testRecord = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<Span>> testRecords = Collections.singletonList(testRecord);
@@ -194,7 +194,7 @@ public class OTelTraceGroupProcessorTests {
     }
 
     @Test
-    public void testTraceGroupFillFailDueToFailedRequest() throws IOException {
+    void testTraceGroupFillFailDueToFailedRequest() throws IOException {
         // Arrange
         Record<Span> testRecord = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<Span>> testRecords = Collections.singletonList(testRecord);
@@ -214,7 +214,7 @@ public class OTelTraceGroupProcessorTests {
     }
 
     @Test
-    public void testTraceGroupFillFailDueToNoHits() throws IOException {
+    void testTraceGroupFillFailDueToNoHits() throws IOException {
         // Arrange
         Record<Span> testRecord = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<Span>> testRecords = Collections.singletonList(testRecord);
@@ -235,7 +235,7 @@ public class OTelTraceGroupProcessorTests {
     }
 
     @Test
-    public void testTraceGroupFieldAlreadyPopulated() throws IOException {
+    void testTraceGroupFieldAlreadyPopulated() throws IOException {
         // Arrange
         Record<Span> testRecord = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
         List<Record<Span>> testRecords = Collections.singletonList(testRecord);
@@ -253,7 +253,7 @@ public class OTelTraceGroupProcessorTests {
     }
 
     @Test
-    public void testTraceGroupProcessMultiWorker() throws IOException, ExecutionException, InterruptedException {
+    void testTraceGroupProcessMultiWorker() throws IOException, ExecutionException, InterruptedException {
         /*
          * Note: we only test the threadsafety of the business logic in OtelTraceGroupProcessor. The OpenSearch REST client
          * itself is thread-safe {https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/_changing_the_client_8217_s_initialization_code.html}.
@@ -282,7 +282,7 @@ public class OTelTraceGroupProcessorTests {
     }
 
     @Test
-    public void testPrepareForShutdown() {
+    void testPrepareForShutdown() {
         otelTraceGroupProcessor.prepareForShutdown();
 
         assertTrue(otelTraceGroupProcessor.isReadyForShutdown());

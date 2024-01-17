@@ -40,7 +40,6 @@ import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,8 +55,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
-import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
@@ -66,9 +63,11 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 
@@ -102,8 +101,8 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
@@ -187,7 +186,7 @@ class OTelTraceSourceTest {
     private OTelTraceSource SOURCE;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         lenient().when(serverBuilder.service(any(GrpcService.class))).thenReturn(serverBuilder);
         lenient().when(serverBuilder.service(any(GrpcService.class), any(Function.class))).thenReturn(serverBuilder);
         lenient().when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
@@ -218,7 +217,7 @@ class OTelTraceSourceTest {
     }
 
     @AfterEach
-    public void afterEach() {
+    void afterEach() {
         SOURCE.stop();
     }
 
@@ -837,7 +836,7 @@ class OTelTraceSourceTest {
         // starting server
         SOURCE.start(buffer);
         // double start server
-        Assertions.assertThrows(IllegalStateException.class, () -> SOURCE.start(buffer));
+        assertThrows(IllegalStateException.class, () -> SOURCE.start(buffer));
     }
 
     @Test
@@ -850,7 +849,7 @@ class OTelTraceSourceTest {
         oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
         final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
-        Assertions.assertThrows(RuntimeException.class, () -> source.start(buffer));
+        assertThrows(RuntimeException.class, () -> source.start(buffer));
     }
 
     @Test
@@ -859,7 +858,7 @@ class OTelTraceSourceTest {
         testPluginSetting.setPipelineName("pipeline");
         oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
         final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        Assertions.assertThrows(IllegalStateException.class, () -> source.start(null));
+        assertThrows(IllegalStateException.class, () -> source.start(null));
     }
 
     @Test

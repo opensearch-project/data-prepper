@@ -17,11 +17,11 @@ import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.metric.Bucket;
 import org.opensearch.dataprepper.model.metric.DefaultBucket;
@@ -38,8 +38,8 @@ import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
-public class MetricsPluginExponentialHistogramTest {
+@ExtendWith(MockitoExtension.class)
+class MetricsPluginExponentialHistogramTest {
 
     private static final Double MAX_ERROR = 0.00001;
 
@@ -63,15 +63,15 @@ public class MetricsPluginExponentialHistogramTest {
             .setFlags(1)
             .build();
 
-    @Before
-    public void init() {
+    @BeforeEach
+    void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
         rawProcessor = new OTelMetricsRawProcessor(testsettings, config);
     }
 
     @Test
-    public void testWithMaxScaleExceedingConfiguredNegativeScale() {
+    void testWithMaxScaleExceedingConfiguredNegativeScale() {
         when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(-2);
         lenient().when(config.getCalculateExponentialHistogramBuckets()).thenReturn(true);
         ExponentialHistogram histogram = ExponentialHistogram.newBuilder()
@@ -82,7 +82,7 @@ public class MetricsPluginExponentialHistogramTest {
     }
 
     @Test
-    public void testWithMaxScaleExceedingConfiguredPositiveScale() {
+    void testWithMaxScaleExceedingConfiguredPositiveScale() {
         when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(2);
         lenient().when(config.getCalculateExponentialHistogramBuckets()).thenReturn(true);
         ExponentialHistogram histogram = ExponentialHistogram.newBuilder()
@@ -93,7 +93,7 @@ public class MetricsPluginExponentialHistogramTest {
     }
 
     @Test
-    public void test() throws JsonProcessingException {
+    void test() throws JsonProcessingException {
         when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(10);
         lenient().when(config.getCalculateExponentialHistogramBuckets()).thenReturn(true);
         ExponentialHistogram histogram = ExponentialHistogram.newBuilder()
@@ -117,7 +117,7 @@ public class MetricsPluginExponentialHistogramTest {
     }
 
     @Test
-    public void testWithHistogramCalculationFlagDisabled() throws JsonProcessingException {
+    void testWithHistogramCalculationFlagDisabled() throws JsonProcessingException {
         when(config.getCalculateExponentialHistogramBuckets()).thenReturn(false);
         lenient().when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(10);
 

@@ -15,11 +15,11 @@ import io.opentelemetry.proto.metrics.v1.HistogramDataPoint;
 import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.metric.Bucket;
 import org.opensearch.dataprepper.model.metric.DefaultBucket;
@@ -35,8 +35,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
-public class MetricsPluginHistogramTest {
+@ExtendWith(MockitoExtension.class)
+class MetricsPluginHistogramTest {
 
     private OTelMetricsRawProcessor rawProcessor;
 
@@ -56,8 +56,8 @@ public class MetricsPluginHistogramTest {
             .setFlags(1)
             .build();
 
-    @Before
-    public void init() {
+    @BeforeEach
+    void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
         when(config.getFlattenAttributesFlag()).thenReturn(true);
@@ -65,7 +65,7 @@ public class MetricsPluginHistogramTest {
     }
 
     @Test
-    public void test() throws JsonProcessingException {
+    void test() throws JsonProcessingException {
         when(config.getCalculateHistogramBuckets()).thenReturn(true);
         Histogram histogram = Histogram.newBuilder().addDataPoints(HISTOGRAM_DATA_POINT).build();
 
@@ -82,7 +82,7 @@ public class MetricsPluginHistogramTest {
     }
 
     @Test
-    public void testWithConfigFlagDisabled() throws JsonProcessingException {
+    void testWithConfigFlagDisabled() throws JsonProcessingException {
         when(config.getCalculateHistogramBuckets()).thenReturn(false);
 
         Histogram histogram = Histogram.newBuilder().addDataPoints(HISTOGRAM_DATA_POINT).build();
@@ -98,7 +98,7 @@ public class MetricsPluginHistogramTest {
     }
 
     @Test
-    public void testWithConfigFlagDisabledAndNoFlattenedAttributes() throws JsonProcessingException {
+    void testWithConfigFlagDisabledAndNoFlattenedAttributes() throws JsonProcessingException {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
         when(config.getFlattenAttributesFlag()).thenReturn(false);

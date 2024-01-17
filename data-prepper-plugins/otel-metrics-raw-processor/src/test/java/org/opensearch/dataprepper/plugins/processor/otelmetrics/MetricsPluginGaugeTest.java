@@ -21,10 +21,10 @@ import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
 import org.apache.commons.codec.binary.Hex;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.record.Record;
@@ -40,12 +40,11 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-import static org.opensearch.dataprepper.plugins.processor.otelmetrics.OTelMetricsProtoHelperTest.getRandomBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-@RunWith(MockitoJUnitRunner.class)
-public class MetricsPluginGaugeTest {
+@ExtendWith(MockitoExtension.class)
+class MetricsPluginGaugeTest {
 
     private static final Long START_TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
             LocalDateTime.of(2020, 5, 24, 14, 0, 0),
@@ -65,15 +64,15 @@ public class MetricsPluginGaugeTest {
         return bytes;
     }
 
-    @Before
-    public void init() {
+    @BeforeEach
+    void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
         rawProcessor = new OTelMetricsRawProcessor(testsettings, new OtelMetricsRawProcessorConfig());
     }
 
     @Test
-    public void testInstrumentationLibrary() throws JsonProcessingException {
+    void testInstrumentationLibrary() throws JsonProcessingException {
         NumberDataPoint.Builder p1 = NumberDataPoint.newBuilder().setAsInt(4);
         Gauge gauge = Gauge.newBuilder().addDataPoints(p1).build();
 
@@ -127,7 +126,7 @@ public class MetricsPluginGaugeTest {
     }
 
     @Test
-    public void testScopeMetricsLibrary() throws JsonProcessingException {
+    void testScopeMetricsLibrary() throws JsonProcessingException {
         NumberDataPoint.Builder p1 = NumberDataPoint.newBuilder().setAsInt(4);
         Gauge gauge = Gauge.newBuilder().addDataPoints(p1).build();
 
@@ -181,7 +180,7 @@ public class MetricsPluginGaugeTest {
     }
 
     @Test
-    public void testWithExemplar() throws JsonProcessingException {
+    void testWithExemplar() throws JsonProcessingException {
 
         byte[] spanId = getRandomBytes(8);
         byte[] traceId = getRandomBytes(8);
