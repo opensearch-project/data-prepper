@@ -134,7 +134,7 @@ public class KafkaSinkTest {
     private KafkaSink createObjectUnderTest() {
         final KafkaSink objectUnderTest;
         try(final MockedConstruction<KafkaCustomProducerFactory> ignored = mockConstruction(KafkaCustomProducerFactory.class, (mock, context) -> {
-           when(mock.createProducer(any(), any(), any(), any(), any(), any(), anyBoolean())).thenReturn(kafkaCustomProducer);
+           when(mock.createProducer(any(), any(), any(), any(), any(), any(), anyBoolean(), anyBoolean())).thenReturn(kafkaCustomProducer);
         })) {
             objectUnderTest = new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactoryMock, pluginMetrics, mock(ExpressionEvaluator.class), sinkContext, awsCredentialsSupplier);
         }

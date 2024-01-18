@@ -8,6 +8,9 @@ package org.opensearch.dataprepper.plugins.kafka.producer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * * A Multithreaded helper class which helps to produce the records to multiple topics in an
  * asynchronous way.
@@ -15,6 +18,7 @@ import org.opensearch.dataprepper.model.record.Record;
 
 public class ProducerWorker implements Runnable {
 
+    private static final Logger LOG = LoggerFactory.getLogger(ProducerWorker.class);
     private final Record<Event> record;
     private final KafkaCustomProducer producer;
 
@@ -27,7 +31,11 @@ public class ProducerWorker implements Runnable {
 
     @Override
     public void run() {
-        producer.produceRecords(record);
+        try {
+            producer.produceRecords(record);
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e);
+        }
     }
 
 }

@@ -137,7 +137,7 @@ class KafkaBufferTest {
             final MockedConstruction<KafkaCustomProducerFactory> producerFactoryMock =
                 mockConstruction(KafkaCustomProducerFactory.class, (mock, context) -> {
                 producerFactory = mock;
-                when(producerFactory.createProducer(any() ,any(), any(), isNull(), isNull(), any(), anyBoolean())).thenReturn(producer);
+                when(producerFactory.createProducer(any() ,any(), any(), isNull(), isNull(), any(), anyBoolean(), anyBoolean())).thenReturn(producer);
             });
             final MockedConstruction<KafkaCustomConsumerFactory> consumerFactoryMock =
                 mockConstruction(KafkaCustomConsumerFactory.class, (mock, context) -> {
@@ -197,7 +197,7 @@ class KafkaBufferTest {
     }
 
     @Test
-    void test_kafkaBuffer_basicFunctionality() throws TimeoutException {
+    void test_kafkaBuffer_basicFunctionality() throws TimeoutException, Exception {
         kafkaBuffer = createObjectUnderTest();
         assertTrue(Objects.nonNull(kafkaBuffer));
 
@@ -209,7 +209,7 @@ class KafkaBufferTest {
     }
 
     @Test
-    void test_kafkaBuffer_producerThrows() throws TimeoutException {
+    void test_kafkaBuffer_producerThrows() throws TimeoutException, Exception {
 
         kafkaBuffer = createObjectUnderTest();
         Record<Event> record = new Record<Event>(JacksonEvent.fromMessage(UUID.randomUUID().toString()));

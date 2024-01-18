@@ -44,6 +44,9 @@ public class DLQSink {
 
     public void perform(final Object failedData, final Throwable e) {
         final DlqWriter dlqWriter = getDlqWriter();
+        if (dlqWriter == null) {
+            throw new RuntimeException("DLQ not configured");
+        }
         final DlqObject dlqObject = DlqObject.builder()
                 .withPluginId(randomUUID().toString())
                 .withPluginName(pluginSetting.getName())
@@ -54,6 +57,9 @@ public class DLQSink {
     }
 
     private DlqWriter getDlqWriter() {
+        if (dlqProvider == null) {
+            return null;
+        }
         final Optional<DlqWriter> potentialDlq = dlqProvider.getDlqWriter(new StringJoiner(MetricNames.DELIMITER)
                 .add(pluginSetting.getPipelineName())
                 .add(pluginSetting.getName()).toString());

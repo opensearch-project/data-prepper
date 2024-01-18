@@ -15,11 +15,14 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.AbstractBuffer;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.apache.kafka.common.errors.RecordTooLargeException;
+import org.apache.kafka.common.errors.RecordBatchTooLargeException;
 import org.opensearch.dataprepper.plugins.kafka.admin.KafkaAdminAccessor;
 import org.opensearch.dataprepper.plugins.kafka.buffer.serialization.BufferSerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.CommonSerializationFactory;
@@ -69,7 +72,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         this.byteDecoder = byteDecoder;
         final String metricPrefixName = kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName());
         final PluginMetrics producerMetrics = PluginMetrics.fromNames(metricPrefixName + WRITE, pluginSetting.getPipelineName());
-        producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, pluginFactory, pluginSetting,  null, null, producerMetrics, false);
+        producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, pluginFactory, pluginSetting,  null, null, producerMetrics, false, false);
         final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory, awsCredentialsSupplier);
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         this.shutdownInProgress = new AtomicBoolean(false);
@@ -89,7 +92,15 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
             producer.produceRawData(bytes, key);
         } catch (final Exception e) {
             LOG.error(e.getMessage(), e);
-            throw new RuntimeException(e);
+            if (e.getCause() == null || e instanceof TimeoutException) {
+                throw e;
+            }
+            if (e.getCause() instanceof RecordTooLargeException ||
+                e.getCause() instanceof RecordBatchTooLargeException) {
+                throw new SizeOverflowException(e.getMessage());
+            } else {
+                throw new RuntimeException(e);
+            }
         }
     }
 
