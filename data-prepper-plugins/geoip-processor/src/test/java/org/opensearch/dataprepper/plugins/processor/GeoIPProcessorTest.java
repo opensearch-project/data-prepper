@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,18 +15,11 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
-import org.opensearch.dataprepper.plugins.processor.configuration.KeyConfig;
-import org.opensearch.dataprepper.plugins.processor.configuration.KeysConfig;
-import org.opensearch.dataprepper.plugins.processor.configuration.MaxMindServiceConfig;
-import org.opensearch.dataprepper.plugins.processor.configuration.ServiceTypeOptions;
+import org.opensearch.dataprepper.plugins.processor.configuration.EntryConfig;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIpConfigSupplier;
-import org.opensearch.dataprepper.plugins.processor.loadtype.LoadTypeOptions;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
-import java.net.MalformedURLException;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -54,50 +46,30 @@ class GeoIPProcessorTest {
     @Mock
     private GeoIPProcessorService geoIPProcessorService;
     @Mock
-    private GeoIPProcessorConfig geoCodingProcessorConfig;
+    private GeoIPProcessorConfig geoIPProcessorConfig;
     @Mock
     private GeoIpConfigSupplier geoIpConfigSupplier;
     @Mock
     private PluginSetting pluginSetting;
     @Mock
-    private ServiceTypeOptions serviceTypeOptions;
-    @Mock
-    private MaxMindServiceConfig maxMindServiceConfig;
+    private EntryConfig entry;
 
     @BeforeEach
     void setUp() throws NoSuchFieldException, IllegalAccessException {
 
         when(pluginSetting.getName()).thenReturn(PROCESSOR_PLUGIN_NAME);
         when(pluginSetting.getPipelineName()).thenReturn(PROCESSOR_PIPELINE_NAME);
-        when(geoCodingProcessorConfig.getServiceType()).thenReturn(serviceTypeOptions);
-        when(geoCodingProcessorConfig.getServiceType().getMaxMindService()).thenReturn(maxMindServiceConfig);
-        when(geoCodingProcessorConfig.getServiceType().getMaxMindService().getLoadType())
-                .thenReturn(LoadTypeOptions.INMEMORY);
-        when(geoCodingProcessorConfig.getServiceType().getMaxMindService().getCacheRefreshSchedule())
-                .thenReturn(Duration.ofSeconds(REFRESH_SCHEDULE));
 
-        DatabasePathURLConfig databasePathURLConfig1 = new DatabasePathURLConfig();
-        ReflectivelySetField.setField(DatabasePathURLConfig.class,
-                databasePathURLConfig1, "url", "./src/test/resources/mmdb-file/geo-lite2");
-        List<DatabasePathURLConfig> urlList = List.of(databasePathURLConfig1);
-        when(geoCodingProcessorConfig.getServiceType().getMaxMindService().getDatabasePath()).thenReturn(urlList);
+        when(geoIpConfigSupplier.getGeoIPProcessorService()).thenReturn(geoIPProcessorService);
     }
 
     @Test
-    void doExecuteTest() throws MalformedURLException, NoSuchFieldException, IllegalAccessException {
-        KeyConfig keyConfig = new KeyConfig();
-        final List<String> attributes = setAttributes();
-        ReflectivelySetField.setField(KeyConfig.class, keyConfig, "attributes", attributes);
-        ReflectivelySetField.setField(KeyConfig.class, keyConfig, "source", SOURCE);
-        ReflectivelySetField.setField(KeyConfig.class, keyConfig, "target", TARGET);
+    void doExecuteTest() throws NoSuchFieldException, IllegalAccessException {
+        when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
+        when(entry.getSource()).thenReturn(SOURCE);
+        when(entry.getTarget()).thenReturn(TARGET);
+        when(entry.getFields()).thenReturn(setFields());
 
-        KeysConfig keysConfig1 = new KeysConfig();
-        ReflectivelySetField.setField(KeysConfig.class,
-                keysConfig1, "keyConfig", keyConfig);
-
-        List<KeysConfig> configs = new ArrayList<>();
-        configs.add(keysConfig1);
-        when(geoCodingProcessorConfig.getKeysConfig()).thenReturn(configs);
         GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
         when(geoIPProcessorService.getGeoData(any(), any())).thenReturn(prepareGeoData());
@@ -112,30 +84,20 @@ class GeoIPProcessorTest {
 
 
     @Test
-    void test_tags_when_enrich_fails() throws MalformedURLException, NoSuchFieldException, IllegalAccessException {
-
-        KeyConfig keyConfig = new KeyConfig();
-        final List<String> attributes = setAttributes();
-        ReflectivelySetField.setField(KeyConfig.class, keyConfig, "attributes", attributes);
-        ReflectivelySetField.setField(KeyConfig.class, keyConfig, "source", SOURCE);
-        ReflectivelySetField.setField(KeyConfig.class, keyConfig, "target", TARGET);
+    void test_tags_when_enrich_fails() {
+        when(entry.getSource()).thenReturn(SOURCE);
+        when(entry.getFields()).thenReturn(setFields());
 
         List<String> testTags = List.of("tag1", "tag2");
-        when(geoCodingProcessorConfig.getTagsOnSourceNotFoundFailure()).thenReturn(testTags);
+        when(geoIPProcessorConfig.getTagsOnFailure()).thenReturn(testTags);
+        when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
 
-        KeysConfig keysConfig1 = new KeysConfig();
-        ReflectivelySetField.setField(KeysConfig.class,
-                keysConfig1, "keyConfig", keyConfig);
+        when(geoIpConfigSupplier.getGeoIPProcessorService()).thenReturn(geoIPProcessorService);
 
-        List<KeysConfig> configs = new ArrayList<>();
-        configs.add(keysConfig1);
-        when(geoCodingProcessorConfig.getKeysConfig()).thenReturn(configs);
         GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
         doThrow(EnrichFailedException.class).when(geoIPProcessorService).getGeoData(any(), any());
 
-        ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor,
-                "geoIPProcessorService", geoIPProcessorService);
         Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
 
         for (final Record<Event> record : records) {
@@ -145,13 +107,13 @@ class GeoIPProcessorTest {
     }
 
     @Test
-    void isReadyForShutdownTest() throws MalformedURLException {
+    void isReadyForShutdownTest() {
         GeoIPProcessor geoIPProcessor = createObjectUnderTest();
-        Assertions.assertFalse(geoIPProcessor.isReadyForShutdown());
+        assertTrue(geoIPProcessor.isReadyForShutdown());
     }
 
     @Test
-    void shutdownTest() throws MalformedURLException {
+    void shutdownTest() {
         GeoIPProcessor geoIPProcessor = createObjectUnderTest();
         assertDoesNotThrow(geoIPProcessor::shutdown);
     }
@@ -165,11 +127,11 @@ class GeoIPProcessorTest {
         return geoDataMap;
     }
 
-    private GeoIPProcessor createObjectUnderTest() throws MalformedURLException {
-        return new GeoIPProcessor(pluginSetting, geoCodingProcessorConfig, geoIpConfigSupplier);
+    private GeoIPProcessor createObjectUnderTest() {
+        return new GeoIPProcessor(pluginSetting, geoIPProcessorConfig, geoIpConfigSupplier);
     }
 
-    private List<String> setAttributes() {
+    private List<String> setFields() {
         final List<String> attributes = new ArrayList<>();
         attributes.add("city_name");
         attributes.add("country_name");

@@ -16,7 +16,6 @@ public class DefaultGeoIpConfigSupplier implements GeoIpConfigSupplier {
 
     @Override
     public GeoIPProcessorService getGeoIPProcessorService() {
-        //TODO: use GeoIpServiceConfig and return GeoIPProcessorService
-        return null;
+        return new GeoIPProcessorService(geoIpServiceConfig);
     }
 }

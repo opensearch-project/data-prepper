@@ -5,10 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.databasedownload;
 
-
-import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorConfig;
-import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.DownloadFailedException;
+import org.opensearch.dataprepper.plugins.processor.extension.AwsAuthenticationOptionsConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -28,18 +26,19 @@ import java.util.List;
 public class S3DBService implements DBSource {
 
     private static final Logger LOG = LoggerFactory.getLogger(S3DBService.class);
-    private GeoIPProcessorConfig geoIPProcessorConfig;
     private String bucketName;
     private String bucketPath;
+    private final AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig;
     private final String prefixDir;
 
     /**
      * S3DBService constructor for initialisation of attributes
-     * @param geoIPProcessorConfig geoIPProcessorConfig
+     *
      * @param prefixDir prefixDir
      */
-    public S3DBService(GeoIPProcessorConfig geoIPProcessorConfig, String prefixDir) {
-        this.geoIPProcessorConfig = geoIPProcessorConfig;
+    public S3DBService(final AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig,
+                       final String prefixDir) {
+        this.awsAuthenticationOptionsConfig = awsAuthenticationOptionsConfig;
         this.prefixDir = prefixDir;
     }
 
@@ -47,10 +46,10 @@ public class S3DBService implements DBSource {
      * Initialisation of Download through Url
      * @param s3URLs s3URLs
      */
-    public void initiateDownload(List<DatabasePathURLConfig> s3URLs) {
-        for (DatabasePathURLConfig s3Url : s3URLs) {
+    public void initiateDownload(List<String> s3URLs) {
+        for (String s3Url : s3URLs) {
             try {
-                URI uri = new URI(s3Url.getUrl());
+                URI uri = new URI(s3Url);
                 bucketName = uri.getHost();
                 bucketPath = removeTrailingSlash(removeLeadingSlash(uri.getPath()));
                 DBSource.createFolderIfNotExist(tempFolderPath + File.separator + prefixDir);
@@ -116,8 +115,8 @@ public class S3DBService implements DBSource {
     public S3TransferManager createCustomTransferManager() {
         S3AsyncClient s3AsyncClient =
                 S3AsyncClient.crtBuilder()
-                        .region(geoIPProcessorConfig.getAwsAuthenticationOptions().getAwsRegion())
-                        .credentialsProvider(geoIPProcessorConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration())
+                        .region(awsAuthenticationOptionsConfig.getAwsRegion())
+                        .credentialsProvider(awsAuthenticationOptionsConfig.authenticateAwsConfiguration())
                         .build();
 
         return S3TransferManager.builder()

@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.utils;
 
-import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
 import org.opensearch.dataprepper.plugins.processor.databasedownload.DBSourceOptions;
 
 import java.net.MalformedURLException;
@@ -86,21 +85,21 @@ public class DbSourceIdentification {
 
     /**
      * Get the database path options based on input URL
-     * @param dbPath dbPath
+     * @param databasePaths - List of database paths to get databases data from
      * @return DBSourceOptions
      */
-    public static DBSourceOptions getDatabasePathType(List<DatabasePathURLConfig> dbPath) {
+    public static DBSourceOptions getDatabasePathType(List<String> databasePaths) {
         DBSourceOptions downloadSourceOptions = null;
-        for( DatabasePathURLConfig path : dbPath) {
+        for(final String databasePath : databasePaths) {
 
-            if(DbSourceIdentification.isFilePath(path.getUrl())) {
+            if(DbSourceIdentification.isFilePath(databasePath)) {
                 return DBSourceOptions.PATH;
             }
-            else if(DbSourceIdentification.isURL(path.getUrl()))
+            else if(DbSourceIdentification.isURL(databasePath))
             {
                 downloadSourceOptions = DBSourceOptions.URL;
             }
-            else if(DbSourceIdentification.isS3Uri(path.getUrl()) || (DbSourceIdentification.isS3Url(path.getUrl())))
+            else if(DbSourceIdentification.isS3Uri(databasePath) || (DbSourceIdentification.isS3Url(databasePath)))
             {
                 downloadSourceOptions = DBSourceOptions.S3;
             }

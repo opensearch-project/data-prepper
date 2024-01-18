@@ -8,9 +8,8 @@ package org.opensearch.dataprepper.plugins.processor;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import org.opensearch.dataprepper.plugins.processor.configuration.KeysConfig;
-import org.opensearch.dataprepper.plugins.processor.configuration.ServiceTypeOptions;
-import org.opensearch.dataprepper.plugins.processor.extension.AwsAuthenticationOptionsConfig;
+import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.plugins.processor.configuration.EntryConfig;
 
 import java.util.List;
 
@@ -19,51 +18,30 @@ import java.util.List;
  */
 public class GeoIPProcessorConfig {
 
-    @JsonProperty("aws")
+    @JsonProperty("entries")
     @NotNull
+    @Size(min = 1)
     @Valid
-    private AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig;
+    private List<EntryConfig> entries;
 
-    @JsonProperty("keys")
-    @NotNull
-    private List<KeysConfig> keysConfig;
+    @JsonProperty("tags_on_failure")
+    private List<String> tagsOnFailure;
 
-    @JsonProperty("tags_on_source_not_found")
-    private List<String> tagsOnSourceNotFoundFailure;
-
-    @JsonProperty("service_type")
-    @NotNull
-    private ServiceTypeOptions serviceType;
 
     /**
-     * Aws Authentication configuration Options
-     * @return AwsAuthenticationOptions
+     * Get List of entries
+     * @return List of EntryConfig
      */
-    public AwsAuthenticationOptionsConfig getAwsAuthenticationOptions() {
-        return awsAuthenticationOptionsConfig;
-    }
-
-    /**
-     * Lists of Source, target and attributes
-     * @return List of KeysConfig
-     */
-    public List<KeysConfig> getKeysConfig() {
-        return keysConfig;
+    public List<EntryConfig> getEntries() {
+        return entries;
     }
 
     /**
      * Get the List of failure tags
      * @return List of failure tags
      */
-    public List<String> getTagsOnSourceNotFoundFailure() {
-        return tagsOnSourceNotFoundFailure;
+    public List<String> getTagsOnFailure() {
+        return tagsOnFailure;
     }
 
-    /**
-     * Service type Options
-     * @return ServiceTypeOptions
-     */
-    public ServiceTypeOptions getServiceType() {
-        return serviceType;
-    }
 }

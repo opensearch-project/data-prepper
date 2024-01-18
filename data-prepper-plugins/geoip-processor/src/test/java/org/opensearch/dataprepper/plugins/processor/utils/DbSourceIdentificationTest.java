@@ -7,9 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.utils;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
 import org.opensearch.dataprepper.plugins.processor.databasedownload.DBSourceOptions;
-import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.util.List;
 
@@ -55,37 +53,24 @@ class DbSourceIdentificationTest {
 
     @Test
     void getDatabasePathTypeTest_PATH() throws NoSuchFieldException, IllegalAccessException {
-
-        DatabasePathURLConfig databasePathURLConfig1 = new DatabasePathURLConfig();
-        ReflectivelySetField.setField(DatabasePathURLConfig.class,
-                databasePathURLConfig1, "url", "./src/test/resources/mmdb-file/geo-lite2");
-        List<DatabasePathURLConfig> urlList = List.of(databasePathURLConfig1);
-        DBSourceOptions dbSourceOptions = DbSourceIdentification.getDatabasePathType(urlList);
+        List<String> databasePath = List.of("./src/test/resources/mmdb-file/geo-lite2");
+        DBSourceOptions dbSourceOptions = DbSourceIdentification.getDatabasePathType(databasePath);
         Assertions.assertNotNull(dbSourceOptions);
         assertThat(dbSourceOptions, equalTo(DBSourceOptions.PATH));
     }
 
     @Test
     void getDatabasePathTypeTest_URL() throws NoSuchFieldException, IllegalAccessException {
-
-        DatabasePathURLConfig databasePathURLConfig2 = new DatabasePathURLConfig();
-        ReflectivelySetField.setField(DatabasePathURLConfig.class,
-                databasePathURLConfig2, "url", "https://download.maxmind.com/app/geoip_download?" +
-                        "edition_id=GeoLite2-ASN&suffix=tar.gz");
-        List<DatabasePathURLConfig> urlList = List.of(databasePathURLConfig2);
-        DBSourceOptions dbSourceOptions = DbSourceIdentification.getDatabasePathType(urlList);
+        List<String> databasePath = List.of("https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN&suffix=tar.gz");
+        DBSourceOptions dbSourceOptions = DbSourceIdentification.getDatabasePathType(databasePath);
         Assertions.assertNotNull(dbSourceOptions);
         assertThat(dbSourceOptions, equalTo(DBSourceOptions.URL));
     }
 
     @Test
     void getDatabasePathTypeTest_S3() throws NoSuchFieldException, IllegalAccessException {
-
-        DatabasePathURLConfig databasePathURLConfig3 = new DatabasePathURLConfig();
-        ReflectivelySetField.setField(DatabasePathURLConfig.class,
-                databasePathURLConfig3, "url", "s3://mybucket10012023/GeoLite2/");
-        List<DatabasePathURLConfig> urlList = List.of(databasePathURLConfig3);
-        DBSourceOptions dbSourceOptions = DbSourceIdentification.getDatabasePathType(urlList);
+        List<String> databasePath = List.of("s3://mybucket10012023/GeoLite2/");
+        DBSourceOptions dbSourceOptions = DbSourceIdentification.getDatabasePathType(databasePath);
         Assertions.assertNotNull(dbSourceOptions);
         assertThat(dbSourceOptions, equalTo(DBSourceOptions.S3));
     }

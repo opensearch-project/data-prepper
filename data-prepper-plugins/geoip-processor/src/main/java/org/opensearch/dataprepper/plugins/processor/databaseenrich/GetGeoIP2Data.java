@@ -14,11 +14,9 @@ import com.maxmind.geoip2.record.Country;
 import com.maxmind.geoip2.record.Subdivision;
 import com.maxmind.geoip2.record.Location;
 import com.maxmind.geoip2.record.Postal;
-import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorConfig;
 import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.processor.databasedownload.DatabaseReaderCreate;
 import org.opensearch.dataprepper.plugins.processor.databasedownload.DBSource;
-import org.opensearch.dataprepper.plugins.processor.loadtype.LoadTypeOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +51,6 @@ public class GetGeoIP2Data implements GetGeoData {
     private Location location;
     private Subdivision subdivision;
     private String dbPath;
-    private LoadTypeOptions loadType;
     private int cacheSize;
     private Postal postal;
     private String tempDestDir;
@@ -62,12 +59,10 @@ public class GetGeoIP2Data implements GetGeoData {
      * GetGeoLite2Data constructor for initialisation of attributes
      * @param dbPath dbPath
      * @param cacheSize cacheSize
-     * @param geoIPProcessorConfig geoIPProcessorConfig
      */
-    public GetGeoIP2Data(String dbPath, int cacheSize, GeoIPProcessorConfig geoIPProcessorConfig) {
+    public GetGeoIP2Data(final String dbPath, final int cacheSize) {
         this.dbPath = dbPath;
         this.cacheSize = cacheSize;
-        this.loadType = geoIPProcessorConfig.getServiceType().getMaxMindService().getLoadType();
         initDatabaseReader();
     }
 
@@ -75,7 +70,7 @@ public class GetGeoIP2Data implements GetGeoData {
      * Initialise all the DatabaseReader
      */
     public void initDatabaseReader() {
-        readerEnterprise = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + tempDestDir + File.separator + GeoIP2EnterpriseDB), loadType, cacheSize);
+        readerEnterprise = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + tempDestDir + File.separator + GeoIP2EnterpriseDB), cacheSize);
     }
 
     /**
