@@ -185,4 +185,9 @@ class KmsKeyProviderTest {
             verify(builder).encryptionContext(encryptionContext);
         }
     }
+
+    @Test
+    void isKeyEncrypted_returns_true() {
+        assertThat(createObjectUnderTest().isKeyEncrypted(), equalTo(true));
+    }
 }

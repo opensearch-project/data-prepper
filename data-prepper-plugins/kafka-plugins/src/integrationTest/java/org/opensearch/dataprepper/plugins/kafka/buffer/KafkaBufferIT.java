@@ -15,9 +15,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.CheckpointState;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.codec.JsonDecoder;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -25,10 +27,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.util.TestConsumer;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
-import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
-
+import org.opensearch.dataprepper.plugins.kafka.util.TestConsumer;
 import org.opensearch.dataprepper.plugins.kafka.util.TestProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,12 +59,11 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 @ExtendWith(MockitoExtension.class)
 public class KafkaBufferIT {
@@ -243,6 +242,10 @@ public class KafkaBufferIT {
         final KafkaBufferMessage.BufferData bufferData = KafkaBufferMessage.BufferData.parseFrom(consumerRecord.value());
 
         assertThat(bufferData, notNullValue());
+        assertThat(bufferData.getMessageFormat(), equalTo(KafkaBufferMessage.MessageFormat.MESSAGE_FORMAT_BYTES));
+        assertThat(bufferData.getEncrypted(), equalTo(false));
+        assertThat(bufferData.getEncryptedDataKey(), equalTo(ByteString.empty()));
+
         final byte[] innerData = bufferData.getData().toByteArray();
 
         final Map<String, Object> actualEventData = objectMapper.readValue(innerData, Map.class);
@@ -279,6 +282,10 @@ public class KafkaBufferIT {
         final KafkaBufferMessage.BufferData bufferData = KafkaBufferMessage.BufferData.parseFrom(consumerRecord.value());
 
         assertThat(bufferData, notNullValue());
+        assertThat(bufferData.getMessageFormat(), equalTo(KafkaBufferMessage.MessageFormat.MESSAGE_FORMAT_BYTES));
+        assertThat(bufferData.getEncrypted(), equalTo(false));
+        assertThat(bufferData.getEncryptedDataKey(), equalTo(ByteString.empty()));
+
         final byte[] innerData = bufferData.getData().toByteArray();
 
         assertThat(innerData, equalTo(writtenBytes));
@@ -288,6 +295,7 @@ public class KafkaBufferIT {
     class Encrypted {
         private Cipher decryptCipher;
         private Cipher encryptCipher;
+        private String aesKey;
 
         @BeforeEach
         void setUp() throws NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
@@ -300,7 +308,7 @@ public class KafkaBufferIT {
             encryptCipher = Cipher.getInstance("AES");
             encryptCipher.init(Cipher.ENCRYPT_MODE, secretKey);
             final byte[] base64Bytes = Base64.getEncoder().encode(secretKey.getEncoded());
-            final String aesKey = new String(base64Bytes);
+            aesKey = new String(base64Bytes);
 
             final Map<String, Object> topicConfigMap = objectMapper.convertValue(topicConfig, Map.class);
             topicConfigMap.put("encryption_key", aesKey);
@@ -360,6 +368,10 @@ public class KafkaBufferIT {
             final KafkaBufferMessage.BufferData bufferData = KafkaBufferMessage.BufferData.parseFrom(valueBytes);
 
             assertThat(bufferData, notNullValue());
+            assertThat(bufferData.getMessageFormat(), equalTo(KafkaBufferMessage.MessageFormat.MESSAGE_FORMAT_BYTES));
+            assertThat(bufferData.getEncrypted(), equalTo(true));
+            assertThat(bufferData.getEncryptedDataKey(), equalTo(ByteString.empty()));
+
             byte[] innerData = bufferData.getData().toByteArray();
 
             assertThat(innerData, notNullValue());
@@ -402,6 +414,10 @@ public class KafkaBufferIT {
             final KafkaBufferMessage.BufferData bufferData = KafkaBufferMessage.BufferData.parseFrom(valueBytes);
 
             assertThat(bufferData, notNullValue());
+            assertThat(bufferData.getMessageFormat(), equalTo(KafkaBufferMessage.MessageFormat.MESSAGE_FORMAT_BYTES));
+            assertThat(bufferData.getEncryptedDataKey(), notNullValue());
+            assertThat(bufferData.getEncryptedDataKey(), equalTo(ByteString.empty()));
+
             final byte[] innerData = bufferData.getData().toByteArray();
 
             assertThat(innerData, notNullValue());

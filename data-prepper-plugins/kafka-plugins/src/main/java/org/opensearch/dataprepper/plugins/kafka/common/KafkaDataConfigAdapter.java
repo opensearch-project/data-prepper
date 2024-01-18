@@ -19,7 +19,7 @@ public class KafkaDataConfigAdapter implements KafkaDataConfig {
     private final KeyFactory keyFactory;
     private final TopicConfig topicConfig;
 
-    public KafkaDataConfigAdapter(KeyFactory keyFactory, TopicConfig topicConfig) {
+    public KafkaDataConfigAdapter(final KeyFactory keyFactory, final TopicConfig topicConfig) {
         this.keyFactory = keyFactory;
         this.topicConfig = topicConfig;
     }
@@ -34,5 +34,12 @@ public class KafkaDataConfigAdapter implements KafkaDataConfig {
         if(topicConfig.getEncryptionKey() == null)
             return null;
         return keyFactory.getKeySupplier(topicConfig);
+    }
+
+    @Override
+    public String getEncryptedDataKey() {
+        if(topicConfig.getEncryptionKey() == null)
+            return null;
+        return keyFactory.getEncryptedDataKey(topicConfig);
     }
 }
