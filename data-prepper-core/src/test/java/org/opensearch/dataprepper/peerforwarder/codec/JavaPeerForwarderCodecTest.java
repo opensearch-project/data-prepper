@@ -7,7 +7,9 @@ package org.opensearch.dataprepper.peerforwarder.codec;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.peerforwarder.model.PeerForwardingEvents;
@@ -59,6 +61,24 @@ class JavaPeerForwarderCodecTest {
         when(objectInputFilter.checkInput(any(ObjectInputFilter.FilterInfo.class))).thenReturn(ObjectInputFilter.Status.ALLOWED);
 
         final PeerForwardingEvents inputEvents = generatePeerForwardingEvents(2);
+        final byte[] bytes = createObjectUnderTest().serialize(inputEvents);
+        final PeerForwardingEvents outputEvents = createObjectUnderTest().deserialize(bytes);
+        assertThat(outputEvents.getDestinationPipelineName(), equalTo(inputEvents.getDestinationPipelineName()));
+        assertThat(outputEvents.getDestinationPluginId(), equalTo(inputEvents.getDestinationPluginId()));
+        assertThat(outputEvents.getEvents().size(), equalTo(inputEvents.getEvents().size()));
+
+        verify(objectInputFilter, atLeast(1)).checkInput(any(ObjectInputFilter.FilterInfo.class));
+    }
+
+    @Test
+    void testCodec_with_acknowledgementSet() throws IOException, ClassNotFoundException {
+        when(objectInputFilter.checkInput(any(ObjectInputFilter.FilterInfo.class))).thenReturn(ObjectInputFilter.Status.ALLOWED);
+
+        final PeerForwardingEvents inputEvents = generatePeerForwardingEvents(2);
+        inputEvents.getEvents().stream()
+                .map(Event::getEventHandle)
+                .map(handle -> (InternalEventHandle)handle)
+                .forEach(handle -> handle.setAcknowledgementSet(mock(AcknowledgementSet.class)));
         final byte[] bytes = createObjectUnderTest().serialize(inputEvents);
         final PeerForwardingEvents outputEvents = createObjectUnderTest().deserialize(bytes);
         assertThat(outputEvents.getDestinationPipelineName(), equalTo(inputEvents.getDestinationPipelineName()));
