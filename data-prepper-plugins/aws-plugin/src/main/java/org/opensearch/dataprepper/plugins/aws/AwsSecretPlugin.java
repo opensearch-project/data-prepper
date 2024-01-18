@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.aws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
@@ -29,6 +30,7 @@ public class AwsSecretPlugin implements ExtensionPlugin {
     private ScheduledExecutorService scheduledExecutorService;
     private PluginConfigPublisher pluginConfigPublisher;
     private SecretsSupplier secretsSupplier;
+    private PluginMetrics pluginMetrics;
     private final PluginConfigValueTranslator pluginConfigValueTranslator;
 
     @DataPrepperPluginConstructor
@@ -39,6 +41,7 @@ public class AwsSecretPlugin implements ExtensionPlugin {
             this.pluginConfigPublisher = new AwsSecretsPluginConfigPublisher();
             pluginConfigValueTranslator = new AwsSecretsPluginConfigValueTranslator(secretsSupplier);
             scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+            pluginMetrics = PluginMetrics.fromNames("secrets", "aws");
             submitSecretsRefreshJobs(awsSecretPluginConfig, secretsSupplier);
             Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
         } else {
@@ -57,7 +60,7 @@ public class AwsSecretPlugin implements ExtensionPlugin {
                                           final SecretsSupplier secretsSupplier) {
         awsSecretPluginConfig.getAwsSecretManagerConfigurationMap().forEach((key, value) -> {
             final SecretsRefreshJob secretsRefreshJob = new SecretsRefreshJob(
-                    key, secretsSupplier, pluginConfigPublisher);
+                    key, secretsSupplier, pluginConfigPublisher, pluginMetrics);
             final long period = value.getRefreshInterval().toSeconds();
             final long jitterDelay = ThreadLocalRandom.current().nextLong(60L);
             scheduledExecutorService.scheduleAtFixedRate(secretsRefreshJob, period + jitterDelay,
