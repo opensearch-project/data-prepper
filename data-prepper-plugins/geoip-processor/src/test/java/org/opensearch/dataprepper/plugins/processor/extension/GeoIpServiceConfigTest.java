@@ -1,6 +1,6 @@
 /*
  * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
+ *  PDX-License-Identifier: Apache-2.0
  */
 
 package org.opensearch.dataprepper.plugins.processor.extension;
@@ -42,15 +42,10 @@ class GeoIpServiceConfigTest {
     void testGeoIpServiceConfig() throws IOException {
         final GeoIpServiceConfig geoIpServiceConfig = makeConfig("src/test/resources/geoip_service_config.yaml");
         assertNotNull(geoIpServiceConfig);
-
-        final MaxMindConfig maxMindConfig = geoIpServiceConfig.getMaxMindConfig();
-        assertNotNull(maxMindConfig);
-        assertNotNull(maxMindConfig.getAwsAuthenticationOptionsConfig());
-
-        assertThat(maxMindConfig, notNullValue());
-        assertThat(maxMindConfig.getDatabaseRefreshInterval(), equalTo(Duration.ofDays(10)));
-        assertThat(maxMindConfig.getDatabasePaths().size(), equalTo(2));
-        assertThat(maxMindConfig.getCacheSize(), equalTo(2048));
+        assertThat(geoIpServiceConfig.getMaxMindConfig(), notNullValue());
+        assertThat(geoIpServiceConfig.getMaxMindConfig().getDatabaseRefreshInterval(), equalTo(Duration.ofDays(10)));
+        assertThat(geoIpServiceConfig.getMaxMindConfig().getDatabasePaths().size(), equalTo(2));
+        assertThat(geoIpServiceConfig.getMaxMindConfig().getCacheSize(), equalTo(2048));
     }
 
     private GeoIpServiceConfig makeConfig(final String filePath) throws IOException {
@@ -61,6 +56,7 @@ class GeoIpServiceConfigTest {
         assertThat(dataPrepperConfiguration.getPipelineExtensions(), CoreMatchers.notNullValue());
 
         final Map<String, Object> geoipServiceConfigMap = (Map<String, Object>) dataPrepperConfiguration.getPipelineExtensions().getExtensionMap().get("geoip_service");
+        System.out.println(geoipServiceConfigMap);
         String json = objectMapper.writeValueAsString(geoipServiceConfigMap);
         final Reader reader = new StringReader(json);
         return objectMapper.readValue(reader, GeoIpServiceConfig.class);

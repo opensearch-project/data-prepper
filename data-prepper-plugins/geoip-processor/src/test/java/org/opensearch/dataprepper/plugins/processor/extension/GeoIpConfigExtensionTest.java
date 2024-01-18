@@ -12,10 +12,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
-import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorService;
 
+import java.time.Duration;
+
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.verify;
 
@@ -63,11 +65,14 @@ class GeoIpConfigExtensionTest {
 
         final GeoIpConfigSupplier geoIpConfigSupplier = (GeoIpConfigSupplier) actualExtensionProvider.provideInstance(context).get();
 
-        final GeoIPProcessorService geoIPProcessorService = geoIpConfigSupplier.getGeoIPProcessorService();
+        final GeoIpServiceConfig geoIpServiceConfig = geoIpConfigSupplier.getGeoIpServiceConfig();
+        assertThat(geoIpServiceConfig, notNullValue());
 
-        //TODO: Update assertions after updating the supplier with GeoIPProcessorService
-        assertThat(geoIPProcessorService, nullValue());
-
+        final MaxMindConfig maxMindConfig = geoIpServiceConfig.getMaxMindConfig();
+        assertThat(maxMindConfig, notNullValue());
+        assertThat(maxMindConfig.getCacheSize(), equalTo(4096));
+        assertThat(maxMindConfig.getDatabasePaths().size(), equalTo(0));
+        assertThat(maxMindConfig.getDatabaseRefreshInterval(), equalTo(Duration.ofDays(7)));
     }
 
 }
