@@ -87,7 +87,9 @@ public class KafkaCustomProducer<T> {
         this.bufferedEventHandles = new LinkedList<>();
         this.expressionEvaluator = expressionEvaluator;
         this.tagTargetKey = tagTargetKey;
+        System.out.println("______________"+kafkaProducerConfig.getTopic());
         this.topicName = ObjectUtils.isEmpty(kafkaProducerConfig.getTopic()) ? null : kafkaProducerConfig.getTopic().getName();
+        System.out.println("2______________"+topicName);
         this.serdeFormat = ObjectUtils.isEmpty(kafkaProducerConfig.getSerdeFormat()) ? null : kafkaProducerConfig.getSerdeFormat();
         this.schemaService = schemaService;
         this.topicMetrics = topicMetrics;
@@ -100,6 +102,7 @@ public class KafkaCustomProducer<T> {
 
     public void produceRawData(final byte[] bytes, final String key) throws Exception{
         try {
+            System.out.println("+++++++++++"+topicName+"...."+key+"...."+bytes);
             send(topicName, key, bytes).get();
             topicMetrics.update(producer);
         } catch (Exception e) {
@@ -168,11 +171,13 @@ public class KafkaCustomProducer<T> {
         send(topicName, key, genericRecord);
     }
 
-    private Future send(final String topicName, String key, final Object record) throws Exception {
+    Future send(final String topicName, String key, final Object record) throws Exception {
+        System.out.println("0---------"+topicName+"---------"+key+"-----"+record);
         if (Objects.isNull(key)) {
             return producer.send(new ProducerRecord(topicName, record), callBack(record));
         }
 
+        System.out.println("1---------"+topicName+"---------"+key+"-----"+record);
         return producer.send(new ProducerRecord(topicName, key, record), callBack(record));
     }
 

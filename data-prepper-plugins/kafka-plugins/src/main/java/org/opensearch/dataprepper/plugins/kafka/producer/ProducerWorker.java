@@ -34,7 +34,7 @@ public class ProducerWorker implements Runnable {
         try {
             producer.produceRecords(record);
         } catch (Exception e) {
-            LOG.error(e.getMessage(), e);
+            LOG.error("The Kafka buffer failed to produce records to Kafka.", e);
         }
     }
 
