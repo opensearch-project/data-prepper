@@ -163,6 +163,6 @@ public class ByteCount {
      */
     @Override
     public String toString() {
-        return bytes + "b";
+        return bytes + Unit.BYTE.unitString;
     }
 }
