@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.plugins.processor.configuration.KeysConfig;
 import org.opensearch.dataprepper.plugins.processor.configuration.MaxMindServiceConfig;
 import org.opensearch.dataprepper.plugins.processor.configuration.ServiceTypeOptions;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.EnrichFailedException;
+import org.opensearch.dataprepper.plugins.processor.extension.GeoIpConfigSupplier;
 import org.opensearch.dataprepper.plugins.processor.loadtype.LoadTypeOptions;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
@@ -40,7 +41,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -55,6 +55,8 @@ class GeoIPProcessorTest {
     private GeoIPProcessorService geoIPProcessorService;
     @Mock
     private GeoIPProcessorConfig geoCodingProcessorConfig;
+    @Mock
+    private GeoIpConfigSupplier geoIpConfigSupplier;
     @Mock
     private PluginSetting pluginSetting;
     @Mock
@@ -164,7 +166,7 @@ class GeoIPProcessorTest {
     }
 
     private GeoIPProcessor createObjectUnderTest() throws MalformedURLException {
-        return new GeoIPProcessor(pluginSetting, geoCodingProcessorConfig);
+        return new GeoIPProcessor(pluginSetting, geoCodingProcessorConfig, geoIpConfigSupplier);
     }
 
     private List<String> setAttributes() {

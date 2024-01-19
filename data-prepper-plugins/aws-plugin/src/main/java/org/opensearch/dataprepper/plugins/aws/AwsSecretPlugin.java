@@ -1,6 +1,12 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.aws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
@@ -24,15 +30,18 @@ public class AwsSecretPlugin implements ExtensionPlugin {
     private ScheduledExecutorService scheduledExecutorService;
     private PluginConfigPublisher pluginConfigPublisher;
     private SecretsSupplier secretsSupplier;
+    private PluginMetrics pluginMetrics;
     private final PluginConfigValueTranslator pluginConfigValueTranslator;
 
     @DataPrepperPluginConstructor
     public AwsSecretPlugin(final AwsSecretPluginConfig awsSecretPluginConfig) {
         if (awsSecretPluginConfig != null) {
-            secretsSupplier = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
+            final SecretValueDecoder secretValueDecoder = new SecretValueDecoder();
+            secretsSupplier = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
             this.pluginConfigPublisher = new AwsSecretsPluginConfigPublisher();
             pluginConfigValueTranslator = new AwsSecretsPluginConfigValueTranslator(secretsSupplier);
             scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+            pluginMetrics = PluginMetrics.fromNames("secrets", "aws");
             submitSecretsRefreshJobs(awsSecretPluginConfig, secretsSupplier);
             Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
         } else {
@@ -52,7 +61,7 @@ public class AwsSecretPlugin implements ExtensionPlugin {
         awsSecretPluginConfig.getAwsSecretManagerConfigurationMap().forEach((key, value) -> {
             if (value.getRefreshInterval() != null) {
                 final SecretsRefreshJob secretsRefreshJob = new SecretsRefreshJob(
-                        key, secretsSupplier, pluginConfigPublisher);
+                        key, secretsSupplier, pluginConfigPublisher, pluginMetrics);
                 final long period = value.getRefreshInterval().toSeconds();
                 final long jitterDelay = ThreadLocalRandom.current().nextLong(60L);
                 scheduledExecutorService.scheduleAtFixedRate(secretsRefreshJob, period + jitterDelay,

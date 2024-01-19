@@ -53,7 +53,7 @@ function usage() {
 function query_hits_gt_zero () {
     local URL=$1
     local SEARCH_RESPONSE
-    SEARCH_RESPONSE=$(curl -s -k -u 'admin:admin' "${URL}")
+    SEARCH_RESPONSE=$(curl -s -k -u 'admin:myStrongPassword123!' "${URL}")
     local LOG_COUNT=0
 
     if command -v jq &> /dev/null
@@ -138,7 +138,7 @@ WAITING_FOR_DATAPREPPER=true
 echo -n "Waiting for Data Prepper to start  "
 while ${WAITING_FOR_DATAPREPPER}
 do
-    if curl -s -k -u 'admin:admin' 'https://localhost:9200/_cat/indices' > /dev/null && curl -s -k -H "Content-Type: application/json" -d '[{"log": "smoke test log "}]' 'http://localhost:2021/log/ingest' > /dev/null
+    if curl -s -k -u 'admin:myStrongPassword123!' 'https://localhost:9200/_cat/indices' > /dev/null && curl -s -k -H "Content-Type: application/json" -d '[{"log": "smoke test log "}]' 'http://localhost:2021/log/ingest' > /dev/null
     then
         WAITING_FOR_DATAPREPPER=false
     else

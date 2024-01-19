@@ -24,8 +24,10 @@ dependencies {
     implementation 'software.amazon.awssdk.crt:aws-crt:0.21.17'
     implementation 'com.maxmind.geoip2:geoip2:4.0.1'
     implementation 'com.maxmind.db:maxmind-db:3.0.0'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
 
     implementation libs.commons.lang3
+    testImplementation project(':data-prepper-core')
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation project(':data-prepper-test-common')

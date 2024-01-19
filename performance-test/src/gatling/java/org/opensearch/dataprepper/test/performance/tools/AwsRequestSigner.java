@@ -19,10 +19,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
-public class AwsRequestSigner implements Consumer<Request> {
+public class AwsRequestSigner implements Function<Request, Request> {
     static final String SIGNER_NAME = "aws_sigv4";
 
     /**
@@ -69,7 +68,7 @@ public class AwsRequestSigner implements Consumer<Request> {
     }
 
     @Override
-    public void accept(Request request) {
+    public Request apply(final Request request) {
         ExecutionAttributes attributes = new ExecutionAttributes();
         attributes.putAttribute(AwsSignerExecutionAttribute.AWS_CREDENTIALS, credentialsProvider.resolveCredentials());
         attributes.putAttribute(AwsSignerExecutionAttribute.SERVICE_SIGNING_NAME, service);
@@ -80,6 +79,8 @@ public class AwsRequestSigner implements Consumer<Request> {
         SdkHttpFullRequest signedRequest = awsSigner.sign(incomingSdkRequest, attributes);
 
         modifyOutgoingRequest(request, signedRequest);
+
+        return request;
     }
 
     private SdkHttpFullRequest convertIncomingRequest(Request request) {

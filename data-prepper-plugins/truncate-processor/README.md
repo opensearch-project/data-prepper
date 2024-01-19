@@ -48,7 +48,7 @@ pipeline:
   processor:
     - truncate:
         entries:
-          - source: ["message"]
+          - source_keys: ["message"]
             length: 5
             start_at: 8
             truncate_when: '/id == 1'
