@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -68,7 +69,7 @@ public class JacksonEvent implements Event {
 
     private final EventMetadata eventMetadata;
 
-    private EventHandle eventHandle;
+    private transient EventHandle eventHandle;
 
     private final JsonNode jsonNode;
 
@@ -657,7 +658,17 @@ public class JacksonEvent implements Event {
 
             }
         }
+    }
 
-
+    /**
+     * Provides custom Java object deserialization.
+     *
+     * @param objectInputStream The {@link ObjectInputStream} to deserialize from
+     * @throws IOException if an I/O error occurs
+     * @throws ClassNotFoundException if the class of a serialized object could not be found
+     */
+    private void readObject(final ObjectInputStream objectInputStream) throws IOException, ClassNotFoundException {
+        objectInputStream.defaultReadObject();
+        this.eventHandle = new DefaultEventHandle(eventMetadata.getTimeReceived());
     }
 }
