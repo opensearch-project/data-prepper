@@ -50,12 +50,14 @@ public class AwsSecretPlugin implements ExtensionPlugin {
     private void submitSecretsRefreshJobs(final AwsSecretPluginConfig awsSecretPluginConfig,
                                           final SecretsSupplier secretsSupplier) {
         awsSecretPluginConfig.getAwsSecretManagerConfigurationMap().forEach((key, value) -> {
-            final SecretsRefreshJob secretsRefreshJob = new SecretsRefreshJob(
-                    key, secretsSupplier, pluginConfigPublisher);
-            final long period = value.getRefreshInterval().toSeconds();
-            final long jitterDelay = ThreadLocalRandom.current().nextLong(60L);
-            scheduledExecutorService.scheduleAtFixedRate(secretsRefreshJob, period + jitterDelay,
-                    period, TimeUnit.SECONDS);
+            if (value.getRefreshInterval() != null) {
+                final SecretsRefreshJob secretsRefreshJob = new SecretsRefreshJob(
+                        key, secretsSupplier, pluginConfigPublisher);
+                final long period = value.getRefreshInterval().toSeconds();
+                final long jitterDelay = ThreadLocalRandom.current().nextLong(60L);
+                scheduledExecutorService.scheduleAtFixedRate(secretsRefreshJob, period + jitterDelay,
+                        period, TimeUnit.SECONDS);
+            }
         });
     }
 
