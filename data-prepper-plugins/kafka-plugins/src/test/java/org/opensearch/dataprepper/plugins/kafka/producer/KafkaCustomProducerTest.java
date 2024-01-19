@@ -41,12 +41,14 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import java.util.concurrent.Future;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -94,12 +96,14 @@ public class KafkaCustomProducerTest {
     }
 
     @Test
-    public void produceRawDataTest() {
+    public void produceRawDataTest() throws Exception {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
         KafkaProducer kafkaProducer = mock(KafkaProducer.class);
         producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
                 null, kafkaTopicProducerMetrics, schemaService);
         when(kafkaTopicProducerMetrics.getNumberOfRawDataSendErrors()).thenReturn(numberOfRawDataSendErrors);
+        Future f = mock(Future.class);
+        when(kafkaProducer.send(any(ProducerRecord.class), any(Callback.class))).thenReturn(f);
         sinkProducer = spy(producer);
         final String key = UUID.randomUUID().toString();
         final byte[] byteData = record.getData().toJsonString().getBytes();
@@ -114,7 +118,7 @@ public class KafkaCustomProducerTest {
     }
 
     @Test
-    public void produceRawData_sendError() {
+    public void produceRawData_sendError() throws Exception {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
         KafkaProducer kafkaProducer = mock(KafkaProducer.class);
         producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
@@ -124,7 +128,7 @@ public class KafkaCustomProducerTest {
         sinkProducer = spy(producer);
         final String key = UUID.randomUUID().toString();
         final byte[] byteData = record.getData().toJsonString().getBytes();
-        sinkProducer.produceRawData(byteData, key);
+        assertThrows(KafkaException.class, () -> sinkProducer.produceRawData(byteData, key));
         verify(sinkProducer).produceRawData(record.getData().toJsonString().getBytes(), key);
         final ArgumentCaptor<ProducerRecord> recordArgumentCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(kafkaProducer).send(recordArgumentCaptor.capture(), any(Callback.class));
@@ -135,7 +139,7 @@ public class KafkaCustomProducerTest {
     }
 
     @Test
-    public void producePlainTextRecords() {
+    public void producePlainTextRecords() throws Exception {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
         KafkaProducer kafkaProducer = mock(KafkaProducer.class);
         producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
@@ -151,7 +155,7 @@ public class KafkaCustomProducerTest {
     }
 
     @Test
-    public void producePlainTextRecords_sendError() {
+    public void producePlainTextRecords_sendError() throws Exception {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
         KafkaProducer kafkaProducer = mock(KafkaProducer.class);
         producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
@@ -169,7 +173,7 @@ public class KafkaCustomProducerTest {
     }
 
     @Test
-    public void producePlainTextRecords_callbackException() {
+    public void producePlainTextRecords_callbackException() throws Exception {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
         KafkaProducer kafkaProducer = mock(KafkaProducer.class);
         producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
@@ -189,7 +193,7 @@ public class KafkaCustomProducerTest {
     }
 
     @Test
-    public void produceJsonRecordsTest() {
+    public void produceJsonRecordsTest() throws Exception {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("JSON");
         KafkaProducer kafkaProducer = mock(KafkaProducer.class);
         producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
@@ -217,7 +221,7 @@ public class KafkaCustomProducerTest {
     }
 
     @Test
-    public void produceAvroRecordsTest() {
+    public void produceAvroRecordsTest() throws Exception {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("AVRO");
         KafkaProducer kafkaProducer = mock(KafkaProducer.class);
         producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),

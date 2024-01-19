@@ -98,17 +98,18 @@ public class KafkaCustomProducer<T> {
         return topicMetrics;
     }
 
-    public void produceRawData(final byte[] bytes, final String key) {
+    public void produceRawData(final byte[] bytes, final String key) throws Exception{
         try {
             send(topicName, key, bytes).get();
             topicMetrics.update(producer);
         } catch (Exception e) {
             topicMetrics.getNumberOfRawDataSendErrors().increment();
             LOG.error("Error occurred while publishing raw data", e);
+            throw e;
         }
     }
 
-    public void produceRecords(final Record<Event> record) {
+    public void produceRecords(final Record<Event> record) throws Exception {
         bufferedEventHandles.add(record.getData().getEventHandle());
         Event event = getEvent(record);
         final String key = event.formatString(kafkaProducerConfig.getPartitionKey(), expressionEvaluator);
@@ -126,21 +127,21 @@ public class KafkaCustomProducer<T> {
         } catch (Exception e) {
             LOG.error("Error occurred while publishing record {}", e.getMessage());
             topicMetrics.getNumberOfRecordSendErrors().increment();
-            releaseEventHandles(false);
+            if (dlqSink != null) {
+                JsonNode dataNode = record.getData().getJsonNode();
+                dlqSink.perform(dataNode, e);
+            } else {
+                releaseEventHandles(false);
+                throw e;
+            }
         }
 
     }
 
-    private void publishJsonMessageAsBytes(Record<Event> record, String key) {
+    private void publishJsonMessageAsBytes(Record<Event> record, String key) throws Exception {
         JsonNode dataNode = record.getData().getJsonNode();
-
-        try {
-            byte[] bytes = objectMapper.writeValueAsBytes(dataNode);
-            send(topicName, key, bytes);
-        }
-        catch (Throwable ex) {
-            dlqSink.perform(dataNode, ex);
-        }
+        byte[] bytes = objectMapper.writeValueAsBytes(dataNode);
+        send(topicName, key, bytes);
     }
 
     private Event getEvent(final Record<Event> record) {
@@ -154,11 +155,11 @@ public class KafkaCustomProducer<T> {
     }
 
 
-    private void publishPlaintextMessage(final Record<Event> record, final String key) {
+    private void publishPlaintextMessage(final Record<Event> record, final String key) throws Exception {
         send(topicName, key, record.getData().toJsonString());
     }
 
-    private void publishAvroMessage(final Record<Event> record, final String key) {
+    private void publishAvroMessage(final Record<Event> record, final String key) throws Exception {
         final Schema avroSchema = schemaService.getSchema(topicName);
         if (avroSchema == null) {
             throw new RuntimeException("Schema definition is mandatory in case of type avro");
@@ -167,7 +168,7 @@ public class KafkaCustomProducer<T> {
         send(topicName, key, genericRecord);
     }
 
-    private Future send(final String topicName, String key, final Object record) {
+    Future send(final String topicName, String key, final Object record) throws Exception {
         if (Objects.isNull(key)) {
             return producer.send(new ProducerRecord(topicName, record), callBack(record));
         }
@@ -175,14 +176,9 @@ public class KafkaCustomProducer<T> {
         return producer.send(new ProducerRecord(topicName, key, record), callBack(record));
     }
 
-    private void publishJsonMessage(final Record<Event> record, final String key) throws IOException, ProcessingException {
+    private void publishJsonMessage(final Record<Event> record, final String key) throws IOException, ProcessingException, Exception {
         JsonNode dataNode = record.getData().getJsonNode();
-        try {
-            send(topicName, key, dataNode);
-        }
-        catch (Throwable ex) {
-            dlqSink.perform(dataNode, ex);
-        }
+        send(topicName, key, dataNode);
     }
 
     public boolean validateSchema(final String jsonData, final String schemaJson) throws IOException, ProcessingException {
@@ -200,8 +196,6 @@ public class KafkaCustomProducer<T> {
             if (null != exception) {
                 LOG.error("Error occurred while publishing {}", exception.getMessage());
                 topicMetrics.getNumberOfRecordProcessingErrors().increment();
-                releaseEventHandles(false);
-                dlqSink.perform(dataForDlq, exception);
             } else {
                 releaseEventHandles(true);
             }
