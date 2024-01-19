@@ -28,7 +28,7 @@ import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
 import org.opensearch.dataprepper.plugins.kafka.service.TopicService;
 import org.opensearch.dataprepper.plugins.kafka.util.RestUtils;
-import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
+//import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
