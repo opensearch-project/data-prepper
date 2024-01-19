@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.model.configuration;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
@@ -47,7 +46,7 @@ class PipelinesDataFlowModelTest {
     }
 
     @Test
-    void testSerializing_PipelinesDataFlowModel_empty_Plugins_with_nonEmpty_delay_and_workers() throws JsonProcessingException {
+    void testSerializing_PipelinesDataFlowModel_empty_Plugins_with_nonEmpty_delay_and_workers() throws IOException {
         String pipelineName = "test-pipeline";
 
         final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
@@ -68,7 +67,7 @@ class PipelinesDataFlowModelTest {
     }
 
     @Test
-    void testSerializing_PipelinesDataFlowModel_with_Version() throws JsonProcessingException {
+    void testSerializing_PipelinesDataFlowModel_with_Version() throws IOException {
         String pipelineName = "test-pipeline";
 
         final DataPrepperVersion version = DataPrepperVersion.parse("2.0");
@@ -90,7 +89,7 @@ class PipelinesDataFlowModelTest {
     }
 
     @Test
-    void testSerializing_PipelinesDataFlowModel_skip_null_pipelineExtensions() throws JsonProcessingException {
+    void testSerializing_PipelinesDataFlowModel_skip_null_pipelineExtensions() throws IOException {
         String pipelineName = "test-pipeline";
 
         final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
@@ -112,7 +111,7 @@ class PipelinesDataFlowModelTest {
     }
 
     @Test
-    void testSerializing_PipelinesDataFlowModel_empty_Plugins_with_nonEmpty_delay_and_workers_and_route() throws JsonProcessingException {
+    void testSerializing_PipelinesDataFlowModel_empty_Plugins_with_nonEmpty_delay_and_workers_and_route() throws IOException {
         String pipelineName = "test-pipeline";
 
         final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);

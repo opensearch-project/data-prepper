@@ -19,6 +19,8 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.BackoffCalculator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
 import java.time.Duration;
@@ -48,6 +50,7 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamSc
 
 @ExtendWith(MockitoExtension.class)
 class StreamSchedulerTest {
+    private static final Logger LOG = LoggerFactory.getLogger(StreamSchedulerTest.class);
 
     @Mock
     private EnhancedSourceCoordinator coordinator;
@@ -123,7 +126,7 @@ class StreamSchedulerTest {
         when(backoffCalculator.calculateBackoffToAcquireNextShard(eq(1), any(AtomicInteger.class)))
                 .thenReturn(10000L);
 
-        when(consumerFactory.createConsumer(any(StreamPartition.class), eq(null), any(Duration.class))).thenReturn(() -> System.out.println("Hello"));
+        when(consumerFactory.createConsumer(any(StreamPartition.class), eq(null), any(Duration.class))).thenReturn(() -> LOG.info("Hello"));
         when(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).thenReturn(Optional.of(streamPartition)).thenReturn(Optional.empty());
 
         scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, backoffCalculator);
@@ -170,7 +173,7 @@ class StreamSchedulerTest {
             return acknowledgementSet;
         }).when(acknowledgementSetManager).create(any(Consumer.class), eq(shardAcknowledgmentTimeout));
 
-        when(consumerFactory.createConsumer(any(StreamPartition.class), eq(acknowledgementSet), eq(shardAcknowledgmentTimeout))).thenReturn(() -> System.out.println("Hello"));
+        when(consumerFactory.createConsumer(any(StreamPartition.class), eq(acknowledgementSet), eq(shardAcknowledgmentTimeout))).thenReturn(() -> LOG.info("Hello"));
 
         scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, backoffCalculator);
 

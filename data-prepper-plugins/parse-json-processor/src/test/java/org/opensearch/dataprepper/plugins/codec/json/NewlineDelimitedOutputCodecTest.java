@@ -53,12 +53,7 @@ public class NewlineDelimitedOutputCodecTest {
             ndjsonOutputCodec.writeEvent(event, outputStream);
         }
         ndjsonOutputCodec.complete(outputStream);
-        String jsonString = null;
-        try {
-            jsonString = outputStream.toString(StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        String jsonString = outputStream.toString(StandardCharsets.UTF_8);
         int index = 0;
         List<HashMap> expectedRecords = generateRecords(numberOfRecords);
         String[] jsonObjects = jsonString.split(REGEX);

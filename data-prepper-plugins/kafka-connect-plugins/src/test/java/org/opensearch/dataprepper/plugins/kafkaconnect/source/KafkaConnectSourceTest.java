@@ -90,7 +90,7 @@ public class KafkaConnectSourceTest {
     }
 
     @Test
-    void testStartKafkaConnectSource() {
+    void testStartKafkaConnectSource() throws InterruptedException {
         try (MockedStatic<KafkaConnect> mockedStatic = mockStatic(KafkaConnect.class);
              MockedStatic<KafkaSecurityConfigurer> mockedSecurityConfigurer = mockStatic(KafkaSecurityConfigurer.class)) {
             mockedSecurityConfigurer.when(() -> KafkaSecurityConfigurer.setAuthProperties(any(), any(), any())).thenAnswer((Answer<Void>) invocation -> null);
@@ -104,11 +104,7 @@ public class KafkaConnectSourceTest {
             kafkaConnectSource.start(buffer);
             verify(kafkaConnect).addConnectors(any());
             verify(kafkaConnect).start();
-            try {
-                Thread.sleep(10);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            Thread.sleep(10);
             kafkaConnectSource.stop();
             verify(kafkaConnect).stop();
         }

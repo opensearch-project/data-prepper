@@ -68,5 +68,15 @@
             <property name="file" value="${config_loc}/import-control.xml"/>
         </module>
 
+        <module name="Regexp">
+            <property name="format" value="System\.out\.println"/>
+            <property name="illegalPattern" value="true"/>
+        </module>
+
+        <module name="Regexp">
+            <property name="format" value="\.printStackTrace()"/>
+            <property name="illegalPattern" value="true"/>
+        </module>
+
     </module>
 </module>

@@ -10,6 +10,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.ExportSummary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -27,6 +29,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ManifestFileReaderTest {
 
+    private static final Logger LOG = LoggerFactory.getLogger(ManifestFileReaderTest.class);
 
     @Mock
     private S3ObjectReader s3ObjectReader;
@@ -99,7 +102,7 @@ class ManifestFileReaderTest {
 
         ManifestFileReader reader = new ManifestFileReader(s3ObjectReader);
         Map<String, Integer> dataFiles = reader.parseDataFile("test", "test");
-        System.out.println(dataFiles);
+        LOG.info("dataFiles={}", dataFiles);
 
         assertThat(dataFiles, notNullValue());
         assertThat(dataFiles.size(), equalTo(2));

@@ -38,6 +38,8 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.fs.LocalFilePositionOutputStream;
 import org.opensearch.dataprepper.plugins.sink.s3.S3OutputCodecContext;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -69,6 +71,7 @@ import static org.mockito.Mockito.withSettings;
 
 @ExtendWith(MockitoExtension.class)
 public class ParquetOutputCodecTest {
+    private static final Logger LOG = LoggerFactory.getLogger(ParquetOutputCodecTest.class);
     private static final String FILE_NAME = "parquet-data.parquet";
     private ParquetOutputCodecConfig config;
     @Mock
@@ -571,7 +574,7 @@ public class ParquetOutputCodecTest {
                         try {
                             eventData.put(field.getName(), simpleGroup.getValueToString(fieldIndex, 0));
                         } catch (Exception parquetException) {
-                            parquetException.printStackTrace();
+                            LOG.error("Failed to parse Parquet", parquetException);
                         }
                         fieldIndex++;
                     }
@@ -579,7 +582,7 @@ public class ParquetOutputCodecTest {
                 }
             }
         } catch (Exception parquetException) {
-            parquetException.printStackTrace();
+            LOG.error("Failed to parse Parquet", parquetException);
         } finally {
             Files.delete(tempFile.toPath());
         }

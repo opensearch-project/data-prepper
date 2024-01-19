@@ -54,7 +54,6 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFile
 
 @ExtendWith(MockitoExtension.class)
 class DataFileLoaderTest {
-
     @Mock
     private S3Client s3Client;
 
@@ -98,7 +97,7 @@ class DataFileLoaderTest {
     private final int total = random.nextInt(10) + 1;
 
     @BeforeEach
-    void setup() {
+    void setup() throws IOException {
 
         DataFileProgressState state = new DataFileProgressState();
         state.setLoaded(0);
@@ -119,7 +118,7 @@ class DataFileLoaderTest {
         objectReader = new S3ObjectReader(s3Client);
     }
 
-    private ResponseInputStream<GetObjectResponse> generateGzipInputStream(int numberOfRecords) {
+    private ResponseInputStream<GetObjectResponse> generateGzipInputStream(int numberOfRecords) throws IOException {
 
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < numberOfRecords; i++) {
@@ -135,8 +134,6 @@ class DataFileLoaderTest {
         final ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
         try (final GZIPOutputStream gzipOut = new GZIPOutputStream(byteOut)) {
             gzipOut.write(dataBytes, 0, dataBytes.length);
-        } catch (IOException e) {
-            e.printStackTrace();
         }
 
         final byte[] bites = byteOut.toByteArray();
