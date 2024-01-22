@@ -80,6 +80,8 @@ public class OTelProtoCodec {
 
     private static final Logger LOG = LoggerFactory.getLogger(OTelProtoCodec.class);
     public static final int DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE = 10;
+    private static final double OTEL_NEGATIVE_INFINITY = -Float.MAX_VALUE;
+    private static final double OTEL_POSITIVE_INFINITY = Float.MAX_VALUE;
 
     private static final ObjectMapper OBJECT_MAPPER =  new ObjectMapper();
     private static final long NANO_MULTIPLIER = 1_000 * 1_000 * 1_000;
@@ -1244,22 +1246,29 @@ public class OTelProtoCodec {
             throw new IllegalArgumentException("OpenTelemetry protocol mandates that the number of elements in bucket_counts array must be by one greater than\n" +
                     "  // the number of elements in explicit_bounds array.");
         } else {
-            for (int i = 0; i < bucketCountsList.size(); i++) {
-                if (i == 0) {
-                    double min = -Float.MAX_VALUE; // "-Infinity"
-                    double max = explicitBoundsList.get(i);
-                    Long bucketCount = bucketCountsList.get(i);
-                    buckets.add(new DefaultBucket(min, max, bucketCount));
-                } else if (i == bucketCountsList.size() - 1) {
-                    double min = explicitBoundsList.get(i - 1);
-                    double max = Float.MAX_VALUE; // "Infinity"
-                    Long bucketCount = bucketCountsList.get(i);
-                    buckets.add(new DefaultBucket(min, max, bucketCount));
-                } else {
-                    double min = explicitBoundsList.get(i - 1);
-                    double max = explicitBoundsList.get(i);
-                    Long bucketCount = bucketCountsList.get(i);
-                    buckets.add(new DefaultBucket(min, max, bucketCount));
+            if (bucketCountsList.size() == 1) {
+                double min = OTEL_NEGATIVE_INFINITY;
+                double max = OTEL_POSITIVE_INFINITY;
+                Long bucketCount = bucketCountsList.get(0);
+                buckets.add(new DefaultBucket(min, max, bucketCount));
+            } else {
+                for (int i = 0; i < bucketCountsList.size(); i++) {
+                    if (i == 0) {
+                        double min = OTEL_NEGATIVE_INFINITY;
+                        double max = explicitBoundsList.get(i);
+                        Long bucketCount = bucketCountsList.get(i);
+                        buckets.add(new DefaultBucket(min, max, bucketCount));
+                    } else if (i == bucketCountsList.size() - 1) {
+                        double min = explicitBoundsList.get(i - 1);
+                        double max = OTEL_POSITIVE_INFINITY;
+                        Long bucketCount = bucketCountsList.get(i);
+                        buckets.add(new DefaultBucket(min, max, bucketCount));
+                    } else {
+                        double min = explicitBoundsList.get(i - 1);
+                        double max = explicitBoundsList.get(i);
+                        Long bucketCount = bucketCountsList.get(i);
+                        buckets.add(new DefaultBucket(min, max, bucketCount));
+                    }
                 }
             }
         }

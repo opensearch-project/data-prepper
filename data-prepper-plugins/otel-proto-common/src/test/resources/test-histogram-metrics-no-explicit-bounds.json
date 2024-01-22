@@ -1,0 +1,51 @@
+{
+  "resourceMetrics": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "resource-attr",
+            "value": {
+              "stringValue": "resource-attr-val-1"
+            }
+          }
+        ]
+      },
+      "scopeMetrics": [
+        {
+          "scope": {},
+          "metrics": [
+            {
+              "name": "histogram-int",
+              "unit": 1,
+              "histogram": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-1",
+                        "value": {
+                          "stringValue": "label-value-1"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1581452773000000789",
+                    "timeUnixNano": "1581452773000000789",
+                    "count": "30",
+                    "sum": "100",
+                    "bucket_counts": [10],
+                    "explicit_bounds": [],
+                    "exemplars": []
+                  }
+                ],
+                "aggregationTemporality":"2"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+

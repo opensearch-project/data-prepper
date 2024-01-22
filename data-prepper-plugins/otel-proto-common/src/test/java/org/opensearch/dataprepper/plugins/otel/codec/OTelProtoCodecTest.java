@@ -97,6 +97,7 @@ public class OTelProtoCodecTest {
     private static final String TEST_REQUEST_GAUGE_METRICS_JSON_FILE = "test-gauge-metrics.json";
     private static final String TEST_REQUEST_SUM_METRICS_JSON_FILE = "test-sum-metrics.json";
     private static final String TEST_REQUEST_HISTOGRAM_METRICS_JSON_FILE = "test-histogram-metrics.json";
+    private static final String TEST_REQUEST_HISTOGRAM_METRICS_NO_EXPLICIT_BOUNDS_JSON_FILE = "test-histogram-metrics-no-explicit-bounds.json";
     private static final String TEST_REQUEST_LOGS_JSON_FILE = "test-request-log.json";
     private static final String TEST_REQUEST_LOGS_IS_JSON_FILE = "test-request-log-is.json";
     private static final String TEST_REQUEST_MULTIPLE_TRACES_FILE = "test-request-multiple-traces.json";
@@ -555,6 +556,14 @@ public class OTelProtoCodecTest {
             validateHistogramMetricRequest(metrics);
         }
 
+        @Test
+        public void testParseExportMetricsServiceRequest_Histogram_WithNoExplicitBounds() throws IOException {
+            final ExportMetricsServiceRequest exportMetricsServiceRequest = buildExportMetricsServiceRequestFromJsonFile(TEST_REQUEST_HISTOGRAM_METRICS_NO_EXPLICIT_BOUNDS_JSON_FILE);
+            AtomicInteger droppedCount = new AtomicInteger(0);
+            final Collection<Record<? extends Metric>> metrics = decoderUnderTest.parseExportMetricsServiceRequest(exportMetricsServiceRequest, droppedCount, 10, true, true, true);
+            validateHistogramMetricRequestNoExplicitBounds(metrics);
+        }
+
         private void validateGaugeMetricRequest(Collection<Record<? extends Metric>> metrics) {
             assertThat(metrics.size(), equalTo(1));
             Record<? extends Metric> record = ((List<Record<? extends Metric>>)metrics).get(0);
@@ -594,6 +603,25 @@ public class OTelProtoCodecTest {
             assertThat(histogram.getBucketCount(), equalTo(5));
             assertThat(histogram.getAggregationTemporality(), equalTo("AGGREGATION_TEMPORALITY_CUMULATIVE"));
         }
+
+        private void validateHistogramMetricRequestNoExplicitBounds(Collection<Record<? extends Metric>> metrics) {
+            assertThat(metrics.size(), equalTo(1));
+            Record<? extends Metric> record = ((List<Record<? extends Metric>>)metrics).get(0);
+            JacksonMetric metric = (JacksonMetric) record.getData();
+            assertThat(metric.getKind(), equalTo(Metric.KIND.HISTOGRAM.toString()));
+            assertThat(metric.getUnit(), equalTo("1"));
+            assertThat(metric.getName(), equalTo("histogram-int"));
+            JacksonHistogram histogram = (JacksonHistogram)metric;
+            assertThat(histogram.getSum(), equalTo(100.0));
+            assertThat(histogram.getCount(), equalTo(30L));
+            assertThat(histogram.getExemplars(), equalTo(Collections.emptyList()));
+            assertThat(histogram.getExplicitBoundsList(), equalTo(List.of()));
+            assertThat(histogram.getExplicitBoundsCount(), equalTo(0));
+            assertThat(histogram.getBucketCountsList(), equalTo(List.of(10L)));
+            assertThat(histogram.getBucketCount(), equalTo(1));
+            assertThat(histogram.getAggregationTemporality(), equalTo("AGGREGATION_TEMPORALITY_CUMULATIVE"));
+        }
+
 
     }
 
