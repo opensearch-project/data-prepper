@@ -234,8 +234,10 @@ public abstract class AbstractIndexManager implements IndexManager {
 
     final void checkAndCreateIndexTemplate(final boolean isISMEnabled, final String ismPolicyId) throws IOException {
         //If index prefix has a ending dash, then remove it to avoid two consecutive dashes.
-        final String indexPrefixWithoutTrailingDash = indexPrefix.replaceAll("-$", "");
-        final String indexTemplateName = indexPrefixWithoutTrailingDash  + "-index-template";
+        final String indexPrefixWithoutLeadingAndTrailingDashes = indexPrefix
+                .replaceAll("^-", "")
+                .replaceAll("-$", "");
+        final String indexTemplateName = indexPrefixWithoutLeadingAndTrailingDashes  + "-index-template";
 
         final Map<String, Object> indexTemplateMap = openSearchSinkConfiguration.getIndexConfiguration()
                 .getIndexTemplate();
@@ -248,10 +250,10 @@ public abstract class AbstractIndexManager implements IndexManager {
         }
 
         if (isISMEnabled) {
-            attachPolicy(indexTemplate, ismPolicyId, indexPrefixWithoutTrailingDash);
+            attachPolicy(indexTemplate, ismPolicyId, indexPrefixWithoutLeadingAndTrailingDashes);
         }
 
-        final List<String> indexPatterns = ismPolicyManagementStrategy.getIndexPatterns(indexPrefixWithoutTrailingDash);
+        final List<String> indexPatterns = ismPolicyManagementStrategy.getIndexPatterns(indexPrefixWithoutLeadingAndTrailingDashes);
         indexTemplate.setTemplateName(indexTemplateName);
         indexTemplate.setIndexPatterns(indexPatterns);
 
