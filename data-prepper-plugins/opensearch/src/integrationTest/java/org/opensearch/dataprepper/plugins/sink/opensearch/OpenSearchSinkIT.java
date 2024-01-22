@@ -1269,6 +1269,42 @@ public class OpenSearchSinkIT {
     }
 
     @ParameterizedTest
+    @CsvSource({
+            "id, yyyy-MM-dd, %{yyyy-MM-dd}-test-${id}-index",
+            "id, yyyy-MM-dd, test-%{yyyy-MM-dd}-${id}-index",
+            "id, yyyy-MM-dd, test-${id}-%{yyyy-MM-dd}-index",
+    })
+    public void testOpenSearchDynamicIndexWithDateNotAsSuffix(
+            final String testIndex, final String testDatePattern, final String dynamicTestIndexAlias) throws IOException {
+        final String testIndexName = "idx1";
+        SimpleDateFormat formatter = new SimpleDateFormat(testDatePattern);
+        Date date = new Date();
+        String expectedDate = formatter.format(date);
+        final String expectedIndexAlias = dynamicTestIndexAlias
+                .replace("%{yyyy-MM-dd}", expectedDate)
+                .replace("${id}", testIndexName);
+        final String data = UUID.randomUUID().toString();
+        final Map<String, Object> dataMap = Map.of("data", data);
+        final Event testEvent = JacksonEvent.builder()
+                .withData(dataMap)
+                .withEventType("event")
+                .build();
+        testEvent.put(testIndex, testIndexName);
+
+        Map<String, Object> expectedMap = testEvent.toMap();
+
+        final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+        final PluginSetting pluginSetting = generatePluginSetting(null, dynamicTestIndexAlias, null);
+        final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(expectedIndexAlias);
+        assertThat(retSources.size(), equalTo(1));
+        assertThat(retSources, hasItem(expectedMap));
+        sink.shutdown();
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"yyyy-MM", "yyyy-MM-dd", "dd-MM-yyyy"})
     public void testOpenSearchIndexWithDate(final String testDatePattern) throws IOException, InterruptedException {
         SimpleDateFormat formatter = new SimpleDateFormat(testDatePattern);
@@ -1276,6 +1312,34 @@ public class OpenSearchSinkIT {
         String expectedIndexName = "test-index-" + formatter.format(date);
         final String testIndexName = "idx1";
         final String testIndexAlias = "test-index-%{" + testDatePattern + "}";
+        final String data = UUID.randomUUID().toString();
+        final Map<String, Object> dataMap = Map.of("data", data);
+        final Event testEvent = JacksonEvent.builder()
+                .withData(dataMap)
+                .withEventType("event")
+                .build();
+
+        Map<String, Object> expectedMap = testEvent.toMap();
+
+        final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
+        final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(expectedIndexName);
+        assertThat(retSources.size(), equalTo(1));
+        assertThat(retSources, hasItem(expectedMap));
+        sink.shutdown();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"test-%{yyyy-MM-dd}-index", "%{yyyy-MM-dd}-test-index"})
+    public void testOpenSearchIndexWithDateNotAsSuffix(final String testIndexAlias) throws IOException, InterruptedException {
+        final String testDatePattern = "yyyy-MM-dd";
+        SimpleDateFormat formatter = new SimpleDateFormat(testDatePattern);
+        Date date = new Date();
+        String expectedIndexName = testIndexAlias.replace("%{yyyy-MM-dd}", formatter.format(date));
+
         final String data = UUID.randomUUID().toString();
         final Map<String, Object> dataMap = Map.of("data", data);
         final Event testEvent = JacksonEvent.builder()
