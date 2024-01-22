@@ -8,10 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.databasedownload;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
-import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -23,16 +20,12 @@ class HttpDBDownloadServiceTest {
     private HttpDBDownloadService downloadThroughUrl;
 
     @Test
-    void initiateDownloadTest() throws NoSuchFieldException, IllegalAccessException {
-        DatabasePathURLConfig databasePathURLConfig1 = new DatabasePathURLConfig();
-        ReflectivelySetField.setField(DatabasePathURLConfig.class,
-                databasePathURLConfig1, "url", "https://download.maxmind.com/app/geoip_download?" +
-                        "edition_id=GeoLite2-ASN&suffix=tar.gz");
-        List<DatabasePathURLConfig> config = new ArrayList<>();
-        config.add(databasePathURLConfig1);
+    void initiateDownloadTest() {
+        final String databasePath = "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN&suffix=tar.gz";
+
         downloadThroughUrl = createObjectUnderTest();
         assertDoesNotThrow(() -> {
-            downloadThroughUrl.initiateDownload(config);
+            downloadThroughUrl.initiateDownload(List.of(databasePath));
         });
     }
 

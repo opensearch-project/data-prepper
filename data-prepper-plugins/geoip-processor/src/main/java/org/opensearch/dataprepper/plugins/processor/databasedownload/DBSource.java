@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.databasedownload;
 
-import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +29,7 @@ public interface DBSource {
     public String tempFolderPath = System.getProperty("java.io.tmpdir")+ File.separator +"GeoIP";
     public String tarFolderPath = tempFolderPath + "/tar";
     public String downloadTarFilepath = tarFolderPath + "/out.tar.gz";
-    public void initiateDownload(List<DatabasePathURLConfig> config) throws Exception;
+    public void initiateDownload(List<String> config) throws Exception;
 
     /**
      * create Folder If Not Exist

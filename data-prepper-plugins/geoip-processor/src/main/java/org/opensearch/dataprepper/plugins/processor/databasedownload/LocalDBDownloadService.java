@@ -6,11 +6,9 @@
 package org.opensearch.dataprepper.plugins.processor.databasedownload;
 
 import org.apache.commons.io.FileUtils;
-import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
 
 import java.io.File;
 import java.util.List;
-
 
 /**
  * Implementation class for Download through local path
@@ -28,7 +26,6 @@ public class LocalDBDownloadService implements DBSource {
     public LocalDBDownloadService(String tempPath, String prefixDir) {
         this.tempPath = tempPath;
         this.prefixDir = prefixDir;
-
     }
 
     /**
@@ -36,10 +33,10 @@ public class LocalDBDownloadService implements DBSource {
      * @param config config
      */
     @Override
-    public void initiateDownload(List<DatabasePathURLConfig> config) throws Exception {
+    public void initiateDownload(List<String> config) throws Exception {
         String destPath = tempPath + File.separator + prefixDir;
         DBSource.createFolderIfNotExist(destPath);
-        File srcDatabaseConfigPath = new File(config.get(0).getUrl());
+        File srcDatabaseConfigPath = new File(config.get(0));
         File destDatabaseConfigPath = new File(destPath);
         FileUtils.copyDirectory(srcDatabaseConfigPath, destDatabaseConfigPath);
     }

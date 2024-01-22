@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.processor.databasedownload;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.utils.IOUtils;
-import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,13 +41,13 @@ public class HttpDBDownloadService implements DBSource {
      * Initialisation of Download through Url
      * @param urlList urlList
      */
-    public void initiateDownload(List<DatabasePathURLConfig> urlList) throws Exception {
+    public void initiateDownload(List<String> urlList) {
         final File tmpDir = DBSource.createFolderIfNotExist(tempFolderPath + File.separator + prefixDir);
-        for(DatabasePathURLConfig url : urlList) {
+        for(String url : urlList) {
             DBSource.createFolderIfNotExist(tarFolderPath);
             try {
                 initiateSSL();
-                buildRequestAndDownloadFile(url.getUrl());
+                buildRequestAndDownloadFile(url);
                 decompressAndUntarFile(tarFolderPath, downloadTarFilepath, tmpDir);
                 deleteTarFolder(tarFolderPath);
             } catch (Exception ex) {

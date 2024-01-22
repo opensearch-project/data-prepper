@@ -9,14 +9,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
-import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorService;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,26 +49,24 @@ class GeoIpConfigExtensionTest {
     }
 
     @Test
-    void apply_should_addExtensionProvider_and_supplier_should_use_default_config_if_not_configured() {
-        final GeoIpConfigExtension geoIpConfigExtension = new GeoIpConfigExtension(null);
+    void extension_should_create_supplier_with_default_config_if_not_configured() {
+        try (final MockedConstruction<GeoIpServiceConfig> mockedConstruction =
+                     mockConstruction(GeoIpServiceConfig.class)) {
+            final GeoIpConfigExtension geoIpConfigExtension = new GeoIpConfigExtension(null);
 
-        geoIpConfigExtension.apply(extensionPoints);
-        final ArgumentCaptor<ExtensionProvider> extensionProviderArgumentCaptor =
-                ArgumentCaptor.forClass(ExtensionProvider.class);
-
-        verify(extensionPoints).addExtensionProvider(extensionProviderArgumentCaptor.capture());
-
-        final ExtensionProvider actualExtensionProvider = extensionProviderArgumentCaptor.getValue();
-
-        assertThat(actualExtensionProvider, instanceOf(GeoIpConfigProvider.class));
-
-        final GeoIpConfigSupplier geoIpConfigSupplier = (GeoIpConfigSupplier) actualExtensionProvider.provideInstance(context).get();
-
-        final GeoIPProcessorService geoIPProcessorService = geoIpConfigSupplier.getGeoIPProcessorService();
-
-        //TODO: Update assertions after updating the supplier with GeoIPProcessorService
-        assertThat(geoIPProcessorService, nullValue());
-
+            assertThat(mockedConstruction.constructed().size(), equalTo(1));
+            assertThat(geoIpConfigExtension, instanceOf(GeoIpConfigExtension.class));
+        }
     }
 
+    @Test
+    void extension_should_create_supplier_with_provided_config() {
+        try (final MockedConstruction<GeoIpServiceConfig> mockedConstruction =
+                     mockConstruction(GeoIpServiceConfig.class)) {
+            final GeoIpConfigExtension geoIpConfigExtension = new GeoIpConfigExtension(geoIpServiceConfig);
+
+            assertThat(mockedConstruction.constructed().size(), equalTo(0));
+            assertThat(geoIpConfigExtension, instanceOf(GeoIpConfigExtension.class));
+        }
+    }
 }

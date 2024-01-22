@@ -13,7 +13,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.processor.configuration.KeysConfig;
+import org.opensearch.dataprepper.plugins.processor.configuration.EntryConfig;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIpConfigSupplier;
 import org.opensearch.dataprepper.plugins.processor.utils.IPValidationcheck;
@@ -21,7 +21,6 @@ import org.opensearch.dataprepper.logging.DataPrepperMarkers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Collection;
@@ -41,29 +40,25 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   private final Counter geoIpProcessingMatchCounter;
   private final Counter geoIpProcessingMismatchCounter;
   private final GeoIPProcessorConfig geoIPProcessorConfig;
-  private final String tempPath;
   private final List<String> tagsOnSourceNotFoundFailure;
   private GeoIPProcessorService geoIPProcessorService;
-  private static final String TEMP_PATH_FOLDER = "GeoIP";
 
   /**
    * GeoIPProcessor constructor for initialization of required attributes
    * @param pluginSetting pluginSetting
-   * @param geoCodingProcessorConfig geoCodingProcessorConfig
+   * @param geoIPProcessorConfig geoIPProcessorConfig
+   * @param geoIpConfigSupplier geoIpConfigSupplier
    */
   @DataPrepperPluginConstructor
   public GeoIPProcessor(PluginSetting pluginSetting,
-                        final GeoIPProcessorConfig geoCodingProcessorConfig,
+                        final GeoIPProcessorConfig geoIPProcessorConfig,
                         final GeoIpConfigSupplier geoIpConfigSupplier) {
     super(pluginSetting);
-    this.geoIPProcessorConfig = geoCodingProcessorConfig;
-    this.tempPath = System.getProperty("java.io.tmpdir")+ File.separator + TEMP_PATH_FOLDER;
-    geoIPProcessorService = new GeoIPProcessorService(geoCodingProcessorConfig,tempPath);
-    tagsOnSourceNotFoundFailure = geoCodingProcessorConfig.getTagsOnSourceNotFoundFailure();
+    this.geoIPProcessorConfig = geoIPProcessorConfig;
+    this.geoIPProcessorService = geoIpConfigSupplier.getGeoIPProcessorService();
+    this.tagsOnSourceNotFoundFailure = geoIPProcessorConfig.getTagsOnFailure();
     this.geoIpProcessingMatchCounter = pluginMetrics.counter(GEO_IP_PROCESSING_MATCH);
     this.geoIpProcessingMismatchCounter = pluginMetrics.counter(GEO_IP_PROCESSING_MISMATCH);
-    // TODO: use this service and clean up MaxMind service config from pipeline.yaml
-    //geoIPProcessorService = geoIpConfigSupplier.getGeoIPProcessorService();
   }
 
   /**
@@ -78,9 +73,9 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
     for (final Record<Event> eventRecord : records) {
       Event event = eventRecord.getData();
-      for (KeysConfig key : geoIPProcessorConfig.getKeysConfig()) {
-        String source = key.getKeyConfig().getSource();
-        List<String> attributes = key.getKeyConfig().getAttributes();
+      for (EntryConfig entry : geoIPProcessorConfig.getEntries()) {
+        String source = entry.getSource();
+        List<String> attributes = entry.getFields();
         String ipAddress = event.get(source, String.class);
 
         //Lookup from DB
@@ -88,7 +83,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
           try {
             if (IPValidationcheck.isPublicIpAddress(ipAddress)) {
               geoData = geoIPProcessorService.getGeoData(InetAddress.getByName(ipAddress), attributes);
-              eventRecord.getData().put(key.getKeyConfig().getTarget(), geoData);
+              eventRecord.getData().put(entry.getTarget(), geoData);
               geoIpProcessingMatchCounter.increment();
             }
           } catch (IOException | EnrichFailedException ex) {
@@ -107,16 +102,16 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
   @Override
   public void prepareForShutdown() {
-    LOG.info("GeoIP plugin prepare For Shutdown");
   }
 
   @Override
   public boolean isReadyForShutdown() {
-    return false;
+    return true;
   }
 
   @Override
   public void shutdown() {
+    //TODO: delete mmdb files
     LOG.info("GeoIP plugin Shutdown");
   }
 }

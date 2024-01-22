@@ -11,19 +11,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorConfig;
-import org.opensearch.dataprepper.plugins.processor.extension.AwsAuthenticationOptionsConfig;
-import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.DownloadFailedException;
-import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class S3DBServiceTest {
@@ -36,28 +28,16 @@ class S3DBServiceTest {
 
     @BeforeEach
     void setUp() {
-        AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig = mock(AwsAuthenticationOptionsConfig.class);
-        when(geoIPProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptionsConfig);
-        when(geoIPProcessorConfig.getAwsAuthenticationOptions().getAwsRegion()).thenReturn(Region.of(S3_REGION));
-        AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(geoIPProcessorConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration()).thenReturn(awsCredentialsProvider);
+
     }
 
     @Test
-    void initiateDownloadTest_DownloadFailedException() throws NoSuchFieldException, IllegalAccessException {
-
-        DatabasePathURLConfig databasePathURLConfig1 = new DatabasePathURLConfig();
-        ReflectivelySetField.setField(DatabasePathURLConfig.class,
-                databasePathURLConfig1, "url", S3_URI);
-
-        List<DatabasePathURLConfig> config = new ArrayList<>();
-        config.add(databasePathURLConfig1);
-
+    void initiateDownloadTest_DownloadFailedException() {
         S3DBService downloadThroughS3 = createObjectUnderTest();
-        assertThrows(DownloadFailedException.class, () -> downloadThroughS3.initiateDownload(config));
+        assertThrows(DownloadFailedException.class, () -> downloadThroughS3.initiateDownload(List.of(S3_URI)));
     }
 
     private S3DBService createObjectUnderTest() {
-        return new S3DBService(geoIPProcessorConfig, PREFIX_DIR);
+        return new S3DBService(null, PREFIX_DIR);
     }
 }

@@ -79,7 +79,8 @@ public class GeoIPProcessorUrlServiceIT {
     }
 
     public GeoIPProcessorService createObjectUnderTest() {
-        return new GeoIPProcessorService(geoIPProcessorConfig, tempPath);
+        // TODO: pass in geoIpServiceConfig object
+        return new GeoIPProcessorService(null);
     }
 
     @Test

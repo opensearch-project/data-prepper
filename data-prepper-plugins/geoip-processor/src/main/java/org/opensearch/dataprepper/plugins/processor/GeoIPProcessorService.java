@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor;
 
-import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
 import org.opensearch.dataprepper.plugins.processor.databasedownload.DBSourceOptions;
 import org.opensearch.dataprepper.plugins.processor.databasedownload.LicenseTypeOptions;
 import org.opensearch.dataprepper.plugins.processor.databasedownload.S3DBService;
@@ -16,6 +15,8 @@ import org.opensearch.dataprepper.plugins.processor.databaseenrich.DownloadFaile
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoData;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoIP2Data;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoLite2Data;
+import org.opensearch.dataprepper.plugins.processor.extension.GeoIpServiceConfig;
+import org.opensearch.dataprepper.plugins.processor.extension.MaxMindConfig;
 import org.opensearch.dataprepper.plugins.processor.utils.DbSourceIdentification;
 import org.opensearch.dataprepper.plugins.processor.utils.LicenseTypeCheck;
 import org.slf4j.Logger;
@@ -40,13 +41,15 @@ public class GeoIPProcessorService {
     private static final Logger LOG = LoggerFactory.getLogger(GeoIPProcessorService.class);
     public static final String DATABASE_1 = "first_database_path";
     public static final String DATABASE_2 = "second_database_path";
+    private static final String TEMP_PATH_FOLDER = "GeoIP";
     private GeoIPProcessorConfig geoIPProcessorConfig;
     private LicenseTypeOptions licenseType;
     private GetGeoData geoData;
-    private List<DatabasePathURLConfig> databasePath;
+    private List<String> databasePaths;
     private final String tempPath;
     private final ScheduledExecutorService scheduledExecutorService;
     private final DBSourceOptions dbSourceOptions;
+    private final MaxMindConfig maxMindConfig;
     public static volatile boolean downloadReady;
     private boolean toggle;
     private String flipDatabase;
@@ -54,18 +57,19 @@ public class GeoIPProcessorService {
 
     /**
      * GeoIPProcessorService constructor for initialization of required attributes
-     * @param geoIPProcessorConfig geoIPProcessorConfig
-     * @param tempPath tempPath
+     *
+     * @param geoIpServiceConfig geoIpServiceConfig
      */
-    public GeoIPProcessorService(GeoIPProcessorConfig geoIPProcessorConfig, String tempPath) {
+    public GeoIPProcessorService(final GeoIpServiceConfig geoIpServiceConfig) {
         this.toggle = false;
-        this.geoIPProcessorConfig = geoIPProcessorConfig;
-        this.tempPath = tempPath;
-        this.databasePath = geoIPProcessorConfig.getServiceType().getMaxMindService().getDatabasePath();
+        this.maxMindConfig = geoIpServiceConfig.getMaxMindConfig();
+        this.databasePaths = maxMindConfig.getDatabasePaths();
         flipDatabase = DATABASE_1;
 
-        dbSourceOptions = DbSourceIdentification.getDatabasePathType(databasePath);
-        final Duration checkInterval = Objects.requireNonNull(geoIPProcessorConfig.getServiceType().getMaxMindService().getCacheRefreshSchedule());
+        this.tempPath = System.getProperty("java.io.tmpdir")+ File.separator + TEMP_PATH_FOLDER;
+
+        dbSourceOptions = DbSourceIdentification.getDatabasePathType(databasePaths);
+        final Duration checkInterval = Objects.requireNonNull(maxMindConfig.getDatabaseRefreshInterval());
         scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         scheduledExecutorService
                 .scheduleAtFixedRate(this::downloadThroughURLandS3, 0L, checkInterval.toSeconds(), TimeUnit.SECONDS);
@@ -82,10 +86,10 @@ public class GeoIPProcessorService {
             String finalPath = tempPath + File.separator;
             licenseType = LicenseTypeCheck.isGeoLite2OrEnterpriseLicense(finalPath.concat(flipDatabase));
             if (licenseType.equals(LicenseTypeOptions.FREE)) {
-                geoData = new GetGeoLite2Data(finalPath.concat(flipDatabase), geoIPProcessorConfig.getServiceType().getMaxMindService().getCacheSize(), geoIPProcessorConfig);
+                geoData = new GetGeoLite2Data(finalPath.concat(flipDatabase), maxMindConfig.getCacheSize());
             }
             else if (licenseType.equals(LicenseTypeOptions.ENTERPRISE)) {
-                geoData = new GetGeoIP2Data(finalPath.concat(flipDatabase), geoIPProcessorConfig.getServiceType().getMaxMindService().getCacheSize(), geoIPProcessorConfig);
+                geoData = new GetGeoIP2Data(finalPath.concat(flipDatabase), maxMindConfig.getCacheSize());
             }
         }
         downloadReady = false;
@@ -107,17 +111,17 @@ public class GeoIPProcessorService {
             switch (dbSourceOptions) {
                 case URL:
                     dbSource = new HttpDBDownloadService(flipDatabase);
-                    dbSource.initiateDownload(databasePath);
+                    dbSource.initiateDownload(databasePaths);
                     downloadReady = true;
                     break;
                 case S3:
-                    dbSource = new S3DBService(geoIPProcessorConfig, flipDatabase);
-                    dbSource.initiateDownload(databasePath);
+                    dbSource = new S3DBService(maxMindConfig.getAwsAuthenticationOptionsConfig(), flipDatabase);
+                    dbSource.initiateDownload(databasePaths);
                     downloadReady = true;
                     break;
                 case PATH:
                     dbSource = new LocalDBDownloadService(tempPath, flipDatabase);
-                    dbSource.initiateDownload(databasePath);
+                    dbSource.initiateDownload(databasePaths);
                     downloadReady = true;
                     break;
             }

@@ -8,13 +8,10 @@ package org.opensearch.dataprepper.plugins.processor.databasedownload;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
-import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -28,17 +25,13 @@ class LocalDBDownloadServiceTest {
     private LocalDBDownloadService downloadThroughLocalPath;
 
     @Test
-    void initiateDownloadTest() throws Exception {
-        DatabasePathURLConfig databasePathURLConfig = new DatabasePathURLConfig();
-        ReflectivelySetField.setField(DatabasePathURLConfig.class,
-                databasePathURLConfig, "url", srcDir);
+    void initiateDownloadTest() {
         createFolder(System.getProperty("java.io.tmpdir") + File.separator + "Maxmind");
         generateSampleFiles(srcDir, 5);
-        List<DatabasePathURLConfig> config = new ArrayList<>();
-        config.add(databasePathURLConfig);
+
         downloadThroughLocalPath = createObjectUnderTest();
         assertDoesNotThrow(() -> {
-            downloadThroughLocalPath.initiateDownload(config);
+            downloadThroughLocalPath.initiateDownload(List.of(srcDir));
         });
     }
 

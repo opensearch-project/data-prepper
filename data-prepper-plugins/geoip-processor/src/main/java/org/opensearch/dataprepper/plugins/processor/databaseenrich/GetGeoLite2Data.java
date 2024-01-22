@@ -16,11 +16,9 @@ import com.maxmind.geoip2.record.Continent;
 import com.maxmind.geoip2.record.Country;
 import com.maxmind.geoip2.record.Subdivision;
 import com.maxmind.geoip2.record.Location;
-import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorConfig;
 import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.processor.databasedownload.DBSource;
 import org.opensearch.dataprepper.plugins.processor.databasedownload.DatabaseReaderCreate;
-import org.opensearch.dataprepper.plugins.processor.loadtype.LoadTypeOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +60,6 @@ public class GetGeoLite2Data implements GetGeoData {
     private String organizationName;
     private Network network;
     private String dbPath;
-    private LoadTypeOptions loadType;
     private int cacheSize;
     private CityResponse responseCity;
     private CountryResponse responseCountry;
@@ -74,12 +71,10 @@ public class GetGeoLite2Data implements GetGeoData {
      * GetGeoLite2Data constructor for initialisation of attributes
      * @param dbPath dbPath
      * @param cacheSize cacheSize
-     * @param geoIPProcessorConfig geoIPProcessorConfig
      */
-    public GetGeoLite2Data(String dbPath, int cacheSize , GeoIPProcessorConfig geoIPProcessorConfig) {
+    public GetGeoLite2Data(String dbPath, int cacheSize) {
         this.dbPath = dbPath;
         this.cacheSize = cacheSize;
-        this.loadType = geoIPProcessorConfig.getServiceType().getMaxMindService().getLoadType();
         initDatabaseReader();
     }
 
@@ -87,9 +82,9 @@ public class GetGeoLite2Data implements GetGeoData {
      * Initialise all the DatabaseReader
      */
     private void initDatabaseReader() {
-        readerCity = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2CityDB), loadType, cacheSize);
-        readerCountry = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2CountryDB), loadType, cacheSize);
-        readerAsn = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2AsnDB), loadType, cacheSize);
+        readerCity = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2CityDB), cacheSize);
+        readerCountry = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2CountryDB), cacheSize);
+        readerAsn = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2AsnDB), cacheSize);
     }
 
     /**

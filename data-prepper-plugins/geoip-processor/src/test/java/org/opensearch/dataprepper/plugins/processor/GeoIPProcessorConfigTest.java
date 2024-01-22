@@ -9,8 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.processor.configuration.KeysConfig;
-import org.opensearch.dataprepper.plugins.processor.configuration.ServiceTypeOptions;
+import org.opensearch.dataprepper.plugins.processor.configuration.EntryConfig;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.util.ArrayList;
@@ -30,37 +29,17 @@ class GeoIPProcessorConfigTest {
     }
 
     @Test
-    void getAwsAuthenticationOptionsTestNegative() {
-        assertThat(new GeoIPProcessorConfig().getAwsAuthenticationOptions(), equalTo(null));
+    void testDefaultConfig() {
+        assertThat(geoIPProcessorConfig.getEntries(), equalTo(null));
+        assertThat(geoIPProcessorConfig.getTagsOnFailure(), equalTo(null));
     }
 
     @Test
-    void getKeysConfigTestPositive() throws NoSuchFieldException, IllegalAccessException {
-        List<KeysConfig> keysConfigList = new ArrayList<>();
-        keysConfigList.add(new KeysConfig());
-        ReflectivelySetField.setField(GeoIPProcessorConfig.class,
-                geoIPProcessorConfig, "keysConfig", keysConfigList);
-        assertThat(geoIPProcessorConfig.getKeysConfig(), equalTo(keysConfigList));
+    void testGetEntries() throws NoSuchFieldException, IllegalAccessException {
+        List<EntryConfig> entries = new ArrayList<>();
+        entries.add(new EntryConfig());
+        ReflectivelySetField.setField(GeoIPProcessorConfig.class, geoIPProcessorConfig, "entries", entries);
 
+        assertThat(geoIPProcessorConfig.getEntries(), equalTo(entries));
     }
-
-    @Test
-    void getKeysConfigTestNegative() {
-        assertThat(new GeoIPProcessorConfig().getKeysConfig(), equalTo(null));
-    }
-
-
-    @Test
-    void getServiceTypeTestPositive() throws NoSuchFieldException, IllegalAccessException {
-        ServiceTypeOptions serviceTypeOptions = new ServiceTypeOptions();
-        ReflectivelySetField.setField(GeoIPProcessorConfig.class,
-                geoIPProcessorConfig, "serviceType", serviceTypeOptions);
-        assertThat(geoIPProcessorConfig.getServiceType(), equalTo(serviceTypeOptions));
-    }
-
-    @Test
-    void getServiceTypeNegative() {
-        assertThat(new GeoIPProcessorConfig().getServiceType(), equalTo(null));
-    }
-
 }
