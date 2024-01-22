@@ -285,7 +285,7 @@ public class SqsWorker implements Runnable {
                             try {
                                 sqsClient.changeMessageVisibility(changeMessageVisibilityRequest);
                                 sqsVisibilityTimeoutChangedCount.increment();
-                                LOG.info("Set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds);
+                                LOG.debug("Set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds);
                             } catch (Exception e) {
                                 LOG.error("Failed to set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds, e);
                                 sqsVisibilityTimeoutChangeFailedCount.increment();
