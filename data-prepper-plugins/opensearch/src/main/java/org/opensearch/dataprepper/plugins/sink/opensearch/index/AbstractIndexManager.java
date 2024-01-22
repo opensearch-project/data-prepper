@@ -51,6 +51,7 @@ public abstract class AbstractIndexManager implements IndexManager {
     protected ClusterSettingsParser clusterSettingsParser;
     protected IsmPolicyManagementStrategy ismPolicyManagementStrategy;
     private final TemplateStrategy templateStrategy;
+    private final String configuredIndexAlias;
     protected String indexPrefix;
     private Boolean isIndexAlias;
     private boolean isIndexAliasChecked;
@@ -65,7 +66,7 @@ public abstract class AbstractIndexManager implements IndexManager {
     //For a string like "data-prepper-%{yyyy-MM}", "yyyy-MM" is matched.
     private static final String TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION  = "%\\{(.*?)\\}";
 
-    private Optional<DateTimeFormatter> indexTimeSuffixFormatter;
+    private Optional<DateTimeFormatter> indexDateTimeFormatter;
     private static final ZoneId UTC_ZONE_ID = ZoneId.of(TimeZone.getTimeZone("UTC").getID());
 
     protected AbstractIndexManager(final RestHighLevelClient restHighLevelClient,
@@ -87,7 +88,7 @@ public abstract class AbstractIndexManager implements IndexManager {
         if (indexAlias == null) {
             indexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
         }
-
+        configuredIndexAlias = indexAlias;
         initializeIndexPrefixAndSuffix(indexAlias);
     }
 
@@ -102,7 +103,6 @@ public abstract class AbstractIndexManager implements IndexManager {
             if(timePattern.contains(TIME_PATTERN_STARTING_SYMBOLS)){ //check if it is a nested pattern such as "data-prepper-%{%{yyyy.MM.dd}}"
                 throw new IllegalArgumentException("An index doesn't allow nested date-time patterns.");
             }
-            validateTimePatternIsAtTheEnd(indexAlias, timePattern);
             validateNoSpecialCharsInTimePattern(timePattern);
             validateTimePatternGranularity(timePattern);
             return DateTimeFormatter.ofPattern(timePattern);
@@ -112,32 +112,18 @@ public abstract class AbstractIndexManager implements IndexManager {
 
     public static String getIndexAliasWithDate(final String indexAlias) {
         final DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
-        final String suffix = (dateFormatter != null) ? dateFormatter.format(getCurrentUtcTime()) : "";
-        return indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "") + suffix;
+        final String dateTimeString = (dateFormatter != null) ? dateFormatter.format(getCurrentUtcTime()) : "";
+        return indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, dateTimeString);
     }
 
-    private void initalizeIsIndexAlias(final String indexAlias) {
-
-    }
-
-    private void initializeIndexPrefixAndSuffix(final String indexAlias){
+    private void initializeIndexPrefixAndSuffix(final String indexAlias) {
         final DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
         if (dateFormatter != null) {
-            indexTimeSuffixFormatter = Optional.of(dateFormatter);
+            indexDateTimeFormatter = Optional.of(dateFormatter);
         } else {
-            indexTimeSuffixFormatter = Optional.empty();
+            indexDateTimeFormatter = Optional.empty();
         }
-
         indexPrefix = indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "");
-    }
-
-    /*
-      Data Prepper only allows time pattern as a suffix.
-     */
-    private static void validateTimePatternIsAtTheEnd(final String indexAlias, final String timePattern) {
-        if (!indexAlias.endsWith(timePattern + "}")) {
-            throw new IllegalArgumentException("Time pattern can only be a suffix of an index.");
-        }
     }
 
     /*
@@ -170,13 +156,14 @@ public abstract class AbstractIndexManager implements IndexManager {
         }
     }
 
+    @Override
     public String getIndexName(final String dynamicIndexAlias) throws IOException {
-        if (indexTimeSuffixFormatter.isPresent()) {
-            final String formattedTimeString = indexTimeSuffixFormatter.get()
+        if (indexDateTimeFormatter.isPresent()) {
+            final String formattedTimeString = indexDateTimeFormatter.get()
                     .format(getCurrentUtcTime());
-            return indexPrefix + formattedTimeString;
+            return configuredIndexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, formattedTimeString);
         } else {
-            return indexPrefix;
+            return configuredIndexAlias;
         }
     }
 
