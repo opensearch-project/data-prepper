@@ -80,6 +80,7 @@ public class SearchAccessorStrategy {
             infoResponse = clientRefresher.get().info();
             pluginConfigObservable.addPluginConfigObserver(newConfig -> clientRefresher.update(
                     (OpenSearchSourceConfiguration) newConfig));
+<<<<<<< HEAD:data-prepper-plugins/opensearch/src/main/java/org/opensearch/dataprepper/plugins/source/opensearch/worker/client/SearchAccessorStrategy.java
         } catch (final Exception e) {
 
             if (DistributionVersion.OPENSEARCH.equals(openSearchSourceConfiguration.getDistributionVersion())) {
@@ -102,6 +103,18 @@ public class SearchAccessorStrategy {
             } catch (final Exception ex) {
                 throw new RuntimeException("There was an error looking up the OpenSearch cluster info: ", ex);
             }
+=======
+        } catch (final MissingRequiredPropertyException e) {
+            LOG.info("Detected Elasticsearch cluster. Constructing Elasticsearch client");
+            elasticsearchClientRefresher = new ClientRefresher<>(ElasticsearchClient.class,
+                    openSearchClientFactory::provideElasticSearchClient, openSearchSourceConfiguration);
+            final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration>
+                    finalElasticsearchClientRefresher = elasticsearchClientRefresher;
+            pluginConfigObservable.addPluginConfigObserver(
+                    newConfig -> finalElasticsearchClientRefresher.update((OpenSearchSourceConfiguration) newConfig));
+        } catch (final IOException | OpenSearchException e) {
+            throw new RuntimeException("There was an error looking up the OpenSearch cluster info: ", e);
+>>>>>>> 2.5:data-prepper-plugins/opensearch-source/src/main/java/org/opensearch/dataprepper/plugins/source/opensearch/worker/client/SearchAccessorStrategy.java
         }
 
         final Pair<String, String> distributionAndVersion = getDistributionAndVersionNumber(infoResponse, elasticsearchClientRefresher);

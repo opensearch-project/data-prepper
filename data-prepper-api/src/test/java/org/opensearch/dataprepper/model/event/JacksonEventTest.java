@@ -30,7 +30,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -533,6 +533,25 @@ public class JacksonEventTest {
                 .build();
 
         assertThat(event.formatString(formattedString), is(equalTo(finalString)));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "abc-${/foo, false",
+            "abc-${/foo}, true",
+            "abc-${getMetadata(\"key\")}, true",
+            "abc-${getXYZ(\"key\")}, false"
+    })
+    public void testBuild_withIsValidFormatExpressions(final String format, final Boolean expectedResult) {
+        final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
+        when(expressionEvaluator.isValidExpressionStatement("/foo")).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"key\")")).thenReturn(true);
+        assertThat(JacksonEvent.isValidFormatExpressions(format, expressionEvaluator), equalTo(expectedResult));
+    }
+
+    @Test
+    public void testBuild_withIsValidFormatExpressionsWithNullEvaluator() {
+        assertThat(JacksonEvent.isValidFormatExpressions("${}", null), equalTo(false));
     }
 
     @Test

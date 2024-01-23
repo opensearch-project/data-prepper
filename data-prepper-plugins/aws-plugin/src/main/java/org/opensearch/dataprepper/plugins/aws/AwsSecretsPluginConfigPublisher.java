@@ -1,8 +1,3 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
 package org.opensearch.dataprepper.plugins.aws;
 
 import org.opensearch.dataprepper.model.plugin.PluginConfigPublisher;

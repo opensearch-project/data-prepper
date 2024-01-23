@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
@@ -17,6 +18,10 @@ import org.opensearch.client.opensearch._types.VersionType;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.CreateOperation;
+<<<<<<< HEAD
+=======
+import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
+>>>>>>> 2.5
 import org.opensearch.client.opensearch.core.bulk.DeleteOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
@@ -274,16 +279,24 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     return initialized;
   }
 
+<<<<<<< HEAD
   private BulkOperation getBulkOperationForAction(final String action,
                                                   final SerializedJson document,
                                                   final Long version,
                                                   final String indexName,
                                                   final JsonNode jsonNode) {
+=======
+  private BulkOperation getBulkOperationForAction(final String action, final SerializedJson document, final String indexName, final JsonNode jsonNode) {
+>>>>>>> 2.5
     BulkOperation bulkOperation;
     final Optional<String> docId = document.getDocumentId();
     final Optional<String> routing = document.getRoutingField();
 
+<<<<<<< HEAD
     if (StringUtils.equals(action, OpenSearchBulkActions.CREATE.toString())) {
+=======
+    if (StringUtils.equals(action, BulkAction.CREATE.toString())) {
+>>>>>>> 2.5
        final CreateOperation.Builder<Object> createOperationBuilder =
          new CreateOperation.Builder<>()
              .index(indexName)
@@ -295,6 +308,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                            .build();
        return bulkOperation;
     }
+<<<<<<< HEAD
     if (StringUtils.equals(action, OpenSearchBulkActions.UPDATE.toString()) ||
         StringUtils.equals(action, OpenSearchBulkActions.UPSERT.toString())) {
 
@@ -321,6 +335,18 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                   .document(filteredJsonNode)
                   .versionType(versionType)
                   .version(version);
+=======
+    if (StringUtils.equals(action, BulkAction.UPDATE.toString()) ||
+        StringUtils.equals(action, BulkAction.UPSERT.toString())) {
+          final UpdateOperation.Builder<Object> updateOperationBuilder = (action.toLowerCase() == BulkAction.UPSERT.toString()) ?
+              new UpdateOperation.Builder<>()
+                  .index(indexName)
+                  .document(jsonNode)
+                  .upsert(jsonNode) :
+              new UpdateOperation.Builder<>()
+                  .index(indexName)
+                  .document(jsonNode);
+>>>>>>> 2.5
           docId.ifPresent(updateOperationBuilder::id);
           routing.ifPresent(updateOperationBuilder::routing);
           bulkOperation = new BulkOperation.Builder()
@@ -328,26 +354,38 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                               .build();
           return bulkOperation;
     }
+<<<<<<< HEAD
     if (StringUtils.equals(action, OpenSearchBulkActions.DELETE.toString())) {
+=======
+    if (StringUtils.equals(action, BulkAction.DELETE.toString())) {
+>>>>>>> 2.5
       final DeleteOperation.Builder deleteOperationBuilder =
         new DeleteOperation.Builder().index(indexName);
       docId.ifPresent(deleteOperationBuilder::id);
       routing.ifPresent(deleteOperationBuilder::routing);
       bulkOperation = new BulkOperation.Builder()
+<<<<<<< HEAD
                           .delete(deleteOperationBuilder
                                   .versionType(versionType)
                                   .version(version)
                                   .build())
+=======
+                          .delete(deleteOperationBuilder.build())
+>>>>>>> 2.5
                           .build();
       return bulkOperation;
     }
     // Default to "index"
     final IndexOperation.Builder<Object> indexOperationBuilder =
+<<<<<<< HEAD
       new IndexOperation.Builder<>()
               .index(indexName)
               .document(document)
               .version(version)
               .versionType(versionType);
+=======
+      new IndexOperation.Builder<>().index(indexName).document(document);
+>>>>>>> 2.5
     docId.ifPresent(indexOperationBuilder::id);
     routing.ifPresent(indexOperationBuilder::routing);
     bulkOperation = new BulkOperation.Builder()
@@ -382,6 +420,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           continue;
       }
 
+<<<<<<< HEAD
       Long version = null;
       String versionExpressionEvaluationResult = null;
       if (versionExpression != null) {
@@ -439,6 +478,35 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
         continue;
       }
+=======
+      String eventAction = action;
+      if (actions != null) {
+        for (final Map<String, Object> actionEntry: actions) {
+            final String condition = (String)actionEntry.get("when");
+            eventAction = (String)actionEntry.get("type");
+            if (condition != null &&
+                expressionEvaluator.evaluateConditional(condition, event)) {
+                    break;
+            }
+        }
+      }
+      if (eventAction.contains("${")) {
+          eventAction = event.formatString(eventAction, expressionEvaluator);
+      }
+      if (BulkAction.fromOptionValue(eventAction) == null) {
+        LOG.error("Unknown action {}, skipping the event", eventAction);
+        invalidActionErrorsCounter.increment();
+        continue;
+      }
+
+      SerializedJson serializedJsonNode = null;
+      if (StringUtils.equals(action, BulkAction.UPDATE.toString()) ||
+          StringUtils.equals(action, BulkAction.UPSERT.toString()) ||
+          StringUtils.equals(action, BulkAction.DELETE.toString())) {
+            serializedJsonNode = SerializedJson.fromJsonNode(event.getJsonNode(), document);
+      }
+      BulkOperation bulkOperation = getBulkOperationForAction(eventAction, document, indexName, event.getJsonNode());
+>>>>>>> 2.5
 
       BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle(), serializedJsonNode);
       final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);

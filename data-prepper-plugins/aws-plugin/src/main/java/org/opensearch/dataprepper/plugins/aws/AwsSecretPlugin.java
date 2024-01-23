@@ -30,18 +30,15 @@ public class AwsSecretPlugin implements ExtensionPlugin {
     private ScheduledExecutorService scheduledExecutorService;
     private PluginConfigPublisher pluginConfigPublisher;
     private SecretsSupplier secretsSupplier;
-    private PluginMetrics pluginMetrics;
     private final PluginConfigValueTranslator pluginConfigValueTranslator;
 
     @DataPrepperPluginConstructor
     public AwsSecretPlugin(final AwsSecretPluginConfig awsSecretPluginConfig) {
         if (awsSecretPluginConfig != null) {
-            final SecretValueDecoder secretValueDecoder = new SecretValueDecoder();
-            secretsSupplier = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
+            secretsSupplier = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
             this.pluginConfigPublisher = new AwsSecretsPluginConfigPublisher();
             pluginConfigValueTranslator = new AwsSecretsPluginConfigValueTranslator(secretsSupplier);
             scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-            pluginMetrics = PluginMetrics.fromNames("secrets", "aws");
             submitSecretsRefreshJobs(awsSecretPluginConfig, secretsSupplier);
             Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
         } else {
@@ -60,7 +57,7 @@ public class AwsSecretPlugin implements ExtensionPlugin {
                                           final SecretsSupplier secretsSupplier) {
         awsSecretPluginConfig.getAwsSecretManagerConfigurationMap().forEach((key, value) -> {
             final SecretsRefreshJob secretsRefreshJob = new SecretsRefreshJob(
-                    key, secretsSupplier, pluginConfigPublisher, pluginMetrics);
+                    key, secretsSupplier, pluginConfigPublisher);
             final long period = value.getRefreshInterval().toSeconds();
             final long jitterDelay = ThreadLocalRandom.current().nextLong(60L);
             scheduledExecutorService.scheduleAtFixedRate(secretsRefreshJob, period + jitterDelay,

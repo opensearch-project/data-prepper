@@ -6,6 +6,21 @@
 package org.opensearch.dataprepper.plugins.kafka.source;
 
 import org.apache.kafka.common.config.ConfigException;
+<<<<<<< HEAD
+=======
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+
+>>>>>>> 2.5
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +29,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+<<<<<<< HEAD
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -28,6 +44,17 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+=======
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+>>>>>>> 2.5
 
 import java.time.Duration;
 import java.util.Collections;
@@ -164,6 +191,7 @@ class KafkaSourceTest {
             .createKafkaConsumer(any(), any());
         kafkaSource.start(buffer);
     }
+<<<<<<< HEAD
 
     @Test
     void test_updateConfig_using_kafkaClusterConfigExtension() {
@@ -210,4 +238,6 @@ class KafkaSourceTest {
         verify(sourceConfig, never()).setAwsConfig(any());
         verify(sourceConfig, never()).setEncryptionConfig(any());
     }
+=======
+>>>>>>> 2.5
 }

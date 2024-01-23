@@ -47,6 +47,8 @@ class PluginCreator {
 
         pluginConfigurationObservableRegister.registerPluginConfigurationObservables(constructorArguments);
 
+        pluginConfigurationObservableRegister.registerPluginConfigurationObservables(constructorArguments);
+
         try {
             return (T) constructor.newInstance(constructorArguments);
         } catch (final IllegalAccessException | InstantiationException ex) {

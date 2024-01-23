@@ -40,7 +40,6 @@ public class ObjectMapperConfiguration {
     ObjectMapper pluginConfigObjectMapper(final VariableExpander variableExpander) {
         final SimpleModule simpleModule = new SimpleModule();
         simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
-        simpleModule.addDeserializer(ByteCount.class, new ByteCountDeserializer());
         TRANSLATE_VALUE_SUPPORTED_JAVA_TYPES.stream().forEach(clazz -> simpleModule.addDeserializer(
                 clazz, new DataPrepperScalarTypeDeserializer<>(variableExpander, clazz)));
 

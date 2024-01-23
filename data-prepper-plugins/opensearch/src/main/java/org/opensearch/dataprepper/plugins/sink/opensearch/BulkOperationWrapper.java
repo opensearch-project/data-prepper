@@ -47,7 +47,12 @@ public class BulkOperationWrapper {
     private final SerializedJson jsonNode;
 
     public BulkOperationWrapper(final BulkOperation bulkOperation) {
+<<<<<<< HEAD
         this(bulkOperation, null, null);
+=======
+        this.bulkOperation = bulkOperation;
+        this.eventHandle = null;
+        this.jsonNode = null;
     }
 
     public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle, final SerializedJson jsonNode) {
@@ -55,10 +60,22 @@ public class BulkOperationWrapper {
         this.bulkOperation = bulkOperation;
         this.eventHandle = eventHandle;
         this.jsonNode = jsonNode;
+>>>>>>> 2.5
+    }
+
+    public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle, final SerializedJson jsonNode) {
+        checkNotNull(bulkOperation);
+        this.bulkOperation = bulkOperation;
+        this.eventHandle = eventHandle;
+<<<<<<< HEAD
+        this.jsonNode = jsonNode;
     }
 
     public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle) {
         this(bulkOperation, eventHandle, null);
+=======
+        this.jsonNode = null;
+>>>>>>> 2.5
     }
 
     public BulkOperation getBulkOperation() {

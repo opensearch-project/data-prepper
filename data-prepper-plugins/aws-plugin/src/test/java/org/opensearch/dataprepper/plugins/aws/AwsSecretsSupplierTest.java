@@ -163,4 +163,30 @@ class AwsSecretsSupplierTest {
         objectUnderTest.refresh(TEST_AWS_SECRET_CONFIGURATION_NAME);
         assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(newTestValue));
     }
+
+    @Test
+    void testRefreshSecretsWithKey() {
+        final String testValue = "{\"key\":\"oldValue\"}";
+        when(getSecretValueResponse.secretString()).thenReturn(testValue);
+        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
+        assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "key"),
+                equalTo("oldValue"));
+        final String newTestValue = "{\"key\":\"newValue\"}";
+        when(getSecretValueResponse.secretString()).thenReturn(newTestValue);
+        objectUnderTest.refresh(TEST_AWS_SECRET_CONFIGURATION_NAME);
+        assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "key"),
+                equalTo("newValue"));
+    }
+
+    @Test
+    void testRefreshSecretsWithoutKey() {
+        final String testValue = UUID.randomUUID().toString();
+        when(getSecretValueResponse.secretString()).thenReturn(testValue);
+        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
+        assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(testValue));
+        final String newTestValue = testValue + "-mutated";
+        when(getSecretValueResponse.secretString()).thenReturn(newTestValue);
+        objectUnderTest.refresh(TEST_AWS_SECRET_CONFIGURATION_NAME);
+        assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(newTestValue));
+    }
 }

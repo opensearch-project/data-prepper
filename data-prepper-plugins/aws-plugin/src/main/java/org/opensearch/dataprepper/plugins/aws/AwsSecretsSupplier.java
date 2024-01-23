@@ -121,9 +121,9 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         }
 
         try {
-            return objectMapper.readValue(secretValueDecoder.decode(getSecretValueResponse), MAP_TYPE_REFERENCE);
+            return objectMapper.readValue(getSecretValueResponse.secretString(), MAP_TYPE_REFERENCE);
         } catch (JsonProcessingException e) {
-            return secretValueDecoder.decode(getSecretValueResponse);
+            return getSecretValueResponse.secretString();
         }
     }
 }

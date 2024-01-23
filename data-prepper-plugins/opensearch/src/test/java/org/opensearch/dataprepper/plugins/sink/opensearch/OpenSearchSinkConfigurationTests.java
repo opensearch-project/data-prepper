@@ -11,12 +11,18 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyString;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -132,17 +138,27 @@ public class OpenSearchSinkConfigurationTests {
     @Test
     public void testReadESConfigWithBulkActionCreateExpression() {
 
+<<<<<<< HEAD
         final String actionFormatExpression = "${getMetadata(\"action\")}";
         final Map<String, Object> metadata = new HashMap<>();
         metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.TRACE_ANALYTICS_RAW.getValue());
         metadata.put(IndexConfiguration.ACTION, actionFormatExpression);
+=======
+        final Map<String, Object> metadata = new HashMap<>();
+        metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.TRACE_ANALYTICS_RAW.getValue());
+        metadata.put(IndexConfiguration.ACTION, "${getMetadata(\"action\")}");
+>>>>>>> 2.5
         metadata.put(ConnectionConfiguration.HOSTS, TEST_HOSTS);
 
         final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, metadata);
         pluginSetting.setPipelineName(PIPELINE_NAME);
 
         expressionEvaluator = mock(ExpressionEvaluator.class);
+<<<<<<< HEAD
         when(expressionEvaluator.isValidFormatExpression(actionFormatExpression)).thenReturn(true);
+=======
+        when(expressionEvaluator.isValidExpressionStatement(anyString())).thenReturn(true);
+>>>>>>> 2.5
         final OpenSearchSinkConfiguration openSearchSinkConfiguration =
                 OpenSearchSinkConfiguration.readESConfig(pluginSetting, expressionEvaluator);
 

@@ -7,9 +7,6 @@ package org.opensearch.dataprepper.model.plugin;
 public interface PluginConfigPublisher {
     /**
      * Onboard a new {@link PluginConfigObservable}.
-     *
-     * @param pluginConfigObservable observable plugin configuration
-     * @return true if the operation is successful, false otherwise
      */
     boolean addPluginConfigObservable(PluginConfigObservable pluginConfigObservable);
 

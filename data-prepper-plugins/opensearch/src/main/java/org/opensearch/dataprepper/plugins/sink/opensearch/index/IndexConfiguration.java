@@ -8,15 +8,22 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.EnumUtils;
+<<<<<<< HEAD
 import org.opensearch.client.opensearch._types.VersionType;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
+=======
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+>>>>>>> 2.5
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3FileReader;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
@@ -30,6 +37,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -274,7 +282,11 @@ public class IndexConfiguration {
         if (actionsList != null) {
             builder.withActions(actionsList, expressionEvaluator);
         } else {
+<<<<<<< HEAD
             builder.withAction(pluginSetting.getStringOrDefault(ACTION, OpenSearchBulkActions.INDEX.toString()), expressionEvaluator);
+=======
+            builder.withAction(pluginSetting.getStringOrDefault(ACTION, BulkAction.INDEX.toString()), expressionEvaluator);
+>>>>>>> 2.5
         }
 
         if ((builder.templateFile != null && builder.templateFile.startsWith(S3_PREFIX))
@@ -570,8 +582,12 @@ public class IndexConfiguration {
         }
 
         public Builder withAction(final String action, final ExpressionEvaluator expressionEvaluator) {
+<<<<<<< HEAD
             checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) ||
                     (action.contains("${") && expressionEvaluator.isValidFormatExpression(action))), "action \"" + action + "\" is invalid. action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
+=======
+            checkArgument((EnumUtils.isValidEnumIgnoreCase(BulkAction.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + BulkAction.values());
+>>>>>>> 2.5
             this.action = action;
             return this;
         }
@@ -580,8 +596,12 @@ public class IndexConfiguration {
             for (final Map<String, Object> actionMap: actions) {
                 String action = (String)actionMap.get("type");
                 if (action != null) {
+<<<<<<< HEAD
                     checkArgument((EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action) ||
                             (action.contains("${") && expressionEvaluator.isValidFormatExpression(action))), "action \"" + action + "\". action must be one of the following: " + Arrays.stream(OpenSearchBulkActions.values()).collect(Collectors.toList()));
+=======
+                    checkArgument((EnumUtils.isValidEnumIgnoreCase(BulkAction.class, action) || JacksonEvent.isValidFormatExpressions(action, expressionEvaluator)), "action must be one of the following: " + BulkAction.values());
+>>>>>>> 2.5
                 }
             }
             this.actions = actions;

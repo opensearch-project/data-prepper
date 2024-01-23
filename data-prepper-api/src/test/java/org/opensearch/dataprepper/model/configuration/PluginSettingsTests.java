@@ -150,7 +150,7 @@ class PluginSettingsTests {
     }
 
     @Test
-    void testGetTypedListOfMaps() {
+    public void testGetTypedListOfMaps() {
         final Map<String, String> TEST_SETTINGS_MAP = ImmutableMap.of(TEST_STRING_ATTRIBUTE, TEST_STRING_VALUE);
         final List<Map<String, String>> TEST_SETTINGS_LIST = List.of(TEST_SETTINGS_MAP);
         final Map<String, Object> TEST_SETTINGS = ImmutableMap.of(TEST_LIST_OF_MAPS_ATTRIBUTE, TEST_SETTINGS_LIST);
@@ -160,7 +160,7 @@ class PluginSettingsTests {
     }
 
     @Test
-    void testGetTypedListMap() {
+    public void testGetTypedListMap() {
         final Map<String, Object> TEST_SETTINGS = ImmutableMap.of(TEST_STRINGLISTMAP_ATTRIBUTE, TEST_STRINGLISTMAP_VALUE);
         final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS);
 
@@ -285,7 +285,7 @@ class PluginSettingsTests {
      * Request attributes are present with null values, expect nulls to be returned
      */
     @Test
-    void testGetTypedListOfMaps_AsNull() {
+    public void testGetTypedListOfMaps_AsNull() {
         final String TEST_STRINGLISTOFMAPS_NULL_ATTRIBUTE = "typedlistofmaps-null-attribute";
         final Map<String, Object> TEST_SETTINGS_AS_NULL = new HashMap<>();
 
@@ -299,7 +299,7 @@ class PluginSettingsTests {
      * Request attributes are present with null values, expect nulls to be returned
      */
     @Test
-    void testGetBooleanOrDefault_AsNull() {
+    public void testGetBooleanOrDefault_AsNull() {
         final String TEST_BOOL_NULL_ATTRIBUTE = "bool-null-attribute";
         final Map<String, Object> TEST_SETTINGS_AS_NULL = new HashMap<>();
         TEST_SETTINGS_AS_NULL.put(TEST_BOOL_NULL_ATTRIBUTE, null);

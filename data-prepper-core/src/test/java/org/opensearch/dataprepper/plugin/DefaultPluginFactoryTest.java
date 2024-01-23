@@ -58,9 +58,10 @@ class DefaultPluginFactoryTest {
     private PluginBeanFactoryProvider beanFactoryProvider;
     private BeanFactory beanFactory;
     private String pipelineName;
+    private DefaultAcknowledgementSetManager acknowledgementSetManager;
+    private DefaultEventFactory eventFactory;
     private PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
     private PluginConfigObservable pluginConfigObservable;
-    private ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers;
 
     @BeforeEach
     void setUp() {
@@ -87,16 +88,12 @@ class DefaultPluginFactoryTest {
                 any(Class.class),
                 any(PluginSetting.class)
         )).willReturn(pluginConfigObservable);
-
-        applicationContextToTypedSuppliers = mock(ApplicationContextToTypedSuppliers.class);
     }
 
     private DefaultPluginFactory createObjectUnderTest() {
         return new DefaultPluginFactory(
-                pluginProviderLoader, pluginCreator, pluginConfigurationConverter,
-                beanFactoryProvider,
-                pluginConfigurationObservableFactory,
-                applicationContextToTypedSuppliers);
+                pluginProviderLoader, pluginCreator, pluginConfigurationConverter, beanFactoryProvider, eventFactory,
+                acknowledgementSetManager, pluginConfigurationObservableFactory);
     }
 
     @Test

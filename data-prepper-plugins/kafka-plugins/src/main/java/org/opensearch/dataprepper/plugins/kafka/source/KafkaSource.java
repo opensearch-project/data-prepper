@@ -163,10 +163,17 @@ public class KafkaSource implements Source<Record<Event>> {
             case JSON:
                 return new KafkaConsumer<String, JsonNode>(consumerProperties);
             case AVRO:
+<<<<<<< HEAD
                 return new KafkaConsumer<String, GenericRecord>(consumerProperties);
             case PLAINTEXT:
             default:
                 glueDeserializer = KafkaSecurityConfigurer.getGlueSerializer(sourceConfig);
+=======
+                 return new KafkaConsumer<String, GenericRecord>(consumerProperties);
+            case PLAINTEXT:
+            default:
+                glueDeserializer = KafkaSourceSecurityConfigurer.getGlueSerializer(sourceConfig);
+>>>>>>> 2.5
                 if (Objects.nonNull(glueDeserializer)) {
                     return new KafkaConsumer(consumerProperties, stringDeserializer, glueDeserializer);
                 } else {
@@ -372,4 +379,24 @@ public class KafkaSource implements Source<Record<Event>> {
             }
         }
     }
+<<<<<<< HEAD
 }
+=======
+
+    private String getMaskedBootStrapDetails(String serverIP) {
+        if (serverIP == null || serverIP.length() <= 4) {
+            return serverIP;
+        }
+        int maskedLength = serverIP.length() - 4;
+        StringBuilder maskedString = new StringBuilder(maskedLength);
+        for (int i = 0; i < maskedLength; i++) {
+            maskedString.append('*');
+        }
+        return maskedString.append(serverIP.substring(maskedLength)).toString();
+    }
+
+    protected void sleep(final long millis) throws InterruptedException {
+        Thread.sleep(millis);
+    }
+}
+>>>>>>> 2.5

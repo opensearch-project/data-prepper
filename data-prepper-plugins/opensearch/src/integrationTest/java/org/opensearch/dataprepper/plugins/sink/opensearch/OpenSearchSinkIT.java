@@ -677,7 +677,11 @@ public class OpenSearchSinkIT {
     }
 
     @Test
+<<<<<<< HEAD
     public void testOpenSearchBulkActionsCreateWithExpression() throws IOException, InterruptedException {
+=======
+    public void testBulkActionCreateWithExpression() throws IOException, InterruptedException {
+>>>>>>> 2.5
         final String testIndexAlias = "test-alias";
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
@@ -686,6 +690,7 @@ public class OpenSearchSinkIT {
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
         final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+<<<<<<< HEAD
         Event event = (Event) testRecords.get(0).getData();
         event.getMetadata().setAttribute("action", "create");
         final String actionFormatExpression = "${getMetadata(\"action\")}";
@@ -698,19 +703,39 @@ public class OpenSearchSinkIT {
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
         assertThat(retSources.size(), equalTo(1));
         assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+=======
+        Event event = (Event)testRecords.get(0).getData();
+        event.getMetadata().setAttribute("action", "create");
+        when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"action\")")).thenReturn(true);
+        when(expressionEvaluator.evaluate("getMetadata(\"action\")", event)).thenReturn(event.getMetadata().getAttribute("action"));
+        pluginSetting.getSettings().put(IndexConfiguration.ACTION, "${getMetadata(\"action\")}");
+        final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+>>>>>>> 2.5
         sink.shutdown();
 
         // verify metrics
         final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+<<<<<<< HEAD
         assertThat(bulkRequestLatencies.size(), equalTo(3));
+=======
+        MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+>>>>>>> 2.5
         // COUNT
         Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
     }
 
     @Test
+<<<<<<< HEAD
     public void testOpenSearchBulkActionsCreateWithInvalidExpression() throws IOException, InterruptedException {
+=======
+    public void testBulkActionCreateWithInvalidExpression() throws IOException, InterruptedException {
+>>>>>>> 2.5
         final String testIndexAlias = "test-alias";
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
@@ -719,6 +744,7 @@ public class OpenSearchSinkIT {
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
         final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+<<<<<<< HEAD
         Event event = (Event) testRecords.get(0).getData();
         event.getMetadata().setAttribute("action", "unknown");
         final String actionFormatExpression = "${getMetadata(\"action\")}";
@@ -731,6 +757,18 @@ public class OpenSearchSinkIT {
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
         assertThat(retSources.size(), equalTo(0));
         assertThat(sink.getInvalidActionErrorsCount(), equalTo(1.0));
+=======
+        Event event = (Event)testRecords.get(0).getData();
+        event.getMetadata().setAttribute("action", "unknown");
+        when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"action\")")).thenReturn(true);
+        when(expressionEvaluator.evaluate("getMetadata(\"action\")", event)).thenReturn(event.getMetadata().getAttribute("action"));
+        pluginSetting.getSettings().put(IndexConfiguration.ACTION, "${getMetadata(\"action\")}");
+        final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        MatcherAssert.assertThat(retSources.size(), equalTo(0));
+        MatcherAssert.assertThat(sink.getInvalidActionErrorsCount(), equalTo(1.0));
+>>>>>>> 2.5
         sink.shutdown();
     }
 
@@ -747,21 +785,34 @@ public class OpenSearchSinkIT {
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
+<<<<<<< HEAD
         aMap.put("type", OpenSearchBulkActions.CREATE.toString());
+=======
+        aMap.put("type", BulkAction.CREATE.toString());
+>>>>>>> 2.5
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+<<<<<<< HEAD
         assertThat(retSources.size(), equalTo(1));
         assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+=======
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+>>>>>>> 2.5
         sink.shutdown();
 
         // verify metrics
         final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+<<<<<<< HEAD
         assertThat(bulkRequestLatencies.size(), equalTo(3));
+=======
+        MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+>>>>>>> 2.5
         // COUNT
         Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
     }
@@ -780,33 +831,51 @@ public class OpenSearchSinkIT {
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
+<<<<<<< HEAD
         aMap.put("type", OpenSearchBulkActions.CREATE.toString());
+=======
+        aMap.put("type", BulkAction.CREATE.toString());
+>>>>>>> 2.5
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
         List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+<<<<<<< HEAD
         assertThat(retSources.size(), equalTo(1));
         assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+=======
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+>>>>>>> 2.5
         sink.shutdown();
 
         // verify metrics
         final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+<<<<<<< HEAD
         assertThat(bulkRequestLatencies.size(), equalTo(3));
+=======
+        MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+>>>>>>> 2.5
         // COUNT
         Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
         testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "name", "value2")));
         aList = new ArrayList<>();
         aMap = new HashMap<>();
+<<<<<<< HEAD
         aMap.put("type", OpenSearchBulkActions.UPDATE.toString());
+=======
+        aMap.put("type", BulkAction.UPDATE.toString());
+>>>>>>> 2.5
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
         retSources = getSearchResponseDocSources(testIndexAlias);
 
+<<<<<<< HEAD
         assertThat(retSources.size(), equalTo(1));
         Map<String, Object> source = retSources.get(0);
         assertThat((String) source.get("name"), equalTo("value2"));
@@ -877,6 +946,12 @@ public class OpenSearchSinkIT {
         assertThat(source.containsKey(documentRootKey), equalTo(false));
         assertThat((String) source.get("value"), equalTo(updatedValue));
         assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+=======
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        Map<String, Object> source = retSources.get(0);
+        MatcherAssert.assertThat((String)source.get("name"), equalTo("value2"));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+>>>>>>> 2.5
         sink.shutdown();
     }
 
@@ -894,38 +969,63 @@ public class OpenSearchSinkIT {
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
+<<<<<<< HEAD
         aMap.put("type", OpenSearchBulkActions.CREATE.toString());
+=======
+        aMap.put("type", BulkAction.CREATE.toString());
+>>>>>>> 2.5
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
         List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+<<<<<<< HEAD
         assertThat(retSources.size(), equalTo(1));
         assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+=======
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+>>>>>>> 2.5
         sink.shutdown();
 
         // verify metrics
         final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+<<<<<<< HEAD
         assertThat(bulkRequestLatencies.size(), equalTo(3));
+=======
+        MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+>>>>>>> 2.5
         // COUNT
         Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
         testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson3(testIdField, testId, "name", "value3", "newKey", "newValue")));
         aList = new ArrayList<>();
         aMap = new HashMap<>();
+<<<<<<< HEAD
         aMap.put("type", OpenSearchBulkActions.UPSERT.toString());
+=======
+        aMap.put("type", BulkAction.UPSERT.toString());
+>>>>>>> 2.5
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
         retSources = getSearchResponseDocSources(testIndexAlias);
 
+<<<<<<< HEAD
         assertThat(retSources.size(), equalTo(1));
         Map<String, Object> source = retSources.get(0);
         assertThat((String) source.get("name"), equalTo("value3"));
         assertThat((String) source.get("newKey"), equalTo("newValue"));
         assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+=======
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        Map<String, Object> source = retSources.get(0);
+        MatcherAssert.assertThat((String)source.get("name"), equalTo("value3"));
+        MatcherAssert.assertThat((String)source.get("newKey"), equalTo("newValue"));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+>>>>>>> 2.5
         sink.shutdown();
     }
 
@@ -942,24 +1042,40 @@ public class OpenSearchSinkIT {
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
+<<<<<<< HEAD
         aMap.put("type", OpenSearchBulkActions.UPSERT.toString());
+=======
+        aMap.put("type", BulkAction.UPSERT.toString());
+>>>>>>> 2.5
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
         List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
 
+<<<<<<< HEAD
         assertThat(retSources.size(), equalTo(1));
         Map<String, Object> source = retSources.get(0);
         assertThat((String) source.get("name"), equalTo("value1"));
         assertThat((String) source.get("newKey"), equalTo("newValue"));
         assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+=======
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        Map<String, Object> source = retSources.get(0);
+        MatcherAssert.assertThat((String)source.get("name"), equalTo("value1"));
+        MatcherAssert.assertThat((String)source.get("newKey"), equalTo("newValue"));
+        MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+>>>>>>> 2.5
         sink.shutdown();
         // verify metrics
         final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+<<<<<<< HEAD
         assertThat(bulkRequestLatencies.size(), equalTo(3));
+=======
+        MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+>>>>>>> 2.5
         // COUNT
         Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
     }
@@ -978,13 +1094,21 @@ public class OpenSearchSinkIT {
         pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
+<<<<<<< HEAD
         aMap.put("type", OpenSearchBulkActions.DELETE.toString());
+=======
+        aMap.put("type", BulkAction.DELETE.toString());
+>>>>>>> 2.5
         aList.add(aMap);
         pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
         List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+<<<<<<< HEAD
         assertThat(retSources.size(), equalTo(0));
+=======
+        MatcherAssert.assertThat(retSources.size(), equalTo(0));
+>>>>>>> 2.5
         sink.shutdown();
     }
 

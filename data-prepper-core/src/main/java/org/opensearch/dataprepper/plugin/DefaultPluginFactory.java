@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
@@ -38,8 +40,9 @@ public class DefaultPluginFactory implements PluginFactory {
     private final PluginCreator pluginCreator;
     private final PluginConfigurationConverter pluginConfigurationConverter;
     private final PluginBeanFactoryProvider pluginBeanFactoryProvider;
+    private final DefaultEventFactory eventFactory;
+    private final DefaultAcknowledgementSetManager acknowledgementSetManager;
     private final PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
-    private final ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers;
 
     @Inject
     DefaultPluginFactory(
@@ -47,9 +50,10 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginCreator pluginCreator,
             final PluginConfigurationConverter pluginConfigurationConverter,
             final PluginBeanFactoryProvider pluginBeanFactoryProvider,
-            final PluginConfigurationObservableFactory pluginConfigurationObservableFactory,
-            final ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers) {
-        this.applicationContextToTypedSuppliers = applicationContextToTypedSuppliers;
+            final DefaultEventFactory eventFactory,
+            final DefaultAcknowledgementSetManager acknowledgementSetManager,
+            final PluginConfigurationObservableFactory pluginConfigurationObservableFactory
+    ) {
         Objects.requireNonNull(pluginProviderLoader);
         Objects.requireNonNull(pluginConfigurationObservableFactory);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
@@ -57,6 +61,8 @@ public class DefaultPluginFactory implements PluginFactory {
 
         this.pluginProviders = Objects.requireNonNull(pluginProviderLoader.getPluginProviders());
         this.pluginBeanFactoryProvider = Objects.requireNonNull(pluginBeanFactoryProvider);
+        this.eventFactory = Objects.requireNonNull(eventFactory);
+        this.acknowledgementSetManager = Objects.requireNonNull(acknowledgementSetManager);
         this.pluginConfigurationObservableFactory = pluginConfigurationObservableFactory;
 
         if(pluginProviders.isEmpty()) {
@@ -120,6 +126,10 @@ public class DefaultPluginFactory implements PluginFactory {
                 .withPipelineDescription(pluginSetting)
                 .withPluginConfiguration(configuration)
                 .withPluginFactory(this)
+                .withBeanFactory(pluginBeanFactoryProvider.get())
+                .withEventFactory(eventFactory)
+                .withAcknowledgementSetManager(acknowledgementSetManager)
+                .withPluginConfigurationObservable(pluginConfigObservable)
                 .withSinkContext(sinkContext)
                 .withBeanFactory(pluginBeanFactoryProvider.get())
                 .withPluginConfigurationObservable(pluginConfigObservable)

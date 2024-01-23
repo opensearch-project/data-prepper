@@ -10,13 +10,9 @@ ENV ENV_CONFIG_FILEPATH=$CONFIG_FILEPATH
 ENV ENV_PIPELINE_FILEPATH=$PIPELINE_FILEPATH
 
 # Update all packages
-RUN dnf -y update
-RUN dnf -y install bash bc
-RUN dnf -y upgrade
-
-# Setup the Adoptium package repo and install Temurin Java
-ADD adoptium.repo /etc/yum.repos.d/adoptium.repo
-RUN dnf -y install temurin-17-jdk
+RUN apt -y update
+RUN apt -y install bash bc
+RUN apt -y full-upgrade
 
 RUN mkdir -p /var/log/data-prepper
 ADD $ARCHIVE_FILE /usr/share

@@ -103,6 +103,18 @@ class PluginCreatorTest {
         }
     }
 
+    public static class PluginClassWithPluginConfigurationObservableConstructor {
+        private PluginSetting pluginSetting;
+        private PluginConfigObservable pluginConfigObservable;
+
+        @DataPrepperPluginConstructor
+        public PluginClassWithPluginConfigurationObservableConstructor(
+                final PluginSetting pluginSetting, final PluginConfigObservable pluginConfigObservable) {
+            this.pluginSetting = pluginSetting;
+            this.pluginConfigObservable = pluginConfigObservable;
+        }
+    }
+
     public static class InvalidPluginClassDueToMultipleAnnotatedConstructors {
         @DataPrepperPluginConstructor
         public InvalidPluginClassDueToMultipleAnnotatedConstructors() {}
@@ -139,23 +151,6 @@ class PluginCreatorTest {
         assertThat(instance, notNullValue());
         assertThat(instance.pluginSetting, equalTo(pluginSetting));
         assertThat(instance.alternatePluginConfig, equalTo(alternatePluginConfig));
-    }
-
-    @Test
-    void newPluginInstance_should_create_new_instance_from_annotated_constructor_with_byte_decoder() {
-
-        Object obj = new Object();
-        final AlternatePluginConfig alternatePluginConfig = mock(AlternatePluginConfig.class);
-        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class, AlternatePluginConfig.class, Object.class}, obj))
-                .willReturn(new Object[] { pluginSetting, alternatePluginConfig, obj});
-
-        final PluginClassWithThreeArgs instance = createObjectUnderTest()
-                .newPluginInstance(PluginClassWithThreeArgs.class, pluginConstructionContext, pluginName, obj);
-
-        assertThat(instance, notNullValue());
-        assertThat(instance.pluginSetting, equalTo(pluginSetting));
-        assertThat(instance.alternatePluginConfig, equalTo(alternatePluginConfig));
-        assertThat(instance.obj, equalTo(obj));
     }
 
     @Test

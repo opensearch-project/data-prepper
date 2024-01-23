@@ -255,6 +255,7 @@ public class SearchAccessStrategyTest {
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.valueOf(searchContextType)));
         verifyNoInteractions(pluginConfigObservable);
+<<<<<<< HEAD:data-prepper-plugins/opensearch/src/test/java/org/opensearch/dataprepper/plugins/source/opensearch/worker/client/SearchAccessStrategyTest.java
     }
 
     @Test
@@ -291,5 +292,7 @@ public class SearchAccessStrategyTest {
 
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
+=======
+>>>>>>> 2.5:data-prepper-plugins/opensearch-source/src/test/java/org/opensearch/dataprepper/plugins/source/opensearch/worker/client/SearchAccessStrategyTest.java
     }
 }

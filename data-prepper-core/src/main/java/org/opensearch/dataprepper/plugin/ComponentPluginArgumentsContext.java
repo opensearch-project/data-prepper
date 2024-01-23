@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -55,6 +57,18 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
 
         if (builder.pluginFactory != null) {
             typedArgumentsSuppliers.put(PluginFactory.class, () -> builder.pluginFactory);
+        }
+
+        if (builder.eventFactory != null) {
+            typedArgumentsSuppliers.put(EventFactory.class, () -> builder.eventFactory);
+        }
+
+        if (builder.acknowledgementSetManager != null) {
+            typedArgumentsSuppliers.put(AcknowledgementSetManager.class, () -> builder.acknowledgementSetManager);
+        }
+
+        if (builder.pluginConfigObservable != null) {
+            typedArgumentsSuppliers.put(PluginConfigObservable.class, () -> builder.pluginConfigObservable);
         }
 
         if (builder.sinkContext != null) {
@@ -125,6 +139,9 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         private PluginFactory pluginFactory;
         private PipelineDescription pipelineDescription;
         private BeanFactory beanFactory;
+        private EventFactory eventFactory;
+        private AcknowledgementSetManager acknowledgementSetManager;
+        private PluginConfigObservable pluginConfigObservable;
         private SinkContext sinkContext;
         private PluginConfigObservable pluginConfigObservable;
         private Map<Class<?>, Supplier<Object>> additionalTypeArgumentSuppliers;
@@ -161,11 +178,6 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
 
         Builder withPluginConfigurationObservable(final PluginConfigObservable pluginConfigObservable) {
             this.pluginConfigObservable = pluginConfigObservable;
-            return this;
-        }
-
-        Builder withTypeArgumentSuppliers(final Map<Class<?>, Supplier<Object>> additionalTypeArgumentSuppliers) {
-            this.additionalTypeArgumentSuppliers = additionalTypeArgumentSuppliers;
             return this;
         }
 
