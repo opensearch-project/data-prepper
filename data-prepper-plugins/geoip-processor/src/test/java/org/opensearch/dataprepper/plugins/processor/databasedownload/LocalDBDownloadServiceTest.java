@@ -25,7 +25,7 @@ class LocalDBDownloadServiceTest {
     private LocalDBDownloadService downloadThroughLocalPath;
 
     @Test
-    void initiateDownloadTest() {
+    void initiateDownloadTest() throws IOException {
         createFolder(System.getProperty("java.io.tmpdir") + File.separator + "Maxmind");
         generateSampleFiles(srcDir, 5);
 
