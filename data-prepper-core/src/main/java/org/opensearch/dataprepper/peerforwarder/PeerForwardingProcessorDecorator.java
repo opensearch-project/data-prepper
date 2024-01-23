@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.peerforwarder.exception.UnsupportedPeerForward
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -79,7 +80,9 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
 
     @Override
     public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
-        final Collection<Record<Event>> recordsToProcessOnLocalPeer = peerForwarder.forwardRecords(records);
+        final Collection<Record<Event>> recordsToProcess = ((RequiresPeerForwarding)innerProcessor).applicableEventsForPeerForwarding(records);
+        final Collection<Record<Event>> recordsToProcessOnLocalPeer = peerForwarder.forwardRecords(recordsToProcess);
+
         final Collection<Record<Event>> receivedRecordsFromBuffer = peerForwarder.receiveRecords();
 
         final Collection<Record<Event>> recordsToProcessLocally = CollectionUtils.union(

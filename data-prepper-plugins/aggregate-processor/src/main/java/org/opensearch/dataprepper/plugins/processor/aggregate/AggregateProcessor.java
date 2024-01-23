@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.plugins.hasher.IdentificationKeysHasher;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -146,6 +147,21 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     @Override
     public void shutdown() {
 
+    }
+
+    @Override
+    public Collection<Record<Event>> applicableEventsForPeerForwarding(Collection<Record<Event>> records) {
+        if (whenCondition == null) {
+            return records;
+        }
+        final Collection<Record<Event>> recordsOut = new ArrayList<>();
+        for (Record<Event> record: records) {
+            Event event = record.getData();
+            if (expressionEvaluator.evaluateConditional(whenCondition, event)) {
+                recordsOut.add(record);
+            }
+        }
+        return recordsOut;
     }
 
     @Override

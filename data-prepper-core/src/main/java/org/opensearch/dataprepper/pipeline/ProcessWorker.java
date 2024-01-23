@@ -93,8 +93,8 @@ public class ProcessWorker implements Runnable {
         }
     }
 
-    private void processAcknowledgements(List<Event> inputEvents, Collection outputRecords) {
-        Set<Event> outputEventsSet = ((ArrayList<Record<Event>>)outputRecords).stream().map(Record::getData).collect(Collectors.toSet());
+    private void processAcknowledgements(List<Event> inputEvents, Collection<Record<Event>> outputRecords) {
+        Set<Event> outputEventsSet = outputRecords.stream().map(Record::getData).collect(Collectors.toSet());
         // For each event in the input events list that is not present in the output events, send positive acknowledgement, if acknowledgements are enabled for it
         inputEvents.forEach(event -> {
             EventHandle eventHandle = event.getEventHandle();
