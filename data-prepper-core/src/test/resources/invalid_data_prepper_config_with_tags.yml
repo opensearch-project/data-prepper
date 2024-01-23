@@ -1,6 +1,0 @@
-ssl: false
-metric_tags:
-  testKey1: testValue1
-  testKey2: testValue2
-  testKey3: testValue3
-  testKey4: testValue4

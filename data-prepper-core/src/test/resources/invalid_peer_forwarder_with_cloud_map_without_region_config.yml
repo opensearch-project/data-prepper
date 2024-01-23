@@ -1,4 +1,0 @@
-ssl: false
-discovery_mode: "aws_cloud_map"
-aws_cloud_map_namespace_name: "namespace"
-aws_cloud_map_service_name: "servicename"

@@ -1,3 +1,0 @@
-server_port: 1234
-ssl: true
-sink_shutdown_timeout: "bad"

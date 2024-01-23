@@ -1,5 +1,0 @@
-server_port: 1234
-ssl: true
-key_store_file_path: "src/test/resources/test.p12"
-key_store_password: "store"
-private_key_password: "key"

@@ -1,8 +1,0 @@
-minimal-pipeline:
-  delay: 10
-  source:
-    in_memory:
-      testing_key: MinimalPipelineIT
-  sink:
-    - in_memory:
-        testing_key: MinimalPipelineIT

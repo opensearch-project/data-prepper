@@ -1,5 +1,0 @@
-fail-pipeline:
-  source:
-    non-existent-source:
-  sink:
-    - non-existent-sink:

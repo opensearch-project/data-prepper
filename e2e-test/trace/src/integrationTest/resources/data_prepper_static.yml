@@ -1,6 +1,0 @@
-ssl: false
-peer_forwarder:
-  port: 4994
-  ssl: false
-  discovery_mode: static
-  static_endpoints: ["data-prepper-0", "data-prepper-1"]

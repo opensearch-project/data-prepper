@@ -1,5 +1,0 @@
-server_port: 5678
-ssl: false
-peer_forwarder:
-  port: 4994
-  ssl: false

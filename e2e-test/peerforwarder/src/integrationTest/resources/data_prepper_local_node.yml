@@ -1,5 +1,0 @@
-ssl: false
-peer_forwarder:
-  port: 4994
-  ssl: false
-  discovery_mode: local_node

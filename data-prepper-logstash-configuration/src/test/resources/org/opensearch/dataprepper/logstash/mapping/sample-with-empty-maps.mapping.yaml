@@ -1,2 +1,0 @@
-pluginName: samplePlugin
-attributesMapperClass: org.opensearch.dataprepper.Placeholder

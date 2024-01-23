@@ -1,5 +1,0 @@
-ssl: true
-ssl_certificate_file: "src/test/resources/test-crt.crt"
-ssl_key_file: "src/test/resources/test-key.key"
-use_acm_certificate_for_ssl: true
-acm_certificate_arn: "sample_arn"

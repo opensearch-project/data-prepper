@@ -1,5 +1,0 @@
-entry-pipeline:
-  source:
-    random:
-  sink:
-    - stdout:

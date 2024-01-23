@@ -1,9 +1,0 @@
-ssl: false
-source_coordination:
-  partition_prefix: "some-prefix"
-  store:
-    dynamodb:
-      table_name: "Test"
-      region: "us-east-1"
-      sts_role_arn: "my_arn"
-metric_registries: [Prometheus, CloudWatch]

@@ -1,8 +1,0 @@
-pluginName:
-  mappedAttributeNames:
-    hosts: hosts
-    cacert: cert
-    user: username
-    password: password
-    index: index
-    proxy: proxy

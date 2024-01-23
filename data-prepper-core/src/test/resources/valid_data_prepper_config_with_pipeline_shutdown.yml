@@ -1,3 +1,0 @@
-server_port: 5678
-ssl: false
-pipeline_shutdown: on-all-pipeline-failures

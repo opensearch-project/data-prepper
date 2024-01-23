@@ -1,4 +1,0 @@
-ssl: true
-ssl_certificate_file: src/test/resources/test-crt.crt
-ssl_key_file: src/test/resources/test-key.crt
-ssl_fingerprint_verification_only: true

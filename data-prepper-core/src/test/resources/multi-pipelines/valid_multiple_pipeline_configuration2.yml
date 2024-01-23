@@ -1,8 +1,0 @@
-# this configuration file is solely for testing formatting
-test-pipeline-2:
-  source:
-    pipeline:
-      name: "test-pipeline-1"
-  sink:
-    - pipeline:
-       name: "test-pipeline-3"

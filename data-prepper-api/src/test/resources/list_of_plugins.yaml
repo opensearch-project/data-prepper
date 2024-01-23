@@ -1,5 +1,0 @@
-listOfPlugins:
-  - customPluginA:
-      key1: value1
-  - customPluginB:
-      key2: value2

@@ -1,9 +1,0 @@
-pluginName: csv
-attributesMapperClass: org.opensearch.dataprepper.logstash.mapping.CsvLogstashPluginAttributesMapper
-mappedAttributeNames:
-  columns: column_names
-  quote_char: quote_character
-  separator: delimiter
-  source: source
-additionalAttributes:
-  delete_header: true
