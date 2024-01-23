@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
 import org.apache.http.HttpStatus;
 import org.opensearch.client.RestHighLevelClient;
@@ -44,7 +43,6 @@ public abstract class AbstractIndexManager implements IndexManager {
             = "invalid_index_name_exception";
     static final Set<Integer> NO_ISM_HTTP_STATUS = Set.of(HttpStatus.SC_NOT_FOUND, HttpStatus.SC_BAD_REQUEST);
     private static final String TIME_PATTERN_STARTING_SYMBOLS = "%{";
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     protected RestHighLevelClient restHighLevelClient;
     protected OpenSearchClient openSearchClient;
     protected OpenSearchSinkConfiguration openSearchSinkConfiguration;
@@ -60,7 +58,8 @@ public abstract class AbstractIndexManager implements IndexManager {
 
     //For matching a string that begins with a "%{" and ends with a "}".
     //For a string like "data-prepper-%{yyyy-MM-dd}", "%{yyyy-MM-dd}" is matched.
-    static final String TIME_PATTERN_REGULAR_EXPRESSION = "%\\{.*?\\}";
+    private static final String TIME_PATTERN_REGULAR_EXPRESSION = "%\\{.*?\\}";
+    static final Pattern TIME_PATTERN = Pattern.compile(TIME_PATTERN_REGULAR_EXPRESSION);
 
     //For matching a string enclosed by "%{" and "}".
     //For a string like "data-prepper-%{yyyy-MM}", "yyyy-MM" is matched.
@@ -113,7 +112,7 @@ public abstract class AbstractIndexManager implements IndexManager {
     public static String getIndexAliasWithDate(final String indexAlias) {
         final DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
         final String dateTimeString = (dateFormatter != null) ? dateFormatter.format(getCurrentUtcTime()) : "";
-        return indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, dateTimeString);
+        return TIME_PATTERN.matcher(indexAlias).replaceAll(dateTimeString);
     }
 
     private void initializeIndexPrefixAndSuffix(final String indexAlias) {
@@ -165,7 +164,7 @@ public abstract class AbstractIndexManager implements IndexManager {
         if (indexDateTimeFormatter.isPresent()) {
             final String formattedTimeString = indexDateTimeFormatter.get()
                     .format(getCurrentUtcTime());
-            return configuredIndexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, formattedTimeString);
+            return TIME_PATTERN.matcher(configuredIndexAlias).replaceAll(formattedTimeString);
         } else {
             return configuredIndexAlias;
         }
