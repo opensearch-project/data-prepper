@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor;
+package org.opensearch.dataprepper.plugins.processor.extension;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorConfig;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoData;
-import org.opensearch.dataprepper.plugins.processor.extension.MaxMindConfig;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.io.File;

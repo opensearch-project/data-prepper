@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.databasedownload;
+package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,17 +14,17 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @ExtendWith(MockitoExtension.class)
-class LicenseTypeOptionsTest {
+class DBSourceOptionsTest {
 
     @Test
     void notNull_test() {
-        assertNotNull(LicenseTypeOptions.ENTERPRISE);
+        assertNotNull(DBSourceOptions.S3);
     }
 
     @Test
     void fromOptionValue_test() {
-        LicenseTypeOptions licenseTypeOptions = LicenseTypeOptions.fromOptionValue("enterprise");
-        assertNotNull(licenseTypeOptions);
-        assertThat(licenseTypeOptions.toString(), equalTo("ENTERPRISE"));
+        DBSourceOptions downloadSourceOptions = DBSourceOptions.fromOptionValue("s3");
+        assertNotNull(downloadSourceOptions);
+        assertThat(downloadSourceOptions.toString(), equalTo("S3"));
     }
 }

@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.extension;
 
-import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorService;
-
 public class DefaultGeoIpConfigSupplier implements GeoIpConfigSupplier {
     private final GeoIpServiceConfig geoIpServiceConfig;
 

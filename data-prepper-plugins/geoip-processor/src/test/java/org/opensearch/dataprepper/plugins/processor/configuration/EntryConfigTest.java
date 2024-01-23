@@ -16,8 +16,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
+import static org.opensearch.dataprepper.plugins.processor.configuration.EntryConfig.DEFAULT_TARGET;
 
-class EntryTest {
+class EntryConfigTest {
     public static final String SOURCE_VALUE = "source";
     public static final String TARGET_VALUE = "target";
     public static final List<String> FIELDS_VALUE = List.of("city", "country");
@@ -31,7 +32,8 @@ class EntryTest {
     @Test
     void testDefaultConfig() {
         assertThat(entryConfig.getSource(), is(nullValue()));
-        assertThat(entryConfig.getTarget(), is(nullValue()));
+        assertThat(entryConfig.getTarget(), equalTo(DEFAULT_TARGET));
+        assertThat(entryConfig.getFields(), is(nullValue()));
     }
 
     @Test
@@ -44,6 +46,4 @@ class EntryTest {
         assertThat(entryConfig.getTarget(), equalTo(TARGET_VALUE));
         assertThat(entryConfig.getFields(), equalTo(FIELDS_VALUE));
     }
-
-
 }

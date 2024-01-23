@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.utils;
 
-import org.opensearch.dataprepper.plugins.processor.databasedownload.DBSourceOptions;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSourceOptions;
 
 import java.net.MalformedURLException;
 import java.net.URI;

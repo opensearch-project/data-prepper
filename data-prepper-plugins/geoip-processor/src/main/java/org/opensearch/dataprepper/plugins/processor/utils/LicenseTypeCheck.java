@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.utils;
 
-import org.opensearch.dataprepper.plugins.processor.databasedownload.LicenseTypeOptions;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.LicenseTypeOptions;
 
 import java.io.File;
 import java.nio.file.Path;

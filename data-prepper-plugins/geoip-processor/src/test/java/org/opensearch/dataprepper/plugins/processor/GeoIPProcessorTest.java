@@ -5,18 +5,22 @@
 
 package org.opensearch.dataprepper.plugins.processor;
 
+import io.micrometer.core.instrument.Counter;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.configuration.EntryConfig;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.EnrichFailedException;
+import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIpConfigSupplier;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
@@ -33,16 +37,17 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_PROCESSING_MATCH;
+import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_PROCESSING_MISMATCH;
 
 @ExtendWith(MockitoExtension.class)
 class GeoIPProcessorTest {
-
-    public static final int REFRESH_SCHEDULE = 10;
     public static final String SOURCE = "/peer/ip";
-    public static final String TARGET = "location";
-    public static final String PROCESSOR_PLUGIN_NAME = "geoip";
-    public static final String PROCESSOR_PIPELINE_NAME = "geoIP-processor-pipeline";
+    public static final String TARGET = "geolocation";
     @Mock
     private GeoIPProcessorService geoIPProcessorService;
     @Mock
@@ -50,17 +55,67 @@ class GeoIPProcessorTest {
     @Mock
     private GeoIpConfigSupplier geoIpConfigSupplier;
     @Mock
-    private PluginSetting pluginSetting;
-    @Mock
     private EntryConfig entry;
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
+    @Mock
+    private PluginMetrics pluginMetrics;
+    @Mock
+    private Counter geoIpProcessingMatch;
+    @Mock
+    private Counter geoIpProcessingMismatch;
 
     @BeforeEach
-    void setUp() throws NoSuchFieldException, IllegalAccessException {
-
-        when(pluginSetting.getName()).thenReturn(PROCESSOR_PLUGIN_NAME);
-        when(pluginSetting.getPipelineName()).thenReturn(PROCESSOR_PIPELINE_NAME);
-
+    void setUp() {
         when(geoIpConfigSupplier.getGeoIPProcessorService()).thenReturn(geoIPProcessorService);
+        lenient().when(pluginMetrics.counter(GEO_IP_PROCESSING_MATCH)).thenReturn(geoIpProcessingMatch);
+        lenient().when(pluginMetrics.counter(GEO_IP_PROCESSING_MISMATCH)).thenReturn(geoIpProcessingMismatch);
+    }
+
+    @AfterEach
+    void tearDown() {
+        verifyNoMoreInteractions(geoIpProcessingMatch);
+        verifyNoMoreInteractions(geoIpProcessingMismatch);
+    }
+
+    private GeoIPProcessor createObjectUnderTest() {
+        return new GeoIPProcessor(pluginMetrics, geoIPProcessorConfig, geoIpConfigSupplier, expressionEvaluator);
+    }
+
+    @Test
+    void doExecuteTest_with_when_condition_should_only_enrich_events_that_match_when_condition() throws NoSuchFieldException, IllegalAccessException {
+        final String whenCondition = "/peer/status == success";
+
+        when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
+        when(geoIPProcessorConfig.getWhenCondition()).thenReturn(whenCondition);
+        when(entry.getSource()).thenReturn("/peer/ip");
+        when(entry.getTarget()).thenReturn(TARGET);
+        when(entry.getFields()).thenReturn(setFields());
+
+        final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
+
+        when(geoIPProcessorService.getGeoData(any(), any())).thenReturn(prepareGeoData());
+
+        ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor, "geoIPProcessorService", geoIPProcessorService);
+
+        final Record<Event> record1 = createCustomRecord("success");
+        final Record<Event> record2 = createCustomRecord("failed");
+        List<Record<Event>> recordsIn = new ArrayList<>();
+        recordsIn.add(record1);
+        recordsIn.add(record2);
+
+        when(expressionEvaluator.evaluateConditional(whenCondition, record1.getData())).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(whenCondition, record2.getData())).thenReturn(false);
+
+        final Collection<Record<Event>> records = geoIPProcessor.doExecute(recordsIn);
+
+        for (final Record<Event> record : records) {
+            final Event event = record.getData();
+            if (event.containsKey("location")) {
+                assertThat(event.get("status", String.class), equalTo("success"));
+            }
+        }
+        verify(geoIpProcessingMatch).increment();
     }
 
     @Test
@@ -70,18 +125,19 @@ class GeoIPProcessorTest {
         when(entry.getTarget()).thenReturn(TARGET);
         when(entry.getFields()).thenReturn(setFields());
 
-        GeoIPProcessor geoIPProcessor = createObjectUnderTest();
+        final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
         when(geoIPProcessorService.getGeoData(any(), any())).thenReturn(prepareGeoData());
         ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor,
                 "geoIPProcessorService", geoIPProcessorService);
         Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
         for (final Record<Event> record : records) {
-            Event event = record.getData();
+            final Event event = record.getData();
             assertThat(event.get("/peer/ip", String.class), equalTo("136.226.242.205"));
+            assertThat(event.containsKey("geolocation"), equalTo(true));
+            verify(geoIpProcessingMatch).increment();
         }
     }
-
 
     @Test
     void test_tags_when_enrich_fails() {
@@ -103,6 +159,7 @@ class GeoIPProcessorTest {
         for (final Record<Event> record : records) {
             Event event = record.getData();
             assertTrue(event.getMetadata().hasTags(testTags));
+            verify(geoIpProcessingMismatch).increment();
         }
     }
 
@@ -127,10 +184,6 @@ class GeoIPProcessorTest {
         return geoDataMap;
     }
 
-    private GeoIPProcessor createObjectUnderTest() {
-        return new GeoIPProcessor(pluginSetting, geoIPProcessorConfig, geoIpConfigSupplier);
-    }
-
     private List<String> setFields() {
         final List<String> attributes = new ArrayList<>();
         attributes.add("city_name");
@@ -149,5 +202,22 @@ class GeoIPProcessorTest {
         String json = "{\"peer\": {\"ip\": \"136.226.242.205\", \"host\": \"example.org\" }, \"status\": \"success\"}";
         final JacksonEvent event = JacksonLog.builder().withData(json).build();
         return new Record<>(event);
+    }
+
+    private Record<Event> createCustomRecord(final String customFieldValue) {
+        Map<String, String> innerMap = new HashMap<>();
+        innerMap.put("ip", "136.226.242.205");
+        innerMap.put("host", "example.org");
+        innerMap.put("status", customFieldValue);
+
+        final Map<String, Object> eventMap1 = new HashMap<>();
+        eventMap1.put("peer", innerMap);
+
+        final Event firstEvent = JacksonEvent.builder()
+                .withData(eventMap1)
+                .withEventType("event")
+                .build();
+
+        return new Record<>(firstEvent);
     }
 }

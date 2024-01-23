@@ -8,7 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.utils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.processor.databasedownload.LicenseTypeOptions;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.LicenseTypeOptions;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;

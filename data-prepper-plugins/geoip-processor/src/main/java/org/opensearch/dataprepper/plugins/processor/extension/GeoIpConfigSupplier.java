@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.extension;
 
-import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorService;
-
 /**
  * Interface for supplying {@link GeoIPProcessorService} to {@link GeoIpConfigExtension}
  *
