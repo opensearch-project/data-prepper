@@ -13,7 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.net.UnknownHostException;
 
 @ExtendWith(MockitoExtension.class)
-class IPValidationcheckTest {
+class IPValidationCheckTest {
 
     private static final String PRIVATE_IP_ADDRESS = "192.168.29.233";
     private static final String PUBLIC_IP_ADDRESS = "2001:4860:4860::8888";
@@ -21,16 +21,16 @@ class IPValidationcheckTest {
 
     @Test
     void ipValidationcheckTest_positive() throws UnknownHostException {
-        Assertions.assertTrue(IPValidationcheck.isPublicIpAddress(PUBLIC_IP_ADDRESS));
+        Assertions.assertTrue(IPValidationCheck.isPublicIpAddress(PUBLIC_IP_ADDRESS));
     }
 
     @Test
     void ipValidationcheckTest_negative() throws UnknownHostException {
-        Assertions.assertFalse(IPValidationcheck.isPublicIpAddress(PRIVATE_IP_ADDRESS));
+        Assertions.assertFalse(IPValidationCheck.isPublicIpAddress(PRIVATE_IP_ADDRESS));
     }
 
     @Test
     void ipValidationcheckTest_invalid() throws UnknownHostException {
-        Assertions.assertTrue(IPValidationcheck.isPublicIpAddress(INVALID_IP_ADDRESS));
+        Assertions.assertTrue(IPValidationCheck.isPublicIpAddress(INVALID_IP_ADDRESS));
     }
 }

@@ -36,7 +36,7 @@ class LocalDBDownloadServiceTest {
     }
 
     private LocalDBDownloadService createObjectUnderTest() {
-        return new LocalDBDownloadService(tempFolderPath, PREFIX_DIR);
+        return new LocalDBDownloadService(PREFIX_DIR);
     }
 
     private static void createFolder(String folderName) {

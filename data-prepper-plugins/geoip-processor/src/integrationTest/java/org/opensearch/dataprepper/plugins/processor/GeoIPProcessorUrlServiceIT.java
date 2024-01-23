@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
-import org.opensearch.dataprepper.plugins.processor.utils.IPValidationcheck;
+import org.opensearch.dataprepper.plugins.processor.utils.IPValidationCheck;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -90,7 +90,7 @@ public class GeoIPProcessorUrlServiceIT {
         Map<String, Object> geoData = new HashMap<>();
         this.geoIPProcessorService = createObjectUnderTest();
         String ipAddress = geoIPInputJson.getPeer().getIp();
-        if (IPValidationcheck.isPublicIpAddress(ipAddress)) {
+        if (IPValidationCheck.isPublicIpAddress(ipAddress)) {
             InetAddress inetAddress = InetAddress.getByName(ipAddress);
             //All attributes are considered by default with the null value
             geoData = geoIPProcessorService.getGeoData(inetAddress, null);

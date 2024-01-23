@@ -20,9 +20,9 @@ public interface GetGeoData {
     public final String GeoLite2AsnDB = "GeoLite2-ASN.mmdb";
     public final String GeoIP2EnterpriseDB = "GeoIP2-Enterprise.mmdb";
 
-    public void switchDatabaseReader();
-    public void closeReader();
-    public Map<String, Object> getGeoData(InetAddress inetAddress, List<String> attributes, String tempDestDir);
+    void switchDatabaseReader();
+    void closeReader();
+    Map<String, Object> getGeoData(InetAddress inetAddress, List<String> attributes, String tempDestDir);
 
     /**
      * Enrich attributes
@@ -30,7 +30,7 @@ public interface GetGeoData {
      * @param attributeName attributeName
      * @param attributeValue attributeValue
      */
-    public default void enrichData(Map<String, Object> geoData,String attributeName, String attributeValue) {
+    default void enrichData(final Map<String, Object> geoData, final String attributeName, final String attributeValue) {
         if (attributeValue != null) {
             geoData.put(attributeName, attributeValue);
         }
@@ -42,7 +42,7 @@ public interface GetGeoData {
      * @param countryIso countryIso
      * @param subdivisionIso subdivisionIso
      */
-    public default void enrichRegionIsoCode(Map<String, Object> geoData, String countryIso, String subdivisionIso) {
+    default void enrichRegionIsoCode(final Map<String, Object> geoData, final String countryIso, final String subdivisionIso) {
        if (countryIso != null && subdivisionIso != null) {
            enrichData(geoData, "region_iso_code", countryIso + "-" + subdivisionIso);
        }
@@ -54,7 +54,7 @@ public interface GetGeoData {
      * @param latitude latitude
      * @param longitude longitude
      */
-    public default void enrichLocationData(Map<String, Object> geoData, Double latitude, Double longitude) {
+    default void enrichLocationData(final Map<String, Object> geoData, final Double latitude, final Double longitude) {
         if (latitude != null && longitude != null) {
             Map<String, Object> locationObject = new HashMap<>();
             locationObject.put("lat", latitude);

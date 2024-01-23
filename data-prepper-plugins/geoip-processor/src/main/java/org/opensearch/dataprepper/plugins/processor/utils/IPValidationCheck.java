@@ -14,17 +14,16 @@ import java.net.UnknownHostException;
  * Implementation of class for checking IP validation
  * IP should be public it can be either IPV4 or IPV6
  */
-public class IPValidationcheck {
+public class IPValidationCheck {
 
     /**
      * Check for IP is valid or not
-     * @param input input
+     * @param ipAddress ipAddress
      * @return boolean
      * @throws  UnknownHostException UnknownHostException
      */
-    public static boolean isPublicIpAddress(String input) throws UnknownHostException {
-        String ipAddress = input;
-        InetAddress address = InetAddress.getByName(input);
+    public static boolean isPublicIpAddress(final String ipAddress) throws UnknownHostException {
+        InetAddress address = InetAddress.getByName(ipAddress);
         if (address instanceof Inet6Address || address instanceof Inet4Address) {
             return !address.isSiteLocalAddress() && !address.isLoopbackAddress();
         }

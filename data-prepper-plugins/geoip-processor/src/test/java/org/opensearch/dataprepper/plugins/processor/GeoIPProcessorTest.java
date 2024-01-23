@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -109,11 +110,16 @@ class GeoIPProcessorTest {
 
         final Collection<Record<Event>> records = geoIPProcessor.doExecute(recordsIn);
 
-        for (final Record<Event> record : records) {
+        assertThat(records.size(), equalTo(2));
+
+        final Collection<Record<Event>> recordsWithLocation = records.stream().filter(record -> record.getData().containsKey(TARGET))
+                .collect(Collectors.toList());
+
+        assertThat(recordsWithLocation.size(), equalTo(1));
+
+        for (final Record<Event> record : recordsWithLocation) {
             final Event event = record.getData();
-            if (event.containsKey("location")) {
-                assertThat(event.get("status", String.class), equalTo("success"));
-            }
+            assertThat(event.get("/peer/status", String.class), equalTo("success"));
         }
         verify(geoIpProcessingMatch).increment();
     }

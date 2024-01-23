@@ -18,7 +18,7 @@ import org.opensearch.dataprepper.plugins.processor.configuration.EntryConfig;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIpConfigSupplier;
-import org.opensearch.dataprepper.plugins.processor.utils.IPValidationcheck;
+import org.opensearch.dataprepper.plugins.processor.utils.IPValidationCheck;
 import org.opensearch.dataprepper.logging.DataPrepperMarkers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,7 +91,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
         //Lookup from DB
         if (ipAddress != null && !ipAddress.isEmpty()) {
           try {
-            if (IPValidationcheck.isPublicIpAddress(ipAddress)) {
+            if (IPValidationCheck.isPublicIpAddress(ipAddress)) {
               geoData = geoIPProcessorService.getGeoData(InetAddress.getByName(ipAddress), attributes);
               eventRecord.getData().put(entry.getTarget(), geoData);
               geoIpProcessingMatchCounter.increment();
