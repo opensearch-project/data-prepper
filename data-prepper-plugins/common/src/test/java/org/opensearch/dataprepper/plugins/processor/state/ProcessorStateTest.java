@@ -5,11 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.processor.state;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.processor.state.ProcessorState;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.io.Serializable;
 import java.util.Collection;
@@ -20,13 +18,16 @@ import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 public abstract class ProcessorStateTest {
 
     protected static final Random random = new Random();
 
     protected ProcessorState<byte[], DataClass> processorState;
 
-    @Before
     public abstract void setProcessorState() throws Exception;
 
     @Test
@@ -41,7 +42,7 @@ public abstract class ProcessorStateTest {
         processorState.put(key1, data1);
         processorState.put(key2, data2);
 
-        Assert.assertEquals(2, processorState.size());
+        assertEquals(2, processorState.size());
     }
 
     @Test
@@ -57,9 +58,9 @@ public abstract class ProcessorStateTest {
         processorState.put(key2, data2);
 
         //Read them and assert that they are correctly read, and assert incorrect key gives back null value
-        Assert.assertEquals(data1, processorState.get(key1));
-        Assert.assertEquals(data2, processorState.get(key2));
-        Assert.assertNull(processorState.get(UUID.randomUUID().toString().getBytes()));
+        assertEquals(data1, processorState.get(key1));
+        assertEquals(data2, processorState.get(key2));
+        assertNull(processorState.get(UUID.randomUUID().toString().getBytes()));
     }
 
     @Test
@@ -79,12 +80,12 @@ public abstract class ProcessorStateTest {
                 .entrySet()
                 .stream()
                 .collect(Collectors.toMap( dataClassEntry -> new String(dataClassEntry.getKey()), dataClassEntry -> dataClassEntry.getValue()));
-        Assert.assertEquals(2, stateMap.size());
-        Assert.assertEquals(data1, stateMap.get(new String(key1)));
-        Assert.assertEquals(data2, stateMap.get(new String(key2)));
+        assertEquals(2, stateMap.size());
+        assertEquals(data1, stateMap.get(new String(key1)));
+        assertEquals(data2, stateMap.get(new String(key2)));
     }
 
-    @After
+    @AfterEach
     public void teardown() {
         processorState.delete();
     }
@@ -108,9 +109,9 @@ public abstract class ProcessorStateTest {
             }
         });
 
-        Assert.assertEquals(2, iterateResult.size());
-        Assert.assertTrue(iterateResult.contains(data1.stringVal));
-        Assert.assertTrue(iterateResult.contains(data2.stringVal));
+        assertEquals(2, iterateResult.size());
+        assertTrue(iterateResult.contains(data1.stringVal));
+        assertTrue(iterateResult.contains(data2.stringVal));
     }
 
     public static class DataClass implements Serializable {
