@@ -19,7 +19,6 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -329,7 +328,7 @@ public class MskGlueRegistryMultiTypeIT {
 
     }
 
-    public void produceJsonRecords(final String servers, final String topic, int numRecords) {
+    public void produceJsonRecords(final String servers, final String topic, int numRecords) throws InterruptedException {
         Properties properties = new Properties();
         properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
         properties.put("security.protocol", "SASL_SSL");
@@ -378,14 +377,11 @@ public class MskGlueRegistryMultiTypeIT {
                     Thread.sleep(1000L);
 		}
 	        producer.flush();
-        } catch (final InterruptedException | SerializationException e) {
-            e.printStackTrace();
         }
-
     }
 
 
-    public void produceAvroRecords(String servers, String topic, int numRecords) {
+    public void produceAvroRecords(String servers, String topic, int numRecords) throws InterruptedException, IOException {
         Properties properties = new Properties();
         properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
         properties.put("security.protocol", "SASL_SSL");
@@ -402,11 +398,7 @@ public class MskGlueRegistryMultiTypeIT {
 
         Schema testSchema = null;
         Schema.Parser parser = new Schema.Parser();
-        try {
-            testSchema = parser.parse(new File("src/integrationTest/resources/test.avsc"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        testSchema = parser.parse(new File("src/integrationTest/resources/test.avsc"));
         
         List<GenericRecord> testRecords = new ArrayList<>();
 	for (int i = 0; i < numRecords; i++) {
@@ -429,8 +421,6 @@ public class MskGlueRegistryMultiTypeIT {
             }
             producer.flush();
 
-        } catch (final InterruptedException | SerializationException e) {
-            e.printStackTrace();
         }
     }
 

@@ -21,6 +21,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.codec.NoneDecompressionEngine;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 import org.opensearch.dataprepper.plugins.fs.LocalOutputFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -49,6 +51,7 @@ import static org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec
 import static org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec.FILE_SUFFIX;
 
 public class ParquetInputCodecTest {
+    private static final Logger LOG = LoggerFactory.getLogger(ParquetInputCodecTest.class);
 
     private static final String SCHEMA_JSON =
             "{\"namespace\": \"org.example.test\"," +
@@ -179,7 +182,7 @@ public class ParquetInputCodecTest {
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         for (int i = 1; i <= actualRecords.size(); i++) {
             final Record<Event> record = actualRecords.get(i - 1);
-            System.out.println(record.toString());
+            LOG.info("record={}", record.toString());
             final String name = record.getData().get("name", String.class);
             final int age = record.getData().get("age", Integer.class);
 

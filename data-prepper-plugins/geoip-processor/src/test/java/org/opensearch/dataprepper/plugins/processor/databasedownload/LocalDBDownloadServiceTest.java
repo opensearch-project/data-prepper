@@ -46,15 +46,13 @@ class LocalDBDownloadServiceTest {
         }
     }
 
-    private static void generateSampleFiles(String folderName, int numFiles) {
+    private static void generateSampleFiles(String folderName, int numFiles) throws IOException {
         for (int i = 1; i <= numFiles; i++) {
             String fileName = "SampleFile" + i + ".txt";
             String content = "This is sample file " + i;
 
             try (FileWriter writer = new FileWriter(folderName + File.separator + fileName)) {
                 writer.write(content);
-            } catch (IOException e) {
-                e.printStackTrace();
             }
         }
     }

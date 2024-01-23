@@ -17,6 +17,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,6 +38,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class KeyValueProcessorTests {
+    private static final Logger LOG = LoggerFactory.getLogger(KeyValueProcessorTests.class);
+
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -191,7 +195,7 @@ public class KeyValueProcessorTests {
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
-        System.out.println(parsed_message);
+        LOG.info("parsedMessage={}", parsed_message);
         assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key1", "value1");
         assertThatKeyEquals(parsed_message, "key2", "value2");

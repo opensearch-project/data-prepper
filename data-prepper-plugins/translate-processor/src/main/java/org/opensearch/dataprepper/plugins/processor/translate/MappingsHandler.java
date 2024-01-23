@@ -83,12 +83,11 @@ public class MappingsHandler {
 
                 byteArrayOutputStream.close();
             } catch (IOException | AmazonServiceException e) {
-                LOG.error("Error while retrieving mappings from S3 Object");
-                e.printStackTrace();
+                LOG.error("Error while retrieving mappings from S3 Object", e);
                 return null;
             }
         } catch (AmazonServiceException e) {
-            e.printStackTrace();
+            LOG.error("Error while retrieving mappings from S3 Object", e);
             return null;
         }
         return s3FileMappings;

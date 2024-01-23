@@ -70,7 +70,7 @@ public class CsvCodecsIT {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 10, 100, 200})
-    void test_when_autoDetectHeaderHappyCase_then_callsConsumerWithParsedEvents(final int numberOfRows) throws IOException {
+    void test_when_autoDetectHeaderHappyCase_then_callsConsumerWithParsedEvents(final int numberOfRows) throws IOException, CsvValidationException {
         final InputStream inputStream = createCsvInputStream(numberOfRows, header());
         CsvInputCodec csvInputCodec = createObjectUnderTest();
         csvInputCodec.parse(inputStream, eventConsumer);
@@ -112,15 +112,9 @@ public class CsvCodecsIT {
                 }
                 index++;
             }
-        } catch (IOException | CsvValidationException e) {
-            e.printStackTrace();
         } finally {
-            try {
-                csvReader.close();
-                stringReader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            csvReader.close();
+            stringReader.close();
         }
     }
 

@@ -111,7 +111,7 @@ class PeerForwarderClientTest {
 
     @Test
     void test_serializeRecordsAndSendHttpRequest_with_actual_client_and_server_should_return()
-            throws ExecutionException, InterruptedException {
+            throws ExecutionException, InterruptedException, IOException {
         when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
 
         final HttpServer server = createServer(2022);
@@ -183,14 +183,10 @@ class PeerForwarderClientTest {
         return clientBuilder.build(WebClient.class);
     }
 
-    private HttpServer createServer(final int port) {
+    private HttpServer createServer(final int port) throws IOException {
         final InetSocketAddress socketAddress = new InetSocketAddress(port);
         HttpServer httpServer = null;
-        try {
-            httpServer = HttpServer.create(socketAddress, 0);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        httpServer = HttpServer.create(socketAddress, 0);
         return httpServer;
     }
 

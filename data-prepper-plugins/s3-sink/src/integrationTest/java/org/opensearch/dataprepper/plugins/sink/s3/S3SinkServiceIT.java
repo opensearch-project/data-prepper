@@ -389,18 +389,12 @@ class S3SinkServiceIT {
                     int fieldIndex = 0;
                     final SimpleGroup simpleGroup = (SimpleGroup) recordReader.read();
                     for (Type field : schema.getFields()) {
-                        try {
-                            eventData.put(field.getName(), simpleGroup.getValueToString(fieldIndex, 0));
-                        } catch (Exception parquetException) {
-                            parquetException.printStackTrace();
-                        }
+                        eventData.put(field.getName(), simpleGroup.getValueToString(fieldIndex, 0));
                         fieldIndex++;
                     }
                     actualRecordList.add((HashMap) eventData);
                 }
             }
-        } catch (Exception parquetException) {
-            parquetException.printStackTrace();
         } finally {
             Files.delete(tempFile.toPath());
         }

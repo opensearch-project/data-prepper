@@ -23,6 +23,8 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.Dat
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.LoadStatus;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -51,6 +53,7 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFile
 
 @ExtendWith(MockitoExtension.class)
 class DataFileSchedulerTest {
+    private static final Logger LOG = LoggerFactory.getLogger(DataFileSchedulerTest.class);
 
     @Mock
     private EnhancedSourceCoordinator coordinator;
@@ -133,7 +136,7 @@ class DataFileSchedulerTest {
 
     @Test
     public void test_run_DataFileLoader_correctly() throws InterruptedException {
-        given(loaderFactory.createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class), eq(null), any(Duration.class))).willReturn(() -> System.out.println("Hello"));
+        given(loaderFactory.createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class), eq(null), any(Duration.class))).willReturn(() -> LOG.info("Hello"));
 
 
         given(coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE)).willReturn(Optional.of(dataFilePartition)).willReturn(Optional.empty());
@@ -183,7 +186,7 @@ class DataFileSchedulerTest {
             return acknowledgementSet;
         }).when(acknowledgementSetManager).create(any(Consumer.class), eq(dataFileAcknowledgmentTimeout));
 
-        given(loaderFactory.createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class), eq(acknowledgementSet), eq(dataFileAcknowledgmentTimeout))).willReturn(() -> System.out.println("Hello"));
+        given(loaderFactory.createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class), eq(acknowledgementSet), eq(dataFileAcknowledgmentTimeout))).willReturn(() -> LOG.info("Hello"));
 
         scheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
 

@@ -68,7 +68,7 @@ public class CsvOutputCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 10, 100})
-    void test_happy_case(final int numberOfRecords) throws IOException {
+    void test_happy_case(final int numberOfRecords) throws IOException, CsvValidationException {
         CsvOutputCodecTest.numberOfRecords = numberOfRecords;
         CsvOutputCodec csvOutputCodec = createObjectUnderTest();
         outputStream = new ByteArrayOutputStream();
@@ -105,15 +105,9 @@ public class CsvOutputCodecTest {
                 }
                 index++;
             }
-        } catch (IOException | CsvValidationException e) {
-            e.printStackTrace();
         } finally {
-            try {
-                csvReader.close();
-                stringReader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            csvReader.close();
+            stringReader.close();
         }
     }
 }

@@ -145,15 +145,13 @@ class PluginModelTests {
         return settings;
     }
 
-    static String convertInputStreamToString(InputStream inputStream) {
+    static String convertInputStreamToString(InputStream inputStream) throws IOException {
         StringBuilder stringBuilder = new StringBuilder();
         try (Reader reader = new BufferedReader(new InputStreamReader(inputStream, Charset.forName(StandardCharsets.UTF_8.name())))) {
             int counter = 0;
             while ((counter = reader.read()) != -1) {
                 stringBuilder.append((char) counter);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
         return stringBuilder.toString();
     }
