@@ -19,17 +19,17 @@ import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.metrics.v1.Sum;
 import io.opentelemetry.proto.resource.v1.Resource;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.metric.JacksonMetric;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -37,20 +37,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.hamcrest.Matchers.equalTo;
 
-@RunWith(MockitoJUnitRunner.class)
-public class MetricsPluginSumTest {
+@ExtendWith(MockitoExtension.class)
+class MetricsPluginSumTest {
 
     OTelMetricsRawProcessor rawProcessor;
 
-    @Before
-    public void init() {
+    @BeforeEach
+    void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
         rawProcessor = new OTelMetricsRawProcessor(testsettings, new OtelMetricsRawProcessorConfig());
     }
 
     @Test
-    public void test() throws JsonProcessingException {
+    void test() throws JsonProcessingException {
 
         final KeyValue childAttr1 = KeyValue.newBuilder().setKey("statement").setValue(AnyValue.newBuilder()
                 .setIntValue(1_000).build()).build();
@@ -113,7 +113,7 @@ public class MetricsPluginSumTest {
     }
 
     @Test
-    public void missingNameInvalidMetricTest() throws JsonProcessingException {
+    void missingNameInvalidMetricTest() throws JsonProcessingException {
 
         final KeyValue childAttr1 = KeyValue.newBuilder().setKey("statement").setValue(AnyValue.newBuilder()
                 .setIntValue(1_000).build()).build();

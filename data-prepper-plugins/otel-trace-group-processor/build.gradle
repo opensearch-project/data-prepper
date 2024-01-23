@@ -11,6 +11,5 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'io.micrometer:micrometer-core'
-    testImplementation testLibs.junit.vintage
     testImplementation project(':data-prepper-api').sourceSets.test.output
 }

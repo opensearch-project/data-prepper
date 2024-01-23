@@ -12,21 +12,22 @@ import io.grpc.health.v1.HealthCheckResponse;
 import io.grpc.health.v1.HealthGrpc;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
-import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class HealthGrpcServiceTest {
+
+class HealthGrpcServiceTest {
 
     private Server server;
     private ManagedChannel channel;
 
     @BeforeEach
-    public void setup() throws Exception {
+    void setup() throws Exception {
         String serverName = InProcessServerBuilder.generateName();
 
         server = InProcessServerBuilder.forName(serverName)
@@ -41,7 +42,7 @@ public class HealthGrpcServiceTest {
     }
 
     @AfterEach
-    public void teardown() throws Exception {
+    void teardown() throws Exception {
         try {
             channel.shutdown();
             server.shutdown();
@@ -60,6 +61,6 @@ public class HealthGrpcServiceTest {
         HealthCheckResponse response =
                 blockingStub.check(HealthCheckRequest.newBuilder().build());
 
-        Assert.assertEquals(HealthCheckResponse.ServingStatus.SERVING, response.getStatus());
+        assertEquals(HealthCheckResponse.ServingStatus.SERVING, response.getStatus());
     }
 }
