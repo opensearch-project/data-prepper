@@ -60,7 +60,7 @@ public abstract class AbstractIndexManager implements IndexManager {
 
     //For matching a string that begins with a "%{" and ends with a "}".
     //For a string like "data-prepper-%{yyyy-MM-dd}", "%{yyyy-MM-dd}" is matched.
-    private static final String TIME_PATTERN_REGULAR_EXPRESSION = "%\\{.*?\\}";
+    static final String TIME_PATTERN_REGULAR_EXPRESSION = "%\\{.*?\\}";
 
     //For matching a string enclosed by "%{" and "}".
     //For a string like "data-prepper-%{yyyy-MM}", "yyyy-MM" is matched.
@@ -123,7 +123,11 @@ public abstract class AbstractIndexManager implements IndexManager {
         } else {
             indexDateTimeFormatter = Optional.empty();
         }
-        indexPrefix = indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "");
+
+        // removes date-time pattern along with leading or trailing hyphen
+        indexPrefix = indexAlias
+                .replaceAll("-" + TIME_PATTERN_REGULAR_EXPRESSION, "")
+                .replaceAll(TIME_PATTERN_REGULAR_EXPRESSION + "-", "");
     }
 
     /*
@@ -233,16 +237,11 @@ public abstract class AbstractIndexManager implements IndexManager {
     }
 
     final void checkAndCreateIndexTemplate(final boolean isISMEnabled, final String ismPolicyId) throws IOException {
-        //If index prefix has a ending dash, then remove it to avoid two consecutive dashes.
-        final String indexPrefixWithoutLeadingAndTrailingDashes = indexPrefix
-                .replaceAll("^-", "")
-                .replaceAll("-$", "");
-        final String indexTemplateName = indexPrefixWithoutLeadingAndTrailingDashes  + "-index-template";
+        final String indexTemplateName = indexPrefix  + "-index-template";
 
         final Map<String, Object> indexTemplateMap = openSearchSinkConfiguration.getIndexConfiguration()
                 .getIndexTemplate();
         final IndexTemplate indexTemplate = templateStrategy.createIndexTemplate(indexTemplateMap);
-
 
         // Check existing index template version - only overwrite if version is less than or does not exist
         if (!shouldCreateTemplate(indexTemplateName, indexTemplate)) {
@@ -250,10 +249,10 @@ public abstract class AbstractIndexManager implements IndexManager {
         }
 
         if (isISMEnabled) {
-            attachPolicy(indexTemplate, ismPolicyId, indexPrefixWithoutLeadingAndTrailingDashes);
+            attachPolicy(indexTemplate, ismPolicyId, indexPrefix);
         }
 
-        final List<String> indexPatterns = ismPolicyManagementStrategy.getIndexPatterns(indexPrefixWithoutLeadingAndTrailingDashes);
+        final List<String> indexPatterns = ismPolicyManagementStrategy.getIndexPatterns(configuredIndexAlias);
         indexTemplate.setTemplateName(indexTemplateName);
         indexTemplate.setIndexPatterns(indexPatterns);
 

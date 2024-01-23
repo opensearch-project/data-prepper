@@ -9,6 +9,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestClient;
@@ -24,12 +26,12 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.io.File;
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.Optional;
 import java.util.Objects;
+import java.util.Optional;
 
 import static org.apache.commons.io.FileUtils.ONE_MB;
 import static org.junit.Assert.assertEquals;
@@ -169,9 +171,15 @@ public class IsmPolicyManagementTests {
         verify(restClient, times(2)).performRequest(any());
     }
 
-    @Test
-    public void getIndexPatterns() {
-        assertEquals(Collections.singletonList(INDEX_ALIAS + "-*"), ismPolicyManagementStrategy.getIndexPatterns(INDEX_ALIAS));
+    @ParameterizedTest
+    @CsvSource({
+            "test-index, test-index-*",
+            "%{yyyy-MM}-test-index, *-test-index-*",
+            "test-%{yyyy-MM}-index, test-*-index-*",
+            "test-index-%{yyyy-MM}, test-index-*-*"
+    })
+    public void getIndexPatterns(final String indexAlias, final String expectedIndexPattern) {
+        assertEquals(Collections.singletonList(expectedIndexPattern), ismPolicyManagementStrategy.getIndexPatterns(indexAlias));
     }
 
     @Test
