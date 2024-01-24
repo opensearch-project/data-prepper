@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.model.peerforwarder;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
