@@ -82,17 +82,13 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
     public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
         final Collection<Record<Event>> recordsToProcess = new ArrayList<>();
         final Collection<Record<Event>> recordsSkipped = new ArrayList<>();
-        System.out.println("_____0____"+records.size());
         for (Record<Event> record: records) {
             if (((RequiresPeerForwarding)innerProcessor).isApplicableEventForPeerForwarding(record.getData())) {
-                System.out.println("_____1____"+record.getData().toJsonString());
                 recordsToProcess.add(record);
             } else {
-                System.out.println("_____2____"+record.getData().toJsonString());
                 recordsSkipped.add(record);
             }
         }
-        System.out.println("_____3____"+records.size());
         final Collection<Record<Event>> recordsToProcessOnLocalPeer = peerForwarder.forwardRecords(recordsToProcess);
 
         final Collection<Record<Event>> receivedRecordsFromBuffer = peerForwarder.receiveRecords();
@@ -101,7 +97,6 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
                 recordsToProcessOnLocalPeer, receivedRecordsFromBuffer);
 
         Collection<Record<Event>> recordsOut = innerProcessor.execute(recordsToProcessLocally);
-        System.out.println("====="+recordsOut+"====="+recordsSkipped);
         recordsOut.addAll(recordsSkipped);
         return recordsOut;
     }
