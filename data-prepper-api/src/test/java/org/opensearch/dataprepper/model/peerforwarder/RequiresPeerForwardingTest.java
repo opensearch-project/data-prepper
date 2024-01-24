@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.model.peerforwarder;
 
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -25,9 +24,9 @@ class RequiresPeerForwardingTest {
 
     @Test
     void testRequiresPeerForwardingTest() {
-        Collection<Record<Event>> records = mock(Collection.class);
+        Event event = mock(Event.class);
         RequiresPeerForwarding requiresPeerForwarding = new SimpleRequiresPeerForwarding();
-        assertThat(requiresPeerForwarding.applicableEventsForPeerForwarding(records), equalTo(records));
+        assertThat(requiresPeerForwarding.isApplicableEventForPeerForwarding(event), equalTo(true));
     }
 }
 

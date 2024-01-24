@@ -22,13 +22,13 @@ public interface RequiresPeerForwarding {
     Collection<String> getIdentificationKeys();
 
     /**
-     * Returns events that are applicable for peer forwarding.
+     * Determines if an event should be forwarded to the remote peer
      *
-     * @param records collection of input records
+     * @param event input event
      *
-     * @return a collection of output records
+     * @return true if the event should be forwarded to the peer
      */
-    default Collection<Record<Event>> applicableEventsForPeerForwarding(Collection<Record<Event>> records) {
-        return records;
+    default boolean isApplicableEventForPeerForwarding(Event event) {
+        return true;
     }
 }

@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -96,7 +97,6 @@ class PeerForwardingProcessingDecoratorTest {
 
         assertThrows(RuntimeException.class, () -> createObjectUnderTesDecoratedProcessors(List.of(((Processor) requiresPeerForwarding), (Processor) requiresPeerForwardingCopy)));
     }
-
 
     @Test
     void decorateProcessors_with_empty_processors_should_return_empty_list_of_processors() {
@@ -178,6 +178,38 @@ class PeerForwardingProcessingDecoratorTest {
             assertThat(processors.size(), equalTo(1));
             processors.get(0).execute(testData);
             verify(processor).execute(anyCollection());
+        }
+
+        @Test
+        void PeerForwardingProcessingDecorator_inner_processor_with_is_applicable_event_overridden() {
+            Event event1 = mock(Event.class);
+            Event event2 = mock(Event.class);
+            Event event3 = mock(Event.class);
+            Record record1 = mock(Record.class);
+            Record record2 = mock(Record.class);
+            Record record3 = mock(Record.class);
+            Record aggregatedRecord = mock(Record.class);
+            List<Record> aggregatedRecords = new ArrayList<>();
+            aggregatedRecords.add(aggregatedRecord);
+            when(processor.execute(anyCollection())).thenReturn(aggregatedRecords);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event1)).thenReturn(true);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event2)).thenReturn(false);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event3)).thenReturn(true);
+            final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
+            when(record1.getData()).thenReturn(event1);
+            when(record2.getData()).thenReturn(event2);
+            when(record3.getData()).thenReturn(event3);
+            Collection<Record<Event>> recordsIn = new ArrayList<>();
+            recordsIn.add(record1);
+            recordsIn.add(record2);
+            recordsIn.add(record3);
+
+            assertThat(processors.size(), equalTo(1));
+            Collection<Record<Event>> recordsOut = processors.get(0).execute(recordsIn);
+            verify(processor).execute(anyCollection());
+            assertThat(recordsOut.size(), equalTo(2));
+            assertTrue(recordsOut.contains(aggregatedRecord));
+            assertTrue(recordsOut.contains(record2));
         }
 
         @Test
