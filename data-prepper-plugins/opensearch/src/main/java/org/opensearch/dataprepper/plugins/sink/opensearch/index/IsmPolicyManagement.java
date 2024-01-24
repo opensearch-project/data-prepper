@@ -39,6 +39,7 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager.TIME_PATTERN;
 
 class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     private static final Logger LOG = LoggerFactory.getLogger(IsmPolicyManagement.class);
@@ -142,7 +143,7 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     @Override
     public List<String> getIndexPatterns(final String indexAlias){
         checkArgument(StringUtils.isNotEmpty(indexAlias));
-        return  Collections.singletonList(indexAlias + "-*");
+        return Collections.singletonList(TIME_PATTERN.matcher(indexAlias).replaceAll("*") + "-*");
     }
 
     @Override

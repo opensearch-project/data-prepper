@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
@@ -39,14 +41,14 @@ public class NoIsmPolicyManagementTests {
     @Mock
     OpenSearchIndicesClient openSearchIndicesClient;
 
-    @Before
+    @BeforeEach
     public void setup() throws IOException {
         initMocks(this);
         ismPolicyManagementStrategy = new NoIsmPolicyManagement(openSearchClient, restHighLevelClient);
     }
 
     @Test
-    public void constructor_NullRestClient() throws IOException {
+    public void constructor_NullRestClient() {
         assertThrows(NullPointerException.class, () ->
                 new NoIsmPolicyManagement(openSearchClient, null));
     }
@@ -56,13 +58,20 @@ public class NoIsmPolicyManagementTests {
         assertEquals(Optional.empty(), ismPolicyManagementStrategy.checkAndCreatePolicy());
     }
 
-    @Test
-    public void getIndexPatterns() {
-        assertEquals(Collections.singletonList(INDEX_ALIAS), ismPolicyManagementStrategy.getIndexPatterns(INDEX_ALIAS));
+    @ParameterizedTest
+    @CsvSource({
+            "test-index, test-index",
+            "%{yyyy-MM}-test-index, *-test-index",
+            "test-%{yyyy-MM}-index, test-*-index",
+            "test-index-%{yyyy-MM}, test-index-*"
+    })
+    public void getIndexPatterns(final String indexAlias, final String expectedIndexPattern) {
+        assertEquals(Collections.singletonList(expectedIndexPattern), ismPolicyManagementStrategy.getIndexPatterns(indexAlias));
     }
 
     @Test
     public void getIndexPatterns_NullInput_Exception() {
+        ismPolicyManagementStrategy = new NoIsmPolicyManagement(openSearchClient, restHighLevelClient);
         assertThrows(IllegalArgumentException.class,
                 () -> ismPolicyManagementStrategy.getIndexPatterns(null)
         );

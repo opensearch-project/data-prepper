@@ -105,8 +105,7 @@ public class IndexManagerFactory {
         }
 
         private String getIndexPolicyName() {
-            //If index prefix has a ending dash, then remove it to avoid two consecutive dashes.
-            return indexPrefix.replaceAll("-$", "") + POLICY_NAME_SUFFIX;
+            return indexPrefix + POLICY_NAME_SUFFIX;
         }
     }
 

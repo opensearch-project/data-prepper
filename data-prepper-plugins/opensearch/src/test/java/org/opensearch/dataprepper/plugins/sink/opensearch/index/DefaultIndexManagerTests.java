@@ -136,27 +136,31 @@ public class DefaultIndexManagerTests {
     }
 
     @Test
-    void getIndexAlias_IndexWithTimePattern(){
+    void getIndexAlias_IndexWithTimePattern() throws IOException {
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS_WITH_TIME_PATTERN);
         defaultIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
-        try {
-            final String indexAlias = defaultIndexManager.getIndexName(null);
-            assertThat(indexAlias, matchesPattern(EXPECTED_INDEX_PATTERN));
-        } catch (IOException e){}
+
+        final String indexAlias = defaultIndexManager.getIndexName(null);
+        assertThat(indexAlias, matchesPattern(EXPECTED_INDEX_PATTERN));
+
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIsmPolicyFile();
     }
 
     @Test
-    void getIndexAlias_IndexWithTimePattern_Exceptional_NotAsSuffix() {
-        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS_WITH_TIME_PATTERN + "randomtext");
-        assertThrows(IllegalArgumentException.class,
-                () -> indexManagerFactory.getIndexManager(
-                        IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy));
-        verify(openSearchSinkConfiguration).getIndexConfiguration();
+    void getIndexAlias_IndexWithTimePattern_NotAsSuffix() throws IOException {
+        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS_WITH_TIME_PATTERN + "-randomtext");
+        defaultIndexManager = indexManagerFactory.getIndexManager(
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+
+        final String indexAlias = defaultIndexManager.getIndexName(null);
+        assertThat(indexAlias, matchesPattern(Pattern.compile(INDEX_ALIAS + "-\\d{4}.\\d{2}.\\d{2}.\\d{2}-randomtext")));
+
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
+        verify(indexConfiguration).getIsmPolicyFile();
     }
 
     private static final List<Character> INVALID_CHARS = Arrays.asList('#', '\\', '/', '*', '?', '"', '<', '>', '|', ',', ':');

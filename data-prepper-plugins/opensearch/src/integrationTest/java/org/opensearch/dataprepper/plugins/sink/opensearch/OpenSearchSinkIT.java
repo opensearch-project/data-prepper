@@ -585,6 +585,57 @@ public class OpenSearchSinkIT {
 
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(CreateWithIndexTemplateArgumentsProvider.class)
+    public void testIndexNameWithDateNotAsSuffixCreatesIndexTemplate(
+            final String templateType,
+            final String templatePath,
+            final String templateFile,
+            final BiFunction<Map<String, Object>, String, Integer> extractVersionFunction,
+            final BiFunction<Map<String, Object>, String, Map<String, Object>> extractMappingsFunction) throws IOException {
+        final String testIndexAlias = "prefix-%{yyyy-MM}-suffix";
+        final String expectedDate = new SimpleDateFormat("yyyy-MM").format(new Date());
+        final String expectedIndexName = "prefix-" + expectedDate + "-suffix";
+        final String expectedIndexTemplateName = "prefix-suffix-index-template";
+        final String testTemplateFileV1 = getClass().getClassLoader().getResource(templateFile).getFile();
+
+        PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, templateType, testTemplateFileV1);
+        OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+
+        final String extraURI = DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(
+                OpenSearchIntegrationHelper.getVersion()) >= 0 ? INCLUDE_TYPE_NAME_FALSE_URI : "";
+        Request getTemplateRequest = new Request(HttpMethod.GET,
+                "/" + templatePath + "/" + expectedIndexTemplateName + extraURI);
+        Response getTemplateResponse = client.performRequest(getTemplateRequest);
+        assertThat(getTemplateResponse.getStatusLine().getStatusCode(), equalTo(SC_OK));
+
+        String responseBody = EntityUtils.toString(getTemplateResponse.getEntity());
+        @SuppressWarnings("unchecked") final Integer responseVersion =
+                extractVersionFunction.apply(createContentParser(XContentType.JSON.xContent(),
+                        responseBody).map(), expectedIndexTemplateName);
+        @SuppressWarnings("unchecked") final Map<String, Object> templateMappings =
+                extractMappingsFunction.apply(createContentParser(XContentType.JSON.xContent(),
+                        responseBody).map(), expectedIndexTemplateName);
+        assertThat(responseVersion, equalTo(Integer.valueOf(1)));
+        assertThat(templateMappings.isEmpty(), equalTo(false));
+
+        Request getIndexRequest = new Request(HttpMethod.GET,
+                "/" + expectedIndexName + extraURI);
+        Response getIndexResponse = client.performRequest(getIndexRequest);
+        assertThat(getIndexResponse.getStatusLine().getStatusCode(), equalTo(SC_OK));
+
+        String getIndexResponseBody = EntityUtils.toString(getIndexResponse.getEntity());
+        @SuppressWarnings("unchecked") final Map<String, Object> indexBlob = (Map<String, Object>) createContentParser(XContentType.JSON.xContent(),
+                        getIndexResponseBody).map().get(expectedIndexName);
+        @SuppressWarnings("unchecked") final Map<String, Object> mappingsBlob = (Map<String, Object>) indexBlob.get("mappings");
+        assertThat(mappingsBlob.isEmpty(), equalTo(false));
+
+        // assert the mappings from index template are applied to the index
+        assertThat(mappingsBlob, equalTo(templateMappings));
+
+        sink.shutdown();
+    }
+
     static class CreateWithTemplatesArgumentsProvider implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
@@ -603,6 +654,35 @@ public class OpenSearchSinkIT {
                                 TEST_INDEX_TEMPLATE_V1_FILE, TEST_INDEX_TEMPLATE_V2_FILE,
                                 (BiFunction<Map<String, Object>, String, Integer>) (map, unused) ->
                                         (Integer) ((List<Map<String, Map<String, Object>>>) map.get("index_templates")).get(0).get("index_template").get("version")
+                        )
+                );
+            }
+            return arguments.stream();
+        }
+    }
+
+    static class CreateWithIndexTemplateArgumentsProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+            final List<Arguments> arguments = new ArrayList<>();
+            arguments.add(
+                    arguments("v1", "_template",
+                            TEST_TEMPLATE_V1_FILE,
+                            (BiFunction<Map<String, Object>, String, Integer>) (map, templateName) ->
+                                    (Integer) ((Map<String, Object>) map.get(templateName)).get("version"),
+                            (BiFunction<Map<String, Object>, String, Map<String, Object>>) (map, templateName) ->
+                                    (Map<String, Object>) ((Map<String, Object>) map.get(templateName)).get("mappings")
+                    )
+            );
+
+            if (OpenSearchIntegrationHelper.getVersion().compareTo(DeclaredOpenSearchVersion.OPENDISTRO_1_9) >= 0) {
+                arguments.add(
+                        arguments("index-template", "_index_template",
+                                TEST_INDEX_TEMPLATE_V1_FILE,
+                                (BiFunction<Map<String, Object>, String, Integer>) (map, unused) ->
+                                        (Integer) ((List<Map<String, Map<String, Object>>>) map.get("index_templates")).get(0).get("index_template").get("version"),
+                                (BiFunction<Map<String, Object>, String, Map<String, Object>>) (map, templateName) ->
+                                        (Map<String, Object>) ((List<Map<String, Map<String, Map<String, Object>>>>) map.get("index_templates")).get(0).get("index_template").get("template").get("mappings")
                         )
                 );
             }
@@ -1269,6 +1349,42 @@ public class OpenSearchSinkIT {
     }
 
     @ParameterizedTest
+    @CsvSource({
+            "id, yyyy-MM-dd, %{yyyy-MM-dd}-test-${id}-index",
+            "id, yyyy-MM-dd, test-%{yyyy-MM-dd}-${id}-index",
+            "id, yyyy-MM-dd, test-${id}-%{yyyy-MM-dd}-index",
+    })
+    public void testOpenSearchDynamicIndexWithDateNotAsSuffix(
+            final String testIndex, final String testDatePattern, final String dynamicTestIndexAlias) throws IOException {
+        final String testIndexName = "idx1";
+        SimpleDateFormat formatter = new SimpleDateFormat(testDatePattern);
+        Date date = new Date();
+        String expectedDate = formatter.format(date);
+        final String expectedIndexAlias = dynamicTestIndexAlias
+                .replace("%{yyyy-MM-dd}", expectedDate)
+                .replace("${id}", testIndexName);
+        final String data = UUID.randomUUID().toString();
+        final Map<String, Object> dataMap = Map.of("data", data);
+        final Event testEvent = JacksonEvent.builder()
+                .withData(dataMap)
+                .withEventType("event")
+                .build();
+        testEvent.put(testIndex, testIndexName);
+
+        Map<String, Object> expectedMap = testEvent.toMap();
+
+        final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+        final PluginSetting pluginSetting = generatePluginSetting(null, dynamicTestIndexAlias, null);
+        final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(expectedIndexAlias);
+        assertThat(retSources.size(), equalTo(1));
+        assertThat(retSources, hasItem(expectedMap));
+        sink.shutdown();
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"yyyy-MM", "yyyy-MM-dd", "dd-MM-yyyy"})
     public void testOpenSearchIndexWithDate(final String testDatePattern) throws IOException, InterruptedException {
         SimpleDateFormat formatter = new SimpleDateFormat(testDatePattern);
@@ -1276,6 +1392,34 @@ public class OpenSearchSinkIT {
         String expectedIndexName = "test-index-" + formatter.format(date);
         final String testIndexName = "idx1";
         final String testIndexAlias = "test-index-%{" + testDatePattern + "}";
+        final String data = UUID.randomUUID().toString();
+        final Map<String, Object> dataMap = Map.of("data", data);
+        final Event testEvent = JacksonEvent.builder()
+                .withData(dataMap)
+                .withEventType("event")
+                .build();
+
+        Map<String, Object> expectedMap = testEvent.toMap();
+
+        final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
+        final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        sink.output(testRecords);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(expectedIndexName);
+        assertThat(retSources.size(), equalTo(1));
+        assertThat(retSources, hasItem(expectedMap));
+        sink.shutdown();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"test-%{yyyy-MM-dd}-index", "%{yyyy-MM-dd}-test-index"})
+    public void testOpenSearchIndexWithDateNotAsSuffix(final String testIndexAlias) throws IOException, InterruptedException {
+        final String testDatePattern = "yyyy-MM-dd";
+        SimpleDateFormat formatter = new SimpleDateFormat(testDatePattern);
+        Date date = new Date();
+        String expectedIndexName = testIndexAlias.replace("%{yyyy-MM-dd}", formatter.format(date));
+
         final String data = UUID.randomUUID().toString();
         final Map<String, Object> dataMap = Map.of("data", data);
         final Event testEvent = JacksonEvent.builder()

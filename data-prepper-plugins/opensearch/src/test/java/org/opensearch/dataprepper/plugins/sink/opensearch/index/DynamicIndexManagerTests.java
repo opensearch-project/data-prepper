@@ -238,6 +238,25 @@ public class DynamicIndexManagerTests {
         verify(innerIndexManager, times(3)).setupIndex();
     }
 
+    @Test
+    public void getIndexName_IndexWithDateTimePattern_NotAsSuffix() throws IOException {
+        final String dynamicIndexName = "test-index-%{yyyy.MM.dd}-randomtext";
+        final String indexWithDateTimePatternResolved = "test-index-2023.11.11-randomtext";
+        when(indexConfiguration.isNormalizeIndex()).thenReturn(true);
+        innerIndexManager = mock(IndexManager.class);
+
+        when(mockIndexManagerFactory.getIndexManager(
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy, indexWithDateTimePatternResolved)).thenReturn(innerIndexManager);
+        when(innerIndexManager.getIndexName(indexWithDateTimePatternResolved)).thenReturn(indexWithDateTimePatternResolved);
+
+        try (final MockedStatic<AbstractIndexManager> abstractIndexManagerMockedStatic = mockStatic(AbstractIndexManager.class)) {
+            abstractIndexManagerMockedStatic.when(() -> AbstractIndexManager.getIndexAliasWithDate(dynamicIndexName))
+                    .thenReturn(indexWithDateTimePatternResolved);
+            final String result = dynamicIndexManager.getIndexName(dynamicIndexName);
+            assertThat(result, equalTo(indexWithDateTimePatternResolved));
+        }
+    }
+
     @ParameterizedTest
     @CsvSource(value = {"INVALID_INDEX#, invalid_index", "-AAA:\\\"*+/\\\\|?#><, aaa", "_TeST_InDeX<, test_index", "--<t, t"})
     public void normalize_index_correctly_normalizes_invalid_indexes(final String dynamicIndexName, final String normalizedDynamicIndexName) throws IOException {

@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
 import org.apache.http.HttpStatus;
 import org.opensearch.client.RestHighLevelClient;
@@ -44,13 +43,13 @@ public abstract class AbstractIndexManager implements IndexManager {
             = "invalid_index_name_exception";
     static final Set<Integer> NO_ISM_HTTP_STATUS = Set.of(HttpStatus.SC_NOT_FOUND, HttpStatus.SC_BAD_REQUEST);
     private static final String TIME_PATTERN_STARTING_SYMBOLS = "%{";
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     protected RestHighLevelClient restHighLevelClient;
     protected OpenSearchClient openSearchClient;
     protected OpenSearchSinkConfiguration openSearchSinkConfiguration;
     protected ClusterSettingsParser clusterSettingsParser;
     protected IsmPolicyManagementStrategy ismPolicyManagementStrategy;
     private final TemplateStrategy templateStrategy;
+    private final String configuredIndexAlias;
     protected String indexPrefix;
     private Boolean isIndexAlias;
     private boolean isIndexAliasChecked;
@@ -60,12 +59,13 @@ public abstract class AbstractIndexManager implements IndexManager {
     //For matching a string that begins with a "%{" and ends with a "}".
     //For a string like "data-prepper-%{yyyy-MM-dd}", "%{yyyy-MM-dd}" is matched.
     private static final String TIME_PATTERN_REGULAR_EXPRESSION = "%\\{.*?\\}";
+    static final Pattern TIME_PATTERN = Pattern.compile(TIME_PATTERN_REGULAR_EXPRESSION);
 
     //For matching a string enclosed by "%{" and "}".
     //For a string like "data-prepper-%{yyyy-MM}", "yyyy-MM" is matched.
     private static final String TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION  = "%\\{(.*?)\\}";
 
-    private Optional<DateTimeFormatter> indexTimeSuffixFormatter;
+    private Optional<DateTimeFormatter> indexDateTimeFormatter;
     private static final ZoneId UTC_ZONE_ID = ZoneId.of(TimeZone.getTimeZone("UTC").getID());
 
     protected AbstractIndexManager(final RestHighLevelClient restHighLevelClient,
@@ -87,7 +87,7 @@ public abstract class AbstractIndexManager implements IndexManager {
         if (indexAlias == null) {
             indexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
         }
-
+        configuredIndexAlias = indexAlias;
         initializeIndexPrefixAndSuffix(indexAlias);
     }
 
@@ -102,7 +102,6 @@ public abstract class AbstractIndexManager implements IndexManager {
             if(timePattern.contains(TIME_PATTERN_STARTING_SYMBOLS)){ //check if it is a nested pattern such as "data-prepper-%{%{yyyy.MM.dd}}"
                 throw new IllegalArgumentException("An index doesn't allow nested date-time patterns.");
             }
-            validateTimePatternIsAtTheEnd(indexAlias, timePattern);
             validateNoSpecialCharsInTimePattern(timePattern);
             validateTimePatternGranularity(timePattern);
             return DateTimeFormatter.ofPattern(timePattern);
@@ -112,32 +111,22 @@ public abstract class AbstractIndexManager implements IndexManager {
 
     public static String getIndexAliasWithDate(final String indexAlias) {
         final DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
-        final String suffix = (dateFormatter != null) ? dateFormatter.format(getCurrentUtcTime()) : "";
-        return indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "") + suffix;
+        final String dateTimeString = (dateFormatter != null) ? dateFormatter.format(getCurrentUtcTime()) : "";
+        return TIME_PATTERN.matcher(indexAlias).replaceAll(dateTimeString);
     }
 
-    private void initalizeIsIndexAlias(final String indexAlias) {
-
-    }
-
-    private void initializeIndexPrefixAndSuffix(final String indexAlias){
+    private void initializeIndexPrefixAndSuffix(final String indexAlias) {
         final DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
         if (dateFormatter != null) {
-            indexTimeSuffixFormatter = Optional.of(dateFormatter);
+            indexDateTimeFormatter = Optional.of(dateFormatter);
         } else {
-            indexTimeSuffixFormatter = Optional.empty();
+            indexDateTimeFormatter = Optional.empty();
         }
 
-        indexPrefix = indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "");
-    }
-
-    /*
-      Data Prepper only allows time pattern as a suffix.
-     */
-    private static void validateTimePatternIsAtTheEnd(final String indexAlias, final String timePattern) {
-        if (!indexAlias.endsWith(timePattern + "}")) {
-            throw new IllegalArgumentException("Time pattern can only be a suffix of an index.");
-        }
+        // removes date-time pattern along with leading or trailing hyphen
+        indexPrefix = indexAlias
+                .replaceAll("-" + TIME_PATTERN_REGULAR_EXPRESSION, "")
+                .replaceAll(TIME_PATTERN_REGULAR_EXPRESSION + "-", "");
     }
 
     /*
@@ -170,13 +159,14 @@ public abstract class AbstractIndexManager implements IndexManager {
         }
     }
 
+    @Override
     public String getIndexName(final String dynamicIndexAlias) throws IOException {
-        if (indexTimeSuffixFormatter.isPresent()) {
-            final String formattedTimeString = indexTimeSuffixFormatter.get()
+        if (indexDateTimeFormatter.isPresent()) {
+            final String formattedTimeString = indexDateTimeFormatter.get()
                     .format(getCurrentUtcTime());
-            return indexPrefix + formattedTimeString;
+            return TIME_PATTERN.matcher(configuredIndexAlias).replaceAll(formattedTimeString);
         } else {
-            return indexPrefix;
+            return configuredIndexAlias;
         }
     }
 
@@ -246,14 +236,11 @@ public abstract class AbstractIndexManager implements IndexManager {
     }
 
     final void checkAndCreateIndexTemplate(final boolean isISMEnabled, final String ismPolicyId) throws IOException {
-        //If index prefix has a ending dash, then remove it to avoid two consecutive dashes.
-        final String indexPrefixWithoutTrailingDash = indexPrefix.replaceAll("-$", "");
-        final String indexTemplateName = indexPrefixWithoutTrailingDash  + "-index-template";
+        final String indexTemplateName = indexPrefix  + "-index-template";
 
         final Map<String, Object> indexTemplateMap = openSearchSinkConfiguration.getIndexConfiguration()
                 .getIndexTemplate();
         final IndexTemplate indexTemplate = templateStrategy.createIndexTemplate(indexTemplateMap);
-
 
         // Check existing index template version - only overwrite if version is less than or does not exist
         if (!shouldCreateTemplate(indexTemplateName, indexTemplate)) {
@@ -261,10 +248,10 @@ public abstract class AbstractIndexManager implements IndexManager {
         }
 
         if (isISMEnabled) {
-            attachPolicy(indexTemplate, ismPolicyId, indexPrefixWithoutTrailingDash);
+            attachPolicy(indexTemplate, ismPolicyId, indexPrefix);
         }
 
-        final List<String> indexPatterns = ismPolicyManagementStrategy.getIndexPatterns(indexPrefixWithoutTrailingDash);
+        final List<String> indexPatterns = ismPolicyManagementStrategy.getIndexPatterns(configuredIndexAlias);
         indexTemplate.setTemplateName(indexTemplateName);
         indexTemplate.setIndexPatterns(indexPatterns);
 

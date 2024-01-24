@@ -102,25 +102,29 @@ class ManagementDisabledIndexManagerTest {
     }
 
     @Test
-    void getIndexAlias_IndexWithTimePattern() {
+    void getIndexAlias_IndexWithTimePattern() throws IOException {
         when(indexConfiguration.getIndexAlias()).thenReturn(indexAliasWithTimePattern);
         final IndexManager objectUnderTest = indexManagerFactory.getIndexManager(
                 IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
         final Pattern expectedIndexPattern = Pattern.compile(baseIndexAlias + "-\\d{4}.\\d{2}.\\d{2}.\\d{2}");
-        try {
-            final String actualIndexPattern = objectUnderTest.getIndexName(null);
-            assertThat(actualIndexPattern, matchesPattern(expectedIndexPattern));
-        } catch (IOException e){}
+
+        final String actualIndexPattern = objectUnderTest.getIndexName(null);
+        assertThat(actualIndexPattern, matchesPattern(expectedIndexPattern));
+
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
 
     @Test
-    void getIndexAlias_IndexWithTimePattern_Exceptional_NotAsSuffix() {
-        when(indexConfiguration.getIndexAlias()).thenReturn(indexAliasWithTimePattern + "randomtext");
-        assertThrows(IllegalArgumentException.class,
-                () -> indexManagerFactory.getIndexManager(
-                        IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy));
+    void getIndexAlias_IndexWithTimePattern_Exceptional_NotAsSuffix() throws IOException {
+        when(indexConfiguration.getIndexAlias()).thenReturn(indexAliasWithTimePattern + "-randomtext");
+        final IndexManager objectUnderTest = indexManagerFactory.getIndexManager(
+                IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+        final Pattern expectedIndexPattern = Pattern.compile(baseIndexAlias + "-\\d{4}.\\d{2}.\\d{2}.\\d{2}-randomtext");
+
+        final String actualIndexPattern = objectUnderTest.getIndexName(null);
+        assertThat(actualIndexPattern, matchesPattern(expectedIndexPattern));
+
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
