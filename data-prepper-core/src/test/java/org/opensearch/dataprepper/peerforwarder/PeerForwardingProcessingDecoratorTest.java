@@ -129,9 +129,12 @@ class PeerForwardingProcessingDecoratorTest {
 
         @Test
         void PeerForwardingProcessingDecorator_execute_should_forwardRecords_with_correct_values() {
+            Event event = mock(Event.class);
+            when(record.getData()).thenReturn(event);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event)).thenReturn(true);
             List<Record<Event>> testData = Collections.singletonList(record);
 
-            when(peerForwarder.forwardRecords(testData)).thenReturn(testData);
+            when(peerForwarder.forwardRecords(anyCollection())).thenReturn(testData);
 
             when(processor.execute(testData)).thenReturn(testData);
 
@@ -140,7 +143,7 @@ class PeerForwardingProcessingDecoratorTest {
             final Collection<Record<Event>> records = processors.get(0).execute(testData);
 
             verify(requiresPeerForwarding, times(2)).getIdentificationKeys();
-            verify(peerForwarder).forwardRecords(testData);
+            verify(peerForwarder).forwardRecords(anyCollection());
             Assertions.assertNotNull(records);
             assertThat(records.size(), equalTo(testData.size()));
             assertThat(records, equalTo(testData));
@@ -148,10 +151,13 @@ class PeerForwardingProcessingDecoratorTest {
 
         @Test
         void PeerForwardingProcessingDecorator_execute_should_receiveRecords() {
+            Event event = mock(Event.class);
+            when(record.getData()).thenReturn(event);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event)).thenReturn(true);
             Collection<Record<Event>> forwardTestData = Collections.singletonList(record);
             Collection<Record<Event>> receiveTestData = Collections.singletonList(mock(Record.class));
 
-            when(peerForwarder.forwardRecords(forwardTestData)).thenReturn(forwardTestData);
+            when(peerForwarder.forwardRecords(anyCollection())).thenReturn(forwardTestData);
             when(peerForwarder.receiveRecords()).thenReturn(receiveTestData);
 
             final Collection<Record<Event>> expectedRecordsToProcessLocally = CollectionUtils.union(forwardTestData, receiveTestData);
@@ -163,7 +169,7 @@ class PeerForwardingProcessingDecoratorTest {
             final Collection<Record<Event>> records = processors.get(0).execute(forwardTestData);
 
             verify(requiresPeerForwarding, times(2)).getIdentificationKeys();
-            verify(peerForwarder).forwardRecords(forwardTestData);
+            verify(peerForwarder).forwardRecords(anyCollection());
             verify(peerForwarder).receiveRecords();
             Assertions.assertNotNull(records);
             assertThat(records.size(), equalTo(expectedRecordsToProcessLocally.size()));
@@ -172,6 +178,9 @@ class PeerForwardingProcessingDecoratorTest {
 
         @Test
         void PeerForwardingProcessingDecorator_execute_will_call_inner_processors_execute() {
+            Event event = mock(Event.class);
+            when(record.getData()).thenReturn(event);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event)).thenReturn(true);
             final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
             Collection<Record<Event>> testData = Collections.singletonList(record);
 
