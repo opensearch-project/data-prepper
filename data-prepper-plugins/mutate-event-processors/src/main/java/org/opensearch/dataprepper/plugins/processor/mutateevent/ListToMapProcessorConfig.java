@@ -45,8 +45,6 @@ public class ListToMapProcessorConfig {
     @JsonProperty("target")
     private String target = null;
 
-    @NotEmpty
-    @NotNull
     @JsonProperty("key")
     private String key;
 

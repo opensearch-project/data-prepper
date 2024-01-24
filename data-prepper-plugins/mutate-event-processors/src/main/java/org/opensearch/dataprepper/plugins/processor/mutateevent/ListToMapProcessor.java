@@ -91,7 +91,7 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
         final ObjectNode targetNode = OBJECT_MAPPER.createObjectNode();
         if (sourceNode.isArray()) {
             for (final JsonNode itemNode : sourceNode) {
-                String itemKey = itemNode.get(config.getKey()).asText();
+                String itemKey = config.getKey() == null ? config.getValueKey() : itemNode.get(config.getKey()).asText();
 
                 if (!config.getFlatten()) {
                     final ArrayNode itemValueNode;
