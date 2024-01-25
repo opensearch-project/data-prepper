@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.s3.ownership;
 
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.source.s3.S3SourceConfig;
 import org.opensearch.dataprepper.plugins.source.s3.SqsQueueUrl;
 import org.opensearch.dataprepper.plugins.source.s3.StsArnRole;
@@ -24,7 +25,7 @@ public class ConfigBucketOwnerProviderFactory {
     public BucketOwnerProvider createBucketOwnerProvider(final S3SourceConfig s3SourceConfig) {
         if(s3SourceConfig.isDisableBucketOwnershipValidation())
             return new NoOwnershipBucketOwnerProvider();
-        StaticBucketOwnerProvider staticBucketOwnerProvider = getStaticBucketOwnerProvider(s3SourceConfig);
+        final StaticBucketOwnerProvider staticBucketOwnerProvider = getStaticBucketOwnerProvider(s3SourceConfig);
 
         if(s3SourceConfig.getBucketOwners() != null && !s3SourceConfig.getBucketOwners().isEmpty()) {
             return new MappedBucketOwnerProvider(s3SourceConfig.getBucketOwners(), staticBucketOwnerProvider);
@@ -33,15 +34,18 @@ public class ConfigBucketOwnerProviderFactory {
         }
     }
 
-    private StaticBucketOwnerProvider getStaticBucketOwnerProvider(S3SourceConfig s3SourceConfig) {
+    private StaticBucketOwnerProvider getStaticBucketOwnerProvider(final S3SourceConfig s3SourceConfig) {
         final String accountId;
 
         if(s3SourceConfig.getDefaultBucketOwner() != null)
             accountId = s3SourceConfig.getDefaultBucketOwner();
         else if(s3SourceConfig.getSqsOptions() != null)
             accountId = extractQueueAccountId(s3SourceConfig);
-        else
+        else if(s3SourceConfig.getAwsAuthenticationOptions() != null && s3SourceConfig.getAwsAuthenticationOptions().getAwsStsRoleArn() != null)
             accountId = extractStsRoleArnAccountId(s3SourceConfig);
+        else
+            throw new InvalidPluginConfigurationException(
+                    "The S3 source is unable to determine a bucket owner. Configure the default_bucket_owner for the account Id that owns the bucket. You may also want to configure bucket_owners if you read from S3 buckets in different accounts.");
 
         return new StaticBucketOwnerProvider(accountId);
     }

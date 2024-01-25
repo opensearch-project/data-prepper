@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.source.s3.S3SourceConfig;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.SqsOptions;
@@ -20,10 +21,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -86,6 +89,14 @@ class ConfigBucketOwnerProviderFactoryTest {
         assertThat(optionalOwner, notNullValue());
         assertThat(optionalOwner.isPresent(), equalTo(true));
         assertThat(optionalOwner.get(), equalTo(accountId));
+    }
+
+    @Test
+    void createBucketOwnerProvider_throws_exception_when_ownership_cannot_be_determined() {
+        final ConfigBucketOwnerProviderFactory objectUnderTest = createObjectUnderTest();
+        final InvalidPluginConfigurationException actualException = assertThrows(InvalidPluginConfigurationException.class, () -> objectUnderTest.createBucketOwnerProvider(s3SourceConfig));
+
+        assertThat(actualException.getMessage(), containsString("default_bucket_owner"));
     }
 
     @Nested
