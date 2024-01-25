@@ -4,6 +4,7 @@
  */
 
 package org.opensearch.dataprepper.model.peerforwarder;
+import org.opensearch.dataprepper.model.event.Event;
 
 import java.util.Collection;
 
@@ -18,4 +19,15 @@ public interface RequiresPeerForwarding {
      * @return A set of keys
      */
     Collection<String> getIdentificationKeys();
+
+    /**
+     * Determines if an event should be forwarded to the remote peer
+     *
+     * @param event input event
+     *
+     * @return true if the event should be forwarded to the peer
+     */
+    default boolean isApplicableEventForPeerForwarding(Event event) {
+        return true;
+    }
 }

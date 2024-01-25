@@ -228,6 +228,9 @@ public class AggregateProcessorTest {
             recordsIn.add(new Record<Event>(secondEvent));
             recordsIn.add(new Record<Event>(event));
             Collection<Record<Event>> c = recordsIn;
+            assertThat(objectUnderTest.isApplicableEventForPeerForwarding(event), equalTo(true));
+            assertThat(objectUnderTest.isApplicableEventForPeerForwarding(firstEvent), equalTo(true));
+            assertThat(objectUnderTest.isApplicableEventForPeerForwarding(secondEvent), equalTo(false));
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(c);
 
             assertThat(recordsOut.size(), equalTo(2));
