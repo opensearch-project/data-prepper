@@ -419,11 +419,16 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         if (acknowledgementSet != null) {
             acknowledgementSet.add(record.getData());
         }
+        boolean paused = false;
         while (true) {
             try {
                 bufferAccumulator.add(record);
                 break;
             } catch (Exception e) {
+                if (!paused) {
+                    paused = true;
+                    consumer.pause(consumer.assignment());
+                }
                 if (e instanceof SizeOverflowException) {
                     topicMetrics.getNumberOfBufferSizeOverflows().increment();
                 } else {
@@ -431,8 +436,12 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 }
                 try {
                     Thread.sleep(100);
+                    consumeRecords();
                 } catch (Exception ex) {} // ignore the exception because it only means the thread slept for shorter time
             }
+        }
+        if (paused) {
+            consumer.resume(consumer.assignment());
         }
     }
 
