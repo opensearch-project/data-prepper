@@ -75,6 +75,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final String topicName;
     private final TopicConsumerConfig topicConfig;
     private MessageFormat schema;
+    private boolean paused;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final Buffer<Record<Event>> buffer;
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -110,6 +111,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.shutdownInProgress = shutdownInProgress;
         this.consumer = consumer;
         this.buffer = buffer;
+        this.paused = false;
         this.byteDecoder = byteDecoder;
         this.topicMetrics = topicMetrics;
         this.pauseConsumePredicate = pauseConsumePredicate;
@@ -419,7 +421,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         if (acknowledgementSet != null) {
             acknowledgementSet.add(record.getData());
         }
-        boolean paused = false;
         while (true) {
             try {
                 bufferAccumulator.add(record);
@@ -442,6 +443,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         }
         if (paused) {
             consumer.resume(consumer.assignment());
+            paused = false;
         }
     }
 
@@ -512,6 +514,9 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 LOG.info("Assigned partition {}", topicPartition);
                 ownedPartitionsEpoch.put(topicPartition, epoch);
             }
+            if (paused) {
+                consumer.pause(consumer.assignment());
+            }
         }
         dumpTopicPartitionOffsets(partitions);
     }
@@ -528,6 +533,9 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 LOG.info("Revoked partition {}", topicPartition);
                 ownedPartitionsEpoch.remove(topicPartition);
                 partitionCommitTrackerMap.remove(topicPartition.partition());
+            }
+            if (paused) {
+                consumer.pause(consumer.assignment());
             }
         }
     }
