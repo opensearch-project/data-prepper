@@ -46,6 +46,9 @@ public class MapToListProcessorConfig {
     @JsonProperty("convert_field_to_list")
     private boolean convertFieldToList = false;
 
+    @JsonProperty("tags_on_failure")
+    private List<String> tagsOnFailure;
+
     public String getSource() {
         return source;
     }
@@ -76,5 +79,9 @@ public class MapToListProcessorConfig {
 
     public boolean getConvertFieldToList() {
         return convertFieldToList;
+    }
+
+    public List<String> getTagsOnFailure() {
+        return tagsOnFailure;
     }
 }

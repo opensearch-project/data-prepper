@@ -18,13 +18,16 @@ import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -49,6 +52,7 @@ class MapToListProcessorTest {
         lenient().when(mockConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
         lenient().when(mockConfig.getRemoveProcessedFields()).thenReturn(false);
         lenient().when(mockConfig.getConvertFieldToList()).thenReturn(false);
+        lenient().when(mockConfig.getTagsOnFailure()).thenReturn(new ArrayList<>());
     }
 
     @Test
@@ -193,6 +197,25 @@ class MapToListProcessorTest {
         final Event resultEvent = resultRecord.get(0).getData();
         assertThat(resultEvent.containsKey("my-list"), is(false));
         assertSourceMapUnchanged(resultEvent);
+    }
+
+    @Test
+    void testFailureTagsAreAddedWhenException() {
+        // non-existing source key
+        when(mockConfig.getSource()).thenReturn("my-other-map");
+        final List<String> testTags = List.of("tag1", "tag2");
+        when(mockConfig.getTagsOnFailure()).thenReturn(testTags);
+
+        final MapToListProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        assertThat(resultEvent.containsKey("my-list"), is(false));
+        assertSourceMapUnchanged(resultEvent);
+        assertThat(resultEvent.getMetadata().getTags(), is(new HashSet<>(testTags)));
     }
 
     private MapToListProcessor createObjectUnderTest() {
