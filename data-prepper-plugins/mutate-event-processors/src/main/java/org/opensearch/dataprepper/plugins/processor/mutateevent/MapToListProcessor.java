@@ -51,6 +51,7 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
             try {
                 final Map<String, Object> sourceMap = recordEvent.get(config.getSource(), Map.class);
                 final List<Map<String, Object>> targetList = new ArrayList<>();
+                final List<List<Object>> targetNestedList = new ArrayList<>();
 
                 Map<String, Object> modifiedSourceMap = new HashMap<>();
                 for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
@@ -60,17 +61,26 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
                         }
                         continue;
                     }
-                    targetList.add(Map.of(
-                            config.getKeyName(), entry.getKey(),
-                            config.getValueName(), entry.getValue()
-                    ));
+
+                    if (config.getConvertFieldToList()) {
+                        targetNestedList.add(List.of(entry.getKey(), entry.getValue()));
+                    } else {
+                        targetList.add(Map.of(
+                                config.getKeyName(), entry.getKey(),
+                                config.getValueName(), entry.getValue()
+                        ));
+                    }
                 }
 
                 if (config.getRemoveProcessedFields()) {
                     recordEvent.put(config.getSource(), modifiedSourceMap);
                 }
 
-                recordEvent.put(config.getTarget(), targetList);
+                if (config.getConvertFieldToList()) {
+                    recordEvent.put(config.getTarget(), targetNestedList);
+                } else {
+                    recordEvent.put(config.getTarget(), targetList);
+                }
             } catch (Exception e) {
                 LOG.error("Fail to perform Map to List operation", e);
                 //TODO: add tagging on failure

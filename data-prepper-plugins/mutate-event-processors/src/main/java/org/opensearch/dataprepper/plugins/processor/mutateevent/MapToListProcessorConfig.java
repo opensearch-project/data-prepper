@@ -43,6 +43,9 @@ public class MapToListProcessorConfig {
     @JsonProperty("remove_processed_fields")
     private boolean removeProcessedFields = DEFAULT_REMOVE_PROCESSED_FIELDS;
 
+    @JsonProperty("convert_field_to_list")
+    private boolean convertFieldToList = false;
+
     public String getSource() {
         return source;
     }
@@ -69,5 +72,9 @@ public class MapToListProcessorConfig {
 
     public boolean getRemoveProcessedFields() {
         return removeProcessedFields;
+    }
+
+    public boolean getConvertFieldToList() {
+        return convertFieldToList;
     }
 }

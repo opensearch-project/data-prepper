@@ -48,6 +48,7 @@ class MapToListProcessorTest {
         lenient().when(mockConfig.getMapToListWhen()).thenReturn(null);
         lenient().when(mockConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
         lenient().when(mockConfig.getRemoveProcessedFields()).thenReturn(false);
+        lenient().when(mockConfig.getConvertFieldToList()).thenReturn(false);
     }
 
     @Test
@@ -153,6 +154,28 @@ class MapToListProcessorTest {
         assertThat(resultEvent.containsKey("my-map/key2"), is(false));
         assertThat(resultEvent.containsKey("my-map/key3"), is(true));
         assertThat(resultEvent.get("my-map/key3", String.class), is("value3"));
+    }
+
+    @Test
+    public void testConvertFieldToListSuccess() {
+        when(mockConfig.getConvertFieldToList()).thenReturn(true);
+
+        final MapToListProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        List<List<Object>> resultList = resultEvent.get("my-list", List.class);
+
+        assertThat(resultList.size(), is(3));
+        assertThat(resultList, containsInAnyOrder(
+                List.of("key1", "value1"),
+                List.of("key2", "value2"),
+                List.of("key3", "value3")
+        ));
+        assertSourceMapUnchanged(resultEvent);
     }
 
     @Test
