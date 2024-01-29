@@ -52,6 +52,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessor.EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT;
 import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
@@ -155,7 +156,7 @@ public class GrokProcessorTests {
     }
 
     @Test
-    public void testMatchMerge() throws JsonProcessingException {
+    public void testMatchMerge() throws JsonProcessingException, ExecutionException, InterruptedException, TimeoutException {
         grokProcessor = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");
@@ -182,10 +183,12 @@ public class GrokProcessorTests {
         verify(grokProcessingMatchCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
         verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
+        verify(task).get(GrokProcessorConfig.DEFAULT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+        verifyNoMoreInteractions(task);
     }
 
     @Test
-    public void testTarget() throws JsonProcessingException {
+    public void testTarget() throws JsonProcessingException, ExecutionException, InterruptedException, TimeoutException {
         pluginSetting.getSettings().put(GrokProcessorConfig.TARGET_KEY, "test_target");
         grokProcessor = createObjectUnderTest();
 
@@ -216,6 +219,8 @@ public class GrokProcessorTests {
         verify(grokProcessingMatchCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
         verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
+        verify(task).get(GrokProcessorConfig.DEFAULT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+        verifyNoMoreInteractions(task);
     }
 
     @Test
@@ -251,7 +256,7 @@ public class GrokProcessorTests {
     }
 
     @Test
-    public void testMatchMergeCollisionStrings() throws JsonProcessingException {
+    public void testMatchMergeCollisionStrings() throws JsonProcessingException, ExecutionException, InterruptedException, TimeoutException {
         grokProcessor = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");
@@ -398,6 +403,7 @@ public class GrokProcessorTests {
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
         assertRecordsAreEqual(grokkedRecords.get(0), record);
+        verify(task).cancel(true);
         verify(grokProcessingTimeoutsCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
     }
