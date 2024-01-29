@@ -319,7 +319,12 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     }
 
     private void runWithTimeout(final Runnable runnable) throws TimeoutException, ExecutionException, InterruptedException {
-        Future<?> task = executorService.submit(runnable);
-        task.get(grokProcessorConfig.getTimeoutMillis(), TimeUnit.MILLISECONDS);
+        final Future<?> task = executorService.submit(runnable);
+        try {
+            task.get(grokProcessorConfig.getTimeoutMillis(), TimeUnit.MILLISECONDS);
+        } catch (final TimeoutException exception) {
+            task.cancel(true);
+            throw exception;
+        }
     }
 }
