@@ -92,9 +92,6 @@ subprojects {
         implementation platform('org.eclipse.jetty:jetty-bom:9.4.53.v20231009')
         implementation platform('io.micrometer:micrometer-bom:1.10.5')
         implementation platform('software.amazon.awssdk:bom:2.17.17')
-        implementation 'software.amazon.awssdk:sts:2.21.23'
-        implementation 'software.amazon.awssdk:s3:2.21.23'
-        implementation 'software.amazon.awssdk:aws-sdk-java:2.21.23'
         implementation libs.guava.core
         implementation libs.slf4j.api
         testImplementation testLibs.bundles.junit
