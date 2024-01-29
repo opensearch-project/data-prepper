@@ -16,9 +16,9 @@ import com.maxmind.geoip2.record.Continent;
 import com.maxmind.geoip2.record.Country;
 import com.maxmind.geoip2.record.Subdivision;
 import com.maxmind.geoip2.record.Location;
-import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorService;
-import org.opensearch.dataprepper.plugins.processor.databasedownload.DBSource;
-import org.opensearch.dataprepper.plugins.processor.databasedownload.DatabaseReaderCreate;
+import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSource;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DatabaseReaderCreate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,9 +48,9 @@ public class GetGeoLite2Data implements GetGeoData {
     public static final String TIMEZONE = "timezone";
     public static final String LOCATION = "location";
     public static final String ASN = "asn";
-    private DatabaseReader.Builder readerCity;
-    private DatabaseReader.Builder readerCountry;
-    private DatabaseReader.Builder readerAsn;
+    private DatabaseReader readerCity;
+    private DatabaseReader readerCountry;
+    private DatabaseReader readerAsn;
     private Country country;
     private Continent continent;
     private City city;
@@ -72,7 +72,7 @@ public class GetGeoLite2Data implements GetGeoData {
      * @param dbPath dbPath
      * @param cacheSize cacheSize
      */
-    public GetGeoLite2Data(String dbPath, int cacheSize) {
+    public GetGeoLite2Data(final String dbPath, final int cacheSize) {
         this.dbPath = dbPath;
         this.cacheSize = cacheSize;
         initDatabaseReader();
@@ -82,9 +82,13 @@ public class GetGeoLite2Data implements GetGeoData {
      * Initialise all the DatabaseReader
      */
     private void initDatabaseReader() {
-        readerCity = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2CityDB), cacheSize);
-        readerCountry = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2CountryDB), cacheSize);
-        readerAsn = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2AsnDB), cacheSize);
+        try {
+            readerCity = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2CityDB), cacheSize);
+            readerCountry = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2CountryDB), cacheSize);
+            readerAsn = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2AsnDB), cacheSize);
+        } catch (final IOException ex) {
+            LOG.error("Exception while creating GeoLite2 DatabaseReader: {0}", ex);
+        }
     }
 
     /**
@@ -92,12 +96,12 @@ public class GetGeoLite2Data implements GetGeoData {
      */
     @Override
     public void switchDatabaseReader() {
-        LOG.info("Switch DatabaseReader");
+        LOG.info("Switching GeoLite2 DatabaseReaders");
         closeReaderCity();
         closeReaderCountry();
         closeReaderAsn();
         System.gc();
-        File file = new File(dbPath);
+        final File file = new File(dbPath);
         DBSource.deleteDirectory(file);
         dbPath = tempDestDir;
         initDatabaseReader();
@@ -110,7 +114,7 @@ public class GetGeoLite2Data implements GetGeoData {
      * @return enriched data Map
      */
     @Override
-    public Map<String, Object> getGeoData(InetAddress inetAddress, List<String> attributes, String tempDestDir) {
+    public Map<String, Object> getGeoData(final InetAddress inetAddress, final List<String> attributes, final String tempDestDir) {
         Map<String, Object> geoData = new HashMap<>();
         if (GeoIPProcessorService.downloadReady) {
             this.tempDestDir = tempDestDir;
@@ -118,16 +122,16 @@ public class GetGeoLite2Data implements GetGeoData {
             switchDatabaseReader();
         }
         try {
-            responseCountry = readerCountry.build().country(inetAddress);
+            responseCountry = readerCountry.country(inetAddress);
             country = responseCountry.getCountry();
             continent = responseCountry.getContinent();
 
-            responseCity = readerCity.build().city(inetAddress);
+            responseCity = readerCity.city(inetAddress);
             city = responseCity.getCity();
             location = responseCity.getLocation();
             subdivision = responseCity.getMostSpecificSubdivision();
 
-            responseAsn = readerAsn.build().asn(inetAddress);
+            responseAsn = readerAsn.asn(inetAddress);
             asn = responseAsn.getAutonomousSystemNumber();
             organizationName = responseAsn.getAutonomousSystemOrganization();
             network = responseAsn.getNetwork();
@@ -220,10 +224,10 @@ public class GetGeoLite2Data implements GetGeoData {
     /**
      * Close the City DatabaseReader
      */
-    private void closeReaderCity(){
+    private void closeReaderCity() {
         try {
             if (readerCity != null)
-                readerCity.build().close();
+                readerCity.close();
             readerCity = null;
         } catch (IOException ex) {
             LOG.info("Close City DatabaseReader Exception : {0}",  ex);
@@ -233,10 +237,10 @@ public class GetGeoLite2Data implements GetGeoData {
     /**
      * Close the Country DatabaseReader
      */
-    private void closeReaderCountry(){
+    private void closeReaderCountry() {
         try {
             if (readerCountry != null)
-                readerCountry.build().close();
+                readerCountry.close();
             readerCountry = null;
         } catch (IOException ex) {
             LOG.info("Close Country DatabaseReader Exception : {0}",  ex);
@@ -249,7 +253,7 @@ public class GetGeoLite2Data implements GetGeoData {
     private void closeReaderAsn() {
         try {
             if (readerAsn != null)
-                readerAsn.build().close();
+                readerAsn.close();
             readerAsn = null;
         } catch (IOException ex) {
           LOG.info("Close Asn DatabaseReader Exception : {0}",  ex);

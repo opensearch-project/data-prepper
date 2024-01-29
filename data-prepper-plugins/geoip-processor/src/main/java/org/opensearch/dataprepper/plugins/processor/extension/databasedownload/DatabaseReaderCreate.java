@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.databasedownload;
+package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
 import com.maxmind.db.CHMCache;
 import com.maxmind.db.Reader;
 import com.maxmind.geoip2.DatabaseReader;
 
+import java.io.IOException;
 import java.nio.file.Path;
 
 /**
@@ -22,10 +23,10 @@ public class DatabaseReaderCreate {
      * @param cacheSize cacheSize
      * @return DatabaseReader
      */
-    public static DatabaseReader.Builder createLoader(final Path databasePath, final int cacheSize) {
-
+    public static DatabaseReader createLoader(final Path databasePath, final int cacheSize) throws IOException {
         return new DatabaseReader.Builder(databasePath.toFile())
                 .fileMode(Reader.FileMode.MEMORY_MAPPED)
-                .withCache(new CHMCache(cacheSize));
+                .withCache(new CHMCache(cacheSize))
+                .build();
     }
 }

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.databasedownload;
+package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,7 +36,7 @@ class LocalDBDownloadServiceTest {
     }
 
     private LocalDBDownloadService createObjectUnderTest() {
-        return new LocalDBDownloadService(tempFolderPath, PREFIX_DIR);
+        return new LocalDBDownloadService(PREFIX_DIR);
     }
 
     private static void createFolder(String folderName) {

@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.utils;
 
-import org.opensearch.dataprepper.plugins.processor.databasedownload.LicenseTypeOptions;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.LicenseTypeOptions;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -25,16 +25,17 @@ public class LicenseTypeCheck {
     private static final String geoIP2EnterpriseDB = "GeoIP2-Enterprise.mmdb";
 
 
-    private LicenseTypeCheck() {
+    public LicenseTypeCheck() {
 
     }
 
     /**
      * Get the license type based on the maxmind mmdb file name
+     *
      * @param databasePath databasePath
      * @return license type options
      */
-    public static LicenseTypeOptions isGeoLite2OrEnterpriseLicense(String databasePath) {
+    public LicenseTypeOptions isGeoLite2OrEnterpriseLicense(final String databasePath) {
         LicenseTypeOptions licenseTypeOptions = LicenseTypeOptions.ENTERPRISE;
         File directory = new File(databasePath);
         // list all files present in the directory

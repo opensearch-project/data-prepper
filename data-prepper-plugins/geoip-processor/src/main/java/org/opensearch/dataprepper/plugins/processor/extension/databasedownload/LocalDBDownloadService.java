@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.databasedownload;
+package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
 import org.apache.commons.io.FileUtils;
 
@@ -15,16 +15,13 @@ import java.util.List;
  */
 public class LocalDBDownloadService implements DBSource {
 
-    private String tempPath;
     private final String prefixDir;
 
     /**
      * LocalDBDownloadService constructor for initialisation of attributes
-     * @param tempPath tempPath
      * @param prefixDir prefixDir
      */
-    public LocalDBDownloadService(String tempPath, String prefixDir) {
-        this.tempPath = tempPath;
+    public LocalDBDownloadService(final String prefixDir) {
         this.prefixDir = prefixDir;
     }
 
@@ -34,7 +31,7 @@ public class LocalDBDownloadService implements DBSource {
      */
     @Override
     public void initiateDownload(List<String> config) throws Exception {
-        String destPath = tempPath + File.separator + prefixDir;
+        String destPath = tempFolderPath + File.separator + prefixDir;
         DBSource.createFolderIfNotExist(destPath);
         File srcDatabaseConfigPath = new File(config.get(0));
         File destDatabaseConfigPath = new File(destPath);

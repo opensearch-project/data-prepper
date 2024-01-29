@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.databasedownload;
+package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +36,7 @@ public interface DBSource {
      * @param outputFilePath Output File Path
      * @return File
      */
-    public static File createFolderIfNotExist(String outputFilePath) {
+    static File createFolderIfNotExist(String outputFilePath) {
         final File destFile = new File(outputFilePath);
         try {
             if (!destFile.exists()) {
@@ -53,7 +53,7 @@ public interface DBSource {
      * Delete Directory
      * @param file file
      */
-    public static void deleteDirectory(File file) {
+    static void deleteDirectory(File file) {
 
         if (file.exists()) {
             for (final File subFile : file.listFiles()) {
@@ -71,7 +71,7 @@ public interface DBSource {
      * @throws NoSuchAlgorithmException NoSuchAlgorithmException
      * @throws KeyManagementException KeyManagementException
      */
-    public default void initiateSSL() throws NoSuchAlgorithmException, KeyManagementException {
+    default void initiateSSL() throws NoSuchAlgorithmException, KeyManagementException {
         final TrustManager[] trustAllCerts = new TrustManager[]{
                 new X509TrustManager() {
                     public X509Certificate[] getAcceptedIssuers() {

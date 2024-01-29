@@ -3,20 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor;
+package org.opensearch.dataprepper.plugins.processor.extension;
 
-import org.opensearch.dataprepper.plugins.processor.databasedownload.DBSourceOptions;
-import org.opensearch.dataprepper.plugins.processor.databasedownload.LicenseTypeOptions;
-import org.opensearch.dataprepper.plugins.processor.databasedownload.S3DBService;
-import org.opensearch.dataprepper.plugins.processor.databasedownload.DBSource;
-import org.opensearch.dataprepper.plugins.processor.databasedownload.HttpDBDownloadService;
-import org.opensearch.dataprepper.plugins.processor.databasedownload.LocalDBDownloadService;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSourceOptions;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.GeoDataFactory;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.S3DBService;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSource;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.HttpDBDownloadService;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.LocalDBDownloadService;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.DownloadFailedException;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoData;
-import org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoIP2Data;
-import org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoLite2Data;
-import org.opensearch.dataprepper.plugins.processor.extension.GeoIpServiceConfig;
-import org.opensearch.dataprepper.plugins.processor.extension.MaxMindConfig;
 import org.opensearch.dataprepper.plugins.processor.utils.DbSourceIdentification;
 import org.opensearch.dataprepper.plugins.processor.utils.LicenseTypeCheck;
 import org.slf4j.Logger;
@@ -41,19 +37,19 @@ public class GeoIPProcessorService {
     private static final Logger LOG = LoggerFactory.getLogger(GeoIPProcessorService.class);
     public static final String DATABASE_1 = "first_database_path";
     public static final String DATABASE_2 = "second_database_path";
-    private static final String TEMP_PATH_FOLDER = "GeoIP";
-    private GeoIPProcessorConfig geoIPProcessorConfig;
-    private LicenseTypeOptions licenseType;
+    private static final String TEMP_PATH_FOLDER = "geoip";
+    private final GeoDataFactory geoDataFactory;
     private GetGeoData geoData;
     private List<String> databasePaths;
     private final String tempPath;
     private final ScheduledExecutorService scheduledExecutorService;
     private final DBSourceOptions dbSourceOptions;
     private final MaxMindConfig maxMindConfig;
+    private final LicenseTypeCheck licenseTypeCheck;
     public static volatile boolean downloadReady;
     private boolean toggle;
     private String flipDatabase;
-
+    private boolean isDuringInitialization;
 
     /**
      * GeoIPProcessorService constructor for initialization of required attributes
@@ -64,9 +60,12 @@ public class GeoIPProcessorService {
         this.toggle = false;
         this.maxMindConfig = geoIpServiceConfig.getMaxMindConfig();
         this.databasePaths = maxMindConfig.getDatabasePaths();
+        this.isDuringInitialization = true;
         flipDatabase = DATABASE_1;
 
-        this.tempPath = System.getProperty("java.io.tmpdir")+ File.separator + TEMP_PATH_FOLDER;
+        licenseTypeCheck = new LicenseTypeCheck();
+        geoDataFactory = new GeoDataFactory(maxMindConfig, licenseTypeCheck);
+        this.tempPath = System.getProperty("java.io.tmpdir") + File.separator + TEMP_PATH_FOLDER;
 
         dbSourceOptions = DbSourceIdentification.getDatabasePathType(databasePaths);
         final Duration checkInterval = Objects.requireNonNull(maxMindConfig.getDatabaseRefreshInterval());
@@ -79,17 +78,12 @@ public class GeoIPProcessorService {
                 while (!downloadReady) {
                     wait();
                 }
-            } catch (InterruptedException ex) {
-                LOG.info("InterruptedException {0} ",  ex);
+            } catch (final InterruptedException ex) {
+                LOG.info("Thread interrupted while waiting for download to complete: {0}",  ex);
                 Thread.currentThread().interrupt();
             }
-            String finalPath = tempPath + File.separator;
-            licenseType = LicenseTypeCheck.isGeoLite2OrEnterpriseLicense(finalPath.concat(flipDatabase));
-            if (licenseType.equals(LicenseTypeOptions.FREE)) {
-                geoData = new GetGeoLite2Data(finalPath.concat(flipDatabase), maxMindConfig.getCacheSize());
-            }
-            else if (licenseType.equals(LicenseTypeOptions.ENTERPRISE)) {
-                geoData = new GetGeoIP2Data(finalPath.concat(flipDatabase), maxMindConfig.getCacheSize());
+            if (downloadReady) {
+                geoData = geoDataFactory.create(flipDatabase);
             }
         }
         downloadReady = false;
@@ -120,14 +114,19 @@ public class GeoIPProcessorService {
                     downloadReady = true;
                     break;
                 case PATH:
-                    dbSource = new LocalDBDownloadService(tempPath, flipDatabase);
+                    dbSource = new LocalDBDownloadService(flipDatabase);
                     dbSource.initiateDownload(databasePaths);
                     downloadReady = true;
                     break;
             }
-        } catch (Exception ex) {
-           throw new DownloadFailedException("Download failed: " + ex);
+        } catch (final Exception ex) {
+            if (isDuringInitialization) {
+                throw new DownloadFailedException("Download failed due to: " + ex);
+            } else {
+                LOG.error("Download failed due to: {0}. Using previously loaded database files.", ex);
+            }
         }
+        isDuringInitialization = false;
         notifyAll();
     }
 
@@ -137,7 +136,7 @@ public class GeoIPProcessorService {
      * @param attributes attributes
      * @return Enriched Map
      */
-    public Map<String, Object> getGeoData(InetAddress inetAddress, List<String> attributes) {
+    public Map<String, Object> getGeoData(final InetAddress inetAddress, final List<String> attributes) {
         return geoData.getGeoData(inetAddress, attributes, tempPath +  File.separator + flipDatabase);
     }
 }

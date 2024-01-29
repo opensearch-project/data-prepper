@@ -27,6 +27,9 @@ public class GeoIPProcessorConfig {
     @JsonProperty("tags_on_failure")
     private List<String> tagsOnFailure;
 
+    @JsonProperty("geoip_when")
+    private String whenCondition;
+
 
     /**
      * Get List of entries
@@ -44,4 +47,11 @@ public class GeoIPProcessorConfig {
         return tagsOnFailure;
     }
 
+    /**
+     * Get when condition
+     * @return String When condition
+     */
+    public String getWhenCondition() {
+        return whenCondition;
+    }
 }

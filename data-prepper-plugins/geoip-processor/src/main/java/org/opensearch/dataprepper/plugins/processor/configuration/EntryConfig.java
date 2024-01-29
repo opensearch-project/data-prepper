@@ -11,12 +11,13 @@ import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
 
 public class EntryConfig {
+    static final String DEFAULT_TARGET = "geolocation";
     @JsonProperty("source")
     @NotEmpty
     private String source;
 
     @JsonProperty("target")
-    private String target;
+    private String target = DEFAULT_TARGET;
 
     @JsonProperty("fields")
     private List<String> fields;

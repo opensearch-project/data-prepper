@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.databasedownload;
+package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.DownloadFailedException;
 import org.opensearch.dataprepper.plugins.processor.extension.AwsAuthenticationOptionsConfig;

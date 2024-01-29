@@ -14,9 +14,9 @@ import com.maxmind.geoip2.record.Country;
 import com.maxmind.geoip2.record.Subdivision;
 import com.maxmind.geoip2.record.Location;
 import com.maxmind.geoip2.record.Postal;
-import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorService;
-import org.opensearch.dataprepper.plugins.processor.databasedownload.DatabaseReaderCreate;
-import org.opensearch.dataprepper.plugins.processor.databasedownload.DBSource;
+import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DatabaseReaderCreate;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +44,7 @@ public class GetGeoIP2Data implements GetGeoData {
     public static final String TIMEZONE = "timezone";
     public static final String LOCATION = "location";
     public static final String POSTAL = "postal";
-    private DatabaseReader.Builder readerEnterprise;
+    private DatabaseReader readerEnterprise;
     private Country country;
     private Continent continent;
     private City city;
@@ -70,7 +70,11 @@ public class GetGeoIP2Data implements GetGeoData {
      * Initialise all the DatabaseReader
      */
     public void initDatabaseReader() {
-        readerEnterprise = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + tempDestDir + File.separator + GeoIP2EnterpriseDB), cacheSize);
+        try {
+            readerEnterprise = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + tempDestDir + File.separator + GeoIP2EnterpriseDB), cacheSize);
+        } catch (final IOException ex) {
+            LOG.error("Exception while creating GeoIP2 DatabaseReader: {0}", ex);
+        }
     }
 
     /**
@@ -78,7 +82,7 @@ public class GetGeoIP2Data implements GetGeoData {
      */
     @Override
     public void switchDatabaseReader() {
-        LOG.info("Switch DatabaseReader");
+        LOG.info("Switching GeoIP2 DatabaseReader");
         closeReader();
         System.gc();
         File file = new File(dbPath);
@@ -100,7 +104,7 @@ public class GetGeoIP2Data implements GetGeoData {
             switchDatabaseReader();
         }
         try {
-            EnterpriseResponse enterpriseResponse = readerEnterprise.build().enterprise(inetAddress);
+            EnterpriseResponse enterpriseResponse = readerEnterprise.enterprise(inetAddress);
             country = enterpriseResponse.getCountry();
             subdivision = enterpriseResponse.getMostSpecificSubdivision();
             city = enterpriseResponse.getCity();
@@ -179,7 +183,7 @@ public class GetGeoIP2Data implements GetGeoData {
     public void closeReader() {
         try {
             if (readerEnterprise != null)
-                readerEnterprise.build().close();
+                readerEnterprise.close();
         } catch (IOException ex) {
             LOG.info("Close Enterprise DatabaseReader Exception : {0}",  ex);
         }

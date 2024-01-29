@@ -12,8 +12,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorConfig;
-import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorService;
-import org.opensearch.dataprepper.plugins.processor.databasedownload.DBSource;
+import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSource;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIpServiceConfig;
 import org.opensearch.dataprepper.plugins.processor.extension.MaxMindConfig;
 
