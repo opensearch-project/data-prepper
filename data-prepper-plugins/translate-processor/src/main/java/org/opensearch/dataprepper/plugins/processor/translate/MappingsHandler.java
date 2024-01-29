@@ -14,20 +14,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectInputStream;
-
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicSessionCredentials;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
-import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
-import com.amazonaws.services.securitytoken.model.AssumeRoleResult;
-import com.amazonaws.services.securitytoken.model.Credentials;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.sts.model.Credentials;
+import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.slf4j.Logger;
@@ -39,54 +38,65 @@ public class MappingsHandler {
         if( !isAwsConfigValid(awsConfig) || key == null ) {
             return null;
         }
-        String clientRegion = awsConfig.getRegion();
+        String regionString = awsConfig.getRegion();
+        Region region = Region.of(regionString);
         String roleARN = awsConfig.getStsRoleArn();
         String bucketName = awsConfig.getBucket();
 
         List<MappingsParameterConfig> s3FileMappings;
         String roleSessionName = "translate-session";
         try {
-            AWSSecurityTokenService stsClient = AWSSecurityTokenServiceClientBuilder
-                    .standard()
-                    .withCredentials(new ProfileCredentialsProvider())
-                    .withRegion(clientRegion)
+            StsClient stsClient = StsClient.builder()
+                    .credentialsProvider(DefaultCredentialsProvider.create())
+                    .region(region)
                     .build();
-            AssumeRoleRequest roleRequest = new AssumeRoleRequest()
-                    .withRoleArn(roleARN)
-                    .withRoleSessionName(roleSessionName);
-            AssumeRoleResult roleResponse = stsClient.assumeRole(roleRequest);
-            Credentials sessionCredentials = roleResponse.getCredentials();
-            BasicSessionCredentials awsCredentials = new BasicSessionCredentials(
-                    sessionCredentials.getAccessKeyId(),
-                    sessionCredentials.getSecretAccessKey(),
-                    sessionCredentials.getSessionToken());
-            AmazonS3 s3Client = AmazonS3ClientBuilder
-                    .standard()
-                    .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
-                    .withRegion(clientRegion)
+
+            AssumeRoleResponse response = stsClient.assumeRole(AssumeRoleRequest.builder()
+                    .roleArn(roleARN)
+                    .roleSessionName(roleSessionName)
+                    .build());
+            Credentials temporaryCredentials = response.credentials();
+            AwsSessionCredentials sessionCredentials = AwsSessionCredentials.create(
+                    temporaryCredentials.accessKeyId(),
+                    temporaryCredentials.secretAccessKey(),
+                    temporaryCredentials.sessionToken());
+            S3Client s3Client = S3Client.builder()
+                    .credentialsProvider(StaticCredentialsProvider.create(sessionCredentials))
+                    .region(region)
                     .build();
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+
             try {
-                // Retrieving the S3 object using the bucket name and key.
-                S3Object s3Object = s3Client.getObject(bucketName, key);
-                S3ObjectInputStream inputStream = s3Object.getObjectContent();
+                // Retrieve the S3 object
+                ResponseInputStream<GetObjectResponse> responseInputStream = s3Client.getObject(getObjectRequest);
 
+                // Read the content of the S3 object
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                byte[] read_buf = new byte[1024];
-                int read_len = 0;
-                while ((read_len = inputStream.read(read_buf)) > 0) {
-                    byteArrayOutputStream.write(read_buf, 0, read_len);
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                while ((bytesRead = responseInputStream.read(buffer)) != -1) {
+                    byteArrayOutputStream.write(buffer, 0, bytesRead);
                 }
-                inputStream.close();
 
+                // Close the responseInputStream
+                responseInputStream.close();
+
+                // Convert the ByteArrayOutputStream to byte array
                 byte[] fileData = byteArrayOutputStream.toByteArray();
+
+                // Process the byte array (e.g., convert to mappings)
                 s3FileMappings = getMappingsFromByteArray(fileData);
 
+                // Close the ByteArrayOutputStream
                 byteArrayOutputStream.close();
-            } catch (IOException | AmazonServiceException e) {
+            } catch (IOException | AwsServiceException e) {
                 LOG.error("Error while retrieving mappings from S3 Object", e);
                 return null;
             }
-        } catch (AmazonServiceException e) {
+        } catch (AwsServiceException e) {
             LOG.error("Error while retrieving mappings from S3 Object", e);
             return null;
         }
