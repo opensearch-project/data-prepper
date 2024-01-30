@@ -42,6 +42,12 @@ dependencies {
             }
             because 'Fixes CVE-2023-46122'
         }
+        zinc('org.jline:jline') {
+            version {
+                require '3.25.0'
+            }
+            because 'CVE-2023-50572'
+        }
     }
 }
 

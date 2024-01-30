@@ -206,6 +206,12 @@ subprojects {
                 }
                 because 'CVE from transitive dependencies'
             }
+            implementation('org.jline:jline') {
+                version {
+                    require '3.25.0'
+                }
+                because 'CVE-2023-50572'
+            }
             implementation('org.json:json') {
                 version {
                     require '20231013'
