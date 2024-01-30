@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -27,6 +29,7 @@ import java.util.Set;
 @DataPrepperPlugin(name = "map_to_list", pluginType = Processor.class, pluginConfigurationType = MapToListProcessorConfig.class)
 public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(MapToListProcessor.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final MapToListProcessorConfig config;
     private final ExpressionEvaluator expressionEvaluator;
     private final Set<String> excludeKeySet = new HashSet<>();
@@ -49,36 +52,30 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
             }
 
             try {
-                final Map<String, Object> sourceMap = recordEvent.get(config.getSource(), Map.class);
-                final List<Map<String, Object>> targetList = new ArrayList<>();
-                final List<List<Object>> targetNestedList = new ArrayList<>();
-
-                Map<String, Object> modifiedSourceMap = new HashMap<>();
-                for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
-                    if (excludeKeySet.contains(entry.getKey())) {
-                        if (config.getRemoveProcessedFields()) {
-                            modifiedSourceMap.put(entry.getKey(), entry.getValue());
-                        }
-                        continue;
-                    }
-
-                    if (config.getConvertFieldToList()) {
-                        targetNestedList.add(List.of(entry.getKey(), entry.getValue()));
-                    } else {
-                        targetList.add(Map.of(
-                                config.getKeyName(), entry.getKey(),
-                                config.getValueName(), entry.getValue()
-                        ));
-                    }
-                }
-
-                if (config.getRemoveProcessedFields()) {
-                    recordEvent.put(config.getSource(), modifiedSourceMap);
-                }
+                final Map<String, Object> sourceMap = getSourceMap(recordEvent);
 
                 if (config.getConvertFieldToList()) {
+                    final List<List<Object>> targetNestedList = new ArrayList<>();
+
+                    for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
+                        if (!excludeKeySet.contains(entry.getKey())) {
+                            targetNestedList.add(List.of(entry.getKey(), entry.getValue()));
+                        }
+
+                    }
+                    removeProcessedFields(sourceMap, recordEvent);
                     recordEvent.put(config.getTarget(), targetNestedList);
                 } else {
+                    final List<Map<String, Object>> targetList = new ArrayList<>();
+                    for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
+                        if (!excludeKeySet.contains(entry.getKey())) {
+                            targetList.add(Map.of(
+                                    config.getKeyName(), entry.getKey(),
+                                    config.getValueName(), entry.getValue()
+                            ));
+                        }
+                    }
+                    removeProcessedFields(sourceMap, recordEvent);
                     recordEvent.put(config.getTarget(), targetList);
                 }
             } catch (Exception e) {
@@ -87,6 +84,41 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
             }
         }
         return records;
+    }
+
+    private Map<String, Object> getSourceMap(Event recordEvent) throws JsonProcessingException {
+        final Map<String, Object> sourceMap;
+        if (config.getSource() == null) {
+            // Source is root
+            sourceMap = OBJECT_MAPPER.treeToValue(recordEvent.getJsonNode(), Map.class);
+        } else {
+            sourceMap = recordEvent.get(config.getSource(), Map.class);
+        }
+        return sourceMap;
+    }
+
+    private void removeProcessedFields(Map<String, Object> sourceMap, Event recordEvent) {
+        if (!config.getRemoveProcessedFields()) {
+            return;
+        }
+
+        if (config.getSource() == null) {
+            // Source is root
+            for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
+                if (excludeKeySet.contains(entry.getKey())) {
+                    continue;
+                }
+                recordEvent.delete(entry.getKey());
+            }
+        } else {
+            Map<String, Object> modifiedSourceMap = new HashMap<>();
+            for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
+                if (excludeKeySet.contains(entry.getKey())) {
+                    modifiedSourceMap.put(entry.getKey(), entry.getValue());
+                }
+            }
+            recordEvent.put(config.getSource(), modifiedSourceMap);
+        }
     }
 
     @Override

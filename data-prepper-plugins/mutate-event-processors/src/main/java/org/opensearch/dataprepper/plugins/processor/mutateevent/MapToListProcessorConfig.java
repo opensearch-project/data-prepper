@@ -18,8 +18,6 @@ public class MapToListProcessorConfig {
     private static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
     private static final boolean DEFAULT_REMOVE_PROCESSED_FIELDS = false;
 
-    @NotEmpty
-    @NotNull
     @JsonProperty("source")
     private String source;
 
