@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -24,6 +25,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,14 +39,23 @@ class ListToMapProcessorTest {
     @Mock
     private ExpressionEvaluator expressionEvaluator;
 
+    @BeforeEach
+    void setUp() {
+        lenient().when(mockConfig.getTarget()).thenReturn(null);
+        lenient().when(mockConfig.getValueKey()).thenReturn(null);
+        lenient().when(mockConfig.getFlatten()).thenReturn(false);
+        lenient().when(mockConfig.getFlattenedElement()).thenReturn(ListToMapProcessorConfig.FlattenedElement.FIRST);
+        lenient().when(mockConfig.getListToMapWhen()).thenReturn(null);
+        lenient().when(mockConfig.getUseSourceKey()).thenReturn(false);
+        lenient().when(mockConfig.getExtractValue()).thenReturn(false);
+    }
+
     @Test
     public void testValueExtractionWithFlattenAndWriteToRoot() {
         when(mockConfig.getValueKey()).thenReturn("value");
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
         when(mockConfig.getFlatten()).thenReturn(true);
-        when(mockConfig.getFlattenedElement()).thenReturn(ListToMapProcessorConfig.FlattenedElement.FIRST);
-        when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();

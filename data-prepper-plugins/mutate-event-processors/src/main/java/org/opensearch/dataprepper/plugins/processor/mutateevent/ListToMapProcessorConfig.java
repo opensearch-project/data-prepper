@@ -45,11 +45,19 @@ public class ListToMapProcessorConfig {
     @JsonProperty("target")
     private String target = null;
 
+    @NotEmpty
+    @NotNull
     @JsonProperty("key")
     private String key;
 
     @JsonProperty("value_key")
     private String valueKey = null;
+
+    @JsonProperty("use_source_key")
+    private boolean useSourceKey = false;
+
+    @JsonProperty("extract_value")
+    private boolean extractValue = false;
 
     @NotNull
     @JsonProperty("flatten")
@@ -76,6 +84,14 @@ public class ListToMapProcessorConfig {
 
     public String getValueKey() {
         return valueKey;
+    }
+
+    public boolean getUseSourceKey() {
+        return useSourceKey;
+    }
+
+    public boolean getExtractValue() {
+        return extractValue;
     }
 
     public boolean getFlatten() {
