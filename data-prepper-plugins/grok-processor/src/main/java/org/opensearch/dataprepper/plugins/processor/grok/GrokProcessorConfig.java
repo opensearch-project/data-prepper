@@ -23,6 +23,7 @@ public class GrokProcessorConfig {
     static final String TARGET_KEY = "target_key";
     static final String GROK_WHEN = "grok_when";
     static final String TAGS_ON_MATCH_FAILURE = "tags_on_match_failure";
+    static final String TAGS_ON_TIMEOUT = "tags_on_timeout";
 
     static final boolean DEFAULT_BREAK_ON_MATCH = true;
     static final boolean DEFAULT_KEEP_EMPTY_CAPTURES = false;
@@ -43,6 +44,7 @@ public class GrokProcessorConfig {
     private final String targetKey;
     private final String grokWhen;
     private final List<String> tagsOnMatchFailure;
+    private final List<String> tagsOnTimeout;
 
     private GrokProcessorConfig(final boolean breakOnMatch,
                                 final boolean keepEmptyCaptures,
@@ -55,7 +57,8 @@ public class GrokProcessorConfig {
                                 final int timeoutMillis,
                                 final String targetKey,
                                 final String grokWhen,
-                                final List<String> tagsOnMatchFailure) {
+                                final List<String> tagsOnMatchFailure,
+                                final List<String> tagsOnTimeout) {
 
         this.breakOnMatch = breakOnMatch;
         this.keepEmptyCaptures = keepEmptyCaptures;
@@ -69,6 +72,7 @@ public class GrokProcessorConfig {
         this.targetKey = targetKey;
         this.grokWhen = grokWhen;
         this.tagsOnMatchFailure = tagsOnMatchFailure;
+        this.tagsOnTimeout = tagsOnTimeout;
     }
 
     public static GrokProcessorConfig buildConfig(final PluginSetting pluginSetting) {
@@ -83,7 +87,8 @@ public class GrokProcessorConfig {
                 pluginSetting.getIntegerOrDefault(TIMEOUT_MILLIS, DEFAULT_TIMEOUT_MILLIS),
                 pluginSetting.getStringOrDefault(TARGET_KEY, DEFAULT_TARGET_KEY),
                 pluginSetting.getStringOrDefault(GROK_WHEN, null),
-                pluginSetting.getTypedList(TAGS_ON_MATCH_FAILURE, String.class));
+                pluginSetting.getTypedList(TAGS_ON_MATCH_FAILURE, String.class),
+                pluginSetting.getTypedList(TAGS_ON_TIMEOUT, String.class));
     }
 
     public boolean isBreakOnMatch() {
@@ -132,4 +137,7 @@ public class GrokProcessorConfig {
         return tagsOnMatchFailure;
     }
 
+    public List<String> getTagsOnTimeout() {
+        return tagsOnTimeout;
+    }
 }

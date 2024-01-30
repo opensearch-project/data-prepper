@@ -75,6 +75,7 @@ public class GrokProcessorConfigTests {
         assertThat(grokProcessorConfig.getTimeoutMillis(), equalTo(DEFAULT_TIMEOUT_MILLIS));
         assertThat(grokProcessorConfig.getGrokWhen(), equalTo(null));
         assertThat(grokProcessorConfig.getTagsOnMatchFailure(), equalTo(Collections.emptyList()));
+        assertThat(grokProcessorConfig.getTagsOnTimeout(), equalTo(Collections.emptyList()));
     }
 
     @Test

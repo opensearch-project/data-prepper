@@ -5,14 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.grok;
 
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,9 +17,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,7 +46,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
@@ -520,12 +520,17 @@ public class GrokProcessorTests {
         class WithTags {
             private String tagOnMatchFailure1;
             private String tagOnMatchFailure2;
+            private String tagOnTimeout1;
+            private String tagOnTimeout2;
 
             @BeforeEach
             void setUp() {
                 tagOnMatchFailure1 = UUID.randomUUID().toString();
                 tagOnMatchFailure2 = UUID.randomUUID().toString();
+                tagOnTimeout1 = UUID.randomUUID().toString();
+                tagOnTimeout2 = UUID.randomUUID().toString();
                 pluginSetting.getSettings().put(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, List.of(tagOnMatchFailure1, tagOnMatchFailure2));
+                pluginSetting.getSettings().put(GrokProcessorConfig.TAGS_ON_TIMEOUT, List.of(tagOnTimeout1, tagOnTimeout2));
             }
 
             @Test
@@ -543,8 +548,10 @@ public class GrokProcessorTests {
                 assertThat(grokkedRecords.size(), equalTo(1));
                 assertThat(grokkedRecords.get(0), notNullValue());
                 assertRecordsAreEqual(grokkedRecords.get(0), record);
-                assertTrue(((Event) record.getData()).getMetadata().getTags().contains(tagOnMatchFailure1));
-                assertTrue(((Event) record.getData()).getMetadata().getTags().contains(tagOnMatchFailure2));
+                assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnMatchFailure1));
+                assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnMatchFailure2));
+                assertThat(record.getData().getMetadata().getTags(), not(hasItem(tagOnTimeout1)));
+                assertThat(record.getData().getMetadata().getTags(), not(hasItem(tagOnTimeout2)));
                 verify(grokProcessingMismatchCounter, times(1)).increment();
                 verify(grokProcessingTime, times(1)).record(any(Runnable.class));
                 verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchCounter, grokProcessingTimeoutsCounter);
@@ -569,8 +576,10 @@ public class GrokProcessorTests {
                 assertThat(grokkedRecords.size(), equalTo(1));
                 assertThat(grokkedRecords.get(0), notNullValue());
                 assertRecordsAreEqual(grokkedRecords.get(0), record);
-                assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnMatchFailure1));
-                assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnMatchFailure2));
+                assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnTimeout1));
+                assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnTimeout2));
+                assertThat(record.getData().getMetadata().getTags(), not(hasItem(tagOnMatchFailure1)));
+                assertThat(record.getData().getMetadata().getTags(), not(hasItem(tagOnMatchFailure2)));
                 verify(grokProcessingTimeoutsCounter, times(1)).increment();
                 verify(grokProcessingTime, times(1)).record(any(Runnable.class));
                 verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter);

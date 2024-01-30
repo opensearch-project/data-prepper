@@ -82,7 +82,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private final Set<String> keysToOverwrite;
     private final ExecutorService executorService;
     private final List<String> tagsOnMatchFailure;
-
+    private final List<String> tagsOnTimeout;
     private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
@@ -99,6 +99,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         this.executorService = executorService;
         this.expressionEvaluator = expressionEvaluator;
         this.tagsOnMatchFailure = grokProcessorConfig.getTagsOnMatchFailure();
+        this.tagsOnTimeout = grokProcessorConfig.getTagsOnTimeout();
         grokProcessingMatchCounter = pluginMetrics.counter(GROK_PROCESSING_MATCH);
         grokProcessingMismatchCounter = pluginMetrics.counter(GROK_PROCESSING_MISMATCH);
         grokProcessingErrorsCounter = pluginMetrics.counter(GROK_PROCESSING_ERRORS);
@@ -132,7 +133,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 }
 
             } catch (final TimeoutException e) {
-                event.getMetadata().addTags(tagsOnMatchFailure);
+                event.getMetadata().addTags(tagsOnTimeout);
                 LOG.error(EVENT, "Matching on record [{}] took longer than [{}] and timed out", record.getData(), grokProcessorConfig.getTimeoutMillis());
                 grokProcessingTimeoutsCounter.increment();
             } catch (final ExecutionException | InterruptedException | RuntimeException e) {
