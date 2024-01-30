@@ -72,7 +72,7 @@ public class GrokProcessorConfig {
         this.targetKey = targetKey;
         this.grokWhen = grokWhen;
         this.tagsOnMatchFailure = tagsOnMatchFailure;
-        this.tagsOnTimeout = tagsOnTimeout;
+        this.tagsOnTimeout = tagsOnTimeout.isEmpty() ? tagsOnMatchFailure : tagsOnTimeout;
     }
 
     public static GrokProcessorConfig buildConfig(final PluginSetting pluginSetting) {
