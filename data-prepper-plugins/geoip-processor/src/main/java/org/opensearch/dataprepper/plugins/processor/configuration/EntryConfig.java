@@ -22,6 +22,9 @@ public class EntryConfig {
     @JsonProperty("fields")
     private List<String> fields;
 
+    @JsonProperty("geoip_when")
+    private String whenCondition;
+
     public String getSource() {
         return source;
     }
@@ -32,5 +35,9 @@ public class EntryConfig {
 
     public List<String> getFields() {
         return fields;
+    }
+
+    public String getWhenCondition() {
+        return whenCondition;
     }
 }
