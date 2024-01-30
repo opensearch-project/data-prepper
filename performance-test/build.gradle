@@ -19,7 +19,7 @@ repositories {
 }
 
 dependencies {
-    gatlingImplementation 'software.amazon.awssdk:auth:2.20.67'
+    gatlingImplementation 'software.amazon.awssdk:auth:2.23.13'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     testRuntimeOnly testLibs.junit.engine
 
