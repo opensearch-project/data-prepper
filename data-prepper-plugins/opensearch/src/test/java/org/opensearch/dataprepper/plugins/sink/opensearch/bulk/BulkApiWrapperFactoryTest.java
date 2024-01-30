@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
@@ -20,17 +21,20 @@ class BulkApiWrapperFactoryTest {
     @Mock
     private OpenSearchClient openSearchClient;
 
+    @Mock
+    private RestHighLevelClient restHighLevelClient;
+
     @Test
     void testGetEs6BulkApiWrapper() {
         when(indexConfiguration.getDistributionVersion()).thenReturn(DistributionVersion.ES6);
-        assertThat(BulkApiWrapperFactory.getWrapper(indexConfiguration, openSearchClient),
+        assertThat(BulkApiWrapperFactory.getWrapper(indexConfiguration, openSearchClient, restHighLevelClient),
                 instanceOf(Es6BulkApiWrapper.class));
     }
 
     @Test
     void testGetOpenSearchDefaultBulkApiWrapper() {
         when(indexConfiguration.getDistributionVersion()).thenReturn(DistributionVersion.DEFAULT);
-        assertThat(BulkApiWrapperFactory.getWrapper(indexConfiguration, openSearchClient),
+        assertThat(BulkApiWrapperFactory.getWrapper(indexConfiguration, openSearchClient, restHighLevelClient),
                 instanceOf(OpenSearchDefaultBulkApiWrapper.class));
     }
 }
