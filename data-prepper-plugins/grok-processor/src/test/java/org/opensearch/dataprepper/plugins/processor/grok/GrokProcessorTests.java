@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.grok;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -41,6 +43,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -513,30 +516,92 @@ public class GrokProcessorTests {
             verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchCounter, grokProcessingTimeoutsCounter);
         }
 
-        @Test
-        public void testNoCapturesWithTag() throws JsonProcessingException {
-            final String tagOnMatchFailure1 = UUID.randomUUID().toString();
-            final String tagOnMatchFailure2 = UUID.randomUUID().toString();
-            pluginSetting.getSettings().put(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, List.of(tagOnMatchFailure1, tagOnMatchFailure2));
+        @Nested
+        class WithTags {
+            private String tagOnMatchFailure1;
+            private String tagOnMatchFailure2;
 
-            grokProcessor = createObjectUnderTest();
-            lenient().when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
-            lenient().when(secondMatch.capture()).thenReturn(secondCapture);
+            @BeforeEach
+            void setUp() {
+                tagOnMatchFailure1 = UUID.randomUUID().toString();
+                tagOnMatchFailure2 = UUID.randomUUID().toString();
+                pluginSetting.getSettings().put(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, List.of(tagOnMatchFailure1, tagOnMatchFailure2));
+            }
 
-            final Map<String, Object> testData = new HashMap();
-            testData.put("message", messageInput);
-            final Record<Event> record = buildRecordWithEvent(testData);
+            @Test
+            public void testNoCapturesWithTag() throws JsonProcessingException {
+                grokProcessor = createObjectUnderTest();
+                lenient().when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
+                lenient().when(secondMatch.capture()).thenReturn(secondCapture);
 
-            final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
+                final Map<String, Object> testData = new HashMap();
+                testData.put("message", messageInput);
+                final Record<Event> record = buildRecordWithEvent(testData);
 
-            assertThat(grokkedRecords.size(), equalTo(1));
-            assertThat(grokkedRecords.get(0), notNullValue());
-            assertRecordsAreEqual(grokkedRecords.get(0), record);
-            assertTrue(((Event)record.getData()).getMetadata().getTags().contains(tagOnMatchFailure1));
-            assertTrue(((Event)record.getData()).getMetadata().getTags().contains(tagOnMatchFailure2));
-            verify(grokProcessingMismatchCounter, times(1)).increment();
-            verify(grokProcessingTime, times(1)).record(any(Runnable.class));
-            verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchCounter, grokProcessingTimeoutsCounter);
+                final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
+
+                assertThat(grokkedRecords.size(), equalTo(1));
+                assertThat(grokkedRecords.get(0), notNullValue());
+                assertRecordsAreEqual(grokkedRecords.get(0), record);
+                assertTrue(((Event) record.getData()).getMetadata().getTags().contains(tagOnMatchFailure1));
+                assertTrue(((Event) record.getData()).getMetadata().getTags().contains(tagOnMatchFailure2));
+                verify(grokProcessingMismatchCounter, times(1)).increment();
+                verify(grokProcessingTime, times(1)).record(any(Runnable.class));
+                verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchCounter, grokProcessingTimeoutsCounter);
+            }
+
+            @Test
+            public void timeout_exception_tags_the_event() throws JsonProcessingException, TimeoutException, ExecutionException, InterruptedException {
+                when(task.get(GrokProcessorConfig.DEFAULT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)).thenThrow(TimeoutException.class);
+
+                grokProcessor = createObjectUnderTest();
+
+                capture.put("key_capture_1", "value_capture_1");
+                capture.put("key_capture_2", "value_capture_2");
+                capture.put("key_capture_3", "value_capture_3");
+
+                final Map<String, Object> testData = new HashMap();
+                testData.put("message", messageInput);
+                final Record<Event> record = buildRecordWithEvent(testData);
+
+                final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
+
+                assertThat(grokkedRecords.size(), equalTo(1));
+                assertThat(grokkedRecords.get(0), notNullValue());
+                assertRecordsAreEqual(grokkedRecords.get(0), record);
+                assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnMatchFailure1));
+                assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnMatchFailure2));
+                verify(grokProcessingTimeoutsCounter, times(1)).increment();
+                verify(grokProcessingTime, times(1)).record(any(Runnable.class));
+                verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter);
+            }
+
+            @ParameterizedTest
+            @ValueSource(classes = {ExecutionException.class, InterruptedException.class, RuntimeException.class})
+            public void execution_exception_tags_the_event(Class<Exception> exceptionClass) throws JsonProcessingException, TimeoutException, ExecutionException, InterruptedException {
+                when(task.get(GrokProcessorConfig.DEFAULT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)).thenThrow(exceptionClass);
+
+                grokProcessor = createObjectUnderTest();
+
+                capture.put("key_capture_1", "value_capture_1");
+                capture.put("key_capture_2", "value_capture_2");
+                capture.put("key_capture_3", "value_capture_3");
+
+                final Map<String, Object> testData = new HashMap();
+                testData.put("message", messageInput);
+                final Record<Event> record = buildRecordWithEvent(testData);
+
+                final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
+
+                assertThat(grokkedRecords.size(), equalTo(1));
+                assertThat(grokkedRecords.get(0), notNullValue());
+                assertRecordsAreEqual(grokkedRecords.get(0), record);
+                assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnMatchFailure1));
+                assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnMatchFailure2));
+                verify(grokProcessingErrorsCounter, times(1)).increment();
+                verify(grokProcessingTime, times(1)).record(any(Runnable.class));
+                verifyNoInteractions(grokProcessingTimeoutsCounter, grokProcessingMismatchCounter);
+            }
         }
 
         @Test
