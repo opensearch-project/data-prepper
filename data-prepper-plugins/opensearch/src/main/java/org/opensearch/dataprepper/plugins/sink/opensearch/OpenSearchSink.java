@@ -185,8 +185,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       dlqPluginSetting.setPipelineName(pluginSetting.getPipelineName());
       dlqProvider = pluginFactory.loadPlugin(DlqProvider.class, dlqPluginSetting);
     }
-
-    this.objectMapper = new ObjectMapper();
   }
 
   @Override
@@ -261,6 +259,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     // Attempt to update the serverless network policy if required argument are given.
     maybeUpdateServerlessNetworkPolicy();
+
+    this.objectMapper = new ObjectMapper();
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
   }
