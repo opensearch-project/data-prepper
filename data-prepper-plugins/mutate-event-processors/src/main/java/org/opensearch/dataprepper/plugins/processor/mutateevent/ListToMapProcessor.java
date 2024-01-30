@@ -59,7 +59,6 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
                 continue;
             }
 
-
             final Map<String, Object> targetMap;
             try {
                 targetMap = constructTargetMap(sourceList);
@@ -86,33 +85,52 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
 
     private Map<String, Object> constructTargetMap(final List<Map<String, Object>> sourceList) {
         Map<String, Object> targetMap = new HashMap<>();
-        for (final Map<String, Object> item : sourceList) {
-            final String itemKey = (String) item.get(config.getKey());
-            if (!config.getFlatten()) {
-                final List<Object> itemValue;
-                if (!targetMap.containsKey(itemKey)) {
-                    itemValue = new ArrayList<>();
-                    targetMap.put((String)item.get(config.getKey()), itemValue);
-                } else {
-                    itemValue = (List<Object>) targetMap.get(itemKey);
-                }
+        for (final Map<String, Object> itemMap : sourceList) {
 
-                if (config.getValueKey() == null) {
-                    itemValue.add(item);
+            if (config.getUseSourceKey()) {
+                if (config.getFlatten()) {
+                    for (final String entryKey : itemMap.keySet()) {
+                        setTargetMapFlattened(targetMap, itemMap, entryKey, entryKey, config.getExtractValue());
+                    }
                 } else {
-                    itemValue.add(item.get(config.getValueKey()));
+                    for (final String entryKey : itemMap.keySet()) {
+                        setTargetMapUnflattened(targetMap, itemMap, entryKey, entryKey, config.getExtractValue());
+                    }
                 }
             } else {
-                if (!targetMap.containsKey(itemKey) || config.getFlattenedElement() == ListToMapProcessorConfig.FlattenedElement.LAST) {
-                    if (config.getValueKey() == null) {
-                        targetMap.put(itemKey, item);
-                    } else  {
-                        targetMap.put(itemKey, item.get(config.getValueKey()));
-                    }
+                final String itemKey = (String) itemMap.get(config.getKey());
+                if (config.getFlatten()) {
+                    setTargetMapFlattened(targetMap, itemMap, itemKey, config.getValueKey(), config.getValueKey() != null);
+                } else {
+                    setTargetMapUnflattened(targetMap, itemMap, itemKey, config.getValueKey(), config.getValueKey() != null);
                 }
             }
         }
         return targetMap;
+    }
+
+    private void setTargetMapUnflattened(Map<String, Object> targetMap, Map<String, Object> itemMap, String itemKey, String itemValueKey, boolean doExtractValue) {
+        if (!targetMap.containsKey(itemKey)) {
+            targetMap.put(itemKey, new ArrayList<>());
+        }
+
+        final List<Object> itemValue = (List<Object>) targetMap.get(itemKey);
+
+        if (doExtractValue) {
+            itemValue.add(itemMap.get(itemValueKey));
+        } else {
+            itemValue.add(itemMap);
+        }
+    }
+
+    private void setTargetMapFlattened(Map<String, Object> targetMap, Map<String, Object> itemMap, String itemKey, String itemValueKey, boolean doExtractValue) {
+        if (!targetMap.containsKey(itemKey) || config.getFlattenedElement() == ListToMapProcessorConfig.FlattenedElement.LAST) {
+            if (doExtractValue) {
+                targetMap.put(itemKey, itemMap.get(itemValueKey));
+            } else {
+                targetMap.put(itemKey, itemMap);
+            }
+        }
     }
 
     private void updateEvent(Event recordEvent, Map<String, Object> targetMap) {

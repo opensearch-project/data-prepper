@@ -70,6 +70,43 @@ class ListToMapProcessorTest {
     }
 
     @Test
+    public void testValueExtractionWithFlattenAndWriteToRoot_UseSourceKey() {
+        when(mockConfig.getSource()).thenReturn("mylist");
+        when(mockConfig.getFlatten()).thenReturn(true);
+        when(mockConfig.getUseSourceKey()).thenReturn(true);
+        when(mockConfig.getExtractValue()).thenReturn(true);
+
+        final ListToMapProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        assertThat(resultEvent.get("name", String.class), is("a"));
+        assertThat(resultEvent.get("value", String.class), is("val-a"));
+    }
+
+    @Test
+    public void testValueExtractionWithFlattenKeepLastElementAndWriteToRoot_UseSourceKey() {
+        when(mockConfig.getSource()).thenReturn("mylist");
+        when(mockConfig.getFlatten()).thenReturn(true);
+        when(mockConfig.getFlattenedElement()).thenReturn(ListToMapProcessorConfig.FlattenedElement.LAST);
+        when(mockConfig.getUseSourceKey()).thenReturn(true);
+        when(mockConfig.getExtractValue()).thenReturn(true);
+
+        final ListToMapProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        assertThat(resultEvent.get("name", String.class), is("c"));
+        assertThat(resultEvent.get("value", String.class), is("val-c"));
+    }
+
+    @Test
     public void testValueExtractionWithFlattenKeepLastElementAndWriteToRoot() {
         when(mockConfig.getValueKey()).thenReturn("value");
         when(mockConfig.getSource()).thenReturn("mylist");
@@ -152,6 +189,43 @@ class ListToMapProcessorTest {
     }
 
     @Test
+    public void testValueExtractionWithNoFlattenAndWriteToRoot_UseSourceKey() {
+        when(mockConfig.getSource()).thenReturn("mylist");
+        when(mockConfig.getUseSourceKey()).thenReturn(true);
+        when(mockConfig.getExtractValue()).thenReturn(true);
+        when(mockConfig.getListToMapWhen()).thenReturn(null);
+
+        final ListToMapProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        assertThat(resultEvent.get("name", List.class), is(List.of("a", "b", "b", "c")));
+        assertThat(resultEvent.get("value", List.class), is(List.of("val-a", "val-b1", "val-b2", "val-c")));
+    }
+
+    @Test
+    public void testValueExtractionWithNoFlattenAndWriteToRoot_UseSourceKey_InconsistentKeysInRecord() {
+        when(mockConfig.getSource()).thenReturn("mylist");
+        when(mockConfig.getUseSourceKey()).thenReturn(true);
+        when(mockConfig.getExtractValue()).thenReturn(true);
+        when(mockConfig.getListToMapWhen()).thenReturn(null);
+
+        final ListToMapProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecordWithInconsistentKeys();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        assertThat(resultEvent.get("name", List.class), is(List.of("a", "b")));
+        assertThat(resultEvent.get("badname", List.class), is(List.of("c")));
+        assertThat(resultEvent.get("value", List.class), is(List.of("val-a", "val-b", "val-c")));
+    }
+
+    @Test
     public void testNoValueExtractionWithNoFlattenAndWriteToRoot() {
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
@@ -170,6 +244,31 @@ class ListToMapProcessorTest {
                 Map.of("name", "b", "value", "val-b2")
         )));
         assertThat(resultEvent.get("c", Object.class), is(List.of(Map.of("name", "c", "value", "val-c"))));
+    }
+
+    @Test
+    public void testNoValueExtractionWithNoFlattenAndWriteToRoot_UseSourceKey() {
+        when(mockConfig.getSource()).thenReturn("mylist");
+        when(mockConfig.getUseSourceKey()).thenReturn(true);
+        when(mockConfig.getListToMapWhen()).thenReturn(null);
+
+        final ListToMapProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        assertThat(resultEvent.get("name", List.class), is(List.of(
+                Map.of("name", "a", "value", "val-a"),
+                Map.of("name", "b", "value", "val-b1"),
+                Map.of("name", "b", "value", "val-b2"),
+                Map.of("name", "c", "value", "val-c"))));
+        assertThat(resultEvent.get("value", List.class), is(List.of(
+                Map.of("name", "a", "value", "val-a"),
+                Map.of("name", "b", "value", "val-b1"),
+                Map.of("name", "b", "value", "val-b2"),
+                Map.of("name", "c", "value", "val-c"))));
     }
 
     @Test
@@ -210,7 +309,7 @@ class ListToMapProcessorTest {
         when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
-        final Record<Event> testRecord = createBadTestRecord();
+        final Record<Event> testRecord = createTestRecordWithInconsistentKeys();
         final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
 
         assertThat(resultRecord.size(), is(1));
@@ -254,7 +353,7 @@ class ListToMapProcessorTest {
         return new Record<>(event);
     }
 
-    private Record<Event> createBadTestRecord() {
+    private Record<Event> createTestRecordWithInconsistentKeys() {
         final Map<String, Object> data = Map.of("mylist", List.of(
                         Map.of("name", "a", "value", "val-a"),
                         Map.of("name", "b", "value", "val-b"),
