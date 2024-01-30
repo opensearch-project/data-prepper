@@ -127,6 +127,7 @@ task integrationTest(type: Test) {
     systemProperty 'tests.kafka.confluent.registry_url', System.getProperty('tests.kafka.confluent.registry_url')
     systemProperty 'tests.kafka.authconfig.username', System.getProperty('tests.kafka.authconfig.username')
     systemProperty 'tests.kafka.authconfig.password', System.getProperty('tests.kafka.authconfig.password')
+    systemProperty 'tests.kafka.kms_key', System.getProperty('tests.kafka.kms_key')
 
     filter {
         includeTestsMatching '*IT'

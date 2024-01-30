@@ -30,8 +30,15 @@ docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integr
 Not all integration tests currently work with Docker. But, you can run the following.
 
 ```
-./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaSourceJsonTypeIT
+./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin -Dtests.kafka.kms_key=alias/DataPrepperTesting --tests KafkaSourceJsonTypeIT --tests '*kafka.buffer*'
 ```
+
+If you do not have a KMS key, you can skip the KMS tests.
+
+```
+./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaSourceJsonTypeIT --tests KafkaBufferIT --tests KafkaBufferOTelIT
+```
+
 
 See the Old integration tests section to run other tests. However, these are more involved.
 
