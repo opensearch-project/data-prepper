@@ -37,15 +37,13 @@ import java.util.Map;
 public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(GeoIPProcessor.class);
-  //TODO: rename metrics
-  static final String GEO_IP_PROCESSING_MATCH = "geoIpProcessingMatch";
-  static final String GEO_IP_PROCESSING_MISMATCH = "geoIpProcessingMismatch";
-  private final Counter geoIpProcessingMatchCounter;
-  private final Counter geoIpProcessingMismatchCounter;
+  static final String GEO_IP_EVENTS_PROCESSED = "eventsProcessed";
+  static final String GEO_IP_EVENTS_FAILED_DB_LOOKUP = "eventsFailedDBLookup";
+  private final Counter geoIpEventsProcessed;
+  private final Counter geoIpEventsFailedDBLookup;
   private final GeoIPProcessorConfig geoIPProcessorConfig;
   private final List<String> tagsOnFailure;
   private final GeoIPProcessorService geoIPProcessorService;
-  private final String whenCondition;
   private final ExpressionEvaluator expressionEvaluator;
 
   /**
@@ -63,10 +61,9 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
     this.geoIPProcessorConfig = geoIPProcessorConfig;
     this.geoIPProcessorService = geoIpConfigSupplier.getGeoIPProcessorService();
     this.tagsOnFailure = geoIPProcessorConfig.getTagsOnFailure();
-    this.whenCondition = geoIPProcessorConfig.getWhenCondition();
     this.expressionEvaluator = expressionEvaluator;
-    this.geoIpProcessingMatchCounter = pluginMetrics.counter(GEO_IP_PROCESSING_MATCH);
-    this.geoIpProcessingMismatchCounter = pluginMetrics.counter(GEO_IP_PROCESSING_MISMATCH);
+    this.geoIpEventsProcessed = pluginMetrics.counter(GEO_IP_EVENTS_PROCESSED);
+    this.geoIpEventsFailedDBLookup = pluginMetrics.counter(GEO_IP_EVENTS_FAILED_DB_LOOKUP);
   }
 
   /**
@@ -80,10 +77,12 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
     for (final Record<Event> eventRecord : records) {
       final Event event = eventRecord.getData();
-      if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
-        continue;
-      }
+
       for (EntryConfig entry : geoIPProcessorConfig.getEntries()) {
+        final String whenCondition = entry.getWhenCondition();
+        if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
+          continue;
+        }
         final String source = entry.getSource();
         final List<String> attributes = entry.getFields();
         final String ipAddress = event.get(source, String.class);
@@ -94,10 +93,10 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
             if (IPValidationCheck.isPublicIpAddress(ipAddress)) {
               geoData = geoIPProcessorService.getGeoData(InetAddress.getByName(ipAddress), attributes);
               eventRecord.getData().put(entry.getTarget(), geoData);
-              geoIpProcessingMatchCounter.increment();
+              geoIpEventsProcessed.increment();
             }
           } catch (final IOException | EnrichFailedException ex) {
-            geoIpProcessingMismatchCounter.increment();
+            geoIpEventsFailedDBLookup.increment();
             event.getMetadata().addTags(tagsOnFailure);
             LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]", event, ipAddress, ex);
           }

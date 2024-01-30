@@ -39,16 +39,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_PROCESSING_MATCH;
-import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_PROCESSING_MISMATCH;
+import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_PROCESSED;
+import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED_DB_LOOKUP;
 
 @ExtendWith(MockitoExtension.class)
 class GeoIPProcessorTest {
     public static final String SOURCE = "/peer/ip";
-    public static final String TARGET = "geolocation";
+    public static final String TARGET1 = "geolocation";
+    public static final String TARGET2 = "geodata";
     @Mock
     private GeoIPProcessorService geoIPProcessorService;
     @Mock
@@ -58,25 +60,27 @@ class GeoIPProcessorTest {
     @Mock
     private EntryConfig entry;
     @Mock
+    private EntryConfig anotherEntry;
+    @Mock
     private ExpressionEvaluator expressionEvaluator;
     @Mock
     private PluginMetrics pluginMetrics;
     @Mock
-    private Counter geoIpProcessingMatch;
+    private Counter geoIpEventsProcessed;
     @Mock
-    private Counter geoIpProcessingMismatch;
+    private Counter geoIpEventsFailedDBLookup;
 
     @BeforeEach
     void setUp() {
         when(geoIpConfigSupplier.getGeoIPProcessorService()).thenReturn(geoIPProcessorService);
-        lenient().when(pluginMetrics.counter(GEO_IP_PROCESSING_MATCH)).thenReturn(geoIpProcessingMatch);
-        lenient().when(pluginMetrics.counter(GEO_IP_PROCESSING_MISMATCH)).thenReturn(geoIpProcessingMismatch);
+        lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_PROCESSED)).thenReturn(geoIpEventsProcessed);
+        lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_FAILED_DB_LOOKUP)).thenReturn(geoIpEventsFailedDBLookup);
     }
 
     @AfterEach
     void tearDown() {
-        verifyNoMoreInteractions(geoIpProcessingMatch);
-        verifyNoMoreInteractions(geoIpProcessingMismatch);
+        verifyNoMoreInteractions(geoIpEventsProcessed);
+        verifyNoMoreInteractions(geoIpEventsFailedDBLookup);
     }
 
     private GeoIPProcessor createObjectUnderTest() {
@@ -87,11 +91,15 @@ class GeoIPProcessorTest {
     void doExecuteTest_with_when_condition_should_only_enrich_events_that_match_when_condition() throws NoSuchFieldException, IllegalAccessException {
         final String whenCondition = "/peer/status == success";
 
-        when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
-        when(geoIPProcessorConfig.getWhenCondition()).thenReturn(whenCondition);
-        when(entry.getSource()).thenReturn("/peer/ip");
-        when(entry.getTarget()).thenReturn(TARGET);
+        when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry, anotherEntry));
+        when(entry.getWhenCondition()).thenReturn(whenCondition);
+        when(entry.getSource()).thenReturn("/peer/source_ip");
+        when(entry.getTarget()).thenReturn(TARGET1);
         when(entry.getFields()).thenReturn(setFields());
+
+        when(anotherEntry.getSource()).thenReturn("/peer/target_ip");
+        when(anotherEntry.getTarget()).thenReturn(TARGET2);
+        when(anotherEntry.getFields()).thenReturn(setFields());
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
@@ -112,23 +120,27 @@ class GeoIPProcessorTest {
 
         assertThat(records.size(), equalTo(2));
 
-        final Collection<Record<Event>> recordsWithLocation = records.stream().filter(record -> record.getData().containsKey(TARGET))
+        final Collection<Record<Event>> recordsWithLocation = records.stream().filter(record -> record.getData().containsKey(TARGET1))
+                .collect(Collectors.toList());
+
+        final Collection<Record<Event>> recordsWithSecondEntry = records.stream().filter(record -> record.getData().containsKey(TARGET2))
                 .collect(Collectors.toList());
 
         assertThat(recordsWithLocation.size(), equalTo(1));
+        assertThat(recordsWithSecondEntry.size(), equalTo(2));
 
         for (final Record<Event> record : recordsWithLocation) {
             final Event event = record.getData();
             assertThat(event.get("/peer/status", String.class), equalTo("success"));
         }
-        verify(geoIpProcessingMatch).increment();
+        verify(geoIpEventsProcessed, times(3)).increment();
     }
 
     @Test
     void doExecuteTest() throws NoSuchFieldException, IllegalAccessException {
         when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
         when(entry.getSource()).thenReturn(SOURCE);
-        when(entry.getTarget()).thenReturn(TARGET);
+        when(entry.getTarget()).thenReturn(TARGET1);
         when(entry.getFields()).thenReturn(setFields());
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
@@ -141,7 +153,7 @@ class GeoIPProcessorTest {
             final Event event = record.getData();
             assertThat(event.get("/peer/ip", String.class), equalTo("136.226.242.205"));
             assertThat(event.containsKey("geolocation"), equalTo(true));
-            verify(geoIpProcessingMatch).increment();
+            verify(geoIpEventsProcessed).increment();
         }
     }
 
@@ -165,7 +177,7 @@ class GeoIPProcessorTest {
         for (final Record<Event> record : records) {
             Event event = record.getData();
             assertTrue(event.getMetadata().hasTags(testTags));
-            verify(geoIpProcessingMismatch).increment();
+            verify(geoIpEventsFailedDBLookup).increment();
         }
     }
 
@@ -212,7 +224,8 @@ class GeoIPProcessorTest {
 
     private Record<Event> createCustomRecord(final String customFieldValue) {
         Map<String, String> innerMap = new HashMap<>();
-        innerMap.put("ip", "136.226.242.205");
+        innerMap.put("source_ip", "136.226.242.205");
+        innerMap.put("target_ip", "136.226.242.201");
         innerMap.put("host", "example.org");
         innerMap.put("status", customFieldValue);
 

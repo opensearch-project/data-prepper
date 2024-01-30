@@ -19,9 +19,6 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.opensearch.dataprepper.plugins.processor.configuration.EntryConfig.DEFAULT_TARGET;
 
 class EntryConfigTest {
-    public static final String SOURCE_VALUE = "source";
-    public static final String TARGET_VALUE = "target";
-    public static final List<String> FIELDS_VALUE = List.of("city", "country");
     private EntryConfig entryConfig;
 
     @BeforeEach
@@ -34,16 +31,24 @@ class EntryConfigTest {
         assertThat(entryConfig.getSource(), is(nullValue()));
         assertThat(entryConfig.getTarget(), equalTo(DEFAULT_TARGET));
         assertThat(entryConfig.getFields(), is(nullValue()));
+        assertThat(entryConfig.getWhenCondition(), is(nullValue()));
     }
 
     @Test
     void testCustomConfig() throws NoSuchFieldException, IllegalAccessException {
-        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "source", SOURCE_VALUE);
-        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "target", TARGET_VALUE);
-        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "fields", FIELDS_VALUE);
+        final String sourceValue = "source";
+        final String targetValue = "target";
+        final List<String> fieldsValue = List.of("city", "country");
+        final String whenConditionValue = "/ip == 1.2.3.4";
 
-        assertThat(entryConfig.getSource(), equalTo(SOURCE_VALUE));
-        assertThat(entryConfig.getTarget(), equalTo(TARGET_VALUE));
-        assertThat(entryConfig.getFields(), equalTo(FIELDS_VALUE));
+        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "source", sourceValue);
+        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "target", targetValue);
+        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "fields", fieldsValue);
+        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "whenCondition", whenConditionValue);
+
+        assertThat(entryConfig.getSource(), equalTo(sourceValue));
+        assertThat(entryConfig.getTarget(), equalTo(targetValue));
+        assertThat(entryConfig.getFields(), equalTo(fieldsValue));
+        assertThat(entryConfig.getWhenCondition(), equalTo(whenConditionValue));
     }
 }
