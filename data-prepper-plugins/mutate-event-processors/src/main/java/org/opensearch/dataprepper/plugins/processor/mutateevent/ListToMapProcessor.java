@@ -55,7 +55,7 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
             } catch (final Exception e) {
                 LOG.warn(EVENT, "Given source path [{}] is not valid on record [{}]",
                         config.getSource(), recordEvent, e);
-                //TODO: Add tags on failure
+                recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                 continue;
             }
 
@@ -65,11 +65,11 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
             } catch (IllegalArgumentException e) {
                 LOG.warn(EVENT, "Cannot find a list at the given source path [{}} on record [{}]",
                         config.getSource(), recordEvent, e);
-                //TODO: Add tags on failure
+                recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                 continue;
             } catch (final Exception e) {
                 LOG.error(EVENT, "Error converting source list to map on record [{}]", recordEvent, e);
-                //TODO: Add tags on failure
+                recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                 continue;
             }
 
@@ -77,7 +77,7 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
                 updateEvent(recordEvent, targetMap);
             } catch (final Exception e) {
                 LOG.error(EVENT, "Error updating record [{}] after converting source list to map", recordEvent, e);
-                //TODO: Add tags on failure
+                recordEvent.getMetadata().addTags(config.getTagsOnFailure());
             }
         }
         return records;

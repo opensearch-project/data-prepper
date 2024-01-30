@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -113,7 +114,6 @@ class ListToMapProcessorTest {
         when(mockConfig.getKey()).thenReturn("name");
         when(mockConfig.getFlatten()).thenReturn(true);
         when(mockConfig.getFlattenedElement()).thenReturn(ListToMapProcessorConfig.FlattenedElement.LAST);
-        when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
@@ -134,8 +134,6 @@ class ListToMapProcessorTest {
         when(mockConfig.getKey()).thenReturn("name");
         when(mockConfig.getTarget()).thenReturn("mymap");
         when(mockConfig.getFlatten()).thenReturn(true);
-        when(mockConfig.getFlattenedElement()).thenReturn(ListToMapProcessorConfig.FlattenedElement.FIRST);
-        when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
@@ -154,8 +152,6 @@ class ListToMapProcessorTest {
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
         when(mockConfig.getFlatten()).thenReturn(true);
-        when(mockConfig.getFlattenedElement()).thenReturn(ListToMapProcessorConfig.FlattenedElement.FIRST);
-        when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
@@ -174,7 +170,6 @@ class ListToMapProcessorTest {
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
         when(mockConfig.getValueKey()).thenReturn("value");
-        when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
@@ -193,7 +188,6 @@ class ListToMapProcessorTest {
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getUseSourceKey()).thenReturn(true);
         when(mockConfig.getExtractValue()).thenReturn(true);
-        when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
@@ -211,7 +205,6 @@ class ListToMapProcessorTest {
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getUseSourceKey()).thenReturn(true);
         when(mockConfig.getExtractValue()).thenReturn(true);
-        when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecordWithInconsistentKeys();
@@ -229,7 +222,6 @@ class ListToMapProcessorTest {
     public void testNoValueExtractionWithNoFlattenAndWriteToRoot() {
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
-        when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
@@ -250,7 +242,6 @@ class ListToMapProcessorTest {
     public void testNoValueExtractionWithNoFlattenAndWriteToRoot_UseSourceKey() {
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getUseSourceKey()).thenReturn(true);
-        when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
@@ -274,7 +265,6 @@ class ListToMapProcessorTest {
     @Test
     public void testFailureDueToInvalidSourceKey() {
         when(mockConfig.getSource()).thenReturn("invalid_source_key");
-        when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
@@ -289,7 +279,6 @@ class ListToMapProcessorTest {
     @Test
     public void testFailureDueToSourceNotList() {
         when(mockConfig.getSource()).thenReturn("nolist");
-        when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
@@ -306,7 +295,6 @@ class ListToMapProcessorTest {
         when(mockConfig.getValueKey()).thenReturn("value");
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
-        when(mockConfig.getListToMapWhen()).thenReturn(null);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecordWithInconsistentKeys();
@@ -316,6 +304,25 @@ class ListToMapProcessorTest {
 
         final Event resultEvent = resultRecord.get(0).getData();
         assertThat(resultEvent.get("mymap", Object.class), is(nullValue()));
+    }
+
+    @Test
+    public void testTagsAreAddedOnFailure() {
+        when(mockConfig.getValueKey()).thenReturn("value");
+        when(mockConfig.getSource()).thenReturn("mylist");
+        when(mockConfig.getKey()).thenReturn("name");
+        final List<String> testTags = List.of("tag1", "tag2");
+        when(mockConfig.getTagsOnFailure()).thenReturn(testTags);
+
+        final ListToMapProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecordWithInconsistentKeys();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        assertThat(resultEvent.get("mymap", Object.class), is(nullValue()));
+        assertThat(resultEvent.getMetadata().getTags(), is(new HashSet<>(testTags)));
     }
 
     @Test
