@@ -43,7 +43,11 @@ jobs:
           ./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaStartIT
       - name: Run Kafka integration tests
         run: |
-          ./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaSourceJsonTypeIT --tests KafkaBufferIT --tests KafkaBufferOTelIT
+          ./gradlew data-prepper-plugins:kafka-plugins:integrationTest \
+            -Dtests.kafka.bootstrap_servers=localhost:9092 \
+            -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin \
+            -Dtests.kafka.kms_key=alias/DataPrepperTesting \
+            --tests '*kafka.buffer*'
 
       - name: Upload Unit Test Results
         if: always()
