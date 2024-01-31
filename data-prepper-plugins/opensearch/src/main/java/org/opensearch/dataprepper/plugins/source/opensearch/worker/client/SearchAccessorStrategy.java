@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DistributionVersion;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.slf4j.Logger;
@@ -39,18 +40,23 @@ public class SearchAccessorStrategy {
 
 
     private final OpenSearchClientFactory openSearchClientFactory;
+    private final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final PluginConfigObservable pluginConfigObservable;
 
-    public static SearchAccessorStrategy create(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
+    public static SearchAccessorStrategy create(final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics,
+                                                final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                                                 final OpenSearchClientFactory openSearchClientFactory,
                                                 final PluginConfigObservable pluginConfigObservable) {
-        return new SearchAccessorStrategy(openSearchSourceConfiguration, openSearchClientFactory, pluginConfigObservable);
+        return new SearchAccessorStrategy(
+                openSearchSourcePluginMetrics, openSearchSourceConfiguration, openSearchClientFactory, pluginConfigObservable);
     }
 
-    private SearchAccessorStrategy(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
+    private SearchAccessorStrategy(final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics,
+                                   final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                                    final OpenSearchClientFactory openSearchClientFactory,
                                    final PluginConfigObservable pluginConfigObservable) {
+        this.openSearchSourcePluginMetrics = openSearchSourcePluginMetrics;
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.openSearchClientFactory = openSearchClientFactory;
         this.pluginConfigObservable = pluginConfigObservable;
@@ -64,7 +70,8 @@ public class SearchAccessorStrategy {
     public SearchAccessor getSearchAccessor() {
 
         final PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> clientRefresher =
-                new ClientRefresher<>(OpenSearchClient.class, openSearchClientFactory::provideOpenSearchClient,
+                new ClientRefresher<>(openSearchSourcePluginMetrics,
+                        OpenSearchClient.class, openSearchClientFactory::provideOpenSearchClient,
                         openSearchSourceConfiguration);
 
         if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions()) &&
@@ -93,8 +100,9 @@ public class SearchAccessorStrategy {
             LOG.info("Detected Elasticsearch cluster. Constructing Elasticsearch client");
 
             try {
-                elasticsearchClientRefresher = new ClientRefresher<>(ElasticsearchClient.class,
-                        openSearchClientFactory::provideElasticSearchClient, openSearchSourceConfiguration);
+                elasticsearchClientRefresher = new ClientRefresher<>(openSearchSourcePluginMetrics,
+                        ElasticsearchClient.class, openSearchClientFactory::provideElasticSearchClient,
+                        openSearchSourceConfiguration);
                 final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration>
                         finalElasticsearchClientRefresher = elasticsearchClientRefresher;
                 pluginConfigObservable.addPluginConfigObserver(

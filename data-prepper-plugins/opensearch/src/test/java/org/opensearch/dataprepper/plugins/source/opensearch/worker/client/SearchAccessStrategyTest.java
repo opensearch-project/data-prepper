@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DistributionVersion;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 
@@ -49,11 +50,15 @@ public class SearchAccessStrategyTest {
     private OpenSearchSourceConfiguration openSearchSourceConfiguration;
 
     @Mock
+    private OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
+
+    @Mock
     private PluginConfigObservable pluginConfigObservable;
 
     private SearchAccessorStrategy createObjectUnderTest() {
         return SearchAccessorStrategy.create(
-                openSearchSourceConfiguration, openSearchClientFactory, pluginConfigObservable);
+                openSearchSourcePluginMetrics, openSearchSourceConfiguration, openSearchClientFactory,
+                pluginConfigObservable);
     }
 
     @ParameterizedTest
