@@ -122,6 +122,41 @@ class AwsSecretPluginIT {
     }
 
     @Test
+    void testInitializationWithDisableRefresh() {
+        when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
+                Map.of(TEST_SECRET_CONFIG_ID, awsSecretManagerConfiguration));
+        when(awsSecretManagerConfiguration.isDisableRefresh()).thenReturn(true);
+        when(awsSecretManagerConfiguration.createSecretManagerClient()).thenReturn(secretsManagerClient);
+        when(awsSecretManagerConfiguration.createGetSecretValueRequest()).thenReturn(getSecretValueRequest);
+        when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
+        when(getSecretValueResponse.secretString()).thenReturn(UUID.randomUUID().toString());
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
+             final MockedStatic<Runtime> runtimeMockedStatic = mockStatic(Runtime.class)
+        ) {
+            executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
+                    .thenReturn(scheduledExecutorService);
+            runtimeMockedStatic.when(Runtime::getRuntime).thenReturn(runtime);
+            objectUnderTest = new AwsSecretPlugin(awsSecretPluginConfig);
+            objectUnderTest.apply(extensionPoints);
+        }
+        final ArgumentCaptor<ExtensionProvider> extensionProviderArgumentCaptor =
+                ArgumentCaptor.forClass(ExtensionProvider.class);
+        verify(extensionPoints, times(2)).addExtensionProvider(extensionProviderArgumentCaptor.capture());
+        final List<ExtensionProvider> actualExtensionProviders = extensionProviderArgumentCaptor.getAllValues();
+        assertThat(actualExtensionProviders.get(0), instanceOf(AwsSecretsPluginConfigValueTranslatorExtensionProvider.class));
+        final Optional<PluginConfigValueTranslator> optionalPluginConfigValueTranslator =
+                actualExtensionProviders.get(0).provideInstance(context);
+        assertThat(optionalPluginConfigValueTranslator.isPresent(), is(true));
+        assertThat(optionalPluginConfigValueTranslator.get(), instanceOf(AwsSecretsPluginConfigValueTranslator.class));
+        assertThat(actualExtensionProviders.get(1), instanceOf(AwsSecretsPluginConfigPublisherExtensionProvider.class));
+        final Optional<PluginConfigPublisher> optionalPluginConfigPublisher =
+                actualExtensionProviders.get(1).provideInstance(context);
+        assertThat(optionalPluginConfigPublisher.isPresent(), is(true));
+        verifyNoInteractions(scheduledExecutorService);
+        verify(runtime).addShutdownHook(any());
+    }
+
+    @Test
     void testInitializationWithNullConfig() {
         objectUnderTest = new AwsSecretPlugin(null);
         objectUnderTest.apply(extensionPoints);
