@@ -59,7 +59,7 @@ public class AwsSecretPlugin implements ExtensionPlugin {
     private void submitSecretsRefreshJobs(final AwsSecretPluginConfig awsSecretPluginConfig,
                                           final SecretsSupplier secretsSupplier) {
         awsSecretPluginConfig.getAwsSecretManagerConfigurationMap().forEach((key, value) -> {
-            if (value.getRefreshInterval() != null) {
+            if (!value.isDisableRefresh()) {
                 final SecretsRefreshJob secretsRefreshJob = new SecretsRefreshJob(
                         key, secretsSupplier, pluginConfigPublisher, pluginMetrics);
                 final long period = value.getRefreshInterval().toSeconds();

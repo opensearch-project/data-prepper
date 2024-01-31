@@ -122,10 +122,10 @@ class AwsSecretPluginIT {
     }
 
     @Test
-    void testInitializationWithNullRefreshInterval() {
+    void testInitializationWithDisableRefresh() {
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Map.of(TEST_SECRET_CONFIG_ID, awsSecretManagerConfiguration));
-        when(awsSecretManagerConfiguration.getRefreshInterval()).thenReturn(null);
+        when(awsSecretManagerConfiguration.isDisableRefresh()).thenReturn(true);
         when(awsSecretManagerConfiguration.createSecretManagerClient()).thenReturn(secretsManagerClient);
         when(awsSecretManagerConfiguration.createGetSecretValueRequest()).thenReturn(getSecretValueRequest);
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);

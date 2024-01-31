@@ -42,8 +42,12 @@ public class AwsSecretManagerConfiguration {
     private String awsStsRoleArn;
 
     @JsonProperty("refresh_interval")
+    @NotNull(message = "refresh_interval must not be null")
     @DurationMin(hours = 1L, message = "Refresh interval must be at least 1 hour.")
     private Duration refreshInterval = Duration.ofHours(1L);
+
+    @JsonProperty("disable_refresh")
+    private boolean disableRefresh = false;
 
     public String getAwsSecretId() {
         return awsSecretId;
@@ -55,6 +59,10 @@ public class AwsSecretManagerConfiguration {
 
     public Duration getRefreshInterval() {
         return refreshInterval;
+    }
+
+    public boolean isDisableRefresh() {
+        return disableRefresh;
     }
 
     public SecretsManagerClient createSecretManagerClient() {
