@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.extension;
 
-import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabaseReader;
-import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.GeoIPDatabaseManager;
+import org.opensearch.dataprepper.plugins.processor.extension.database.GeoIPDatabaseManager;
+import org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +14,6 @@ import java.time.Instant;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Implementation class of geoIP-processor plugin service class.
@@ -24,7 +23,7 @@ public class GeoIPProcessorService {
     private static final Logger LOG = LoggerFactory.getLogger(GeoIPProcessorService.class);
     private final MaxMindConfig maxMindConfig;
     private final GeoIPDatabaseManager geoIPDatabaseManager;
-    private final ReentrantReadWriteLock.ReadLock readLock;
+
     private Instant nextUpdateAt;
     private ExecutorService executorService = null;
 
@@ -33,31 +32,13 @@ public class GeoIPProcessorService {
      *
      * @param geoIpServiceConfig geoIpServiceConfig
      */
-    public GeoIPProcessorService(final GeoIpServiceConfig geoIpServiceConfig,
-                                 final GeoIPDatabaseManager geoIPDatabaseManager,
-                                 final ReentrantReadWriteLock.ReadLock readLock
-                                 ) {
+    public GeoIPProcessorService(final GeoIpServiceConfig geoIpServiceConfig) {
         this.maxMindConfig = geoIpServiceConfig.getMaxMindConfig();
-        this.geoIPDatabaseManager = geoIPDatabaseManager;
-        this.readLock = readLock;
-
-        geoIPDatabaseManager.initiateDatabaseDownload();
+        this.geoIPDatabaseManager = new GeoIPDatabaseManager(maxMindConfig);
         this.nextUpdateAt = Instant.now().plus(maxMindConfig.getDatabaseRefreshInterval());
     }
 
-    public GeoIPDatabaseReader getGeoIPDatabaseReader() {
-        readLock.lock();
-        try {
-            final GeoIPDatabaseReader geoIPDatabaseReader = geoIPDatabaseManager.getGeoIPDatabaseReader();
-            geoIPDatabaseReader.retain();
-            checkAndUpdateDatabases();
-            return geoIPDatabaseReader;
-        } finally {
-            readLock.unlock();
-        }
-    }
-
-    private synchronized void checkAndUpdateDatabases() {
+    public GetGeoData getGeoIPDatabaseReader() {
         if (nextUpdateAt.isBefore(Instant.now())) {
             nextUpdateAt = Instant.now().plus(maxMindConfig.getDatabaseRefreshInterval());
             LOG.info("Trying to update geoip Database readers");
@@ -65,6 +46,7 @@ public class GeoIPProcessorService {
             executorService.execute(geoIPDatabaseManager::updateDatabaseReader);
             executorService.shutdown();
         }
+        return geoIPDatabaseManager.getGeoData();
     }
 
     public void shutdown() {
@@ -77,6 +59,5 @@ public class GeoIPProcessorService {
                 executorService.shutdownNow();
             }
         }
-        geoIPDatabaseManager.deleteDatabasesOnShutdown();
     }
 }
