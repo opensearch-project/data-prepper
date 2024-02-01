@@ -44,7 +44,7 @@ dependencies {
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:kafka'
     implementation 'software.amazon.awssdk:kms'
-    implementation 'software.amazon.msk:aws-msk-iam-auth:1.1.6'
+    implementation 'software.amazon.msk:aws-msk-iam-auth:2.0.3'
     implementation 'software.amazon.glue:schema-registry-serde:1.1.15'
     implementation 'com.amazonaws:aws-java-sdk-glue:1.12.506'
     implementation 'io.confluent:kafka-json-schema-serializer:7.4.0'
