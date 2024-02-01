@@ -13,7 +13,7 @@ dependencies {
     implementation project(':data-prepper-plugins:common')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
-    implementation 'software.amazon.randomcutforest:randomcutforest-testutils:3.8.0'
+    implementation 'software.amazon.randomcutforest:randomcutforest-testutils:4.0.0'
     implementation 'software.amazon.randomcutforest:randomcutforest-core:3.8.0'
     implementation 'software.amazon.randomcutforest:randomcutforest-examples:3.8.0'
     implementation 'software.amazon.randomcutforest:randomcutforest-parkservices:3.8.0'
