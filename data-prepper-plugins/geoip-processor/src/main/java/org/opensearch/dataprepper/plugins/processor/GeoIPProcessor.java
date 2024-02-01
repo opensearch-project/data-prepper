@@ -81,12 +81,15 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
     for (final Record<Event> eventRecord : records) {
       final Event event = eventRecord.getData();
+      boolean isEventProcessed = false;
+      boolean isEventFailedLookup = false;
 
-      for (EntryConfig entry : geoIPProcessorConfig.getEntries()) {
+      for (final EntryConfig entry : geoIPProcessorConfig.getEntries()) {
         final String whenCondition = entry.getWhenCondition();
         if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
           continue;
         }
+        isEventProcessed = true;
         final String source = entry.getSource();
         final List<String> attributes = entry.getFields();
         final String ipAddress = event.get(source, String.class);
@@ -97,17 +100,24 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
             if (IPValidationCheck.isPublicIpAddress(ipAddress)) {
               geoData = geoIPProcessorService.getGeoData(InetAddress.getByName(ipAddress), attributes);
               eventRecord.getData().put(entry.getTarget(), geoData);
-              geoIpEventsProcessed.increment();
+            } else {
+              isEventFailedLookup = true;
             }
           } catch (final IOException | EnrichFailedException ex) {
-            geoIpEventsFailedLookup.increment();
-            event.getMetadata().addTags(tagsOnFailure);
+            isEventFailedLookup = true;
             LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]", event, ipAddress, ex);
           }
         } else {
           //No Enrichment.
-          event.getMetadata().addTags(tagsOnFailure);
+          isEventFailedLookup = true;
         }
+      }
+      if (isEventProcessed) {
+        geoIpEventsProcessed.increment();
+      }
+      if (isEventFailedLookup) {
+        geoIpEventsFailedLookup.increment();
+        event.getMetadata().addTags(tagsOnFailure);
       }
     }
     return records;

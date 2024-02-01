@@ -133,11 +133,11 @@ class GeoIPProcessorTest {
             final Event event = record.getData();
             assertThat(event.get("/peer/status", String.class), equalTo("success"));
         }
-        verify(geoIpEventsProcessed, times(3)).increment();
+        verify(geoIpEventsProcessed, times(2)).increment();
     }
 
     @Test
-    void doExecuteTest() throws NoSuchFieldException, IllegalAccessException {
+    void doExecuteTest_should_add_geo_data_to_event_if_source_is_non_null() throws NoSuchFieldException, IllegalAccessException {
         when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
         when(entry.getSource()).thenReturn(SOURCE);
         when(entry.getTarget()).thenReturn(TARGET1);
@@ -155,6 +155,22 @@ class GeoIPProcessorTest {
             assertThat(event.containsKey("geolocation"), equalTo(true));
             verify(geoIpEventsProcessed).increment();
         }
+    }
+
+    @Test
+    void doExecuteTest_should_not_add_geo_data_to_event_if_source_is_null() throws NoSuchFieldException, IllegalAccessException {
+        when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
+        when(entry.getSource()).thenReturn("ip");
+        when(entry.getFields()).thenReturn(setFields());
+
+        final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
+
+        ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor,
+                "geoIPProcessorService", geoIPProcessorService);
+        Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
+
+        verify(geoIpEventsProcessed).increment();
+        verify(geoIpEventsFailedLookup).increment();
     }
 
     @Test
@@ -178,6 +194,7 @@ class GeoIPProcessorTest {
             Event event = record.getData();
             assertTrue(event.getMetadata().hasTags(testTags));
             verify(geoIpEventsFailedLookup).increment();
+            verify(geoIpEventsProcessed).increment();
         }
     }
 
