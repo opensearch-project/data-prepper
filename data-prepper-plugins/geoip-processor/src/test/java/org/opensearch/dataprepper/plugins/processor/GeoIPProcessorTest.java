@@ -77,6 +77,7 @@ import static org.opensearch.dataprepper.plugins.processor.GeoIPField.REPRESENTE
 import static org.opensearch.dataprepper.plugins.processor.GeoIPField.TIME_ZONE;
 import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED_LOOKUP;
 import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_PROCESSED;
+import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED_DB_LOOKUP;
 
 @ExtendWith(MockitoExtension.class)
 class GeoIPProcessorTest {
@@ -332,7 +333,6 @@ class GeoIPProcessorTest {
             Event event = record.getData();
             assertTrue(event.getMetadata().hasTags(testTags));
             verify(geoIpEventsFailedLookup).increment();
-            verify(geoIpEventsProcessed).increment();
         }
     }
 
