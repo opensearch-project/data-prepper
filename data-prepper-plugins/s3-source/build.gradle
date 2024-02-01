@@ -26,7 +26,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation libs.commons.io
     implementation libs.commons.compress
-    implementation 'joda-time:joda-time:2.12.5'
+    implementation 'joda-time:joda-time:2.12.6'
     implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
