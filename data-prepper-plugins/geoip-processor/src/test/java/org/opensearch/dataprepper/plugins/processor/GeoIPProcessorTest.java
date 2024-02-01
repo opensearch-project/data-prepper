@@ -43,8 +43,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED_LOOKUP;
 import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_PROCESSED;
-import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED_DB_LOOKUP;
 
 @ExtendWith(MockitoExtension.class)
 class GeoIPProcessorTest {
@@ -68,19 +68,19 @@ class GeoIPProcessorTest {
     @Mock
     private Counter geoIpEventsProcessed;
     @Mock
-    private Counter geoIpEventsFailedDBLookup;
+    private Counter geoIpEventsFailedLookup;
 
     @BeforeEach
     void setUp() {
         when(geoIpConfigSupplier.getGeoIPProcessorService()).thenReturn(geoIPProcessorService);
         lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_PROCESSED)).thenReturn(geoIpEventsProcessed);
-        lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_FAILED_DB_LOOKUP)).thenReturn(geoIpEventsFailedDBLookup);
+        lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_FAILED_LOOKUP)).thenReturn(geoIpEventsFailedLookup);
     }
 
     @AfterEach
     void tearDown() {
         verifyNoMoreInteractions(geoIpEventsProcessed);
-        verifyNoMoreInteractions(geoIpEventsFailedDBLookup);
+        verifyNoMoreInteractions(geoIpEventsFailedLookup);
     }
 
     private GeoIPProcessor createObjectUnderTest() {
@@ -177,7 +177,7 @@ class GeoIPProcessorTest {
         for (final Record<Event> record : records) {
             Event event = record.getData();
             assertTrue(event.getMetadata().hasTags(testTags));
-            verify(geoIpEventsFailedDBLookup).increment();
+            verify(geoIpEventsFailedLookup).increment();
         }
     }
 

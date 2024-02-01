@@ -38,9 +38,11 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
   private static final Logger LOG = LoggerFactory.getLogger(GeoIPProcessor.class);
   static final String GEO_IP_EVENTS_PROCESSED = "eventsProcessed";
-  static final String GEO_IP_EVENTS_FAILED_DB_LOOKUP = "eventsFailedDBLookup";
+  static final String GEO_IP_EVENTS_FAILED_LOOKUP = "eventsFailedLookup";
+  static final String GEO_IP_EVENTS_FAILED_ENGINE_EXCEPTION = "eventsFailedEngineException";
   private final Counter geoIpEventsProcessed;
-  private final Counter geoIpEventsFailedDBLookup;
+  private final Counter geoIpEventsFailedLookup;
+  private final Counter geoIpEventsFailedEngineException;
   private final GeoIPProcessorConfig geoIPProcessorConfig;
   private final List<String> tagsOnFailure;
   private final GeoIPProcessorService geoIPProcessorService;
@@ -63,7 +65,9 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
     this.tagsOnFailure = geoIPProcessorConfig.getTagsOnFailure();
     this.expressionEvaluator = expressionEvaluator;
     this.geoIpEventsProcessed = pluginMetrics.counter(GEO_IP_EVENTS_PROCESSED);
-    this.geoIpEventsFailedDBLookup = pluginMetrics.counter(GEO_IP_EVENTS_FAILED_DB_LOOKUP);
+    this.geoIpEventsFailedLookup = pluginMetrics.counter(GEO_IP_EVENTS_FAILED_LOOKUP);
+    //TODO: Use the exception metric for exceptions from service
+    this.geoIpEventsFailedEngineException = pluginMetrics.counter(GEO_IP_EVENTS_FAILED_ENGINE_EXCEPTION);
   }
 
   /**
@@ -96,7 +100,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
               geoIpEventsProcessed.increment();
             }
           } catch (final IOException | EnrichFailedException ex) {
-            geoIpEventsFailedDBLookup.increment();
+            geoIpEventsFailedLookup.increment();
             event.getMetadata().addTags(tagsOnFailure);
             LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]", event, ipAddress, ex);
           }
