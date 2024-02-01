@@ -33,7 +33,7 @@ dependencies {
     implementation 'io.debezium:debezium-storage-file:2.3.0.Final'
     // Debezium MySQL Connector
     implementation 'org.antlr:antlr4-runtime:4.10.1'
-    implementation 'io.debezium:debezium-connector-mysql:2.3.0.Final'
+    implementation 'io.debezium:debezium-connector-mysql:2.5.1.Final'
     implementation 'io.debezium:debezium-ddl-parser:2.3.0.Final'
     implementation 'com.zendesk:mysql-binlog-connector-java:0.28.1'
     implementation 'com.mysql:mysql-connector-j:8.0.33'
