@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.configuration.EntryConfig;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.EnrichFailedException;
+import org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoData;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIpConfigSupplier;
 import org.opensearch.dataprepper.plugins.processor.utils.IPValidationCheck;
@@ -78,6 +79,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   @Override
   public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
     Map<String, Object> geoData;
+    final GetGeoData geoIPDatabaseReader = geoIPProcessorService.getGeoIPDatabaseReader();
 
     for (final Record<Event> eventRecord : records) {
       final Event event = eventRecord.getData();
@@ -99,7 +101,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
         if (ipAddress != null && !ipAddress.isEmpty()) {
           try {
             if (IPValidationCheck.isPublicIpAddress(ipAddress)) {
-              geoData = geoIPProcessorService.getGeoData(InetAddress.getByName(ipAddress), attributes);
+              geoData = geoIPDatabaseReader.getGeoData(InetAddress.getByName(ipAddress), attributes);
               eventRecord.getData().put(entry.getTarget(), geoData);
             } else {
               isEventFailedLookup = true;
@@ -133,7 +135,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
   @Override
   public void shutdown() {
+    geoIPProcessorService.shutdown();
     //TODO: delete mmdb files
-    LOG.info("GeoIP plugin Shutdown");
   }
 }

@@ -16,7 +16,6 @@ import com.maxmind.geoip2.record.Continent;
 import com.maxmind.geoip2.record.Country;
 import com.maxmind.geoip2.record.Subdivision;
 import com.maxmind.geoip2.record.Location;
-import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSource;
 import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DatabaseReaderCreate;
 import org.slf4j.Logger;
@@ -114,13 +113,8 @@ public class GetGeoLite2Data implements GetGeoData {
      * @return enriched data Map
      */
     @Override
-    public Map<String, Object> getGeoData(final InetAddress inetAddress, final List<String> attributes, final String tempDestDir) {
+    public Map<String, Object> getGeoData(final InetAddress inetAddress, final List<String> attributes) {
         Map<String, Object> geoData = new HashMap<>();
-        if (GeoIPProcessorService.downloadReady) {
-            this.tempDestDir = tempDestDir;
-            GeoIPProcessorService.downloadReady = false;
-            switchDatabaseReader();
-        }
         try {
             responseCountry = readerCountry.country(inetAddress);
             country = responseCountry.getCountry();

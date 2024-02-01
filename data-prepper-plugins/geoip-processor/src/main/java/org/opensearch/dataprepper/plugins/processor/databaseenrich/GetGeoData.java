@@ -22,7 +22,7 @@ public interface GetGeoData {
 
     void switchDatabaseReader();
     void closeReader();
-    Map<String, Object> getGeoData(InetAddress inetAddress, List<String> attributes, String tempDestDir);
+    Map<String, Object> getGeoData(InetAddress inetAddress, List<String> attributes);
 
     /**
      * Enrich attributes

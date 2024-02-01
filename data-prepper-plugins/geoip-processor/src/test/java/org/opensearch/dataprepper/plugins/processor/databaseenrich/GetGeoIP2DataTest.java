@@ -12,7 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorConfig;
-import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSource;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIpServiceConfig;
 import org.opensearch.dataprepper.plugins.processor.extension.MaxMindConfig;
@@ -62,8 +61,7 @@ class GetGeoIP2DataTest {
 
         List<String> attributes = List.of("city_name", "country_name");
         InetAddress inetAddress = InetAddress.getByName(IP);
-        GeoIPProcessorService.downloadReady = false;
-        Map<String, Object> geoData = getGeoIP2Data.getGeoData(inetAddress, attributes, PREFIX_DIR);
+        Map<String, Object> geoData = getGeoIP2Data.getGeoData(inetAddress, attributes);
         assertThat(geoData.get("country_iso_code"), equalTo("US"));
         assertThat(geoData.get("ip"), equalTo("2001:4860:4860:0:0:0:0:8888"));
     }
@@ -87,8 +85,7 @@ class GetGeoIP2DataTest {
     void getGeoDataTest_cover_EnrichFailedException() throws UnknownHostException {
         List<String> attributes = List.of("city_name", "country_name");
         InetAddress inetAddress = InetAddress.getByName(IP);
-        GeoIPProcessorService.downloadReady = false;
-        assertThrows(EnrichFailedException.class, () -> getGeoIP2Data.getGeoData(inetAddress, attributes, PREFIX_DIR));
+        assertThrows(EnrichFailedException.class, () -> getGeoIP2Data.getGeoData(inetAddress, attributes));
     }
 
     @Test
@@ -97,6 +94,6 @@ class GetGeoIP2DataTest {
         getGeoIP2Data.closeReader();
         List<String> attributes = List.of("city_name", "country_name");
         InetAddress inetAddress = InetAddress.getByName(IP);
-        assertThrows(EnrichFailedException.class, () -> getGeoIP2Data.getGeoData(inetAddress, attributes, PREFIX_DIR));
+        assertThrows(EnrichFailedException.class, () -> getGeoIP2Data.getGeoData(inetAddress, attributes));
     }
 }

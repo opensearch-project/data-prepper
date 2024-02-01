@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSource;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIpServiceConfig;
 import org.opensearch.dataprepper.plugins.processor.extension.MaxMindConfig;
@@ -57,8 +56,7 @@ class GetGeoLite2DataTest {
     void getGeoDataTest_without_attributes() throws UnknownHostException {
         List<String> attributes = List.of();
         InetAddress inetAddress = InetAddress.getByName(IP);
-        GeoIPProcessorService.downloadReady = false;
-        Map<String, Object> geoData = getGeoLite2Data.getGeoData(inetAddress, attributes, tempFolderPath);
+        Map<String, Object> geoData = getGeoLite2Data.getGeoData(inetAddress, attributes);
         Assertions.assertNotNull(geoData);
         assertThat(geoData.get("country_iso_code"), equalTo("FR"));
         assertThat(geoData.get("ip"), equalTo(IP));
@@ -82,8 +80,7 @@ class GetGeoLite2DataTest {
                 "asn",
                 "organization_name", "network");
         InetAddress inetAddress = InetAddress.getByName(IP);
-        GeoIPProcessorService.downloadReady = false;
-        Map<String, Object> geoData = getGeoLite2Data.getGeoData(inetAddress, attributes, tempFolderPath);
+        Map<String, Object> geoData = getGeoLite2Data.getGeoData(inetAddress, attributes);
         Assertions.assertNotNull(geoData);
         assertThat(geoData.get("country_name"), equalTo("France"));
         assertThat(geoData.get("ip"), equalTo(IP));
@@ -99,8 +96,7 @@ class GetGeoLite2DataTest {
         InetAddress inetAddress = InetAddress.getByName(IP);
         String dbPath = "/src/test/resources/mmdb-file/geo-enterprise";
         getGeoLite2Data = new GetGeoLite2Data(dbPath, cacheSize);
-        GeoIPProcessorService.downloadReady = false;
-        assertThrows(EnrichFailedException.class, () -> getGeoLite2Data.getGeoData(inetAddress, attributes, tempFolderPath));
+        assertThrows(EnrichFailedException.class, () -> getGeoLite2Data.getGeoData(inetAddress, attributes));
     }
 
     @Test
@@ -124,6 +120,6 @@ class GetGeoLite2DataTest {
         getGeoLite2Data.closeReader();
         List<String> attributes = List.of("city_name", "country_name");
         InetAddress inetAddress = InetAddress.getByName(IP);
-        assertThrows(NullPointerException.class, () -> getGeoLite2Data.getGeoData(inetAddress, attributes, PREFIX_DIR));
+        assertThrows(NullPointerException.class, () -> getGeoLite2Data.getGeoData(inetAddress, attributes));
     }
 }

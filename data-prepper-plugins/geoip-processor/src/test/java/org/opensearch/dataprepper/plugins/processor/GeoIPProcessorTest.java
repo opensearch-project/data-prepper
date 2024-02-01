@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.configuration.EntryConfig;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.EnrichFailedException;
+import org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoData;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIpConfigSupplier;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
@@ -67,10 +68,13 @@ class GeoIPProcessorTest {
     private Counter geoIpEventsProcessed;
     @Mock
     private Counter geoIpEventsFailedLookup;
+    @Mock
+    private GetGeoData geoIPDatabaseReader;
 
     @BeforeEach
     void setUp() {
         when(geoIpConfigSupplier.getGeoIPProcessorService()).thenReturn(geoIPProcessorService);
+        lenient().when(geoIPProcessorService.getGeoIPDatabaseReader()).thenReturn(geoIPDatabaseReader);
         lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_PROCESSED)).thenReturn(geoIpEventsProcessed);
         lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_FAILED_LOOKUP)).thenReturn(geoIpEventsFailedLookup);
     }
@@ -97,7 +101,7 @@ class GeoIPProcessorTest {
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
-        when(geoIPProcessorService.getGeoData(any(), any())).thenReturn(prepareGeoData());
+        when(geoIPDatabaseReader.getGeoData(any(), any())).thenReturn(prepareGeoData());
 
         ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor, "geoIPProcessorService", geoIPProcessorService);
 
@@ -135,7 +139,7 @@ class GeoIPProcessorTest {
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
-        when(geoIPProcessorService.getGeoData(any(), any())).thenReturn(prepareGeoData());
+        when(geoIPDatabaseReader.getGeoData(any(), any())).thenReturn(prepareGeoData());
         ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor,
                 "geoIPProcessorService", geoIPProcessorService);
         Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
@@ -176,7 +180,7 @@ class GeoIPProcessorTest {
 
         GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
-        doThrow(EnrichFailedException.class).when(geoIPProcessorService).getGeoData(any(), any());
+        doThrow(EnrichFailedException.class).when(geoIPDatabaseReader).getGeoData(any(), any());
 
         Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
 

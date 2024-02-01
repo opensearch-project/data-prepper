@@ -147,3 +147,9 @@ task integrationTest(type: Test) {
         includeTestsMatching '*IT'
     }
 }
+
+task deleteTestFiles(type: Delete) {
+    doLast {
+        delete './src/test/resources/mmdb-file'
+    }
+}
