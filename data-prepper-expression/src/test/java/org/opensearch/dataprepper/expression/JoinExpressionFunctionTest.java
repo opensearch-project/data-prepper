@@ -45,7 +45,7 @@ class JoinExpressionFunctionTest {
         if (delimiter == null) {
             args = List.of(sourceKey);
         } else {
-            args = List.of(sourceKey, delimiter);
+            args = List.of(delimiter, sourceKey);
         }
         Object expressionResult = joinExpressionFunction.evaluate(args, testEvent, testFunction);
         assertThat((String)expressionResult, equalTo(expectedOutput));
@@ -59,7 +59,7 @@ class JoinExpressionFunctionTest {
         if (delimiter == null) {
             args = List.of(sourceKey);
         } else {
-            args = List.of(sourceKey, delimiter);
+            args = List.of(delimiter, sourceKey);
         }
         Object expressionResult = joinExpressionFunction.evaluate(args, testEvent, testFunction);
         assertThat((Map<String, Object>)expressionResult, equalTo(expectedOutput));

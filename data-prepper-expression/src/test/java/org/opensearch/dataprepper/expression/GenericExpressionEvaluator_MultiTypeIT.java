@@ -142,8 +142,8 @@ class GenericExpressionEvaluator_MultiTypeIT {
                 Arguments.of("/status_message+/message", event("{\"status_message\": \""+testString+"\", \"message\":\""+testString2+"\"}"), testString+testString2, String.class),
                 Arguments.of("getMetadata(\"strAttr\")+\""+testString2+"\"+/key", testEvent, testString+testString2+"value", String.class),
                 Arguments.of("join(/list)", testEvent, "string,1,true", String.class),
-                Arguments.of("join(/list, \"\\\\, \")", testEvent, "string, 1, true", String.class),
-                Arguments.of("join(/list, \" \")", testEvent, "string 1 true", String.class)
+                Arguments.of("join(\"\\\\, \", /list)", testEvent, "string, 1, true", String.class),
+                Arguments.of("join(\" \", /list)", testEvent, "string 1 true", String.class)
         );
     }
 
@@ -152,8 +152,8 @@ class GenericExpressionEvaluator_MultiTypeIT {
         Event testEvent2 = event("{\"list\":{\"key1\": [\"string\", 1, true], \"key2\": [1,2,3], \"key3\": \"value3\"}}");
         return Stream.of(
                 Arguments.of("join(/list)", testEvent1, Map.of("key", "string,1,true")),
-                Arguments.of("join(/list, \"\\\\, \")", testEvent1, Map.of("key", "string, 1, true")),
-                Arguments.of("join(/list, \" \")", testEvent1, Map.of("key", "string 1 true")),
+                Arguments.of("join(\"\\\\, \", /list)", testEvent1, Map.of("key", "string, 1, true")),
+                Arguments.of("join(\" \", /list)", testEvent1, Map.of("key", "string 1 true")),
                 Arguments.of("join(/list)", testEvent2, Map.of("key1", "string,1,true", "key2", "1,2,3", "key3", "value3"))
         );
     }

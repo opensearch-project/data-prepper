@@ -298,7 +298,7 @@ class ParseTreeCoercionServiceTest {
         final String value = RandomStringUtils.randomAlphabetic(10);
         final Event testEvent = createTestEvent(Map.of(key, value));
         when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn("join(/"+key+", \",\")");
+        when(terminalNode.getText()).thenReturn("join(\",\" /" +key+")");
         when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
         Throwable exception = assertThrows(RuntimeException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
         assertThat(exception.getMessage(), containsStringIgnoringCase("check if any argument is missing a closing double quote or contains comma that's not escaped with `\\`"));
@@ -311,7 +311,7 @@ class ParseTreeCoercionServiceTest {
         final String output = RandomStringUtils.randomAlphabetic(10);
         final Event testEvent = createTestEvent(Map.of(key, value));
         when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn("join(/"+key+", \"\\\\,\")");
+        when(terminalNode.getText()).thenReturn("join(\"\\\\,\", /"+key+")");
         when(expressionFunctionProvider.provideFunction(eq("join"), any(List.class), any(Event.class), any(Function.class))).thenReturn(output);
         when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
         assertThat(objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent), equalTo(output));

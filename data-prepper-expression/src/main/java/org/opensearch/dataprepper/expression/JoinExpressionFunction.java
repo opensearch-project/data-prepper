@@ -41,16 +41,18 @@ public class JoinExpressionFunction implements  ExpressionFunction {
         }
 
         final String delimiter;
+        final String sourceKey;
         if (argStrings.size() == 2) {
-            final String trimmedDelimiter = argStrings.get(1).substring(1, argStrings.get(1).length() - 1);
+            final String trimmedDelimiter = argStrings.get(0).substring(1, argStrings.get(0).length() - 1);
 
             // remove slashes used to escape comma
             delimiter = trimmedDelimiter.replace("\\\\,", ",");
+            sourceKey = argStrings.get(1);
         } else {
             delimiter = ",";
+            sourceKey = argStrings.get(0);
         }
 
-        final String sourceKey = argStrings.get(0);
         try {
             final List<Object> sourceList = event.get(sourceKey, List.class);
             return joinList(sourceList, delimiter);
