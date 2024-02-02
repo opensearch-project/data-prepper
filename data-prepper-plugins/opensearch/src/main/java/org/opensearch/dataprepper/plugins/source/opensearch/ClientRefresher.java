@@ -49,7 +49,7 @@ public class ClientRefresher<Client>
     @Override
     public void update(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
         if (basicAuthChanged(openSearchSourceConfiguration)) {
-            openSearchSourcePluginMetrics.getBasicCredentialsChangeCounter().increment();
+            openSearchSourcePluginMetrics.getCredentialsChangeCounter().increment();
             readWriteLock.writeLock().lock();
             try {
                 currentClient = clientFunction.apply(openSearchSourceConfiguration);

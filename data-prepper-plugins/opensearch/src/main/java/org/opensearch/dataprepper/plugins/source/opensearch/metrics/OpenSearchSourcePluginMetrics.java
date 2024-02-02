@@ -18,7 +18,7 @@ public class OpenSearchSourcePluginMetrics {
     static final String PROCESSING_ERRORS = "processingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
-    static final String BASIC_CREDENTIALS_CHANGED = "basicCredentialsChanged";
+    static final String CREDENTIALS_CHANGED = "credentialsChanged";
     static final String CLIENT_REFRESH_ERRORS = "clientRefreshErrors";
 
     private final Counter documentsProcessedCounter;
@@ -28,7 +28,7 @@ public class OpenSearchSourcePluginMetrics {
 
     private final DistributionSummary bytesReceivedSummary;
     private final DistributionSummary bytesProcessedSummary;
-    private final Counter basicCredentialsChangeCounter;
+    private final Counter credentialsChangeCounter;
     private final Counter clientRefreshErrorsCounter;
 
     public static OpenSearchSourcePluginMetrics create(final PluginMetrics pluginMetrics) {
@@ -42,7 +42,7 @@ public class OpenSearchSourcePluginMetrics {
         indexProcessingTimeTimer = pluginMetrics.timer(INDEX_PROCESSING_TIME_ELAPSED);
         bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
         bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
-        basicCredentialsChangeCounter = pluginMetrics.counter(BASIC_CREDENTIALS_CHANGED);
+        credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
         clientRefreshErrorsCounter = pluginMetrics.counter(CLIENT_REFRESH_ERRORS);
     }
 
@@ -70,8 +70,8 @@ public class OpenSearchSourcePluginMetrics {
         return bytesProcessedSummary;
     }
 
-    public Counter getBasicCredentialsChangeCounter() {
-        return basicCredentialsChangeCounter;
+    public Counter getCredentialsChangeCounter() {
+        return credentialsChangeCounter;
     }
 
     public Counter getClientRefreshErrorsCounter() {

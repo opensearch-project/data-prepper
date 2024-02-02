@@ -71,7 +71,7 @@ class ClientRefresherTest {
 
     @Test
     void testGetAfterUpdateWithUsernameChanged() {
-        when(openSearchSourcePluginMetrics.getBasicCredentialsChangeCounter()).thenReturn(basicAuthChangedCounter);
+        when(openSearchSourcePluginMetrics.getCredentialsChangeCounter()).thenReturn(basicAuthChangedCounter);
         final ClientRefresher objectUnderTest = createObjectUnderTest();
         when(openSearchSourceConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         final OpenSearchSourceConfiguration newConfig = mock(OpenSearchSourceConfiguration.class);
@@ -85,7 +85,7 @@ class ClientRefresherTest {
 
     @Test
     void testGetAfterUpdateWithPasswordChanged() {
-        when(openSearchSourcePluginMetrics.getBasicCredentialsChangeCounter()).thenReturn(basicAuthChangedCounter);
+        when(openSearchSourcePluginMetrics.getCredentialsChangeCounter()).thenReturn(basicAuthChangedCounter);
         final ClientRefresher objectUnderTest = createObjectUnderTest();
         when(openSearchSourceConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(openSearchSourceConfiguration.getPassword()).thenReturn(TEST_PASSWORD);
@@ -101,7 +101,7 @@ class ClientRefresherTest {
 
     @Test
     void testGetAfterUpdateClientFailure() {
-        when(openSearchSourcePluginMetrics.getBasicCredentialsChangeCounter()).thenReturn(basicAuthChangedCounter);
+        when(openSearchSourcePluginMetrics.getCredentialsChangeCounter()).thenReturn(basicAuthChangedCounter);
         when(openSearchSourcePluginMetrics.getClientRefreshErrorsCounter()).thenReturn(clientRefreshErrors);
         final ClientRefresher objectUnderTest = createObjectUnderTest();
         when(openSearchSourceConfiguration.getUsername()).thenReturn(TEST_USERNAME);
