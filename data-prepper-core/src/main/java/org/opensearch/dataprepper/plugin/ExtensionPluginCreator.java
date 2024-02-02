@@ -1,7 +1,6 @@
 package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import org.opensearch.dataprepper.model.plugin.PluginInvocationException;
 import org.slf4j.Logger;
