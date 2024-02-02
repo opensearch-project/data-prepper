@@ -49,12 +49,12 @@ class ExtensionLoaderTest {
     @Mock
     private ExtensionClassProvider extensionClassProvider;
     @Mock
-    private PluginCreator pluginCreator;
+    private ExtensionPluginCreator extensionPluginCreator;
     @Captor
     private ArgumentCaptor<PluginArgumentsContext> pluginArgumentsContextArgumentCaptor;
 
     private ExtensionLoader createObjectUnderTest() {
-        return new ExtensionLoader(extensionPluginConfigurationConverter, extensionClassProvider, pluginCreator);
+        return new ExtensionLoader(extensionPluginConfigurationConverter, extensionClassProvider, extensionPluginCreator);
     }
 
     @Test
@@ -74,7 +74,7 @@ class ExtensionLoaderTest {
         when(extensionClassProvider.loadExtensionPluginClasses()).thenReturn(Collections.singleton(pluginClass));
 
         final ExtensionPlugin expectedPlugin = mock(ExtensionPlugin.class);
-        when(pluginCreator.newPluginInstance(
+        when(extensionPluginCreator.newPluginInstance(
                 eq(pluginClass),
                 any(PluginArgumentsContext.class),
                 startsWith("extension_plugin")))
@@ -98,7 +98,7 @@ class ExtensionLoaderTest {
         final String expectedPluginName = "test_extension_with_config";
         when(extensionPluginConfigurationConverter.convert(eq(true), eq(TestExtensionConfig.class),
                 eq("/test_extension"))).thenReturn(testExtensionConfig);
-        when(pluginCreator.newPluginInstance(
+        when(extensionPluginCreator.newPluginInstance(
                 eq(TestExtensionWithConfig.class),
                 any(PluginArgumentsContext.class),
                 eq(expectedPluginName)))
@@ -106,7 +106,7 @@ class ExtensionLoaderTest {
 
         final List<? extends ExtensionPlugin> extensionPlugins = createObjectUnderTest().loadExtensions();
 
-        verify(pluginCreator).newPluginInstance(eq(TestExtensionWithConfig.class),
+        verify(extensionPluginCreator).newPluginInstance(eq(TestExtensionWithConfig.class),
                 pluginArgumentsContextArgumentCaptor.capture(), eq(expectedPluginName));
         assertThat(pluginArgumentsContextArgumentCaptor.getValue(), instanceOf(
                 ExtensionLoader.SingleConfigArgumentArgumentsContext.class));
@@ -128,7 +128,7 @@ class ExtensionLoaderTest {
             final String expectedPluginName = ExtensionLoader.classNameToPluginName(pluginClass.getSimpleName());
             final ExtensionPlugin extensionPlugin = mock((Class<ExtensionPlugin>)pluginClass);
 
-            when(pluginCreator.newPluginInstance(
+            when(extensionPluginCreator.newPluginInstance(
                     eq(pluginClass),
                     any(PluginArgumentsContext.class),
                     eq(expectedPluginName)))
@@ -156,7 +156,7 @@ class ExtensionLoaderTest {
 
         when(extensionClassProvider.loadExtensionPluginClasses()).thenReturn(Collections.singleton(pluginClass));
 
-        when(pluginCreator.newPluginInstance(
+        when(extensionPluginCreator.newPluginInstance(
                 any(Class.class),
                 any(PluginArgumentsContext.class),
                 anyString()))
@@ -166,7 +166,7 @@ class ExtensionLoaderTest {
 
         final ArgumentCaptor<PluginArgumentsContext> contextArgumentCaptor =
                 ArgumentCaptor.forClass(PluginArgumentsContext.class);
-        verify(pluginCreator).newPluginInstance(
+        verify(extensionPluginCreator).newPluginInstance(
                 eq(pluginClass),
                 contextArgumentCaptor.capture(),
                 anyString());
@@ -183,7 +183,7 @@ class ExtensionLoaderTest {
 
         when(extensionClassProvider.loadExtensionPluginClasses()).thenReturn(Collections.singleton(pluginClass));
 
-        when(pluginCreator.newPluginInstance(
+        when(extensionPluginCreator.newPluginInstance(
                 any(Class.class),
                 any(PluginArgumentsContext.class),
                 anyString()))
@@ -193,7 +193,7 @@ class ExtensionLoaderTest {
 
         final ArgumentCaptor<PluginArgumentsContext> contextArgumentCaptor =
                 ArgumentCaptor.forClass(PluginArgumentsContext.class);
-        verify(pluginCreator).newPluginInstance(
+        verify(extensionPluginCreator).newPluginInstance(
                 eq(pluginClass),
                 contextArgumentCaptor.capture(),
                 any());
