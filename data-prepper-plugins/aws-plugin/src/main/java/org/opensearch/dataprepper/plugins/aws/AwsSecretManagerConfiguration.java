@@ -43,8 +43,8 @@ public class AwsSecretManagerConfiguration {
 
     @JsonProperty("refresh_interval")
     @NotNull(message = "refresh_interval must not be null")
-    @DurationMin(minutes = 1L, message = "Refresh interval must be at least 1 hour.")
-    private Duration refreshInterval = Duration.ofMinutes(1L);
+    @DurationMin(hours = 1L, message = "Refresh interval must be at least 1 hour.")
+    private Duration refreshInterval = Duration.ofHours(1L);
 
     @JsonProperty("disable_refresh")
     private boolean disableRefresh = false;
