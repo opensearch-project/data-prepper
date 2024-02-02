@@ -81,15 +81,16 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
     for (final Record<Event> eventRecord : records) {
       final Event event = eventRecord.getData();
-      boolean isEventProcessed = false;
+      final String whenCondition = geoIPProcessorConfig.getWhenCondition();
+
+      if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
+        continue;
+      }
+
       boolean isEventFailedLookup = false;
+      geoIpEventsProcessed.increment();
 
       for (final EntryConfig entry : geoIPProcessorConfig.getEntries()) {
-        final String whenCondition = entry.getWhenCondition();
-        if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
-          continue;
-        }
-        isEventProcessed = true;
         final String source = entry.getSource();
         final List<String> attributes = entry.getFields();
         final String ipAddress = event.get(source, String.class);
@@ -112,9 +113,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
           isEventFailedLookup = true;
         }
       }
-      if (isEventProcessed) {
-        geoIpEventsProcessed.increment();
-      }
+
       if (isEventFailedLookup) {
         geoIpEventsFailedLookup.increment();
         event.getMetadata().addTags(tagsOnFailure);

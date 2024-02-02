@@ -31,7 +31,6 @@ class EntryConfigTest {
         assertThat(entryConfig.getSource(), is(nullValue()));
         assertThat(entryConfig.getTarget(), equalTo(DEFAULT_TARGET));
         assertThat(entryConfig.getFields(), is(nullValue()));
-        assertThat(entryConfig.getWhenCondition(), is(nullValue()));
     }
 
     @Test
@@ -39,16 +38,13 @@ class EntryConfigTest {
         final String sourceValue = "source";
         final String targetValue = "target";
         final List<String> fieldsValue = List.of("city", "country");
-        final String whenConditionValue = "/ip == 1.2.3.4";
 
         ReflectivelySetField.setField(EntryConfig.class, entryConfig, "source", sourceValue);
         ReflectivelySetField.setField(EntryConfig.class, entryConfig, "target", targetValue);
         ReflectivelySetField.setField(EntryConfig.class, entryConfig, "fields", fieldsValue);
-        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "whenCondition", whenConditionValue);
 
         assertThat(entryConfig.getSource(), equalTo(sourceValue));
         assertThat(entryConfig.getTarget(), equalTo(targetValue));
         assertThat(entryConfig.getFields(), equalTo(fieldsValue));
-        assertThat(entryConfig.getWhenCondition(), equalTo(whenConditionValue));
     }
 }

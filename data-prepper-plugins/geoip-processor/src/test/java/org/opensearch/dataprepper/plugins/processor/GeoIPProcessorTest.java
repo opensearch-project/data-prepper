@@ -49,8 +49,7 @@ import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP
 @ExtendWith(MockitoExtension.class)
 class GeoIPProcessorTest {
     public static final String SOURCE = "/peer/ip";
-    public static final String TARGET1 = "geolocation";
-    public static final String TARGET2 = "geodata";
+    public static final String TARGET = "geolocation";
     @Mock
     private GeoIPProcessorService geoIPProcessorService;
     @Mock
@@ -59,8 +58,6 @@ class GeoIPProcessorTest {
     private GeoIpConfigSupplier geoIpConfigSupplier;
     @Mock
     private EntryConfig entry;
-    @Mock
-    private EntryConfig anotherEntry;
     @Mock
     private ExpressionEvaluator expressionEvaluator;
     @Mock
@@ -91,15 +88,11 @@ class GeoIPProcessorTest {
     void doExecuteTest_with_when_condition_should_only_enrich_events_that_match_when_condition() throws NoSuchFieldException, IllegalAccessException {
         final String whenCondition = "/peer/status == success";
 
-        when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry, anotherEntry));
-        when(entry.getWhenCondition()).thenReturn(whenCondition);
-        when(entry.getSource()).thenReturn("/peer/source_ip");
-        when(entry.getTarget()).thenReturn(TARGET1);
+        when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
+        when(geoIPProcessorConfig.getWhenCondition()).thenReturn(whenCondition);
+        when(entry.getSource()).thenReturn("/peer/ip");
+        when(entry.getTarget()).thenReturn(TARGET);
         when(entry.getFields()).thenReturn(setFields());
-
-        when(anotherEntry.getSource()).thenReturn("/peer/target_ip");
-        when(anotherEntry.getTarget()).thenReturn(TARGET2);
-        when(anotherEntry.getFields()).thenReturn(setFields());
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
@@ -120,27 +113,23 @@ class GeoIPProcessorTest {
 
         assertThat(records.size(), equalTo(2));
 
-        final Collection<Record<Event>> recordsWithLocation = records.stream().filter(record -> record.getData().containsKey(TARGET1))
-                .collect(Collectors.toList());
-
-        final Collection<Record<Event>> recordsWithSecondEntry = records.stream().filter(record -> record.getData().containsKey(TARGET2))
+        final Collection<Record<Event>> recordsWithLocation = records.stream().filter(record -> record.getData().containsKey(TARGET))
                 .collect(Collectors.toList());
 
         assertThat(recordsWithLocation.size(), equalTo(1));
-        assertThat(recordsWithSecondEntry.size(), equalTo(2));
 
         for (final Record<Event> record : recordsWithLocation) {
             final Event event = record.getData();
             assertThat(event.get("/peer/status", String.class), equalTo("success"));
         }
-        verify(geoIpEventsProcessed, times(2)).increment();
+        verify(geoIpEventsProcessed, times(1)).increment();
     }
 
     @Test
     void doExecuteTest_should_add_geo_data_to_event_if_source_is_non_null() throws NoSuchFieldException, IllegalAccessException {
         when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
         when(entry.getSource()).thenReturn(SOURCE);
-        when(entry.getTarget()).thenReturn(TARGET1);
+        when(entry.getTarget()).thenReturn(TARGET);
         when(entry.getFields()).thenReturn(setFields());
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
@@ -241,8 +230,7 @@ class GeoIPProcessorTest {
 
     private Record<Event> createCustomRecord(final String customFieldValue) {
         Map<String, String> innerMap = new HashMap<>();
-        innerMap.put("source_ip", "136.226.242.205");
-        innerMap.put("target_ip", "136.226.242.201");
+        innerMap.put("ip", "136.226.242.205");
         innerMap.put("host", "example.org");
         innerMap.put("status", customFieldValue);
 

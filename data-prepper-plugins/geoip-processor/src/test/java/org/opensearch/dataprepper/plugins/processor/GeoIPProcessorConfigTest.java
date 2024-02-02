@@ -31,17 +31,21 @@ class GeoIPProcessorConfigTest {
     void testDefaultConfig() {
         assertThat(geoIPProcessorConfig.getEntries(), equalTo(null));
         assertThat(geoIPProcessorConfig.getTagsOnFailure(), equalTo(null));
+        assertThat(geoIPProcessorConfig.getWhenCondition(), equalTo(null));
     }
 
     @Test
     void testGetEntries() throws NoSuchFieldException, IllegalAccessException {
         final List<EntryConfig> entries = List.of(new EntryConfig());
         final List<String> tagsOnFailure = List.of("tag1", "tag2");
+        final String whenCondition = "/ip == 1.2.3.4";
 
         ReflectivelySetField.setField(GeoIPProcessorConfig.class, geoIPProcessorConfig, "entries", entries);
         ReflectivelySetField.setField(GeoIPProcessorConfig.class, geoIPProcessorConfig, "tagsOnFailure", tagsOnFailure);
+        ReflectivelySetField.setField(GeoIPProcessorConfig.class, geoIPProcessorConfig, "whenCondition", whenCondition);
 
         assertThat(geoIPProcessorConfig.getEntries(), equalTo(entries));
         assertThat(geoIPProcessorConfig.getTagsOnFailure(), equalTo(tagsOnFailure));
+        assertThat(geoIPProcessorConfig.getWhenCondition(), equalTo(whenCondition));
     }
 }
