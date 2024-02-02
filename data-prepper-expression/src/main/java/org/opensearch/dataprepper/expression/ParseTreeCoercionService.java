@@ -45,7 +45,8 @@ class ParseTreeCoercionService {
                 final String functionName = nodeStringValue.substring(0, funcNameIndex);
                 final int argsEndIndex = nodeStringValue.indexOf(")", funcNameIndex);
                 final String argsStr = nodeStringValue.substring(funcNameIndex+1, argsEndIndex);
-                final String[] args = argsStr.split(",");
+                // Split at commas if there's no backslash before the commas, because commas can be part of a function parameter
+                final String[] args = argsStr.split("(?<!\\\\),");
                 List<Object> argList = new ArrayList<>();
                 for (final String arg: args) {
                     String trimmedArg = arg.trim();
@@ -53,7 +54,7 @@ class ParseTreeCoercionService {
                         argList.add(trimmedArg);
                     } else if (trimmedArg.charAt(0) == '"') {
                         if (trimmedArg.length() < 2 || trimmedArg.charAt(trimmedArg.length()-1) != '"') {
-                            throw new RuntimeException("Invalid string argument. Missing double quote at the end");
+                            throw new RuntimeException("Invalid string argument: check if any argument is missing a closing double quote or contains comma that's not escaped with `\\`.");
                         }
                         argList.add(trimmedArg);
                     } else {
