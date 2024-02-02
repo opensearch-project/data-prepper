@@ -1,4 +1,4 @@
-dash==2.14.1
+dash==2.15.0
 mysql-connector==2.2.9
 opentelemetry-exporter-otlp==1.20.0
 opentelemetry-instrumentation-flask==0.41b0
