@@ -26,9 +26,6 @@ public class EntryConfig {
     @JsonProperty("exclude_fields")
     private List<String> excludeFields;
 
-    @JsonProperty("geoip_when")
-    private String whenCondition;
-
     public String getSource() {
         return source;
     }
@@ -51,9 +48,5 @@ public class EntryConfig {
             return false;
         }
         return includeFields == null || excludeFields == null;
-    }
-
-    public String getWhenCondition() {
-        return whenCondition;
     }
 }
