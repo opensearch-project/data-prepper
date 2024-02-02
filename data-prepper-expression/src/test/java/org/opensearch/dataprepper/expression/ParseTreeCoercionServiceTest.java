@@ -293,7 +293,7 @@ class ParseTreeCoercionServiceTest {
     }
 
     @Test
-    void testCoerceTerminalNodeFunctionTypeWithCommaInArgumentsThrowsException() {
+    void testCoerceTerminalNodeFunctionTypeWithUnescapedCommaInArgumentsThrowsException() {
         final String key = RandomStringUtils.randomAlphabetic(5);
         final String value = RandomStringUtils.randomAlphabetic(10);
         final Event testEvent = createTestEvent(Map.of(key, value));
