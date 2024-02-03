@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
+import org.springframework.context.annotation.Bean;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -20,13 +21,13 @@ import java.util.stream.Collectors;
 public class ExtensionLoader {
     private final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter;
     private final ExtensionClassProvider extensionClassProvider;
-    private final ExtensionPluginCreator extensionPluginCreator;
+    private final PluginCreator extensionPluginCreator;
 
     @Inject
     ExtensionLoader(
             final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter,
             final ExtensionClassProvider extensionClassProvider,
-            final ExtensionPluginCreator extensionPluginCreator) {
+            @Named("extensionPluginCreator") final PluginCreator extensionPluginCreator) {
         this.extensionPluginConfigurationConverter = extensionPluginConfigurationConverter;
         this.extensionClassProvider = extensionClassProvider;
         this.extensionPluginCreator = extensionPluginCreator;

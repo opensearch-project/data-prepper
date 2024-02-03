@@ -49,7 +49,7 @@ class ExtensionLoaderTest {
     @Mock
     private ExtensionClassProvider extensionClassProvider;
     @Mock
-    private ExtensionPluginCreator extensionPluginCreator;
+    private PluginCreator extensionPluginCreator;
     @Captor
     private ArgumentCaptor<PluginArgumentsContext> pluginArgumentsContextArgumentCaptor;
 

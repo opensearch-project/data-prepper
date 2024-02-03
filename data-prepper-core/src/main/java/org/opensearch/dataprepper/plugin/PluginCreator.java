@@ -12,8 +12,6 @@ import org.opensearch.dataprepper.model.plugin.PluginInvocationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
-import javax.inject.Named;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
@@ -22,13 +20,15 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Named
 class PluginCreator {
     private static final Logger LOG = LoggerFactory.getLogger(PluginCreator.class);
 
     private final PluginConfigurationObservableRegister pluginConfigurationObservableRegister;
 
-    @Inject
+    PluginCreator() {
+        this.pluginConfigurationObservableRegister = null;
+    }
+
     PluginCreator(final PluginConfigurationObservableRegister pluginConfigurationObservableRegister) {
         this.pluginConfigurationObservableRegister = pluginConfigurationObservableRegister;
     }
@@ -45,7 +45,9 @@ class PluginCreator {
 
         final Object[] constructorArguments = pluginArgumentsContext.createArguments(constructor.getParameterTypes(), args);
 
-        pluginConfigurationObservableRegister.registerPluginConfigurationObservables(constructorArguments);
+        if (pluginConfigurationObservableRegister != null) {
+            pluginConfigurationObservableRegister.registerPluginConfigurationObservables(constructorArguments);
+        }
 
         try {
             return (T) constructor.newInstance(constructorArguments);

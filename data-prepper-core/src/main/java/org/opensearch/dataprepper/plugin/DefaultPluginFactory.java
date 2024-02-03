@@ -44,7 +44,7 @@ public class DefaultPluginFactory implements PluginFactory {
     @Inject
     DefaultPluginFactory(
             final PluginProviderLoader pluginProviderLoader,
-            final PluginCreator pluginCreator,
+            @Named("pluginCreator") final PluginCreator pluginCreator,
             final PluginConfigurationConverter pluginConfigurationConverter,
             final PluginBeanFactoryProvider pluginBeanFactoryProvider,
             final PluginConfigurationObservableFactory pluginConfigurationObservableFactory,
