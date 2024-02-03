@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
-import org.springframework.context.annotation.Bean;
 
 import javax.inject.Inject;
 import javax.inject.Named;
