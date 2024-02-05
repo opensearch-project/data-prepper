@@ -76,6 +76,25 @@ class MapToListProcessorTest {
     }
 
     @Test
+    void testMapToListSuccessWithNestedMap() {
+
+        final MapToListProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecordWithNestedMap();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        List<Map<String, Object>> resultList = resultEvent.get("my-list", List.class);
+
+        assertThat(resultList.size(), is(2));
+        assertThat(resultList, containsInAnyOrder(
+                Map.of("key", "key1", "value", "value1"),
+                Map.of("key", "key2", "value", Map.of("key2-1", "value2"))
+        ));
+    }
+
+    @Test
     void testMapToListSuccessWithRootAsSource() {
         when(mockConfig.getSource()).thenReturn(null);
 
@@ -247,6 +266,26 @@ class MapToListProcessorTest {
     }
 
     @Test
+    public void testConvertFieldToListSuccessWithNestedMap() {
+        when(mockConfig.getConvertFieldToList()).thenReturn(true);
+
+        final MapToListProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecordWithNestedMap();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        List<List<Object>> resultList = resultEvent.get("my-list", List.class);
+
+        assertThat(resultList.size(), is(2));
+        assertThat(resultList, containsInAnyOrder(
+                List.of("key1", "value1"),
+                List.of("key2", Map.of("key2-1", "value2"))
+        ));
+    }
+
+    @Test
     public void testConvertFieldToListSuccessWithRootAsSource() {
         when(mockConfig.getSource()).thenReturn(null);
         when(mockConfig.getConvertFieldToList()).thenReturn(true);
@@ -326,6 +365,17 @@ class MapToListProcessorTest {
             "key1", "value1",
             "key2", "value2",
             "key3", "value3");
+        final Event event = JacksonEvent.builder()
+                .withData(data)
+                .withEventType("event")
+                .build();
+        return new Record<>(event);
+    }
+
+    private Record<Event> createTestRecordWithNestedMap() {
+        final Map<String, Map<String, Object>> data = Map.of("my-map", Map.of(
+                "key1", "value1",
+                "key2", Map.of("key2-1", "value2")));
         final Event event = JacksonEvent.builder()
                 .withData(data)
                 .withEventType("event")
