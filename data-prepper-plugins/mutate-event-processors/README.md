@@ -541,6 +541,32 @@ The processed event will have the following data:
 }
 ```
 
+If we enable `convert_field_to_list` option:
+```yaml
+...
+processor:
+  - map_to_list:
+      source: "my-map"
+      target: "my-list"
+      convert_field_to_list: true
+...
+```
+the processed event will have the following data:
+```json
+{
+  "my-list": [
+    ["key1", "value1"],
+    ["key2", "value2"],
+    ["key3", "value3"]
+  ],
+  "my-map": {
+    "key1": "value1",
+    "key2": "value2",
+    "key3": "value3"
+  }
+}
+```
+
 ### Configuration
 * `source` - (required): the source map to perform the operation
 * `target` - (required): the target list to put the converted list
@@ -549,6 +575,8 @@ The processed event will have the following data:
 * `exclude_keys` - (optional): the keys in source map that will be excluded from processing, default is empty list
 * `remove_processed_fields` - (optional): default is false; if true, will remove processed fields from source map
 * `map_to_list_when` - (optional): used to configure a condition for event processing based on certain property of the incoming event. Default is null (all events will be processed).
+* `convert_field_to_list` - (optional): default to false; if true, will convert fields to lists instead of objects
+* `tags_on_failure` - (optional): a list of tags to add to event metadata when the event fails to process
 
 
 ## Developer Guide
