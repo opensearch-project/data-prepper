@@ -17,7 +17,7 @@ public class S3ScanSchedulingOptions {
 
     @JsonProperty("interval")
     @NotNull
-    @DurationMin(seconds = 30L, message = "S3 scan interval must be at least 30 seconds")
+    @DurationMin(seconds = 1L, message = "S3 scan interval must be at least 1 second")
     @DurationMax(days = 365L, message = "S3 scan interval must be less than or equal to 365 days")
     private Duration interval;
 
