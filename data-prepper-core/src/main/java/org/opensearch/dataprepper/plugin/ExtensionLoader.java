@@ -20,16 +20,16 @@ import java.util.stream.Collectors;
 public class ExtensionLoader {
     private final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter;
     private final ExtensionClassProvider extensionClassProvider;
-    private final PluginCreator pluginCreator;
+    private final PluginCreator extensionPluginCreator;
 
     @Inject
     ExtensionLoader(
             final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter,
             final ExtensionClassProvider extensionClassProvider,
-            final PluginCreator pluginCreator) {
+            @Named("extensionPluginCreator") final PluginCreator extensionPluginCreator) {
         this.extensionPluginConfigurationConverter = extensionPluginConfigurationConverter;
         this.extensionClassProvider = extensionClassProvider;
-        this.pluginCreator = pluginCreator;
+        this.extensionPluginCreator = extensionPluginCreator;
     }
 
     List<? extends ExtensionPlugin> loadExtensions() {
@@ -37,7 +37,8 @@ public class ExtensionLoader {
                 .stream()
                 .map(extensionClass -> {
                     final PluginArgumentsContext pluginArgumentsContext = getConstructionContext(extensionClass);
-                    return pluginCreator.newPluginInstance(extensionClass, pluginArgumentsContext, convertClassToName(extensionClass));
+                    return extensionPluginCreator.newPluginInstance(
+                            extensionClass, pluginArgumentsContext, convertClassToName(extensionClass));
                 })
                 .collect(Collectors.toList());
     }

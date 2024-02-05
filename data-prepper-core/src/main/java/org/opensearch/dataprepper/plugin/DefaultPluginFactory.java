@@ -44,7 +44,7 @@ public class DefaultPluginFactory implements PluginFactory {
     @Inject
     DefaultPluginFactory(
             final PluginProviderLoader pluginProviderLoader,
-            final PluginCreator pluginCreator,
+            @Named("pluginCreator") final PluginCreator pluginCreator,
             final PluginConfigurationConverter pluginConfigurationConverter,
             final PluginBeanFactoryProvider pluginBeanFactoryProvider,
             final PluginConfigurationObservableFactory pluginConfigurationObservableFactory,
@@ -113,7 +113,7 @@ public class DefaultPluginFactory implements PluginFactory {
         final Class<?> pluginConfigurationType = pluginAnnotation.pluginConfigurationType();
         final Object configuration = pluginConfigurationConverter.convert(pluginConfigurationType, pluginSetting);
         final PluginConfigObservable pluginConfigObservable = pluginConfigurationObservableFactory
-                .createDefaultPluginConfigObservable(pluginConfigurationConverter, pluginClass, pluginSetting);
+                .createDefaultPluginConfigObservable(pluginConfigurationConverter, pluginConfigurationType, pluginSetting);
 
         return new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
