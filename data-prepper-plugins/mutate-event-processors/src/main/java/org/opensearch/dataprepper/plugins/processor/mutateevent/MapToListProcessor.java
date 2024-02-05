@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @DataPrepperPlugin(name = "map_to_list", pluginType = Processor.class, pluginConfigurationType = MapToListProcessorConfig.class)
@@ -88,12 +89,7 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
 
     private Map<String, Object> getSourceMap(Event recordEvent) throws JsonProcessingException {
         final Map<String, Object> sourceMap;
-        if (config.getSource() == null) {
-            // Source is root
-            sourceMap = OBJECT_MAPPER.treeToValue(recordEvent.getJsonNode(), Map.class);
-        } else {
-            sourceMap = recordEvent.get(config.getSource(), Map.class);
-        }
+        sourceMap = recordEvent.get(config.getSource(), Map.class);
         return sourceMap;
     }
 
@@ -102,7 +98,7 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
             return;
         }
 
-        if (config.getSource() == null) {
+        if (Objects.equals(config.getSource(), "")) {
             // Source is root
             for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
                 if (excludeKeySet.contains(entry.getKey())) {

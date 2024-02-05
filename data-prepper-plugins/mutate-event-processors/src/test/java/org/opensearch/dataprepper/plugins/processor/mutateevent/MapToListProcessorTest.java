@@ -96,7 +96,7 @@ class MapToListProcessorTest {
 
     @Test
     void testMapToListSuccessWithRootAsSource() {
-        when(mockConfig.getSource()).thenReturn(null);
+        when(mockConfig.getSource()).thenReturn("");
 
         final MapToListProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createFlatTestRecord();
@@ -176,7 +176,7 @@ class MapToListProcessorTest {
 
     @Test
     void testExcludedKeysAreNotProcessedWithRootAsSource() {
-        when(mockConfig.getSource()).thenReturn(null);
+        when(mockConfig.getSource()).thenReturn("");
         when(mockConfig.getExcludeKeys()).thenReturn(List.of("key1", "key3", "key5"));
 
         final MapToListProcessor processor = createObjectUnderTest();
@@ -220,7 +220,7 @@ class MapToListProcessorTest {
 
     @Test
     void testRemoveProcessedFieldsWithRootAsSource() {
-        when(mockConfig.getSource()).thenReturn(null);
+        when(mockConfig.getSource()).thenReturn("");
         when(mockConfig.getExcludeKeys()).thenReturn(List.of("key1", "key3", "key5"));
         when(mockConfig.getRemoveProcessedFields()).thenReturn(true);
 
@@ -287,7 +287,7 @@ class MapToListProcessorTest {
 
     @Test
     public void testConvertFieldToListSuccessWithRootAsSource() {
-        when(mockConfig.getSource()).thenReturn(null);
+        when(mockConfig.getSource()).thenReturn("");
         when(mockConfig.getConvertFieldToList()).thenReturn(true);
 
         final MapToListProcessor processor = createObjectUnderTest();

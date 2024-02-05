@@ -567,8 +567,40 @@ the processed event will have the following data:
 }
 ```
 
+If source is set to empty string (""), it will use the event root as source.
+```yaml
+...
+processor:
+  - map_to_list:
+      source: ""
+      target: "my-list"
+      convert_field_to_list: true
+...
+```
+Input data like this:
+```json
+{
+  "key1": "value1",
+  "key2": "value2",
+  "key3": "value3"
+}
+```
+will end up with this after processing:
+```json
+{
+  "my-list": [
+    ["key1", "value1"],
+    ["key2", "value2"],
+    ["key3", "value3"]
+  ],
+  "key1": "value1",
+  "key2": "value2",
+  "key3": "value3"
+}
+```
+
 ### Configuration
-* `source` - (required): the source map to perform the operation
+* `source` - (required): the source map to perform the operation; If set to empty string (""), it will use the event root as source.
 * `target` - (required): the target list to put the converted list
 * `key_name` - (optional): the key name of the field to hold the original key, default is "key"
 * `value_name` - (optional): the key name of the field to hold the original value, default is "value"
