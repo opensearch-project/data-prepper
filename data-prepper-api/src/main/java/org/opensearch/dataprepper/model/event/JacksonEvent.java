@@ -201,8 +201,13 @@ public class JacksonEvent implements Event {
     }
 
     private JsonNode getNode(final String key) {
-        final JsonPointer jsonPointer = toJsonPointer(key);
-        return jsonNode.at(jsonPointer);
+        final String jsonPointerKey;
+        if (key.isEmpty() || key.startsWith("/")) {
+            jsonPointerKey = key;
+        } else {
+            jsonPointerKey = SEPARATOR + key;
+        }
+        return jsonNode.at(jsonPointerKey);
     }
 
     private <T> T mapNodeToObject(final String key, final JsonNode node, final Class<T> clazz) {
@@ -399,24 +404,31 @@ public class JacksonEvent implements Event {
     }
     private String checkAndTrimKey(final String key) {
         checkKey(key);
-        return trimKey(key);
+        return trimTrailingSlashInKey(key);
     }
 
     private static void checkKey(final String key) {
         checkNotNull(key, "key cannot be null");
-        checkArgument(!key.isEmpty(), "key cannot be an empty string");
+        if (key.isEmpty()) {
+            // Empty string key is valid
+            return;
+        }
         if (key.length() > MAX_KEY_LENGTH) {
             throw new IllegalArgumentException("key cannot be longer than " + MAX_KEY_LENGTH + " characters");
         }
         if (!isValidKey(key)) {
-            throw new IllegalArgumentException("key " + key + " must contain only alphanumeric chars with .-_ and must follow JsonPointer (ie. 'field/to/key')");
+            throw new IllegalArgumentException("key " + key + " must contain only alphanumeric chars with .-_@/ and must follow JsonPointer (ie. 'field/to/key')");
         }
     }
 
     private String trimKey(final String key) {
 
         final String trimmedLeadingSlash = key.startsWith(SEPARATOR) ? key.substring(1) : key;
-        return trimmedLeadingSlash.endsWith(SEPARATOR) ? trimmedLeadingSlash.substring(0, trimmedLeadingSlash.length() - 2) : trimmedLeadingSlash;
+        return trimTrailingSlashInKey(trimmedLeadingSlash);
+    }
+
+    private String trimTrailingSlashInKey(final String key) {
+        return key.endsWith(SEPARATOR) ? key.substring(0, key.length() - 1) : key;
     }
 
     private static boolean isValidKey(final String key) {

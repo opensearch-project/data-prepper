@@ -126,6 +126,28 @@ public class JacksonEventTest {
         assertThat(result, is(equalTo(value)));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"foo", "/foo", "/foo/", "foo/"})
+    void testGetAtRootLevel(final String key) {
+        final String value = UUID.randomUUID().toString();
+
+        event.put(key, value);
+        final Map<String, String> result = event.get("", Map.class);
+
+        assertThat(result, is(Map.of("foo", value)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/foo/bar", "foo/bar", "foo/bar/"})
+    void testGetAtRootLevelWithMultiLevelKey(final String key) {
+        final String value = UUID.randomUUID().toString();
+
+        event.put(key, value);
+        final Map<String, String> result = event.get("", Map.class);
+
+        assertThat(result, is(Map.of("foo", Map.of("bar", value))));
+    }
+
     @Test
     public void testPutUpdateAndGet_withPojo() {
         final String key = "foo/bar";
@@ -324,7 +346,7 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "withSpecialChars*$%", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
+    @ValueSource(strings = {"withSpecialChars*$%", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
             "with,Comma", "with:Colon", "with[Bracket", "with|Brace"})
     void testKey_withInvalidKey_throwsIllegalArgumentException(final String invalidKey) {
         assertThrowsForKeyCheck(IllegalArgumentException.class, invalidKey);
@@ -718,7 +740,8 @@ public class JacksonEventTest {
         // Include Keys must start with / and also ordered, This is pre-processed in SinkModel
         List<String> includeKeys1 = Arrays.asList("foo", "info");
         final String expectedJsonString1 = "{\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"}}";
-        assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeKeys1).toJsonString(), equalTo(expectedJsonString1));
+        final Event.JsonStringBuilder temp = event.jsonBuilder().rootKey(null).includeKeys(includeKeys1);
+        assertThat(temp.toJsonString(), equalTo(expectedJsonString1));
 
         // Test child node
         List<String> includeKeys2 = Arrays.asList("foo", "info/name");
