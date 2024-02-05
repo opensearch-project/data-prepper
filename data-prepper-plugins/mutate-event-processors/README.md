@@ -485,11 +485,47 @@ the last element will be kept:
 }
 ```
 
+If `use_source_key` and `extract_value` are true:
+```yaml
+    - list_to_map:
+        source: "mylist"
+        use_source_key: true
+        extract_value: true
+```
+we will get:
+```json
+{
+  "mylist": [
+    {
+      "name": "a",
+      "value": "val-a"
+    },
+    {
+      "name": "b",
+      "value": "val-b1"
+    },
+    {
+      "name": "b",
+      "value": "val-b2"
+    },
+    {
+      "name": "c",
+      "value": "val-c"
+    }
+  ],
+  "name": ["a", "b", "b", "c"],
+  "value": ["val-a", "val-b1", "val-b2", "val-c"]
+}
+```
+
 ### Configuration
-* `key` - (required) - The key of the fields that will be extracted as keys in the generated map
+
 * `source` - (required) - The key in the event with a list of objects that will be converted to map
 * `target` - (optional) - The key of the field that will hold the generated map. If not specified, the generated map will be put in the root.
+* `key` - (optional) - The key of the fields that will be extracted as keys in the generated map
+* `use_source_key` - (optional) - A boolean value, default to false. If it's true, will use the source key as is in the result
 * `value_key` - (optional) - If specified, the values of the given `value_key` in the objects of the source list will be extracted and put into the values of the generated map; otherwise, original objects in the source list will be put into the values of the generated map.
+* `extract_value` - (optional) - A boolean value, default to false. It only applies when `use_source_key` is true. If it's true, the value corresponding to the source key will be extracted into the target; otherwise, original objects in the source list will be put into the target.
 * `flatten` - (optional) - A boolean value, default to false. If it's false, the values in the generated map will be lists; if it's true, the lists will be flattened into single items.
 * `flattened_element` - (optional) - Valid options are "first" and "last", default is "first". This specifies which element, first one or last one, to keep if `flatten` option is true.
 

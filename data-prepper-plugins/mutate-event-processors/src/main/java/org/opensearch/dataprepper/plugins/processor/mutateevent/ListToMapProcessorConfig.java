@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -45,13 +46,17 @@ public class ListToMapProcessorConfig {
     @JsonProperty("target")
     private String target = null;
 
-    @NotEmpty
-    @NotNull
     @JsonProperty("key")
     private String key;
 
     @JsonProperty("value_key")
     private String valueKey = null;
+
+    @JsonProperty("use_source_key")
+    private boolean useSourceKey = false;
+
+    @JsonProperty("extract_value")
+    private boolean extractValue = false;
 
     @NotNull
     @JsonProperty("flatten")
@@ -63,6 +68,9 @@ public class ListToMapProcessorConfig {
 
     @JsonProperty("list_to_map_when")
     private String listToMapWhen;
+
+    @JsonProperty("tags_on_failure")
+    private List<String> tagsOnFailure;
 
     public String getSource() {
         return source;
@@ -80,6 +88,14 @@ public class ListToMapProcessorConfig {
         return valueKey;
     }
 
+    public boolean getUseSourceKey() {
+        return useSourceKey;
+    }
+
+    public boolean getExtractValue() {
+        return extractValue;
+    }
+
     public boolean getFlatten() {
         return flatten;
     }
@@ -88,5 +104,9 @@ public class ListToMapProcessorConfig {
 
     public FlattenedElement getFlattenedElement() {
         return flattenedElement;
+    }
+
+    public List<String> getTagsOnFailure() {
+        return tagsOnFailure;
     }
 }
