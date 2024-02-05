@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.expression;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -28,14 +27,12 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.apache.commons.lang3.RandomStringUtils;
 
-class GenericExpressionEvaluator_StringIT {
+class GenericExpressionEvaluator_MultiTypeIT {
 
     private AnnotationConfigApplicationContext applicationContext;
 
@@ -46,34 +43,8 @@ class GenericExpressionEvaluator_StringIT {
         applicationContext.refresh();
     }
 
-    @Test
-    void testStringExpressionEvaluatorBeanAvailable() {
-        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
-        assertThat(evaluator, isA(GenericExpressionEvaluator.class));
-    }
-
-    @Test
-    void testStringExpressionEvaluatorBeanSingleton() {
-        final GenericExpressionEvaluator instanceA = applicationContext.getBean(GenericExpressionEvaluator.class);
-        final GenericExpressionEvaluator instanceB = applicationContext.getBean(GenericExpressionEvaluator.class);
-        assertThat(instanceA, sameInstance(instanceB));
-    }
-
-    @Test
-    void testParserBeanInstanceOfMultiThreadParser() {
-        final Parser instance = applicationContext.getBean(Parser.class);
-        assertThat(instance, instanceOf(MultiThreadParser.class));
-    }
-
-    @Test
-    void testSingleThreadParserBeanNotSingleton() {
-        final Parser instanceA = applicationContext.getBean(ParseTreeParser.SINGLE_THREAD_PARSER_NAME, Parser.class);
-        final Parser instanceB = applicationContext.getBean(ParseTreeParser.SINGLE_THREAD_PARSER_NAME, Parser.class);
-        assertThat(instanceA, not(sameInstance(instanceB)));
-    }
-
     @ParameterizedTest
-    @MethodSource("validExpressionArguments")
+    @MethodSource("validStringExpressionArguments")
     void testStringExpressionEvaluator(final String expression, final Event event, final String expected, final Class expectedClass) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
@@ -84,7 +55,17 @@ class GenericExpressionEvaluator_StringIT {
     }
 
     @ParameterizedTest
-    @MethodSource("validExpressionArguments")
+    @MethodSource("validMapExpressionArguments")
+    void testMapExpressionEvaluator(final String expression, final Event event, final Map<String, Object> expected) {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
+
+        final Map<String, Object> actual = (Map<String, Object>)evaluator.evaluate(expression, event);
+
+        assertThat(actual, is(expected));
+    }
+
+    @ParameterizedTest
+    @MethodSource("validStringExpressionArguments")
     void testStringExpressionEvaluatorWithMultipleThreads(final String expression, final Event event, final String expected, final Class expectedClass) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
@@ -108,8 +89,31 @@ class GenericExpressionEvaluator_StringIT {
     }
 
     @ParameterizedTest
+    @MethodSource("validMapExpressionArguments")
+    void testMapExpressionEvaluatorWithMultipleThreads(final String expression, final Event event, final Map<String, Object> expected) {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
+
+        final int numberOfThreads = 50;
+        final ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
+
+        List<Map<String, Object>> evaluationResults = Collections.synchronizedList(new ArrayList<>());
+
+        for (int i = 0; i < numberOfThreads; i++) {
+            executorService.execute(() -> evaluationResults.add((Map<String, Object>)evaluator.evaluate(expression, event)));
+        }
+
+        await().atMost(5, TimeUnit.SECONDS)
+                .until(() -> evaluationResults.size() == numberOfThreads);
+
+        assertThat(evaluationResults.size(), equalTo(numberOfThreads));
+        for (Map<String, Object> evaluationResult : evaluationResults) {
+            assertThat(evaluationResult, equalTo(expected));
+        }
+    }
+
+    @ParameterizedTest
     @MethodSource("exceptionExpressionArguments")
-    void testArithmeticExpressionEvaluatorInvalidInput(final String expression, final Event event) {
+    void testExpressionEvaluatorCausesException(final String expression, final Event event) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
         assertThrows(ExpressionEvaluationException.class, () -> evaluator.evaluate(expression, event));
     }
@@ -123,20 +127,44 @@ class GenericExpressionEvaluator_StringIT {
         assertThat(result, not(instanceOf(expectedClass)));
     }
 
-    private static Stream<Arguments> validExpressionArguments() {
+    private static Stream<Arguments> validStringExpressionArguments() {
         Random random = new Random();
         int testStringLength = random.nextInt(30);
         String testString = RandomStringUtils.randomAlphabetic(testStringLength);
         String testString2 = RandomStringUtils.randomAlphabetic(testStringLength);
         Map<String, Object> attributes = Map.of("strAttr", testString);
-        String testData = "{\"key\": \"value\"}";
-        JacksonEvent testEvent =  JacksonEvent.builder().withEventType("event").withEventMetadataAttributes(attributes).withData(testData).build();
+        String testData = "{\"key\": \"value\", \"list\":[\"string\", 1, true]}";
+        JacksonEvent testEvent = JacksonEvent.builder().withEventType("event").withEventMetadataAttributes(attributes).withData(testData).build();
         return Stream.of(
                 Arguments.of("\""+testString+"\"", event("{}"), testString, String.class),
                 Arguments.of("/status_message", event("{\"status_message\": \""+testString+"\"}"), testString, String.class),
                 Arguments.of("\""+testString+"\"+\""+testString2+"\"", event("{}"), testString+testString2, String.class),
                 Arguments.of("/status_message+/message", event("{\"status_message\": \""+testString+"\", \"message\":\""+testString2+"\"}"), testString+testString2, String.class),
-                Arguments.of("getMetadata(\"strAttr\")+\""+testString2+"\"+/key", testEvent, testString+testString2+"value", String.class)
+                Arguments.of("getMetadata(\"strAttr\")+\""+testString2+"\"+/key", testEvent, testString+testString2+"value", String.class),
+                Arguments.of("join(/list)", testEvent, "string,1,true", String.class),
+                Arguments.of("join(\"\\\\, \", /list)", testEvent, "string, 1, true", String.class),
+                Arguments.of("join(\" \", /list)", testEvent, "string 1 true", String.class)
+        );
+    }
+
+    private static Stream<Arguments> validMapExpressionArguments() {
+        Event testEvent1 = event("{\"list\":{\"key\": [\"string\", 1, true]}}");
+        Event testEvent2 = event("{\"list\":{\"key1\": [\"string\", 1, true], \"key2\": [1,2,3], \"key3\": \"value3\"}}");
+        return Stream.of(
+                Arguments.of("join(/list)", testEvent1, Map.of("key", "string,1,true")),
+                Arguments.of("join(\"\\\\, \", /list)", testEvent1, Map.of("key", "string, 1, true")),
+                Arguments.of("join(\" \", /list)", testEvent1, Map.of("key", "string 1 true")),
+                Arguments.of("join(/list)", testEvent2, Map.of("key1", "string,1,true", "key2", "1,2,3", "key3", "value3"))
+        );
+    }
+
+    private static Stream<Arguments> exceptionExpressionArguments() {
+        return Stream.of(
+                // Can't mix Numbers and Strings when using operators
+                Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}")),
+                // Wrong number of arguments
+                Arguments.of("join()", event("{\"list\":[\"string\", 1, true]}")),
+                Arguments.of("join(/list, \" \", \"third_arg\")", event("{\"list\":[\"string\", 1, true]}"))
         );
     }
 
@@ -148,14 +176,8 @@ class GenericExpressionEvaluator_StringIT {
         return Stream.of(
                 Arguments.of("/missing", event("{}"), String.class),
                 Arguments.of("/value", event("{\"value\": "+randomInt+"}"), String.class),
-                Arguments.of("length(/message)", event("{\"message\": \""+testString+"\"}"), String.class)
-        );
-    }
-
-    private static Stream<Arguments> exceptionExpressionArguments() {
-        return Stream.of(
-                // Can't mix Numbers and Strings when using operators
-                Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}"))
+                Arguments.of("length(/message)", event("{\"message\": \""+testString+"\"}"), String.class),
+                Arguments.of("join(/list)", event("{\"list\":{\"key\": [\"string\", 1, true]}}"), String.class)
         );
     }
 
