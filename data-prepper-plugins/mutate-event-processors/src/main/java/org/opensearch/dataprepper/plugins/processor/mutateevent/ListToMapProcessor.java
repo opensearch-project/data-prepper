@@ -62,7 +62,7 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
             final Map<String, Object> targetMap;
             try {
                 targetMap = constructTargetMap(sourceList);
-            } catch (IllegalArgumentException e) {
+            } catch (final IllegalArgumentException e) {
                 LOG.warn(EVENT, "Cannot find a list at the given source path [{}} on record [{}]",
                         config.getSource(), recordEvent, e);
                 recordEvent.getMetadata().addTags(config.getTagsOnFailure());
@@ -109,7 +109,8 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
         return targetMap;
     }
 
-    private void setTargetMapUnflattened(Map<String, Object> targetMap, Map<String, Object> itemMap, String itemKey, String itemValueKey, boolean doExtractValue) {
+    private void setTargetMapUnflattened(
+            final Map<String, Object> targetMap, final Map<String, Object> itemMap, final String itemKey, final String itemValueKey, final boolean doExtractValue) {
         if (!targetMap.containsKey(itemKey)) {
             targetMap.put(itemKey, new ArrayList<>());
         }
@@ -123,7 +124,8 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
         }
     }
 
-    private void setTargetMapFlattened(Map<String, Object> targetMap, Map<String, Object> itemMap, String itemKey, String itemValueKey, boolean doExtractValue) {
+    private void setTargetMapFlattened(
+            final Map<String, Object> targetMap, final Map<String, Object> itemMap, final String itemKey, final String itemValueKey, final boolean doExtractValue) {
         if (!targetMap.containsKey(itemKey) || config.getFlattenedElement() == ListToMapProcessorConfig.FlattenedElement.LAST) {
             if (doExtractValue) {
                 targetMap.put(itemKey, itemMap.get(itemValueKey));
@@ -133,7 +135,7 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
         }
     }
 
-    private void updateEvent(Event recordEvent, Map<String, Object> targetMap) {
+    private void updateEvent(final Event recordEvent, final Map<String, Object> targetMap) {
         final boolean doWriteToRoot = Objects.isNull(config.getTarget());
         if (doWriteToRoot) {
             for (final Map.Entry<String, Object> entry : targetMap.entrySet()) {
