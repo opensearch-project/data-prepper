@@ -740,8 +740,7 @@ public class JacksonEventTest {
         // Include Keys must start with / and also ordered, This is pre-processed in SinkModel
         List<String> includeKeys1 = Arrays.asList("foo", "info");
         final String expectedJsonString1 = "{\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"}}";
-        final Event.JsonStringBuilder temp = event.jsonBuilder().rootKey(null).includeKeys(includeKeys1);
-        assertThat(temp.toJsonString(), equalTo(expectedJsonString1));
+        assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeKeys1).toJsonString(), equalTo(expectedJsonString1));
 
         // Test child node
         List<String> includeKeys2 = Arrays.asList("foo", "info/name");
