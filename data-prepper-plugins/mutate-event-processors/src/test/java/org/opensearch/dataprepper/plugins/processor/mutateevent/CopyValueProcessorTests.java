@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
@@ -26,6 +27,9 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +42,13 @@ public class CopyValueProcessorTests {
 
     @Mock
     private ExpressionEvaluator expressionEvaluator;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(mockConfig.getFromList()).thenReturn(null);
+        lenient().when(mockConfig.getToList()).thenReturn(null);
+        lenient().when(mockConfig.getOverwriteIfToListExists()).thenReturn(false);
+    }
 
     @Test
     public void testSingleCopyProcessorTests() {
@@ -186,6 +197,106 @@ public class CopyValueProcessorTests {
         assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
     }
 
+    @Test
+    public void testCopyEntriesFromList() {
+        when(mockConfig.getFromList()).thenReturn("mylist");
+        when(mockConfig.getToList()).thenReturn("newlist");
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("name", "fruit_name", true, null),
+                createEntry("color", "fruit_color", true, null)
+        ));
+
+        final CopyValueProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEventWithLists(List.of(
+                Map.of("name", "apple", "color", "red", "shape", "round"),
+                Map.of("name", "orange", "color", "orange", "shape", "round"),
+                Map.of("name", "banana", "color", "yellow", "shape", "curved")
+        ));
+        final List<Record<Event>> resultRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Record<Event> resultRecord = resultRecords.get(0);
+
+        assertThat(resultRecord.getData().containsKey("newlist"), is(true));
+        assertThat(resultRecord.getData().get("newlist", List.class), is(List.of(
+                Map.of("fruit_name", "apple", "fruit_color", "red"),
+                Map.of("fruit_name", "orange", "fruit_color", "orange"),
+                Map.of("fruit_name", "banana", "fruit_color", "yellow")
+        )));
+    }
+
+    @Test
+    public void testCopyEntriesFromListNotOverwriteByDefault() {
+        when(mockConfig.getFromList()).thenReturn("mylist");
+        when(mockConfig.getToList()).thenReturn("mylist");
+
+        final CopyValueProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEventWithLists(List.of(
+                Map.of("name", "apple", "color", "red", "shape", "round"),
+                Map.of("name", "orange", "color", "orange", "shape", "round"),
+                Map.of("name", "banana", "color", "yellow", "shape", "curved")
+        ));
+        final List<Record<Event>> resultRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Record<Event> resultRecord = resultRecords.get(0);
+
+        assertThat(resultRecord.getData().containsKey("newlist"), is(false));
+    }
+
+    @Test
+    public void testCopyEntriesFromListOverwritesExistingList() {
+        when(mockConfig.getFromList()).thenReturn("mylist");
+        when(mockConfig.getToList()).thenReturn("mylist");
+        when(mockConfig.getOverwriteIfToListExists()).thenReturn(true);
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("name", "fruit_name", true, null),
+                createEntry("color", "fruit_color", true, null)
+        ));
+
+        final CopyValueProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEventWithLists(List.of(
+                Map.of("name", "apple", "color", "red", "shape", "round"),
+                Map.of("name", "orange", "color", "orange", "shape", "round"),
+                Map.of("name", "banana", "color", "yellow", "shape", "curved")
+        ));
+        final List<Record<Event>> resultRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Record<Event> resultRecord = resultRecords.get(0);
+
+        assertThat(resultRecord.getData().containsKey("mylist"), is(true));
+        assertThat(resultRecord.getData().get("mylist", List.class), is(List.of(
+                Map.of("fruit_name", "apple", "fruit_color", "red"),
+                Map.of("fruit_name", "orange", "fruit_color", "orange"),
+                Map.of("fruit_name", "banana", "fruit_color", "yellow")
+        )));
+    }
+
+    @Test
+    public void testCopyEntriesFromListWithWhenConditions() {
+        when(mockConfig.getFromList()).thenReturn("mylist");
+        when(mockConfig.getToList()).thenReturn("mylist");
+        when(mockConfig.getOverwriteIfToListExists()).thenReturn(true);
+        final String copyWhen = UUID.randomUUID().toString();
+
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("name", "fruit_name", true, null),
+                createEntry("color", "fruit_color", true, copyWhen)
+        ));
+
+        final CopyValueProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEventWithLists(List.of(
+                Map.of("name", "apple", "color", "red", "shape", "round"),
+                Map.of("name", "orange", "color", "orange", "shape", "round"),
+                Map.of("name", "banana", "color", "yellow", "shape", "curved")
+        ));
+        when(expressionEvaluator.evaluateConditional(copyWhen, record.getData())).thenReturn(false);
+        final List<Record<Event>> resultRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Record<Event> resultRecord = resultRecords.get(0);
+
+        assertThat(resultRecord.getData().containsKey("mylist"), is(true));
+        assertThat(resultRecord.getData().get("mylist", List.class), is(List.of(
+                Map.of("fruit_name", "apple"),
+                Map.of("fruit_name", "orange"),
+                Map.of("fruit_name", "banana")
+        )));
+    }
+
     private CopyValueProcessor createObjectUnderTest() {
         return new CopyValueProcessor(pluginMetrics, mockConfig, expressionEvaluator);
     }
@@ -201,6 +312,11 @@ public class CopyValueProcessorTests {
     private Record<Event> getEvent(String message) {
         final Map<String, Object> testData = new HashMap();
         testData.put("message", message);
+        return buildRecordWithEvent(testData);
+    }
+
+    private Record<Event> getEventWithLists(List<Map<String, Object>> testList) {
+        final Map<String, Object> testData = Map.of("mylist", testList);
         return buildRecordWithEvent(testData);
     }
 
