@@ -15,10 +15,8 @@ import java.util.Map;
  */
 public interface GetGeoData {
 
-    public final String GeoLite2CityDB = "GeoLite2-City.mmdb";
-    public final String GeoLite2CountryDB = "GeoLite2-Country.mmdb";
-    public final String GeoLite2AsnDB = "GeoLite2-ASN.mmdb";
-    public final String GeoIP2EnterpriseDB = "GeoIP2-Enterprise.mmdb";
+    String GeoIP2EnterpriseDB = "GeoIP2-Enterprise.mmdb";
+    String MAXMIND_DATABASE_EXTENSION = ".mmdb";
 
     void switchDatabaseReader();
     void closeReader();

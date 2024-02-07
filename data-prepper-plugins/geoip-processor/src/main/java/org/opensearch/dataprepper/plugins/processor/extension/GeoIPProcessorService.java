@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.extension;
 
-import org.opensearch.dataprepper.plugins.processor.extension.database.GeoIPDatabaseManager;
-import org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoData;
+import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabaseReader;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.GeoIPDatabaseManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +38,12 @@ public class GeoIPProcessorService {
         this.nextUpdateAt = Instant.now().plus(maxMindConfig.getDatabaseRefreshInterval());
     }
 
-    public GetGeoData getGeoIPDatabaseReader() {
+    public GeoIPDatabaseReader getGeoIPDatabaseReader() {
+        checkAndUpdateDatabases();
+        return geoIPDatabaseManager.getGeoIPDatabaseReader();
+    }
+
+    private synchronized void checkAndUpdateDatabases() {
         if (nextUpdateAt.isBefore(Instant.now())) {
             nextUpdateAt = Instant.now().plus(maxMindConfig.getDatabaseRefreshInterval());
             LOG.info("Trying to update geoip Database readers");
@@ -46,7 +51,6 @@ public class GeoIPProcessorService {
             executorService.execute(geoIPDatabaseManager::updateDatabaseReader);
             executorService.shutdown();
         }
-        return geoIPDatabaseManager.getGeoData();
     }
 
     public void shutdown() {
@@ -59,5 +63,7 @@ public class GeoIPProcessorService {
                 executorService.shutdownNow();
             }
         }
+
+
     }
 }

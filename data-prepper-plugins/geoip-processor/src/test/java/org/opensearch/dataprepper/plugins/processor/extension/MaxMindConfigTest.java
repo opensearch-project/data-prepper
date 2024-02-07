@@ -61,6 +61,6 @@ class MaxMindConfigTest {
         ReflectivelySetField.setField(MaxMindConfig.class, maxMindConfig, "insecure", insecure);
 
         assertThat(maxMindConfig.getDatabasePaths().size(), equalTo(1));
-        assertThat(maxMindConfig.isHttpsEndpointOrInsecure(), equalTo(result));
+        assertThat(maxMindConfig.isSecureEndpoint(), equalTo(result));
     }
 }

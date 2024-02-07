@@ -14,6 +14,7 @@ import com.maxmind.geoip2.record.Country;
 import com.maxmind.geoip2.record.Subdivision;
 import com.maxmind.geoip2.record.Location;
 import com.maxmind.geoip2.record.Postal;
+import org.opensearch.dataprepper.plugins.processor.exception.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DatabaseReaderCreate;
 import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSource;
 import org.slf4j.Logger;
@@ -70,7 +71,7 @@ public class GetGeoIP2Data implements GetGeoData {
      */
     public void initDatabaseReader() {
         try {
-            readerEnterprise = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + tempDestDir + File.separator + GeoIP2EnterpriseDB), cacheSize);
+            readerEnterprise = DatabaseReaderCreate.buildReader(Path.of(dbPath + File.separator + GeoIP2EnterpriseDB), cacheSize);
         } catch (final IOException ex) {
             LOG.error("Exception while creating GeoIP2 DatabaseReader: {0}", ex);
         }
