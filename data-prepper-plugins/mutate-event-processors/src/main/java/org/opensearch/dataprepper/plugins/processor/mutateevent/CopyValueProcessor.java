@@ -74,15 +74,7 @@ public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<
                 } else {
                     // Copying individual entries
                     for (final CopyValueProcessorConfig.Entry entry : entries) {
-                        if (Objects.nonNull(entry.getCopyWhen()) && !expressionEvaluator.evaluateConditional(entry.getCopyWhen(), recordEvent)) {
-                            continue;
-                        }
-
-                        if (entry.getFromKey().equals(entry.getToKey()) || !recordEvent.containsKey(entry.getFromKey())) {
-                            continue;
-                        }
-
-                        if (!recordEvent.containsKey(entry.getToKey()) || entry.getOverwriteIfToKeyExists()) {
+                        if (shouldCopyEntry(entry, recordEvent)) {
                             final Object source = recordEvent.get(entry.getFromKey(), Object.class);
                             recordEvent.put(entry.getToKey(), source);
                         }
@@ -95,6 +87,18 @@ public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<
         }
 
         return records;
+    }
+
+    private boolean shouldCopyEntry(final CopyValueProcessorConfig.Entry entry, final Event recordEvent) {
+        if (Objects.nonNull(entry.getCopyWhen()) && !expressionEvaluator.evaluateConditional(entry.getCopyWhen(), recordEvent)) {
+            return false;
+        }
+
+        if (entry.getFromKey().equals(entry.getToKey()) || !recordEvent.containsKey(entry.getFromKey())) {
+            return false;
+        }
+
+        return !recordEvent.containsKey(entry.getToKey()) || entry.getOverwriteIfToKeyExists();
     }
 
     @Override
