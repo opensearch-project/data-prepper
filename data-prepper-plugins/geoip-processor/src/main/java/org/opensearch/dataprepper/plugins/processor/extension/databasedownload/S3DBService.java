@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
-import org.opensearch.dataprepper.plugins.processor.databaseenrich.DownloadFailedException;
+import org.opensearch.dataprepper.plugins.processor.exception.DownloadFailedException;
 import org.opensearch.dataprepper.plugins.processor.extension.AwsAuthenticationOptionsConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

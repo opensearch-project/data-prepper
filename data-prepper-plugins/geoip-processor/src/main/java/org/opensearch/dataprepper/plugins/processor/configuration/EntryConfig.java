@@ -8,10 +8,12 @@ package org.opensearch.dataprepper.plugins.processor.configuration;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class EntryConfig {
-    static final String DEFAULT_TARGET = "geolocation";
+    private final List<String> DEFAULT_FIELDS = new ArrayList<>();
+    static final String DEFAULT_TARGET = "geo";
     @JsonProperty("source")
     @NotEmpty
     private String source;
@@ -20,7 +22,7 @@ public class EntryConfig {
     private String target = DEFAULT_TARGET;
 
     @JsonProperty("fields")
-    private List<String> fields;
+    private List<String> fields = DEFAULT_FIELDS;
 
     public String getSource() {
         return source;

@@ -16,6 +16,7 @@ import com.maxmind.geoip2.record.Continent;
 import com.maxmind.geoip2.record.Country;
 import com.maxmind.geoip2.record.Subdivision;
 import com.maxmind.geoip2.record.Location;
+import org.opensearch.dataprepper.plugins.processor.exception.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSource;
 import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DatabaseReaderCreate;
 import org.slf4j.Logger;
@@ -28,6 +29,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Implementation class for enrichment of geoip lite2 data
@@ -35,6 +37,7 @@ import java.util.Map;
 public class GetGeoLite2Data implements GetGeoData {
 
     private static final Logger LOG = LoggerFactory.getLogger(GetGeoLite2Data.class);
+    private static final String MAXMIND_GEOLITE2 = "geolite2";
     public static final String COUNTRY_NAME = "country_name";
     public static final String CONTINENT_NAME = "continent_name";
     public static final String REGION_NAME = "region_name";
@@ -82,12 +85,37 @@ public class GetGeoLite2Data implements GetGeoData {
      */
     private void initDatabaseReader() {
         try {
-            readerCity = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2CityDB), cacheSize);
-            readerCountry = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2CountryDB), cacheSize);
-            readerAsn = DatabaseReaderCreate.createLoader(Path.of(dbPath + File.separator + GeoLite2AsnDB), cacheSize);
+            final Optional<String> cityDatabaseName = getDatabaseName("city");
+            final Optional<String> countryDatabaseName = getDatabaseName("country");
+            final Optional<String> asnDatabaseName = getDatabaseName("asn");
+            if (cityDatabaseName.isPresent()) {
+                readerCity = DatabaseReaderCreate.buildReader(Path.of(dbPath + File.separator + cityDatabaseName.get()), cacheSize);
+            }
+            if (countryDatabaseName.isPresent()) {
+                readerCity = DatabaseReaderCreate.buildReader(Path.of(dbPath + File.separator + countryDatabaseName.get()), cacheSize);
+            }
+            if (asnDatabaseName.isPresent()) {
+                readerCity = DatabaseReaderCreate.buildReader(Path.of(dbPath + File.separator + asnDatabaseName.get()), cacheSize);
+            }
         } catch (final IOException ex) {
-            LOG.error("Exception while creating GeoLite2 DatabaseReader: {0}", ex);
+            LOG.error("Exception while creating GeoLite2 DatabaseReader", ex);
         }
+    }
+
+    private Optional<String> getDatabaseName(final String database) {
+        final File file = new File(dbPath);
+        if (file.exists() && file.isDirectory()) {
+            final String[] list = file.list();
+            for (final String fileName: list) {
+                final String lowerCaseFileName = fileName.toLowerCase();
+                if (lowerCaseFileName.contains(database)
+                        && fileName.endsWith(MAXMIND_DATABASE_EXTENSION)
+                        && lowerCaseFileName.contains(MAXMIND_GEOLITE2)) {
+                    return Optional.of(fileName);
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     /**

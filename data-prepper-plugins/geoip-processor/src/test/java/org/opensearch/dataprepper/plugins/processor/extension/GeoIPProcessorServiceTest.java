@@ -11,8 +11,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoData;
-import org.opensearch.dataprepper.plugins.processor.extension.database.GeoIPDatabaseManager;
+import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabaseReader;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.GeoIPDatabaseManager;
 
 import java.time.Duration;
 
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class GeoIPProcessorServiceTest {
     @Mock
-    private GetGeoData geoData;
+    private GeoIPDatabaseReader geoIPDatabaseReader;
     @Mock
     private MaxMindConfig maxMindConfig;
     @Mock
@@ -44,16 +44,16 @@ class GeoIPProcessorServiceTest {
     @Test
     void test_getGeoIPDatabaseReader_should_not_trigger_update_when_refresh_interval_is_high() {
         try (final MockedConstruction<GeoIPDatabaseManager> geoIPDatabaseManagerMockedConstruction = mockConstruction(GeoIPDatabaseManager.class,
-                (mock,context) -> when(mock.getGeoData()).thenReturn(geoData))) {
+                (mock,context) -> when(mock.getGeoIPDatabaseReader()).thenReturn(geoIPDatabaseReader))) {
             when(maxMindConfig.getDatabaseRefreshInterval()).thenReturn(Duration.ofHours(1));
 
             final GeoIPProcessorService objectUnderTest = createObjectUnderTest();
             assertThat(geoIPDatabaseManagerMockedConstruction.constructed().size(), equalTo(1));
             final GeoIPDatabaseManager geoIPDatabaseManager = geoIPDatabaseManagerMockedConstruction.constructed().get(0);
 
-            final GetGeoData geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(geoIPDatabaseReader, equalTo(geoData));
-            verify(geoIPDatabaseManager).getGeoData();
+            final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
+            assertThat(geoIPDatabaseReader, equalTo(geoIPDatabaseReader));
+            verify(geoIPDatabaseManager).getGeoIPDatabaseReader();
             verifyNoMoreInteractions(geoIPDatabaseManager);
         }
     }
@@ -61,7 +61,7 @@ class GeoIPProcessorServiceTest {
     @Test
     void test_getGeoIPDatabaseReader_should_trigger_update_when_refresh_interval_is_met() throws InterruptedException {
         try (final MockedConstruction<GeoIPDatabaseManager> geoIPDatabaseManagerMockedConstruction = mockConstruction(GeoIPDatabaseManager.class,
-                (mock, context) -> when(mock.getGeoData()).thenReturn(geoData))) {
+                (mock, context) -> when(mock.getGeoIPDatabaseReader()).thenReturn(geoIPDatabaseReader))) {
             when(maxMindConfig.getDatabaseRefreshInterval()).thenReturn(Duration.ofNanos(1));
 
             final GeoIPProcessorService objectUnderTest = createObjectUnderTest();
@@ -72,13 +72,13 @@ class GeoIPProcessorServiceTest {
             // Wait for next update
             Thread.sleep(1000);
 
-            final GetGeoData geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(geoIPDatabaseReader, equalTo(geoData));
+            final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
+            assertThat(geoIPDatabaseReader, equalTo(geoIPDatabaseReader));
 
             // Wait for update to be called by ExecutorService
             Thread.sleep(1000);
             verify(geoIPDatabaseManager).updateDatabaseReader();
-            verify(geoIPDatabaseManager).getGeoData();
+            verify(geoIPDatabaseManager).getGeoIPDatabaseReader();
             verifyNoMoreInteractions(geoIPDatabaseManager);
         }
     }

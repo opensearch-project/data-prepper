@@ -11,12 +11,16 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
+import org.opensearch.dataprepper.plugins.processor.utils.DbSourceIdentification;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MaxMindConfig {
+    private static final boolean DEFAULT_INSECURE = false;
     private static final String S3_PREFIX = "s3://";
 
     //TODO: Add validations to database paths
@@ -43,15 +47,31 @@ public class MaxMindConfig {
     @Valid
     private AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig;
 
+    @JsonProperty("insecure")
+    private boolean insecure = DEFAULT_INSECURE;
+
     public MaxMindConfig() {
         // This default constructor is used if maxmind is not configured
     }
 
     @AssertTrue(message = "aws should be configured if any path in database_paths is S3 bucket path.")
-    boolean isAwsAuthenticationOptionsRequired() {
+    public boolean isAwsAuthenticationOptionsRequired() {
         for (final String databasePath : databasePaths) {
             if (databasePath.startsWith(S3_PREFIX)) {
                 return awsAuthenticationOptionsConfig != null;
+            }
+        }
+        return true;
+    }
+
+    @AssertTrue(message = "database_paths should be secure endpoint if using URL and insecure is false")
+    public boolean isSecureEndpoint() throws URISyntaxException {
+        if (insecure) {
+            return true;
+        }
+        for (final String databasePath : databasePaths) {
+            if (DbSourceIdentification.isURL(databasePath)) {
+                return new URI(databasePath).getScheme().equals("https");
             }
         }
         return true;

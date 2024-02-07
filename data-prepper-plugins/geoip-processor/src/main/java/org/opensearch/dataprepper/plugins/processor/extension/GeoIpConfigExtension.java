@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 
-@DataPrepperExtensionPlugin(modelType = GeoIpServiceConfig.class, rootKeyJsonPath = "/geoip_service")
+@DataPrepperExtensionPlugin(modelType = GeoIpServiceConfig.class, rootKeyJsonPath = "/geoip_service", allowInPipelineConfigurations = true)
 public class GeoIpConfigExtension implements ExtensionPlugin {
     private final DefaultGeoIpConfigSupplier defaultGeoIpConfigSupplier;
 

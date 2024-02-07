@@ -35,7 +35,7 @@ class DatabaseReaderCreateTest {
         FileUtils.copyInputStreamToFile(in, file);
         when(path.toFile()).thenReturn(file);
 
-        DatabaseReader databaseReader = DatabaseReaderCreate.createLoader(path, 4096);
+        DatabaseReader databaseReader = DatabaseReaderCreate.buildReader(path, 4096);
         Assertions.assertNotNull(databaseReader);
         in.close();
         file.deleteOnExit();

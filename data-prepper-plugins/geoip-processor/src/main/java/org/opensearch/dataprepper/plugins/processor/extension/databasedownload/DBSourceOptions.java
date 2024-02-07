@@ -17,7 +17,8 @@ import java.util.stream.Collectors;
 public enum DBSourceOptions {
     PATH("path"),
     URL("url"),
-    S3("s3");
+    S3("s3"),
+    CDN("cdn");
 
     private final String option;
 

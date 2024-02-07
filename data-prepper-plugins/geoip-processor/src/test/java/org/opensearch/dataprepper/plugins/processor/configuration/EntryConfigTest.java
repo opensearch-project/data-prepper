@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -30,7 +31,7 @@ class EntryConfigTest {
     void testDefaultConfig() {
         assertThat(entryConfig.getSource(), is(nullValue()));
         assertThat(entryConfig.getTarget(), equalTo(DEFAULT_TARGET));
-        assertThat(entryConfig.getFields(), is(nullValue()));
+        assertThat(entryConfig.getFields(), is(Collections.emptyList()));
     }
 
     @Test

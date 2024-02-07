@@ -24,6 +24,7 @@ public class DbSourceIdentification {
     }
 
     private static String s3DomainPattern = "[a-zA-Z0-9-]+\\.s3\\.amazonaws\\.com";
+    private static String CDN_ENDPOINT_HOST = "devo.geoip.maps.opensearch.org";
 
     /**
      * Check for database path is valid S3 URI or not
@@ -83,6 +84,15 @@ public class DbSourceIdentification {
         return input.startsWith("/") || input.startsWith("./") || input.startsWith("\\") || (input.length() > 1 && input.charAt(1) == ':');
     }
 
+    public static boolean isCDNEndpoint(final String input) {
+        try {
+            final URI uri = new URI(input);
+            return uri.getHost().equals(CDN_ENDPOINT_HOST);
+        } catch (URISyntaxException e) {
+            return false;
+        }
+    }
+
     /**
      * Get the database path options based on input URL
      * @param databasePaths - List of database paths to get databases data from
@@ -94,6 +104,9 @@ public class DbSourceIdentification {
 
             if(DbSourceIdentification.isFilePath(databasePath)) {
                 return DBSourceOptions.PATH;
+            }
+            else if (DbSourceIdentification.isCDNEndpoint(databasePath)) {
+                downloadSourceOptions = DBSourceOptions.CDN;
             }
             else if(DbSourceIdentification.isURL(databasePath))
             {
