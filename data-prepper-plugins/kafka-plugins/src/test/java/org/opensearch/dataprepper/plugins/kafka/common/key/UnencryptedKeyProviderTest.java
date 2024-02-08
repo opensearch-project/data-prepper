@@ -39,4 +39,9 @@ class UnencryptedKeyProviderTest {
         assertThat(actualBytes, notNullValue());
         assertThat(actualBytes, equalTo(unencodedInput.getBytes()));
     }
+
+    @Test
+    void isKeyEncrypted_returns_true() {
+        assertThat(createObjectUnderTest().isKeyEncrypted(), equalTo(false));
+    }
 }

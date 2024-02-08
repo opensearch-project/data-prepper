@@ -54,4 +54,20 @@ class KafkaDataConfigAdapterTest {
         assertThat(createObjectUnderTest().getEncryptionKeySupplier(),
                 equalTo(keySupplier));
     }
+
+    @Test
+    void getEncryptionKey_returns_null_when_topic_encryptedDataKey_is_null() {
+        assertThat(createObjectUnderTest().getEncryptedDataKey(),
+                nullValue());
+    }
+
+    @Test
+    void getEncryptionKey_returns_value_of_getEncryptedDataKey_when_encryptedDataKey_is_not_null() {
+        final String encryptionKey = UUID.randomUUID().toString();
+        when(topicConfig.getEncryptionKey()).thenReturn(UUID.randomUUID().toString());
+        when(keyFactory.getEncryptedDataKey(topicConfig)).thenReturn(encryptionKey);
+
+        assertThat(createObjectUnderTest().getEncryptedDataKey(),
+                equalTo(encryptionKey));
+    }
 }

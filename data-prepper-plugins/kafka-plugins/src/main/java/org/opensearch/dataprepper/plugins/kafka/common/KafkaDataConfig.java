@@ -11,4 +11,12 @@ import java.util.function.Supplier;
 public interface KafkaDataConfig {
     MessageFormat getSerdeFormat();
     Supplier<byte[]> getEncryptionKeySupplier();
+
+    /**
+     * Returns an encrypted data key. If the encryption key is not encrypted,
+     * then this will return <code>null</code>.
+     *
+     * @return The encrypted data key provided in the configuration.
+     */
+    String getEncryptedDataKey();
 }

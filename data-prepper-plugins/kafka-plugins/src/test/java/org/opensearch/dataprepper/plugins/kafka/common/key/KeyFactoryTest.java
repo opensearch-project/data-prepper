@@ -62,4 +62,35 @@ class KeyFactoryTest {
         InnerKeyProvider lastKeyProvider = innerKeyProviders.get(2);
         verifyNoInteractions(lastKeyProvider);
     }
+
+    @Test
+    void getEncryptedDataKey_returns_null_if_encryptionKey_is_null() {
+        assertThat(createObjectUnderTest().getEncryptedDataKey(topicConfig),
+                nullValue());
+    }
+
+    @Test
+    void getEncryptedDataKey_returns_null_if_encryptionKey_is_present_and_innerKeyProvider_indicates_unencrypted_data_key() {
+        when(topicConfig.getEncryptionKey()).thenReturn(UUID.randomUUID().toString());
+
+        final InnerKeyProvider middleKeyProvider = innerKeyProviders.get(1);
+        when(middleKeyProvider.supportsConfiguration(topicConfig)).thenReturn(true);
+        when(middleKeyProvider.isKeyEncrypted()).thenReturn(false);
+
+        assertThat(createObjectUnderTest().getEncryptedDataKey(topicConfig),
+                nullValue());
+    }
+
+    @Test
+    void getEncryptedDataKey_returns_null_if_encryptionKey_is_present_and_innerKeyProvider_indicates_encrypted_data_key() {
+        final String encryptionKey = UUID.randomUUID().toString();
+        when(topicConfig.getEncryptionKey()).thenReturn(encryptionKey);
+
+        final InnerKeyProvider middleKeyProvider = innerKeyProviders.get(1);
+        when(middleKeyProvider.supportsConfiguration(topicConfig)).thenReturn(true);
+        when(middleKeyProvider.isKeyEncrypted()).thenReturn(true);
+
+        assertThat(createObjectUnderTest().getEncryptedDataKey(topicConfig),
+                equalTo(encryptionKey));
+    }
 }
