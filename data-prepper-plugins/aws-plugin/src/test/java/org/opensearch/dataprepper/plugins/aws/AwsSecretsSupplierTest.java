@@ -28,6 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.aws.AwsSecretsSupplier.MAP_TYPE_REFERENCE;
 
@@ -132,10 +133,13 @@ class AwsSecretsSupplierTest {
     }
 
     @Test
-    void testConstructorWithGetSecretValueFailure() {
-        when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenThrow(secretsManagerException);
-        assertThrows(RuntimeException.class, () -> new AwsSecretsSupplier(
-                secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER));
+    void testConstructorWithGetSecretValueFailureFirstThenSuccess() {
+        final String testValue = "{\"a\":\"b\"}";
+        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(testValue);
+        when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest)))
+                .thenThrow(secretsManagerException).thenReturn(getSecretValueResponse);
+        objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
+        assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(testValue));
     }
 
     @Test

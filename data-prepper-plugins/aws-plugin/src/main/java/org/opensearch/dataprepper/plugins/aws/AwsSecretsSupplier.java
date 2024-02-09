@@ -111,13 +111,21 @@ public class AwsSecretsSupplier implements SecretsSupplier {
                                                     final SecretsManagerClient secretsManagerClient) {
         final GetSecretValueRequest getSecretValueRequest = awsSecretManagerConfiguration
                 .createGetSecretValueRequest();
-        final GetSecretValueResponse getSecretValueResponse;
-        try {
-            getSecretValueResponse = secretsManagerClient.getSecretValue(getSecretValueRequest);
-        } catch (Exception e) {
-            throw new RuntimeException(
-                    String.format("Unable to retrieve secret: %s",
-                            awsSecretManagerConfiguration.getAwsSecretId()), e);
+        GetSecretValueResponse getSecretValueResponse;
+        while (true) {
+            try {
+                getSecretValueResponse = secretsManagerClient.getSecretValue(getSecretValueRequest);
+                break;
+            } catch (Exception e) {
+                final long waitTimeInMillis = 1000L;
+                LOG.error(String.format("Unable to retrieve secret: %s, wait for %dms to retry again.",
+                                awsSecretManagerConfiguration.getAwsSecretId(), waitTimeInMillis), e);
+                try {
+                    Thread.sleep(waitTimeInMillis);
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
         }
 
         try {
