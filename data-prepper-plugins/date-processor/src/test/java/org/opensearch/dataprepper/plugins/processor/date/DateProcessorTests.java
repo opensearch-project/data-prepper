@@ -281,12 +281,15 @@ class DateProcessorTests {
         Random random = new Random();
         long millis = random.nextInt(1000);
         long nanos = random.nextInt(1000_000_000);
+        long micros = random.nextInt(1000_000);
         long epochMillis = epochSeconds * 1000L + millis;
         long epochNanos = epochSeconds * 1000_000_000L + nanos;
+        long epochMicros = epochSeconds * 1000_000L + micros;
 
         ZonedDateTime zdtSeconds = ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds), java.time.ZoneId.systemDefault());
         ZonedDateTime zdtMillis = ZonedDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), java.time.ZoneId.systemDefault());
         ZonedDateTime zdtNanos = ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds, nanos), java.time.ZoneId.systemDefault());
+        ZonedDateTime zdtMicros = ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds, micros * 1000), java.time.ZoneId.systemDefault());
         String testFormat = "yyyy-MMM-dd HH:mm:ss.SSS";
         String testNanosFormat = "yyyy-MMM-dd HH:mm:ss.nnnnnnnnnXXX";
         String defaultFormat = DateProcessorConfig.DEFAULT_OUTPUT_FORMAT;
@@ -303,9 +306,14 @@ class DateProcessorTests {
                 arguments("epoch_nano", epochNanos, "epoch_milli", Long.toString(epochNanos/1000_000)),
                 arguments("epoch_nano", epochNanos, testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat))),
                 arguments("epoch_nano", epochNanos, defaultFormat, zdtNanos.format(DateTimeFormatter.ofPattern(defaultFormat))),
+                arguments("epoch_micro", epochMicros, "epoch_second", Long.toString(epochSeconds)),
+                arguments("epoch_micro", epochMicros, "epoch_milli", Long.toString(epochMicros/1000)),
+                arguments("epoch_micro", epochMicros, testFormat, zdtMicros.format(DateTimeFormatter.ofPattern(testFormat))),
+                arguments("epoch_micro", epochMicros, defaultFormat, zdtMicros.format(DateTimeFormatter.ofPattern(defaultFormat))),
                 arguments(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_second", Long.toString(epochSeconds)),
                 arguments(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_milli", Long.toString(epochNanos/1000_000)),
                 arguments(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_nano", Long.toString(epochNanos)),
+                arguments(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), "epoch_micro", Long.toString(epochNanos/1000)),
                 arguments(testNanosFormat, zdtNanos.format(DateTimeFormatter.ofPattern(testNanosFormat)), defaultFormat, zdtNanos.format(DateTimeFormatter.ofPattern(defaultFormat)))
         );
     }
