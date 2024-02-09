@@ -1,5 +1,12 @@
 # Kafka Connect Source
 
+The `kafka-connect-plugins` project has not been released. And the maintainers have no plans to pick this work up.
+If you wish to pick this project up, please open a GitHub issue to discuss.
+The original code is available in Git history if needed.
+
+
+## Old README information
+
 This is a source plugin that start a Kafka Connect and Connectors. Please note that the Kafka Connect Source has to work with Kafka Buffer.
 
 ## Usages
