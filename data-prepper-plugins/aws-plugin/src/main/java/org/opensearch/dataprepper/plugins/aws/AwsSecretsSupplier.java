@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.aws;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.opensearch.dataprepper.model.annotations.SkipTestCoverageGenerated;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -107,6 +108,7 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         LOG.info("Finished retrieving latest secret in aws:secrets:{}.", secretConfigId);
     }
 
+    @SkipTestCoverageGenerated
     private Object retrieveSecretsFromSecretManager(final AwsSecretManagerConfiguration awsSecretManagerConfiguration,
                                                     final SecretsManagerClient secretsManagerClient) {
         final GetSecretValueRequest getSecretValueRequest = awsSecretManagerConfiguration
