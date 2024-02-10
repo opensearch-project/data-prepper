@@ -26,11 +26,11 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation libs.commons.io
     implementation libs.commons.compress
-    implementation 'joda-time:joda-time:2.12.5'
+    implementation 'joda-time:joda-time:2.12.6'
     implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-    implementation 'org.xerial.snappy:snappy-java:1.1.10.1'
+    implementation 'org.xerial.snappy:snappy-java:1.1.10.5'
     implementation 'org.apache.parquet:parquet-common:1.13.1'
     implementation 'dev.failsafe:failsafe:3.3.2'
     implementation 'org.apache.httpcomponents:httpcore:4.4.16'

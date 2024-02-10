@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -75,6 +76,7 @@ public class GrokProcessorConfigTests {
         assertThat(grokProcessorConfig.getTimeoutMillis(), equalTo(DEFAULT_TIMEOUT_MILLIS));
         assertThat(grokProcessorConfig.getGrokWhen(), equalTo(null));
         assertThat(grokProcessorConfig.getTagsOnMatchFailure(), equalTo(Collections.emptyList()));
+        assertThat(grokProcessorConfig.getTagsOnTimeout(), equalTo(Collections.emptyList()));
     }
 
     @Test
@@ -147,5 +149,49 @@ public class GrokProcessorConfigTests {
         settings.put(GrokProcessorConfig.TARGET_KEY, targetKey);
 
         return new PluginSetting(PLUGIN_NAME, settings);
+    }
+
+    @Test
+    void getTagsOnMatchFailure_returns_tagOnMatch() {
+        final List<String> tagsOnMatch = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        final GrokProcessorConfig objectUnderTest = GrokProcessorConfig.buildConfig(new PluginSetting(PLUGIN_NAME,
+                Map.of(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, tagsOnMatch)
+        ));
+
+        assertThat(objectUnderTest.getTagsOnMatchFailure(), equalTo(tagsOnMatch));
+    }
+
+    @Test
+    void getTagsOnTimeout_returns_tagsOnMatch_if_no_tagsOnTimeout() {
+        final List<String> tagsOnMatch = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        final GrokProcessorConfig objectUnderTest = GrokProcessorConfig.buildConfig(new PluginSetting(PLUGIN_NAME,
+                Map.of(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, tagsOnMatch)
+        ));
+
+        assertThat(objectUnderTest.getTagsOnTimeout(), equalTo(tagsOnMatch));
+    }
+
+    @Test
+    void getTagsOnTimeout_returns_tagsOnTimeout_if_present() {
+        final List<String> tagsOnMatch = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        final List<String> tagsOnTimeout = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        final GrokProcessorConfig objectUnderTest = GrokProcessorConfig.buildConfig(new PluginSetting(PLUGIN_NAME,
+                Map.of(
+                        GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, tagsOnMatch,
+                        GrokProcessorConfig.TAGS_ON_TIMEOUT, tagsOnTimeout
+                )
+        ));
+
+        assertThat(objectUnderTest.getTagsOnTimeout(), equalTo(tagsOnTimeout));
+    }
+
+    @Test
+    void getTagsOnTimeout_returns_tagsOnTimeout_if_present_and_no_tagsOnMatch() {
+        final List<String> tagsOnTimeout = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        final GrokProcessorConfig objectUnderTest = GrokProcessorConfig.buildConfig(new PluginSetting(PLUGIN_NAME,
+                Map.of(GrokProcessorConfig.TAGS_ON_TIMEOUT, tagsOnTimeout)
+        ));
+
+        assertThat(objectUnderTest.getTagsOnTimeout(), equalTo(tagsOnTimeout));
     }
 }

@@ -34,6 +34,6 @@ public class BufferSerializationFactory implements SerializationFactory {
 
     @Override
     public Serializer<?> getSerializer(final KafkaDataConfig dataConfig) {
-        return new BufferMessageSerializer<>(innerSerializationFactory.getSerializer(dataConfig));
+        return new BufferMessageSerializer<>(innerSerializationFactory.getSerializer(dataConfig), dataConfig);
     }
 }

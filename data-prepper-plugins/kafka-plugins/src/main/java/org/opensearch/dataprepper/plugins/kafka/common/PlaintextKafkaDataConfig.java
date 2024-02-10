@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 public class PlaintextKafkaDataConfig implements KafkaDataConfig {
     private final KafkaDataConfig dataConfig;
 
-    private PlaintextKafkaDataConfig(KafkaDataConfig dataConfig) {
+    private PlaintextKafkaDataConfig(final KafkaDataConfig dataConfig) {
         this.dataConfig = dataConfig;
     }
 
@@ -30,5 +30,10 @@ public class PlaintextKafkaDataConfig implements KafkaDataConfig {
     @Override
     public Supplier<byte[]> getEncryptionKeySupplier() {
         return dataConfig.getEncryptionKeySupplier();
+    }
+
+    @Override
+    public String getEncryptedDataKey() {
+        return dataConfig.getEncryptedDataKey();
     }
 }

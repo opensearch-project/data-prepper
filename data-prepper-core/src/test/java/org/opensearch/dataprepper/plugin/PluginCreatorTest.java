@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
@@ -13,9 +15,9 @@ import org.opensearch.dataprepper.model.plugin.PluginInvocationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -122,18 +124,21 @@ class PluginCreatorTest {
         pluginConfigurationObservableRegister = mock(PluginConfigurationObservableRegister.class);
     }
 
-    private PluginCreator createObjectUnderTest() {
+    private PluginCreator createObjectUnderTest(
+            final PluginConfigurationObservableRegister pluginConfigurationObservableRegister) {
         return new PluginCreator(pluginConfigurationObservableRegister);
     }
 
-    @Test
-    void newPluginInstance_should_create_new_instance_from_annotated_constructor() {
+    @ParameterizedTest
+    @MethodSource("providePluginConfigurationObservableRegister")
+    void newPluginInstance_should_create_new_instance_from_annotated_constructor(
+            final PluginConfigurationObservableRegister pluginConfigurationObservableRegister) {
 
         final AlternatePluginConfig alternatePluginConfig = mock(AlternatePluginConfig.class);
         given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class, AlternatePluginConfig.class}))
                 .willReturn(new Object[] { pluginSetting, alternatePluginConfig });
 
-        final PluginClassWithMultipleConstructors instance = createObjectUnderTest()
+        final PluginClassWithMultipleConstructors instance = createObjectUnderTest(pluginConfigurationObservableRegister)
                 .newPluginInstance(PluginClassWithMultipleConstructors.class, pluginConstructionContext, pluginName);
 
         assertThat(instance, notNullValue());
@@ -141,15 +146,17 @@ class PluginCreatorTest {
         assertThat(instance.alternatePluginConfig, equalTo(alternatePluginConfig));
     }
 
-    @Test
-    void newPluginInstance_should_create_new_instance_from_annotated_constructor_with_byte_decoder() {
+    @ParameterizedTest
+    @MethodSource("providePluginConfigurationObservableRegister")
+    void newPluginInstance_should_create_new_instance_from_annotated_constructor_with_byte_decoder(
+            final PluginConfigurationObservableRegister pluginConfigurationObservableRegister) {
 
         Object obj = new Object();
         final AlternatePluginConfig alternatePluginConfig = mock(AlternatePluginConfig.class);
         given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class, AlternatePluginConfig.class, Object.class}, obj))
                 .willReturn(new Object[] { pluginSetting, alternatePluginConfig, obj});
 
-        final PluginClassWithThreeArgs instance = createObjectUnderTest()
+        final PluginClassWithThreeArgs instance = createObjectUnderTest(pluginConfigurationObservableRegister)
                 .newPluginInstance(PluginClassWithThreeArgs.class, pluginConstructionContext, pluginName, obj);
 
         assertThat(instance, notNullValue());
@@ -175,47 +182,71 @@ class PluginCreatorTest {
         assertThat(instance.pluginConfigObservable, equalTo(pluginConfigObservable));
     }
 
-    @Test
-    void newPluginInstance_should_create_new_instance_from_PluginSetting_if_the_constructor() {
+    @ParameterizedTest
+    @MethodSource("providePluginConfigurationObservableRegister")
+    void newPluginInstance_should_create_new_instance_from_PluginSetting_if_the_constructor(
+            final PluginConfigurationObservableRegister pluginConfigurationObservableRegister) {
         given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}))
                 .willReturn(new Object[] { pluginSetting });
 
-        final ValidPluginClass instance = createObjectUnderTest().newPluginInstance(ValidPluginClass.class, pluginConstructionContext, pluginName);
+        final ValidPluginClass instance = createObjectUnderTest(pluginConfigurationObservableRegister)
+                .newPluginInstance(ValidPluginClass.class, pluginConstructionContext, pluginName);
 
         assertThat(instance, notNullValue());
         assertThat(instance.pluginSetting, equalTo(pluginSetting));
     }
 
-    @Test
-    void newPluginInstance_should_create_new_instance_using_default_constructor_if_available() {
+    @ParameterizedTest
+    @MethodSource("providePluginConfigurationObservableRegister")
+    void newPluginInstance_should_create_new_instance_using_default_constructor_if_available(
+            final PluginConfigurationObservableRegister pluginConfigurationObservableRegister) {
         given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}))
                 .willReturn(new Object[] { pluginSetting });
 
-        final PluginClassWithoutConstructor instance = createObjectUnderTest().newPluginInstance(PluginClassWithoutConstructor.class, pluginConstructionContext, pluginName);
+        final PluginClassWithoutConstructor instance = createObjectUnderTest(pluginConfigurationObservableRegister)
+                .newPluginInstance(PluginClassWithoutConstructor.class, pluginConstructionContext, pluginName);
 
         assertThat(instance, notNullValue());
     }
 
     @ParameterizedTest
-    @ValueSource(classes = {
-            InvalidPluginClassDueToUsableConstructor.class,
-            InvalidPluginClassDueToMultipleAnnotatedConstructors.class,
-            InvalidAbstractPluginClass.class
-    })
-    void newPluginInstance_should_throw_for_pluginClass_with_invalid_definition(final Class<?> invalidPluginClass) {
+    @MethodSource("providePluginConfigurationObservableRegisterAndInvalidPluginClasses")
+    void newPluginInstance_should_throw_for_pluginClass_with_invalid_definition(
+            final PluginConfigurationObservableRegister pluginConfigurationObservableRegister,
+            final Class<?> invalidPluginClass) {
 
-        final PluginCreator objectUnderTest = createObjectUnderTest();
+        final PluginCreator objectUnderTest = createObjectUnderTest(pluginConfigurationObservableRegister);
         assertThrows(InvalidPluginDefinitionException.class,
                 () -> objectUnderTest.newPluginInstance(invalidPluginClass, pluginConstructionContext, pluginName));
     }
 
-    @Test
-    void newPluginInstance_should_throw_if_plugin_throws_in_constructor() {
+    @ParameterizedTest
+    @MethodSource("providePluginConfigurationObservableRegister")
+    void newPluginInstance_should_throw_if_plugin_throws_in_constructor(
+            final PluginConfigurationObservableRegister pluginConfigurationObservableRegister) {
         given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}))
                 .willReturn(new Object[] { pluginSetting });
 
-        final PluginCreator objectUnderTest = createObjectUnderTest();
+        final PluginCreator objectUnderTest = createObjectUnderTest(pluginConfigurationObservableRegister);
         assertThrows(PluginInvocationException.class,
                 () -> objectUnderTest.newPluginInstance(AlwaysThrowingPluginClass.class, pluginConstructionContext, pluginName));
+    }
+
+    private static Stream<Arguments> providePluginConfigurationObservableRegister() {
+        return Stream.of(
+                null,
+                Arguments.of(mock(PluginConfigurationObservableRegister.class))
+        );
+    }
+
+    private static Stream<Object[]> providePluginConfigurationObservableRegisterAndInvalidPluginClasses() {
+        return Stream.of(
+                new Object[]{null, InvalidPluginClassDueToUsableConstructor.class},
+                new Object[]{null, InvalidPluginClassDueToMultipleAnnotatedConstructors.class},
+                new Object[]{null, InvalidAbstractPluginClass.class},
+                new Object[]{mock(PluginConfigurationObservableRegister.class), InvalidPluginClassDueToUsableConstructor.class},
+                new Object[]{mock(PluginConfigurationObservableRegister.class), InvalidPluginClassDueToMultipleAnnotatedConstructors.class},
+                new Object[]{mock(PluginConfigurationObservableRegister.class), InvalidAbstractPluginClass.class}
+        );
     }
 }

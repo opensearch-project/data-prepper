@@ -13,29 +13,34 @@ import java.util.Base64;
 class KmsKeyProvider implements InnerKeyProvider {
     private final AwsContext awsContext;
 
-    public KmsKeyProvider(AwsContext awsContext) {
+    public KmsKeyProvider(final AwsContext awsContext) {
         this.awsContext = awsContext;
     }
 
     @Override
-    public boolean supportsConfiguration(TopicConfig topicConfig) {
+    public boolean supportsConfiguration(final TopicConfig topicConfig) {
         return topicConfig.getKmsConfig() != null && topicConfig.getKmsConfig().getKeyId() != null;
     }
 
     @Override
-    public byte[] apply(TopicConfig topicConfig) {
-        KmsConfig kmsConfig = topicConfig.getKmsConfig();
-        String kmsKeyId = kmsConfig.getKeyId();
+    public boolean isKeyEncrypted() {
+        return true;
+    }
 
-        AwsCredentialsProvider awsCredentialsProvider = awsContext.getOrDefault(kmsConfig);
+    @Override
+    public byte[] apply(final TopicConfig topicConfig) {
+        final KmsConfig kmsConfig = topicConfig.getKmsConfig();
+        final String kmsKeyId = kmsConfig.getKeyId();
 
-        KmsClient kmsClient = KmsClient.builder()
+        final AwsCredentialsProvider awsCredentialsProvider = awsContext.getOrDefault(kmsConfig);
+
+        final KmsClient kmsClient = KmsClient.builder()
                 .credentialsProvider(awsCredentialsProvider)
                 .region(awsContext.getRegionOrDefault(kmsConfig))
                 .build();
 
-        byte[] decodedEncryptionKey = Base64.getDecoder().decode(topicConfig.getEncryptionKey());
-        DecryptResponse decryptResponse = kmsClient.decrypt(builder -> builder
+        final byte[] decodedEncryptionKey = Base64.getDecoder().decode(topicConfig.getEncryptionKey());
+        final DecryptResponse decryptResponse = kmsClient.decrypt(builder -> builder
                 .keyId(kmsKeyId)
                 .ciphertextBlob(SdkBytes.fromByteArray(decodedEncryptionKey))
                 .encryptionContext(kmsConfig.getEncryptionContext())

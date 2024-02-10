@@ -5,9 +5,16 @@
 
 import {Stack, StackProps} from 'aws-cdk-lib';
 import {Construct} from 'constructs';
-import {OpenIdConnectPrincipal, OpenIdConnectProvider, Role} from 'aws-cdk-lib/aws-iam'
+import {
+  AccountPrincipal,
+  CompositePrincipal,
+  OpenIdConnectPrincipal,
+  OpenIdConnectProvider,
+  Role
+} from 'aws-cdk-lib/aws-iam'
 
 const DEFAULT_ORGANIZATION = 'opensearch-project'
+const GITHUB_TOKEN_URL = 'token.actions.githubusercontent.com'
 
 /**
  * Creates the IAM resources necessary for GitHub to access roles within
@@ -19,13 +26,18 @@ export class GitHubAccessStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    const gitHubOidcProvider = new OpenIdConnectProvider(this, 'GitHubOidcProvider', {
-      url: 'https://token.actions.githubusercontent.com',
-      thumbprints: [
-        '6938fd4d98bab03faadb97b34396831e3780aea1'
-      ],
-      clientIds: ['sts.amazonaws.com']
-    });
+    const oidcProviderExists: boolean = scope.node.tryGetContext('gitHubOidcProviderExists');
+
+    const gitHubOidcProvider =
+        oidcProviderExists ?
+            OpenIdConnectProvider.fromOpenIdConnectProviderArn(this, 'GitHubOidcProvider', `arn:aws:iam::${this.account}:oidc-provider/${GITHUB_TOKEN_URL}`) :
+            new OpenIdConnectProvider(this, 'GitHubOidcProvider', {
+                url: `https://${GITHUB_TOKEN_URL}`,
+                thumbprints: [
+                    '6938fd4d98bab03faadb97b34396831e3780aea1'
+                ],
+                clientIds: ['sts.amazonaws.com']
+            });
 
     const dataPrepperOrganization: string = scope.node.tryGetContext('dataPrepperOrganization') || DEFAULT_ORGANIZATION;
 
@@ -36,9 +48,14 @@ export class GitHubAccessStack extends Stack {
       },
     });
 
+    const currentAccountPrincipal = new AccountPrincipal(this.account);
+
     this.gitHubActionsTestingRole = new Role(this, 'GitHubActionsTestingRole', {
       roleName: 'GitHubActionsTesting',
-      assumedBy: gitHubPrincipal
+      assumedBy: new CompositePrincipal(
+          gitHubPrincipal,
+          currentAccountPrincipal
+      )
     });
   }
 }

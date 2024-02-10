@@ -5,11 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -21,7 +16,10 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -30,7 +28,6 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 @DataPrepperPlugin(name = "list_to_map", pluginType = Processor.class, pluginConfigurationType = ListToMapProcessorConfig.class)
 public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger LOG = LoggerFactory.getLogger(ListToMapProcessor.class);
     private final ListToMapProcessorConfig config;
 
@@ -52,81 +49,93 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
                 continue;
             }
 
-            final JsonNode sourceNode;
+            final List<Map<String, Object>> sourceList;
             try {
-                sourceNode = getSourceNode(recordEvent);
+                sourceList = recordEvent.get(config.getSource(), List.class);
             } catch (final Exception e) {
                 LOG.warn(EVENT, "Given source path [{}] is not valid on record [{}]",
                         config.getSource(), recordEvent, e);
+                recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                 continue;
             }
 
-            ObjectNode targetNode;
+            final Map<String, Object> targetMap;
             try {
-                targetNode = constructTargetNode(sourceNode);
-            } catch (IllegalArgumentException e) {
+                targetMap = constructTargetMap(sourceList);
+            } catch (final IllegalArgumentException e) {
                 LOG.warn(EVENT, "Cannot find a list at the given source path [{}} on record [{}]",
                         config.getSource(), recordEvent, e);
+                recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                 continue;
             } catch (final Exception e) {
                 LOG.error(EVENT, "Error converting source list to map on record [{}]", recordEvent, e);
+                recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                 continue;
             }
 
             try {
-                updateEvent(recordEvent, targetNode);
+                updateEvent(recordEvent, targetMap);
             } catch (final Exception e) {
                 LOG.error(EVENT, "Error updating record [{}] after converting source list to map", recordEvent, e);
+                recordEvent.getMetadata().addTags(config.getTagsOnFailure());
             }
         }
         return records;
     }
 
-    private JsonNode getSourceNode(final Event recordEvent) {
-        final Object sourceObject = recordEvent.get(config.getSource(), Object.class);
-        return OBJECT_MAPPER.convertValue(sourceObject, JsonNode.class);
-    }
+    private Map<String, Object> constructTargetMap(final List<Map<String, Object>> sourceList) {
+        Map<String, Object> targetMap = new HashMap<>();
+        for (final Map<String, Object> itemMap : sourceList) {
 
-    private ObjectNode constructTargetNode(JsonNode sourceNode) {
-        final ObjectNode targetNode = OBJECT_MAPPER.createObjectNode();
-        if (sourceNode.isArray()) {
-            for (final JsonNode itemNode : sourceNode) {
-                String itemKey = itemNode.get(config.getKey()).asText();
-
-                if (!config.getFlatten()) {
-                    final ArrayNode itemValueNode;
-                    if (!targetNode.has(itemKey)) {
-                        itemValueNode = OBJECT_MAPPER.createArrayNode();
-                        targetNode.set(itemKey, itemValueNode);
-                    } else {
-                        itemValueNode = (ArrayNode) targetNode.get(itemKey);
-                    }
-
-                    if (config.getValueKey() == null) {
-                        itemValueNode.add(itemNode);
-                    } else {
-                        itemValueNode.add(itemNode.get(config.getValueKey()));
+            if (config.getUseSourceKey()) {
+                if (config.getFlatten()) {
+                    for (final String entryKey : itemMap.keySet()) {
+                        setTargetMapFlattened(targetMap, itemMap, entryKey, entryKey, config.getExtractValue());
                     }
                 } else {
-                    if (!targetNode.has(itemKey) || config.getFlattenedElement() == ListToMapProcessorConfig.FlattenedElement.LAST) {
-                        if (config.getValueKey() == null) {
-                            targetNode.set(itemKey, itemNode);
-                        } else  {
-                            targetNode.set(itemKey, itemNode.get(config.getValueKey()));
-                        }
+                    for (final String entryKey : itemMap.keySet()) {
+                        setTargetMapUnflattened(targetMap, itemMap, entryKey, entryKey, config.getExtractValue());
                     }
                 }
+            } else {
+                final String itemKey = (String) itemMap.get(config.getKey());
+                if (config.getFlatten()) {
+                    setTargetMapFlattened(targetMap, itemMap, itemKey, config.getValueKey(), config.getValueKey() != null);
+                } else {
+                    setTargetMapUnflattened(targetMap, itemMap, itemKey, config.getValueKey(), config.getValueKey() != null);
+                }
             }
-        } else {
-            throw new IllegalArgumentException("Cannot find a list at the given source path [{}]" + config.getSource());
         }
-        return targetNode;
+        return targetMap;
     }
 
-    private void updateEvent(Event recordEvent, ObjectNode targetNode) {
-        final TypeReference<Map<String, Object>> mapTypeReference = new TypeReference<>() {};
-        final Map<String, Object> targetMap = OBJECT_MAPPER.convertValue(targetNode, mapTypeReference);
+    private void setTargetMapUnflattened(
+            final Map<String, Object> targetMap, final Map<String, Object> itemMap, final String itemKey, final String itemValueKey, final boolean doExtractValue) {
+        if (!targetMap.containsKey(itemKey)) {
+            targetMap.put(itemKey, new ArrayList<>());
+        }
 
+        final List<Object> itemValue = (List<Object>) targetMap.get(itemKey);
+
+        if (doExtractValue) {
+            itemValue.add(itemMap.get(itemValueKey));
+        } else {
+            itemValue.add(itemMap);
+        }
+    }
+
+    private void setTargetMapFlattened(
+            final Map<String, Object> targetMap, final Map<String, Object> itemMap, final String itemKey, final String itemValueKey, final boolean doExtractValue) {
+        if (!targetMap.containsKey(itemKey) || config.getFlattenedElement() == ListToMapProcessorConfig.FlattenedElement.LAST) {
+            if (doExtractValue) {
+                targetMap.put(itemKey, itemMap.get(itemValueKey));
+            } else {
+                targetMap.put(itemKey, itemMap);
+            }
+        }
+    }
+
+    private void updateEvent(final Event recordEvent, final Map<String, Object> targetMap) {
         final boolean doWriteToRoot = Objects.isNull(config.getTarget());
         if (doWriteToRoot) {
             for (final Map.Entry<String, Object> entry : targetMap.entrySet()) {

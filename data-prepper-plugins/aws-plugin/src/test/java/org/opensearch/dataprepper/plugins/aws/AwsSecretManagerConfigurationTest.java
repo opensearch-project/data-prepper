@@ -85,6 +85,7 @@ class AwsSecretManagerConfigurationTest {
         assertThat(awsSecretManagerConfiguration.getAwsSecretId(), equalTo("test-secret"));
         assertThat(awsSecretManagerConfiguration.getAwsRegion(), equalTo(Region.US_EAST_1));
         assertThat(awsSecretManagerConfiguration.getRefreshInterval(), equalTo(Duration.ofHours(1)));
+        assertThat(awsSecretManagerConfiguration.isDisableRefresh(), is(false));
     }
 
     @Test
@@ -98,6 +99,19 @@ class AwsSecretManagerConfigurationTest {
         assertThat(violations.size(), equalTo(1));
         final ConstraintViolation<AwsSecretManagerConfiguration> violation = violations.stream().findFirst().get();
         assertThat(violation.getMessage(), equalTo("Refresh interval must be at least 1 hour."));
+    }
+
+    @Test
+    void testAwsSecretManagerConfigurationNullRefreshInterval() throws IOException {
+        final InputStream inputStream = AwsSecretPluginConfigTest.class.getResourceAsStream(
+                "/test-aws-secret-manager-configuration-null-refresh-interval.yaml");
+        final AwsSecretManagerConfiguration awsSecretManagerConfiguration = objectMapper.readValue(
+                inputStream, AwsSecretManagerConfiguration.class);
+        final Set<ConstraintViolation<AwsSecretManagerConfiguration>> violations = VALIDATOR.validate(
+                awsSecretManagerConfiguration);
+        assertThat(violations.size(), equalTo(1));
+        final ConstraintViolation<AwsSecretManagerConfiguration> violation = violations.stream().findFirst().get();
+        assertThat(violation.getMessage(), equalTo("refresh_interval must not be null"));
     }
 
     @Test

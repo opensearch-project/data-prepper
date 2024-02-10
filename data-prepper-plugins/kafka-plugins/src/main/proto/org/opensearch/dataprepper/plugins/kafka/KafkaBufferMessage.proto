@@ -16,4 +16,13 @@ message BufferData {
    * is unencrypted data.
    */
   bytes data = 2;
+
+  /* Indicates if data is encrypted or not.
+   */
+  optional bool encrypted = 3;
+
+  /* The data key which encrypted the data field. This will be encrypted.
+   * The consuming Data Prepper node must have the ability to decrypt this key.
+   */
+  optional bytes encrypted_data_key = 4;
 }
