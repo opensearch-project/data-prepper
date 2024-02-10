@@ -26,8 +26,11 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.aws.AwsSecretsSupplier.MAP_TYPE_REFERENCE;
@@ -115,7 +118,7 @@ class AwsSecretsSupplierTest {
         final JsonProcessingException mockedJsonProcessingException = mock(JsonProcessingException.class);
         final String testValue = "{\"a\":\"b\"}";
         when(mockedObjectMapper.readValue(eq(testValue), eq(MAP_TYPE_REFERENCE))).thenReturn(Map.of("a", "b"));
-        when(mockedObjectMapper.writeValueAsString(ArgumentMatchers.any())).thenThrow(mockedJsonProcessingException);
+        when(mockedObjectMapper.writeValueAsString(any())).thenThrow(mockedJsonProcessingException);
         when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(testValue);
         objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, mockedObjectMapper);
         final Exception exception = assertThrows(IllegalArgumentException.class,
@@ -134,11 +137,13 @@ class AwsSecretsSupplierTest {
 
     @Test
     void testConstructorWithGetSecretValueFailureFirstThenSuccess() {
+        reset(secretsManagerClient);
         final String testValue = "{\"a\":\"b\"}";
         when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(testValue);
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest)))
                 .thenThrow(secretsManagerException).thenReturn(getSecretValueResponse);
         objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
+        verify(secretsManagerClient, times(2)).getSecretValue(eq(getSecretValueRequest));
         assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(testValue));
     }
 
