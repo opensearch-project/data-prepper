@@ -67,6 +67,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumer.class);
     private static final Long COMMIT_OFFSET_INTERVAL_MS = 300000L;
     private static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 1;
+    private static final int RETRY_ON_EXCEPTION_SLEEP_MS = 1000;
     static final String DEFAULT_KEY = "message";
 
     private volatile long lastCommitTime;
@@ -95,6 +96,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private long numRecordsCommitted = 0;
     private final LogRateLimiter errLogRateLimiter;
     private final ByteDecoder byteDecoder;
+    private final long maxRetriesOnException;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -114,6 +116,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.paused = false;
         this.byteDecoder = byteDecoder;
         this.topicMetrics = topicMetrics;
+        this.maxRetriesOnException = topicConfig.getMaxPollInterval().toMillis() / (2 * RETRY_ON_EXCEPTION_SLEEP_MS);
         this.pauseConsumePredicate = pauseConsumePredicate;
         this.topicMetrics.register(consumer);
         this.offsetsToCommit = new HashMap<>();
@@ -418,7 +421,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         return new Record<Event>(event);
     }
 
-    private <T> void processRecord(final AcknowledgementSet acknowledgementSet, final Record<Event> record) {
+    private void processRecord(final AcknowledgementSet acknowledgementSet, final Record<Event> record) {
         // Always add record to acknowledgementSet before adding to
         // buffer because another thread may take and process
         // buffer contents before the event record is added
@@ -427,15 +430,16 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             acknowledgementSet.add(record.getData());
         }
         long numRetries = 0;
-        final int retrySleepTimeMs = 100;
-        // Donot pause until half the poll interval time has expired
-        final long maxRetries = topicConfig.getMaxPollInterval().toMillis() / (2 * retrySleepTimeMs);
         while (true) {
             try {
-                bufferAccumulator.add(record);
+                if (numRetries == 0) {
+                    bufferAccumulator.add(record);
+                } else {
+                    bufferAccumulator.flush();
+                }
                 break;
             } catch (Exception e) {
-                if (!paused && numRetries++ > maxRetries) {
+                if (!paused && numRetries++ > maxRetriesOnException) {
                     paused = true;
                     consumer.pause(consumer.assignment());
                 }
@@ -445,11 +449,11 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                     LOG.debug("Error while adding record to buffer, retrying ", e);
                 }
                 try {
-                    Thread.sleep(retrySleepTimeMs);
+                    Thread.sleep(RETRY_ON_EXCEPTION_SLEEP_MS);
                     if (paused) {
-                        ConsumerRecords<String, T> records = doPoll();
+                        ConsumerRecords<String, ?> records = doPoll();
                         if (records.count() > 0) {
-                            LOG.debug("Unexpected records received while the consumer is paused. Resetting the paritions to retry from last read pointer");
+                            LOG.warn("Unexpected records received while the consumer is paused. Resetting the paritions to retry from last read pointer");
                             synchronized(this) {
                                 partitionsToReset.addAll(consumer.assignment());
                             };
@@ -459,6 +463,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 } catch (Exception ex) {} // ignore the exception because it only means the thread slept for shorter time
             }
         }
+
         if (paused) {
             consumer.resume(consumer.assignment());
             paused = false;
