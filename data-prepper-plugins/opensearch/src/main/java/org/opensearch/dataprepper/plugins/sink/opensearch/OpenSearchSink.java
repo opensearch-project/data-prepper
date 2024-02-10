@@ -260,7 +260,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     // Attempt to update the serverless network policy if required argument are given.
     maybeUpdateServerlessNetworkPolicy();
 
-    this.objectMapper = new ObjectMapper();
+    objectMapper = new ObjectMapper();
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
   }

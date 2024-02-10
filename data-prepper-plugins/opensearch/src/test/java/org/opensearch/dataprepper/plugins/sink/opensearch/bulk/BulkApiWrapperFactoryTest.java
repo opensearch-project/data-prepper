@@ -37,4 +37,11 @@ class BulkApiWrapperFactoryTest {
         assertThat(BulkApiWrapperFactory.getWrapper(indexConfiguration, openSearchClient, restHighLevelClient),
                 instanceOf(OpenSearchDefaultBulkApiWrapper.class));
     }
+
+    @Test
+    void testGetEnableDetectorScanBulkApiWrapper() {
+        when(indexConfiguration.isEnableDetectorScan()).thenReturn(true);
+        assertThat(BulkApiWrapperFactory.getWrapper(indexConfiguration, openSearchClient, restHighLevelClient),
+                instanceOf(OpenSearchDetectorScanBulkApiWrapper.class));
+    }
 }

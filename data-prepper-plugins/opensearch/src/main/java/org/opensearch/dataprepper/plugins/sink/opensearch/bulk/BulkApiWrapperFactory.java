@@ -9,8 +9,8 @@ public class BulkApiWrapperFactory {
     public static BulkApiWrapper getWrapper(final IndexConfiguration indexConfiguration,
                                             final OpenSearchClient openSearchClient,
                                             final RestHighLevelClient restHighLevelClient) {
-        if (indexConfiguration.isEnableSecurityAnalytics()) {
-            return new OpenSearchSecurityAnalyticsBulkApiWrapper(restHighLevelClient);
+        if (indexConfiguration.isEnableDetectorScan()) {
+            return new OpenSearchDetectorScanBulkApiWrapper(restHighLevelClient);
         }
 
         if (DistributionVersion.ES6.equals(indexConfiguration.getDistributionVersion())) {
