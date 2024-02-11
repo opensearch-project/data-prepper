@@ -81,7 +81,7 @@ public class GeoIPProcessorUrlServiceIT {
 
     public GeoIPProcessorService createObjectUnderTest() {
         // TODO: pass in geoIpServiceConfig object
-        return new GeoIPProcessorService(null);
+        return new GeoIPProcessorService(null, null, null);
     }
 
     @Test

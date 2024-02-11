@@ -19,7 +19,8 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import static org.opensearch.dataprepper.plugins.processor.databaseenrich.GetGeoData.MAXMIND_DATABASE_EXTENSION;
+import static org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabaseReader.MAXMIND_DATABASE_EXTENSION;
+
 
 public class CDNDownloadService implements DBSource {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -63,9 +64,7 @@ public class CDNDownloadService implements DBSource {
             httpURLConnection = (HttpURLConnection) url.openConnection();
             httpURLConnection.addRequestProperty("User-Agent", "Custom-User-Agent");
 
-            LOG.info("Opened connection");
             final Manifest manifest = OBJECT_MAPPER.readValue(httpURLConnection.getInputStream(), Manifest.class);
-            LOG.info("Read manifest");
             httpURLConnection.disconnect();
 
             return manifest;

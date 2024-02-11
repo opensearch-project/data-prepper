@@ -10,6 +10,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.GeoIPDatabaseManager;
+
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -21,8 +24,14 @@ class DefaultGeoIpConfigSupplierTest {
     @Mock
     private GeoIpServiceConfig geoIpServiceConfig;
 
+    @Mock
+    private GeoIPDatabaseManager geoIPDatabaseManager;
+
+    @Mock
+    private ReentrantReadWriteLock.ReadLock readLock;
+
     private DefaultGeoIpConfigSupplier createObjectUnderTest() {
-        return new DefaultGeoIpConfigSupplier(geoIpServiceConfig);
+        return new DefaultGeoIpConfigSupplier(geoIpServiceConfig, geoIPDatabaseManager, readLock);
     }
 
     @Test

@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -20,6 +21,8 @@ import static org.mockito.Mockito.mockStatic;
 class DBSourceTest {
 
     private final String outputFilePath = System.getProperty("java.io.tmpdir") + "GeoTest";
+    @Mock
+    private GeoIPFileManager geoIPFileManager;
 
     @Test
     void createFolderIfNotExistTest() {
@@ -36,7 +39,7 @@ class DBSourceTest {
         DBSource.createFolderIfNotExist(outputFilePath + File.separator + "GeoIPz");
         DBSource.createFolderIfNotExist(outputFilePath + File.separator + "GeoIPx");
         assertDoesNotThrow(() -> {
-            DBSource.deleteDirectory(new File(outputFilePath));
+            geoIPFileManager.deleteDirectory(new File(outputFilePath));
         });
     }
 }

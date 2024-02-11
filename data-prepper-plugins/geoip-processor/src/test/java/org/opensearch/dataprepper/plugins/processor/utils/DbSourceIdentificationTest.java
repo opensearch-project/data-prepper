@@ -20,65 +20,81 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DbSourceIdentificationTest {
 
     private static final String S3_URI = "s3://dataprepper/logdata/22833bd46b8e0.mmdb";
-    private static final String S3_URL = "https://dataprepper.s3.amazonaws.com/logdata/22833bd46b8e0.json";
     private static final String URL = "https://www.dataprepper.com";
-    private static final String PATH = "./src/test/resources/mmdb-file/geo-lite2";
+    private static final String DIRECTORY_PATH = "./build/resources/test/mmdb-files/geo-lite2";
+    private static final String FILE_PATH = "./build/resources/test/mmdb-files/geo-lite2/GeoLite2-ASN-Test.mmdb";
+    private static final String CDN_ENDPOINT_HOST = "https://devo.geoip.maps.opensearch.org/v1/mmdb/geolite2/manifest.json";
 
     @Test
     void test_positive_case() {
-        assertTrue(DbSourceIdentification.isS3Uri(S3_URI));
-        assertTrue(DbSourceIdentification.isS3Url(S3_URL));
-        assertTrue(DbSourceIdentification.isURL(URL));
-        assertTrue(DbSourceIdentification.isFilePath(PATH));
+        assertTrue(DatabaseSourceIdentification.isS3Uri(S3_URI));
+        assertTrue(DatabaseSourceIdentification.isURL(URL));
+        assertTrue(DatabaseSourceIdentification.isFilePath(DIRECTORY_PATH));
+        assertTrue(DatabaseSourceIdentification.isCDNEndpoint(CDN_ENDPOINT_HOST));
     }
 
     @Test
     void test_negative_case() {
-        assertFalse(DbSourceIdentification.isS3Uri(S3_URL));
-        assertFalse(DbSourceIdentification.isS3Uri(URL));
-        assertFalse(DbSourceIdentification.isS3Uri(PATH));
+        assertFalse(DatabaseSourceIdentification.isS3Uri(CDN_ENDPOINT_HOST));
+        assertFalse(DatabaseSourceIdentification.isS3Uri(URL));
+        assertFalse(DatabaseSourceIdentification.isS3Uri(DIRECTORY_PATH));
 
-        assertFalse(DbSourceIdentification.isS3Url(S3_URI));
-        assertFalse(DbSourceIdentification.isS3Url(URL));
-        assertFalse(DbSourceIdentification.isS3Url(PATH));
+        assertFalse(DatabaseSourceIdentification.isURL(S3_URI));
+        assertFalse(DatabaseSourceIdentification.isURL(CDN_ENDPOINT_HOST));
+        assertFalse(DatabaseSourceIdentification.isURL(DIRECTORY_PATH));
 
-        assertFalse(DbSourceIdentification.isURL(S3_URI));
-        assertFalse(DbSourceIdentification.isURL(S3_URL));
-        assertFalse(DbSourceIdentification.isURL(PATH));
+        assertFalse(DatabaseSourceIdentification.isFilePath(S3_URI));
+        assertFalse(DatabaseSourceIdentification.isFilePath(CDN_ENDPOINT_HOST));
+        assertFalse(DatabaseSourceIdentification.isFilePath(URL));
 
-        assertFalse(DbSourceIdentification.isFilePath(S3_URI));
-        assertFalse(DbSourceIdentification.isFilePath(S3_URL));
-        assertFalse(DbSourceIdentification.isFilePath(URL));
+        assertFalse(DatabaseSourceIdentification.isCDNEndpoint(S3_URI));
+        assertFalse(DatabaseSourceIdentification.isCDNEndpoint(DIRECTORY_PATH));
+        assertFalse(DatabaseSourceIdentification.isCDNEndpoint(URL));
     }
 
     @Test
-    void getDatabasePathTypeTest_PATH() throws NoSuchFieldException, IllegalAccessException {
-        List<String> databasePath = List.of("./src/test/resources/mmdb-file/geo-lite2");
-        DBSourceOptions dbSourceOptions = DbSourceIdentification.getDatabasePathType(databasePath);
+    void getDatabasePathTypeTest_PATH() {
+        List<String> databasePath = List.of(DIRECTORY_PATH);
+        DBSourceOptions dbSourceOptions = DatabaseSourceIdentification.getDatabasePathType(databasePath);
         Assertions.assertNotNull(dbSourceOptions);
         assertThat(dbSourceOptions, equalTo(DBSourceOptions.PATH));
     }
 
     @Test
-    void getDatabasePathTypeTest_URL() throws NoSuchFieldException, IllegalAccessException {
+    void getDatabasePathTypeTest_should_return_null_if_not_directory() {
+        List<String> databasePath = List.of(FILE_PATH);
+        DBSourceOptions dbSourceOptions = DatabaseSourceIdentification.getDatabasePathType(databasePath);
+        Assertions.assertNull(dbSourceOptions);
+    }
+
+    @Test
+    void getDatabasePathTypeTest_URL() {
         List<String> databasePath = List.of("https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN&suffix=tar.gz");
-        DBSourceOptions dbSourceOptions = DbSourceIdentification.getDatabasePathType(databasePath);
+        DBSourceOptions dbSourceOptions = DatabaseSourceIdentification.getDatabasePathType(databasePath);
         Assertions.assertNotNull(dbSourceOptions);
         assertThat(dbSourceOptions, equalTo(DBSourceOptions.URL));
     }
 
     @Test
-    void getDatabasePathTypeTest_S3() throws NoSuchFieldException, IllegalAccessException {
+    void getDatabasePathTypeTest_S3() {
         List<String> databasePath = List.of("s3://mybucket10012023/GeoLite2/");
-        DBSourceOptions dbSourceOptions = DbSourceIdentification.getDatabasePathType(databasePath);
+        DBSourceOptions dbSourceOptions = DatabaseSourceIdentification.getDatabasePathType(databasePath);
         Assertions.assertNotNull(dbSourceOptions);
         assertThat(dbSourceOptions, equalTo(DBSourceOptions.S3));
     }
 
     @Test
+    void getDatabasePathTypeTest_CDN() {
+        List<String> databasePath = List.of(CDN_ENDPOINT_HOST);
+        DBSourceOptions dbSourceOptions = DatabaseSourceIdentification.getDatabasePathType(databasePath);
+        Assertions.assertNotNull(dbSourceOptions);
+        assertThat(dbSourceOptions, equalTo(DBSourceOptions.CDN));
+    }
+
+    @Test
     void isS3Uri_NullPointerException_test() {
         assertDoesNotThrow(() -> {
-            DbSourceIdentification.isS3Uri(null);
+            DatabaseSourceIdentification.isS3Uri(null);
         });
     }
 }

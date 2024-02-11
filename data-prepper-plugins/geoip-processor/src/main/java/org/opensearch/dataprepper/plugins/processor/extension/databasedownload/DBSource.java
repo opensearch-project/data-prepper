@@ -50,23 +50,6 @@ public interface DBSource {
     }
 
     /**
-     * Delete Directory
-     * @param file file
-     */
-    static void deleteDirectory(File file) {
-
-        if (file.exists()) {
-            for (final File subFile : file.listFiles()) {
-                if (subFile.isDirectory()) {
-                    deleteDirectory(subFile);
-                }
-                subFile.delete();
-            }
-            file.delete();
-        }
-    }
-
-    /**
      * initiateSSL
      * @throws NoSuchAlgorithmException NoSuchAlgorithmException
      * @throws KeyManagementException KeyManagementException

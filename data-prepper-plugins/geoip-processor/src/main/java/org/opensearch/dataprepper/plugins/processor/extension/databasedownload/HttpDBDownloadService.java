@@ -28,13 +28,15 @@ public class HttpDBDownloadService implements DBSource {
     private static final Logger LOG = LoggerFactory.getLogger(HttpDBDownloadService.class);
     private final String prefixDir;
     private static final int DEFAULT_BYTE_SIZE = 1024;
+    private final GeoIPFileManager geoIPFileManager;
 
     /**
      * HttpDBDownloadService constructor for initialisation of attributes
      * @param prefixDir prefixDir
      */
-    public HttpDBDownloadService(String prefixDir) {
+    public HttpDBDownloadService(final String prefixDir, final GeoIPFileManager geoIPFileManager) {
         this.prefixDir = prefixDir;
+        this.geoIPFileManager = geoIPFileManager;
     }
 
     /**
@@ -88,9 +90,9 @@ public class HttpDBDownloadService implements DBSource {
      * Delete Tar Folder
      * @param tarFolder Tar Folder
      */
-    private static void deleteTarFolder(String tarFolder) {
+    private void deleteTarFolder(String tarFolder) {
         final File file = new File(tarFolder);
-        DBSource.deleteDirectory(file);
+        geoIPFileManager.deleteDirectory(file);
         if (file.exists()) {
             file.delete();
         }

@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.utils;
 
 import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSourceOptions;
 
+import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -17,41 +18,24 @@ import java.util.regex.Pattern;
 /**
  * Implementation of class for checking whether URL type is S3 or file path
  */
-public class DbSourceIdentification {
+public class DatabaseSourceIdentification {
 
-    private DbSourceIdentification() {
+    private DatabaseSourceIdentification() {
 
     }
 
-    private static String s3DomainPattern = "[a-zA-Z0-9-]+\\.s3\\.amazonaws\\.com";
-    private static String CDN_ENDPOINT_HOST = "devo.geoip.maps.opensearch.org";
+    private static final String S3_DOMAIN_PATTERN = "[a-zA-Z0-9-]+\\.s3\\.amazonaws\\.com";
+    private static final String CDN_ENDPOINT_HOST = "devo.geoip.maps.opensearch.org";
 
     /**
      * Check for database path is valid S3 URI or not
      * @param uriString uriString
      * @return boolean
      */
-    public static boolean isS3Uri(String uriString) {
+    public static boolean isS3Uri(final String uriString) {
         try {
             URI uri = new URI(uriString);
             if (uri.getScheme() != null && uri.getScheme().equalsIgnoreCase("s3")) {
-                return true;
-            }
-        } catch (Exception e) {
-            return false;
-        }
-        return false;
-    }
-
-    /**
-     * Check for database path is valid S3 URL or not
-     * @param urlString urlString
-     * @return boolean
-     */
-    public static boolean isS3Url(String urlString) {
-        try {
-            URL url = new URL(urlString);
-            if (Pattern.matches(s3DomainPattern, url.getHost())) {
                 return true;
             }
         } catch (Exception e) {
@@ -65,11 +49,14 @@ public class DbSourceIdentification {
      * @param input input
      * @return boolean
      */
-    public static boolean isURL(String input) {
+    public static boolean isURL(final String input) {
         try {
-            URI uri = new URI(input);
-            URL url = new URL(input);
-            return uri.getScheme() != null && !Pattern.matches(s3DomainPattern, url.getHost()) &&(uri.getScheme().equals("http") || uri.getScheme().equals("https"));
+            final URI uri = new URI(input);
+            final URL url = new URL(input);
+            return !uri.getHost().equals(CDN_ENDPOINT_HOST) &&
+                    uri.getScheme() != null &&
+                    !Pattern.matches(S3_DOMAIN_PATTERN, url.getHost()) &&
+                    (uri.getScheme().equals("http") || uri.getScheme().equals("https"));
         } catch (URISyntaxException | MalformedURLException e) {
             return false;
         }
@@ -80,15 +67,24 @@ public class DbSourceIdentification {
      * @param input input
      * @return boolean
      */
-    public static boolean isFilePath(String input) {
-        return input.startsWith("/") || input.startsWith("./") || input.startsWith("\\") || (input.length() > 1 && input.charAt(1) == ':');
+    public static boolean isFilePath(final String input) {
+        final File file = new File(input);
+        return file.exists() && file.isDirectory();
     }
 
+    /**
+     * Check for database path is CDN endpoint
+     * @param input input
+     * @return boolean
+     */
     public static boolean isCDNEndpoint(final String input) {
         try {
             final URI uri = new URI(input);
-            return uri.getHost().equals(CDN_ENDPOINT_HOST);
-        } catch (URISyntaxException e) {
+            if (uri.getHost() != null) {
+                return uri.getHost().equals(CDN_ENDPOINT_HOST);
+            }
+            return false;
+        } catch (final URISyntaxException e) {
             return false;
         }
     }
@@ -98,21 +94,21 @@ public class DbSourceIdentification {
      * @param databasePaths - List of database paths to get databases data from
      * @return DBSourceOptions
      */
-    public static DBSourceOptions getDatabasePathType(List<String> databasePaths) {
+    public static DBSourceOptions getDatabasePathType(final List<String> databasePaths) {
         DBSourceOptions downloadSourceOptions = null;
         for(final String databasePath : databasePaths) {
 
-            if(DbSourceIdentification.isFilePath(databasePath)) {
+            if(DatabaseSourceIdentification.isFilePath(databasePath)) {
                 return DBSourceOptions.PATH;
             }
-            else if (DbSourceIdentification.isCDNEndpoint(databasePath)) {
+            else if (DatabaseSourceIdentification.isCDNEndpoint(databasePath)) {
                 downloadSourceOptions = DBSourceOptions.CDN;
             }
-            else if(DbSourceIdentification.isURL(databasePath))
+            else if(DatabaseSourceIdentification.isURL(databasePath))
             {
                 downloadSourceOptions = DBSourceOptions.URL;
             }
-            else if(DbSourceIdentification.isS3Uri(databasePath) || (DbSourceIdentification.isS3Url(databasePath)))
+            else if(DatabaseSourceIdentification.isS3Uri(databasePath))
             {
                 downloadSourceOptions = DBSourceOptions.S3;
             }

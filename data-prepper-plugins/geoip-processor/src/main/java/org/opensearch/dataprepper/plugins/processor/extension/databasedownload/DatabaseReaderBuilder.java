@@ -15,8 +15,8 @@ import java.nio.file.Path;
 /**
  * Implementation class for DatabaseReader Creation
  */
-public class DatabaseReaderCreate {
-    private DatabaseReaderCreate() {
+public class DatabaseReaderBuilder {
+    public DatabaseReaderBuilder() {
     }
 
     /**
@@ -25,7 +25,7 @@ public class DatabaseReaderCreate {
      * @param cacheSize cacheSize
      * @return DatabaseReader
      */
-    public static DatabaseReader buildReader(final Path databasePath, final int cacheSize) throws IOException {
+    public DatabaseReader buildReader(final Path databasePath, final int cacheSize) throws IOException {
         return new DatabaseReader.Builder(databasePath.toFile())
                 .fileMode(Reader.FileMode.MEMORY_MAPPED)
                 .withCache(new CHMCache(cacheSize))
