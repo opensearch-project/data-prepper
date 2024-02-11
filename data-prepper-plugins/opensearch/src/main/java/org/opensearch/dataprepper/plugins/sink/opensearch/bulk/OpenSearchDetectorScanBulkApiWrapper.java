@@ -20,7 +20,7 @@ import java.util.Iterator;
 
 public class OpenSearchDetectorScanBulkApiWrapper implements BulkApiWrapper {
     static final String DETECTOR_SCAN_API_METHOD = "POST";
-    static final String DETECTOR_SCAN_API_PATH = "/_plugins/_security_analytics/detectors/run";
+    static final String DETECTOR_SCAN_API_PATH = "/_plugins/_security_analytics/detectors/streaming/execute";
     static final String FILTER_PATH_PARAMETER_NAME = "filter_path";
     static final String FILTER_PATH_PARAMETER_VALUE = "errors,took,items.*.error,items.*.status,items.*._index,items.*._id";
 
