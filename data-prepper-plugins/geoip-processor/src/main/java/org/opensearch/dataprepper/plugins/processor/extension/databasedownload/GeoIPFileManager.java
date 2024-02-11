@@ -25,11 +25,4 @@ public class GeoIPFileManager {
         file.delete();
     }
 
-    public void createDirectoryIfNotExist(final String outputFilePath) {
-        final File destFile = new File(outputFilePath);
-        if (!destFile.exists()) {
-            destFile.mkdirs();
-        }
-    }
-
 }

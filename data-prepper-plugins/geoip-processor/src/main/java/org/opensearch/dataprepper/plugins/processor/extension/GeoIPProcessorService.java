@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Implementation class of geoIP-processor plugin service class.
@@ -23,7 +24,7 @@ public class GeoIPProcessorService {
     private static final Logger LOG = LoggerFactory.getLogger(GeoIPProcessorService.class);
     private final MaxMindConfig maxMindConfig;
     private final GeoIPDatabaseManager geoIPDatabaseManager;
-
+    private final ReentrantReadWriteLock.ReadLock readLock;
     private Instant nextUpdateAt;
     private ExecutorService executorService = null;
 
@@ -32,15 +33,28 @@ public class GeoIPProcessorService {
      *
      * @param geoIpServiceConfig geoIpServiceConfig
      */
-    public GeoIPProcessorService(final GeoIpServiceConfig geoIpServiceConfig) {
+    public GeoIPProcessorService(final GeoIpServiceConfig geoIpServiceConfig,
+                                 final GeoIPDatabaseManager geoIPDatabaseManager,
+                                 final ReentrantReadWriteLock.ReadLock readLock
+                                 ) {
         this.maxMindConfig = geoIpServiceConfig.getMaxMindConfig();
-        this.geoIPDatabaseManager = new GeoIPDatabaseManager(maxMindConfig);
+        this.geoIPDatabaseManager = geoIPDatabaseManager;
+        this.readLock = readLock;
+
+        geoIPDatabaseManager.initiateDatabaseDownload();
         this.nextUpdateAt = Instant.now().plus(maxMindConfig.getDatabaseRefreshInterval());
     }
 
     public GeoIPDatabaseReader getGeoIPDatabaseReader() {
-        checkAndUpdateDatabases();
-        return geoIPDatabaseManager.getGeoIPDatabaseReader();
+        readLock.lock();
+        try {
+            final GeoIPDatabaseReader geoIPDatabaseReader = geoIPDatabaseManager.getGeoIPDatabaseReader();
+            geoIPDatabaseReader.retain();
+            checkAndUpdateDatabases();
+            return geoIPDatabaseReader;
+        } finally {
+            readLock.unlock();
+        }
     }
 
     private synchronized void checkAndUpdateDatabases() {
@@ -63,7 +77,6 @@ public class GeoIPProcessorService {
                 executorService.shutdownNow();
             }
         }
-
-
+        geoIPDatabaseManager.deleteDatabasesOnShutdown();
     }
 }

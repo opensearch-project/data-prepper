@@ -88,7 +88,7 @@ class DbSourceIdentificationTest {
         List<String> databasePath = List.of(CDN_ENDPOINT_HOST);
         DBSourceOptions dbSourceOptions = DatabaseSourceIdentification.getDatabasePathType(databasePath);
         Assertions.assertNotNull(dbSourceOptions);
-        assertThat(dbSourceOptions, equalTo(DBSourceOptions.HTTP_MANIFEST));
+        assertThat(dbSourceOptions, equalTo(DBSourceOptions.CDN));
     }
 
     @Test

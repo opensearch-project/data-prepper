@@ -15,9 +15,7 @@ import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.configuration.EntryConfig;
-import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabase;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabaseReader;
-import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPField;
 import org.opensearch.dataprepper.plugins.processor.exception.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIpConfigSupplier;
@@ -29,11 +27,9 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -55,7 +51,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   private final List<String> tagsOnFailure;
   private final GeoIPProcessorService geoIPProcessorService;
   private final ExpressionEvaluator expressionEvaluator;
-  private final Map<EntryConfig, Set<GeoIPDatabase>> entryDatabaseMap;
+//  private final Map<EntryConfig, Set<GeoIPDatabase>> entryDatabaseMap;
 
   /**
    * GeoIPProcessor constructor for initialization of required attributes
@@ -69,35 +65,15 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
                         final GeoIpConfigSupplier geoIpConfigSupplier,
                         final ExpressionEvaluator expressionEvaluator) {
     super(pluginMetrics);
-    this.geoIPProcessorConfig = geoIPProcessorConfig;
     this.geoIPProcessorService = geoIpConfigSupplier.getGeoIPProcessorService();
+    Objects.requireNonNull(geoIPProcessorService, "geoip_service configuration is required when using geoip processor.");
+    this.geoIPProcessorConfig = geoIPProcessorConfig;
     this.tagsOnFailure = geoIPProcessorConfig.getTagsOnFailure();
     this.expressionEvaluator = expressionEvaluator;
     this.geoIpEventsProcessed = pluginMetrics.counter(GEO_IP_EVENTS_PROCESSED);
     this.geoIpEventsFailedLookup = pluginMetrics.counter(GEO_IP_EVENTS_FAILED_LOOKUP);
     //TODO: Use the exception metric for exceptions from service
     this.geoIpEventsFailedEngineException = pluginMetrics.counter(GEO_IP_EVENTS_FAILED_ENGINE_EXCEPTION);
-
-    this.entryDatabaseMap = getDatabasesRequired();
-  }
-
-  private Map<EntryConfig, Set<GeoIPDatabase>> getDatabasesRequired() {
-    final Map<EntryConfig, Set<GeoIPDatabase>> entryConfigSetMap = new HashMap<>();
-
-    for (EntryConfig entryConfig: geoIPProcessorConfig.getEntries()) {
-      final Set<GeoIPDatabase> databaseTypes = new HashSet<>();
-      final List<String> fields = entryConfig.getFields();
-      if (fields.isEmpty()) {
-        databaseTypes.addAll(Set.of(GeoIPDatabase.values()));
-      } else {
-        for (final String field : fields) {
-          final Optional<Set<GeoIPDatabase>> geoIPDatabases = GeoIPField.getGeoLite2Databases(field);
-          geoIPDatabases.ifPresent(databaseTypes::addAll);
-        }
-      }
-      entryConfigSetMap.put(entryConfig, databaseTypes);
-    }
-    return entryConfigSetMap;
   }
 
   /**
@@ -108,38 +84,42 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   @Override
   public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
     Map<String, Object> geoData;
+
     final GeoIPDatabaseReader geoIPDatabaseReader = geoIPProcessorService.getGeoIPDatabaseReader();
-    geoIPDatabaseReader.retain();
-    final boolean databasesExpired = geoIPDatabaseReader.areDatabasesExpired();
+    final boolean databasesExpired = geoIPDatabaseReader.isExpired();
 
     for (final Record<Event> eventRecord : records) {
       final Event event = eventRecord.getData();
-      if (databasesExpired) {
-        event.getMetadata().addTags(DATABASE_EXPIRED_TAGS);
-      }
 
       final String whenCondition = geoIPProcessorConfig.getWhenCondition();
 
       if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
         continue;
       }
+      geoIpEventsProcessed.increment();
+
+      // TODO: Need to decide the behaviour, right now if all databases are expired we don't enrich the data.
+      if (databasesExpired) {
+        event.getMetadata().addTags(DATABASE_EXPIRED_TAGS);
+        continue;
+      }
 
       boolean isEventFailedLookup = false;
-      geoIpEventsProcessed.increment();
 
       for (final EntryConfig entry : geoIPProcessorConfig.getEntries()) {
         final String source = entry.getSource();
-        final List<String> attributes = entry.getFields();
+        final List<GeoIPField> fields = entry.getFields();
+        final Set<GeoIPDatabase> databases = entry.getGeoIPDatabases();
         final String ipAddress = event.get(source, String.class);
 
         //Lookup from DB
         if (ipAddress != null && !ipAddress.isEmpty()) {
           try {
             if (IPValidationCheck.isPublicIpAddress(ipAddress)) {
-              geoData = geoIPDatabaseReader.getGeoData(InetAddress.getByName(ipAddress), attributes, entryDatabaseMap.get(entry));
+              geoData = geoIPDatabaseReader.getGeoData(InetAddress.getByName(ipAddress), fields, databases);
               if (geoData.isEmpty()) {
                 isEventFailedLookup = true;
-              }else {
+              } else {
                 eventRecord.getData().put(entry.getTarget(), geoData);
               }
             } else {
@@ -147,8 +127,8 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
             }
           } catch (final UnknownHostException | EnrichFailedException ex) {
             isEventFailedLookup = true;
-            LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]. Caused by:{}"
-                    , event, ipAddress, ex.getMessage());
+            LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]. Caused by:{}",
+                    event, ipAddress, ex.getMessage());
           }
         } else {
           //No Enrichment.
@@ -167,11 +147,11 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
   @Override
   public void prepareForShutdown() {
-    geoIPProcessorService.shutdown();
   }
 
   @Override
   public boolean isReadyForShutdown() {
+    geoIPProcessorService.shutdown();
     return true;
   }
 

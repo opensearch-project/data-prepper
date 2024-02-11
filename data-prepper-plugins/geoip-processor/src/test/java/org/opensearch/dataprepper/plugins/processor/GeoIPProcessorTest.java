@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -23,10 +24,11 @@ import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabase
 import org.opensearch.dataprepper.plugins.processor.exception.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.processor.extension.GeoIpConfigSupplier;
-import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
+import org.opensearch.dataprepper.plugins.processor.utils.IPValidationCheck;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -40,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -103,8 +106,6 @@ class GeoIPProcessorTest {
 
         when(geoIPDatabaseReader.getGeoData(any(), any(), any())).thenReturn(prepareGeoData());
 
-        ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor, "geoIPProcessorService", geoIPProcessorService);
-
         final Record<Event> record1 = createCustomRecord("success");
         final Record<Event> record2 = createCustomRecord("failed");
         List<Record<Event>> recordsIn = new ArrayList<>();
@@ -140,8 +141,6 @@ class GeoIPProcessorTest {
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
         when(geoIPDatabaseReader.getGeoData(any(), any(), any())).thenReturn(prepareGeoData());
-        ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor,
-                "geoIPProcessorService", geoIPProcessorService);
         Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
         for (final Record<Event> record : records) {
             final Event event = record.getData();
@@ -159,9 +158,68 @@ class GeoIPProcessorTest {
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
-        ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor,
-                "geoIPProcessorService", geoIPProcessorService);
         Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
+
+        for (final Record<Event> record : records) {
+            final Event event = record.getData();
+            assertThat(!event.containsKey("geo"), equalTo(true));
+        }
+
+        verify(geoIpEventsProcessed).increment();
+        verify(geoIpEventsFailedLookup).increment();
+    }
+
+    @Test
+    void doExecuteTest_should_not_add_geo_data_to_event_if_returned_data_is_empty() throws NoSuchFieldException, IllegalAccessException {
+        when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
+        when(entry.getSource()).thenReturn(SOURCE);
+        when(entry.getFields()).thenReturn(setFields());
+
+        final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
+
+        when(geoIPDatabaseReader.getGeoData(any(), any(), any())).thenReturn(Collections.EMPTY_MAP);
+        Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
+        for (final Record<Event> record : records) {
+            final Event event = record.getData();
+            assertThat(!event.containsKey("geo"), equalTo(true));
+        }
+
+        verify(geoIpEventsProcessed).increment();
+        verify(geoIpEventsFailedLookup).increment();
+    }
+
+    @Test
+    void doExecuteTest_should_not_add_geodata_if_database_is_expired() {
+        when(geoIPDatabaseReader.isExpired()).thenReturn(true);
+
+        final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
+
+        final Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
+        for (final Record<Event> record : records) {
+            final Event event = record.getData();
+            assertThat(!event.containsKey("geo"), equalTo(true));
+        }
+
+        verify(geoIpEventsProcessed).increment();
+    }
+
+    @Test
+    void doExecuteTest_should_not_add_geodata_if_database_is_expired_() {
+        try (final MockedStatic<IPValidationCheck> ipValidationCheckMockedStatic = mockStatic(IPValidationCheck.class)) {
+            ipValidationCheckMockedStatic.when(() -> IPValidationCheck.isPublicIpAddress(any())).thenReturn(false);
+        }
+
+        when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
+        when(entry.getSource()).thenReturn(SOURCE);
+        when(entry.getFields()).thenReturn(setFields());
+
+        final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
+
+        final Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
+        for (final Record<Event> record : records) {
+            final Event event = record.getData();
+            assertThat(!event.containsKey("geo"), equalTo(true));
+        }
 
         verify(geoIpEventsProcessed).increment();
         verify(geoIpEventsFailedLookup).increment();
@@ -175,8 +233,6 @@ class GeoIPProcessorTest {
         List<String> testTags = List.of("tag1", "tag2");
         when(geoIPProcessorConfig.getTagsOnFailure()).thenReturn(testTags);
         when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
-
-        when(geoIpConfigSupplier.getGeoIPProcessorService()).thenReturn(geoIPProcessorService);
 
         GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
@@ -213,10 +269,10 @@ class GeoIPProcessorTest {
         return geoDataMap;
     }
 
-    private List<String> setFields() {
-        final List<String> attributes = new ArrayList<>();
-        attributes.add("city_name");
-        attributes.add("country_name");
+    private List<GeoIPField> setFields() {
+        final List<GeoIPField> attributes = new ArrayList<>();
+        attributes.add(GeoIPField.CITY_NAME);
+        attributes.add(GeoIPField.COUNTRY_NAME);
         return attributes;
     }
 
