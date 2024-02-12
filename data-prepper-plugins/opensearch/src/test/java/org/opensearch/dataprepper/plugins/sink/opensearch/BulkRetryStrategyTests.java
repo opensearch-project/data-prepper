@@ -165,6 +165,11 @@ public class BulkRetryStrategyTests {
         bulkResponse = mock(BulkResponse.class);
         when(bulkResponse.items()).thenReturn(Arrays.asList(bulkItemResponse2, bulkItemResponse4));
         assertTrue(bulkRetryStrategy.canRetry(bulkResponse));
+
+        final BulkResponseItem bulkItemResponse5 = failedDependencyItemResponse(testIndex);
+        bulkResponse = mock(BulkResponse.class);
+        when(bulkResponse.items()).thenReturn(Arrays.asList(bulkItemResponse1, bulkItemResponse5));
+        assertFalse(bulkRetryStrategy.canRetry(bulkResponse));
     }
 
     @Test
@@ -567,6 +572,10 @@ public class BulkRetryStrategyTests {
 
     private static BulkResponseItem internalServerErrorItemResponse(final String index) {
         return customBulkFailureResponse(index, RestStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    private static BulkResponseItem failedDependencyItemResponse(final String index) {
+        return customBulkFailureResponse(index, RestStatus.FAILED_DEPENDENCY);
     }
 
     private static BulkResponseItem versionConflictErrorItemResponse() {

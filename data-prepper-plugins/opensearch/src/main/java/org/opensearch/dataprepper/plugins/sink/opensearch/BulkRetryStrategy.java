@@ -44,6 +44,7 @@ public final class BulkRetryStrategy {
     public static final String BULK_REQUEST_TIMEOUT_ERRORS = "bulkRequestTimeoutErrors";
     public static final String BULK_REQUEST_SERVER_ERRORS = "bulkRequestServerErrors";
     public static final String DOCUMENTS_VERSION_CONFLICT_ERRORS = "documentsVersionConflictErrors";
+    public static final String DOCUMENT_FAILED_DEPENDENCY_ERRORS = "documentFailedDependencyErrors";
     static final long INITIAL_DELAY_MS = 50;
     static final long MAXIMUM_DELAY_MS = Duration.ofMinutes(10).toMillis();
     static final String VERSION_CONFLICT_EXCEPTION_TYPE = "version_conflict_engine_exception";
@@ -52,7 +53,8 @@ public final class BulkRetryStrategy {
             Arrays.asList(
                     RestStatus.BAD_REQUEST.getStatus(),
                     RestStatus.NOT_FOUND.getStatus(),
-                    RestStatus.CONFLICT.getStatus()
+                    RestStatus.CONFLICT.getStatus(),
+                    RestStatus.FAILED_DEPENDENCY.getStatus()
             ));
 
     private static final Set<Integer> BAD_REQUEST_ERRORS = new HashSet<>(
@@ -119,6 +121,7 @@ public final class BulkRetryStrategy {
     private final Counter bulkRequestTimeoutErrors;
     private final Counter bulkRequestServerErrors;
     private final Counter documentsVersionConflictErrors;
+    private final Counter documentFailedDependencyErrorsCounter;
     private static final Logger LOG = LoggerFactory.getLogger(BulkRetryStrategy.class);
 
     static class BulkOperationRequestResponse {
@@ -164,6 +167,7 @@ public final class BulkRetryStrategy {
         bulkRequestTimeoutErrors = pluginMetrics.counter(BULK_REQUEST_TIMEOUT_ERRORS);
         bulkRequestServerErrors = pluginMetrics.counter(BULK_REQUEST_SERVER_ERRORS);
         documentsVersionConflictErrors = pluginMetrics.counter(DOCUMENTS_VERSION_CONFLICT_ERRORS);
+        documentFailedDependencyErrorsCounter = pluginMetrics.counter(DOCUMENT_FAILED_DEPENDENCY_ERRORS);
     }
 
     private void incrementErrorCounters(final Exception e) {
@@ -323,6 +327,10 @@ public final class BulkRetryStrategy {
                         LOG.debug("Received version conflict from OpenSearch: {}", bulkItemResponse.error().reason());
                         bulkOperation.releaseEventHandle(true);
                     } else {
+                        if (RestStatus.FAILED_DEPENDENCY.getStatus() == bulkItemResponse.status()) {
+                            documentFailedDependencyErrorsCounter.increment();
+                        }
+
                         nonRetryableFailures.add(FailedBulkOperation.builder()
                                 .withBulkOperation(bulkOperation)
                                 .withBulkResponseItem(bulkItemResponse)
@@ -355,6 +363,10 @@ public final class BulkRetryStrategy {
                     LOG.debug("Received version conflict from OpenSearch: {}", bulkItemResponse.error().reason());
                     bulkOperation.releaseEventHandle(true);
                 } else {
+                    if (RestStatus.FAILED_DEPENDENCY.getStatus() == bulkItemResponse.status()) {
+                        documentFailedDependencyErrorsCounter.increment();
+                    }
+
                     failures.add(FailedBulkOperation.builder()
                             .withBulkOperation(bulkOperation)
                             .withBulkResponseItem(bulkItemResponse)
