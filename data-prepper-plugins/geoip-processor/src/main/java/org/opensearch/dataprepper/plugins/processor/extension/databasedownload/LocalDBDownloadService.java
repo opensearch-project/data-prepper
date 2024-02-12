@@ -31,8 +31,10 @@ public class LocalDBDownloadService implements DBSource {
      */
     @Override
     public void initiateDownload(List<String> config) throws Exception {
+        final String destPath = destinationDirectory;
+        DBSource.createFolderIfNotExist(destPath);
         File srcDatabaseConfigPath = new File(config.get(0));
-        File destDatabaseConfigPath = new File(destinationDirectory);
+        File destDatabaseConfigPath = new File(destPath);
         FileUtils.copyDirectory(srcDatabaseConfigPath, destDatabaseConfigPath);
     }
 }

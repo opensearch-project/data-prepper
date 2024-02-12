@@ -41,8 +41,7 @@ public class CDNDownloadService implements DBSource {
 
     @Override
     public void initiateDownload(final List<String> databasePaths) {
-        final String databaseDirectoryPath = tempFolderPath + File.separator + directoryName;
-        DBSource.createFolderIfNotExist(databaseDirectoryPath);
+        DBSource.createFolderIfNotExist(directoryName);
 
         for(final String url : databasePaths) {
             final Manifest manifest = deserializeManifestFile(url);
@@ -50,10 +49,10 @@ public class CDNDownloadService implements DBSource {
 
             final String manifestFilePath = manifest.getDbName();
             final String zipFileName = manifestFilePath.substring(0, manifestFilePath.lastIndexOf(".")).concat(ZIP_FILE_EXTENSION);
-            final String zipFilePath = databaseDirectoryPath + File.separator + zipFileName;
+            final String zipFilePath = directoryName + File.separator + zipFileName;
 
             downloadZipFile(manifest.getUrl(), zipFilePath);
-            unzipDownloadedFile(zipFilePath, databaseDirectoryPath);
+            unzipDownloadedFile(zipFilePath, directoryName);
         }
     }
 
