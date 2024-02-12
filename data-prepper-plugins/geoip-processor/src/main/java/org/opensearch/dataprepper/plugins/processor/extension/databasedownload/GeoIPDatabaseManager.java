@@ -21,8 +21,6 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
-import static org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DBSource.tempFolderPath;
-
 public class GeoIPDatabaseManager {
     private static final Logger LOG = LoggerFactory.getLogger(GeoIPDatabaseManager.class);
     public static final String FIRST_DATABASE_DIR = "first_database";
@@ -122,24 +120,25 @@ public class GeoIPDatabaseManager {
         DBSource dbSource;
         switchDirectory();
 
+        final String destinationPath = maxMindConfig.getDatabaseDestination() + File.separator + currentDatabaseDir;
         switch (dbSourceOptions) {
             case CDN:
-                dbSource = new CDNDownloadService(currentDatabaseDir);
+                dbSource = new CDNDownloadService(destinationPath);
                 dbSource.initiateDownload(databasePaths);
                 downloadReady =true;
                 break;
             case URL:
-                dbSource = new HttpDBDownloadService(currentDatabaseDir, geoIPFileManager);
+                dbSource = new HttpDBDownloadService(destinationPath, geoIPFileManager);
                 dbSource.initiateDownload(databasePaths);
                 downloadReady = true;
                 break;
             case S3:
-                dbSource = new S3DBService(maxMindConfig.getAwsAuthenticationOptionsConfig(), currentDatabaseDir);
+                dbSource = new S3DBService(maxMindConfig.getAwsAuthenticationOptionsConfig(), destinationPath);
                 dbSource.initiateDownload(databasePaths);
                 downloadReady = true;
                 break;
             case PATH:
-                dbSource = new LocalDBDownloadService(currentDatabaseDir);
+                dbSource = new LocalDBDownloadService(destinationPath);
                 dbSource.initiateDownload(databasePaths);
                 downloadReady = true;
                 break;
@@ -147,7 +146,7 @@ public class GeoIPDatabaseManager {
     }
 
     private GeoIPDatabaseReader createReader() {
-        final String finalPath = tempFolderPath + File.separator + currentDatabaseDir;
+        final String finalPath = maxMindConfig.getDatabaseDestination() + File.separator + currentDatabaseDir;
         final LicenseTypeOptions licenseType = licenseTypeCheck.isGeoLite2OrEnterpriseLicense(finalPath);
         if (licenseType == null) {
             throw new NoValidDatabaseFoundException("At least one valid database is required.");
@@ -175,8 +174,8 @@ public class GeoIPDatabaseManager {
     }
 
     public void deleteDatabasesOnShutdown() {
-        geoIPFileManager.deleteDirectory(new File(tempFolderPath + File.separator + FIRST_DATABASE_DIR));
-        geoIPFileManager.deleteDirectory(new File(tempFolderPath + File.separator + SECOND_DATABASE_DIR));
+        geoIPFileManager.deleteDirectory(new File(maxMindConfig.getDatabaseDestination() + File.separator + FIRST_DATABASE_DIR));
+        geoIPFileManager.deleteDirectory(new File(maxMindConfig.getDatabaseDestination() + File.separator + SECOND_DATABASE_DIR));
     }
 
     public void deleteDirectory(final File file) {

@@ -14,7 +14,6 @@ import software.amazon.awssdk.transfer.s3.S3TransferManager;
 import software.amazon.awssdk.transfer.s3.model.DirectoryDownload;
 import software.amazon.awssdk.transfer.s3.model.DownloadDirectoryRequest;
 
-import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Paths;
@@ -29,17 +28,17 @@ public class S3DBService implements DBSource {
     private String bucketName;
     private String bucketPath;
     private final AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig;
-    private final String prefixDir;
+    private final String destinationDirectory;
 
     /**
      * S3DBService constructor for initialisation of attributes
      *
-     * @param prefixDir prefixDir
+     * @param destinationDirectory destinationDirectory
      */
     public S3DBService(final AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig,
-                       final String prefixDir) {
+                       final String destinationDirectory) {
         this.awsAuthenticationOptionsConfig = awsAuthenticationOptionsConfig;
-        this.prefixDir = prefixDir;
+        this.destinationDirectory = destinationDirectory;
     }
 
     /**
@@ -52,7 +51,7 @@ public class S3DBService implements DBSource {
                 URI uri = new URI(s3Url);
                 bucketName = uri.getHost();
                 bucketPath = removeTrailingSlash(removeLeadingSlash(uri.getPath()));
-                DBSource.createFolderIfNotExist(tempFolderPath + File.separator + prefixDir);
+                DBSource.createFolderIfNotExist(destinationDirectory);
                 buildRequestAndDownloadFile(bucketName, bucketPath);
             } catch (URISyntaxException ex) {
                 LOG.info("Initiate Download Exception", ex);
@@ -96,7 +95,7 @@ public class S3DBService implements DBSource {
             DirectoryDownload directoryDownload =
                     transferManager.downloadDirectory(
                             DownloadDirectoryRequest.builder()
-                                    .destination(Paths.get(tempFolderPath + File.separator + prefixDir))
+                                    .destination(Paths.get(destinationDirectory))
                                     .bucket(path[0])
                                     .listObjectsV2RequestTransformer(l -> l.prefix(path[1]))
                                     .build());

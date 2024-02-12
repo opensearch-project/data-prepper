@@ -11,8 +11,8 @@ import jakarta.validation.Valid;
 public class GeoIpServiceConfig {
     private static final MaxMindConfig DEFAULT_MAXMIND_CONFIG = new MaxMindConfig();
 
-    @JsonProperty("maxmind")
     @Valid
+    @JsonProperty("maxmind")
     private MaxMindConfig maxMindConfig = DEFAULT_MAXMIND_CONFIG;
 
     /**

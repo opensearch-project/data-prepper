@@ -29,7 +29,7 @@ public class MaxMindConfig {
     private static final List<String> DEFAULT_DATABASE_PATHS = new ArrayList<>();
     private static final Duration DEFAULT_DATABASE_REFRESH_INTERVAL = Duration.ofDays(7);
     private static final int DEFAULT_CACHE_SIZE = 4096;
-    private static final String DEFAULT_DATABASE_DESTINATION = System.getProperty("data-prepper.dir") + File.separator + "data" + File.separator + "geoip";
+    private static final String DEFAULT_DATABASE_DESTINATION = System.getProperty("data-prepper.dir") + File.separator + "data";
 
     @JsonProperty("database_paths")
     private List<String> databasePaths = DEFAULT_DATABASE_PATHS;
@@ -44,9 +44,8 @@ public class MaxMindConfig {
     //TODO:  Add a Max limit on cache size
     private int cacheSize = DEFAULT_CACHE_SIZE;
 
-    //TODO: Add a destination path to store database files
-    @JsonProperty("aws")
     @Valid
+    @JsonProperty("aws")
     private AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig;
 
     @JsonProperty("insecure")
@@ -128,8 +127,7 @@ public class MaxMindConfig {
      * @return The destination folder
      * @since 2.7
      */
-    //TODO: Use this instead of temp directory
     public String getDatabaseDestination() {
-        return databaseDestination;
+        return databaseDestination + File.separator + File.separator + "geoip";
     }
 }

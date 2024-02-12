@@ -25,11 +25,8 @@ import java.util.List;
 
 public interface DBSource {
 
-    public static final Logger LOG = LoggerFactory.getLogger(DBSource.class);
-    public String tempFolderPath = System.getProperty("java.io.tmpdir")+ File.separator +"GeoIP";
-    public String tarFolderPath = tempFolderPath + "/tar";
-    public String downloadTarFilepath = tarFolderPath + "/out.tar.gz";
-    public void initiateDownload(List<String> config) throws Exception;
+    Logger LOG = LoggerFactory.getLogger(DBSource.class);
+    void initiateDownload(List<String> config) throws Exception;
 
     /**
      * create Folder If Not Exist
