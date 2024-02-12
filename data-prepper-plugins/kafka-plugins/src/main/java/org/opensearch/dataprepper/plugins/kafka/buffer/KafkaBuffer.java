@@ -18,7 +18,6 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.apache.kafka.common.errors.RecordTooLargeException;
@@ -31,6 +30,7 @@ import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
+import org.opensearch.dataprepper.plugins.kafka.service.TopicServiceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,17 +62,17 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     private ByteDecoder byteDecoder;
 
     @DataPrepperPluginConstructor
-    public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig, final PluginFactory pluginFactory,
+    public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig,
                        final AcknowledgementSetManager acknowledgementSetManager,
                        final ByteDecoder byteDecoder, final AwsCredentialsSupplier awsCredentialsSupplier,
                        final CircuitBreaker circuitBreaker) {
         super(kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName()), pluginSetting.getPipelineName());
         final SerializationFactory serializationFactory = new BufferSerializationFactory(new CommonSerializationFactory());
-        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier);
+        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier, new TopicServiceFactory());
         this.byteDecoder = byteDecoder;
         final String metricPrefixName = kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName());
         final PluginMetrics producerMetrics = PluginMetrics.fromNames(metricPrefixName + WRITE, pluginSetting.getPipelineName());
-        producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, pluginFactory, pluginSetting,  null, null, producerMetrics, null, false);
+        producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, null, null, producerMetrics, null, false);
         final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory, awsCredentialsSupplier);
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         this.shutdownInProgress = new AtomicBoolean(false);

@@ -21,7 +21,7 @@ public class TopicService {
     private final AdminClient adminClient;
 
 
-    public TopicService(final KafkaProducerConfig kafkaProducerConfig) {
+    TopicService(final KafkaProducerConfig kafkaProducerConfig) {
         this.adminClient = AdminClient.create(SinkPropertyConfigurer.getPropertiesForAdminClient(kafkaProducerConfig));
     }
 

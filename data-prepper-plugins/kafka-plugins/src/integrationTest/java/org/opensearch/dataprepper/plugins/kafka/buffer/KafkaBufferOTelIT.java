@@ -295,7 +295,7 @@ public class KafkaBufferOTelIT {
 
     @Test
     void test_otel_metrics_with_kafka_buffer() throws Exception {
-        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, new OTelMetricDecoder(), null, null);
+        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelMetricDecoder(), null, null);
         buffer = new KafkaDelegatingBuffer(kafkaBuffer);
         final ExportMetricsServiceRequest request = createExportMetricsServiceRequest();
         buffer.writeBytes(request.toByteArray(), null, 10_000);
@@ -367,7 +367,7 @@ public class KafkaBufferOTelIT {
 
     @Test
     void test_otel_logs_with_kafka_buffer() throws Exception {
-        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, new OTelLogsDecoder(), null, null);
+        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelLogsDecoder(), null, null);
         buffer = new KafkaDelegatingBuffer(kafkaBuffer);
         final ExportLogsServiceRequest request = createExportLogsRequest();
         buffer.writeBytes(request.toByteArray(), null, 10_000);
@@ -453,7 +453,7 @@ public class KafkaBufferOTelIT {
 
     @Test
     void test_otel_traces_with_kafka_buffer() throws Exception {
-        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, new OTelTraceDecoder(), null, null);
+        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelTraceDecoder(), null, null);
         buffer = new KafkaDelegatingBuffer(kafkaBuffer);
         final ExportTraceServiceRequest request = createExportTraceRequest();
         buffer.writeBytes(request.toByteArray(), null, 10_000);

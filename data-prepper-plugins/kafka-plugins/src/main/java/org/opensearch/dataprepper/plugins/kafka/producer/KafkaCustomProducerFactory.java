@@ -11,8 +11,6 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfig;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfigAdapter;
@@ -22,12 +20,12 @@ import org.opensearch.dataprepper.plugins.kafka.common.key.KeyFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
-
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
 import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
 import org.opensearch.dataprepper.plugins.kafka.service.TopicService;
+import org.opensearch.dataprepper.plugins.kafka.service.TopicServiceFactory;
 import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicProducerMetrics;
@@ -43,13 +41,18 @@ public class KafkaCustomProducerFactory {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumerFactory.class);
     private final SerializationFactory serializationFactory;
     private final AwsCredentialsSupplier awsCredentialsSupplier;
+    private final TopicServiceFactory topicServiceFactory;
 
-    public KafkaCustomProducerFactory(final SerializationFactory serializationFactory, AwsCredentialsSupplier awsCredentialsSupplier) {
+    public KafkaCustomProducerFactory(
+            final SerializationFactory serializationFactory,
+            final AwsCredentialsSupplier awsCredentialsSupplier,
+            final TopicServiceFactory topicServiceFactory) {
         this.serializationFactory = serializationFactory;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
+        this.topicServiceFactory = topicServiceFactory;
     }
 
-    public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaProducerConfig, final PluginFactory pluginFactory, final PluginSetting pluginSetting,
+    public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaProducerConfig,
                                               final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext, final PluginMetrics pluginMetrics,
                                               final DLQSink dlqSink,
                                               final boolean topicNameInMetrics) {
@@ -102,8 +105,8 @@ public class KafkaCustomProducerFactory {
 
     private void checkTopicCreationCriteriaAndCreateTopic(final KafkaProducerConfig kafkaProducerConfig, final Integer maxRequestSize) {
         final TopicProducerConfig topic = kafkaProducerConfig.getTopic();
-        if (!topic.isCreateTopic()) {
-            final TopicService topicService = new TopicService(kafkaProducerConfig);
+        if (topic.isCreateTopic()) {
+            final TopicService topicService = topicServiceFactory.createTopicService(kafkaProducerConfig);
             Long maxMessageBytes = null;
             if (maxRequestSize != null) {
                 maxMessageBytes = Long.valueOf(maxRequestSize);
