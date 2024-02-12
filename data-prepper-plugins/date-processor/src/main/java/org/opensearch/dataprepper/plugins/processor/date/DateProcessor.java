@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.date;
 
+import io.micrometer.core.instrument.Counter;
+import org.apache.commons.lang3.tuple.Pair;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -13,23 +15,21 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZonedDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.tuple.Pair;
 
 @DataPrepperPlugin(name = "date", pluginType = Processor.class, pluginConfigurationType = DateProcessorConfig.class)
 public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -69,32 +69,37 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
 
-            if (Objects.nonNull(dateProcessorConfig.getDateWhen()) && !expressionEvaluator.evaluateConditional(dateProcessorConfig.getDateWhen(), record.getData())) {
-                continue;
-            }
-
-            String zonedDateTime = null;
-
-            if (Boolean.TRUE.equals(dateProcessorConfig.getFromTimeReceived())) {
-                zonedDateTime =  getDateTimeFromTimeReceived(record);
-
-            } else if (keyToParse != null && !keyToParse.isEmpty()) {
-                Pair<String, Instant> result = getDateTimeFromMatch(record);
-                if (result != null) {
-                    zonedDateTime = result.getLeft();
-                    Instant timeStamp = result.getRight();
-                    if (dateProcessorConfig.getToOriginationMetadata()) {
-                        Event event = (Event)record.getData();
-                        event.getMetadata().setExternalOriginationTime(timeStamp);
-                        event.getEventHandle().setExternalOriginationTime(timeStamp);
-                    }
+            try {
+                if (Objects.nonNull(dateProcessorConfig.getDateWhen()) && !expressionEvaluator.evaluateConditional(dateProcessorConfig.getDateWhen(), record.getData())) {
+                    continue;
                 }
-                populateDateProcessorMetrics(zonedDateTime);
+
+                String zonedDateTime = null;
+
+                if (Boolean.TRUE.equals(dateProcessorConfig.getFromTimeReceived())) {
+                    zonedDateTime =  getDateTimeFromTimeReceived(record);
+
+                } else if (keyToParse != null && !keyToParse.isEmpty()) {
+                    Pair<String, Instant> result = getDateTimeFromMatch(record);
+                    if (result != null) {
+                        zonedDateTime = result.getLeft();
+                        Instant timeStamp = result.getRight();
+                        if (dateProcessorConfig.getToOriginationMetadata()) {
+                            Event event = (Event)record.getData();
+                            event.getMetadata().setExternalOriginationTime(timeStamp);
+                            event.getEventHandle().setExternalOriginationTime(timeStamp);
+                        }
+                    }
+                    populateDateProcessorMetrics(zonedDateTime);
+                }
+
+                if (zonedDateTime != null) {
+                    record.getData().put(dateProcessorConfig.getDestination(), zonedDateTime);
+                }
+            } catch (final Exception e) {
+                LOG.error("An exception occurred while attempting to process Event: ", e);
             }
 
-            if (zonedDateTime != null) {
-                record.getData().put(dateProcessorConfig.getDestination(), zonedDateTime);
-            }
         }
         return records;
     }
