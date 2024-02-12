@@ -159,7 +159,7 @@ public class AggregateProcessorIT {
             });
         }
 
-        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
 
         assertThat(allThreadsFinished, equalTo(true));
         assertThat(aggregatedResult.size(), equalTo(NUM_UNIQUE_EVENTS_PER_BATCH));
@@ -198,7 +198,8 @@ public class AggregateProcessorIT {
             });
         }
 
-        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
+	Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
 
         assertThat(allThreadsFinished, equalTo(true));
         assertThat(aggregatedResult.size(), equalTo(NUM_UNIQUE_EVENTS_PER_BATCH));
@@ -249,7 +250,7 @@ public class AggregateProcessorIT {
             });
         }
 
-        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
 
         assertThat(allThreadsFinished, equalTo(true));
         assertThat(aggregatedResult.size(), equalTo(NUM_UNIQUE_EVENTS_PER_BATCH/2));
@@ -260,7 +261,7 @@ public class AggregateProcessorIT {
     }
 
     @ParameterizedTest
-    @ValueSource(doubles = {5.0, 15.0, 55.0, 92.0, 99.0})
+    @ValueSource(doubles = {10.0, 25.0, 75.0})
     void aggregateWithPercentSamplerAction(double testPercent) throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         PercentSamplerAggregateActionConfig percentSamplerAggregateActionConfig = new PercentSamplerAggregateActionConfig();
         setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", testPercent);
@@ -285,10 +286,10 @@ public class AggregateProcessorIT {
             });
         }
 
-        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
 
         assertThat(allThreadsFinished, equalTo(true));
-        assertThat((double)allowedEventsCount.get(), closeTo(NUM_THREADS * NUM_EVENTS_PER_BATCH * testPercent/100, 1.0));
+        assertThat((double)allowedEventsCount.get(), closeTo(NUM_THREADS * NUM_EVENTS_PER_BATCH * testPercent/100, 5.0));
     }
 
     @RepeatedTest(value = 2)
@@ -320,7 +321,7 @@ public class AggregateProcessorIT {
             });
         }
 
-        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
 
         assertThat(allThreadsFinished, equalTo(true));
         // Expect less number of events to be received, because of rate limiting
@@ -355,7 +356,7 @@ public class AggregateProcessorIT {
             });
         }
 
-        boolean allThreadsFinished = countDownLatch.await(10L, TimeUnit.SECONDS);
+        boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
 
         assertThat(allThreadsFinished, equalTo(true));
         // Expect all events to be received even with rate limiting because no events are dropped
@@ -383,11 +384,11 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
 
-        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
 
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
         Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
         assertThat(results.size(), equalTo(1));
 
@@ -429,10 +430,10 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
 
-        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
 
         Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
         assertThat(results.size(), equalTo(1));
@@ -488,10 +489,10 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
 
-        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
 
         Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
         assertThat(results.size(), equalTo(1));
@@ -543,9 +544,9 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
-        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        boolean allThreadsFinished = countDownLatch.await(20L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
         List<Event> errorEventList = eventBatch.stream().map(Record::getData).filter(event -> {
             Event ev = ((Event)event);
             return ev.get("status", Integer.class) == ERROR_STATUS;

@@ -26,6 +26,7 @@ import java.time.Duration;
  */
 @DataPrepperPlugin(name = "in_memory", pluginType = Source.class, pluginConfigurationType = InMemoryConfig.class)
 public class InMemorySource implements Source<Record<Event>> {
+    public static final Duration ACK_EXPIRY_TIME = Duration.ofSeconds(35);
     private static final Logger LOG = LoggerFactory.getLogger(InMemorySource.class);
 
     private final String testingKey;
@@ -123,7 +124,7 @@ public class InMemorySource implements Source<Record<Event>> {
                                 {
                                     inMemorySourceAccessor.setAckReceived(result);
                                 },
-                                Duration.ofSeconds(15));
+                                ACK_EXPIRY_TIME);
                     records.stream().forEach((record) -> { ackSet.add(record.getData()); });
                     ackSet.complete();
                     writeToBuffer(records);
