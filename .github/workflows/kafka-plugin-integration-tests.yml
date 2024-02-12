@@ -65,7 +65,7 @@ jobs:
             -Dtests.kafka.bootstrap_servers=localhost:9092 \
             -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin \
             -Dtests.kafka.kms_key=alias/DataPrepperTesting \
-            --tests '*kafka.buffer*'
+            --tests '*kafka.buffer*' --tests KafkaSourceJsonTypeIT --tests KafkaBufferOTelIT
 
       - name: Upload Unit Test Results
         if: always()
