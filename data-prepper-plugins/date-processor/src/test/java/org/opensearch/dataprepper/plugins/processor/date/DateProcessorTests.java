@@ -5,11 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.date;
 
-import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
 import org.apache.commons.lang3.LocaleUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +16,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -38,6 +38,8 @@ import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -417,6 +419,24 @@ class DateProcessorTests {
 
         Assertions.assertTrue(actualZonedDateTime.toLocalDate().isEqual(expectedZonedDatetime.toLocalDate()));
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+    }
+
+    @Test
+    void date_processor_catches_exceptions_instead_of_throwing() {
+        when(mockDateProcessorConfig.getDateWhen()).thenReturn(UUID.randomUUID().toString());
+        when(expressionEvaluator.evaluateConditional(any(String.class), any(Event.class)))
+                .thenThrow(RuntimeException.class);
+
+        dateProcessor = createObjectUnderTest();
+
+        final Record<Event> record = buildRecordWithEvent(testData);
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
+
+        assertThat(processedRecords, notNullValue());
+        assertThat(processedRecords.size(), equalTo(1));
+        assertThat(processedRecords.get(0), notNullValue());
+        assertThat(processedRecords.get(0).getData(), notNullValue());
+        assertThat(processedRecords.get(0).getData().toMap(), equalTo(record.getData().toMap()));
     }
 
     static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
