@@ -37,15 +37,15 @@ import java.util.Map;
 public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(GeoIPProcessor.class);
-  //TODO: rename metrics
-  static final String GEO_IP_PROCESSING_MATCH = "geoIpProcessingMatch";
-  static final String GEO_IP_PROCESSING_MISMATCH = "geoIpProcessingMismatch";
-  private final Counter geoIpProcessingMatchCounter;
-  private final Counter geoIpProcessingMismatchCounter;
+  static final String GEO_IP_EVENTS_PROCESSED = "eventsProcessed";
+  static final String GEO_IP_EVENTS_FAILED_LOOKUP = "eventsFailedLookup";
+  static final String GEO_IP_EVENTS_FAILED_ENGINE_EXCEPTION = "eventsFailedEngineException";
+  private final Counter geoIpEventsProcessed;
+  private final Counter geoIpEventsFailedLookup;
+  private final Counter geoIpEventsFailedEngineException;
   private final GeoIPProcessorConfig geoIPProcessorConfig;
   private final List<String> tagsOnFailure;
   private final GeoIPProcessorService geoIPProcessorService;
-  private final String whenCondition;
   private final ExpressionEvaluator expressionEvaluator;
 
   /**
@@ -63,10 +63,11 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
     this.geoIPProcessorConfig = geoIPProcessorConfig;
     this.geoIPProcessorService = geoIpConfigSupplier.getGeoIPProcessorService();
     this.tagsOnFailure = geoIPProcessorConfig.getTagsOnFailure();
-    this.whenCondition = geoIPProcessorConfig.getWhenCondition();
     this.expressionEvaluator = expressionEvaluator;
-    this.geoIpProcessingMatchCounter = pluginMetrics.counter(GEO_IP_PROCESSING_MATCH);
-    this.geoIpProcessingMismatchCounter = pluginMetrics.counter(GEO_IP_PROCESSING_MISMATCH);
+    this.geoIpEventsProcessed = pluginMetrics.counter(GEO_IP_EVENTS_PROCESSED);
+    this.geoIpEventsFailedLookup = pluginMetrics.counter(GEO_IP_EVENTS_FAILED_LOOKUP);
+    //TODO: Use the exception metric for exceptions from service
+    this.geoIpEventsFailedEngineException = pluginMetrics.counter(GEO_IP_EVENTS_FAILED_ENGINE_EXCEPTION);
   }
 
   /**
@@ -80,10 +81,16 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
     for (final Record<Event> eventRecord : records) {
       final Event event = eventRecord.getData();
+      final String whenCondition = geoIPProcessorConfig.getWhenCondition();
+
       if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
         continue;
       }
-      for (EntryConfig entry : geoIPProcessorConfig.getEntries()) {
+
+      boolean isEventFailedLookup = false;
+      geoIpEventsProcessed.increment();
+
+      for (final EntryConfig entry : geoIPProcessorConfig.getEntries()) {
         final String source = entry.getSource();
         final List<String> attributes = entry.getFields();
         final String ipAddress = event.get(source, String.class);
@@ -94,17 +101,22 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
             if (IPValidationCheck.isPublicIpAddress(ipAddress)) {
               geoData = geoIPProcessorService.getGeoData(InetAddress.getByName(ipAddress), attributes);
               eventRecord.getData().put(entry.getTarget(), geoData);
-              geoIpProcessingMatchCounter.increment();
+            } else {
+              isEventFailedLookup = true;
             }
           } catch (final IOException | EnrichFailedException ex) {
-            geoIpProcessingMismatchCounter.increment();
-            event.getMetadata().addTags(tagsOnFailure);
+            isEventFailedLookup = true;
             LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]", event, ipAddress, ex);
           }
         } else {
           //No Enrichment.
-          event.getMetadata().addTags(tagsOnFailure);
+          isEventFailedLookup = true;
         }
+      }
+
+      if (isEventFailedLookup) {
+        geoIpEventsFailedLookup.increment();
+        event.getMetadata().addTags(tagsOnFailure);
       }
     }
     return records;
