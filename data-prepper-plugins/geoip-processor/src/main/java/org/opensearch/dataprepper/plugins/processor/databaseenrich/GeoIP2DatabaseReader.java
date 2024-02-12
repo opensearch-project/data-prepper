@@ -99,7 +99,7 @@ public class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable 
         } catch (final GeoIp2Exception e) {
             throw new EnrichFailedException("Address not found in database.");
         } catch (final IOException e) {
-            throw new EnrichFailedException("ailed to close database readers gracefully. It can be due to expired databases");
+            throw new EnrichFailedException("Failed to close database readers gracefully. It can be due to expired databases");
         }
         return geoData;
     }

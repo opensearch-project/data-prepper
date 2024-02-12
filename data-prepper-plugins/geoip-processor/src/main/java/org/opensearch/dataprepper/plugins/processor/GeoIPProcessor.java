@@ -51,7 +51,6 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   private final List<String> tagsOnFailure;
   private final GeoIPProcessorService geoIPProcessorService;
   private final ExpressionEvaluator expressionEvaluator;
-//  private final Map<EntryConfig, Set<GeoIPDatabase>> entryDatabaseMap;
 
   /**
    * GeoIPProcessor constructor for initialization of required attributes
@@ -125,10 +124,14 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
             } else {
               isEventFailedLookup = true;
             }
-          } catch (final UnknownHostException | EnrichFailedException ex) {
+          } catch (final EnrichFailedException ex) {
             isEventFailedLookup = true;
             LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]. Caused by:{}",
                     event, ipAddress, ex.getMessage());
+          } catch (final UnknownHostException e) {
+            isEventFailedLookup = true;
+            LOG.error(DataPrepperMarkers.EVENT, "Failed to validate IP address: [{}] in event: [{}]. Caused by:[{}]",
+                    event, ipAddress, e.getMessage());
           }
         } else {
           //No Enrichment.
