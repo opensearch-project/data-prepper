@@ -7,13 +7,14 @@ package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
 public class CopyValueProcessorConfig {
-   public static class Entry {
+    public static class Entry {
         @NotEmpty
         @NotNull
         @JsonProperty("from_key")
@@ -61,7 +62,33 @@ public class CopyValueProcessorConfig {
     @Valid
     private List<Entry> entries;
 
+    @JsonProperty("from_list")
+    private String fromList;
+
+    @JsonProperty("to_list")
+    private String toList;
+
+    @JsonProperty("overwrite_if_to_list_exists")
+    private boolean overwriteIfToListExists = false;
+
+    @AssertTrue(message = "Both from_list and to_list should be specified when copying entries between lists.")
+    boolean isBothFromListAndToListProvided() {
+        return (fromList == null && toList == null) || (fromList != null && toList != null);
+    }
+
     public List<Entry> getEntries() {
         return entries;
+    }
+
+    public String getFromList() {
+        return fromList;
+    }
+
+    public String getToList() {
+        return toList;
+    }
+
+    public boolean getOverwriteIfToListExists() {
+        return overwriteIfToListExists;
     }
 }
