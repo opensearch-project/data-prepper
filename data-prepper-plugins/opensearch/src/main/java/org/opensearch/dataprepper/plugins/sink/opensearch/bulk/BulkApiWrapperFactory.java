@@ -9,7 +9,7 @@ public class BulkApiWrapperFactory {
     public static BulkApiWrapper getWrapper(final IndexConfiguration indexConfiguration,
                                             final OpenSearchClient openSearchClient,
                                             final RestHighLevelClient restHighLevelClient) {
-        if (indexConfiguration.isEnableDetectorScan()) {
+        if (indexConfiguration.isDetectorScan()) {
             return new OpenSearchDetectorScanBulkApiWrapper(restHighLevelClient);
         }
 
