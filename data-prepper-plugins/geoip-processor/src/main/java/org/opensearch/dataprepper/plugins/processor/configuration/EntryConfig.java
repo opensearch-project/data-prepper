@@ -27,13 +27,16 @@ public class EntryConfig {
     private String target = DEFAULT_TARGET;
 
     @JsonProperty("include_fields")
-    private List<String> includeFields = new ArrayList<>();
+    private List<String> includeFields;
 
     @JsonProperty("exclude_fields")
-    private List<String> excludeFields = new ArrayList<>();
+    private List<String> excludeFields;
 
     @JsonIgnore
-    private final List<GeoIPField> geoIPFields = new ArrayList<>();
+    private List<GeoIPField> geoIPFields;
+
+    @JsonIgnore
+    private Set<GeoIPDatabase> geoIPDatabasesToUse;
 
 
     public String getSource() {
@@ -46,10 +49,11 @@ public class EntryConfig {
 
 
     public List<GeoIPField> getFields() {
-        if (!geoIPFields.isEmpty()) {
+        if (geoIPFields != null) {
             return geoIPFields;
         }
-        if (!includeFields.isEmpty()) {
+        geoIPFields = new ArrayList<>();
+        if (includeFields != null) {
             for(final String field: includeFields) {
                 final GeoIPField geoIPField = GeoIPField.findByName(field);
                 if (geoIPField != null) {
@@ -57,7 +61,7 @@ public class EntryConfig {
                 }
             }
             return geoIPFields;
-        } else if (!excludeFields.isEmpty()) {
+        } else if (excludeFields != null) {
             final List<GeoIPField> excludeGeoIPFields = new ArrayList<>();
             for(final String field: excludeFields) {
                 final GeoIPField geoIPField = GeoIPField.findByName(field);
@@ -65,27 +69,30 @@ public class EntryConfig {
                     excludeGeoIPFields.add(geoIPField);
                 }
             }
-            final List<GeoIPField> values = new ArrayList<>(List.of(GeoIPField.values()));
-            values.removeAll(excludeGeoIPFields);
-            return values;
+            geoIPFields = new ArrayList<>(List.of(GeoIPField.values()));
+            geoIPFields.removeAll(excludeGeoIPFields);
+            return geoIPFields;
         }
         return geoIPFields;
     }
 
     public Set<GeoIPDatabase> getGeoIPDatabases() {
-        final Set<GeoIPDatabase> databaseTypes = new HashSet<>();
+        if (geoIPDatabasesToUse != null) {
+            return geoIPDatabasesToUse;
+        }
+        geoIPDatabasesToUse = new HashSet<>();
         for (final GeoIPField geoIPField: getFields()) {
             final Set<GeoIPDatabase> geoIPDatabases = geoIPField.getGeoIPDatabases();
-            databaseTypes.addAll(geoIPDatabases);
+            geoIPDatabasesToUse.addAll(geoIPDatabases);
         }
-        return databaseTypes;
+        return geoIPDatabasesToUse;
     }
 
-    @AssertTrue(message = "include_fields and exclude_fields are mutually exclusive. include_fields or exclude_fields is required with at least one field.")
+    @AssertTrue(message = "include_fields and exclude_fields are mutually exclusive. include_fields or exclude_fields is required.")
     boolean areFieldsValid() {
-        if (includeFields.isEmpty() && excludeFields.isEmpty()) {
+        if (includeFields == null && excludeFields == null) {
             return false;
         }
-        return includeFields.isEmpty() || excludeFields.isEmpty();
+        return includeFields == null || excludeFields == null;
     }
 }

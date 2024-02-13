@@ -86,6 +86,27 @@ class EntryConfigTest {
     }
 
     @Test
+    void test_getFields_with_empty_exclude_keys_should_return_all_geoip_fields() throws NoSuchFieldException, IllegalAccessException {
+        final EntryConfig entryConfig = createObjectUnderTest();
+        final List<String> excludeFields = Collections.emptyList();
+        final List<GeoIPField> fieldsValue = List.of(GeoIPField.LATITUDE, GeoIPField.CITY_NAME, GeoIPField.CONTINENT_CODE, GeoIPField.CONTINENT_NAME,
+                GeoIPField.IS_COUNTRY_IN_EUROPEAN_UNION, GeoIPField.ASN, GeoIPField.ASN_ORGANIZATION, GeoIPField.NETWORK, GeoIPField.IP,
+                GeoIPField.REPRESENTED_COUNTRY_ISO_CODE, GeoIPField.LONGITUDE, GeoIPField.COUNTRY_NAME,
+                GeoIPField.COUNTRY_ISO_CODE, GeoIPField.REGISTERED_COUNTRY_ISO_CODE, GeoIPField.REGISTERED_COUNTRY_NAME,
+                GeoIPField.COUNTRY_CONFIDENCE, GeoIPField.REPRESENTED_COUNTRY_TYPE, GeoIPField.REPRESENTED_COUNTRY_NAME,
+                GeoIPField.CITY_CONFIDENCE, GeoIPField.LOCATION, GeoIPField.LOCATION_ACCURACY_RADIUS, GeoIPField.POSTAL_CODE,
+                GeoIPField.METRO_CODE, GeoIPField.TIME_ZONE, GeoIPField.POSTAL_CODE_CONFIDENCE, GeoIPField.MOST_SPECIFIED_SUBDIVISION_NAME,
+                GeoIPField.MOST_SPECIFIED_SUBDIVISION_CONFIDENCE, GeoIPField.MOST_SPECIFIED_SUBDIVISION_ISO_CODE,
+                GeoIPField.LEAST_SPECIFIED_SUBDIVISION_CONFIDENCE, GeoIPField.LEAST_SPECIFIED_SUBDIVISION_ISO_CODE,
+                GeoIPField.LEAST_SPECIFIED_SUBDIVISION_NAME);
+
+        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "excludeFields", excludeFields);
+
+        assertThat(entryConfig.getFields().size(), equalTo(fieldsValue.size()));
+        assertThat(entryConfig.getFields(), containsInAnyOrder(fieldsValue.toArray()));
+    }
+
+    @Test
     void test_areFieldsValid_should_return_true_if_only_include_fields_is_configured() throws NoSuchFieldException, IllegalAccessException {
         final EntryConfig entryConfig = createObjectUnderTest();
         final List<String> includeFields = List.of("city_name", "continent_code");
@@ -118,13 +139,8 @@ class EntryConfigTest {
     }
 
     @Test
-    void test_areFieldsValid_should_return_false_if_both_include_and_exclude_fields_are_empty() throws NoSuchFieldException, IllegalAccessException {
+    void test_areFieldsValid_should_return_false_if_both_include_and_exclude_fields_are_not_configured() {
         final EntryConfig entryConfig = createObjectUnderTest();
-        final List<String> includeFields = Collections.emptyList();
-        final List<String> excludeFields = Collections.emptyList();
-
-        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "includeFields", includeFields);
-        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "excludeFields", excludeFields);
 
         assertThat(entryConfig.areFieldsValid(), equalTo(false));
     }

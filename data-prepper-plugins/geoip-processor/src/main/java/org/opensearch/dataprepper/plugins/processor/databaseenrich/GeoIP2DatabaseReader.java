@@ -121,7 +121,7 @@ public class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable 
         extractRegisteredCountryFields(registeredCountry, geoData, fields);
         extractRepresentedCountryFields(representedCountry, geoData, fields);
         extractCityFields(city, geoData, fields, true);
-        extractLocationFields(location, geoData, fields, true);
+        extractLocationFields(location, geoData, fields);
         extractPostalFields(postal, geoData, fields, true);
         extractMostSpecifiedSubdivisionFields(mostSpecificSubdivision, geoData, fields, true);
         extractLeastSpecifiedSubdivisionFields(leastSpecificSubdivision, geoData, fields, true);
