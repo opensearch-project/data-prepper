@@ -37,7 +37,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private static final String OUTPUT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
     private static final int LENGTH_OF_EPOCH_IN_MILLIS = 13;
     private static final int LENGTH_OF_EPOCH_SECONDS = 10;
-
+    private static final int LENGTH_OF_EPOCH_MICROSECONDS = 16;
     static final String DATE_PROCESSING_MATCH_SUCCESS = "dateProcessingMatchSuccess";
     static final String DATE_PROCESSING_MATCH_FAILURE = "dateProcessingMatchFailure";
 
@@ -165,6 +165,9 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
             return Pair.of(Long.toString(time.getEpochSecond()), time);
         } else if (outputFormat.equals("epoch_milli")) {
             return Pair.of(Long.toString(time.toEpochMilli()), time);
+        } else if (outputFormat.equals("epoch_micro")) {
+            long micro = (long)time.getEpochSecond() * 1000_000 + (long) time.getNano() / 1000;
+            return Pair.of(Long.toString(micro), time);
         } else { // epoch_nano. validation for valid epoch_ should be
                  // done at init time
             long nano = (long)time.getEpochSecond() * 1000_000_000 + (long) time.getNano();
@@ -187,11 +190,18 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
         }
         if (numberValue != null) {
             int timestampLength = sourceTimestamp.length();
-            if (timestampLength > LENGTH_OF_EPOCH_IN_MILLIS) {
+            if (timestampLength > LENGTH_OF_EPOCH_MICROSECONDS) {
                 if (epochFormatters.contains("epoch_nano")) {
                     epochTime = Instant.ofEpochSecond(numberValue/1000_000_000, numberValue % 1000_000_000);
                 } else {
                     LOG.warn("Source time value is larger than epoch pattern configured. epoch_nano is expected but not present in the patterns list");
+                    return null;
+                }
+            } else if (timestampLength > LENGTH_OF_EPOCH_IN_MILLIS) {
+                if (epochFormatters.contains("epoch_micro")) {
+                    epochTime = Instant.ofEpochSecond(numberValue/1000_000, (numberValue % 1000_000) * 1000);
+                } else {
+                    LOG.warn("Source time value is larger than epoch pattern configured. epoch_micro is expected but not present in the patterns list");
                     return null;
                 }
             } else if (timestampLength > LENGTH_OF_EPOCH_SECONDS) {
