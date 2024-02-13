@@ -216,8 +216,7 @@ public interface GeoIPDatabaseReader {
 
     default void extractLocationFields(final Location location,
                                        final Map<String, Object> geoData,
-                                       final List<GeoIPField> fields,
-                                       final boolean isEnterpriseDatabase) {
+                                       final List<GeoIPField> fields) {
         final Map<String, Object> locationObject = new HashMap<>();
         locationObject.put(LAT, location.getLatitude());
         locationObject.put(LON, location.getLongitude());
@@ -241,8 +240,7 @@ public interface GeoIPDatabaseReader {
                         enrichData(geoData, GeoIPField.TIME_ZONE.getFieldName(), location.getTimeZone());
                         break;
                     case LOCATION_ACCURACY_RADIUS:
-                        if (isEnterpriseDatabase)
-                            enrichData(geoData, GeoIPField.LOCATION_ACCURACY_RADIUS.getFieldName(), location.getAccuracyRadius());
+                        enrichData(geoData, GeoIPField.LOCATION_ACCURACY_RADIUS.getFieldName(), location.getAccuracyRadius());
                         break;
                 }
             }
@@ -251,8 +249,7 @@ public interface GeoIPDatabaseReader {
             enrichData(geoData, GeoIPField.LOCATION.getFieldName(), locationObject);
             enrichData(geoData, GeoIPField.METRO_CODE.getFieldName(), location.getMetroCode());
             enrichData(geoData, GeoIPField.TIME_ZONE.getFieldName(), location.getTimeZone());
-            if (isEnterpriseDatabase)
-                enrichData(geoData, GeoIPField.LOCATION_ACCURACY_RADIUS.getFieldName(), location.getAccuracyRadius());
+            enrichData(geoData, GeoIPField.LOCATION_ACCURACY_RADIUS.getFieldName(), location.getAccuracyRadius());
         }
     }
 

@@ -168,7 +168,7 @@ public class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseabl
         final Subdivision leastSpecificSubdivision = cityResponse.getLeastSpecificSubdivision();
 
         extractCityFields(city, geoData, fields, false);
-        extractLocationFields(location, geoData, fields, false);
+        extractLocationFields(location, geoData, fields);
         extractPostalFields(postal, geoData, fields, false);
         extractMostSpecifiedSubdivisionFields(mostSpecificSubdivision, geoData, fields, false);
         extractLeastSpecifiedSubdivisionFields(leastSpecificSubdivision, geoData, fields, false);

@@ -61,6 +61,7 @@ import static org.opensearch.dataprepper.plugins.processor.GeoIPField.LATITUDE;
 import static org.opensearch.dataprepper.plugins.processor.GeoIPField.LEAST_SPECIFIED_SUBDIVISION_ISO_CODE;
 import static org.opensearch.dataprepper.plugins.processor.GeoIPField.LEAST_SPECIFIED_SUBDIVISION_NAME;
 import static org.opensearch.dataprepper.plugins.processor.GeoIPField.LOCATION;
+import static org.opensearch.dataprepper.plugins.processor.GeoIPField.LOCATION_ACCURACY_RADIUS;
 import static org.opensearch.dataprepper.plugins.processor.GeoIPField.LONGITUDE;
 import static org.opensearch.dataprepper.plugins.processor.GeoIPField.METRO_CODE;
 import static org.opensearch.dataprepper.plugins.processor.GeoIPField.MOST_SPECIFIED_SUBDIVISION_ISO_CODE;
@@ -90,6 +91,7 @@ class GeoLite2DatabaseReaderTest {
     private static final String CITY_NAME_RESULT = "Los Angeles";
     private static final Double LATITUDE_RESULT = 12.34;
     private static final Double LONGITUDE_RESULT = 56.78;
+    private static final Integer LOCATION_ACCURACY_RADIUS_RESULT = 10;
     private static final String TIME_ZONE_RESULT = "America/Los_Angeles";
     private static final Integer METRO_CODE_RESULT = 807;
     private static final String POSTAL_CODE_RESULT = "90001";
@@ -194,6 +196,7 @@ class GeoLite2DatabaseReaderTest {
         lenient().when(location.getLongitude()).thenReturn(LONGITUDE_RESULT);
         lenient().when(location.getMetroCode()).thenReturn(METRO_CODE_RESULT);
         lenient().when(location.getTimeZone()).thenReturn(TIME_ZONE_RESULT);
+        lenient().when(location.getAccuracyRadius()).thenReturn(LOCATION_ACCURACY_RADIUS_RESULT);
 
         lenient().when(cityResponse.getPostal()).thenReturn(postal);
         lenient().when(postal.getCode()).thenReturn(POSTAL_CODE_RESULT);
@@ -255,7 +258,7 @@ class GeoLite2DatabaseReaderTest {
 
         final List<GeoIPField> fields = List.of(CONTINENT_NAME, CONTINENT_CODE, COUNTRY_NAME, COUNTRY_ISO_CODE, IS_COUNTRY_IN_EUROPEAN_UNION,
                 REPRESENTED_COUNTRY_NAME, REPRESENTED_COUNTRY_ISO_CODE, REPRESENTED_COUNTRY_TYPE, REGISTERED_COUNTRY_NAME,
-                REGISTERED_COUNTRY_ISO_CODE, CITY_NAME, LOCATION, LATITUDE, LONGITUDE, METRO_CODE, TIME_ZONE, POSTAL_CODE,
+                REGISTERED_COUNTRY_ISO_CODE, CITY_NAME, LOCATION, LOCATION_ACCURACY_RADIUS, LATITUDE, LONGITUDE, METRO_CODE, TIME_ZONE, POSTAL_CODE,
                 MOST_SPECIFIED_SUBDIVISION_NAME, MOST_SPECIFIED_SUBDIVISION_ISO_CODE, LEAST_SPECIFIED_SUBDIVISION_NAME,
                 LEAST_SPECIFIED_SUBDIVISION_ISO_CODE);
         final Set<GeoIPDatabase> databases = Set.of(CITY);
@@ -280,6 +283,7 @@ class GeoLite2DatabaseReaderTest {
         assertThat(geoData.get(LOCATION.getFieldName()), equalTo(LOCATION_RESULT));
         assertThat(geoData.get(LATITUDE.getFieldName()), equalTo(LATITUDE_RESULT));
         assertThat(geoData.get(LONGITUDE.getFieldName()), equalTo(LONGITUDE_RESULT));
+        assertThat(geoData.get(LOCATION_ACCURACY_RADIUS.getFieldName()), equalTo(LOCATION_ACCURACY_RADIUS_RESULT));
         assertThat(geoData.get(METRO_CODE.getFieldName()), equalTo(METRO_CODE_RESULT));
         assertThat(geoData.get(TIME_ZONE.getFieldName()), equalTo(TIME_ZONE_RESULT));
         assertThat(geoData.get(POSTAL_CODE.getFieldName()), equalTo(POSTAL_CODE_RESULT));
