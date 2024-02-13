@@ -67,6 +67,7 @@ public class DateProcessorConfig {
         public static boolean isValidPattern(final String pattern) {
             if (pattern.equals("epoch_second") ||
                 pattern.equals("epoch_milli") ||
+                pattern.equals("epoch_micro") ||
                 pattern.equals("epoch_nano")) {
                     return true;
             }

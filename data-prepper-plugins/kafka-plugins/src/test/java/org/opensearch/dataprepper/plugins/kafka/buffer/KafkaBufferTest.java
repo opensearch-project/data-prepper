@@ -137,7 +137,7 @@ class KafkaBufferTest {
             final MockedConstruction<KafkaCustomProducerFactory> producerFactoryMock =
                 mockConstruction(KafkaCustomProducerFactory.class, (mock, context) -> {
                 producerFactory = mock;
-                when(producerFactory.createProducer(any() ,any(), any(), isNull(), isNull(), any(), any(), anyBoolean())).thenReturn(producer);
+                when(producerFactory.createProducer(any(), isNull(), isNull(), any(), any(), anyBoolean())).thenReturn(producer);
             });
             final MockedConstruction<KafkaCustomConsumerFactory> consumerFactoryMock =
                 mockConstruction(KafkaCustomConsumerFactory.class, (mock, context) -> {
@@ -152,7 +152,7 @@ class KafkaBufferTest {
                  })) {
 
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executorService);
-            return new KafkaBuffer(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, null, awsCredentialsSupplier, circuitBreaker);
+            return new KafkaBuffer(pluginSetting, bufferConfig, acknowledgementSetManager, null, awsCredentialsSupplier, circuitBreaker);
         }
     }
 

@@ -39,11 +39,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_PROCESSING_MATCH;
-import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_PROCESSING_MISMATCH;
+import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED_LOOKUP;
+import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_PROCESSED;
 
 @ExtendWith(MockitoExtension.class)
 class GeoIPProcessorTest {
@@ -62,21 +63,21 @@ class GeoIPProcessorTest {
     @Mock
     private PluginMetrics pluginMetrics;
     @Mock
-    private Counter geoIpProcessingMatch;
+    private Counter geoIpEventsProcessed;
     @Mock
-    private Counter geoIpProcessingMismatch;
+    private Counter geoIpEventsFailedLookup;
 
     @BeforeEach
     void setUp() {
         when(geoIpConfigSupplier.getGeoIPProcessorService()).thenReturn(geoIPProcessorService);
-        lenient().when(pluginMetrics.counter(GEO_IP_PROCESSING_MATCH)).thenReturn(geoIpProcessingMatch);
-        lenient().when(pluginMetrics.counter(GEO_IP_PROCESSING_MISMATCH)).thenReturn(geoIpProcessingMismatch);
+        lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_PROCESSED)).thenReturn(geoIpEventsProcessed);
+        lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_FAILED_LOOKUP)).thenReturn(geoIpEventsFailedLookup);
     }
 
     @AfterEach
     void tearDown() {
-        verifyNoMoreInteractions(geoIpProcessingMatch);
-        verifyNoMoreInteractions(geoIpProcessingMismatch);
+        verifyNoMoreInteractions(geoIpEventsProcessed);
+        verifyNoMoreInteractions(geoIpEventsFailedLookup);
     }
 
     private GeoIPProcessor createObjectUnderTest() {
@@ -121,11 +122,11 @@ class GeoIPProcessorTest {
             final Event event = record.getData();
             assertThat(event.get("/peer/status", String.class), equalTo("success"));
         }
-        verify(geoIpProcessingMatch).increment();
+        verify(geoIpEventsProcessed, times(1)).increment();
     }
 
     @Test
-    void doExecuteTest() throws NoSuchFieldException, IllegalAccessException {
+    void doExecuteTest_should_add_geo_data_to_event_if_source_is_non_null() throws NoSuchFieldException, IllegalAccessException {
         when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
         when(entry.getSource()).thenReturn(SOURCE);
         when(entry.getTarget()).thenReturn(TARGET);
@@ -141,8 +142,24 @@ class GeoIPProcessorTest {
             final Event event = record.getData();
             assertThat(event.get("/peer/ip", String.class), equalTo("136.226.242.205"));
             assertThat(event.containsKey("geolocation"), equalTo(true));
-            verify(geoIpProcessingMatch).increment();
+            verify(geoIpEventsProcessed).increment();
         }
+    }
+
+    @Test
+    void doExecuteTest_should_not_add_geo_data_to_event_if_source_is_null() throws NoSuchFieldException, IllegalAccessException {
+        when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
+        when(entry.getSource()).thenReturn("ip");
+        when(entry.getFields()).thenReturn(setFields());
+
+        final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
+
+        ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor,
+                "geoIPProcessorService", geoIPProcessorService);
+        Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
+
+        verify(geoIpEventsProcessed).increment();
+        verify(geoIpEventsFailedLookup).increment();
     }
 
     @Test
@@ -165,7 +182,8 @@ class GeoIPProcessorTest {
         for (final Record<Event> record : records) {
             Event event = record.getData();
             assertTrue(event.getMetadata().hasTags(testTags));
-            verify(geoIpProcessingMismatch).increment();
+            verify(geoIpEventsFailedLookup).increment();
+            verify(geoIpEventsProcessed).increment();
         }
     }
 
