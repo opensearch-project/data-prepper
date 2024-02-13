@@ -83,6 +83,12 @@ public class JacksonEventTest {
     }
 
     @Test
+    public void testPutKeyCannotBeEmptyString() {
+        Throwable exception = assertThrows(IllegalArgumentException.class, () -> event.put("", "value"));
+        assertThat(exception.getMessage(), containsStringIgnoringCase("key cannot be an empty string"));
+    }
+
+    @Test
     public void testPutAndGet_withMultLevelKey() {
         final String key = "foo/bar";
         final UUID value = UUID.randomUUID();
