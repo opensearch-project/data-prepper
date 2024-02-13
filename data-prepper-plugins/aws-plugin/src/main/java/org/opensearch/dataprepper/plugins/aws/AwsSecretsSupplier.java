@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.aws;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.opensearch.dataprepper.model.annotations.SkipTestCoverageGenerated;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -43,14 +42,27 @@ public class AwsSecretsSupplier implements SecretsSupplier {
 
     private ConcurrentMap<String, Object> toSecretMap(
             final Map<String, AwsSecretManagerConfiguration> awsSecretManagerConfigurationMap) {
-        return secretsManagerClientMap.entrySet().stream()
-                .collect(Collectors.toConcurrentMap(Map.Entry::getKey, entry -> {
-                    final String secretConfigurationId = entry.getKey();
-                    final AwsSecretManagerConfiguration awsSecretManagerConfiguration =
-                            awsSecretManagerConfigurationMap.get(secretConfigurationId);
-                    final SecretsManagerClient secretsManagerClient = entry.getValue();
-                    return retrieveSecretsFromSecretManager(awsSecretManagerConfiguration, secretsManagerClient);
-                }));
+        while (true) {
+            try {
+                return secretsManagerClientMap.entrySet().stream()
+                        .collect(Collectors.toConcurrentMap(Map.Entry::getKey, entry -> {
+                            final String secretConfigurationId = entry.getKey();
+                            final AwsSecretManagerConfiguration awsSecretManagerConfiguration =
+                                    awsSecretManagerConfigurationMap.get(secretConfigurationId);
+                            final SecretsManagerClient secretsManagerClient = entry.getValue();
+                            return retrieveSecretsFromSecretManager(awsSecretManagerConfiguration, secretsManagerClient);
+                        }));
+            } catch (Exception e) {
+                final long waitTimeInMillis = 1000L;
+                LOG.error(String.format("Unable to construct the secret map, wait for %dms to retry again.",
+                        waitTimeInMillis), e);
+                try {
+                    Thread.sleep(waitTimeInMillis);
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+        }
     }
 
     private Map<String, SecretsManagerClient> toSecretsManagerClientMap(
@@ -108,27 +120,12 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         LOG.info("Finished retrieving latest secret in aws:secrets:{}.", secretConfigId);
     }
 
-    @SkipTestCoverageGenerated
     private Object retrieveSecretsFromSecretManager(final AwsSecretManagerConfiguration awsSecretManagerConfiguration,
                                                     final SecretsManagerClient secretsManagerClient) {
         final GetSecretValueRequest getSecretValueRequest = awsSecretManagerConfiguration
                 .createGetSecretValueRequest();
-        GetSecretValueResponse getSecretValueResponse;
-        while (true) {
-            try {
-                getSecretValueResponse = secretsManagerClient.getSecretValue(getSecretValueRequest);
-                break;
-            } catch (Exception e) {
-                final long waitTimeInMillis = 1000L;
-                LOG.error(String.format("Unable to retrieve secret: %s, wait for %dms to retry again.",
-                                awsSecretManagerConfiguration.getAwsSecretId(), waitTimeInMillis), e);
-                try {
-                    Thread.sleep(waitTimeInMillis);
-                } catch (InterruptedException ex) {
-                    throw new RuntimeException(ex);
-                }
-            }
-        }
+        final GetSecretValueResponse getSecretValueResponse = secretsManagerClient
+                .getSecretValue(getSecretValueRequest);
 
         try {
             return objectMapper.readValue(secretValueDecoder.decode(getSecretValueResponse), MAP_TYPE_REFERENCE);

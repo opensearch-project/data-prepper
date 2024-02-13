@@ -171,4 +171,16 @@ class AwsSecretsSupplierTest {
         objectUnderTest.refresh(TEST_AWS_SECRET_CONFIGURATION_NAME);
         assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(newTestValue));
     }
+
+    @Test
+    void testRefreshSecretsThrowsWhenGetSecretValueThrows() {
+        final String testValue = UUID.randomUUID().toString();
+        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(testValue);
+        objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
+        assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(testValue));
+        when(secretsManagerClient.getSecretValue(any(GetSecretValueRequest.class)))
+                .thenThrow(SecretsManagerException.class);
+        assertThrows(SecretsManagerException.class, () ->
+                objectUnderTest.refresh(TEST_AWS_SECRET_CONFIGURATION_NAME));
+    }
 }
