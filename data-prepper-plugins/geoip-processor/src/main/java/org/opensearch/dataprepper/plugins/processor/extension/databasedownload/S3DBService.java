@@ -45,13 +45,12 @@ public class S3DBService implements DBSource {
      * Initialisation of Download through Url
      * @param s3URLs s3URLs
      */
-    public void initiateDownload(List<String> s3URLs) {
+    public void initiateDownload(final List<String> s3URLs) {
         for (String s3Url : s3URLs) {
             try {
                 URI uri = new URI(s3Url);
                 bucketName = uri.getHost();
                 bucketPath = removeTrailingSlash(removeLeadingSlash(uri.getPath()));
-                DBSource.createFolderIfNotExist(destinationDirectory);
                 buildRequestAndDownloadFile(bucketName, bucketPath);
             } catch (URISyntaxException ex) {
                 LOG.info("Initiate Download Exception", ex);

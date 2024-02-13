@@ -8,7 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.exception;
 /**
  * Implementation class for DownloadFailedException Custom exception
  */
-public class DownloadFailedException extends RuntimeException {
+public class DownloadFailedException extends EngineFailureException {
     public DownloadFailedException(final String exceptionMsg) {
         super(exceptionMsg);
     }

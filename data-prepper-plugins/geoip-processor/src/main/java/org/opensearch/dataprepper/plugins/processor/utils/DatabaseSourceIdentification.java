@@ -25,7 +25,7 @@ public class DatabaseSourceIdentification {
     }
 
     private static final String S3_DOMAIN_PATTERN = "[a-zA-Z0-9-]+\\.s3\\.amazonaws\\.com";
-    private static final String CDN_ENDPOINT_HOST = "devo.geoip.maps.opensearch.org";
+    private static final String MANIFEST_ENDPOINT_PATH = "manifest.json";
 
     /**
      * Check for database path is valid S3 URI or not
@@ -53,7 +53,7 @@ public class DatabaseSourceIdentification {
         try {
             final URI uri = new URI(input);
             final URL url = new URL(input);
-            return !uri.getHost().equals(CDN_ENDPOINT_HOST) &&
+            return !input.endsWith(MANIFEST_ENDPOINT_PATH) &&
                     uri.getScheme() != null &&
                     !Pattern.matches(S3_DOMAIN_PATTERN, url.getHost()) &&
                     (uri.getScheme().equals("http") || uri.getScheme().equals("https"));
@@ -78,15 +78,15 @@ public class DatabaseSourceIdentification {
      * @return boolean
      */
     public static boolean isCDNEndpoint(final String input) {
-        try {
-            final URI uri = new URI(input);
-            if (uri.getHost() != null) {
-                return uri.getHost().equals(CDN_ENDPOINT_HOST);
+        if (input.endsWith(MANIFEST_ENDPOINT_PATH)) {
+            try {
+                final URI uri = new URI(input);
+                return uri.getScheme().equals("http") || uri.getScheme().equals("https");
+            } catch (final URISyntaxException e) {
+                return false;
             }
-            return false;
-        } catch (final URISyntaxException e) {
-            return false;
         }
+        return false;
     }
 
     /**
@@ -102,7 +102,7 @@ public class DatabaseSourceIdentification {
                 return DBSourceOptions.PATH;
             }
             else if (DatabaseSourceIdentification.isCDNEndpoint(databasePath)) {
-                downloadSourceOptions = DBSourceOptions.CDN;
+                downloadSourceOptions = DBSourceOptions.HTTP_MANIFEST;
             }
             else if(DatabaseSourceIdentification.isURL(databasePath))
             {
