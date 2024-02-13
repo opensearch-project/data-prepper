@@ -30,7 +30,6 @@ public class GeoIPProcessorConfig {
     @JsonProperty("geoip_when")
     private String whenCondition;
 
-
     /**
      * Get List of entries
      * @return List of EntryConfig
