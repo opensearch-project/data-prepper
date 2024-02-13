@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -135,10 +136,11 @@ public class JacksonEvent implements Event {
      */
     @Override
     public void put(final String key, final Object value) {
+        checkArgument(!key.isEmpty(), "key cannot be an empty string for put method");
 
         final String trimmedKey = checkAndTrimKey(key);
 
-        final LinkedList<String> keys = new LinkedList<>(Arrays.asList(trimmedKey.split(SEPARATOR)));
+        final LinkedList<String> keys = new LinkedList<>(Arrays.asList(trimmedKey.split(SEPARATOR, -1)));
 
         JsonNode parentNode = jsonNode;
 
@@ -200,13 +202,8 @@ public class JacksonEvent implements Event {
     }
 
     private JsonNode getNode(final String key) {
-        final String jsonPointerKey;
-        if (key.isEmpty() || key.startsWith("/")) {
-            jsonPointerKey = key;
-        } else {
-            jsonPointerKey = SEPARATOR + key;
-        }
-        return jsonNode.at(jsonPointerKey);
+        final JsonPointer jsonPointer = toJsonPointer(key);
+        return jsonNode.at(jsonPointer);
     }
 
     private <T> T mapNodeToObject(final String key, final JsonNode node, final Class<T> clazz) {
@@ -251,7 +248,12 @@ public class JacksonEvent implements Event {
     }
 
     private JsonPointer toJsonPointer(final String key) {
-        String jsonPointerExpression = SEPARATOR + key;
+        final String jsonPointerExpression;
+        if (key.isEmpty() || key.startsWith("/")) {
+            jsonPointerExpression = key;
+        } else {
+            jsonPointerExpression = SEPARATOR + key;
+        }
         return JsonPointer.compile(jsonPointerExpression);
     }
 
@@ -263,6 +265,7 @@ public class JacksonEvent implements Event {
     @Override
     public void delete(final String key) {
 
+        checkArgument(!key.isEmpty(), "key cannot be an empty string for delete method");
         final String trimmedKey = checkAndTrimKey(key);
         final int index = trimmedKey.lastIndexOf(SEPARATOR);
 
@@ -427,7 +430,7 @@ public class JacksonEvent implements Event {
     }
 
     private String trimTrailingSlashInKey(final String key) {
-        return key.endsWith(SEPARATOR) ? key.substring(0, key.length() - 1) : key;
+        return key.length() > 1 && key.endsWith(SEPARATOR) ? key.substring(0, key.length() - 1) : key;
     }
 
     private static boolean isValidKey(final String key) {
