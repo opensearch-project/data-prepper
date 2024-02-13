@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.exception;
 
-public class NoValidDatabaseFoundException extends EngineFailureException {
-    public NoValidDatabaseFoundException(final String exceptionMsg) {
+public class InvalidIPAddressException extends EnrichFailedException {
+    public InvalidIPAddressException(final String exceptionMsg) {
         super(exceptionMsg);
     }
 }

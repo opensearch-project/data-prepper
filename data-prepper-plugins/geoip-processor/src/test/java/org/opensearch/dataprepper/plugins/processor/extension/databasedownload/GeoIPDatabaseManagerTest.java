@@ -184,7 +184,7 @@ class GeoIPDatabaseManagerTest {
 
     @Test
     void test_initiateDatabaseDownload_with_geolite2_cdn_should_use_cdn_download_service_and_geolite2_reader() {
-        try (final MockedConstruction<CDNDownloadService> cdnDownloadServiceMockedConstruction = mockConstruction(CDNDownloadService.class,
+        try (final MockedConstruction<ManifestDownloadService> cdnDownloadServiceMockedConstruction = mockConstruction(ManifestDownloadService.class,
                      (mock2, context2)-> doNothing().when(mock2).initiateDownload(List.of(CDN_ENDPOINT)));
              final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class)
         ) {
@@ -204,7 +204,7 @@ class GeoIPDatabaseManagerTest {
 
     @Test
     void test_updateDatabaseReader_with_geolite2_cdn_should_use_cdn_download_service_and_geolite2_reader_and_get_new_reader() {
-        try (final MockedConstruction<CDNDownloadService> cdnDownloadServiceMockedConstruction = mockConstruction(CDNDownloadService.class,
+        try (final MockedConstruction<ManifestDownloadService> cdnDownloadServiceMockedConstruction = mockConstruction(ManifestDownloadService.class,
                      (mock2, context2)-> doNothing().when(mock2).initiateDownload(List.of(CDN_ENDPOINT)));
              final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class)
         ) {
@@ -218,8 +218,8 @@ class GeoIPDatabaseManagerTest {
             objectUnderTest.updateDatabaseReader();
 
             assertThat(cdnDownloadServiceMockedConstruction.constructed().size(), equalTo(2));
-            for (CDNDownloadService cdnDownloadService: cdnDownloadServiceMockedConstruction.constructed()) {
-                verify(cdnDownloadService).initiateDownload(List.of(CDN_ENDPOINT));
+            for (ManifestDownloadService manifestDownloadService : cdnDownloadServiceMockedConstruction.constructed()) {
+                verify(manifestDownloadService).initiateDownload(List.of(CDN_ENDPOINT));
             }
             assertThat(geoLite2DatabaseReaderMockedConstruction.constructed().size(), equalTo(2));
             // verify if first instance is closed

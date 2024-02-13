@@ -22,7 +22,7 @@ import java.util.zip.ZipInputStream;
 import static org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabaseReader.MAXMIND_DATABASE_EXTENSION;
 
 
-public class CDNDownloadService implements DBSource {
+public class ManifestDownloadService implements DBSource {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final int DEFAULT_BYTE_SIZE = 1024;
     private static final String CITY_DATABASE_NAME = "geolite2-city.mmdb";
@@ -35,14 +35,12 @@ public class CDNDownloadService implements DBSource {
     private Manifest countryManifest;
     private Manifest asnManifest;
 
-    public CDNDownloadService(final String directoryName) {
+    public ManifestDownloadService(final String directoryName) {
         this.directoryName = directoryName;
     }
 
     @Override
     public void initiateDownload(final List<String> databasePaths) {
-        DBSource.createFolderIfNotExist(directoryName);
-
         for(final String url : databasePaths) {
             final Manifest manifest = deserializeManifestFile(url);
             populateManifestObjects(manifest);

@@ -47,7 +47,7 @@ databaseNames.forEach { databaseName -> {
     def gradleName = databaseName.replaceAll('-', '')
     def downloadTask = tasks.register("download${gradleName}", Download) {
         src(url)
-        dest "build/resources/test/mmdb-files/geo-lite2/" + databaseName + ".mmdb"
+        dest "build/resources/test/mmdb-files/geo-lite2/${databaseName}.mmdb"
         overwrite true
     }
     downloadFiles.get().dependsOn downloadTask
@@ -63,7 +63,7 @@ enterpriseDatabaseNames.forEach { enterpriseDatabaseName -> {
     def gradleName = enterpriseDatabaseName.replaceAll('-', '')
     def downloadEnterpriseTask = tasks.register("download${gradleName}", Download) {
         src(url)
-        dest "build/resources/test/mmdb-files/geo-ip2/" + enterpriseDatabaseName + ".mmdb"
+        dest "build/resources/test/mmdb-files/geo-ip2/${enterpriseDatabaseName}.mmdb"
         overwrite true
     }
     downloadFiles.get().dependsOn downloadEnterpriseTask
@@ -84,7 +84,7 @@ jacocoTestCoverageVerification {
     violationRules {
         rule {
             limit {
-                minimum = 0.8 // temporarily reduce coverage for the builds to pass
+                minimum = 0.85
             }
         }
     }

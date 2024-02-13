@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.exception;
 
-public class DatabaseReaderInitializationException extends RuntimeException {
+public class DatabaseReaderInitializationException extends EngineFailureException {
     public DatabaseReaderInitializationException(final String exceptionMsg) {
         super(exceptionMsg);
     }

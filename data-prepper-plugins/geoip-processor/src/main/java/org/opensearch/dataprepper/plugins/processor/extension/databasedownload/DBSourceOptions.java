@@ -18,7 +18,7 @@ public enum DBSourceOptions {
     PATH("path"),
     URL("url"),
     S3("s3"),
-    CDN("cdn");
+    HTTP_MANIFEST("http_manifest");
 
     private final String option;
 

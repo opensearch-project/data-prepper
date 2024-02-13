@@ -121,9 +121,10 @@ public class GeoIPDatabaseManager {
         switchDirectory();
 
         final String destinationPath = maxMindConfig.getDatabaseDestination() + File.separator + currentDatabaseDir;
+        geoIPFileManager.createDirectoryIfNotExist(destinationPath);
         switch (dbSourceOptions) {
-            case CDN:
-                dbSource = new CDNDownloadService(destinationPath);
+            case HTTP_MANIFEST:
+                dbSource = new ManifestDownloadService(destinationPath);
                 dbSource.initiateDownload(databasePaths);
                 downloadReady =true;
                 break;

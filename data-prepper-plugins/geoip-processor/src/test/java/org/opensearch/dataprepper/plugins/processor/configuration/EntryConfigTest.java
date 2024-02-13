@@ -7,14 +7,11 @@ package org.opensearch.dataprepper.plugins.processor.configuration;
 
 import org.junit.jupiter.api.Test;
 
-import org.opensearch.dataprepper.plugins.processor.GeoIPField;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
-import java.util.Collections;
 import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -32,7 +29,8 @@ class EntryConfigTest {
 
         assertThat(entryConfig.getSource(), is(nullValue()));
         assertThat(entryConfig.getTarget(), equalTo(DEFAULT_TARGET));
-        assertThat(entryConfig.getFields(), is(Collections.emptyList()));
+        assertThat(entryConfig.getIncludeFields(), equalTo(null));
+        assertThat(entryConfig.getExcludeFields(), equalTo(null));
     }
 
     @Test
@@ -41,69 +39,18 @@ class EntryConfigTest {
 
         final String sourceValue = "source";
         final String targetValue = "target";
-        final List<GeoIPField> fieldsValue = List.of(GeoIPField.CITY_NAME, GeoIPField.CONTINENT_CODE);
+        final List<String> includeFieldsValue = List.of("city_name");
+        final List<String> excludeFieldsValue = List.of("asn");
 
         ReflectivelySetField.setField(EntryConfig.class, entryConfig, "source", sourceValue);
         ReflectivelySetField.setField(EntryConfig.class, entryConfig, "target", targetValue);
-        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "geoIPFields", fieldsValue);
+        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "includeFields", includeFieldsValue);
+        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "excludeFields", excludeFieldsValue);
 
         assertThat(entryConfig.getSource(), equalTo(sourceValue));
         assertThat(entryConfig.getTarget(), equalTo(targetValue));
-        assertThat(entryConfig.getFields(), equalTo(fieldsValue));
-    }
-
-    @Test
-    void test_getFields_with_include_fields_should_return_correct_geoip_fields() throws NoSuchFieldException, IllegalAccessException {
-        final EntryConfig entryConfig = createObjectUnderTest();
-        final List<String> includeFields = List.of("city_name", "continent_code");
-        final List<GeoIPField> fieldsValue = List.of(GeoIPField.CITY_NAME, GeoIPField.CONTINENT_CODE);
-
-        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "includeFields", includeFields);
-
-        assertThat(entryConfig.getFields().size(), equalTo(fieldsValue.size()));
-        assertThat(entryConfig.getFields(), containsInAnyOrder(fieldsValue.toArray()));
-    }
-
-    @Test
-    void test_getFields_with_exclude_keys_should_return_correct_geoip_fields() throws NoSuchFieldException, IllegalAccessException {
-        final EntryConfig entryConfig = createObjectUnderTest();
-        final List<String> excludeFields = List.of("city_name", "continent_code", "continent_name", "is_country_in_european_union",
-                "asn", "asn_organization", "network", "ip");
-        final List<GeoIPField> fieldsValue = List.of(GeoIPField.LATITUDE,
-                GeoIPField.REPRESENTED_COUNTRY_ISO_CODE, GeoIPField.LONGITUDE, GeoIPField.COUNTRY_NAME,
-                GeoIPField.COUNTRY_ISO_CODE, GeoIPField.REGISTERED_COUNTRY_ISO_CODE, GeoIPField.REGISTERED_COUNTRY_NAME,
-                GeoIPField.COUNTRY_CONFIDENCE, GeoIPField.REPRESENTED_COUNTRY_TYPE, GeoIPField.REPRESENTED_COUNTRY_NAME,
-                GeoIPField.CITY_CONFIDENCE, GeoIPField.LOCATION, GeoIPField.LOCATION_ACCURACY_RADIUS, GeoIPField.POSTAL_CODE,
-                GeoIPField.METRO_CODE, GeoIPField.TIME_ZONE, GeoIPField.POSTAL_CODE_CONFIDENCE, GeoIPField.MOST_SPECIFIED_SUBDIVISION_NAME,
-                GeoIPField.MOST_SPECIFIED_SUBDIVISION_CONFIDENCE, GeoIPField.MOST_SPECIFIED_SUBDIVISION_ISO_CODE,
-                GeoIPField.LEAST_SPECIFIED_SUBDIVISION_CONFIDENCE, GeoIPField.LEAST_SPECIFIED_SUBDIVISION_ISO_CODE,
-                GeoIPField.LEAST_SPECIFIED_SUBDIVISION_NAME);
-
-        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "excludeFields", excludeFields);
-
-        assertThat(entryConfig.getFields().size(), equalTo(fieldsValue.size()));
-        assertThat(entryConfig.getFields(), containsInAnyOrder(fieldsValue.toArray()));
-    }
-
-    @Test
-    void test_getFields_with_empty_exclude_keys_should_return_all_geoip_fields() throws NoSuchFieldException, IllegalAccessException {
-        final EntryConfig entryConfig = createObjectUnderTest();
-        final List<String> excludeFields = Collections.emptyList();
-        final List<GeoIPField> fieldsValue = List.of(GeoIPField.LATITUDE, GeoIPField.CITY_NAME, GeoIPField.CONTINENT_CODE, GeoIPField.CONTINENT_NAME,
-                GeoIPField.IS_COUNTRY_IN_EUROPEAN_UNION, GeoIPField.ASN, GeoIPField.ASN_ORGANIZATION, GeoIPField.NETWORK, GeoIPField.IP,
-                GeoIPField.REPRESENTED_COUNTRY_ISO_CODE, GeoIPField.LONGITUDE, GeoIPField.COUNTRY_NAME,
-                GeoIPField.COUNTRY_ISO_CODE, GeoIPField.REGISTERED_COUNTRY_ISO_CODE, GeoIPField.REGISTERED_COUNTRY_NAME,
-                GeoIPField.COUNTRY_CONFIDENCE, GeoIPField.REPRESENTED_COUNTRY_TYPE, GeoIPField.REPRESENTED_COUNTRY_NAME,
-                GeoIPField.CITY_CONFIDENCE, GeoIPField.LOCATION, GeoIPField.LOCATION_ACCURACY_RADIUS, GeoIPField.POSTAL_CODE,
-                GeoIPField.METRO_CODE, GeoIPField.TIME_ZONE, GeoIPField.POSTAL_CODE_CONFIDENCE, GeoIPField.MOST_SPECIFIED_SUBDIVISION_NAME,
-                GeoIPField.MOST_SPECIFIED_SUBDIVISION_CONFIDENCE, GeoIPField.MOST_SPECIFIED_SUBDIVISION_ISO_CODE,
-                GeoIPField.LEAST_SPECIFIED_SUBDIVISION_CONFIDENCE, GeoIPField.LEAST_SPECIFIED_SUBDIVISION_ISO_CODE,
-                GeoIPField.LEAST_SPECIFIED_SUBDIVISION_NAME);
-
-        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "excludeFields", excludeFields);
-
-        assertThat(entryConfig.getFields().size(), equalTo(fieldsValue.size()));
-        assertThat(entryConfig.getFields(), containsInAnyOrder(fieldsValue.toArray()));
+        assertThat(entryConfig.getIncludeFields(), equalTo(includeFieldsValue));
+        assertThat(entryConfig.getExcludeFields(), equalTo(excludeFieldsValue));
     }
 
     @Test

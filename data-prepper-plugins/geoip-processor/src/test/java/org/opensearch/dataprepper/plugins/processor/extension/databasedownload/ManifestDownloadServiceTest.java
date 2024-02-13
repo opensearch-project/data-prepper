@@ -14,16 +14,16 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class CDNDownloadServiceTest {
+class ManifestDownloadServiceTest {
     private static final String OUTPUT_DIR = "./src/test/resources/geoip";
 
-    private CDNDownloadService createObjectUnderTest() {
-        return new CDNDownloadService(OUTPUT_DIR);
+    private ManifestDownloadService createObjectUnderTest() {
+        return new ManifestDownloadService(OUTPUT_DIR);
     }
 
     @Test
     void test_with_valid_endpoint_should_download_file() {
-        final CDNDownloadService objectUnderTest = createObjectUnderTest();
+        final ManifestDownloadService objectUnderTest = createObjectUnderTest();
         objectUnderTest.initiateDownload(List.of("https://devo.geoip.maps.opensearch.org/v1/mmdb/geolite2-city/manifest.json"));
 
         final File file = new File(OUTPUT_DIR + File.separator + "geolite2-city.mmdb");
@@ -36,7 +36,7 @@ class CDNDownloadServiceTest {
 
     @Test
     void test_with_invalid_endpoint_should_throw_exception() {
-        final CDNDownloadService objectUnderTest = createObjectUnderTest();
+        final ManifestDownloadService objectUnderTest = createObjectUnderTest();
         assertThrows(DownloadFailedException.class, () -> objectUnderTest
                 .initiateDownload(List.of("https://devo.geoip.maps.opensearch.org/v1/mmdb/geolite2-enterprise/manifest.json")));
     }

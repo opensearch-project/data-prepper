@@ -44,15 +44,14 @@ public class HttpDBDownloadService implements DBSource {
      * @param urlList urlList
      */
     public void initiateDownload(List<String> urlList) {
-        final File tmpDir = DBSource.createFolderIfNotExist(destinationDirectory);
         final String tarDir = destinationDirectory + File.separator + "tar";
         final String downloadTarFilepath = tarDir + File.separator + "out.tar.gz";
         for(final String url : urlList) {
-            DBSource.createFolderIfNotExist(tarDir);
+            geoIPFileManager.createDirectoryIfNotExist(tarDir);
             try {
                 initiateSSL();
                 buildRequestAndDownloadFile(url, downloadTarFilepath);
-                decompressAndUntarFile(tarDir, downloadTarFilepath, tmpDir);
+                decompressAndUntarFile(tarDir, downloadTarFilepath, new File(destinationDirectory));
                 deleteTarFolder(tarDir);
             } catch (Exception ex) {
                 LOG.info("InitiateDownload Exception {0} " , ex);
