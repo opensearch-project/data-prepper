@@ -127,7 +127,7 @@ public class KafkaBufferIT {
     }
 
     private KafkaBuffer createObjectUnderTest() {
-        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, null, null, null);
+        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, null, null);
     }
 
     @Test
@@ -159,7 +159,7 @@ public class KafkaBufferIT {
         final Map<String, Object> topicConfigMap = Map.of(
                 "name", topicName,
                 "group_id", "buffergroup-" + RandomStringUtils.randomAlphabetic(6),
-                "create_topic", false
+                "create_topic", true
         );
         final Map<String, Object> bufferConfigMap = Map.of(
                 "topics", List.of(topicConfigMap),
