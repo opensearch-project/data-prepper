@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.containsStringIgnoringCase;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -70,7 +71,7 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/", "a1K.k3-01_02"})
+    @ValueSource(strings = {"/", "foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/", "a1K.k3-01_02"})
     void testPutAndGet_withStrings(final String key) {
         final UUID value = UUID.randomUUID();
 
@@ -79,6 +80,12 @@ public class JacksonEventTest {
 
         assertThat(result, is(notNullValue()));
         assertThat(result, is(equalTo(value)));
+    }
+
+    @Test
+    public void testPutKeyCannotBeEmptyString() {
+        Throwable exception = assertThrows(IllegalArgumentException.class, () -> event.put("", "value"));
+        assertThat(exception.getMessage(), containsStringIgnoringCase("key cannot be an empty string"));
     }
 
     @Test
@@ -124,6 +131,28 @@ public class JacksonEventTest {
 
         assertThat(result, is(notNullValue()));
         assertThat(result, is(equalTo(value)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"foo", "/foo", "/foo/", "foo/"})
+    void testGetAtRootLevel(final String key) {
+        final String value = UUID.randomUUID().toString();
+
+        event.put(key, value);
+        final Map<String, String> result = event.get("", Map.class);
+
+        assertThat(result, is(Map.of("foo", value)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/foo/bar", "foo/bar", "foo/bar/"})
+    void testGetAtRootLevelWithMultiLevelKey(final String key) {
+        final String value = UUID.randomUUID().toString();
+
+        event.put(key, value);
+        final Map<String, String> result = event.get("", Map.class);
+
+        assertThat(result, is(Map.of("foo", Map.of("bar", value))));
     }
 
     @Test
@@ -250,10 +279,9 @@ public class JacksonEventTest {
         assertThat(result, is(equalTo(value)));
     }
 
-    @Test
-    public void testDeletingKey() {
-        final String key = "foo";
-
+    @ParameterizedTest
+    @ValueSource(strings = {"/", "foo", "/foo", "/foo/bar", "foo/bar", "foo/bar/", "/foo/bar/leaf/key"})
+    public void testDeleteKey(final String key) {
         event.put(key, UUID.randomUUID());
         event.delete(key);
         final UUID result = event.get(key, UUID.class);
@@ -261,20 +289,9 @@ public class JacksonEventTest {
         assertThat(result, is(nullValue()));
     }
 
-    @Test
-    public void testDelete_withNestedKey() {
-        final String key = "foo/bar";
-
-        event.put(key, UUID.randomUUID());
-        event.delete(key);
-        final UUID result = event.get(key, UUID.class);
-
-        assertThat(result, is(nullValue()));
-    }
-
-    @Test
-    public void testDelete_withNonexistentKey() {
-        final String key = "foo/bar";
+    @ParameterizedTest
+    @ValueSource(strings = {"/", "foo", "/foo", "/foo/bar", "foo/bar", "foo/bar/", "/foo/bar/leaf/key"})
+    public void testDelete_withNonexistentKey(final String key) {
         UUID result = event.get(key, UUID.class);
         assertThat(result, is(nullValue()));
 
@@ -285,19 +302,27 @@ public class JacksonEventTest {
     }
 
     @Test
-    public void testContainsKey_withKey() {
-        final String key = "foo";
+    public void testDeleteKeyCannotBeEmptyString() {
+        Throwable exception = assertThrows(IllegalArgumentException.class, () -> event.delete(""));
+        assertThat(exception.getMessage(), containsStringIgnoringCase("key cannot be an empty string"));
+    }
 
+    @Test
+    public void testContainsKeyReturnsTrueForEmptyStringKey() {
+        assertThat(event.containsKey(""), is(true));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/", "foo", "/foo", "/foo/bar", "foo/bar", "foo/bar/", "/foo/bar/leaf/key"})
+    public void testContainsKey_withKey(final String key) {
         event.put(key, UUID.randomUUID());
         assertThat(event.containsKey(key), is(true));
     }
 
-    @Test
-    public void testContainsKey_withouthKey() {
-        final String key = "foo";
-
-        event.put(key, UUID.randomUUID());
-        assertThat(event.containsKey("bar"), is(false));
+    @ParameterizedTest
+    @ValueSource(strings = {"/", "foo", "/foo", "/foo/bar", "foo/bar", "foo/bar/", "/foo/bar/leaf/key"})
+    public void testContainsKey_withouthKey(final String key) {
+        assertThat(event.containsKey(key), is(false));
     }
 
     @Test
@@ -324,7 +349,7 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "withSpecialChars*$%", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
+    @ValueSource(strings = {"withSpecialChars*$%", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
             "with,Comma", "with:Colon", "with[Bracket", "with|Brace"})
     void testKey_withInvalidKey_throwsIllegalArgumentException(final String invalidKey) {
         assertThrowsForKeyCheck(IllegalArgumentException.class, invalidKey);
