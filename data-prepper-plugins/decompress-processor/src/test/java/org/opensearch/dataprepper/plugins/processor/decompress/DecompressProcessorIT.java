@@ -28,7 +28,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.processor.decompress.DecompressProcessorTest.buildRecordWithEvent;
 
 @ExtendWith(MockitoExtension.class)
-public class ITDecompressProcessorTest {
+public class DecompressProcessorIT {
 
     private List<String> keys;
 

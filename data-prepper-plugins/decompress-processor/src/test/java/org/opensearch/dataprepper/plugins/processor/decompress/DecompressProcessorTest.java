@@ -18,9 +18,10 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.decompress.encoding.DecoderEngine;
-import org.opensearch.dataprepper.plugins.processor.decompress.encoding.IEncodingType;
+import org.opensearch.dataprepper.plugins.processor.decompress.encoding.DecoderEngineFactory;
 import org.opensearch.dataprepper.plugins.processor.decompress.exceptions.DecodingException;
 
 import java.io.ByteArrayInputStream;
@@ -33,6 +34,7 @@ import java.util.UUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -65,10 +67,10 @@ public class DecompressProcessorTest {
     private DecompressProcessorConfig decompressProcessorConfig;
 
     @Mock
-    private IDecompressionType decompressionType;
+    private DecompressionEngineFactory decompressionType;
 
     @Mock
-    private IEncodingType encodingType;
+    private DecoderEngineFactory encodingType;
 
     private DecompressProcessor createObjectUnderTest() {
         return new DecompressProcessor(pluginMetrics, decompressProcessorConfig, expressionEvaluator);
@@ -180,6 +182,7 @@ public class DecompressProcessorTest {
 
         when(decompressProcessorConfig.getTagsOnFailure()).thenReturn(List.of(tagForFailure));
         when(decompressProcessorConfig.getDecompressWhen()).thenReturn(decompressWhen);
+        when(expressionEvaluator.isValidExpressionStatement(decompressWhen)).thenReturn(true);
         when(expressionEvaluator.evaluateConditional(eq(decompressWhen), any(Event.class)))
                 .thenThrow(RuntimeException.class);
 
@@ -199,6 +202,16 @@ public class DecompressProcessorTest {
 
         verifyNoInteractions(decoderEngine, decompressionEngine);
         verify(decompressionProcessingErrors).increment();
+    }
+
+    @Test
+    void invalid_expression_statement_throws_InvalidPluginConfigurationException() {
+
+        final String decompressWhen = UUID.randomUUID().toString();
+        when(decompressProcessorConfig.getDecompressWhen()).thenReturn(decompressWhen);
+        when(expressionEvaluator.isValidExpressionStatement(decompressWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
     static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {

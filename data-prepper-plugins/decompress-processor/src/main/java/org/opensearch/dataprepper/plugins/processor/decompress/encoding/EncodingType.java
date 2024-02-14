@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public enum EncodingType implements IEncodingType {
+public enum EncodingType implements DecoderEngineFactory {
     BASE64("base64");
 
     private final String option;

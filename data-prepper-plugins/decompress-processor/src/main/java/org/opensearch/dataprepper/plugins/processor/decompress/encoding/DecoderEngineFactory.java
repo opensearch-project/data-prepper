@@ -5,6 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.decompress.encoding;
 
-public interface IEncodingType {
+public interface DecoderEngineFactory {
     DecoderEngine getDecoderEngine();
 }

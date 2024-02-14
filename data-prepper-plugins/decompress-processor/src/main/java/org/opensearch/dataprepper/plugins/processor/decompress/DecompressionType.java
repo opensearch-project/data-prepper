@@ -13,7 +13,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public enum DecompressionType implements IDecompressionType {
+public enum DecompressionType implements DecompressionEngineFactory {
     GZIP("gzip");
 
     private final String option;

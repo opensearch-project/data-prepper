@@ -7,6 +7,6 @@ package org.opensearch.dataprepper.plugins.processor.decompress;
 
 import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 
-public interface IDecompressionType {
+public interface DecompressionEngineFactory {
     public DecompressionEngine getDecompressionEngine();
 }

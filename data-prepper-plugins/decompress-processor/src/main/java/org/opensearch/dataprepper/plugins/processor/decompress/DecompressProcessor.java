@@ -7,11 +7,13 @@ package org.opensearch.dataprepper.plugins.processor.decompress;
 
 import com.google.common.base.Charsets;
 import io.micrometer.core.instrument.Counter;
+import org.apache.commons.io.IOUtils;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -19,18 +21,15 @@ import org.opensearch.dataprepper.plugins.processor.decompress.exceptions.Decodi
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.Collection;
 
 @DataPrepperPlugin(name = "decompress", pluginType = Processor.class, pluginConfigurationType = DecompressProcessorConfig.class)
 public class DecompressProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(DecompressProcessor.class);
-    static final String DECOMPRESSION_PROCESSING_ERRORS = "decompressionProcessingErrors";
+    static final String DECOMPRESSION_PROCESSING_ERRORS = "processingErrors";
 
     private final DecompressProcessorConfig decompressProcessorConfig;
     private final ExpressionEvaluator expressionEvaluator;
@@ -45,6 +44,13 @@ public class DecompressProcessor extends AbstractProcessor<Record<Event>, Record
         this.decompressProcessorConfig = decompressProcessorConfig;
         this.expressionEvaluator = expressionEvaluator;
         this.decompressionProcessingErrors = pluginMetrics.counter(DECOMPRESSION_PROCESSING_ERRORS);
+
+        if (decompressProcessorConfig.getDecompressWhen() != null
+                && !expressionEvaluator.isValidExpressionStatement(decompressProcessorConfig.getDecompressWhen())) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("decompress_when value of %s is not a valid expression statement. " +
+                            "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.", decompressProcessorConfig.getDecompressWhen()));
+        }
     }
 
     @Override
@@ -66,10 +72,10 @@ public class DecompressProcessor extends AbstractProcessor<Record<Event>, Record
 
                     final byte[] compressedValueAsBytes = decompressProcessorConfig.getEncodingType().getDecoderEngine().decode(compressedValue);
 
-                    try (final InputStream inputStream = decompressProcessorConfig.getDecompressionType().getDecompressionEngine().createInputStream(new ByteArrayInputStream(compressedValueAsBytes));
-                         final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8))
-                    ){
-                        record.getData().put(key, getDecompressedString(bufferedReader));
+                    try (final InputStream inputStream = decompressProcessorConfig.getDecompressionType().getDecompressionEngine().createInputStream(new ByteArrayInputStream(compressedValueAsBytes));){
+
+                        final String decompressedString = IOUtils.toString(inputStream, Charsets.UTF_8);
+                        record.getData().put(key, decompressedString);
                     } catch (final Exception e) {
                         LOG.error("Unable to decompress key {} using decompression type {}:",
                                 key, decompressProcessorConfig.getDecompressionType(), e);
@@ -104,16 +110,5 @@ public class DecompressProcessor extends AbstractProcessor<Record<Event>, Record
     @Override
     public void shutdown() {
 
-    }
-
-    private String getDecompressedString(final BufferedReader bufferedReader) throws IOException {
-        final StringBuilder stringBuilder = new StringBuilder();
-        String line;
-
-        while ((line = bufferedReader.readLine()) != null) {
-            stringBuilder.append(line);
-        }
-
-        return stringBuilder.toString();
     }
 }

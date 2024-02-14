@@ -10,7 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.processor.decompress.encoding.EncodingType;
-import org.opensearch.dataprepper.plugins.processor.decompress.encoding.IEncodingType;
+import org.opensearch.dataprepper.plugins.processor.decompress.encoding.DecoderEngineFactory;
 
 import java.util.List;
 
@@ -37,11 +37,11 @@ public class DecompressProcessorConfig {
         return keys;
     }
 
-    public IDecompressionType getDecompressionType() {
+    public DecompressionEngineFactory getDecompressionType() {
         return decompressionType;
     }
 
-    public IEncodingType getEncodingType() { return encodingType; }
+    public DecoderEngineFactory getEncodingType() { return encodingType; }
 
     public String getDecompressWhen() {
         return decompressWhen;
