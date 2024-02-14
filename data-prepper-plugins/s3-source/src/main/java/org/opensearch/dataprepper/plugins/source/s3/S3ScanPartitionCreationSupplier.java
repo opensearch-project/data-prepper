@@ -165,7 +165,7 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
 
         final Instant lastProcessedObjectTimestamp = Instant.parse((String) globalStateMap.get(bucketName));
 
-        return s3Object.lastModified().compareTo(lastProcessedObjectTimestamp) > 0;
+        return s3Object.lastModified().compareTo(lastProcessedObjectTimestamp.minusSeconds(1)) >= 0;
     }
 
     private Instant getMostRecentLastModifiedTimestamp(final ListObjectsV2Response listObjectsV2Response,
