@@ -455,7 +455,9 @@ public class JacksonEvent implements Event {
                     || c == '-'
                     || c == '_'
                     || c == '@'
-                    || c == '/')) {
+                    || c == '/'
+                    || c == '['
+                    || c == ']')) {
 
                 return false;
             }

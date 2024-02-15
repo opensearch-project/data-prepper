@@ -6,26 +6,31 @@
 package org.opensearch.dataprepper.plugins.processor.flattenjson;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+
+import java.util.List;
 
 public class FlattenJsonProcessorConfig {
 
-    @NotEmpty
     @NotNull
     @JsonProperty("source")
     private String source;
 
-    @NotEmpty
     @NotNull
     @JsonProperty("target")
     private String target;
 
     @JsonProperty("remove_processed_fields")
-    private boolean removeProcessedFields;
+    private boolean removeProcessedFields = false;
+
+    @JsonProperty("remove_list_indices")
+    private boolean removeListIndices = false;
 
     @JsonProperty("flatten_when")
     private String flattenWhen;
+
+    @JsonProperty("tags_on_failure")
+    private List<String> tagsOnFailure;
 
     public String getSource() {
         return source;
@@ -35,11 +40,19 @@ public class FlattenJsonProcessorConfig {
         return target;
     }
 
-    public boolean getRemoveProcessedFields() {
+    public boolean isRemoveProcessedFields() {
         return removeProcessedFields;
+    }
+
+    public boolean isRemoveListIndices() {
+        return removeListIndices;
     }
 
     public String getFlattenWhen() {
         return flattenWhen;
+    }
+
+    public List<String> getTagsOnFailure() {
+        return tagsOnFailure;
     }
 }
