@@ -194,6 +194,12 @@ subprojects {
                 }
                 because 'CVE from transitive dependencies'
             }
+            implementation('com.jayway.jsonpath:json-path') {
+                version {
+                    require '2.9.0'
+                }
+                because 'Fixes CVE-2023-51074 from transitive dependencies'
+            }
             implementation('org.bitbucket.b_c:jose4j') {
                 version {
                     require '0.9.3'
