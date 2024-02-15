@@ -43,7 +43,11 @@ public class KafkaPluginThreadFactory implements ThreadFactory {
     public Thread newThread(final Runnable runnable) {
         final Thread thread = delegateThreadFactory.newThread(() -> {
             MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, kafkaPluginType);
-            runnable.run();
+            try {
+                runnable.run();
+            } finally {
+                MDC.clear();
+            }
         });
 
         thread.setName(threadPrefix + threadNumber.getAndIncrement());
