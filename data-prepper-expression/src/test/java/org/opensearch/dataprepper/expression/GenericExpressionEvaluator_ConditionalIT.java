@@ -152,6 +152,8 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("/status_code == 200", event("{}"), false),
                 Arguments.of("/success == /status_code", event("{\"success\": true, \"status_code\": 200}"), false),
                 Arguments.of("/success != /status_code", event("{\"success\": true, \"status_code\": 200}"), true),
+                Arguments.of("/part1@part2.part3 != 111", event("{\"success\": true, \"part1@part2.part3\":111, \"status_code\": 200}"), false),
+                Arguments.of("/part1.part2@part3 != 111", event("{\"success\": true, \"part1.part2@part3\":222, \"status_code\": 200}"), true),
                 Arguments.of("/pi == 3.14159", event("{\"pi\": 3.14159}"), true),
                 Arguments.of("/value == 12345.678", event("{\"value\": 12345.678}"), true),
                 Arguments.of("/value == 12345.678E12", event("{\"value\": 12345.678E12}"), true),
