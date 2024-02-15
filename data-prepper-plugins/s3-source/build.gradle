@@ -27,7 +27,7 @@ dependencies {
     implementation libs.commons.io
     implementation libs.commons.compress
     implementation 'joda-time:joda-time:2.12.6'
-    implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     implementation 'org.xerial.snappy:snappy-java:1.1.10.5'
