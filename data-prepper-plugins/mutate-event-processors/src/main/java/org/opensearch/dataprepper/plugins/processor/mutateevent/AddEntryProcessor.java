@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -67,12 +68,15 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                     if (!Objects.isNull(key)) {
                         if (!recordEvent.containsKey(key) || entry.getOverwriteIfKeyExists()) {
                             recordEvent.put(key, value);
+                        } else if (recordEvent.containsKey(key) && entry.getAppendIfKeyExists()) {
+                            mergeValueToEvent(recordEvent, key, value);
                         }
                     } else {
                         Map<String, Object> attributes = recordEvent.getMetadata().getAttributes();
                         if (!attributes.containsKey(metadataKey) || entry.getOverwriteIfKeyExists()) {
                             recordEvent.getMetadata().setAttribute(metadataKey, value);
-    
+                        } else if (attributes.containsKey(metadataKey) && entry.getAppendIfKeyExists()) {
+                            mergeValueToEventMetadata(recordEvent, metadataKey, value);
                         }
                     }
                 } catch (Exception e) {
@@ -96,5 +100,31 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     @Override
     public void shutdown() {
+    }
+
+    private void mergeValueToEvent(final Event recordEvent, final String key, final Object value) {
+        final Object currentValue = recordEvent.get(key, Object.class);
+        final List<Object> mergedValue = new ArrayList<>();
+        if (currentValue instanceof List) {
+            mergedValue.addAll((List<Object>) currentValue);
+        } else {
+            mergedValue.add(currentValue);
+        }
+
+        mergedValue.add(value);
+        recordEvent.put(key, mergedValue);
+    }
+
+    private void mergeValueToEventMetadata(final Event recordEvent, final String key, final Object value) {
+        final Object currentValue = recordEvent.getMetadata().getAttribute(key);
+        final List<Object> mergedValue = new ArrayList<>();
+        if (currentValue instanceof List) {
+            mergedValue.addAll((List<Object>) currentValue);
+        } else {
+            mergedValue.add(currentValue);
+        }
+
+        mergedValue.add(value);
+        recordEvent.getMetadata().setAttribute(key, mergedValue);
     }
 }

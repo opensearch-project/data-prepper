@@ -34,6 +34,9 @@ public class AddEntryProcessorConfig {
         @JsonProperty("overwrite_if_key_exists")
         private boolean overwriteIfKeyExists = false;
 
+        @JsonProperty("append_if_key_exists")
+        private boolean appendIfKeyExists = false;
+
         public String getKey() {
             return key;
         }
@@ -58,11 +61,20 @@ public class AddEntryProcessorConfig {
             return overwriteIfKeyExists;
         }
 
+        public boolean getAppendIfKeyExists() {
+            return appendIfKeyExists;
+        }
+
         public String getAddWhen() { return addWhen; }
 
         @AssertTrue(message = "Either value or format or expression must be specified, and only one of them can be specified")
         public boolean hasValueOrFormatOrExpression() {
             return Stream.of(value, format, valueExpression).filter(n -> n!=null).count() == 1;
+        }
+
+        @AssertTrue(message = "overwrite_if_key_exists and append_if_key_exists can not be set at the same time.")
+        boolean overwriteAndAppendNotBothSet() {
+            return !(overwriteIfKeyExists && appendIfKeyExists);
         }
 
         public Entry(final String key,
@@ -71,6 +83,7 @@ public class AddEntryProcessorConfig {
                      final String format,
                      final String valueExpression,
                      final boolean overwriteIfKeyExists,
+                     final boolean appendIfKeyExists,
                      final String addWhen)
         {
             if (key != null && metadataKey != null) {
@@ -85,6 +98,7 @@ public class AddEntryProcessorConfig {
             this.format = format;
             this.valueExpression = valueExpression;
             this.overwriteIfKeyExists = overwriteIfKeyExists;
+            this.appendIfKeyExists = appendIfKeyExists;
             this.addWhen = addWhen;
         }
 
