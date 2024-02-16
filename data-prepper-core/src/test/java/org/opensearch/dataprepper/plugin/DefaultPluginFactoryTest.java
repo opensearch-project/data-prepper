@@ -203,6 +203,8 @@ class DefaultPluginFactoryTest {
 
             assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting),
                     equalTo(expectedInstance));
+            verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
+                    eq(PluginSetting.class), eq(pluginSetting));
             verify(beanFactoryProvider).get();
         }
 
@@ -254,6 +256,8 @@ class DefaultPluginFactoryTest {
                     baseClass, pluginSetting, c -> 1);
 
             verify(beanFactoryProvider).get();
+            verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
+                    eq(PluginSetting.class), eq(pluginSetting));
             final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
             verify(pluginCreator).newPluginInstance(eq(expectedPluginClass), pluginArgumentsContextArgCapture.capture(), eq(pluginName));
             final ComponentPluginArgumentsContext actualPluginArgumentsContext = pluginArgumentsContextArgCapture.getValue();
@@ -281,6 +285,8 @@ class DefaultPluginFactoryTest {
             final Object plugin = createObjectUnderTest().loadPlugin(baseClass, pluginSetting, object);
 
             verify(beanFactoryProvider).get();
+            verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
+                    eq(PluginSetting.class), eq(pluginSetting));
             final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
             verify(pluginCreator).newPluginInstance(eq(expectedPluginClass), pluginArgumentsContextArgCapture.capture(), eq(pluginName), eq(object));
             final ComponentPluginArgumentsContext actualPluginArgumentsContext = pluginArgumentsContextArgCapture.getValue();

@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginConfigPublisher;
+import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -10,6 +11,7 @@ import java.util.Optional;
 import java.util.Set;
 
 @Named
+@DependsOn("extensionsApplier")
 public class PluginConfigurationObservableRegister {
     private final Set<PluginConfigPublisher> pluginConfigPublishers;
 
