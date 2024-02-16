@@ -62,7 +62,7 @@ public class FlattenJsonProcessor extends AbstractProcessor<Record<Event>, Recor
                 }
 
                 if (config.isRemoveListIndices()) {
-                    flattenedJson = removeListIndicesInKey(flattenedJson);
+                    flattenedJson = removeListIndicesInKeys(flattenedJson);
                 }
 
                 updateEvent(recordEvent, flattenedJson);
@@ -95,7 +95,7 @@ public class FlattenJsonProcessor extends AbstractProcessor<Record<Event>, Recor
         }
     }
 
-    private Map<String, Object> removeListIndicesInKey(final Map<String, Object> inputMap) {
+    private Map<String, Object> removeListIndicesInKeys(final Map<String, Object> inputMap) {
         final Map<String, Object> resultMap = new HashMap<>();
 
         for (final Map.Entry<String, Object> entry : inputMap.entrySet()) {

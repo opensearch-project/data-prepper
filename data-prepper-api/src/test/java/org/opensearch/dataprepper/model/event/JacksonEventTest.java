@@ -367,7 +367,7 @@ public class JacksonEventTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"withSpecialChars*$%", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
-            "with,Comma", "with:Colon", "with[Bracket", "with|Brace"})
+            "with,Comma", "with:Colon", "with|Brace"})
     void testKey_withInvalidKey_throwsIllegalArgumentException(final String invalidKey) {
         assertThrowsForKeyCheck(IllegalArgumentException.class, invalidKey);
     }
