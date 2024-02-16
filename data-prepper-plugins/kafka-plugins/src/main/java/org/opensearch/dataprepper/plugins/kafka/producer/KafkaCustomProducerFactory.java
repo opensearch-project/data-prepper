@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
 import org.opensearch.dataprepper.plugins.kafka.service.TopicService;
 import org.opensearch.dataprepper.plugins.kafka.service.TopicServiceFactory;
 import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaProducerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicProducerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.RestUtils;
@@ -80,12 +81,14 @@ public class KafkaCustomProducerFactory {
         Serializer<Object> valueSerializer = (Serializer<Object>) serializationFactory.getSerializer(dataConfig);
         final KafkaProducer<Object, Object> producer = new KafkaProducer<>(properties, keyDeserializer, valueSerializer);
         final KafkaTopicProducerMetrics topicMetrics = new KafkaTopicProducerMetrics(topic.getName(), pluginMetrics, topicNameInMetrics);
+        KafkaProducerMetrics.registerProducer(pluginMetrics, producer);
         final String topicName = ObjectUtils.isEmpty(kafkaProducerConfig.getTopic()) ? null : kafkaProducerConfig.getTopic().getName();
         final SchemaService schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
         return new KafkaCustomProducer(producer,
             kafkaProducerConfig, dlqSink,
             expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, topicMetrics, schemaService);
     }
+
     private void prepareTopicAndSchema(final KafkaProducerConfig kafkaProducerConfig, final Integer maxRequestSize) {
         checkTopicCreationCriteriaAndCreateTopic(kafkaProducerConfig, maxRequestSize);
         final SchemaConfig schemaConfig = kafkaProducerConfig.getSchemaConfig();
@@ -114,7 +117,5 @@ public class KafkaCustomProducerFactory {
             topicService.createTopic(kafkaProducerConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor(), maxMessageBytes);
             topicService.closeAdminClient();
         }
-
-
     }
 }
