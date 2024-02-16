@@ -348,9 +348,13 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         boolean retryingAfterException = false;
         while (!shutdownInProgress.get()) {
             try {
-                if (retryingAfterException || pauseConsumePredicate.pauseConsuming()) {
-                    LOG.debug("Pause consuming from Kafka topic.");
+                if (retryingAfterException) {
+                    LOG.debug("Pause consuming from Kafka topic due a previous exception.");
                     Thread.sleep(10000);
+                } else if (pauseConsumePredicate.pauseConsuming()) {
+                    LOG.debug("Pause and skip the next consume from Kafka topic due to an external condition: {}", pauseConsumePredicate);
+                    Thread.sleep(10000);
+                    continue;
                 }
                 synchronized(this) {
                     commitOffsets(false);

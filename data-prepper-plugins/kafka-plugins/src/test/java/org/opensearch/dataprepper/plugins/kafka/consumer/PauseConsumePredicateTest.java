@@ -51,4 +51,13 @@ class PauseConsumePredicateTest {
 
         assertThat(pauseConsumePredicate.pauseConsuming(), equalTo(isOpen));
     }
+
+    @Test
+    void circuitBreakingPredicate_with_a_circuit_breaker_returns_predicate_with_toString() {
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+
+        final PauseConsumePredicate pauseConsumePredicate = PauseConsumePredicate.circuitBreakingPredicate(circuitBreaker);
+
+        assertThat(pauseConsumePredicate.toString(), equalTo("Circuit Breaker"));
+    }
 }
