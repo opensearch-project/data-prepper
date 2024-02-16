@@ -175,7 +175,6 @@ literal
     | Null
     ;
 
-
 Integer
     : ZERO
     | NonZeroDigit Digit*

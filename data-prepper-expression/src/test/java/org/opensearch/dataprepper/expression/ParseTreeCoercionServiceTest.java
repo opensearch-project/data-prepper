@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.expression;
 
-import org.opensearch.dataprepper.model.event.Event;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,11 +19,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.opensearch.dataprepper.expression.util.TestObject;
-import org.apache.commons.lang3.RandomStringUtils;
+import org.opensearch.dataprepper.model.event.Event;
 
 import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -35,8 +35,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -154,20 +154,6 @@ class ParseTreeCoercionServiceTest {
     }
 
     @ParameterizedTest
-    @MethodSource("provideUnSupportedJsonPointerValues")
-    void testCoerceTerminalNodeJsonPointerTypeUnSupportedValues(final Object testValue) {
-        final String testKey1 = "key1";
-        final String testKey2 = "key2";
-        final String testJsonPointerKey = String.format("/%s/%s", testKey1, testKey2);
-        final Event testEvent = testValue == null ? createTestEvent(new HashMap<>()) :
-                createTestEvent(Map.of(testKey1, Map.of(testKey2, testValue)));
-        when(token.getType()).thenReturn(DataPrepperExpressionParser.JsonPointer);
-        when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn(testJsonPointerKey);
-        assertThrows(ExpressionCoercionException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
-    }
-
-    @ParameterizedTest
     @MethodSource("provideKeys")
     void testCoerceTerminalNodeEscapeJsonPointerTypeWithSpecialCharacters(final String testKey, final String testEscapeJsonPointer)
             throws ExpressionCoercionException {
@@ -198,19 +184,6 @@ class ParseTreeCoercionServiceTest {
         } else {
             assertThat(result, equalTo(testValue));
         }
-    }
-
-    @ParameterizedTest
-    @MethodSource("provideUnSupportedJsonPointerValues")
-    void testCoerceTerminalNodeEscapeJsonPointerTypeUnSupportedValues(final Object testValue) {
-        final String testKey = "testKey";
-        final String testEscapeJsonPointerKey = String.format("\"/%s\"", testKey);
-        final Event testEvent = testValue == null ? createTestEvent(new HashMap<>()) :
-                createTestEvent(Map.of(testKey, testValue));
-        when(token.getType()).thenReturn(DataPrepperExpressionParser.EscapedJsonPointer);
-        when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn(testEscapeJsonPointerKey);
-        assertThrows(ExpressionCoercionException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
     }
 
     @Test
@@ -350,11 +323,9 @@ class ParseTreeCoercionServiceTest {
                 Arguments.of("test value"),
                 Arguments.of(1.1f),
                 Arguments.of(1.1),
+                Arguments.of(List.of("test_value")),
+                Arguments.of(Map.of("test_key", "test_value")),
                 Arguments.of((Object) null)
         );
-    }
-
-    private static Stream<Arguments> provideUnSupportedJsonPointerValues() {
-        return Stream.of(Arguments.of(new HashMap<>()));
     }
 }

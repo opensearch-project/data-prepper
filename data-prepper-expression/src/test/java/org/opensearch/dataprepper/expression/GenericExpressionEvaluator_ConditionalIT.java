@@ -210,7 +210,11 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("cidrContains(/sourceIp,\"192.0.2.0/24\",\"192.1.1.0/24\")", event("{\"sourceIp\": \"192.2.2.3\"}"), false),
                 Arguments.of("cidrContains(/sourceIp,\"2001:0db8::/32\")", event("{\"sourceIp\": \"2001:0db8:aaaa:bbbb::\"}"), true),
                 Arguments.of("cidrContains(/sourceIp,\"2001:0db8::/32\",\"2001:aaaa::/32\")", event("{\"sourceIp\": \"2001:0db8:aaaa:bbbb::\"}"), true),
-                Arguments.of("cidrContains(/sourceIp,\"2001:0db8::/32\",\"2001:aaaa::/32\")", event("{\"sourceIp\": \"2001:abcd:aaaa:bbbb::\"}"), false)
+                Arguments.of("cidrContains(/sourceIp,\"2001:0db8::/32\",\"2001:aaaa::/32\")", event("{\"sourceIp\": \"2001:abcd:aaaa:bbbb::\"}"), false),
+                Arguments.of("/sourceIp != null", event("{\"sourceIp\": [10, 20]}"), true),
+                Arguments.of("/sourceIp == null", event("{\"sourceIp\": [\"test\", \"test_two\"]}"), false),
+                Arguments.of("/sourceIp == null", event("{\"sourceIp\": {\"test\": \"test_two\"}}"), false),
+                Arguments.of("/sourceIp != null", event("{\"sourceIp\": {\"test\": \"test_two\"}}"), true)
         );
     }
 
