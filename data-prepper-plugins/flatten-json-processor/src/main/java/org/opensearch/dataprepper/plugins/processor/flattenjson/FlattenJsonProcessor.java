@@ -50,6 +50,8 @@ public class FlattenJsonProcessor extends AbstractProcessor<Record<Event>, Recor
 
                 final String sourceJson = recordEvent.getAsJsonString(config.getSource());
 
+                // adds ignoreReservedCharacters() so that dots in keys are ignored during flattening
+                // e.g., {"a.b": {"c": 1}} will be flattened as expected: {"a.b.c": 1}; otherwise, flattened result will be {"[\"a.b\"]c": 1}
                 Map<String, Object> flattenedJson = new JsonFlattener(sourceJson).ignoreReservedCharacters().flattenAsMap();
 
                 if (config.isRemoveProcessedFields()) {

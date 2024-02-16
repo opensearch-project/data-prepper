@@ -105,7 +105,7 @@ class FlattenJsonProcessorTest {
         assertThat(resultData.get("key1"), is("val1"));
 
         assertThat(resultData.containsKey("key1"), is(true));
-        assertThat(resultData.get("key2.key3.key4"), is("val2"));
+        assertThat(resultData.get("key2.key3.key.4"), is("val2"));
 
         assertThat(resultData.containsKey("list1[].list2[].name"), is(true));
         assertThat(resultData.get("list1[].list2[].name"), is(List.of("name1", "name2")));
@@ -173,7 +173,7 @@ class FlattenJsonProcessorTest {
         assertThat(resultData.get("key1"), is("val1"));
 
         assertThat(resultData.containsKey("key1"), is(true));
-        assertThat(resultData.get("key2.key3.key4"), is("val2"));
+        assertThat(resultData.get("key2.key3.key.4"), is("val2"));
 
         assertThat(resultData.containsKey("list1[].list2[].name"), is(true));
         assertThat(resultData.get("list1[].list2[].name"), is(List.of("name1", "name2")));
@@ -197,7 +197,7 @@ class FlattenJsonProcessorTest {
         final Event resultEvent = resultRecord.get(0).getData();
         Map<String, Object> resultData = resultEvent.get("", Map.class);
 
-        assertThat(resultData.containsKey("key2.key3.key4"), is(false));
+        assertThat(resultData.containsKey("key2.key3.key.4"), is(false));
         assertThat(resultData.containsKey("list1[0].list2[0].name"), is(false));
         assertThat(resultData.containsKey("list1[0].list2[0].value"), is(false));
         assertThat(resultData.containsKey("list1[0].list2[1].name"), is(false));
@@ -231,7 +231,7 @@ class FlattenJsonProcessorTest {
         //  "key1": "val1",
         //  "key2": {
         //    "key3": {
-        //      "key4": "val2"
+        //      "key.4": "val2"
         //    }
         //  },
         //  "list1": [
@@ -251,7 +251,7 @@ class FlattenJsonProcessorTest {
         //}
         return Map.of(
                 "key1", "val1",
-                "key2", Map.of("key3", Map.of("key4", "val2")),
+                "key2", Map.of("key3", Map.of("key.4", "val2")),
                 "list1", List.of(
                         Map.of("list2", List.of(
                                 Map.of("name", "name1", "value", "value1"),
@@ -273,8 +273,8 @@ class FlattenJsonProcessorTest {
         assertThat(resultData.containsKey("key1"), is(true));
         assertThat(resultData.get("key1"), is("val1"));
 
-        assertThat(resultData.containsKey("key2.key3.key4"), is(true));
-        assertThat(resultData.get("key2.key3.key4"), is("val2"));
+        assertThat(resultData.containsKey("key2.key3.key.4"), is(true));
+        assertThat(resultData.get("key2.key3.key.4"), is("val2"));
 
         assertThat(resultData.containsKey("list1[0].list2[0].name"), is(true));
         assertThat(resultData.get("list1[0].list2[0].name"), is("name1"));
