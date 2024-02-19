@@ -9,6 +9,8 @@ import org.springframework.context.annotation.Bean;
 
 import javax.inject.Named;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -22,6 +24,8 @@ class LiteralTypeConversionsConfiguration {
             Integer.class, Function.identity(),
             Float.class, Function.identity(),
             Long.class, Function.identity(),
+            ArrayList.class, Function.identity(),
+            LinkedHashMap.class, Function.identity(),
             Double.class, o -> ((Double) o).floatValue()
         );
     }
