@@ -359,6 +359,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                     continue;
                 } else if(paused) {
                     LOG.debug("Resume consuming from Kafka topic.");
+                    paused = false;
                     consumer.resume(consumer.assignment());
                 }
                 synchronized(this) {
