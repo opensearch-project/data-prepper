@@ -102,10 +102,9 @@ public class ProcessWorker implements Runnable {
                 InternalEventHandle internalEventHandle = (InternalEventHandle)(DefaultEventHandle)eventHandle;
                 if (internalEventHandle.getAcknowledgementSet() != null && !outputEventsSet.contains(event)) {
                     eventHandle.release(true);
-                } else if (acknowledgementsEnabled) {
-                    invalidEventHandlesCounter.increment();
                 }
             } else if (eventHandle != null) {
+                invalidEventHandlesCounter.increment();
                 throw new RuntimeException("Unexpected EventHandle");
             }
         });
@@ -126,13 +125,17 @@ public class ProcessWorker implements Runnable {
         }
         //Should Empty list from buffer should be sent to the processors? For now sending as the Stateful processors expects it.
         for (final Processor processor : processors) {
-            List<Event> inputEvents = null;
-            if (acknowledgementsEnabled) {
-                inputEvents = ((ArrayList<Record<Event>>)records).stream().map(Record::getData).collect(Collectors.toList());
-            }
-            records = processor.execute(records);
-            if (inputEvents != null) {
-                processAcknowledgements(inputEvents, records);
+            try {
+                List<Event> inputEvents = null;
+                if (acknowledgementsEnabled) {
+                    inputEvents = ((ArrayList<Record<Event>>) records).stream().map(Record::getData).collect(Collectors.toList());
+                }
+                records = processor.execute(records);
+                if (inputEvents != null) {
+                    processAcknowledgements(inputEvents, records);
+                }
+            } catch (final Exception e) {
+                LOG.error("A processor threw an exception. This processor will be skipped for the remaining Events in this batch: ", e);
             }
         }
 
