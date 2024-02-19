@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -187,6 +188,32 @@ class ParseTreeCoercionServiceTest {
     }
 
     @Test
+    void testCoerceTerminalNodeEscapeJsonPointerTypeUnSupportedValues() {
+        final String testKey = "testKey";
+        final AtomicBoolean testValue = new AtomicBoolean();
+        final String testEscapeJsonPointerKey = String.format("\"/%s\"", testKey);
+        final Event testEvent = createInvalidTestEvent(Map.of(testKey, testValue));
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.EscapedJsonPointer);
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(testEscapeJsonPointerKey);
+        assertThrows(ExpressionCoercionException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
+    }
+
+    @Test
+    void testCoerceTerminalNodeJsonPointerTypeUnSupportedValues() {
+        final String testKey1 = "key1";
+        final String testKey2 = "key2";
+        final AtomicBoolean testValue = new AtomicBoolean();
+        final String testJsonPointerKey = String.format("/%s/%s", testKey1, testKey2);
+
+        final Event testEvent = createInvalidTestEvent(Map.of(testKey1, testValue));
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.JsonPointer);
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(testJsonPointerKey);
+        assertThrows(ExpressionCoercionException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
+    }
+
+    @Test
     void testCoerceTerminalNodeUnsupportedType() {
         final Event testEvent = createTestEvent(new HashMap<>());
         when(terminalNode.getSymbol()).thenReturn(token);
@@ -303,6 +330,12 @@ class ParseTreeCoercionServiceTest {
             }
             return mapper.treeToValue(childNode, clazz);
         });
+        return event;
+    }
+
+    private Event createInvalidTestEvent(final Object data) {
+        final Event event = mock(Event.class);
+        lenient().when(event.get(anyString(), any())).thenReturn(new AtomicBoolean());
         return event;
     }
 

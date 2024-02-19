@@ -42,7 +42,7 @@ jacocoTestCoverageVerification {
     violationRules {
         rule { //in addition to core projects rule - this one checks for 100% code coverage for this project
             limit {
-                minimum = 0.9 // lowered because ParseTreeCoercionServiceTest does not mock enough, and it is not possible to induce a failure
+                minimum = 1.0 // keep at 100%
             }
         }
     }
