@@ -33,7 +33,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -69,8 +68,10 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
                         final GeoIpConfigSupplier geoIpConfigSupplier,
                         final ExpressionEvaluator expressionEvaluator) {
     super(pluginMetrics);
-    this.geoIPProcessorService = geoIpConfigSupplier.getGeoIPProcessorService();
-    Objects.requireNonNull(geoIPProcessorService, "geoip_service configuration is required when using geoip processor.");
+    if (geoIpConfigSupplier.getGeoIPProcessorService().isEmpty()) {
+      throw new RuntimeException("geoip_service configuration is required when using geoip processor.");
+    }
+    this.geoIPProcessorService = geoIpConfigSupplier.getGeoIPProcessorService().get();
     this.geoIPProcessorConfig = geoIPProcessorConfig;
     this.tagsOnFailure = geoIPProcessorConfig.getTagsOnFailure();
     this.expressionEvaluator = expressionEvaluator;

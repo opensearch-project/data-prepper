@@ -156,7 +156,7 @@ public class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable 
     public void close() {
         final int count = closeCount.decrementAndGet();
         if (count == 0) {
-            LOG.info("Closing old geoip database readers");
+            LOG.debug("Closing old geoip database readers");
             closeReader();
         }
     }

@@ -69,7 +69,7 @@ public class MaxMindConfig {
     }
 
     @AssertTrue(message = "database_paths should be https endpoint if using URL and if insecure is set to false")
-    public boolean isSecureEndpoint() throws URISyntaxException {
+    public boolean isHttpsEndpointOrInsecure() throws URISyntaxException {
         if (insecure) {
             return true;
         }
@@ -128,6 +128,6 @@ public class MaxMindConfig {
      * @since 2.7
      */
     public String getDatabaseDestination() {
-        return databaseDestination + File.separator + File.separator + "geoip";
+        return databaseDestination + File.separator + "geoip";
     }
 }

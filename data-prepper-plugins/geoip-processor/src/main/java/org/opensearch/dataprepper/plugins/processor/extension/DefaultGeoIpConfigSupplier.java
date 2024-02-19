@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.extension;
 
 import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.GeoIPDatabaseManager;
 
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DefaultGeoIpConfigSupplier implements GeoIpConfigSupplier {
@@ -24,10 +25,10 @@ public class DefaultGeoIpConfigSupplier implements GeoIpConfigSupplier {
     }
 
     @Override
-    public GeoIPProcessorService getGeoIPProcessorService() {
+    public Optional<GeoIPProcessorService> getGeoIPProcessorService() {
         if (geoIpServiceConfig != null)
-            return new GeoIPProcessorService(geoIpServiceConfig, geoIPDatabaseManager, readLock);
+            return Optional.of(new GeoIPProcessorService(geoIpServiceConfig, geoIPDatabaseManager, readLock));
         else
-            return null;
+            return Optional.empty();
     }
 }

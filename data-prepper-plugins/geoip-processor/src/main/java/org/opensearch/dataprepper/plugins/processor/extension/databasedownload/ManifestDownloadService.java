@@ -92,7 +92,8 @@ public class ManifestDownloadService implements DBSource {
         try {
             final URL url = new URL(databaseUrl);
             httpURLConnection = (HttpURLConnection) url.openConnection();
-            httpURLConnection.addRequestProperty("User-Agent", "Custom-User-Agent");
+            // CDN endpoint returns 403 without User Agent.
+            httpURLConnection.addRequestProperty("User-Agent", "Data Prepper");
         } catch (IOException ex) {
             throw new DownloadFailedException("Exception occurred while opening connection due to: " + ex.getMessage());
         }
