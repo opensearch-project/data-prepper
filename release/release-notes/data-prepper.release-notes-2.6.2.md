@@ -17,7 +17,6 @@
 * Data Prepper is losing connections from S3 pool ([#3809](https://github.com/opensearch-project/data-prepper/issues/3809))
 * Key value processor will throw NPE if source key does not exist in the Event ([#3496](https://github.com/opensearch-project/data-prepper/issues/3496))
 * Exception in substitute string processor shuts down processor work but not pipeline ([#2956](https://github.com/opensearch-project/data-prepper/issues/2956))
-* Fix Null Pointer Exception in KeyValue Processor ([#3927](https://github.com/opensearch-project/data-prepper/pull/3927))
 * Add 4xx aggregate metric and shard progress metric for dynamodb source ([#3921](https://github.com/opensearch-project/data-prepper/pull/3921))
 
 ### Security
