@@ -22,6 +22,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
@@ -103,20 +105,15 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
     }
 
     private void mergeValueToEvent(final Event recordEvent, final String key, final Object value) {
-        final Object currentValue = recordEvent.get(key, Object.class);
-        final List<Object> mergedValue = new ArrayList<>();
-        if (currentValue instanceof List) {
-            mergedValue.addAll((List<Object>) currentValue);
-        } else {
-            mergedValue.add(currentValue);
-        }
-
-        mergedValue.add(value);
-        recordEvent.put(key, mergedValue);
+        mergeValue(value, () -> recordEvent.get(key, Object.class), newValue -> recordEvent.put(key, newValue));
     }
 
     private void mergeValueToEventMetadata(final Event recordEvent, final String key, final Object value) {
-        final Object currentValue = recordEvent.getMetadata().getAttribute(key);
+        mergeValue(value, () -> recordEvent.getMetadata().getAttribute(key), newValue -> recordEvent.getMetadata().setAttribute(key, newValue));
+    }
+
+    private void mergeValue(final Object value, Supplier<Object> getter, Consumer<Object> setter) {
+        final Object currentValue = getter.get();
         final List<Object> mergedValue = new ArrayList<>();
         if (currentValue instanceof List) {
             mergedValue.addAll((List<Object>) currentValue);
@@ -125,6 +122,6 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         mergedValue.add(value);
-        recordEvent.getMetadata().setAttribute(key, mergedValue);
+        setter.accept(mergedValue);
     }
 }
