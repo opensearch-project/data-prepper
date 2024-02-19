@@ -54,15 +54,15 @@ public class JoinExpressionFunction implements  ExpressionFunction {
         }
 
         try {
-            final List<Object> sourceList = event.get(sourceKey, List.class);
-            return joinList(sourceList, delimiter);
-        } catch (Exception e) {
-            try {
+            if (event.isValueAList(sourceKey)) {
+                final List<Object> sourceList = event.get(sourceKey, List.class);
+                return joinList(sourceList, delimiter);
+            } else {
                 final Map<String, Object> sourceMap = event.get(sourceKey, Map.class);
                 return joinListsInMap(sourceMap, delimiter);
-            } catch (Exception ex) {
-                throw new RuntimeException("Unable to perform join function on " + sourceKey, ex);
             }
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to perform join function on " + sourceKey, ex);
         }
     }
 
