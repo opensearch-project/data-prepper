@@ -9,23 +9,21 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 @DataPrepperPlugin(name = "select_entries", pluginType = Processor.class, pluginConfigurationType = SelectEntriesProcessorConfig.class)
 public class SelectEntriesProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final List<String> entries;
+    private final List<String> keysToInclude;
     private final String selectWhen;
 
     private final ExpressionEvaluator expressionEvaluator;
@@ -33,8 +31,14 @@ public class SelectEntriesProcessor extends AbstractProcessor<Record<Event>, Rec
     @DataPrepperPluginConstructor
     public SelectEntriesProcessor(final PluginMetrics pluginMetrics, final SelectEntriesProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
-        this.entries = Arrays.asList(config.getIncludeKeys());
         this.selectWhen = config.getSelectWhen();
+        if (selectWhen != null
+                && !expressionEvaluator.isValidExpressionStatement(selectWhen)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("select_when value of %s is not a valid expression statement. " +
+                            "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.", selectWhen));
+        }
+        this.keysToInclude = config.getIncludeKeys();
         this.expressionEvaluator = expressionEvaluator;
     }
 
@@ -49,18 +53,13 @@ public class SelectEntriesProcessor extends AbstractProcessor<Record<Event>, Rec
             // To handle nested case, just get the values and store
             // in a temporary map.
             Map<String, Object> outMap = new HashMap<>();
-            for (String entry: entries) {
-                Object val = recordEvent.get(entry, Object.class);
-                if (val != null) {
-                    outMap.put(entry, val);
+            for (String keyToInclude: keysToInclude) {
+                Object value = recordEvent.get(keyToInclude, Object.class);
+                if (value != null) {
+                    outMap.put(keyToInclude, value);
                 }
             }
-            // Delete all entries from the event
-            Set keysToDelete = recordEvent.toMap().keySet();
-            Iterator iter = keysToDelete.iterator();
-            while (iter.hasNext()) {
-                recordEvent.delete((String)iter.next());
-            }
+            recordEvent.clear();
     
             // add back only the keys selected
             for (Map.Entry<String, Object> entry: outMap.entrySet()) {

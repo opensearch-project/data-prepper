@@ -10,10 +10,12 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,8 +40,8 @@ public class SelectEntriesProcessorTests {
     private ExpressionEvaluator expressionEvaluator;
 
     @Test
-    public void testSelectEntriesProcessorTest() {
-        when(mockConfig.getIncludeKeys()).thenReturn(new String[] { "key1", "key2"});
+    public void testSelectEntriesProcessor() {
+        when(mockConfig.getIncludeKeys()).thenReturn(List.of("key1", "key2"));
         when(mockConfig.getSelectWhen()).thenReturn(null);
         final SelectEntriesProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -58,8 +60,8 @@ public class SelectEntriesProcessorTests {
     }
 
     @Test
-    public void testWithKeyDneSelectEntriesProcessorTest() {
-        when(mockConfig.getIncludeKeys()).thenReturn(new String[] { "key1", "key2"});
+    public void testWithKeyDneSelectEntriesProcessor() {
+        when(mockConfig.getIncludeKeys()).thenReturn(List.of("key1", "key2"));
         when(mockConfig.getSelectWhen()).thenReturn(null);
         final SelectEntriesProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -72,9 +74,19 @@ public class SelectEntriesProcessorTests {
     }
 
     @Test
-    public void testSelectEntriesProcessorWithConditionTest() {
-        when(mockConfig.getIncludeKeys()).thenReturn(new String[] { "key1", "key2"});
-        final String selectWhen = UUID.randomUUID().toString();
+    public void testSelectEntriesProcessorWithInvalidCondition() {
+        final String selectWhen = "/message == \""+UUID.randomUUID().toString()+"\"";
+        when(expressionEvaluator.isValidExpressionStatement(selectWhen)).thenReturn(false);
+        when(mockConfig.getSelectWhen()).thenReturn(selectWhen);
+        assertThrows(InvalidPluginConfigurationException.class, () -> createObjectUnderTest());
+        final Record<Event> record = getEvent("thisisamessage");
+    }
+
+    @Test
+    public void testSelectEntriesProcessorWithCondition() {
+        when(mockConfig.getIncludeKeys()).thenReturn(List.of("key1", "key2"));
+        final String selectWhen = "/message == \""+UUID.randomUUID().toString()+"\"";
+        when(expressionEvaluator.isValidExpressionStatement(selectWhen)).thenReturn(true);
         when(mockConfig.getSelectWhen()).thenReturn(selectWhen);
         final SelectEntriesProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -94,8 +106,8 @@ public class SelectEntriesProcessorTests {
     }
 
     @Test
-    public void testNestedSelectEntriesProcessorTest() {
-        when(mockConfig.getIncludeKeys()).thenReturn(new String[] { "nested/key1", "nested/nested2/key2"});
+    public void testNestedSelectEntriesProcessor() {
+        when(mockConfig.getIncludeKeys()).thenReturn(List.of("nested/key1", "nested/nested2/key2"));
         when(mockConfig.getSelectWhen()).thenReturn(null);
         final String value1 = UUID.randomUUID().toString();
         final String value2 = UUID.randomUUID().toString();

@@ -9,16 +9,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.List;
+
 public class SelectEntriesProcessorConfig {
     @NotEmpty
     @NotNull
     @JsonProperty("include_keys")
-    private String[] includeKeys;
+    private List<String> includeKeys;
 
     @JsonProperty("select_when")
     private String selectWhen;
 
-    public String[] getIncludeKeys() {
+    public List<String> getIncludeKeys() {
         return includeKeys;
     }
 
