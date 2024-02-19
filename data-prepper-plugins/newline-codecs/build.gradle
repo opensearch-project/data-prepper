@@ -2,11 +2,6 @@ plugins {
     id 'java'
 }
 
-
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation project(':data-prepper-api')
     implementation 'com.fasterxml.jackson.core:jackson-annotations'

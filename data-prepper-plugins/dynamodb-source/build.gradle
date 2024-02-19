@@ -3,10 +3,6 @@ plugins {
 }
 
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation project(path: ':data-prepper-api')
 

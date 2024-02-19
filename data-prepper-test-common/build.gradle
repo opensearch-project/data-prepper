@@ -7,10 +7,6 @@ plugins {
     id 'java'
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation testLibs.hamcrest
     testRuntimeOnly testLibs.junit.engine

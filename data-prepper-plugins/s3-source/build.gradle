@@ -7,10 +7,6 @@ plugins {
     id 'java'
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:buffer-common')
