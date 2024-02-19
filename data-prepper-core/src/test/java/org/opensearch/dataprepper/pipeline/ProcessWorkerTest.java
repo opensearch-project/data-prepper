@@ -26,7 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -134,6 +136,45 @@ public class ProcessWorkerTest {
     void testProcessWorkerWithProcessorThrowingExceptionIsCaughtProperly() {
 
         final List<Record> records = List.of(mock(Record.class));
+        final CheckpointState checkpointState = mock(CheckpointState.class);
+        final Map.Entry<Collection, CheckpointState> readResult = Map.entry(records, checkpointState);
+        when(buffer.read(pipeline.getReadBatchTimeoutInMillis())).thenReturn(readResult);
+
+        final Processor processor = mock(Processor.class);
+        when(processor.execute(records)).thenThrow(RuntimeException.class);
+        when(processor.isReadyForShutdown()).thenReturn(true);
+        processors = List.of(processor);
+
+        final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
+        when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
+
+
+        try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
+            futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
+                    .thenReturn(futureHelperResult);
+
+            final ProcessWorker processWorker = createObjectUnderTest();
+
+            processWorker.run();
+        }
+    }
+
+    @Test
+    void testProcessWorkerWithProcessorThrowingExceptionAndAcknowledgmentsEnabledIsHandledProperly() {
+
+        when(source.areAcknowledgementsEnabled()).thenReturn(true);
+
+        final List<Record<Event>> records = new ArrayList<>();
+        final Record<Event> mockRecord = mock(Record.class);
+        final Event mockEvent = mock(Event.class);
+        final EventHandle eventHandle = mock(DefaultEventHandle.class);
+        when(((DefaultEventHandle) eventHandle).getAcknowledgementSet()).thenReturn(mock(AcknowledgementSet.class));
+        doNothing().when(eventHandle).release(true);
+        when(mockRecord.getData()).thenReturn(mockEvent);
+        when(mockEvent.getEventHandle()).thenReturn(eventHandle);
+
+        records.add(mockRecord);
+
         final CheckpointState checkpointState = mock(CheckpointState.class);
         final Map.Entry<Collection, CheckpointState> readResult = Map.entry(records, checkpointState);
         when(buffer.read(pipeline.getReadBatchTimeoutInMillis())).thenReturn(readResult);
