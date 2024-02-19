@@ -187,7 +187,7 @@ public class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseabl
     public void close() {
         final int count = closeCount.decrementAndGet();
         if (count == 0) {
-            LOG.info("Closing old geoip database readers");
+            LOG.debug("Closing old geoip database readers");
             closeReaders();
         }
     }
