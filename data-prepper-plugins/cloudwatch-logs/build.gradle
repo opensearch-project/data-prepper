@@ -3,10 +3,6 @@ plugins {
     id 'java-library'
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation project(path: ':data-prepper-plugins:common')
