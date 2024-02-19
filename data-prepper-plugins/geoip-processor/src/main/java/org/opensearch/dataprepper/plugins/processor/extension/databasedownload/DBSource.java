@@ -16,10 +16,10 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.List;
 
 public interface DBSource {
-    void initiateDownload(List<String> config) throws Exception;
+    String MAXMIND_DATABASE_EXTENSION = ".mmdb";
+    void initiateDownload() throws Exception;
 
     /**
      * initiateSSL

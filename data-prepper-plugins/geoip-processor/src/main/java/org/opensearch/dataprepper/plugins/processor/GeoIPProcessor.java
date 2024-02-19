@@ -94,7 +94,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
     Map<String, Object> geoData;
 
     final GeoIPDatabaseReader geoIPDatabaseReader = geoIPProcessorService.getGeoIPDatabaseReader();
-    final boolean databasesExpired = geoIPDatabaseReader.isExpired();
+
 
     for (final Record<Event> eventRecord : records) {
       final Event event = eventRecord.getData();
@@ -105,6 +105,12 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
         continue;
       }
       geoIpEventsProcessed.increment();
+
+      if (geoIPDatabaseReader == null) {
+        // tag events
+        continue;
+      }
+      final boolean databasesExpired = geoIPDatabaseReader.isExpired();
 
       // TODO: Need to decide the behaviour, right now if all databases are expired we don't enrich the data.
       if (databasesExpired) {
@@ -161,7 +167,9 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
         event.getMetadata().addTags(tagsOnFailure);
       }
     }
-    geoIPDatabaseReader.close();
+    if (geoIPDatabaseReader != null) {
+      geoIPDatabaseReader.close();
+    }
     return records;
   }
 

@@ -29,7 +29,7 @@ import java.util.Set;
  * Interface for storing and maintaining MaxMind database readers
  */
 
-public interface GeoIPDatabaseReader {
+public interface GeoIPDatabaseReader  {
     String MAXMIND_DATABASE_EXTENSION = ".mmdb";
     Duration MAX_EXPIRY_DURATION = Duration.ofDays(30);
     String LAT = "lat";

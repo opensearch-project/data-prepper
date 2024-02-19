@@ -25,7 +25,6 @@ public class GeoIPProcessorService {
     private final MaxMindConfig maxMindConfig;
     private final GeoIPDatabaseManager geoIPDatabaseManager;
     private final ReentrantReadWriteLock.ReadLock readLock;
-    private Instant nextUpdateAt;
     private ExecutorService executorService = null;
 
     /**
@@ -41,25 +40,33 @@ public class GeoIPProcessorService {
         this.geoIPDatabaseManager = geoIPDatabaseManager;
         this.readLock = readLock;
 
-        geoIPDatabaseManager.initiateDatabaseDownload();
-        this.nextUpdateAt = Instant.now().plus(maxMindConfig.getDatabaseRefreshInterval());
+        try {
+            geoIPDatabaseManager.initiateDatabaseDownload();
+        } catch (final Exception e) {
+            LOG.error("Failed to initialize geoip processor due to: {}. Will update with backoff.", e.getMessage());
+        }
     }
 
     public GeoIPDatabaseReader getGeoIPDatabaseReader() {
         readLock.lock();
         try {
             final GeoIPDatabaseReader geoIPDatabaseReader = geoIPDatabaseManager.getGeoIPDatabaseReader();
-            geoIPDatabaseReader.retain();
+            if (geoIPDatabaseReader != null) {
+                geoIPDatabaseReader.retain();
+            }
             checkAndUpdateDatabases();
             return geoIPDatabaseReader;
-        } finally {
+        } catch (final Exception e) {
+            LOG.error("Failed to update databases: {}", e.getMessage());
+            return null;
+        }
+        finally {
             readLock.unlock();
         }
     }
 
     private synchronized void checkAndUpdateDatabases() {
-        if (nextUpdateAt.isBefore(Instant.now())) {
-            nextUpdateAt = Instant.now().plus(maxMindConfig.getDatabaseRefreshInterval());
+        if (geoIPDatabaseManager.getNextUpdateAt().isBefore(Instant.now())) {
             LOG.info("Trying to update geoip Database readers");
             executorService = Executors.newSingleThreadExecutor();
             executorService.execute(geoIPDatabaseManager::updateDatabaseReader);
