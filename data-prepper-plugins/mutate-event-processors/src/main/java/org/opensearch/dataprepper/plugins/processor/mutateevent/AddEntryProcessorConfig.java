@@ -72,7 +72,7 @@ public class AddEntryProcessorConfig {
             return Stream.of(value, format, valueExpression).filter(n -> n!=null).count() == 1;
         }
 
-        @AssertTrue(message = "overwrite_if_key_exists and append_if_key_exists can not be set at the same time.")
+        @AssertTrue(message = "overwrite_if_key_exists and append_if_key_exists can not be set to true at the same time.")
         boolean overwriteAndAppendNotBothSet() {
             return !(overwriteIfKeyExists && appendIfKeyExists);
         }
