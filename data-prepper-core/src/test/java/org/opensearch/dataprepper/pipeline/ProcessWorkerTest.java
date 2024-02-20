@@ -26,11 +26,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -143,7 +145,10 @@ public class ProcessWorkerTest {
         final Processor processor = mock(Processor.class);
         when(processor.execute(records)).thenThrow(RuntimeException.class);
         when(processor.isReadyForShutdown()).thenReturn(true);
-        processors = List.of(processor);
+
+        final Processor skippedProcessor = mock(Processor.class);
+        when(skippedProcessor.isReadyForShutdown()).thenReturn(true);
+        processors = List.of(processor, skippedProcessor);
 
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
@@ -157,6 +162,8 @@ public class ProcessWorkerTest {
 
             processWorker.run();
         }
+
+        verify(skippedProcessor, never()).execute(any());
     }
 
     @Test
@@ -182,7 +189,10 @@ public class ProcessWorkerTest {
         final Processor processor = mock(Processor.class);
         when(processor.execute(records)).thenThrow(RuntimeException.class);
         when(processor.isReadyForShutdown()).thenReturn(true);
-        processors = List.of(processor);
+
+        final Processor skippedProcessor = mock(Processor.class);
+        when(skippedProcessor.isReadyForShutdown()).thenReturn(true);
+        processors = List.of(processor, skippedProcessor);
 
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
@@ -196,5 +206,7 @@ public class ProcessWorkerTest {
 
             processWorker.run();
         }
+
+        verify(skippedProcessor, never()).execute(any());
     }
 }

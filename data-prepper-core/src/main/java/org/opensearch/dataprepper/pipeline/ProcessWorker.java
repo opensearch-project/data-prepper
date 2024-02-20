@@ -138,7 +138,7 @@ public class ProcessWorker implements Runnable {
                     processAcknowledgements(inputEvents, records);
                 }
             } catch (final Exception e) {
-                LOG.error("A processor threw an exception. This batch of Events will be dropped, and there EventHandles will be released: ", e);
+                LOG.error("A processor threw an exception. This batch of Events will be dropped, and their EventHandles will be released: ", e);
                 if (inputEvents != null) {
                     processAcknowledgements(inputEvents, Collections.emptyList());
                 }
