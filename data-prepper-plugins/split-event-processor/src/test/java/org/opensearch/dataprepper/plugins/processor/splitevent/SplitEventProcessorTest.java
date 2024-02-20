@@ -40,13 +40,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.mock;
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
 import static org.mockito.Mockito.spy;
->>>>>>> 69f6a5f24 (Add support for spilt event processor)
->>>>>>> cbca931a8 (Add support for spilt event processor)
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
