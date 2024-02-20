@@ -348,9 +348,19 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         boolean retryingAfterException = false;
         while (!shutdownInProgress.get()) {
             try {
-                if (retryingAfterException || pauseConsumePredicate.pauseConsuming()) {
-                    LOG.debug("Pause consuming from Kafka topic.");
+                if (retryingAfterException) {
+                    LOG.debug("Pause consuming from Kafka topic due a previous exception.");
                     Thread.sleep(10000);
+                } else if (pauseConsumePredicate.pauseConsuming()) {
+                    LOG.debug("Pause and skip consuming from Kafka topic due to an external condition: {}", pauseConsumePredicate);
+                    paused = true;
+                    consumer.pause(consumer.assignment());
+                    Thread.sleep(10000);
+                    continue;
+                } else if(paused) {
+                    LOG.debug("Resume consuming from Kafka topic.");
+                    paused = false;
+                    consumer.resume(consumer.assignment());
                 }
                 synchronized(this) {
                     commitOffsets(false);
@@ -453,7 +463,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                     if (paused) {
                         ConsumerRecords<String, ?> records = doPoll();
                         if (records.count() > 0) {
-                            LOG.warn("Unexpected records received while the consumer is paused. Resetting the paritions to retry from last read pointer");
+                            LOG.warn("Unexpected records received while the consumer is paused. Resetting the partitions to retry from last read pointer");
                             synchronized(this) {
                                 partitionsToReset.addAll(consumer.assignment());
                             };
