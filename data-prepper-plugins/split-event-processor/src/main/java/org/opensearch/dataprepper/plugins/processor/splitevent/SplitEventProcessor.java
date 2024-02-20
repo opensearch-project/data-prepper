@@ -22,15 +22,17 @@ import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 
 @DataPrepperPlugin(name = "split_event", pluginType = Processor.class, pluginConfigurationType = SplitEventProcessorConfig.class)
 public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record<Event>>{
-    final Pattern pattern;
     final String delimiter;
     final String delimiterRegex;
     final String field;
+    final Pattern pattern;
+    private final Function<String, String[]> splitter;
 
     @DataPrepperPluginConstructor
     public SplitEventProcessor(final PluginMetrics pluginMetrics, final SplitEventProcessorConfig config) {
@@ -49,8 +51,10 @@ public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record
 
         if(delimiterRegex != null && !delimiterRegex.isEmpty()) {
             pattern = Pattern.compile(delimiterRegex);
+            splitter = pattern::split;
         } else {
-            pattern = Pattern.compile(Pattern.quote(delimiter));
+            splitter = inputString -> inputString.split(delimiter);
+            pattern = null;
         }
     }
 
@@ -61,20 +65,18 @@ public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record
             final Event recordEvent = record.getData();
 
             if (!recordEvent.containsKey(field)) {
-                Record newRecord = new Record<>(recordEvent);
-                newRecords.add(newRecord);
+                newRecords.add(record);
                 continue;
             }
             
             final Object value = recordEvent.get(field, Object.class);
 
             //split record according to delimiter
-            final String[] splitValues = pattern.split((String) value);
+            final String[] splitValues = splitter.apply((String) value);
 
-           // when no splits or empty value modify the original event
+           // when no splits or empty value use the original record
            if(splitValues.length <= 1) {
-                Record newRecord = new Record<>(recordEvent);
-                newRecords.add(newRecord);
+                newRecords.add(record);
                 continue;
            }
 
@@ -87,8 +89,7 @@ public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record
 
             // Modify original event to hold the last split
             recordEvent.put(field, splitValues[splitValues.length-1]);
-            Record newRecord = new Record<>(recordEvent);
-            newRecords.add(newRecord);
+            newRecords.add(record);
         }
         return newRecords;
     }
