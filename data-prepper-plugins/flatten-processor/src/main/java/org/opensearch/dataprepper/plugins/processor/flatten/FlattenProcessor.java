@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.flattenjson;
+package org.opensearch.dataprepper.plugins.processor.flatten;
 
 import com.github.wnameless.json.flattener.JsonFlattener;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -23,16 +23,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@DataPrepperPlugin(name = "flatten", pluginType = Processor.class, pluginConfigurationType = FlattenJsonProcessorConfig.class)
-public class FlattenJsonProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private static final Logger LOG = LoggerFactory.getLogger(FlattenJsonProcessor.class);
+@DataPrepperPlugin(name = "flatten", pluginType = Processor.class, pluginConfigurationType = FlattenProcessorConfig.class)
+public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+    private static final Logger LOG = LoggerFactory.getLogger(FlattenProcessor.class);
 
     private static final String SEPARATOR = "/";
-    private final FlattenJsonProcessorConfig config;
+    private final FlattenProcessorConfig config;
     private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public FlattenJsonProcessor(final PluginMetrics pluginMetrics, final FlattenJsonProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
+    public FlattenProcessor(final PluginMetrics pluginMetrics, final FlattenProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.config = config;
         this.expressionEvaluator = expressionEvaluator;

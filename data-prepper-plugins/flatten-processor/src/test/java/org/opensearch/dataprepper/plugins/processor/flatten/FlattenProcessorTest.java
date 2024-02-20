@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.flattenjson;
+package org.opensearch.dataprepper.plugins.processor.flatten;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class FlattenJsonProcessorTest {
+class FlattenProcessorTest {
     private static final String SOURCE_KEY = "source";
     private static final String TARGET_KEY = "target";
 
@@ -37,7 +37,7 @@ class FlattenJsonProcessorTest {
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private FlattenJsonProcessorConfig mockConfig;
+    private FlattenProcessorConfig mockConfig;
 
     @Mock
     private ExpressionEvaluator expressionEvaluator;
@@ -54,7 +54,7 @@ class FlattenJsonProcessorTest {
 
     @Test
     void testFlattenEntireEventData() {
-        final FlattenJsonProcessor processor = createObjectUnderTest();
+        final FlattenProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(createTestData());
         final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
 
@@ -73,7 +73,7 @@ class FlattenJsonProcessorTest {
     void testFlattenEntireEventDataAndRemoveProcessedFields() {
         when(mockConfig.isRemoveProcessedFields()).thenReturn(true);
 
-        final FlattenJsonProcessor processor = createObjectUnderTest();
+        final FlattenProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(createTestData());
         final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
 
@@ -92,7 +92,7 @@ class FlattenJsonProcessorTest {
     void testFlattenEntireEventDataAndRemoveListIndices() {
         when(mockConfig.isRemoveListIndices()).thenReturn(true);
 
-        final FlattenJsonProcessor processor = createObjectUnderTest();
+        final FlattenProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(createTestData());
         final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
 
@@ -119,7 +119,7 @@ class FlattenJsonProcessorTest {
         when(mockConfig.getSource()).thenReturn(SOURCE_KEY);
         when(mockConfig.getTarget()).thenReturn(TARGET_KEY);
 
-        final FlattenJsonProcessor processor = createObjectUnderTest();
+        final FlattenProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(Map.of(SOURCE_KEY, createTestData()));
         final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
 
@@ -137,7 +137,7 @@ class FlattenJsonProcessorTest {
         when(mockConfig.getTarget()).thenReturn(TARGET_KEY);
         when(mockConfig.isRemoveProcessedFields()).thenReturn(true);
 
-        final FlattenJsonProcessor processor = createObjectUnderTest();
+        final FlattenProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(Map.of(SOURCE_KEY, createTestData()));
         final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
 
@@ -160,7 +160,7 @@ class FlattenJsonProcessorTest {
         when(mockConfig.getTarget()).thenReturn(TARGET_KEY);
         when(mockConfig.isRemoveListIndices()).thenReturn(true);
 
-        final FlattenJsonProcessor processor = createObjectUnderTest();
+        final FlattenProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(Map.of(SOURCE_KEY, createTestData()));
         final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
 
@@ -187,7 +187,7 @@ class FlattenJsonProcessorTest {
         final String whenCondition = UUID.randomUUID().toString();
         when(mockConfig.getFlattenWhen()).thenReturn(whenCondition);
 
-        final FlattenJsonProcessor processor = createObjectUnderTest();
+        final FlattenProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(createTestData());
         when(expressionEvaluator.evaluateConditional(whenCondition, testRecord.getData())).thenReturn(false);
         final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
@@ -211,7 +211,7 @@ class FlattenJsonProcessorTest {
         final List<String> testTags = List.of("tag1", "tag2");
         when(mockConfig.getTagsOnFailure()).thenReturn(testTags);
 
-        final FlattenJsonProcessor processor = createObjectUnderTest();
+        final FlattenProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(createTestData());
         final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
 
@@ -221,8 +221,8 @@ class FlattenJsonProcessorTest {
         assertThat(resultEvent.getMetadata().getTags(), is(new HashSet<>(testTags)));
     }
 
-    private FlattenJsonProcessor createObjectUnderTest() {
-        return new FlattenJsonProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+    private FlattenProcessor createObjectUnderTest() {
+        return new FlattenProcessor(pluginMetrics, mockConfig, expressionEvaluator);
     }
 
     private Map<String, Object> createTestData() {

@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.flattenjson;
+package org.opensearch.dataprepper.plugins.processor.flatten;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
-public class FlattenJsonProcessorConfig {
+public class FlattenProcessorConfig {
 
     @NotNull
     @JsonProperty("source")
