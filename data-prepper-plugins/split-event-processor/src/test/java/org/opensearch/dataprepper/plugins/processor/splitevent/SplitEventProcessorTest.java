@@ -17,11 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import static org.mockito.ArgumentMatchers.any;
 import org.mockito.Mock;
-import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
@@ -44,6 +40,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.mock;
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+import static org.mockito.Mockito.spy;
+>>>>>>> 69f6a5f24 (Add support for spilt event processor)
+>>>>>>> cbca931a8 (Add support for spilt event processor)
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
