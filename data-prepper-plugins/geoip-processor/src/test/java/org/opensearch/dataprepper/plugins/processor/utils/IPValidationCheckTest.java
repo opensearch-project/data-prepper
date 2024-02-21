@@ -9,28 +9,29 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.processor.exception.InvalidIPAddressException;
 
-import java.net.UnknownHostException;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ExtendWith(MockitoExtension.class)
 class IPValidationCheckTest {
 
     private static final String PRIVATE_IP_ADDRESS = "192.168.29.233";
     private static final String PUBLIC_IP_ADDRESS = "2001:4860:4860::8888";
-    private static final String INVALID_IP_ADDRESS = "255.255.255.0";
+    private static final String INVALID_IP_ADDRESS = "255.255.255.999";
 
     @Test
-    void ipValidationcheckTest_positive() throws UnknownHostException {
+    void ipValidationcheckTest_public() {
         Assertions.assertTrue(IPValidationCheck.isPublicIpAddress(PUBLIC_IP_ADDRESS));
     }
 
     @Test
-    void ipValidationcheckTest_negative() throws UnknownHostException {
+    void ipValidationcheckTest_negative() {
         Assertions.assertFalse(IPValidationCheck.isPublicIpAddress(PRIVATE_IP_ADDRESS));
     }
 
     @Test
-    void ipValidationcheckTest_invalid() throws UnknownHostException {
-        Assertions.assertTrue(IPValidationCheck.isPublicIpAddress(INVALID_IP_ADDRESS));
+    void ipValidationcheckTest_invalid() {
+        assertThrows(InvalidIPAddressException.class, () -> IPValidationCheck.isPublicIpAddress(INVALID_IP_ADDRESS));
     }
 }

@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.databaseenrich;
+package org.opensearch.dataprepper.plugins.processor.exception;
 
 /**
  * Implementation class for EnrichFailedException Custom exception
  */
 public class EnrichFailedException extends RuntimeException {
-    public EnrichFailedException(String exceptionMsg) {
+    public EnrichFailedException(final String exceptionMsg) {
         super(exceptionMsg);
     }
 }

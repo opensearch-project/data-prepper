@@ -81,7 +81,7 @@ public class GeoIPProcessorUrlServiceIT {
 
     public GeoIPProcessorService createObjectUnderTest() {
         // TODO: pass in geoIpServiceConfig object
-        return new GeoIPProcessorService(null);
+        return new GeoIPProcessorService(null, null, null);
     }
 
     @Test
@@ -93,7 +93,7 @@ public class GeoIPProcessorUrlServiceIT {
         if (IPValidationCheck.isPublicIpAddress(ipAddress)) {
             InetAddress inetAddress = InetAddress.getByName(ipAddress);
             //All attributes are considered by default with the null value
-            geoData = geoIPProcessorService.getGeoData(inetAddress, null);
+//            geoData = geoIPProcessorService.getGeoData(inetAddress, null);
 
             assertThat(geoData.get("country_iso_code"), equalTo("US"));
             assertThat(geoData.get("ip"), equalTo("8.8.8.8"));

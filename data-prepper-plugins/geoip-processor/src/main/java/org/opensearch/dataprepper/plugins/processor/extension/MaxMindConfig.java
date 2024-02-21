@@ -11,12 +11,17 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
+import org.opensearch.dataprepper.plugins.processor.utils.DatabaseSourceIdentification;
 
+import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MaxMindConfig {
+    private static final boolean DEFAULT_INSECURE = false;
     private static final String S3_PREFIX = "s3://";
 
     //TODO: Add validations to database paths
@@ -24,6 +29,7 @@ public class MaxMindConfig {
     private static final List<String> DEFAULT_DATABASE_PATHS = new ArrayList<>();
     private static final Duration DEFAULT_DATABASE_REFRESH_INTERVAL = Duration.ofDays(7);
     private static final int DEFAULT_CACHE_SIZE = 4096;
+    private static final String DEFAULT_DATABASE_DESTINATION = System.getProperty("data-prepper.dir") + File.separator + "data";
 
     @JsonProperty("database_paths")
     private List<String> databasePaths = DEFAULT_DATABASE_PATHS;
@@ -38,20 +44,38 @@ public class MaxMindConfig {
     //TODO:  Add a Max limit on cache size
     private int cacheSize = DEFAULT_CACHE_SIZE;
 
-    //TODO: Add a destination path to store database files
-    @JsonProperty("aws")
     @Valid
+    @JsonProperty("aws")
     private AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig;
+
+    @JsonProperty("insecure")
+    private boolean insecure = DEFAULT_INSECURE;
+
+    @JsonProperty("database_destination_path")
+    private String databaseDestination = DEFAULT_DATABASE_DESTINATION;
 
     public MaxMindConfig() {
         // This default constructor is used if maxmind is not configured
     }
 
     @AssertTrue(message = "aws should be configured if any path in database_paths is S3 bucket path.")
-    boolean isAwsAuthenticationOptionsRequired() {
+    public boolean isAwsAuthenticationOptionsRequired() {
         for (final String databasePath : databasePaths) {
             if (databasePath.startsWith(S3_PREFIX)) {
                 return awsAuthenticationOptionsConfig != null;
+            }
+        }
+        return true;
+    }
+
+    @AssertTrue(message = "database_paths should be https endpoint if using URL and if insecure is set to false")
+    public boolean isHttpsEndpointOrInsecure() throws URISyntaxException {
+        if (insecure) {
+            return true;
+        }
+        for (final String databasePath : databasePaths) {
+            if (DatabaseSourceIdentification.isURL(databasePath)) {
+                return new URI(databasePath).getScheme().equals("https");
             }
         }
         return true;
@@ -95,5 +119,15 @@ public class MaxMindConfig {
      */
     public AwsAuthenticationOptionsConfig getAwsAuthenticationOptionsConfig() {
         return awsAuthenticationOptionsConfig;
+    }
+
+    /**
+     * Gets the destination folder to store database files
+     *
+     * @return The destination folder
+     * @since 2.7
+     */
+    public String getDatabaseDestination() {
+        return databaseDestination + File.separator + "geoip";
     }
 }

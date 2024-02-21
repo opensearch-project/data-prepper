@@ -18,10 +18,10 @@ import java.util.List;
  */
 public class GeoIPProcessorConfig {
 
-    @JsonProperty("entries")
+    @Valid
     @NotNull
     @Size(min = 1)
-    @Valid
+    @JsonProperty("entries")
     private List<EntryConfig> entries;
 
     @JsonProperty("tags_on_failure")

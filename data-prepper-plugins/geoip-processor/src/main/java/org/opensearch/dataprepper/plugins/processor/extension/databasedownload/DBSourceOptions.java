@@ -17,7 +17,8 @@ import java.util.stream.Collectors;
 public enum DBSourceOptions {
     PATH("path"),
     URL("url"),
-    S3("s3");
+    S3("s3"),
+    HTTP_MANIFEST("http_manifest");
 
     private final String option;
 

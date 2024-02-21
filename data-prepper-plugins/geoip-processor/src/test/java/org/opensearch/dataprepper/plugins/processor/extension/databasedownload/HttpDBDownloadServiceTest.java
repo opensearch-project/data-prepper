@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -18,6 +19,8 @@ class HttpDBDownloadServiceTest {
 
     private static final String PREFIX_DIR = "first_database";
     private HttpDBDownloadService downloadThroughUrl;
+    @Mock
+    private GeoIPFileManager geoIPFileManager;
 
     @Test
     void initiateDownloadTest() {
@@ -30,6 +33,6 @@ class HttpDBDownloadServiceTest {
     }
 
     private HttpDBDownloadService createObjectUnderTest() {
-        return new HttpDBDownloadService(PREFIX_DIR);
+        return new HttpDBDownloadService(PREFIX_DIR, geoIPFileManager);
     }
 }
