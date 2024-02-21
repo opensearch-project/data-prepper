@@ -11,7 +11,6 @@ import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
-import kafka.common.BrokerEndPointNotAvailableException;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -146,8 +145,7 @@ public class KafkaSource implements Source<Record<Event>> {
                     executorService.submit(consumer);
                 });
             } catch (Exception e) {
-                if (e instanceof BrokerNotAvailableException ||
-                        e instanceof BrokerEndPointNotAvailableException || e instanceof TimeoutException) {
+                if (e instanceof BrokerNotAvailableException || e instanceof TimeoutException) {
                     LOG.error("The kafka broker is not available...");
                 } else {
                     LOG.error("Failed to setup the Kafka Source Plugin.", e);
