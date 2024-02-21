@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+
 @DataPrepperPlugin(name = "obfuscate", pluginType = Processor.class, pluginConfigurationType = ObfuscationProcessorConfig.class)
 public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
@@ -106,29 +108,34 @@ public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Recor
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            if (obfuscationProcessorConfig.getObfuscateWhen() != null && !expressionEvaluator.evaluateConditional(obfuscationProcessorConfig.getObfuscateWhen(), recordEvent)) {
-                continue;
-            }
+            try {
 
-            if (!recordEvent.containsKey(source)) {
-                continue;
-            }
+                if (obfuscationProcessorConfig.getObfuscateWhen() != null && !expressionEvaluator.evaluateConditional(obfuscationProcessorConfig.getObfuscateWhen(), recordEvent)) {
+                    continue;
+                }
 
-            String rawValue = recordEvent.get(source, String.class);
+                if (!recordEvent.containsKey(source)) {
+                    continue;
+                }
 
-            // Call obfuscation action
-            String newValue = this.action.obfuscate(rawValue, patterns);
+                String rawValue = recordEvent.get(source, String.class);
 
-            // No changes means it does not match any patterns
-            if (rawValue.equals(newValue)) {
-                recordEvent.getMetadata().addTags(obfuscationProcessorConfig.getTagsOnMatchFailure());
-            }
+                // Call obfuscation action
+                String newValue = this.action.obfuscate(rawValue, patterns);
 
-            // Update the event record.
-            if (target == null || target.isEmpty()) {
-                recordEvent.put(source, newValue);
-            } else {
-                recordEvent.put(target, newValue);
+                // No changes means it does not match any patterns
+                if (rawValue.equals(newValue)) {
+                    recordEvent.getMetadata().addTags(obfuscationProcessorConfig.getTagsOnMatchFailure());
+                }
+
+                // Update the event record.
+                if (target == null || target.isEmpty()) {
+                    recordEvent.put(source, newValue);
+                } else {
+                    recordEvent.put(target, newValue);
+                }
+            } catch (final Exception e) {
+                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
             }
         }
         return records;

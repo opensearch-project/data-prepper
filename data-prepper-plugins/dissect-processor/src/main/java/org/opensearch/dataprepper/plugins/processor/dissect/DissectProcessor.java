@@ -55,18 +55,17 @@ public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Ev
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         for (final Record<Event> record : records) {
             Event event = record.getData();
-            String dissectWhen = dissectConfig.getDissectWhen();
-            if (Objects.nonNull(dissectWhen) && !expressionEvaluator.evaluateConditional(dissectWhen, event)) {
-                continue;
-            }
             try{
-                for(String field: dissectorMap.keySet()){
+                String dissectWhen = dissectConfig.getDissectWhen();
+                if (Objects.nonNull(dissectWhen) && !expressionEvaluator.evaluateConditional(dissectWhen, event)) {
+                    continue;
+                }
+                for (String field: dissectorMap.keySet()){
                     if(event.containsKey(field)){
                         dissectField(event, field);
                     }
                 }
-            }
-            catch (Exception ex){
+            } catch (Exception ex){
                 LOG.error(EVENT, "Error dissecting the event [{}] ", record.getData(), ex);
             }
         }

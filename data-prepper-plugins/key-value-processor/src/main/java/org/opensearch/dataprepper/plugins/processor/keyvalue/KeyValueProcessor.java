@@ -35,6 +35,8 @@ import java.util.regex.Matcher;
 import java.util.Stack;
 import java.util.ArrayList;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+
 @DataPrepperPlugin(name = "key_value", pluginType = Processor.class, pluginConfigurationType = KeyValueProcessorConfig.class)
 public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(KeyValueProcessor.class);
@@ -235,38 +237,44 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         for (final Record<Event> record : records) {
             final Map<String, Object> outputMap = new HashMap<>();
             final Event recordEvent = record.getData();
-            final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
-            if (groupsRaw == null) {
-                continue;
-            }
-            final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
 
-            if (keyValueProcessorConfig.getRecursive()) {
-                try {
-                    JsonNode recursedTree = recurse(groupsRaw, mapper);
-                    outputMap.putAll(createRecursedMap(recursedTree, mapper));
-                } catch (Exception e) {
-                    LOG.error("Recursive parsing ran into an unexpected error, treating message as non-recursive", e);
-                    recordEvent.getMetadata().addTags(tagsOnFailure);
+            try {
+                final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
+                if (groupsRaw == null) {
+                    continue;
                 }
-            } else {
-                try {
-                    outputMap.putAll(createNonRecursedMap(groups));
-                } catch (Exception e) {
-                    LOG.error("Non-recursive parsing ran into an unexpected error", e);
-                    recordEvent.getMetadata().addTags(tagsOnFailure);
-                }
-            }
+                final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
 
-            final Map<String, Object> processedMap = executeConfigs(outputMap);
-
-            if (Objects.isNull(keyValueProcessorConfig.getDestination())) {
-                writeToRoot(recordEvent, processedMap);
-            } else {
-                if (keyValueProcessorConfig.getOverwriteIfDestinationExists() ||
-                        !recordEvent.containsKey(keyValueProcessorConfig.getDestination())) {
-                    recordEvent.put(keyValueProcessorConfig.getDestination(), processedMap);
+                if (keyValueProcessorConfig.getRecursive()) {
+                    try {
+                        JsonNode recursedTree = recurse(groupsRaw, mapper);
+                        outputMap.putAll(createRecursedMap(recursedTree, mapper));
+                    } catch (Exception e) {
+                        LOG.error("Recursive parsing ran into an unexpected error, treating message as non-recursive", e);
+                        recordEvent.getMetadata().addTags(tagsOnFailure);
+                    }
+                } else {
+                    try {
+                        outputMap.putAll(createNonRecursedMap(groups));
+                    } catch (Exception e) {
+                        LOG.error("Non-recursive parsing ran into an unexpected error", e);
+                        recordEvent.getMetadata().addTags(tagsOnFailure);
+                    }
                 }
+
+                final Map<String, Object> processedMap = executeConfigs(outputMap);
+
+                if (Objects.isNull(keyValueProcessorConfig.getDestination())) {
+                    writeToRoot(recordEvent, processedMap);
+                } else {
+                    if (keyValueProcessorConfig.getOverwriteIfDestinationExists() ||
+                            !recordEvent.containsKey(keyValueProcessorConfig.getDestination())) {
+                        recordEvent.put(keyValueProcessorConfig.getDestination(), processedMap);
+                    }
+                }
+            } catch (final Exception e) {
+                LOG.error(EVENT, "There was an exception while processing on Event [{}]: ", recordEvent, e);
+                recordEvent.getMetadata().addTags(tagsOnFailure);
             }
         }
 
