@@ -72,7 +72,7 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                 }
 
                 final String message = event.get(source, String.class);
-                if (Objects.isNull(message)) {
+                if (Objects.isNull(message) && !doUsePointer) {
                     continue;
                 }
 
