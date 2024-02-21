@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.processor.databaseenrich.AutoCountingDatabaseReader;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIP2DatabaseReader;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabaseReader;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoLite2DatabaseReader;
@@ -76,7 +77,8 @@ class GeoIPDatabaseManagerTest {
     void test_initiateDatabaseDownload_with_geolite2_file_path_should_use_local_download_service_and_geolite2_reader() throws Exception {
         try (final MockedConstruction<LocalDBDownloadService> localDBDownloadServiceMockedConstruction = mockConstruction(LocalDBDownloadService.class,
                      (mock2, context2)-> doNothing().when(mock2).initiateDownload());
-             final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class)
+             final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class);
+             final MockedConstruction<AutoCountingDatabaseReader> autoCountingDatabaseReaderMockedConstruction = mockConstruction(AutoCountingDatabaseReader.class)
         ) {
 
             final HashMap<String, String> databases = new HashMap<>();
@@ -88,9 +90,10 @@ class GeoIPDatabaseManagerTest {
             assertThat(localDBDownloadServiceMockedConstruction.constructed().size(), equalTo(1));
             verify(localDBDownloadServiceMockedConstruction.constructed().get(0)).initiateDownload();
             assertThat(geoLite2DatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
+            assertThat(autoCountingDatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
 
             final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(geoIPDatabaseReader, equalTo(geoLite2DatabaseReaderMockedConstruction.constructed().get(0)));
+            assertThat(geoIPDatabaseReader, equalTo(autoCountingDatabaseReaderMockedConstruction.constructed().get(0)));
         }
     }
 
@@ -98,7 +101,8 @@ class GeoIPDatabaseManagerTest {
     void test_initiateDatabaseDownload_with_geoip2_file_path_should_use_local_download_service_and_geoip2_reader() throws Exception {
         try (final MockedConstruction<LocalDBDownloadService> localDBDownloadServiceMockedConstruction = mockConstruction(LocalDBDownloadService.class,
                      (mock2, context2)-> doNothing().when(mock2).initiateDownload());
-             final MockedConstruction<GeoIP2DatabaseReader> geoIP2DatabaseReaderMockedConstruction = mockConstruction(GeoIP2DatabaseReader.class)
+             final MockedConstruction<GeoIP2DatabaseReader> geoIP2DatabaseReaderMockedConstruction = mockConstruction(GeoIP2DatabaseReader.class);
+             final MockedConstruction<AutoCountingDatabaseReader> autoCountingDatabaseReaderMockedConstruction = mockConstruction(AutoCountingDatabaseReader.class)
         ) {
             when(licenseTypeCheck.isGeoLite2OrEnterpriseLicense(any())).thenReturn(LicenseTypeOptions.ENTERPRISE);
             final HashMap<String, String> databases = new HashMap<>();
@@ -111,9 +115,10 @@ class GeoIPDatabaseManagerTest {
             assertThat(localDBDownloadServiceMockedConstruction.constructed().size(), equalTo(1));
             verify(localDBDownloadServiceMockedConstruction.constructed().get(0)).initiateDownload();
             assertThat(geoIP2DatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
+            assertThat(autoCountingDatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
 
             final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(geoIPDatabaseReader, equalTo(geoIP2DatabaseReaderMockedConstruction.constructed().get(0)));
+            assertThat(geoIPDatabaseReader, equalTo(autoCountingDatabaseReaderMockedConstruction.constructed().get(0)));
         }
     }
 
@@ -121,7 +126,8 @@ class GeoIPDatabaseManagerTest {
     void test_initiateDatabaseDownload_with_geolite2_s3_uri_should_use_s3_download_service_and_geolite2_reader() {
         try (final MockedConstruction<S3DBService> s3DBServiceMockedConstruction = mockConstruction(S3DBService.class,
                      (mock2, context2)-> doNothing().when(mock2).initiateDownload());
-             final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class)
+             final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class);
+             final MockedConstruction<AutoCountingDatabaseReader> autoCountingDatabaseReaderMockedConstruction = mockConstruction(AutoCountingDatabaseReader.class)
         ) {
 
             final HashMap<String, String> databases = new HashMap<>();
@@ -134,9 +140,10 @@ class GeoIPDatabaseManagerTest {
             assertThat(s3DBServiceMockedConstruction.constructed().size(), equalTo(1));
             verify(s3DBServiceMockedConstruction.constructed().get(0)).initiateDownload();
             assertThat(geoLite2DatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
+            assertThat(autoCountingDatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
 
             final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(geoIPDatabaseReader, equalTo(geoLite2DatabaseReaderMockedConstruction.constructed().get(0)));
+            assertThat(geoIPDatabaseReader, equalTo(autoCountingDatabaseReaderMockedConstruction.constructed().get(0)));
         }
     }
 
@@ -144,7 +151,8 @@ class GeoIPDatabaseManagerTest {
     void test_initiateDatabaseDownload_with_geoip2_s3_uri_should_use_s3_download_service_and_geoip2_reader() {
         try (final MockedConstruction<S3DBService> s3DBServiceMockedConstruction = mockConstruction(S3DBService.class,
                      (mock2, context2)-> doNothing().when(mock2).initiateDownload());
-             final MockedConstruction<GeoIP2DatabaseReader> geoIP2DatabaseReaderMockedConstruction = mockConstruction(GeoIP2DatabaseReader.class)
+             final MockedConstruction<GeoIP2DatabaseReader> geoIP2DatabaseReaderMockedConstruction = mockConstruction(GeoIP2DatabaseReader.class);
+             final MockedConstruction<AutoCountingDatabaseReader> autoCountingDatabaseReaderMockedConstruction = mockConstruction(AutoCountingDatabaseReader.class)
         ) {
             when(licenseTypeCheck.isGeoLite2OrEnterpriseLicense(any())).thenReturn(LicenseTypeOptions.ENTERPRISE);
             final HashMap<String, String> databases = new HashMap<>();
@@ -158,9 +166,10 @@ class GeoIPDatabaseManagerTest {
             assertThat(s3DBServiceMockedConstruction.constructed().size(), equalTo(1));
             verify(s3DBServiceMockedConstruction.constructed().get(0)).initiateDownload();
             assertThat(geoIP2DatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
+            assertThat(autoCountingDatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
 
             final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(geoIPDatabaseReader, equalTo(geoIP2DatabaseReaderMockedConstruction.constructed().get(0)));
+            assertThat(geoIPDatabaseReader, equalTo(autoCountingDatabaseReaderMockedConstruction.constructed().get(0)));
         }
     }
 
@@ -168,7 +177,8 @@ class GeoIPDatabaseManagerTest {
     void test_initiateDatabaseDownload_with_geolite2_url_should_use_http_download_service_and_geolite2_reader() {
         try (final MockedConstruction<HttpDBDownloadService> httpDBDownloadServiceMockedConstruction = mockConstruction(HttpDBDownloadService.class,
                      (mock2, context2)-> doNothing().when(mock2).initiateDownload());
-            final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class)
+            final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class);
+            final MockedConstruction<AutoCountingDatabaseReader> autoCountingDatabaseReaderMockedConstruction = mockConstruction(AutoCountingDatabaseReader.class)
         ) {
 
             final HashMap<String, String> databases = new HashMap<>();
@@ -181,9 +191,10 @@ class GeoIPDatabaseManagerTest {
             assertThat(httpDBDownloadServiceMockedConstruction.constructed().size(), equalTo(1));
             verify(httpDBDownloadServiceMockedConstruction.constructed().get(0)).initiateDownload();
             assertThat(geoLite2DatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
+            assertThat(autoCountingDatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
 
             final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(geoIPDatabaseReader, equalTo(geoLite2DatabaseReaderMockedConstruction.constructed().get(0)));
+            assertThat(geoIPDatabaseReader, equalTo(autoCountingDatabaseReaderMockedConstruction.constructed().get(0)));
         }
     }
 
@@ -191,7 +202,8 @@ class GeoIPDatabaseManagerTest {
     void test_initiateDatabaseDownload_with_geoip2_url_should_use_http_download_service_and_geoip2_reader() {
         try (final MockedConstruction<HttpDBDownloadService> httpDBDownloadServiceMockedConstruction = mockConstruction(HttpDBDownloadService.class,
                      (mock2, context2)-> doNothing().when(mock2).initiateDownload());
-             final MockedConstruction<GeoIP2DatabaseReader> geoIP2DatabaseReaderMockedConstruction = mockConstruction(GeoIP2DatabaseReader.class)
+             final MockedConstruction<GeoIP2DatabaseReader> geoIP2DatabaseReaderMockedConstruction = mockConstruction(GeoIP2DatabaseReader.class);
+             final MockedConstruction<AutoCountingDatabaseReader> autoCountingDatabaseReaderMockedConstruction = mockConstruction(AutoCountingDatabaseReader.class)
         ) {
             when(licenseTypeCheck.isGeoLite2OrEnterpriseLicense(any())).thenReturn(LicenseTypeOptions.ENTERPRISE);
             final HashMap<String, String> databases = new HashMap<>();
@@ -205,9 +217,10 @@ class GeoIPDatabaseManagerTest {
             assertThat(httpDBDownloadServiceMockedConstruction.constructed().size(), equalTo(1));
             verify(httpDBDownloadServiceMockedConstruction.constructed().get(0)).initiateDownload();
             assertThat(geoIP2DatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
+            assertThat(autoCountingDatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
 
             final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(geoIPDatabaseReader, equalTo(geoIP2DatabaseReaderMockedConstruction.constructed().get(0)));
+            assertThat(geoIPDatabaseReader, equalTo(autoCountingDatabaseReaderMockedConstruction.constructed().get(0)));
         }
     }
 
@@ -215,7 +228,8 @@ class GeoIPDatabaseManagerTest {
     void test_initiateDatabaseDownload_with_geolite2_cdn_should_use_cdn_download_service_and_geolite2_reader() {
         try (final MockedConstruction<ManifestDownloadService> cdnDownloadServiceMockedConstruction = mockConstruction(ManifestDownloadService.class,
                      (mock2, context2)-> doNothing().when(mock2).initiateDownload());
-             final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class)
+             final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class);
+             final MockedConstruction<AutoCountingDatabaseReader> autoCountingDatabaseReaderMockedConstruction = mockConstruction(AutoCountingDatabaseReader.class)
         ) {
             final HashMap<String, String> databases = new HashMap<>();
             databases.put("geolite2_country", CDN_ENDPOINT);
@@ -227,17 +241,19 @@ class GeoIPDatabaseManagerTest {
             assertThat(cdnDownloadServiceMockedConstruction.constructed().size(), equalTo(1));
             verify(cdnDownloadServiceMockedConstruction.constructed().get(0)).initiateDownload();
             assertThat(geoLite2DatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
+            assertThat(autoCountingDatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
 
             final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(geoIPDatabaseReader, equalTo(geoLite2DatabaseReaderMockedConstruction.constructed().get(0)));
+            assertThat(geoIPDatabaseReader, equalTo(autoCountingDatabaseReaderMockedConstruction.constructed().get(0)));
         }
     }
 
     @Test
-    void test_updateDatabaseReader_with_geolite2_cdn_should_use_cdn_download_service_and_geolite2_reader_and_get_new_reader() {
+    void test_updateDatabaseReader_with_geolite2_cdn_should_use_cdn_download_service_and_geolite2_reader_and_get_new_reader() throws Exception {
         try (final MockedConstruction<ManifestDownloadService> cdnDownloadServiceMockedConstruction = mockConstruction(ManifestDownloadService.class,
                      (mock2, context2)-> doNothing().when(mock2).initiateDownload());
-             final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class)
+             final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class);
+             final MockedConstruction<AutoCountingDatabaseReader> autoCountingDatabaseReaderMockedConstruction = mockConstruction(AutoCountingDatabaseReader.class)
         ) {
             final HashMap<String, String> databases = new HashMap<>();
             databases.put("geolite2_country", CDN_ENDPOINT);
@@ -247,7 +263,7 @@ class GeoIPDatabaseManagerTest {
 
             objectUnderTest.initiateDatabaseDownload();
             final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(geoIPDatabaseReader, equalTo(geoLite2DatabaseReaderMockedConstruction.constructed().get(0)));
+            assertThat(geoIPDatabaseReader, equalTo(autoCountingDatabaseReaderMockedConstruction.constructed().get(0)));
 
             objectUnderTest.updateDatabaseReader();
 
@@ -256,10 +272,11 @@ class GeoIPDatabaseManagerTest {
                 verify(manifestDownloadService).initiateDownload();
             }
             assertThat(geoLite2DatabaseReaderMockedConstruction.constructed().size(), equalTo(2));
+            assertThat(autoCountingDatabaseReaderMockedConstruction.constructed().size(), equalTo(2));
             // verify if first instance is closed
-            verify(geoLite2DatabaseReaderMockedConstruction.constructed().get(0)).close();
+            verify(autoCountingDatabaseReaderMockedConstruction.constructed().get(0)).close();
             final GeoIPDatabaseReader updatedGeoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(updatedGeoIPDatabaseReader, equalTo(geoLite2DatabaseReaderMockedConstruction.constructed().get(1)));
+            assertThat(updatedGeoIPDatabaseReader, equalTo(autoCountingDatabaseReaderMockedConstruction.constructed().get(1)));
         }
     }
 
@@ -267,7 +284,8 @@ class GeoIPDatabaseManagerTest {
     void test_initiateDatabaseDownload_with_exception_should_update_nextUpdateAt_correctly_with_backoff() {
         try (final MockedConstruction<ManifestDownloadService> cdnDownloadServiceMockedConstruction = mockConstruction(ManifestDownloadService.class,
                 (mock2, context2)-> doThrow(DownloadFailedException.class).when(mock2).initiateDownload());
-             final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class)
+             final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class);
+             final MockedConstruction<AutoCountingDatabaseReader> autoCountingDatabaseReaderMockedConstruction = mockConstruction(AutoCountingDatabaseReader.class)
         ) {
             final HashMap<String, String> databases = new HashMap<>();
             databases.put("geolite2_country", CDN_ENDPOINT);
@@ -280,6 +298,7 @@ class GeoIPDatabaseManagerTest {
             assertThat(cdnDownloadServiceMockedConstruction.constructed().size(), equalTo(1));
             verify(cdnDownloadServiceMockedConstruction.constructed().get(0)).initiateDownload();
             assertThat(geoLite2DatabaseReaderMockedConstruction.constructed().size(), equalTo(0));
+            assertThat(autoCountingDatabaseReaderMockedConstruction.constructed().size(), equalTo(0));
 
             final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
             assertThat(geoIPDatabaseReader, equalTo(null));
@@ -293,7 +312,8 @@ class GeoIPDatabaseManagerTest {
     void test_initiateDatabaseDownload_without_exception_should_update_databases_as_configured() {
         try (final MockedConstruction<ManifestDownloadService> cdnDownloadServiceMockedConstruction = mockConstruction(ManifestDownloadService.class,
                 (mock2, context2)-> doNothing().when(mock2).initiateDownload());
-             final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class)
+             final MockedConstruction<GeoLite2DatabaseReader> geoLite2DatabaseReaderMockedConstruction = mockConstruction(GeoLite2DatabaseReader.class);
+             final MockedConstruction<AutoCountingDatabaseReader> autoCountingDatabaseReaderMockedConstruction = mockConstruction(AutoCountingDatabaseReader.class)
         ) {
             final HashMap<String, String> databases = new HashMap<>();
             databases.put("geolite2_country", CDN_ENDPOINT);
@@ -307,9 +327,10 @@ class GeoIPDatabaseManagerTest {
             assertThat(cdnDownloadServiceMockedConstruction.constructed().size(), equalTo(1));
             verify(cdnDownloadServiceMockedConstruction.constructed().get(0)).initiateDownload();
             assertThat(geoLite2DatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
+            assertThat(autoCountingDatabaseReaderMockedConstruction.constructed().size(), equalTo(1));
 
             final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(geoIPDatabaseReader, equalTo(geoLite2DatabaseReaderMockedConstruction.constructed().get(0)));
+            assertThat(geoIPDatabaseReader, equalTo(autoCountingDatabaseReaderMockedConstruction.constructed().get(0)));
 
             assertTrue(Instant.now().plus(Duration.ofDays(4)).isAfter(objectUnderTest.getNextUpdateAt()));
             assertTrue(Instant.now().minus(Duration.ofDays(2)).isBefore(objectUnderTest.getNextUpdateAt()));

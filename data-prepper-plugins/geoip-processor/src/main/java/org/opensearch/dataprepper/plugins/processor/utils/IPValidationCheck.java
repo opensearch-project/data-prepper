@@ -29,7 +29,7 @@ public class IPValidationCheck {
         try {
             address = InetAddress.getByName(ipAddress);
         } catch (final UnknownHostException e) {
-            throw new InvalidIPAddressException(e.getMessage());
+            return false;
         }
         if (address instanceof Inet6Address || address instanceof Inet4Address) {
             return !address.isSiteLocalAddress() && !address.isLoopbackAddress();

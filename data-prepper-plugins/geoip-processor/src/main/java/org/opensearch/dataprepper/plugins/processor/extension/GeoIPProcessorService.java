@@ -68,6 +68,7 @@ public class GeoIPProcessorService {
     private synchronized void checkAndUpdateDatabases() {
         if (geoIPDatabaseManager.getNextUpdateAt().isBefore(Instant.now())) {
             LOG.info("Trying to update geoip Database readers");
+            geoIPDatabaseManager.setNextUpdateAt(Instant.now().plus(maxMindConfig.getDatabaseRefreshInterval()));
             executorService = Executors.newSingleThreadExecutor();
             executorService.execute(geoIPDatabaseManager::updateDatabaseReader);
             executorService.shutdown();

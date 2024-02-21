@@ -20,6 +20,7 @@ import com.maxmind.geoip2.record.Subdivision;
 import org.opensearch.dataprepper.plugins.processor.GeoIPDatabase;
 import org.opensearch.dataprepper.plugins.processor.GeoIPField;
 import org.opensearch.dataprepper.plugins.processor.exception.DatabaseReaderInitializationException;
+import org.opensearch.dataprepper.plugins.processor.exception.EngineFailureException;
 import org.opensearch.dataprepper.plugins.processor.exception.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.processor.exception.NoValidDatabaseFoundException;
 import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.GeoIPFileManager;
@@ -38,18 +39,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.opensearch.dataprepper.plugins.processor.extension.MaxMindDatabaseConfig.GEOLITE2_ASN;
+import static org.opensearch.dataprepper.plugins.processor.extension.MaxMindDatabaseConfig.GEOLITE2_CITY;
+import static org.opensearch.dataprepper.plugins.processor.extension.MaxMindDatabaseConfig.GEOLITE2_COUNTRY;
 
 public class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(GeoLite2DatabaseReader.class);
     static final String MAXMIND_GEOLITE2_DATABASE_TYPE = "geolite2";
-    static final String CITY_DATABASE = "city";
-    static final String COUNTRY_DATABASE = "country";
-    static final String ASN_DATABASE = "asn";
     private final DatabaseReaderBuilder databaseReaderBuilder;
     private final String databasePath;
     private final int cacheSize;
-    private final AtomicInteger closeCount;
     private final AtomicBoolean isCountryDatabaseExpired;
     private final AtomicBoolean isCityDatabaseExpired;
     private final AtomicBoolean isAsnDatabaseExpired;
@@ -68,7 +68,6 @@ public class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseabl
         this.geoIPFileManager = geoIPFileManager;
         this.databasePath = databasePath;
         this.cacheSize = cacheSize;
-        this.closeCount = new AtomicInteger(1);
         this.isCountryDatabaseExpired = new AtomicBoolean(false);
         this.isCityDatabaseExpired = new AtomicBoolean(false);
         this.isAsnDatabaseExpired = new AtomicBoolean(false);
@@ -77,9 +76,9 @@ public class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseabl
 
     private void buildDatabaseReaders() {
         try {
-            final Optional<String> cityDatabaseName = getDatabaseName(CITY_DATABASE, databasePath, MAXMIND_GEOLITE2_DATABASE_TYPE);
-            final Optional<String> countryDatabaseName = getDatabaseName(COUNTRY_DATABASE, databasePath, MAXMIND_GEOLITE2_DATABASE_TYPE);
-            final Optional<String> asnDatabaseName = getDatabaseName(ASN_DATABASE, databasePath, MAXMIND_GEOLITE2_DATABASE_TYPE);
+            final Optional<String> cityDatabaseName = getDatabaseName(GEOLITE2_CITY, databasePath, MAXMIND_GEOLITE2_DATABASE_TYPE);
+            final Optional<String> countryDatabaseName = getDatabaseName(GEOLITE2_COUNTRY, databasePath, MAXMIND_GEOLITE2_DATABASE_TYPE);
+            final Optional<String> asnDatabaseName = getDatabaseName(GEOLITE2_ASN, databasePath, MAXMIND_GEOLITE2_DATABASE_TYPE);
 
             if (cityDatabaseName.isPresent()) {
                 cityDatabaseReader = databaseReaderBuilder.buildReader(Path.of(databasePath + File.separator + cityDatabaseName.get()), cacheSize);
@@ -108,17 +107,17 @@ public class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseabl
         final Map<String, Object> geoData = new HashMap<>();
 
         try {
-            if (geoIPDatabases.contains(GeoIPDatabase.COUNTRY)) {
+            if (countryDatabaseReader != null && !isCountryDatabaseExpired.get() && geoIPDatabases.contains(GeoIPDatabase.COUNTRY)) {
                 final Optional<CountryResponse> countryResponse = countryDatabaseReader.tryCountry(inetAddress);
                 countryResponse.ifPresent(response -> processCountryResponse(response, geoData, fields));
             }
 
-            if (geoIPDatabases.contains(GeoIPDatabase.CITY)) {
+            if (cityDatabaseReader != null && !isCityDatabaseExpired.get() && geoIPDatabases.contains(GeoIPDatabase.CITY)) {
                 final Optional<CityResponse> cityResponse = cityDatabaseReader.tryCity(inetAddress);
                 cityResponse.ifPresent(response -> processCityResponse(response, geoData, fields, geoIPDatabases));
             }
 
-            if (geoIPDatabases.contains(GeoIPDatabase.ASN)) {
+            if (asnDatabaseReader != null && !isAsnDatabaseExpired.get() && geoIPDatabases.contains(GeoIPDatabase.ASN)) {
                 final Optional<AsnResponse> asnResponse = asnDatabaseReader.tryAsn(inetAddress);
                 asnResponse.ifPresent(response -> processAsnResponse(response, geoData, fields));
             }
@@ -126,7 +125,7 @@ public class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseabl
         } catch (final GeoIp2Exception e) {
             throw new EnrichFailedException("Address not found in database.");
         } catch (final IOException e) {
-            throw new EnrichFailedException("Failed to close database readers gracefully. It can be due to expired databases.");
+            throw new EngineFailureException("Failed to close database readers gracefully. It can be due to expired databases.");
         }
         return geoData;
     }
@@ -180,25 +179,20 @@ public class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseabl
 
     @Override
     public void retain() {
-        closeCount.incrementAndGet();
+
     }
 
     @Override
     public void close() {
-        final int count = closeCount.decrementAndGet();
-        if (count == 0) {
-            LOG.debug("Closing old geoip database readers");
-            closeReaders();
-        }
+        closeReaders();
     }
 
     @Override
     public boolean isExpired() {
-        // TODO: Decide the expiry behaviour
         final Instant instant = Instant.now();
-        return isDatabaseExpired(instant, countryDatabaseReader, isCountryDatabaseExpired, countryDatabaseBuildDate, COUNTRY_DATABASE) &&
-                isDatabaseExpired(instant, cityDatabaseReader, isCityDatabaseExpired, cityDatabaseBuildDate, CITY_DATABASE) &&
-                isDatabaseExpired(instant, asnDatabaseReader, isAsnDatabaseExpired, asnDatabaseBuildDate, ASN_DATABASE);
+        return isDatabaseExpired(instant, countryDatabaseReader, isCountryDatabaseExpired, countryDatabaseBuildDate, GEOLITE2_COUNTRY) &&
+                isDatabaseExpired(instant, cityDatabaseReader, isCityDatabaseExpired, cityDatabaseBuildDate, GEOLITE2_CITY) &&
+                isDatabaseExpired(instant, asnDatabaseReader, isAsnDatabaseExpired, asnDatabaseBuildDate, GEOLITE2_ASN);
     }
 
     private boolean isDatabaseExpired(final Instant instant,

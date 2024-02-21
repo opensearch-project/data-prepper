@@ -20,6 +20,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -77,6 +78,8 @@ class GeoIPProcessorServiceTest {
         Thread.sleep(1000);
         verify(geoIPDatabaseManager).updateDatabaseReader();
         verify(geoIPDatabaseManager).getGeoIPDatabaseReader();
+        verify(geoIPDatabaseManager).getNextUpdateAt();
+        verify(geoIPDatabaseManager).setNextUpdateAt(any());
         verifyNoMoreInteractions(geoIPDatabaseManager);
 
         final GeoIPDatabaseReader newGeoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
@@ -97,6 +100,8 @@ class GeoIPProcessorServiceTest {
         Thread.sleep(1000);
         verify(geoIPDatabaseManager).updateDatabaseReader();
         verify(geoIPDatabaseManager).getGeoIPDatabaseReader();
+        verify(geoIPDatabaseManager).getNextUpdateAt();
+        verify(geoIPDatabaseManager).setNextUpdateAt(any());
         verifyNoMoreInteractions(geoIPDatabaseManager);
 
         final GeoIPDatabaseReader newGeoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();

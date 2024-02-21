@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
 import com.linecorp.armeria.client.retry.Backoff;
+import org.opensearch.dataprepper.plugins.processor.databaseenrich.AutoCountingDatabaseReader;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIP2DatabaseReader;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabaseReader;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoLite2DatabaseReader;
@@ -87,8 +88,8 @@ public class GeoIPDatabaseManager {
         try {
             downloadDatabases();
             switchDatabase();
+            LOG.info("Updated geoip database readers");
             failedAttemptCount.set(0);
-            nextUpdateAt = Instant.now().plus(maxMindConfig.getDatabaseRefreshInterval());
         } catch (final Exception e) {
             LOG.error("Failed to download database and create database readers, will try to use old databases if they exist. {}", e.getMessage());
             final Duration delay = Duration.ofMillis(applyBackoff());
@@ -108,6 +109,8 @@ public class GeoIPDatabaseManager {
             if (oldGeoipDatabaseReader != null) {
                 oldGeoipDatabaseReader.close();
             }
+        } catch (Exception e) {
+            LOG.error("Failed to close geoip database readers due to: {}", e.getMessage());
         } finally {
             writeLock.unlock();
         }
@@ -147,9 +150,11 @@ public class GeoIPDatabaseManager {
         }
         GeoIPDatabaseReader newGeoIPDatabaseReader;
         if (licenseType.equals(LicenseTypeOptions.FREE)) {
-            newGeoIPDatabaseReader = new GeoLite2DatabaseReader(databaseReaderBuilder, geoIPFileManager, finalPath, cacheSize);
+            newGeoIPDatabaseReader = new AutoCountingDatabaseReader(
+                    new GeoLite2DatabaseReader(databaseReaderBuilder, geoIPFileManager, finalPath, cacheSize));
         } else if (licenseType.equals(LicenseTypeOptions.ENTERPRISE)) {
-            newGeoIPDatabaseReader = new GeoIP2DatabaseReader(databaseReaderBuilder, geoIPFileManager, finalPath, cacheSize);
+            newGeoIPDatabaseReader = new AutoCountingDatabaseReader(
+                    new GeoIP2DatabaseReader(databaseReaderBuilder, geoIPFileManager, finalPath, cacheSize));
         } else {
             throw new NoValidDatabaseFoundException("No valid database found to initialize database readers.");
         }
@@ -182,6 +187,10 @@ public class GeoIPDatabaseManager {
 
     public Instant getNextUpdateAt() {
         return nextUpdateAt;
+    }
+
+    public void setNextUpdateAt(final Instant nextUpdateAt) {
+        this.nextUpdateAt = nextUpdateAt;
     }
 
     public void deleteDatabasesOnShutdown() {
