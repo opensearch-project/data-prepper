@@ -13,13 +13,19 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+
 @DataPrepperPlugin(name = "rename_keys", pluginType = Processor.class, pluginConfigurationType = RenameKeyProcessorConfig.class)
 public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(RenameKeyProcessor.class);
     private final List<RenameKeyProcessorConfig.Entry> entries;
 
     private final ExpressionEvaluator expressionEvaluator;
@@ -36,20 +42,25 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            for(RenameKeyProcessorConfig.Entry entry : entries) {
-                if (Objects.nonNull(entry.getRenameWhen()) && !expressionEvaluator.evaluateConditional(entry.getRenameWhen(), recordEvent)) {
-                    continue;
-                }
+            try {
 
-                if(entry.getFromKey().equals(entry.getToKey()) || !recordEvent.containsKey(entry.getFromKey())) {
-                    continue;
-                }
+                for (RenameKeyProcessorConfig.Entry entry : entries) {
+                    if (Objects.nonNull(entry.getRenameWhen()) && !expressionEvaluator.evaluateConditional(entry.getRenameWhen(), recordEvent)) {
+                        continue;
+                    }
 
-                if (!recordEvent.containsKey(entry.getToKey()) || entry.getOverwriteIfToKeyExists()) {
-                    final Object source = recordEvent.get(entry.getFromKey(), Object.class);
-                    recordEvent.put(entry.getToKey(), source);
-                    recordEvent.delete(entry.getFromKey());
+                    if (entry.getFromKey().equals(entry.getToKey()) || !recordEvent.containsKey(entry.getFromKey())) {
+                        continue;
+                    }
+
+                    if (!recordEvent.containsKey(entry.getToKey()) || entry.getOverwriteIfToKeyExists()) {
+                        final Object source = recordEvent.get(entry.getFromKey(), Object.class);
+                        recordEvent.put(entry.getToKey(), source);
+                        recordEvent.delete(entry.getFromKey());
+                    }
                 }
+            } catch (final Exception e) {
+                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
             }
         }
 

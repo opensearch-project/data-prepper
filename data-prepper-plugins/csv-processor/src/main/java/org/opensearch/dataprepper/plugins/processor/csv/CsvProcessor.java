@@ -58,16 +58,16 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
 
             final Event event = record.getData();
 
-            final String message = event.get(config.getSource(), String.class);
-
-            if (Objects.isNull(message)) {
-                continue;
-            }
-
-            final boolean userDidSpecifyHeaderEventKey = Objects.nonNull(config.getColumnNamesSourceKey());
-            final boolean thisEventHasHeaderSource = userDidSpecifyHeaderEventKey && event.containsKey(config.getColumnNamesSourceKey());
-
             try {
+                final String message = event.get(config.getSource(), String.class);
+
+                if (Objects.isNull(message)) {
+                    continue;
+                }
+
+                final boolean userDidSpecifyHeaderEventKey = Objects.nonNull(config.getColumnNamesSourceKey());
+                final boolean thisEventHasHeaderSource = userDidSpecifyHeaderEventKey && event.containsKey(config.getColumnNamesSourceKey());
+
                 final MappingIterator<List<String>> messageIterator = mapper.readerFor(List.class).with(schema).readValues(message);
 
                 // otherwise the message is empty

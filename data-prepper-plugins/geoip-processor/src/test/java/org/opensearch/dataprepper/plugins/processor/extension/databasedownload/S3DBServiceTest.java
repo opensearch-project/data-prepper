@@ -11,7 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorConfig;
-import org.opensearch.dataprepper.plugins.processor.databaseenrich.DownloadFailedException;
+import org.opensearch.dataprepper.plugins.processor.exception.DownloadFailedException;
 
 import java.util.List;
 

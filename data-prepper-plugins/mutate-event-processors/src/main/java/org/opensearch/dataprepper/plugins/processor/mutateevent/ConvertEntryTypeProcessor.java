@@ -56,24 +56,30 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            if (Objects.nonNull(convertWhen) && !expressionEvaluator.evaluateConditional(convertWhen, recordEvent)) {
-                continue;
-            }
+            try {
 
-            for(final String key : convertEntryKeys) {
-                Object keyVal = recordEvent.get(key, Object.class);
-                if (keyVal != null) {
-                    if (!nullValues.contains(keyVal.toString())) {
-                        try {
-                            recordEvent.put(key, converter.convert(keyVal));
-                        } catch (final RuntimeException e) {
-                            LOG.error(EVENT, "Unable to convert key: {} with value: {} to {}", key, keyVal, type, e);
-                            recordEvent.getMetadata().addTags(tagsOnFailure);
+                if (Objects.nonNull(convertWhen) && !expressionEvaluator.evaluateConditional(convertWhen, recordEvent)) {
+                    continue;
+                }
+
+                for (final String key : convertEntryKeys) {
+                    Object keyVal = recordEvent.get(key, Object.class);
+                    if (keyVal != null) {
+                        if (!nullValues.contains(keyVal.toString())) {
+                            try {
+                                recordEvent.put(key, converter.convert(keyVal));
+                            } catch (final RuntimeException e) {
+                                LOG.error(EVENT, "Unable to convert key: {} with value: {} to {}", key, keyVal, type, e);
+                                recordEvent.getMetadata().addTags(tagsOnFailure);
+                            }
+                        } else {
+                            recordEvent.delete(key);
                         }
-                    } else {
-                        recordEvent.delete(key);
                     }
                 }
+            } catch (final Exception e) {
+                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
+                recordEvent.getMetadata().addTags(tagsOnFailure);
             }
         }
         return records;

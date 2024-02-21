@@ -13,12 +13,18 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Objects;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+
 @DataPrepperPlugin(name = "delete_entries", pluginType = Processor.class, pluginConfigurationType = DeleteEntryProcessorConfig.class)
 public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(DeleteEntryProcessor.class);
     private final String[] entries;
     private final String deleteWhen;
 
@@ -37,13 +43,17 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            if (Objects.nonNull(deleteWhen) && !expressionEvaluator.evaluateConditional(deleteWhen, recordEvent)) {
-                continue;
-            }
+            try {
+                if (Objects.nonNull(deleteWhen) && !expressionEvaluator.evaluateConditional(deleteWhen, recordEvent)) {
+                    continue;
+                }
 
 
-            for(String entry : entries) {
-                recordEvent.delete(entry);
+                for (String entry : entries) {
+                    recordEvent.delete(entry);
+                }
+            } catch (final Exception e) {
+                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
             }
         }
 

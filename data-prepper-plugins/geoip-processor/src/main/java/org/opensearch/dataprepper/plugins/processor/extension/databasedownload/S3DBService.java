@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
-import org.opensearch.dataprepper.plugins.processor.databaseenrich.DownloadFailedException;
+import org.opensearch.dataprepper.plugins.processor.exception.DownloadFailedException;
 import org.opensearch.dataprepper.plugins.processor.extension.AwsAuthenticationOptionsConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +14,6 @@ import software.amazon.awssdk.transfer.s3.S3TransferManager;
 import software.amazon.awssdk.transfer.s3.model.DirectoryDownload;
 import software.amazon.awssdk.transfer.s3.model.DownloadDirectoryRequest;
 
-import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Paths;
@@ -29,30 +28,29 @@ public class S3DBService implements DBSource {
     private String bucketName;
     private String bucketPath;
     private final AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig;
-    private final String prefixDir;
+    private final String destinationDirectory;
 
     /**
      * S3DBService constructor for initialisation of attributes
      *
-     * @param prefixDir prefixDir
+     * @param destinationDirectory destinationDirectory
      */
     public S3DBService(final AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig,
-                       final String prefixDir) {
+                       final String destinationDirectory) {
         this.awsAuthenticationOptionsConfig = awsAuthenticationOptionsConfig;
-        this.prefixDir = prefixDir;
+        this.destinationDirectory = destinationDirectory;
     }
 
     /**
      * Initialisation of Download through Url
      * @param s3URLs s3URLs
      */
-    public void initiateDownload(List<String> s3URLs) {
+    public void initiateDownload(final List<String> s3URLs) {
         for (String s3Url : s3URLs) {
             try {
                 URI uri = new URI(s3Url);
                 bucketName = uri.getHost();
                 bucketPath = removeTrailingSlash(removeLeadingSlash(uri.getPath()));
-                DBSource.createFolderIfNotExist(tempFolderPath + File.separator + prefixDir);
                 buildRequestAndDownloadFile(bucketName, bucketPath);
             } catch (URISyntaxException ex) {
                 LOG.info("Initiate Download Exception", ex);
@@ -96,7 +94,7 @@ public class S3DBService implements DBSource {
             DirectoryDownload directoryDownload =
                     transferManager.downloadDirectory(
                             DownloadDirectoryRequest.builder()
-                                    .destination(Paths.get(tempFolderPath + File.separator + prefixDir))
+                                    .destination(Paths.get(destinationDirectory))
                                     .bucket(path[0])
                                     .listObjectsV2RequestTransformer(l -> l.prefix(path[1]))
                                     .build());

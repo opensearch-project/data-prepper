@@ -45,38 +45,44 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            if (Objects.nonNull(config.getListToMapWhen()) && !expressionEvaluator.evaluateConditional(config.getListToMapWhen(), recordEvent)) {
-                continue;
-            }
-
-            final List<Map<String, Object>> sourceList;
             try {
-                sourceList = recordEvent.get(config.getSource(), List.class);
-            } catch (final Exception e) {
-                LOG.warn(EVENT, "Given source path [{}] is not valid on record [{}]",
-                        config.getSource(), recordEvent, e);
-                recordEvent.getMetadata().addTags(config.getTagsOnFailure());
-                continue;
-            }
 
-            final Map<String, Object> targetMap;
-            try {
-                targetMap = constructTargetMap(sourceList);
-            } catch (final IllegalArgumentException e) {
-                LOG.warn(EVENT, "Cannot find a list at the given source path [{}} on record [{}]",
-                        config.getSource(), recordEvent, e);
-                recordEvent.getMetadata().addTags(config.getTagsOnFailure());
-                continue;
-            } catch (final Exception e) {
-                LOG.error(EVENT, "Error converting source list to map on record [{}]", recordEvent, e);
-                recordEvent.getMetadata().addTags(config.getTagsOnFailure());
-                continue;
-            }
+                if (Objects.nonNull(config.getListToMapWhen()) && !expressionEvaluator.evaluateConditional(config.getListToMapWhen(), recordEvent)) {
+                    continue;
+                }
 
-            try {
-                updateEvent(recordEvent, targetMap);
+                final List<Map<String, Object>> sourceList;
+                try {
+                    sourceList = recordEvent.get(config.getSource(), List.class);
+                } catch (final Exception e) {
+                    LOG.warn(EVENT, "Given source path [{}] is not valid on record [{}]",
+                            config.getSource(), recordEvent, e);
+                    recordEvent.getMetadata().addTags(config.getTagsOnFailure());
+                    continue;
+                }
+
+                final Map<String, Object> targetMap;
+                try {
+                    targetMap = constructTargetMap(sourceList);
+                } catch (final IllegalArgumentException e) {
+                    LOG.warn(EVENT, "Cannot find a list at the given source path [{}} on record [{}]",
+                            config.getSource(), recordEvent, e);
+                    recordEvent.getMetadata().addTags(config.getTagsOnFailure());
+                    continue;
+                } catch (final Exception e) {
+                    LOG.error(EVENT, "Error converting source list to map on record [{}]", recordEvent, e);
+                    recordEvent.getMetadata().addTags(config.getTagsOnFailure());
+                    continue;
+                }
+
+                try {
+                    updateEvent(recordEvent, targetMap);
+                } catch (final Exception e) {
+                    LOG.error(EVENT, "Error updating record [{}] after converting source list to map", recordEvent, e);
+                    recordEvent.getMetadata().addTags(config.getTagsOnFailure());
+                }
             } catch (final Exception e) {
-                LOG.error(EVENT, "Error updating record [{}] after converting source list to map", recordEvent, e);
+                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
                 recordEvent.getMetadata().addTags(config.getTagsOnFailure());
             }
         }

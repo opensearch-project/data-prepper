@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+
 @DataPrepperPlugin(name = "map_to_list", pluginType = Processor.class, pluginConfigurationType = MapToListProcessorConfig.class)
 public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(MapToListProcessor.class);
@@ -48,39 +50,45 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            if (config.getMapToListWhen() != null && !expressionEvaluator.evaluateConditional(config.getMapToListWhen(), recordEvent)) {
-                continue;
-            }
-
             try {
-                final Map<String, Object> sourceMap = getSourceMap(recordEvent);
 
-                if (config.getConvertFieldToList()) {
-                    final List<List<Object>> targetNestedList = new ArrayList<>();
-
-                    for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
-                        if (!excludeKeySet.contains(entry.getKey())) {
-                            targetNestedList.add(List.of(entry.getKey(), entry.getValue()));
-                        }
-
-                    }
-                    removeProcessedFields(sourceMap, recordEvent);
-                    recordEvent.put(config.getTarget(), targetNestedList);
-                } else {
-                    final List<Map<String, Object>> targetList = new ArrayList<>();
-                    for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
-                        if (!excludeKeySet.contains(entry.getKey())) {
-                            targetList.add(Map.of(
-                                    config.getKeyName(), entry.getKey(),
-                                    config.getValueName(), entry.getValue()
-                            ));
-                        }
-                    }
-                    removeProcessedFields(sourceMap, recordEvent);
-                    recordEvent.put(config.getTarget(), targetList);
+                if (config.getMapToListWhen() != null && !expressionEvaluator.evaluateConditional(config.getMapToListWhen(), recordEvent)) {
+                    continue;
                 }
-            } catch (Exception e) {
-                LOG.error("Fail to perform Map to List operation", e);
+
+                try {
+                    final Map<String, Object> sourceMap = getSourceMap(recordEvent);
+
+                    if (config.getConvertFieldToList()) {
+                        final List<List<Object>> targetNestedList = new ArrayList<>();
+
+                        for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
+                            if (!excludeKeySet.contains(entry.getKey())) {
+                                targetNestedList.add(List.of(entry.getKey(), entry.getValue()));
+                            }
+
+                        }
+                        removeProcessedFields(sourceMap, recordEvent);
+                        recordEvent.put(config.getTarget(), targetNestedList);
+                    } else {
+                        final List<Map<String, Object>> targetList = new ArrayList<>();
+                        for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
+                            if (!excludeKeySet.contains(entry.getKey())) {
+                                targetList.add(Map.of(
+                                        config.getKeyName(), entry.getKey(),
+                                        config.getValueName(), entry.getValue()
+                                ));
+                            }
+                        }
+                        removeProcessedFields(sourceMap, recordEvent);
+                        recordEvent.put(config.getTarget(), targetList);
+                    }
+                } catch (Exception e) {
+                    LOG.error("Fail to perform Map to List operation", e);
+                    recordEvent.getMetadata().addTags(config.getTagsOnFailure());
+                }
+            } catch (final Exception e) {
+                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
                 recordEvent.getMetadata().addTags(config.getTagsOnFailure());
             }
         }

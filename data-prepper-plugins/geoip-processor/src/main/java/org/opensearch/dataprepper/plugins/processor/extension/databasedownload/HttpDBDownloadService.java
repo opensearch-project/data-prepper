@@ -26,15 +26,17 @@ import java.util.zip.GZIPInputStream;
 public class HttpDBDownloadService implements DBSource {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpDBDownloadService.class);
-    private final String prefixDir;
+    private final String destinationDirectory;
     private static final int DEFAULT_BYTE_SIZE = 1024;
+    private final GeoIPFileManager geoIPFileManager;
 
     /**
      * HttpDBDownloadService constructor for initialisation of attributes
-     * @param prefixDir prefixDir
+     * @param destinationDirectory destinationDirectory
      */
-    public HttpDBDownloadService(String prefixDir) {
-        this.prefixDir = prefixDir;
+    public HttpDBDownloadService(final String destinationDirectory, final GeoIPFileManager geoIPFileManager) {
+        this.destinationDirectory = destinationDirectory;
+        this.geoIPFileManager = geoIPFileManager;
     }
 
     /**
@@ -42,14 +44,15 @@ public class HttpDBDownloadService implements DBSource {
      * @param urlList urlList
      */
     public void initiateDownload(List<String> urlList) {
-        final File tmpDir = DBSource.createFolderIfNotExist(tempFolderPath + File.separator + prefixDir);
-        for(String url : urlList) {
-            DBSource.createFolderIfNotExist(tarFolderPath);
+        final String tarDir = destinationDirectory + File.separator + "tar";
+        final String downloadTarFilepath = tarDir + File.separator + "out.tar.gz";
+        for(final String url : urlList) {
+            geoIPFileManager.createDirectoryIfNotExist(tarDir);
             try {
                 initiateSSL();
-                buildRequestAndDownloadFile(url);
-                decompressAndUntarFile(tarFolderPath, downloadTarFilepath, tmpDir);
-                deleteTarFolder(tarFolderPath);
+                buildRequestAndDownloadFile(url, downloadTarFilepath);
+                decompressAndUntarFile(tarDir, downloadTarFilepath, new File(destinationDirectory));
+                deleteTarFolder(tarDir);
             } catch (Exception ex) {
                 LOG.info("InitiateDownload Exception {0} " , ex);
             }
@@ -62,7 +65,7 @@ public class HttpDBDownloadService implements DBSource {
      * @param downloadTarFilepath downloadTarFilepath
      * @param tmpDir tmpDir
      */
-    private void decompressAndUntarFile(String tarFolderPath, String downloadTarFilepath, File tmpDir) {
+    private void decompressAndUntarFile(final String tarFolderPath, final String downloadTarFilepath, final File tmpDir) {
         try {
             final File inputFile = new File(downloadTarFilepath);
             final String outputFile = getFileName(inputFile, tarFolderPath);
@@ -80,17 +83,17 @@ public class HttpDBDownloadService implements DBSource {
      * Build Request And DownloadFile
      * @param url url
      */
-    public void buildRequestAndDownloadFile(String... url)  {
-        downloadDBFileFromMaxmind(url[0], downloadTarFilepath);
+    public void buildRequestAndDownloadFile(final String url, final String downloadTarFilepath)  {
+        downloadDBFileFromMaxmind(url, downloadTarFilepath);
     }
 
     /**
      * Delete Tar Folder
      * @param tarFolder Tar Folder
      */
-    private static void deleteTarFolder(String tarFolder) {
+    private void deleteTarFolder(String tarFolder) {
         final File file = new File(tarFolder);
-        DBSource.deleteDirectory(file);
+        geoIPFileManager.deleteDirectory(file);
         if (file.exists()) {
             file.delete();
         }

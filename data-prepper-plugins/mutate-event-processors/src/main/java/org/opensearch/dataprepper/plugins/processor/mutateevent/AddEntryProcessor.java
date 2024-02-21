@@ -46,45 +46,49 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            for(AddEntryProcessorConfig.Entry entry : entries) {
+            try {
+                for (AddEntryProcessorConfig.Entry entry : entries) {
 
-                if (Objects.nonNull(entry.getAddWhen()) && !expressionEvaluator.evaluateConditional(entry.getAddWhen(), recordEvent)) {
-                    continue;
-                }
+                    if (Objects.nonNull(entry.getAddWhen()) && !expressionEvaluator.evaluateConditional(entry.getAddWhen(), recordEvent)) {
+                        continue;
+                    }
 
-                try {
-                    final String key = entry.getKey();
-                    final String metadataKey = entry.getMetadataKey();
-                    Object value;
-                    if (!Objects.isNull(entry.getValueExpression())) {
-                        value = expressionEvaluator.evaluate(entry.getValueExpression(), recordEvent);
-                    } else if (!Objects.isNull(entry.getFormat())) {
-                        try {
-                            value = recordEvent.formatString(entry.getFormat());
-                        } catch (final EventKeyNotFoundException e) {
-                            value = null;
+                    try {
+                        final String key = entry.getKey();
+                        final String metadataKey = entry.getMetadataKey();
+                        Object value;
+                        if (!Objects.isNull(entry.getValueExpression())) {
+                            value = expressionEvaluator.evaluate(entry.getValueExpression(), recordEvent);
+                        } else if (!Objects.isNull(entry.getFormat())) {
+                            try {
+                                value = recordEvent.formatString(entry.getFormat());
+                            } catch (final EventKeyNotFoundException e) {
+                                value = null;
+                            }
+                        } else {
+                            value = entry.getValue();
                         }
-                    } else {
-                        value = entry.getValue();
+                        if (!Objects.isNull(key)) {
+                            if (!recordEvent.containsKey(key) || entry.getOverwriteIfKeyExists()) {
+                                recordEvent.put(key, value);
+                            } else if (recordEvent.containsKey(key) && entry.getAppendIfKeyExists()) {
+                                mergeValueToEvent(recordEvent, key, value);
+                            }
+                        } else {
+                            Map<String, Object> attributes = recordEvent.getMetadata().getAttributes();
+                            if (!attributes.containsKey(metadataKey) || entry.getOverwriteIfKeyExists()) {
+                                recordEvent.getMetadata().setAttribute(metadataKey, value);
+                            } else if (attributes.containsKey(metadataKey) && entry.getAppendIfKeyExists()) {
+                                mergeValueToEventMetadata(recordEvent, metadataKey, value);
+                            }
+                        }
+                    } catch (Exception e) {
+                        LOG.error(EVENT, "Error adding entry to record [{}] with key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]",
+                                recordEvent, entry.getKey(), entry.getMetadataKey(), entry.getValueExpression(), entry.getFormat(), entry.getValue(), e);
                     }
-                    if (!Objects.isNull(key)) {
-                        if (!recordEvent.containsKey(key) || entry.getOverwriteIfKeyExists()) {
-                            recordEvent.put(key, value);
-                        } else if (recordEvent.containsKey(key) && entry.getAppendIfKeyExists()) {
-                            mergeValueToEvent(recordEvent, key, value);
-                        }
-                    } else {
-                        Map<String, Object> attributes = recordEvent.getMetadata().getAttributes();
-                        if (!attributes.containsKey(metadataKey) || entry.getOverwriteIfKeyExists()) {
-                            recordEvent.getMetadata().setAttribute(metadataKey, value);
-                        } else if (attributes.containsKey(metadataKey) && entry.getAppendIfKeyExists()) {
-                            mergeValueToEventMetadata(recordEvent, metadataKey, value);
-                        }
-                    }
-                } catch (Exception e) {
-                    LOG.error(EVENT, "Error adding entry to record [{}] with key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]",
-                            recordEvent, entry.getKey(), entry.getMetadataKey(), entry.getValueExpression(), entry.getFormat(), entry.getValue(), e);
                 }
+            } catch(final Exception e){
+                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
             }
         }
 

@@ -15,14 +15,14 @@ import java.util.List;
  */
 public class LocalDBDownloadService implements DBSource {
 
-    private final String prefixDir;
+    private final String destinationDirectory;
 
     /**
      * LocalDBDownloadService constructor for initialisation of attributes
-     * @param prefixDir prefixDir
+     * @param destinationDirectory destinationDirectory
      */
-    public LocalDBDownloadService(final String prefixDir) {
-        this.prefixDir = prefixDir;
+    public LocalDBDownloadService(final String destinationDirectory) {
+        this.destinationDirectory = destinationDirectory;
     }
 
     /**
@@ -31,10 +31,8 @@ public class LocalDBDownloadService implements DBSource {
      */
     @Override
     public void initiateDownload(List<String> config) throws Exception {
-        String destPath = tempFolderPath + File.separator + prefixDir;
-        DBSource.createFolderIfNotExist(destPath);
         File srcDatabaseConfigPath = new File(config.get(0));
-        File destDatabaseConfigPath = new File(destPath);
+        File destDatabaseConfigPath = new File(destinationDirectory);
         FileUtils.copyDirectory(srcDatabaseConfigPath, destDatabaseConfigPath);
     }
 }
