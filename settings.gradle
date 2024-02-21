@@ -10,6 +10,19 @@ pluginManagement {
     }
 }
 
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven {
+            url 'https://packages.confluent.io/maven/'
+        }
+        maven {
+            url 'https://jitpack.io'
+            content { includeGroup 'com.github.fge' }
+        }
+    }
+}
+
 rootProject.name = 'opensearch-data-prepper'
 
 dependencyResolutionManagement {
