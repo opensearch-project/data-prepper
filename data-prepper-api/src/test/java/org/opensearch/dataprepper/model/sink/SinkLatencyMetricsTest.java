@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.sink;
 
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -20,14 +21,15 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 import java.time.Instant;
+import java.util.concurrent.TimeUnit;
 
 class SinkLatencyMetricsTest {
 
     private PluginMetrics pluginMetrics;
     private EventHandle eventHandle;
     private SinkLatencyMetrics latencyMetrics;
-    private DistributionSummary internalLatencySummary;
-    private DistributionSummary externalLatencySummary;
+    private Timer internalLatencyTimer;
+    private Timer externalLatencyTimer;
 
     public SinkLatencyMetrics createObjectUnderTest() {
         return new SinkLatencyMetrics(pluginMetrics);
@@ -37,16 +39,14 @@ class SinkLatencyMetricsTest {
     void setup() {
         pluginMetrics = mock(PluginMetrics.class);
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        internalLatencySummary = DistributionSummary
+        internalLatencyTimer = Timer
               .builder("internalLatency")
-              .baseUnit("milliseconds")
               .register(registry);
-        externalLatencySummary = DistributionSummary
+        externalLatencyTimer = Timer
               .builder("externalLatency")
-              .baseUnit("milliseconds")
               .register(registry);
-        when(pluginMetrics.summary(SinkLatencyMetrics.INTERNAL_LATENCY)).thenReturn(internalLatencySummary);
-        when(pluginMetrics.summary(SinkLatencyMetrics.EXTERNAL_LATENCY)).thenReturn(externalLatencySummary);
+        when(pluginMetrics.timer(SinkLatencyMetrics.INTERNAL_LATENCY)).thenReturn(internalLatencyTimer);
+        when(pluginMetrics.timer(SinkLatencyMetrics.EXTERNAL_LATENCY)).thenReturn(externalLatencyTimer);
         eventHandle = mock(EventHandle.class);
         when(eventHandle.getInternalOriginationTime()).thenReturn(Instant.now());
         latencyMetrics = createObjectUnderTest();
@@ -55,16 +55,16 @@ class SinkLatencyMetricsTest {
     @Test
     public void testInternalOriginationTime() {
         latencyMetrics.update(eventHandle);
-        assertThat(internalLatencySummary.count(), equalTo(1L));
+        assertThat(internalLatencyTimer.count(), equalTo(1L));
     }
 
     @Test
     public void testExternalOriginationTime() {
         when(eventHandle.getExternalOriginationTime()).thenReturn(Instant.now().minusMillis(10));
         latencyMetrics.update(eventHandle);
-        assertThat(internalLatencySummary.count(), equalTo(1L));
-        assertThat(externalLatencySummary.count(), equalTo(1L));
-        assertThat(externalLatencySummary.max(), greaterThanOrEqualTo(10.0));
+        assertThat(internalLatencyTimer.count(), equalTo(1L));
+        assertThat(externalLatencyTimer.count(), equalTo(1L));
+        assertThat(externalLatencyTimer.max(TimeUnit.MILLISECONDS), greaterThanOrEqualTo(10.0));
     }
 }
 
