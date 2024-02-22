@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.model.sink;
 
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
 import java.time.Duration;
