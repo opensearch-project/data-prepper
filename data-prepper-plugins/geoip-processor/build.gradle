@@ -70,6 +70,34 @@ enterpriseDatabaseNames.forEach { enterpriseDatabaseName -> {
     downloadFiles.get().dependsOn downloadEnterpriseTask
 }}
 
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    filter {
+        includeTestsMatching '*IT'
+    }
+}
+
 
 test {
     useJUnitPlatform()
@@ -79,6 +107,8 @@ test {
 checkstyleTest {
     dependsOn(downloadFiles)
 }
+
+compileIntegrationTestJava.dependsOn downloadFiles
 
 jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
@@ -92,3 +122,4 @@ jacocoTestCoverageVerification {
 }
 
 check.dependsOn jacocoTestCoverageVerification
+check.dependsOn integrationTest
