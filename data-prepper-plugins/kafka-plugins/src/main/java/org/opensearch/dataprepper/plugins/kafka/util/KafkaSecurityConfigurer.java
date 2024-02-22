@@ -135,7 +135,6 @@ public class KafkaSecurityConfigurer {
     }
 
     private static void setCustomSslProperties(final Properties properties, final String certificateContent) {
-        properties.put("enable.ssl.certificate.verification", "true");
         properties.put(CERTIFICATE_CONTENT, certificateContent);
         properties.put(SSL_ENGINE_FACTORY_CLASS, CustomClientSslEngineFactory.class);
     }

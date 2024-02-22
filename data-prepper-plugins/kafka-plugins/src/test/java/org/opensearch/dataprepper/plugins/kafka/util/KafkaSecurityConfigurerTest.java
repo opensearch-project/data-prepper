@@ -1,7 +1,6 @@
 package org.opensearch.dataprepper.plugins.kafka.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.kafka.source.KafkaSourceConfig;
 import org.slf4j.Logger;
@@ -16,24 +15,73 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.is;
+
 public class KafkaSecurityConfigurerTest {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSecurityConfigurerTest.class);
     @Test
-    public void testSetAuthProperties() throws Exception {
+    public void testSetAuthPropertiesWithSaslPlainCertificate() throws Exception {
         final Properties props = new Properties();
-        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig();
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-sasl-ssl-certificate-content.yaml");
         KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
-        Assertions.assertEquals("PLAIN", props.getProperty("sasl.mechanism"));
-        Assertions.assertEquals("true", props.getProperty("enable.ssl.certificate.verification"));
-        Assertions.assertEquals("SASL_SSL", props.getProperty("security.protocol"));
-        Assertions.assertEquals("CERTIFICATE_DATA", props.getProperty("certificateContent"));
-        Assertions.assertEquals(CustomClientSslEngineFactory.class, props.get("ssl.engine.factory.class"));
+        assertThat(props.getProperty("sasl.mechanism"), is("PLAIN"));
+        assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
+        assertThat(props.getProperty("certificateContent"), is("CERTIFICATE_DATA"));
+        assertThat(props.getProperty("ssl.truststore.location"), is(nullValue()));
+        assertThat(props.getProperty("ssl.truststore.password"), is(nullValue()));
+        assertThat(props.get("ssl.engine.factory.class"), is(CustomClientSslEngineFactory.class));
     }
 
-    private KafkaSourceConfig createKafkaSinkConfig() throws IOException {
+    @Test
+    public void testSetAuthPropertiesWithNoAuthSsl() throws Exception {
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-no-auth-ssl.yaml");
+        KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
+        assertThat(props.getProperty("sasl.mechanism"), is(nullValue()));
+        assertThat(props.getProperty("security.protocol"), is("SSL"));
+        assertThat(props.getProperty("certificateContent"), is("CERTIFICATE_DATA"));
+        assertThat(props.get("ssl.engine.factory.class"), is(CustomClientSslEngineFactory.class));
+    }
+    @Test
+    public void testSetAuthPropertiesWithNoAuthSslNone() throws Exception {
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-no-auth-ssl-none.yaml");
+        KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
+        assertThat(props.getProperty("sasl.mechanism"), is(nullValue()));
+        assertThat(props.getProperty("security.protocol"), is(nullValue()));
+        assertThat(props.getProperty("certificateContent"), is(nullValue()));
+        assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
+    }
+
+    @Test
+    public void testSetAuthPropertiesWithNoAuthInsecure() throws Exception {
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-auth-insecure.yaml");
+        KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
+        assertThat(props.getProperty("sasl.mechanism"), is("PLAIN"));
+        assertThat(props.getProperty("security.protocol"), is("SASL_PLAINTEXT"));
+        assertThat(props.getProperty("certificateContent"), is(nullValue()));
+        assertThat(props.get("ssl.engine.factory.class"), is(InsecureSslEngineFactory.class));
+    }
+    @Test
+    public void testSetAuthPropertiesAuthSslWithTrustStore() throws Exception {
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-sasl-ssl-truststore.yaml");
+        KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
+        assertThat(props.getProperty("sasl.mechanism"), is("PLAIN"));
+        assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
+        assertThat(props.getProperty("certificateContent"), is(nullValue()));
+        assertThat(props.getProperty("ssl.truststore.location"), is("some-file-path"));
+        assertThat(props.getProperty("ssl.truststore.password"), is("some-password"));
+        assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
+    }
+
+    private KafkaSourceConfig createKafkaSinkConfig(final String fileName) throws IOException {
         final Yaml yaml = new Yaml();
         final FileReader fileReader = new FileReader(Objects.requireNonNull(getClass().getClassLoader()
-                .getResource("kafka-pipeline-sasl-ssl.yaml")).getFile());
+                .getResource(fileName)).getFile());
         final Map<String, Map<String, Map<String, Map<String, Object>>>> data = yaml.load(fileReader);
         final Map<String, Map<String, Map<String, Object>>> logPipelineMap = data.get("log-pipeline");
         final Map<String, Map<String, Object>> sourceMap = logPipelineMap.get("source");
