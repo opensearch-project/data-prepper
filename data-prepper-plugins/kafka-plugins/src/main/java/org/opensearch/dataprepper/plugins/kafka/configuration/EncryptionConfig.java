@@ -11,13 +11,13 @@ public class EncryptionConfig {
     @JsonProperty("type")
     private EncryptionType type = EncryptionType.SSL;
 
-    @JsonProperty("certificateContent")
+    @JsonProperty("certificate_content")
     private String certificateContent;
 
-    @JsonProperty("trustStoreFilePath")
+    @JsonProperty("trust_store_file_path")
     private String trustStoreFilePath;
 
-    @JsonProperty("trustStorePassword")
+    @JsonProperty("trust_store_password")
     private String trustStorePassword;
 
     @JsonProperty("insecure")

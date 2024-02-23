@@ -5,8 +5,8 @@ log-pipeline :
           - "localhost:9092"
         encryption:
           type: "SSL"
-          trustStoreFilePath: "some-file-path"
-          trustStorePassword: "some-password"
+          trust_store_file_path: "some-file-path"
+          trust_store_password: "some-password"
         authentication:
           sasl:
             plaintext:
