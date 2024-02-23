@@ -37,6 +37,9 @@ public class CsvProcessorConfig {
     @JsonProperty("column_names")
     private List<String> columnNames;
 
+    @JsonProperty("csv_when")
+    private String csvWhen;
+
     /**
      * The field of the Event that contains the CSV data to be processed.
      *
@@ -92,6 +95,8 @@ public class CsvProcessorConfig {
     public List<String> getColumnNames() {
         return columnNames;
     }
+
+    public String getCsvWhen() { return csvWhen; }
 
     @AssertTrue(message = "delimiter must be exactly one character.")
     boolean isValidDelimiter() {
