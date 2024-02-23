@@ -1,0 +1,18 @@
+log-pipeline :
+  source:
+     kafka:
+        bootstrap_servers:
+          - "localhost:9092"
+        encryption:
+          type: "SSL"
+          certificate_content: "CERTIFICATE_DATA"
+        authentication:
+          sasl:
+            plaintext:
+                username: username
+                password: password
+        topics:
+        - name: "quickstart-events"
+          group_id: "groupdID1"
+  sink:
+    stdout:
