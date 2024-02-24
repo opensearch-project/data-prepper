@@ -34,6 +34,11 @@ import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
+import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
+
+import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
+import io.opentelemetry.proto.metrics.v1.Gauge;
+import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
@@ -62,6 +67,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
@@ -79,6 +85,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -163,7 +170,7 @@ class OTelMetricsSourceTest {
     private OTelMetricsSourceConfig oTelMetricsSourceConfig;
 
     @Mock
-    private BlockingBuffer<Record<ExportMetricsServiceRequest>> buffer;
+    private BlockingBuffer<Record<? extends Metric>> buffer;
 
     @Mock
     private HttpBasicAuthenticationConfig httpBasicAuthenticationConfig;
@@ -901,12 +908,12 @@ class OTelMetricsSourceTest {
         final ExportMetricsServiceResponse exportResponse = client.export(createExportMetricsRequest());
         assertThat(exportResponse, notNullValue());
 
-        final ArgumentCaptor<Record<ExportMetricsServiceRequest>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Record.class);
-        verify(buffer).write(bufferWriteArgumentCaptor.capture(), anyInt());
+        final ArgumentCaptor<Collection<Record<? extends Metric>>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(buffer).writeAll(bufferWriteArgumentCaptor.capture(), anyInt());
 
-        final Record<ExportMetricsServiceRequest> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
+        final Collection<Record<? extends Metric>> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
         assertThat(actualBufferWrites, notNullValue());
-        assertThat(actualBufferWrites.getData().getResourceMetricsCount(), equalTo(1));
+        assertThat(actualBufferWrites.size(), equalTo(1));
     }
 
     @Test
@@ -935,12 +942,13 @@ class OTelMetricsSourceTest {
         final ExportMetricsServiceResponse exportResponse = client.export(createExportMetricsRequest());
         assertThat(exportResponse, notNullValue());
 
-        final ArgumentCaptor<Record<ExportMetricsServiceRequest>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Record.class);
-        verify(buffer).write(bufferWriteArgumentCaptor.capture(), anyInt());
+        //final ArgumentCaptor<Record<ExportMetricsServiceRequest>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        final ArgumentCaptor<Collection<Record<? extends Metric>>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(buffer).writeAll(bufferWriteArgumentCaptor.capture(), anyInt());
 
-        final Record<ExportMetricsServiceRequest> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
+        final Collection<Record<? extends Metric>> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
         assertThat(actualBufferWrites, notNullValue());
-        assertThat(actualBufferWrites.getData().getResourceMetricsCount(), equalTo(1));
+        assertThat(actualBufferWrites.size(), equalTo(1));
     }
 
     @Test
@@ -971,7 +979,7 @@ class OTelMetricsSourceTest {
 
         doThrow(bufferExceptionClass)
                 .when(buffer)
-                .write(any(Record.class), anyInt());
+                .writeAll(any(Collection.class), anyInt());
         final ExportMetricsServiceRequest exportMetricsRequest = createExportMetricsRequest();
         final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(exportMetricsRequest));
 
@@ -1014,9 +1022,26 @@ class OTelMetricsSourceTest {
                         .setKey("service.name")
                         .setValue(AnyValue.newBuilder().setStringValue("service").build())
                 ).build();
+        NumberDataPoint.Builder p1 = NumberDataPoint.newBuilder().setAsInt(4);
+        Gauge gauge = Gauge.newBuilder().addDataPoints(p1).build();
+
+        io.opentelemetry.proto.metrics.v1.Metric.Builder metric = io.opentelemetry.proto.metrics.v1.Metric.newBuilder()
+                .setGauge(gauge)
+                .setUnit("seconds")
+                .setName("name")
+                .setDescription("description");
+        InstrumentationLibraryMetrics isntLib = InstrumentationLibraryMetrics.newBuilder()
+                .addMetrics(metric)
+                .setInstrumentationLibrary(InstrumentationLibrary.newBuilder()
+                        .setName("ilname")
+                        .setVersion("ilversion")
+                        .build())
+                .build();
+
 
         final ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
                 .setResource(resource)
+                .addInstrumentationLibraryMetrics(isntLib)
                 .build();
 
         return ExportMetricsServiceRequest.newBuilder()
