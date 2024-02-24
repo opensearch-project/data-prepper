@@ -14,13 +14,12 @@ import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
-import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.exceptions.RequestCancelledException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.function.Consumer;
 
 public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImplBase {
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsGrpcService.class);
@@ -31,7 +30,7 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
     private final int bufferWriteTimeoutInMillis;
-    private final Buffer<Record<ExportMetricsServiceRequest>> buffer;
+    private final Consumer<ExportMetricsServiceRequest> consumer;
 
     private final Counter requestsReceivedCounter;
     private final Counter successRequestsCounter;
@@ -40,24 +39,16 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
 
 
     public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
-                                  Buffer<Record<ExportMetricsServiceRequest>> buffer,
+
+                                  final Consumer<ExportMetricsServiceRequest> consumer,
                                   final PluginMetrics pluginMetrics) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
-        this.buffer = buffer;
+        this.consumer = consumer;
 
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
-    }
-
-    public void rawExport(final ExportMetricsServiceRequest request) {
-        try {
-            if (buffer.isByteBuffer()) {
-                buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
-            }
-        } catch (Exception e) {
-        }
     }
 
     @Override
@@ -77,21 +68,7 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     }
 
     private void processRequest(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
-        try {
-            if (buffer.isByteBuffer()) {
-                buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
-            } else {
-                buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
-            }
-        } catch (Exception e) {
-            if (ServiceRequestContext.current().isTimedOut()) {
-                LOG.warn("Exception writing to buffer but request already timed out.", e);
-                return;
-            }
-
-            LOG.error("Failed to write the request of size {} due to:", request.toString().length(), e);
-            throw new BufferWriteException(e.getMessage(), e);
-        }
+        consumer.accept(request);
 
         if (ServiceRequestContext.current().isTimedOut()) {
             LOG.warn("Buffer write completed successfully but request already timed out.");

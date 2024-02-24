@@ -27,16 +27,19 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec.DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelMetricDecoder;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.source.otelmetrics.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.slf4j.Logger;
@@ -45,14 +48,16 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
+import java.util.concurrent.atomic.AtomicInteger;
 
-@DataPrepperPlugin(name = "otel_metrics_source", pluginType = Source.class, pluginConfigurationType = OTelMetricsSourceConfig.class)
-public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequest>> {
+@DataPrepperPlugin(name = "otel_metrics", pluginType = Source.class, pluginConfigurationType = OTelMetricsSourceConfig.class)
+public class OTelMetrics implements Source<Record<? extends Metric>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsSource.class);
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     private static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
@@ -68,13 +73,13 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
     private final ByteDecoder byteDecoder;
 
     @DataPrepperPluginConstructor
-    public OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig, final PluginMetrics pluginMetrics,
+    public OTelMetrics(final OTelMetricsSourceConfig oTelMetricsSourceConfig, final PluginMetrics pluginMetrics,
                              final PluginFactory pluginFactory, final PipelineDescription pipelineDescription) {
         this(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelMetricsSourceConfig), pipelineDescription);
     }
 
     // accessible only in the same package for unit test
-    OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
+    OTelMetrics(final OTelMetricsSourceConfig oTelMetricsSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
                       final CertificateProviderFactory certificateProviderFactory, final PipelineDescription pipelineDescription) {
         oTelMetricsSourceConfig.validateAndInitializeCertAndKeyFileInS3();
         this.oTelMetricsSourceConfig = oTelMetricsSourceConfig;
@@ -92,24 +97,28 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
     }
 
     @Override
-    public void start(Buffer<Record<ExportMetricsServiceRequest>> buffer) {
+    public void start(Buffer<Record<? extends Metric>> buffer) {
         if (buffer == null) {
             throw new IllegalStateException("Buffer provided is null");
         }
 
         if (server == null) {
-
-            final int bufferWriteTimeoutInMillis = 
+            final int bufferWriteTimeoutInMillis =
                     (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8);
+
             final OTelMetricsGrpcService oTelMetricsGrpcService = new OTelMetricsGrpcService(
                     (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8),
-            
                     request -> {
                         try {
                             if (buffer.isByteBuffer()) {
                                 buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
                             } else {
-                                buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
+                                Collection<Record<? extends Metric>> metrics;
+                                AtomicInteger droppedCounter = new AtomicInteger(0);
+
+                                OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
+                                metrics = oTelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE, true, true, false);
+                                buffer.writeAll(metrics, bufferWriteTimeoutInMillis);
                             }
                         } catch (Exception e) {
                             LOG.error("Failed to write the request of size {} due to:", request.toString().length(), e);
