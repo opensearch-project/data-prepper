@@ -35,6 +35,7 @@ import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelMetricDecoder;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
@@ -98,12 +99,9 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         }
 
         if (server == null) {
-
-            final int bufferWriteTimeoutInMillis = 
-                    (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8);
             final OTelMetricsGrpcService oTelMetricsGrpcService = new OTelMetricsGrpcService(
                     (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8),
-            
+                    new OTelProtoCodec.OTelProtoDecoder(),
                     buffer,
                     pluginMetrics
             );

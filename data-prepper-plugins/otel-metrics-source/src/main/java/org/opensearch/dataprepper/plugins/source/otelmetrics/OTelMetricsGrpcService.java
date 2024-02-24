@@ -33,19 +33,25 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
 
     public static final String REQUESTS_RECEIVED = "requestsReceived";
     public static final String SUCCESS_REQUESTS = "successRequests";
+    public static final String RECORDS_CREATED = "recordsCreated";
+    public static final String RECORDS_DROPPED = "recordsDropped";
     public static final String PAYLOAD_SIZE = "payloadSize";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
     private final int bufferWriteTimeoutInMillis;
+    private final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder;
     private final Buffer<Record<? extends Metric>> buffer;
 
     private final Counter requestsReceivedCounter;
     private final Counter successRequestsCounter;
+    private final Counter recordsCreatedCounter;
+    private final Counter recordsDroppedCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
 
 
     public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
+                                  final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                   Buffer<Record<? extends Metric>> buffer,
                                   final PluginMetrics pluginMetrics) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
@@ -53,8 +59,11 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
 
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
+        recordsCreatedCounter = pluginMetrics.counter(RECORDS_CREATED);
+        recordsDroppedCounter = pluginMetrics.counter(RECORDS_DROPPED);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
+        this.oTelProtoDecoder = oTelProtoDecoder;
     }
 
     @Override
@@ -79,10 +88,11 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
                 buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
             } else {
                 Collection<Record<? extends Metric>> metrics;
-                AtomicInteger droppedCounter = new AtomicInteger(0);
 
-                OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
+                AtomicInteger droppedCounter = new AtomicInteger(0);
                 metrics = oTelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE, true, true, false);
+                recordsDroppedCounter.increment(droppedCounter.get());
+                recordsCreatedCounter.increment(metrics.size());
                 buffer.writeAll(metrics, bufferWriteTimeoutInMillis);
             }
         } catch (Exception e) {

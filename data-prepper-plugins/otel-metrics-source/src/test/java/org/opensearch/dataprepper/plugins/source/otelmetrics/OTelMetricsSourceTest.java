@@ -942,7 +942,6 @@ class OTelMetricsSourceTest {
         final ExportMetricsServiceResponse exportResponse = client.export(createExportMetricsRequest());
         assertThat(exportResponse, notNullValue());
 
-        //final ArgumentCaptor<Record<ExportMetricsServiceRequest>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Record.class);
         final ArgumentCaptor<Collection<Record<? extends Metric>>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Collection.class);
         verify(buffer).writeAll(bufferWriteArgumentCaptor.capture(), anyInt());
 
