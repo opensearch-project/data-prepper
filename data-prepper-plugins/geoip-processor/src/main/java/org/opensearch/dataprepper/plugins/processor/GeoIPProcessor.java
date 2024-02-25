@@ -145,16 +145,19 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
               eventSucceeded = false;
               LOG.error(DataPrepperMarkers.EVENT, "Failed to validate IP address: [{}] in event: [{}]. Caused by:[{}]",
                       ipAddress, event, e.getMessage());
+              LOG.error("Failed to validate IP address: [{}]. Caused by:[{}]", ipAddress, e.getMessage());
             } catch (final EnrichFailedException e) {
               ipNotFound = true;
               eventSucceeded = false;
               LOG.error(DataPrepperMarkers.EVENT, "IP address not found in database for IP: [{}] in event: [{}]. Caused by:[{}]",
                       ipAddress, event, e.getMessage());
+              LOG.error("IP address not found in database for IP: [{}]. Caused by:[{}]", ipAddress, e.getMessage());
             } catch (final EngineFailureException e) {
               engineFailure = true;
               eventSucceeded = false;
               LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]. Caused by:{}",
                       event, ipAddress, e.getMessage());
+              LOG.error("Failed to get Geo data for the IP address [{}]. Caused by:{}", ipAddress, e.getMessage());
             }
           } else {
             //No Enrichment if IP is null or empty
@@ -163,24 +166,28 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
           }
         }
 
-        if (ipNotFound) {
-          event.getMetadata().addTags(tagsOnIPNotFound);
-          geoIpEventsFailedIPNotFound.increment();
-        }
-        if (engineFailure) {
-          event.getMetadata().addTags(tagsOnEngineFailure);
-          geoIpEventsFailedEngineException.increment();
-        }
-        if (eventSucceeded) {
-          geoIpEventsSucceeded.increment();
-        } else {
-          geoIpEventsFailed.increment();
-        }
+        updateTagsAndMetrics(event, eventSucceeded, ipNotFound, engineFailure);
       }
     } catch (final Exception e) {
-      LOG.error("Encountered exception in geoip processor. Caused by: {}", e.getMessage());
+      LOG.error("Encountered exception in geoip processor.", e);
     }
     return records;
+  }
+
+  private void updateTagsAndMetrics(final Event event, final boolean eventSucceeded, final boolean ipNotFound, final boolean engineFailure) {
+    if (ipNotFound) {
+      event.getMetadata().addTags(tagsOnIPNotFound);
+      geoIpEventsFailedIPNotFound.increment();
+    }
+    if (engineFailure) {
+      event.getMetadata().addTags(tagsOnEngineFailure);
+      geoIpEventsFailedEngineException.increment();
+    }
+    if (eventSucceeded) {
+      geoIpEventsSucceeded.increment();
+    } else {
+      geoIpEventsFailed.increment();
+    }
   }
 
   private boolean checkConditionAndDatabaseReader(final GeoIPDatabaseReader geoIPDatabaseReader, final Event event, final String whenCondition) {
