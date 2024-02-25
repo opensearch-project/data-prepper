@@ -13,6 +13,7 @@ import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
 import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import io.opentelemetry.proto.metrics.v1.Metric;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,6 +74,10 @@ public class OTelMetricsGrpcServiceTest {
     @Mock
     private Counter successRequestsCounter;
     @Mock
+    private Counter droppedCounter;
+    @Mock
+    private Counter createdCounter;
+    @Mock
     private DistributionSummary payloadSize;
     @Mock
     private Timer requestProcessDuration;
@@ -100,6 +105,8 @@ public class OTelMetricsGrpcServiceTest {
 
         when(mockPluginMetrics.counter(OTelMetricsGrpcService.REQUESTS_RECEIVED)).thenReturn(requestsReceivedCounter);
         when(mockPluginMetrics.counter(OTelMetricsGrpcService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
+        when(mockPluginMetrics.counter(OTelMetricsGrpcService.RECORDS_CREATED)).thenReturn(createdCounter);
+        when(mockPluginMetrics.counter(OTelMetricsGrpcService.RECORDS_DROPPED)).thenReturn(droppedCounter);
         when(mockPluginMetrics.summary(OTelMetricsGrpcService.PAYLOAD_SIZE)).thenReturn(payloadSize);
         when(mockPluginMetrics.timer(OTelMetricsGrpcService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
         doAnswer(invocation -> {
@@ -109,7 +116,7 @@ public class OTelMetricsGrpcServiceTest {
 
         when(serviceRequestContext.isTimedOut()).thenReturn(false);
 
-        sut = new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, buffer, mockPluginMetrics);
+        sut = new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, new OTelProtoCodec.OTelProtoDecoder(), buffer, mockPluginMetrics);
     }
 
     @Test
