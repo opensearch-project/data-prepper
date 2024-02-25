@@ -289,6 +289,23 @@ public class JacksonEventTest {
         assertThat(result, is(nullValue()));
     }
 
+    @Test
+    public void testClear() {
+        event.put("key1", UUID.randomUUID());
+        event.put("key2", UUID.randomUUID());
+        event.put("key3/key4", UUID.randomUUID());
+        event.clear();
+        UUID result = event.get("key1", UUID.class);
+        assertThat(result, is(nullValue()));
+        result = event.get("key2", UUID.class);
+        assertThat(result, is(nullValue()));
+        result = event.get("key3", UUID.class);
+        assertThat(result, is(nullValue()));
+        result = event.get("key3/key4", UUID.class);
+        assertThat(result, is(nullValue()));
+        assertThat(event.toMap().size(), equalTo(0));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"/", "foo", "/foo", "/foo/bar", "foo/bar", "foo/bar/", "/foo/bar/leaf/key"})
     public void testDelete_withNonexistentKey(final String key) {
