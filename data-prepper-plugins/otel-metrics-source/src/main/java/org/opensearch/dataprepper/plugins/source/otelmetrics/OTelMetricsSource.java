@@ -31,9 +31,11 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelMetricDecoder;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
@@ -51,7 +53,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 @DataPrepperPlugin(name = "otel_metrics_source", pluginType = Source.class, pluginConfigurationType = OTelMetricsSourceConfig.class)
-public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequest>> {
+public class OTelMetricsSource implements Source<Record<? extends Metric>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsSource.class);
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     private static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
@@ -91,15 +93,15 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
     }
 
     @Override
-    public void start(Buffer<Record<ExportMetricsServiceRequest>> buffer) {
+    public void start(Buffer<Record<? extends Metric>> buffer) {
         if (buffer == null) {
             throw new IllegalStateException("Buffer provided is null");
         }
 
         if (server == null) {
-
             final OTelMetricsGrpcService oTelMetricsGrpcService = new OTelMetricsGrpcService(
                     (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8),
+                    new OTelProtoCodec.OTelProtoDecoder(),
                     buffer,
                     pluginMetrics
             );
