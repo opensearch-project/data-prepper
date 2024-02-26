@@ -46,8 +46,6 @@ serviceMonitor:
 ports:
 - name: http
   port: 2021
-- name: server
-  port: 4900
 - name: otel-traces
   port: 21890
 - name: otel-metrics
