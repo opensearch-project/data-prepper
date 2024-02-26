@@ -10,7 +10,6 @@ import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientExcept
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import io.confluent.kafka.serializers.KafkaJsonDeserializer;
-import kafka.common.BrokerEndPointNotAvailableException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -108,8 +107,7 @@ public class KafkaCustomConsumerFactory {
 
             });
         } catch (Exception e) {
-            if (e instanceof BrokerNotAvailableException ||
-                e instanceof BrokerEndPointNotAvailableException || e instanceof TimeoutException) {
+            if (e instanceof BrokerNotAvailableException || e instanceof TimeoutException) {
                 LOG.error("The Kafka broker is not available.");
             } else {
                 LOG.error("Failed to setup the Kafka Source Plugin.", e);

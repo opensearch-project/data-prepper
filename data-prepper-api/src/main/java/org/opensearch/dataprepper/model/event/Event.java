@@ -66,6 +66,12 @@ public interface Event extends Serializable {
     void delete(String key);
 
     /**
+     * Delete all keys from the Event
+     * @since 2.8
+     */
+    void clear();
+
+    /**
      * Generates a serialized Json string of the entire Event
      *
      * @return Json string of the event

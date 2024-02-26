@@ -10,6 +10,19 @@ pluginManagement {
     }
 }
 
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven {
+            url 'https://packages.confluent.io/maven/'
+        }
+        maven {
+            url 'https://jitpack.io'
+            content { includeGroup 'com.github.fge' }
+        }
+    }
+}
+
 rootProject.name = 'opensearch-data-prepper'
 
 dependencyResolutionManagement {
@@ -151,3 +164,4 @@ include 'data-prepper-plugins:dissect-processor'
 include 'data-prepper-plugins:dynamodb-source'
 include 'data-prepper-plugins:decompress-processor'
 include 'data-prepper-plugins:split-event-processor'
+include 'data-prepper-plugins:http-common'

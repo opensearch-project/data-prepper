@@ -30,26 +30,22 @@ dependencies {
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation 'org.apache.kafka:kafka-clients:3.6.1'
     implementation 'org.apache.kafka:connect-json:3.6.1'
+    implementation project(':data-prepper-plugins:http-common')
     implementation libs.avro.core
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
     implementation libs.commons.lang3
     implementation 'io.confluent:kafka-avro-serializer:7.4.0'
+    implementation 'io.confluent:kafka-json-schema-serializer:7.4.0'
     implementation 'io.confluent:kafka-schema-registry-client:7.4.0'
-    implementation ('io.confluent:kafka-schema-registry:7.4.0:tests') {
-        exclude group: 'org.glassfish.jersey.containers', module: 'jersey-container-servlet'
-        exclude group: 'org.glassfish.jersey.inject', module: 'jersey-hk2'
-        exclude group: 'org.glassfish.jersey.ext', module: 'jersey-bean-validation'
-    }
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:kafka'
     implementation 'software.amazon.awssdk:kms'
     implementation 'software.amazon.msk:aws-msk-iam-auth:2.0.3'
     implementation 'software.amazon.glue:schema-registry-serde:1.1.15'
-    implementation 'io.confluent:kafka-json-schema-serializer:7.4.0'
     implementation project(':data-prepper-plugins:failures-common')
-    implementation 'com.github.fge:json-schema-validator:2.2.14'
+    implementation 'com.github.java-json-tools:json-schema-validator:2.2.14'
     implementation 'commons-collections:commons-collections:3.2.2'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
@@ -65,7 +61,6 @@ dependencies {
     testImplementation 'org.apache.kafka:kafka_2.13:3.6.1'
     testImplementation 'org.apache.kafka:kafka_2.13:3.6.1:test'
     testImplementation 'org.apache.curator:curator-test:5.5.0'
-    testImplementation 'io.confluent:kafka-schema-registry:7.4.0'
     testImplementation('com.kjetland:mbknor-jackson-jsonschema_2.13:1.0.39')
     testImplementation group: 'org.powermock', name: 'powermock-api-mockito2', version: '2.0.9'
     testImplementation project(':data-prepper-plugins:otel-metrics-source')
@@ -74,8 +69,15 @@ dependencies {
     testImplementation libs.protobuf.util
     testImplementation libs.commons.io
     testImplementation libs.armeria.grpc
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 
     integrationTestImplementation testLibs.junit.vintage
+    integrationTestImplementation 'io.confluent:kafka-schema-registry:7.4.0'
+    integrationTestImplementation ('io.confluent:kafka-schema-registry:7.4.0:tests') {
+        exclude group: 'org.glassfish.jersey.containers', module: 'jersey-container-servlet'
+        exclude group: 'org.glassfish.jersey.inject', module: 'jersey-hk2'
+        exclude group: 'org.glassfish.jersey.ext', module: 'jersey-bean-validation'
+    }
 
     constraints {
         implementation('org.mozilla:rhino') {
@@ -130,4 +132,3 @@ task integrationTest(type: Test) {
         includeTestsMatching '*IT'
     }
 }
-

@@ -5,21 +5,6 @@
 import com.github.jk1.license.render.TextReportRenderer
 
 buildscript {
-    repositories {
-        mavenCentral() {
-            metadataSources {
-                mavenPom()
-                ignoreGradleMetadataRedirection()
-            }
-        }
-        maven {
-            url 'https://plugins.gradle.org/m2/'
-            metadataSources {
-                mavenPom()
-                ignoreGradleMetadataRedirection()
-            }
-        }
-    }
     dependencies {
         classpath 'com.github.jk1:gradle-license-report:2.1'
     }
@@ -40,14 +25,6 @@ allprojects {
 
     ext {
         mavenPublicationRootFile = file("${rootProject.buildDir}/m2")
-    }
-    
-    repositories {
-        mavenCentral()
-        maven { url 'https://jitpack.io' }
-        maven {
-            url 'https://packages.confluent.io/maven/'
-        }
     }
 
     spotless {

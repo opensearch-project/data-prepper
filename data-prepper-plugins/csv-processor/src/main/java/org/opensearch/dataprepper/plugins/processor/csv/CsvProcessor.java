@@ -5,10 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.processor.csv;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -42,11 +44,23 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
 
     private final CsvProcessorConfig config;
 
+    private final ExpressionEvaluator expressionEvaluator;
+
     @DataPrepperPluginConstructor
-    public CsvProcessor(final PluginMetrics pluginMetrics, final CsvProcessorConfig config) {
+    public CsvProcessor(final PluginMetrics pluginMetrics,
+                        final CsvProcessorConfig config,
+                        final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.csvInvalidEventsCounter = pluginMetrics.counter(CSV_INVALID_EVENTS);
         this.config = config;
+        this.expressionEvaluator = expressionEvaluator;
+
+        if (config.getCsvWhen() != null
+                && !expressionEvaluator.isValidExpressionStatement(config.getCsvWhen())) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("csv_when value of %s is not a valid expression statement. " +
+                            "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.", config.getCsvWhen()));
+        }
     }
 
     @Override
@@ -59,6 +73,11 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
             final Event event = record.getData();
 
             try {
+
+                if (config.getCsvWhen() != null && !expressionEvaluator.evaluateConditional(config.getCsvWhen(), event)) {
+                    continue;
+                }
+
                 final String message = event.get(config.getSource(), String.class);
 
                 if (Objects.isNull(message)) {

@@ -54,7 +54,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                     }
 
                     try {
-                        final String key = entry.getKey();
+                        final String key = (entry.getKey() == null) ? null : recordEvent.formatString(entry.getKey(), expressionEvaluator);
                         final String metadataKey = entry.getMetadataKey();
                         Object value;
                         if (!Objects.isNull(entry.getValueExpression())) {
