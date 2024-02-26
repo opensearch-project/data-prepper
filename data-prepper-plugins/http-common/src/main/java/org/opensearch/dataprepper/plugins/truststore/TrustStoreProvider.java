@@ -26,7 +26,7 @@ import java.security.cert.X509Certificate;
 public class TrustStoreProvider {
     private static final Logger LOG = LoggerFactory.getLogger(TrustStoreProvider.class);
 
-    public TrustManager[] createTrustManager(final Path certificatePath) {
+    public static TrustManager[] createTrustManager(final Path certificatePath) {
         LOG.info("Using the certificate path {} to create trust manager.", certificatePath.toString());
         try {
             final KeyStore keyStore = createKeyStore(certificatePath);
@@ -38,7 +38,7 @@ public class TrustStoreProvider {
         }
     }
 
-    public TrustManager[] createTrustManager(final String certificateContent) {
+    public static TrustManager[] createTrustManager(final String certificateContent) {
         LOG.info("Using the certificate content to create trust manager.");
         try (InputStream certificateInputStream = new ByteArrayInputStream(certificateContent.getBytes())) {
             final KeyStore keyStore = createKeyStore(certificateInputStream);
@@ -50,20 +50,20 @@ public class TrustStoreProvider {
         }
     }
 
-    public TrustManager[] createTrustAllManager() {
+    public static TrustManager[] createTrustAllManager() {
         LOG.info("Using the trust all manager to create trust manager.");
         return new TrustManager[]{
             new X509TrustAllManager()
         };
     }
 
-    private KeyStore createKeyStore(final Path certificatePath) throws Exception {
+    private static KeyStore createKeyStore(final Path certificatePath) throws Exception {
         try (InputStream certificateInputStream = Files.newInputStream(certificatePath)) {
             return createKeyStore(certificateInputStream);
         }
     }
 
-    private KeyStore createKeyStore(final InputStream certificateInputStream) throws Exception {
+    private static KeyStore createKeyStore(final InputStream certificateInputStream) throws Exception {
         final CertificateFactory factory = CertificateFactory.getInstance("X.509");
         final Certificate trustedCa = factory.generateCertificate(certificateInputStream);
         final KeyStore trustStore = KeyStore.getInstance("pkcs12");
@@ -72,7 +72,7 @@ public class TrustStoreProvider {
         return trustStore;
     }
 
-    public SSLContext createSSLContext(final Path certificatePath) {
+    public static SSLContext createSSLContext(final Path certificatePath) {
         LOG.info("Using the certificate path to create SSL context.");
         try (InputStream is = Files.newInputStream(certificatePath)) {
             return createSSLContext(is);
@@ -81,7 +81,7 @@ public class TrustStoreProvider {
         }
     }
 
-    public SSLContext createSSLContext(final String certificateContent) {
+    public static SSLContext createSSLContext(final String certificateContent) {
         LOG.info("Using the certificate content to create SSL context.");
         try (InputStream certificateInputStream = new ByteArrayInputStream(certificateContent.getBytes())) {
             return createSSLContext(certificateInputStream);
@@ -90,14 +90,14 @@ public class TrustStoreProvider {
         }
     }
 
-    private SSLContext createSSLContext(final InputStream certificateInputStream) throws Exception {
+    private static SSLContext createSSLContext(final InputStream certificateInputStream) throws Exception {
         KeyStore trustStore = createKeyStore(certificateInputStream);
         SSLContextBuilder sslContextBuilder = SSLContexts.custom()
                 .loadTrustMaterial(trustStore, null);
         return sslContextBuilder.build();
     }
 
-    public SSLContext createSSLContextWithTrustAllStrategy() {
+    public static SSLContext createSSLContextWithTrustAllStrategy() {
         LOG.info("Using the trust all strategy to create SSL context.");
         try {
             return SSLContexts.custom().loadTrustMaterial(null, new TrustStrategy() {

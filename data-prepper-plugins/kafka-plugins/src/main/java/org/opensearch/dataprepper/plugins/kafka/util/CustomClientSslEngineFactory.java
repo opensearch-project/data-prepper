@@ -28,12 +28,11 @@ public class CustomClientSslEngineFactory implements SslEngineFactory {
     }
 
     private TrustManager[] getTrustManager() {
-        final TrustStoreProvider trustStoreProvider = new TrustStoreProvider();
         final TrustManager[] trustManagers;
         if (Objects.nonNull(certificateContent)) {
-            trustManagers = trustStoreProvider.createTrustManager(certificateContent);
+            trustManagers = TrustStoreProvider.createTrustManager(certificateContent);
         } else {
-            trustManagers = trustStoreProvider.createTrustAllManager();
+            trustManagers = TrustStoreProvider.createTrustAllManager();
         }
         return trustManagers;
     }
