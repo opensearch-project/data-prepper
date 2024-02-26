@@ -220,32 +220,32 @@ public class OpenSearchClientFactoryTest {
 
     @Test
     void provideOpenSearchClient_with_self_signed_certificate() {
+        final Path path = mock(Path.class);
+        final SSLContext sslContext = mock(SSLContext.class);
+        final String username = UUID.randomUUID().toString();
+        final String password = UUID.randomUUID().toString();
+        when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
+        when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
+        when(connectionConfiguration.getCertPath()).thenReturn(path);
         try (MockedStatic<TrustStoreProvider> trustStoreProviderMockedStatic = mockStatic(TrustStoreProvider.class)) {
-            final Path path = mock(Path.class);
-            final SSLContext sslContext = mock(SSLContext.class);
-            final String username = UUID.randomUUID().toString();
-            final String password = UUID.randomUUID().toString();
-            when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
-            when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
-            when(connectionConfiguration.getCertPath()).thenReturn(path);
             trustStoreProviderMockedStatic.when(() -> TrustStoreProvider.createSSLContext(path))
                     .thenReturn(sslContext);
             final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
-            assertThat(openSearchClient, notNullValue());
             trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createSSLContext(path));
+            assertThat(openSearchClient, notNullValue());
         }
     }
 
     @Test
     void provideElasticSearchClient_with_self_signed_certificate() {
+        final Path path = mock(Path.class);
+        final SSLContext sslContext = mock(SSLContext.class);
+        final String username = UUID.randomUUID().toString();
+        final String password = UUID.randomUUID().toString();
+        when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
+        when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
+        when(connectionConfiguration.getCertPath()).thenReturn(path);
         try (MockedStatic<TrustStoreProvider> trustStoreProviderMockedStatic = mockStatic(TrustStoreProvider.class)) {
-            final Path path = mock(Path.class);
-            final SSLContext sslContext = mock(SSLContext.class);
-            final String username = UUID.randomUUID().toString();
-            final String password = UUID.randomUUID().toString();
-            when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
-            when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
-            when(connectionConfiguration.getCertPath()).thenReturn(path);
             trustStoreProviderMockedStatic.when(() -> TrustStoreProvider.createSSLContext(path))
                     .thenReturn(sslContext);
             final ElasticsearchClient elasticsearchClient = createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration);
@@ -257,16 +257,16 @@ public class OpenSearchClientFactoryTest {
 
     @Test
     void createSdkAsyncHttpClient_with_self_signed_certificate() {
+        final Path path = mock(Path.class);
+        final Duration duration = mock(Duration.class);
+        final String username = UUID.randomUUID().toString();
+        final String password = UUID.randomUUID().toString();
+        lenient().when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
+        lenient().when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
+        lenient().when(connectionConfiguration.getConnectTimeout()).thenReturn(duration);
+        lenient().when(openSearchSourceConfiguration.getConnectionConfiguration()).thenReturn(connectionConfiguration);
+        lenient().when(connectionConfiguration.getCertPath()).thenReturn(path);
         try (MockedStatic<TrustStoreProvider> trustStoreProviderMockedStatic = mockStatic(TrustStoreProvider.class)) {
-            final Path path = mock(Path.class);
-            final Duration duration = mock(Duration.class);
-            final String username = UUID.randomUUID().toString();
-            final String password = UUID.randomUUID().toString();
-            lenient().when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
-            lenient().when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
-            lenient().when(connectionConfiguration.getConnectTimeout()).thenReturn(duration);
-            lenient().when(openSearchSourceConfiguration.getConnectionConfiguration()).thenReturn(connectionConfiguration);
-            lenient().when(connectionConfiguration.getCertPath()).thenReturn(path);
             final SdkAsyncHttpClient sdkAsyncHttpClient = createObjectUnderTest().createSdkAsyncHttpClient(openSearchSourceConfiguration);
             assertThat(sdkAsyncHttpClient, notNullValue());
             trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createTrustManager(path));
