@@ -14,6 +14,9 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * HttpHandler to handle requests to shut down the data prepper instance
@@ -21,6 +24,9 @@ import java.net.HttpURLConnection;
 public class ShutdownHandler implements HttpHandler {
     private final DataPrepper dataPrepper;
     private static final Logger LOG = LoggerFactory.getLogger(ShutdownHandler.class);
+
+    static final Path SHUTDOWN_FILE_PATH = Path.of("Is-Shutdown.log");
+    static final String SHUTDOWN_MESSAGE = "Data Prepper is shut down.";
 
     public ShutdownHandler(final DataPrepper dataPrepper) {
         this.dataPrepper = dataPrepper;
@@ -44,6 +50,7 @@ public class ShutdownHandler implements HttpHandler {
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_INTERNAL_ERROR, 0);
         } finally {
             exchange.getResponseBody().close();
+            Files.write(SHUTDOWN_FILE_PATH, SHUTDOWN_MESSAGE.getBytes(StandardCharsets.UTF_8));
             dataPrepper.shutdownServers();
         }
     }

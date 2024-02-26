@@ -13,6 +13,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.DataPrepper;
 
@@ -20,12 +21,17 @@ import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.pipeline.server.ShutdownHandler.SHUTDOWN_FILE_PATH;
+import static org.opensearch.dataprepper.pipeline.server.ShutdownHandler.SHUTDOWN_MESSAGE;
 
 @ExtendWith(MockitoExtension.class)
 public class ShutdownHandlerTest {
@@ -52,7 +58,13 @@ public class ShutdownHandlerTest {
         when(exchange.getRequestMethod())
                 .thenReturn(HttpMethod.POST);
 
-        shutdownHandler.handle(exchange);
+        try (final MockedStatic<Files> filesMockedStatic = mockStatic(Files.class)) {
+            filesMockedStatic.when(() -> Files.write(SHUTDOWN_FILE_PATH, SHUTDOWN_MESSAGE.getBytes(StandardCharsets.UTF_8)))
+                    .thenReturn(SHUTDOWN_FILE_PATH);
+            shutdownHandler.handle(exchange);
+
+            filesMockedStatic.verify(() -> Files.write(SHUTDOWN_FILE_PATH, SHUTDOWN_MESSAGE.getBytes(StandardCharsets.UTF_8)), times(1));
+        }
 
         verify(dataPrepper, times(1))
                 .shutdownPipelines();
@@ -62,6 +74,8 @@ public class ShutdownHandlerTest {
                 .close();
         verify(dataPrepper, times(1))
                 .shutdownServers();
+
+
     }
 
     @ParameterizedTest
@@ -84,11 +98,20 @@ public class ShutdownHandlerTest {
                 .thenReturn(HttpMethod.POST);
         doThrow(RuntimeException.class).when(dataPrepper).shutdownPipelines();
 
-        shutdownHandler.handle(exchange);
+        try (final MockedStatic<Files> filesMockedStatic = mockStatic(Files.class)) {
+            filesMockedStatic.when(() -> Files.write(SHUTDOWN_FILE_PATH, SHUTDOWN_MESSAGE.getBytes(StandardCharsets.UTF_8)))
+                    .thenReturn(SHUTDOWN_FILE_PATH);
+            shutdownHandler.handle(exchange);
+
+            filesMockedStatic.verify(() -> Files.write(SHUTDOWN_FILE_PATH, SHUTDOWN_MESSAGE.getBytes(StandardCharsets.UTF_8)), times(1));
+        }
 
         verify(exchange, times(1))
                 .sendResponseHeaders(eq(HttpURLConnection.HTTP_INTERNAL_ERROR), eq(0L));
         verify(responseBody, times(1))
                 .close();
+
+        verify(dataPrepper, times(1))
+                .shutdownServers();
     }
 }
