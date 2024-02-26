@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
@@ -18,9 +19,14 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ConnectionConfiguration;
+import org.opensearch.dataprepper.plugins.truststore.TrustStoreProvider;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 
+import javax.net.ssl.SSLContext;
+import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -28,7 +34,9 @@ import java.util.UUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -48,7 +56,7 @@ public class OpenSearchClientFactoryTest {
 
     @BeforeEach
     void setup() {
-        when(openSearchSourceConfiguration.getHosts()).thenReturn(List.of("http://localhost:9200"));
+        lenient().when(openSearchSourceConfiguration.getHosts()).thenReturn(List.of("http://localhost:9200"));
         when(openSearchSourceConfiguration.getConnectionConfiguration()).thenReturn(connectionConfiguration);
     }
 
@@ -208,5 +216,60 @@ public class OpenSearchClientFactoryTest {
         assertThat(awsCredentialsOptions.getRegion(), equalTo(Region.US_EAST_1));
         assertThat(awsCredentialsOptions.getStsHeaderOverrides(), equalTo(Collections.emptyMap()));
         assertThat(awsCredentialsOptions.getStsRoleArn(), equalTo(stsRoleArn));
+    }
+
+    @Test
+    void provideOpenSearchClient_with_self_signed_certificate() {
+        try (MockedStatic<TrustStoreProvider> trustStoreProviderMockedStatic = mockStatic(TrustStoreProvider.class)) {
+            final Path path = mock(Path.class);
+            final SSLContext sslContext = mock(SSLContext.class);
+            final String username = UUID.randomUUID().toString();
+            final String password = UUID.randomUUID().toString();
+            when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
+            when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
+            when(connectionConfiguration.getCertPath()).thenReturn(path);
+            trustStoreProviderMockedStatic.when(() -> TrustStoreProvider.createSSLContext(path))
+                    .thenReturn(sslContext);
+            final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
+            assertThat(openSearchClient, notNullValue());
+            trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createSSLContext(path));
+        }
+    }
+
+    @Test
+    void provideElasticSearchClient_with_self_signed_certificate() {
+        try (MockedStatic<TrustStoreProvider> trustStoreProviderMockedStatic = mockStatic(TrustStoreProvider.class)) {
+            final Path path = mock(Path.class);
+            final SSLContext sslContext = mock(SSLContext.class);
+            final String username = UUID.randomUUID().toString();
+            final String password = UUID.randomUUID().toString();
+            when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
+            when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
+            when(connectionConfiguration.getCertPath()).thenReturn(path);
+            trustStoreProviderMockedStatic.when(() -> TrustStoreProvider.createSSLContext(path))
+                    .thenReturn(sslContext);
+            final ElasticsearchClient elasticsearchClient = createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration);
+            assertThat(elasticsearchClient, notNullValue());
+            trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createSSLContext(path));
+        }
+    }
+
+
+    @Test
+    void createSdkAsyncHttpClient_with_self_signed_certificate() {
+        try (MockedStatic<TrustStoreProvider> trustStoreProviderMockedStatic = mockStatic(TrustStoreProvider.class)) {
+            final Path path = mock(Path.class);
+            final Duration duration = mock(Duration.class);
+            final String username = UUID.randomUUID().toString();
+            final String password = UUID.randomUUID().toString();
+            lenient().when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
+            lenient().when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
+            lenient().when(connectionConfiguration.getConnectTimeout()).thenReturn(duration);
+            lenient().when(openSearchSourceConfiguration.getConnectionConfiguration()).thenReturn(connectionConfiguration);
+            lenient().when(connectionConfiguration.getCertPath()).thenReturn(path);
+            final SdkAsyncHttpClient sdkAsyncHttpClient = createObjectUnderTest().createSdkAsyncHttpClient(openSearchSourceConfiguration);
+            assertThat(sdkAsyncHttpClient, notNullValue());
+            trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createTrustManager(path));
+        }
     }
 }

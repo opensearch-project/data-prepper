@@ -14,6 +14,9 @@ public class ConnectionConfiguration {
   @JsonProperty("cert")
   private Path certPath;
 
+  @JsonProperty("certificate_content")
+  private String certificateContent;
+
   @JsonProperty("socket_timeout")
   private Duration socketTimeout;
 
@@ -25,6 +28,10 @@ public class ConnectionConfiguration {
 
   public Path getCertPath() {
     return certPath;
+  }
+
+  public String getCertificateContent() {
+    return certificateContent;
   }
 
   public Duration getSocketTimeout() {
