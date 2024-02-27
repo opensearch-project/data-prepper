@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper;
 
-interface DataPrepperShutdownListener {
+@FunctionalInterface
+public interface DataPrepperShutdownListener {
     void handleShutdown();
 }
