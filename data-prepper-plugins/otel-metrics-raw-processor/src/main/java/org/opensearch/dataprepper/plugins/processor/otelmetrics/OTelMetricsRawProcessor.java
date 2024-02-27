@@ -14,7 +14,6 @@ import static org.opensearch.dataprepper.model.metric.JacksonExponentialHistogra
 import static org.opensearch.dataprepper.model.metric.JacksonHistogram.BUCKETS_KEY;
 import org.opensearch.dataprepper.model.metric.JacksonMetric;
 import org.opensearch.dataprepper.model.metric.Metric;
-import static org.opensearch.dataprepper.model.metric.JacksonMetric.ATTRIBUTES_KEY;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -26,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Map;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
