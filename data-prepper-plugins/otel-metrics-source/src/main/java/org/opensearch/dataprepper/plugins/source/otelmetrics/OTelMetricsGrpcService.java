@@ -90,7 +90,7 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
                 Collection<Record<? extends Metric>> metrics;
 
                 AtomicInteger droppedCounter = new AtomicInteger(0);
-                metrics = oTelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE, true, true, false);
+                metrics = oTelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE, true, true, true);
                 recordsDroppedCounter.increment(droppedCounter.get());
                 recordsCreatedCounter.increment(metrics.size());
                 buffer.writeAll(metrics, bufferWriteTimeoutInMillis);
