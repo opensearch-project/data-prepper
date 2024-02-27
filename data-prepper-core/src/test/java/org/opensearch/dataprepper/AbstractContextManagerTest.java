@@ -16,7 +16,6 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -93,16 +92,12 @@ class AbstractContextManagerTest {
 
         objectUnderTest.getDataPrepperBean();
 
-        ArgumentCaptor<List<DataPrepperShutdownListener>> dataPrepperShutdownListenerArgumentCaptor = ArgumentCaptor.forClass(List.class);
-        verify(dataPrepper).registerShutdownHandlers(dataPrepperShutdownListenerArgumentCaptor.capture());
+        final ArgumentCaptor<DataPrepperShutdownListener> dataPrepperShutdownListenerArgumentCaptor = ArgumentCaptor.forClass(DataPrepperShutdownListener.class);
+        verify(dataPrepper).registerShutdownHandler(dataPrepperShutdownListenerArgumentCaptor.capture());
 
-        final List<DataPrepperShutdownListener> shutdownListeners = dataPrepperShutdownListenerArgumentCaptor.getValue();
+        final DataPrepperShutdownListener shutdownListener = dataPrepperShutdownListenerArgumentCaptor.getValue();
 
-        assertThat(shutdownListeners, notNullValue());
-        assertThat(shutdownListeners.size(), equalTo(1));
-        assertThat(shutdownListeners.get(0), notNullValue());
-
-        shutdownListeners.get(0).handleShutdown();
+        shutdownListener.handleShutdown();
 
         final InOrder inOrder = inOrder(applicationContexts.toArray());
         final List<AnnotationConfigApplicationContext> reversedContexts = Lists.reverse(applicationContexts);
