@@ -43,6 +43,10 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
         this.flattenAttributes = flattenAttributes;
     }
 
+    boolean getFlattenAttributes() {
+        return flattenAttributes;
+    }
+
     @Override
     public String toJsonString() {
         if (!flattenAttributes) {

@@ -156,6 +156,9 @@ public class JacksonExponentialHistogramTest {
     public void testZeroCount() {
         Long zeroCount = histogram.getZeroCount();
         assertThat(zeroCount, is(equalTo(TEST_ZERO_COUNT)));
+        assertThat(((JacksonMetric)histogram).getFlattenAttributes(), equalTo(true));
+        ((JacksonMetric)histogram).setFlattenAttributes(false);
+        assertThat(((JacksonMetric)histogram).getFlattenAttributes(), equalTo(false));
     }
 
     @Test
