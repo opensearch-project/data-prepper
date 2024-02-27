@@ -32,10 +32,14 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     protected static final String SCHEMA_URL_KEY = "schemaUrl";
     protected static final String EXEMPLARS_KEY = "exemplars";
     protected static final String FLAGS_KEY = "flags";
-    private final boolean flattenAttributes;
+    private boolean flattenAttributes;
 
     protected JacksonMetric(Builder builder, boolean flattenAttributes) {
         super(builder);
+        this.flattenAttributes = flattenAttributes;
+    }
+
+    public void setFlattenAttributes(boolean flattenAttributes) {
         this.flattenAttributes = flattenAttributes;
     }
 
