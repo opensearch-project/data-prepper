@@ -43,7 +43,7 @@ dependencies {
     implementation 'software.amazon.awssdk:kafka'
     implementation 'software.amazon.awssdk:kms'
     implementation 'software.amazon.msk:aws-msk-iam-auth:2.0.3'
-    implementation 'software.amazon.glue:schema-registry-serde:1.1.15'
+    implementation 'software.amazon.glue:schema-registry-serde:1.1.18'
     implementation project(':data-prepper-plugins:failures-common')
     implementation 'com.github.java-json-tools:json-schema-validator:2.2.14'
     implementation 'commons-collections:commons-collections:3.2.2'
