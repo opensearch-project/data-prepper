@@ -23,6 +23,7 @@ import io.micrometer.core.instrument.Counter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -92,7 +93,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<?>, Record
             }
 
             ExportMetricsServiceRequest request = ((Record<ExportMetricsServiceRequest>)rec).getData();
-            recordsOut.addAll(otelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, otelMetricsRawProcessorConfig.getExponentialHistogramMaxAllowedScale(), otelMetricsRawProcessorConfig.getCalculateHistogramBuckets(), otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets(), flattenAttributesFlag));
+            recordsOut.addAll(otelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, otelMetricsRawProcessorConfig.getExponentialHistogramMaxAllowedScale(), Instant.now(), otelMetricsRawProcessorConfig.getCalculateHistogramBuckets(), otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets(), flattenAttributesFlag));
         }
         recordsDroppedMetricsRawCounter.increment(droppedCounter.get());
         return recordsOut;

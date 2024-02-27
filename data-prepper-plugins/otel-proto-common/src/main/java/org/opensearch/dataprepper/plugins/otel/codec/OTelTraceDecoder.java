@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Consumer;
+import java.time.Instant;
 
 
 public class OTelTraceDecoder implements ByteDecoder {
@@ -25,11 +26,10 @@ public class OTelTraceDecoder implements ByteDecoder {
     public OTelTraceDecoder() {
         otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
     }
-    public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
+    public void parse(InputStream inputStream, Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
         ExportTraceServiceRequest request = ExportTraceServiceRequest.parseFrom(inputStream);
         AtomicInteger droppedCounter = new AtomicInteger(0);
-        List<Span> spans =
-            otelProtoDecoder.parseExportTraceServiceRequest(request);
+        List<Span> spans = otelProtoDecoder.parseExportTraceServiceRequest(request, timeReceivedMs);
         for (Span span: spans) {
             eventConsumer.accept(new Record<>(span));
         }

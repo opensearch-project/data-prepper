@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.util.function.Consumer;
+import java.time.Instant;
 
 public interface ByteDecoder extends Serializable {
     /**
@@ -18,9 +19,10 @@ public interface ByteDecoder extends Serializable {
      * {@link Record} loaded from the {@link InputStream}.
      *
      * @param inputStream   The input stream for code to process
+     * @param timeReceived  The time received value to be populated in the Record
      * @param eventConsumer The consumer which handles each event from the stream
      * @throws IOException throws IOException when invalid input is received or incorrect codec name is provided
      */
-    void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException;
+    void parse(InputStream inputStream, Instant timeReceived, Consumer<Record<Event>> eventConsumer) throws IOException;
     
 }

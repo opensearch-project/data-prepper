@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Future;
@@ -169,11 +170,11 @@ public class KafkaCustomProducer<T> {
     }
 
     Future send(final String topicName, String key, final Object record) throws Exception {
-        if (Objects.isNull(key)) {
-            return producer.send(new ProducerRecord(topicName, record), callBack(record));
-        }
+        ProducerRecord producerRecord = Objects.isNull(key) ?
+            new ProducerRecord(topicName, record) :
+            new ProducerRecord(topicName, key, record);
 
-        return producer.send(new ProducerRecord(topicName, key, record), callBack(record));
+        return producer.send(producerRecord, callBack(record));
     }
 
     private void publishJsonMessage(final Record<Event> record, final String key) throws IOException, ProcessingException, Exception {

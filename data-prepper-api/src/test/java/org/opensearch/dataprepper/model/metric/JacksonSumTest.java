@@ -9,6 +9,9 @@ import com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
+
+import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
@@ -94,6 +97,14 @@ public class JacksonSumTest {
     public void testGetServiceName() {
         final String name = sum.getServiceName();
         assertThat(name, is(equalTo(TEST_SERVICE_NAME)));
+    }
+
+    @Test
+    public void testGetTimeReceived() {
+        Instant now = Instant.now();
+        builder.withTimeReceived(now);
+        sum = builder.build();
+        assertThat(((DefaultEventHandle)sum.getEventHandle()).getInternalOriginationTime(), is(now));
     }
 
     @Test

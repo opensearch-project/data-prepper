@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.metric;
 
 import org.opensearch.dataprepper.model.event.EventType;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -188,6 +189,18 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
         public  JacksonHistogram.Builder withAggregationTemporality(String aggregationTemporality) {
             data.put(AGGREGATION_TEMPORALITY_KEY, aggregationTemporality);
             return this;
+        }
+
+        /**
+         * Sets the time received for populating event origination time in event handle
+         *
+         * @param timeReceived time received
+         * @return the builder
+         * @since 2.7
+         */
+        @Override
+        public JacksonHistogram.Builder withTimeReceived(final Instant timeReceived) {
+            return (JacksonHistogram.Builder)super.withTimeReceived(timeReceived);
         }
 
         /**

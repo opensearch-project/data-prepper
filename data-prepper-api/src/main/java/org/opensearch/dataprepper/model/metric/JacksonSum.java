@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.metric;
 
 import org.opensearch.dataprepper.model.event.EventType;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -99,6 +100,18 @@ public class JacksonSum extends JacksonMetric implements Sum {
         public Builder withIsMonotonic(final boolean isMonotonic) {
             data.put(IS_MONOTONIC_KEY, isMonotonic);
             return this;
+        }
+
+        /**
+         * Sets the time received for populating event origination time in event handle
+         *
+         * @param timeReceived time received
+         * @return the builder
+         * @since 2.7
+         */
+        @Override
+        public Builder withTimeReceived(final Instant timeReceived) {
+            return (Builder)super.withTimeReceived(timeReceived);
         }
 
         /**

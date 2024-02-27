@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -233,6 +234,19 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
             data.put(SCHEMA_URL_KEY, schemaUrl);
             return getThis();
         }
+
+        /**
+         * Sets the time received for populating event origination time in event handle
+         *
+         * @param timeReceived time received
+         * @return the builder
+         * @since 2.7
+         */
+        @Override
+        public T withTimeReceived(final Instant timeReceived) {
+            return (T)super.withTimeReceived(timeReceived);
+        }
+
 
         /**
          * Sets the exemplars that are associated with this metric event
