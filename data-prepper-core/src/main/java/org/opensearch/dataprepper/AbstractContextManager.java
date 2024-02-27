@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.util.List;
+
 /**
  * Base class for managing context. It provides hooks for inheritors to control the context to some degree.
  * <p>Creates Spring {@link org.springframework.context.ApplicationContext} hierarchy for Dependency Injection with limited visibility.</p>
@@ -59,7 +61,7 @@ public abstract class AbstractContextManager {
         coreApplicationContext.refresh();
 
         dataPrepper = coreApplicationContext.getBean(DataPrepper.class);
-        dataPrepper.registerShutdownHandler(new ContextShutdownListener());
+        dataPrepper.registerShutdownHandlers(List.of(new ContextShutdownListener()));
 
         LOG.trace("Data Prepper context is fully refreshed.");
     }
