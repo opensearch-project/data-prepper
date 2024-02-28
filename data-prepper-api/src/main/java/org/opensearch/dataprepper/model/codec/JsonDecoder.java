@@ -25,7 +25,7 @@ public class JsonDecoder implements ByteDecoder {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final JsonFactory jsonFactory = new JsonFactory();
 
-    public void parse(InputStream inputStream, Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
+    public void parse(InputStream inputStream, Instant timeReceived, Consumer<Record<Event>> eventConsumer) throws IOException {
         Objects.requireNonNull(inputStream);
         Objects.requireNonNull(eventConsumer);
 
@@ -33,26 +33,26 @@ public class JsonDecoder implements ByteDecoder {
 
         while (!jsonParser.isClosed() && jsonParser.nextToken() != JsonToken.END_OBJECT) {
             if (jsonParser.getCurrentToken() == JsonToken.START_ARRAY) {
-                parseRecordsArray(jsonParser, timeReceivedMs, eventConsumer);
+                parseRecordsArray(jsonParser, timeReceived, eventConsumer);
             }
         }
     }
 
-    private void parseRecordsArray(final JsonParser jsonParser, final Instant timeReceivedMs, final Consumer<Record<Event>> eventConsumer) throws IOException {
+    private void parseRecordsArray(final JsonParser jsonParser, final Instant timeReceived, final Consumer<Record<Event>> eventConsumer) throws IOException {
         while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
             final Map<String, Object> innerJson = objectMapper.readValue(jsonParser, Map.class);
 
-            final Record<Event> record = createRecord(innerJson, timeReceivedMs);
+            final Record<Event> record = createRecord(innerJson, timeReceived);
             eventConsumer.accept(record);
         }
     }
 
-    private Record<Event> createRecord(final Map<String, Object> json, final Instant timeReceivedMs) {
+    private Record<Event> createRecord(final Map<String, Object> json, final Instant timeReceived) {
         final JacksonLog.Builder logBuilder = JacksonLog.builder()
                 .withData(json)
                 .getThis();
-        if (timeReceivedMs != null) {
-            logBuilder.withTimeReceived(timeReceivedMs);
+        if (timeReceived != null) {
+            logBuilder.withTimeReceived(timeReceived);
         }
         final JacksonEvent event = (JacksonEvent)logBuilder.build();
 
