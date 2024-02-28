@@ -78,6 +78,19 @@ public class KafkaSecurityConfigurerTest {
         assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
     }
 
+    @Test
+    public void testSetAuthPropertiesAuthSslWithNoCertContentNoTrustStore() throws Exception {
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-sasl-ssl-no-cert-content-no-truststore.yaml");
+        KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
+        assertThat(props.getProperty("sasl.mechanism"), is("PLAIN"));
+        assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
+        assertThat(props.getProperty("certificateContent"), is(nullValue()));
+        assertThat(props.getProperty("ssl.truststore.location"), is(nullValue()));
+        assertThat(props.getProperty("ssl.truststore.password"), is(nullValue()));
+        assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
+    }
+
     private KafkaSourceConfig createKafkaSinkConfig(final String fileName) throws IOException {
         final Yaml yaml = new Yaml();
         final FileReader fileReader = new FileReader(Objects.requireNonNull(getClass().getClassLoader()
