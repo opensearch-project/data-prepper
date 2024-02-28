@@ -12,6 +12,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
 
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Map;
 import com.google.protobuf.util.JsonFormat;
@@ -65,7 +66,7 @@ public class OTelLogsDecoderTest {
     public void testParse() throws Exception {
         final ExportLogsServiceRequest request = buildExportLogsServiceRequestFromJsonFile(TEST_REQUEST_LOGS_FILE);
         InputStream inputStream = new ByteArrayInputStream((byte[])request.toByteArray());
-        createObjectUnderTest().parse(inputStream, (record) -> {
+        createObjectUnderTest().parse(inputStream, Instant.now(), (record) -> {
             validateLog((OpenTelemetryLog)record.getData());
         });
         

@@ -12,6 +12,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
 
+import java.time.Instant;
 import java.util.Objects;
 import com.google.protobuf.util.JsonFormat;
 import org.opensearch.dataprepper.model.trace.Span;
@@ -66,7 +67,7 @@ public class OTelTraceDecoderTest {
     public void testParse() throws Exception {
         final ExportTraceServiceRequest request = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_TRACES_FILE);
         InputStream inputStream = new ByteArrayInputStream((byte[])request.toByteArray());
-        createObjectUnderTest().parse(inputStream, (record) -> {
+        createObjectUnderTest().parse(inputStream, Instant.now(), (record) -> {
             validateSpan((Span)record.getData());
         });
         
