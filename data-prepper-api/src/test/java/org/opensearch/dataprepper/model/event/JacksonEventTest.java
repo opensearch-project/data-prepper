@@ -71,7 +71,7 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/", "foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/", "a1K.k3-01_02"})
+    @ValueSource(strings = {"/", "foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/", "a1K.k3-01_02", "keyWithBrackets[]"})
     void testPutAndGet_withStrings(final String key) {
         final UUID value = UUID.randomUUID();
 
@@ -280,7 +280,7 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/", "foo", "/foo", "/foo/bar", "foo/bar", "foo/bar/", "/foo/bar/leaf/key"})
+    @ValueSource(strings = {"/", "foo", "/foo", "/foo/bar", "foo/bar", "foo/bar/", "/foo/bar/leaf/key", "keyWithBrackets[]"})
     public void testDeleteKey(final String key) {
         event.put(key, UUID.randomUUID());
         event.delete(key);
@@ -367,7 +367,7 @@ public class JacksonEventTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"withSpecialChars*$%", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
-            "with,Comma", "with:Colon", "with[Bracket", "with|Brace"})
+            "with,Comma", "with:Colon", "with|Brace"})
     void testKey_withInvalidKey_throwsIllegalArgumentException(final String invalidKey) {
         assertThrowsForKeyCheck(IllegalArgumentException.class, invalidKey);
     }
