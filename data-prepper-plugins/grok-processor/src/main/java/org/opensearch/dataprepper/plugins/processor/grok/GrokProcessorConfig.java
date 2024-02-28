@@ -98,7 +98,7 @@ public class GrokProcessorConfig {
                 pluginSetting.getStringOrDefault(GROK_WHEN, null),
                 pluginSetting.getTypedList(TAGS_ON_MATCH_FAILURE, String.class),
                 pluginSetting.getTypedList(TAGS_ON_TIMEOUT, String.class),
-                pluginSetting.getBooleanOrDefault(INCLUDE_PERFORMANCE_METADATA, false));
+                pluginSetting.getBooleanOrDefault(INCLUDE_PERFORMANCE_METADATA, true));
     }
 
     public boolean isBreakOnMatch() {

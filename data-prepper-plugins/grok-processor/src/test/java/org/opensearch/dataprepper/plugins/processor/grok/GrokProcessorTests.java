@@ -161,6 +161,8 @@ public class GrokProcessorTests {
 
     @Test
     public void testMatchMerge() throws JsonProcessingException, ExecutionException, InterruptedException, TimeoutException {
+        pluginSetting.getSettings().put(GrokProcessorConfig.INCLUDE_PERFORMANCE_METADATA, false);
+
         grokProcessor = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");

@@ -77,7 +77,7 @@ public class GrokProcessorConfigTests {
         assertThat(grokProcessorConfig.getGrokWhen(), equalTo(null));
         assertThat(grokProcessorConfig.getTagsOnMatchFailure(), equalTo(Collections.emptyList()));
         assertThat(grokProcessorConfig.getTagsOnTimeout(), equalTo(Collections.emptyList()));
-        assertThat(grokProcessorConfig.getIncludePerformanceMetadata(), equalTo(false));
+        assertThat(grokProcessorConfig.getIncludePerformanceMetadata(), equalTo(true));
     }
 
     @Test
@@ -93,7 +93,7 @@ public class GrokProcessorConfigTests {
                 TEST_PATTERN_DEFINITIONS,
                 TEST_TIMEOUT_MILLIS,
                 TEST_TARGET_KEY,
-                true);
+                false);
 
         final GrokProcessorConfig grokProcessorConfig = GrokProcessorConfig.buildConfig(validPluginSetting);
 
@@ -107,7 +107,7 @@ public class GrokProcessorConfigTests {
         assertThat(grokProcessorConfig.getTargetKey(), equalTo(TEST_TARGET_KEY));
         assertThat(grokProcessorConfig.isNamedCapturesOnly(), equalTo(false));
         assertThat(grokProcessorConfig.getTimeoutMillis(), equalTo(TEST_TIMEOUT_MILLIS));
-        assertThat(grokProcessorConfig.getIncludePerformanceMetadata(), equalTo(true));
+        assertThat(grokProcessorConfig.getIncludePerformanceMetadata(), equalTo(false));
     }
 
     @Test

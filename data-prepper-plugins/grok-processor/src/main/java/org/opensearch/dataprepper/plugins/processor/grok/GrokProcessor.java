@@ -269,12 +269,12 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         }
 
         if (grokProcessorConfig.getIncludePerformanceMetadata()) {
-            final Integer totalPatternsAttemptedForEvent = (Integer) event.getMetadata().getAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY);
+            Integer totalPatternsAttemptedForEvent = (Integer) event.getMetadata().getAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY);
             if (totalPatternsAttemptedForEvent == null) {
-                event.getMetadata().setAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY, patternsAttempted);
-            } else {
-                event.getMetadata().setAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY, totalPatternsAttemptedForEvent + patternsAttempted);
+                totalPatternsAttemptedForEvent = 0;
             }
+
+            event.getMetadata().setAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY, totalPatternsAttemptedForEvent + patternsAttempted);
         }
     }
 
