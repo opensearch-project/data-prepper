@@ -53,6 +53,7 @@ import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY;
 
 
 @SingleThread
@@ -228,6 +229,8 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private void matchAndMerge(final Event event) {
         final Map<String, Object> grokkedCaptures = new HashMap<>();
 
+        int patternsAttempted = 0;
+
         for (final Map.Entry<String, List<Grok>> entry : fieldToGrok.entrySet()) {
             for (final Grok grok : entry.getValue()) {
                 final String value = event.get(entry.getKey(), String.class);
@@ -237,6 +240,8 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
                     final Map<String, Object> captures = match.capture();
                     mergeCaptures(grokkedCaptures, captures);
+
+                    patternsAttempted++;
 
                     if (shouldBreakOnMatch(grokkedCaptures)) {
                         break;
@@ -261,6 +266,15 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
             grokProcessingMismatchCounter.increment();
         } else {
             grokProcessingMatchCounter.increment();
+        }
+
+        if (grokProcessorConfig.getIncludePerformanceMetadata()) {
+            final Integer totalPatternsAttemptedForEvent = (Integer) event.getMetadata().getAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY);
+            if (totalPatternsAttemptedForEvent == null) {
+                event.getMetadata().setAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY, patternsAttempted);
+            } else {
+                event.getMetadata().setAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY, totalPatternsAttemptedForEvent + patternsAttempted);
+            }
         }
     }
 
