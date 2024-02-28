@@ -201,6 +201,12 @@ subprojects {
                 }
                 because 'CVE-2023-5072, CVE from transitive dependencies'
             }
+            implementation('org.apache.commons:commons-compress') {
+                version {
+                    require '1.26.0'
+                }
+                because 'CVE-2024-25710, CVE-2024-26308'
+            }
         }
     }
 
