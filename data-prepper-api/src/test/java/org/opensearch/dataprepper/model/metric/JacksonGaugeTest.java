@@ -11,8 +11,10 @@ import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.TestObject;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.skyscreamer.jsonassert.JSONAssert;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -87,6 +89,14 @@ class JacksonGaugeTest {
     public void testGetName() {
         final String name = gauge.getName();
         assertThat(name, is(equalTo(TEST_NAME)));
+    }
+
+    @Test
+    public void testGetTimeReceived() {
+        Instant now = Instant.now();
+        builder.withTimeReceived(now);
+        gauge = builder.build();
+        assertThat(((DefaultEventHandle)gauge.getEventHandle()).getInternalOriginationTime(), is(now));
     }
 
     @Test

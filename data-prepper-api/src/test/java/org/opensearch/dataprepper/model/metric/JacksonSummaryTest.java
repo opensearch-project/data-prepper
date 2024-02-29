@@ -10,6 +10,9 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
+
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -114,6 +117,14 @@ public class JacksonSummaryTest {
     public void testGetSum() {
         final Double sum = summary.getSum();
         assertThat(sum, is(equalTo(TEST_SUM)));
+    }
+
+    @Test
+    public void testGetTimeReceived() {
+        Instant now = Instant.now();
+        builder.withTimeReceived(now);
+        summary = builder.build();
+        assertThat(((DefaultEventHandle)summary.getEventHandle()).getInternalOriginationTime(), is(now));
     }
 
 

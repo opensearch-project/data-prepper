@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.model.metric.Metric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -90,7 +91,7 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
                 Collection<Record<? extends Metric>> metrics;
 
                 AtomicInteger droppedCounter = new AtomicInteger(0);
-                metrics = oTelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE, true, true, true);
+                metrics = oTelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE, Instant.now(), true, true, true);
                 recordsDroppedCounter.increment(droppedCounter.get());
                 recordsCreatedCounter.increment(metrics.size());
                 buffer.writeAll(metrics, bufferWriteTimeoutInMillis);

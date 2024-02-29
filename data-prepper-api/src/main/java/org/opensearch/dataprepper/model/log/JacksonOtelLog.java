@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -159,6 +160,18 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
         public Builder withAttributes(final Map<String, Object> attributes) {
             data.put(ATTRIBUTES_KEY, attributes);
             return getThis();
+        }
+
+        /**
+         * Sets the time received for populating event origination time in event handle
+         *
+         * @param timeReceived time received
+         * @return the builder
+         * @since 2.7
+         */
+        @Override
+        public Builder withTimeReceived(final Instant timeReceived) {
+            return (Builder)super.withTimeReceived(timeReceived);
         }
 
         /**

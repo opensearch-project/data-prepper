@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -88,7 +89,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
         final Collection<Span> spans;
 
         try {
-            spans = oTelProtoDecoder.parseExportTraceServiceRequest(request);
+            spans = oTelProtoDecoder.parseExportTraceServiceRequest(request, Instant.now());
         } catch (final Exception e) {
             LOG.warn(DataPrepperMarkers.SENSITIVE, "Failed to parse request with error '{}'. Request body: {}.", e.getMessage(), request);
             throw new BadRequestException(e.getMessage(), e);

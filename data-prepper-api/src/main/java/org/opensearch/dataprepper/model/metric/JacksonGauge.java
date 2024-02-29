@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.metric;
 
 import org.opensearch.dataprepper.model.event.EventType;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -65,6 +66,18 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
                 data.put(VALUE_KEY, value);
             }
             return this;
+        }
+
+        /**
+         * Sets the time received for populating event origination time in event handle
+         *
+         * @param timeReceived time received
+         * @return the builder
+         * @since 2.7
+         */
+        @Override
+        public Builder withTimeReceived(final Instant timeReceived) {
+            return (Builder)super.withTimeReceived(timeReceived);
         }
 
         /**

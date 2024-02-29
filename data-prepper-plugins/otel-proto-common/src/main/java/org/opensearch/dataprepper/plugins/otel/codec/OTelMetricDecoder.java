@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.function.Consumer;
 
 
@@ -24,11 +25,11 @@ public class OTelMetricDecoder implements ByteDecoder {
     public OTelMetricDecoder() {
         otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
     }
-    public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
+    public void parse(InputStream inputStream, Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
         ExportMetricsServiceRequest request = ExportMetricsServiceRequest.parseFrom(inputStream);
         AtomicInteger droppedCounter = new AtomicInteger(0);
         Collection<Record<? extends Metric>> records =
-            otelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, OTelProtoCodec.DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE, true, true, false);
+            otelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, OTelProtoCodec.DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE, timeReceivedMs, true, true, false);
         for (Record<? extends Metric> record: records) {
             eventConsumer.accept((Record)record);
         }

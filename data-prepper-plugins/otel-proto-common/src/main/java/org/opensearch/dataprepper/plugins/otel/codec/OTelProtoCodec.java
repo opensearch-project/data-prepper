@@ -163,9 +163,9 @@ public class OTelProtoCodec {
 
     public static class OTelProtoDecoder {
 
-        public List<Span> parseExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest) {
+        public List<Span> parseExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest, final Instant timeReceived) {
             return exportTraceServiceRequest.getResourceSpansList().stream()
-                    .flatMap(rs -> parseResourceSpans(rs).stream()).collect(Collectors.toList());
+                    .flatMap(rs -> parseResourceSpans(rs, timeReceived).stream()).collect(Collectors.toList());
         }
 
         public Map<String, ExportTraceServiceRequest> splitExportTraceServiceRequestByTraceId(final ExportTraceServiceRequest exportTraceServiceRequest) {
@@ -188,12 +188,12 @@ public class OTelProtoCodec {
             return result;
         }
 
-        public List<OpenTelemetryLog> parseExportLogsServiceRequest(final ExportLogsServiceRequest exportLogsServiceRequest) {
+        public List<OpenTelemetryLog> parseExportLogsServiceRequest(final ExportLogsServiceRequest exportLogsServiceRequest, final Instant timeReceived) {
             return exportLogsServiceRequest.getResourceLogsList().stream()
-                    .flatMap(rs -> parseResourceLogs(rs).stream()).collect(Collectors.toList());
+                    .flatMap(rs -> parseResourceLogs(rs, timeReceived).stream()).collect(Collectors.toList());
         }
 
-        protected Collection<OpenTelemetryLog> parseResourceLogs(ResourceLogs rs) {
+        protected Collection<OpenTelemetryLog> parseResourceLogs(ResourceLogs rs, final Instant timeReceived) {
             final String serviceName = OTelProtoCodec.getServiceName(rs.getResource()).orElse(null);
             final Map<String, Object> resourceAttributes = OTelProtoCodec.getResourceAttributes(rs.getResource());
             final String schemaUrl = rs.getSchemaUrl();
@@ -205,7 +205,8 @@ public class OTelProtoCodec {
                                     serviceName,
                                     OTelProtoCodec.getInstrumentationLibraryAttributes(ils.getInstrumentationLibrary()),
                                     resourceAttributes,
-                                    schemaUrl))
+                                    schemaUrl,
+                                    timeReceived))
                     .flatMap(Collection::stream);
 
             Stream<OpenTelemetryLog> mappedScopeListLogs = rs.getScopeLogsList()
@@ -215,7 +216,8 @@ public class OTelProtoCodec {
                                     serviceName,
                                     OTelProtoCodec.getInstrumentationScopeAttributes(sls.getScope()),
                                     resourceAttributes,
-                                    schemaUrl))
+                                    schemaUrl,
+                                    timeReceived))
                     .flatMap(Collection::stream);
 
             return Stream.concat(mappedInstrumentationLibraryLogs, mappedScopeListLogs).collect(Collectors.toList());
@@ -260,26 +262,26 @@ public class OTelProtoCodec {
             return result;
         }
 
-        protected List<Span> parseResourceSpans(final ResourceSpans resourceSpans) {
+        protected List<Span> parseResourceSpans(final ResourceSpans resourceSpans, final Instant timeReceived) {
             final String serviceName = getServiceName(resourceSpans.getResource()).orElse(null);
             final Map<String, Object> resourceAttributes = getResourceAttributes(resourceSpans.getResource());
 
             if (resourceSpans.getScopeSpansList().size() > 0) {
-                return parseScopeSpans(resourceSpans.getScopeSpansList(), serviceName, resourceAttributes);
+                return parseScopeSpans(resourceSpans.getScopeSpansList(), serviceName, resourceAttributes, timeReceived);
             }
 
             if (resourceSpans.getInstrumentationLibrarySpansList().size() > 0) {
-                return parseInstrumentationLibrarySpans(resourceSpans.getInstrumentationLibrarySpansList(), serviceName, resourceAttributes);
+                return parseInstrumentationLibrarySpans(resourceSpans.getInstrumentationLibrarySpansList(), serviceName, resourceAttributes, timeReceived);
             }
 
             LOG.debug("No spans found to parse from ResourceSpans object: {}", resourceSpans);
             return Collections.emptyList();
         }
 
-        private List<Span> parseScopeSpans(final List<ScopeSpans> scopeSpansList, final String serviceName, final Map<String, Object> resourceAttributes) {
+        private List<Span> parseScopeSpans(final List<ScopeSpans> scopeSpansList, final String serviceName, final Map<String, Object> resourceAttributes, final Instant timeReceived) {
             return scopeSpansList.stream()
                     .map(scopeSpans -> parseSpans(scopeSpans.getSpansList(), scopeSpans.getScope(),
-                            OTelProtoCodec::getInstrumentationScopeAttributes, serviceName, resourceAttributes))
+                            OTelProtoCodec::getInstrumentationScopeAttributes, serviceName, resourceAttributes, timeReceived))
                     .flatMap(Collection::stream)
                     .collect(Collectors.toList());
         }
@@ -305,11 +307,12 @@ public class OTelProtoCodec {
         }
 
         private List<Span> parseInstrumentationLibrarySpans(final List<InstrumentationLibrarySpans> instrumentationLibrarySpansList,
-                                                            final String serviceName, final Map<String, Object> resourceAttributes) {
+                                                            final String serviceName, final Map<String, Object> resourceAttributes,
+                                                            final Instant timeReceived) {
             return instrumentationLibrarySpansList.stream()
                     .map(instrumentationLibrarySpans -> parseSpans(instrumentationLibrarySpans.getSpansList(),
                             instrumentationLibrarySpans.getInstrumentationLibrary(), this::getInstrumentationLibraryAttributes,
-                            serviceName, resourceAttributes))
+                            serviceName, resourceAttributes, timeReceived))
                     .flatMap(Collection::stream)
                     .collect(Collectors.toList());
         }
@@ -354,20 +357,22 @@ public class OTelProtoCodec {
 
         private <T> List<Span> parseSpans(final List<io.opentelemetry.proto.trace.v1.Span> spans, final T scope,
                                           final Function<T, Map<String, Object>> scopeAttributesGetter,
-                                          final String serviceName, final Map<String, Object> resourceAttributes) {
+                                          final String serviceName, final Map<String, Object> resourceAttributes,
+                                          final Instant timeReceived) {
             return spans.stream()
                     .map(span -> {
                         final Map<String, Object> scopeAttributes = scopeAttributesGetter.apply(scope);
-                        return parseSpan(span, scopeAttributes, serviceName, resourceAttributes);
+                        return parseSpan(span, scopeAttributes, serviceName, resourceAttributes, timeReceived);
                     })
                     .collect(Collectors.toList());
         }
 
         protected List<OpenTelemetryLog> processLogsList(final List<LogRecord> logsList,
-                                                                                         final String serviceName,
-                                                                                         final Map<String, Object> ils,
-                                                                                         final Map<String, Object> resourceAttributes,
-                                                                                         final String schemaUrl) {
+                                                         final String serviceName,
+                                                         final Map<String, Object> ils,
+                                                         final Map<String, Object> resourceAttributes,
+                                                         final String schemaUrl,
+                                                         final Instant timeReceived) {
             return logsList.stream()
                     .map(log -> JacksonOtelLog.builder()
                             .withTime(OTelProtoCodec.convertUnixNanosToISO8601(log.getTimeUnixNano()))
@@ -388,12 +393,13 @@ public class OTelProtoCodec {
                             .withSeverityText(log.getSeverityText())
                             .withDroppedAttributesCount(log.getDroppedAttributesCount())
                             .withBody(OTelProtoCodec.convertAnyValue(log.getBody()))
+                            .withTimeReceived(timeReceived)
                             .build())
                     .collect(Collectors.toList());
         }
 
         protected Span parseSpan(final io.opentelemetry.proto.trace.v1.Span sp, final Map<String, Object> instrumentationScopeAttributes,
-                                     final String serviceName, final Map<String, Object> resourceAttributes) {
+                                     final String serviceName, final Map<String, Object> resourceAttributes, final Instant timeReceived) {
             return JacksonSpan.builder()
                     .withSpanId(convertByteStringToString(sp.getSpanId()))
                     .withTraceId(convertByteStringToString(sp.getTraceId()))
@@ -420,6 +426,7 @@ public class OTelProtoCodec {
                     .withTraceGroup(getTraceGroup(sp))
                     .withDurationInNanos(sp.getEndTimeUnixNano() - sp.getStartTimeUnixNano())
                     .withTraceGroupFields(getTraceGroupFields(sp))
+                    .withTimeReceived(timeReceived)
                     .build();
         }
 
@@ -583,6 +590,7 @@ public class OTelProtoCodec {
                             final ExportMetricsServiceRequest request,
                             AtomicInteger droppedCounter,
                             final Integer exponentialHistogramMaxAllowedScale,
+                            final Instant timeReceived,
                             final boolean calculateHistogramBuckets,
                             final boolean calculateExponentialHistogramBuckets,
                             final boolean flattenAttributes) {
@@ -594,12 +602,12 @@ public class OTelProtoCodec {
 
                 for (InstrumentationLibraryMetrics is : rs.getInstrumentationLibraryMetricsList()) {
                     final Map<String, Object> ils = OTelProtoCodec.getInstrumentationLibraryAttributes(is.getInstrumentationLibrary());
-                    recordsOut.addAll(processMetricsList(is.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl, droppedCounter, exponentialHistogramMaxAllowedScale, calculateHistogramBuckets, calculateExponentialHistogramBuckets, flattenAttributes));
+                    recordsOut.addAll(processMetricsList(is.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl, droppedCounter, exponentialHistogramMaxAllowedScale, timeReceived, calculateHistogramBuckets, calculateExponentialHistogramBuckets, flattenAttributes));
                 }
 
                 for (ScopeMetrics sm : rs.getScopeMetricsList()) {
                     final Map<String, Object> ils = OTelProtoCodec.getInstrumentationScopeAttributes(sm.getScope());
-                    recordsOut.addAll(processMetricsList(sm.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl, droppedCounter, exponentialHistogramMaxAllowedScale, calculateHistogramBuckets, calculateExponentialHistogramBuckets, flattenAttributes));
+                    recordsOut.addAll(processMetricsList(sm.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl, droppedCounter, exponentialHistogramMaxAllowedScale, timeReceived, calculateHistogramBuckets, calculateExponentialHistogramBuckets, flattenAttributes));
                 }
             }
             return recordsOut;
@@ -613,6 +621,7 @@ public class OTelProtoCodec {
                     final String schemaUrl,
                     AtomicInteger droppedCounter,
                     final Integer exponentialHistogramMaxAllowedScale,
+                    final Instant timeReceived,
                     final boolean calculateHistogramBuckets,
                     final boolean calculateExponentialHistogramBuckets,
                     final boolean flattenAttributes) {
@@ -620,15 +629,15 @@ public class OTelProtoCodec {
             for (io.opentelemetry.proto.metrics.v1.Metric metric : metricsList) {
                 try {
                     if (metric.hasGauge()) {
-                        recordsOut.addAll(mapGauge(metric, serviceName, ils, resourceAttributes, schemaUrl, flattenAttributes));
+                        recordsOut.addAll(mapGauge(metric, serviceName, ils, resourceAttributes, schemaUrl, timeReceived, flattenAttributes));
                     } else if (metric.hasSum()) {
-                        recordsOut.addAll(mapSum(metric, serviceName, ils, resourceAttributes, schemaUrl, flattenAttributes));
+                        recordsOut.addAll(mapSum(metric, serviceName, ils, resourceAttributes, schemaUrl, timeReceived, flattenAttributes));
                     } else if (metric.hasSummary()) {
-                        recordsOut.addAll(mapSummary(metric, serviceName, ils, resourceAttributes, schemaUrl, flattenAttributes));
+                        recordsOut.addAll(mapSummary(metric, serviceName, ils, resourceAttributes, schemaUrl, timeReceived, flattenAttributes));
                     } else if (metric.hasHistogram()) {
-                        recordsOut.addAll(mapHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl, calculateHistogramBuckets, flattenAttributes));
+                        recordsOut.addAll(mapHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl, timeReceived, calculateHistogramBuckets, flattenAttributes));
                     } else if (metric.hasExponentialHistogram()) {
-                        recordsOut.addAll(mapExponentialHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl, exponentialHistogramMaxAllowedScale, calculateExponentialHistogramBuckets, flattenAttributes));
+                        recordsOut.addAll(mapExponentialHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl, exponentialHistogramMaxAllowedScale, timeReceived, calculateExponentialHistogramBuckets, flattenAttributes));
                     }
                 } catch (Exception e) {
                     LOG.warn("Error while processing metrics", e);
@@ -644,6 +653,7 @@ public class OTelProtoCodec {
                                          final Map<String, Object> ils,
                                          final Map<String, Object> resourceAttributes,
                                          final String schemaUrl,
+                                         final Instant timeReceived,
                                          final boolean flattenAttributes) {
             return metric.getGauge().getDataPointsList().stream()
                 .map(dp -> JacksonGauge.builder()
@@ -664,6 +674,7 @@ public class OTelProtoCodec {
                         .withSchemaUrl(schemaUrl)
                         .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
                         .withFlags(dp.getFlags())
+                        .withTimeReceived(timeReceived)
                         .build(flattenAttributes))
                 .map(Record::new)
                 .collect(Collectors.toList());
@@ -675,6 +686,7 @@ public class OTelProtoCodec {
                                      final Map<String, Object> ils,
                                      final Map<String, Object> resourceAttributes,
                                      final String schemaUrl,
+                                     final Instant timeReceived,
                                      final boolean flattenAttributes) {
             return metric.getSum().getDataPointsList().stream()
                 .map(dp -> JacksonSum.builder()
@@ -697,6 +709,7 @@ public class OTelProtoCodec {
                         .withSchemaUrl(schemaUrl)
                         .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
                         .withFlags(dp.getFlags())
+                        .withTimeReceived(timeReceived)
                         .build(flattenAttributes))
                 .map(Record::new)
                 .collect(Collectors.toList());
@@ -708,6 +721,7 @@ public class OTelProtoCodec {
                                              final Map<String, Object> ils,
                                              final Map<String, Object> resourceAttributes,
                                              final String schemaUrl,
+                                             final Instant timeReceived,
                                              final boolean flattenAttributes) {
             return metric.getSummary().getDataPointsList().stream()
                 .map(dp -> JacksonSummary.builder()
@@ -730,6 +744,7 @@ public class OTelProtoCodec {
                         ))
                         .withSchemaUrl(schemaUrl)
                         .withFlags(dp.getFlags())
+                        .withTimeReceived(timeReceived)
                         .build(flattenAttributes))
                 .map(Record::new)
                 .collect(Collectors.toList());
@@ -741,6 +756,7 @@ public class OTelProtoCodec {
                                                  final Map<String, Object> ils,
                                                  final Map<String, Object> resourceAttributes,
                                                  final String schemaUrl,
+                                                 final Instant timeReceived,
                                                  final boolean calculateHistogramBuckets,
                                                  final boolean flattenAttributes) {
             return metric.getHistogram().getDataPointsList().stream()
@@ -768,6 +784,7 @@ public class OTelProtoCodec {
                             ))
                             .withSchemaUrl(schemaUrl)
                             .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
+                            .withTimeReceived(timeReceived)
                             .withFlags(dp.getFlags());
                     if (calculateHistogramBuckets) {
                         builder.withBuckets(OTelProtoCodec.createBuckets(dp.getBucketCountsList(), dp.getExplicitBoundsList()));
@@ -787,6 +804,7 @@ public class OTelProtoCodec {
                                             final Map<String, Object> resourceAttributes,
                                             final String schemaUrl,
                                             final Integer exponentialHistogramMaxAllowedScale,
+                                            final Instant timeReceived,
                                             final boolean calculateExponentialHistogramBuckets,
                                             final boolean flattenAttributes) {
             return metric.getExponentialHistogram()
@@ -827,6 +845,7 @@ public class OTelProtoCodec {
                             ))
                             .withSchemaUrl(schemaUrl)
                             .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
+                            .withTimeReceived(timeReceived)
                             .withFlags(dp.getFlags());
 
                     if (calculateExponentialHistogramBuckets) {

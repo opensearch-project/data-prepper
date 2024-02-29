@@ -36,6 +36,7 @@ import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -198,7 +199,7 @@ public class OTelTraceGrpcServiceTest {
     public void export_BadRequest_responseObserverOnError() throws Exception {
         final String testMessage = "test message";
         final RuntimeException testException = new RuntimeException(testMessage);
-        when(mockOTelProtoDecoder.parseExportTraceServiceRequest(any())).thenThrow(testException);
+        when(mockOTelProtoDecoder.parseExportTraceServiceRequest(any(), any(Instant.class))).thenThrow(testException);
         objectUnderTest = generateOTelTraceGrpcService(mockOTelProtoDecoder);
 
         try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
