@@ -145,12 +145,14 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     @Override
     public void checkpoint(final CheckpointState checkpointState) {
         checkpointTimer.record(() -> doCheckpoint(checkpointState));
-        final int numRecordsToBeChecked = checkpointState.getNumRecordsToBeChecked();
-        recordsInFlight.addAndGet(-numRecordsToBeChecked);
-        recordsProcessedCounter.increment(numRecordsToBeChecked);
+        if (!isByteBuffer()) {
+            final int numRecordsToBeChecked = checkpointState.getNumRecordsToBeChecked();
+            recordsInFlight.addAndGet(-numRecordsToBeChecked);
+            recordsProcessedCounter.increment(numRecordsToBeChecked);
+        }
     }
 
-    protected int getRecordsInFlight() {
+    public int getRecordsInFlight() {
         return recordsInFlight.intValue();
     }
 
