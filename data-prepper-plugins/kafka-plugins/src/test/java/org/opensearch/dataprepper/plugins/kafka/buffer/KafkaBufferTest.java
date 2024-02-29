@@ -297,7 +297,7 @@ class KafkaBufferTest {
     void test_kafkaBuffer_doCheckpoint() {
         kafkaBuffer = createObjectUnderTest();
         kafkaBuffer.doCheckpoint(mock(CheckpointState.class));
-        verify(blockingBuffer).doCheckpoint(any());
+        verify(blockingBuffer).checkpoint(any());
     }
 
     @Test
