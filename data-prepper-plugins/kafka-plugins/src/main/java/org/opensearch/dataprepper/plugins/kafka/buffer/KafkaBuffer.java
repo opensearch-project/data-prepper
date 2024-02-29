@@ -162,7 +162,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     public void doCheckpoint(CheckpointState checkpointState) {
         try {
             setMdc();
-            innerBuffer.doCheckpoint(checkpointState);
+            innerBuffer.checkpoint(checkpointState);
         } finally {
             resetMdc();
         }
@@ -186,6 +186,10 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     @Override
     public boolean isWrittenOffHeapOnly() {
         return true;
+    }
+
+    int getInnerBufferRecordsInFlight() {
+        return innerBuffer.getRecordsInFlight();
     }
 
     @Override
