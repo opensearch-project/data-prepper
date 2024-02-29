@@ -129,7 +129,8 @@ public class KafkaSecurityConfigurer {
     private static void setSecurityProtocolSSLProperties(final Properties properties, final EncryptionConfig encryptionConfig) {
         if (Objects.nonNull(encryptionConfig.getCertificateContent())) {
             setCustomSslProperties(properties, encryptionConfig.getCertificateContent());
-        } else {
+        } else if (Objects.nonNull(encryptionConfig.getTrustStoreFilePath()) &&
+                Objects.nonNull(encryptionConfig.getTrustStorePassword())) {
             setTruststoreProperties(properties, encryptionConfig);
         }
     }
