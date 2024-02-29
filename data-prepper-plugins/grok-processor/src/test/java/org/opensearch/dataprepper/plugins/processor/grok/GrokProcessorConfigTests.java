@@ -77,6 +77,7 @@ public class GrokProcessorConfigTests {
         assertThat(grokProcessorConfig.getGrokWhen(), equalTo(null));
         assertThat(grokProcessorConfig.getTagsOnMatchFailure(), equalTo(Collections.emptyList()));
         assertThat(grokProcessorConfig.getTagsOnTimeout(), equalTo(Collections.emptyList()));
+        assertThat(grokProcessorConfig.getIncludePerformanceMetadata(), equalTo(true));
     }
 
     @Test
@@ -91,7 +92,8 @@ public class GrokProcessorConfigTests {
                 TEST_PATTERNS_FILES_GLOB,
                 TEST_PATTERN_DEFINITIONS,
                 TEST_TIMEOUT_MILLIS,
-                TEST_TARGET_KEY);
+                TEST_TARGET_KEY,
+                false);
 
         final GrokProcessorConfig grokProcessorConfig = GrokProcessorConfig.buildConfig(validPluginSetting);
 
@@ -105,6 +107,7 @@ public class GrokProcessorConfigTests {
         assertThat(grokProcessorConfig.getTargetKey(), equalTo(TEST_TARGET_KEY));
         assertThat(grokProcessorConfig.isNamedCapturesOnly(), equalTo(false));
         assertThat(grokProcessorConfig.getTimeoutMillis(), equalTo(TEST_TIMEOUT_MILLIS));
+        assertThat(grokProcessorConfig.getIncludePerformanceMetadata(), equalTo(false));
     }
 
     @Test
@@ -119,7 +122,8 @@ public class GrokProcessorConfigTests {
                 TEST_PATTERNS_FILES_GLOB,
                 TEST_PATTERN_DEFINITIONS,
                 TEST_TIMEOUT_MILLIS,
-                TEST_TARGET_KEY);
+                TEST_TARGET_KEY,
+                false);
 
         invalidPluginSetting.getSettings().put(GrokProcessorConfig.MATCH, TEST_INVALID_MATCH);
 
@@ -135,7 +139,8 @@ public class GrokProcessorConfigTests {
                                                               final String patternsFilesGlob,
                                                               final Map<String, String> patternDefinitions,
                                                               final int timeoutMillis,
-                                                              final String targetKey) {
+                                                              final String targetKey,
+                                                              final boolean includePerformanceMetadata) {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(GrokProcessorConfig.BREAK_ON_MATCH, breakOnMatch);
         settings.put(GrokProcessorConfig.NAMED_CAPTURES_ONLY, namedCapturesOnly);
@@ -147,6 +152,7 @@ public class GrokProcessorConfigTests {
         settings.put(GrokProcessorConfig.PATTERNS_FILES_GLOB, patternsFilesGlob);
         settings.put(GrokProcessorConfig.TIMEOUT_MILLIS, timeoutMillis);
         settings.put(GrokProcessorConfig.TARGET_KEY, targetKey);
+        settings.put(GrokProcessorConfig.INCLUDE_PERFORMANCE_METADATA, includePerformanceMetadata);
 
         return new PluginSetting(PLUGIN_NAME, settings);
     }

@@ -58,6 +58,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessor.EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY;
 import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
 
 
@@ -160,6 +161,8 @@ public class GrokProcessorTests {
 
     @Test
     public void testMatchMerge() throws JsonProcessingException, ExecutionException, InterruptedException, TimeoutException {
+        pluginSetting.getSettings().put(GrokProcessorConfig.INCLUDE_PERFORMANCE_METADATA, false);
+
         grokProcessor = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");
@@ -182,7 +185,11 @@ public class GrokProcessorTests {
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
+        assertThat(grokkedRecords.get(0).getData(), notNullValue());
+        assertThat(grokkedRecords.get(0).getData().getMetadata(), notNullValue());
+        assertThat(grokkedRecords.get(0).getData().getMetadata().getAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY), equalTo(null));
         assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
+
         verify(grokProcessingMatchCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
         verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
@@ -510,6 +517,62 @@ public class GrokProcessorTests {
 
             assertThat(grokkedRecords.size(), equalTo(1));
             assertThat(grokkedRecords.get(0), notNullValue());
+            assertRecordsAreEqual(grokkedRecords.get(0), record);
+            verify(grokProcessingMismatchCounter, times(1)).increment();
+            verify(grokProcessingTime, times(1)).record(any(Runnable.class));
+            verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchCounter, grokProcessingTimeoutsCounter);
+        }
+
+        @Test
+        public void testMatchOnSecondPattern() throws JsonProcessingException {
+            pluginSetting.getSettings().put(GrokProcessorConfig.INCLUDE_PERFORMANCE_METADATA, true);
+
+            when(match.capture()).thenReturn(Collections.emptyMap());
+            when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
+            when(secondMatch.capture()).thenReturn(capture);
+
+            grokProcessor = createObjectUnderTest();
+
+            final Map<String, Object> testData = new HashMap();
+            testData.put("message", messageInput);
+            final Record<Event> record = buildRecordWithEvent(testData);
+
+            final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
+
+            assertThat(grokkedRecords.size(), equalTo(1));
+            assertThat(grokkedRecords.get(0), notNullValue());
+            assertThat(grokkedRecords.get(0).getData(), notNullValue());
+            assertThat(grokkedRecords.get(0).getData().getMetadata(), notNullValue());
+            assertThat(grokkedRecords.get(0).getData().getMetadata().getAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY), equalTo(2));
+            assertRecordsAreEqual(grokkedRecords.get(0), record);
+            verify(grokProcessingMismatchCounter, times(1)).increment();
+            verify(grokProcessingTime, times(1)).record(any(Runnable.class));
+            verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchCounter, grokProcessingTimeoutsCounter);
+        }
+
+        @Test
+        public void testMatchOnSecondPatternWithExistingMetadataForTotalPatternMatches() throws JsonProcessingException {
+            pluginSetting.getSettings().put(GrokProcessorConfig.INCLUDE_PERFORMANCE_METADATA, true);
+
+            when(match.capture()).thenReturn(Collections.emptyMap());
+            when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
+            when(secondMatch.capture()).thenReturn(capture);
+
+            grokProcessor = createObjectUnderTest();
+
+            final Map<String, Object> testData = new HashMap();
+            testData.put("message", messageInput);
+            final Record<Event> record = buildRecordWithEvent(testData);
+
+            record.getData().getMetadata().setAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY, 1);
+
+            final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
+
+            assertThat(grokkedRecords.size(), equalTo(1));
+            assertThat(grokkedRecords.get(0), notNullValue());
+            assertThat(grokkedRecords.get(0).getData(), notNullValue());
+            assertThat(grokkedRecords.get(0).getData().getMetadata(), notNullValue());
+            assertThat(grokkedRecords.get(0).getData().getMetadata().getAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY), equalTo(3));
             assertRecordsAreEqual(grokkedRecords.get(0), record);
             verify(grokProcessingMismatchCounter, times(1)).increment();
             verify(grokProcessingTime, times(1)).record(any(Runnable.class));
