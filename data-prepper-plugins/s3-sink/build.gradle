@@ -30,7 +30,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:csv-processor')
     testImplementation testLibs.slf4j.simple
     testImplementation 'software.amazon.awssdk:s3-transfer-manager'
-    testImplementation 'software.amazon.awssdk.crt:aws-crt:0.25.0'
+    testImplementation 'software.amazon.awssdk.crt:aws-crt:0.29.11'
 
     constraints {
         implementation('com.nimbusds:nimbus-jose-jwt') {
