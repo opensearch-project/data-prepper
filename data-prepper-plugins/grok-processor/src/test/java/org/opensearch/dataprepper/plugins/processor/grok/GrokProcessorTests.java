@@ -46,6 +46,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
@@ -59,6 +60,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessor.EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY;
 import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
 
 
@@ -544,6 +546,7 @@ public class GrokProcessorTests {
             assertThat(grokkedRecords.get(0).getData(), notNullValue());
             assertThat(grokkedRecords.get(0).getData().getMetadata(), notNullValue());
             assertThat(grokkedRecords.get(0).getData().getMetadata().getAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY), equalTo(2));
+            assertThat((Long) grokkedRecords.get(0).getData().getMetadata().getAttribute(TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY), greaterThan(0L));
             assertRecordsAreEqual(grokkedRecords.get(0), record);
             verify(grokProcessingMismatchCounter, times(1)).increment();
             verify(grokProcessingTime, times(1)).record(any(Runnable.class));
@@ -565,6 +568,7 @@ public class GrokProcessorTests {
             final Record<Event> record = buildRecordWithEvent(testData);
 
             record.getData().getMetadata().setAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY, 1);
+            record.getData().getMetadata().setAttribute(TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY, 300L);
 
             final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 
@@ -573,6 +577,7 @@ public class GrokProcessorTests {
             assertThat(grokkedRecords.get(0).getData(), notNullValue());
             assertThat(grokkedRecords.get(0).getData().getMetadata(), notNullValue());
             assertThat(grokkedRecords.get(0).getData().getMetadata().getAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY), equalTo(3));
+            assertThat((Long) grokkedRecords.get(0).getData().getMetadata().getAttribute(TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY), greaterThan(300L));
             assertRecordsAreEqual(grokkedRecords.get(0), record);
             verify(grokProcessingMismatchCounter, times(1)).increment();
             verify(grokProcessingTime, times(1)).record(any(Runnable.class));
