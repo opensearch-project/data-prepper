@@ -10,7 +10,7 @@ plugins {
 dependencies {
     implementation project(':data-prepper-api')
     implementation 'io.micrometer:micrometer-core'
-    implementation 'joda-time:joda-time:2.12.6'
+    implementation 'joda-time:joda-time:2.12.7'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.apptasticsoftware:rssreader:3.5.0'
