@@ -27,7 +27,7 @@ dependencies {
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     implementation 'software.amazon.awssdk:cloudwatch'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
-    implementation platform('org.apache.logging.log4j:log4j-bom:2.22.1')
+    implementation platform('org.apache.logging.log4j:log4j-bom:2.23.0')
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
     implementation 'javax.inject:javax.inject:1'
