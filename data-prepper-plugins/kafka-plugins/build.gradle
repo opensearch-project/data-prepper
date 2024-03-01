@@ -29,7 +29,7 @@ dependencies {
     implementation project(':data-prepper-plugins:blocking-buffer')
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation 'org.apache.kafka:kafka-clients:3.6.1'
-    implementation 'org.apache.kafka:connect-json:3.6.1'
+    implementation 'org.apache.kafka:connect-json:3.7.0'
     implementation project(':data-prepper-plugins:http-common')
     implementation libs.avro.core
     implementation 'com.fasterxml.jackson.core:jackson-databind'
