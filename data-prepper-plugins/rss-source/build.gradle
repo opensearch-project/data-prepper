@@ -13,7 +13,7 @@ dependencies {
     implementation 'joda-time:joda-time:2.12.6'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.apptasticsoftware:rssreader:3.5.0'
+    implementation 'com.apptasticsoftware:rssreader:3.6.0'
     testImplementation libs.commons.lang3
     testImplementation project(':data-prepper-test-common')
     testImplementation 'org.mock-server:mockserver-junit-jupiter-no-dependencies:5.14.0'
