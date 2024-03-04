@@ -20,10 +20,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @DataPrepperPlugin(name = "flatten", pluginType = Processor.class, pluginConfigurationType = FlattenProcessorConfig.class)
 public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -31,14 +29,17 @@ public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Ev
     private static final String SEPARATOR = "/";
     private final FlattenProcessorConfig config;
     private final ExpressionEvaluator expressionEvaluator;
-    private final Set<String> excludeKeySet = new HashSet<>();
+    private final Map<String, String> excludeKeysAndJsonPointers = new HashMap<>();
 
     @DataPrepperPluginConstructor
     public FlattenProcessor(final PluginMetrics pluginMetrics, final FlattenProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.config = config;
         this.expressionEvaluator = expressionEvaluator;
-        excludeKeySet.addAll(config.getExcludeKeys());
+
+        for (final String key : config.getExcludeKeys()) {
+            excludeKeysAndJsonPointers.put(key, getJsonPointer(config.getSource(), key));
+        }
     }
 
     @Override
@@ -53,8 +54,8 @@ public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Ev
                 }
 
                 // remove fields specified in "exclude_keys" from the event temporarily
-                for (final String key : excludeKeySet) {
-                    final String keyInEvent = getJsonPointer(config.getSource(), key);
+                for (final String key : excludeKeysAndJsonPointers.keySet()) {
+                    final String keyInEvent = excludeKeysAndJsonPointers.get(key);
                     if (recordEvent.containsKey(keyInEvent)) {
                         excludeMap.put(key, recordEvent.get(keyInEvent, Object.class));
                         recordEvent.delete(keyInEvent);
@@ -85,7 +86,7 @@ public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Ev
             } finally {
                 // Add temporarily deleted fields back
                 for (final String key : excludeMap.keySet()) {
-                    final String keyInEvent = getJsonPointer(config.getSource(), key);
+                    final String keyInEvent = excludeKeysAndJsonPointers.get(key);
                     recordEvent.put(keyInEvent, excludeMap.get(key));
                 }
             }
