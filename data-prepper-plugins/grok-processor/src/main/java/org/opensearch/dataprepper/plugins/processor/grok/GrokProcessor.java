@@ -33,6 +33,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -54,6 +55,7 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY;
 
 
 @SingleThread
@@ -121,6 +123,8 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for (final Record<Event> record : records) {
+
+            final Instant startTime = Instant.now();
             final Event event = record.getData();
             try {
                 if (Objects.nonNull(grokProcessorConfig.getGrokWhen()) && !expressionEvaluator.evaluateConditional(grokProcessorConfig.getGrokWhen(), event)) {
@@ -142,6 +146,16 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 LOG.error(EVENT, "An exception occurred when matching record [{}]", record.getData(), e);
                 grokProcessingErrorsCounter.increment();
             }
+
+            final Instant endTime = Instant.now();
+
+            Long totalEventTimeInGrok = (Long) event.getMetadata().getAttribute(TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY);
+            if (totalEventTimeInGrok == null) {
+                totalEventTimeInGrok = 0L;
+            }
+
+            final long timeSpentInThisGrok = endTime.toEpochMilli() - startTime.toEpochMilli();
+            event.getMetadata().setAttribute(TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY, totalEventTimeInGrok + timeSpentInThisGrok);
          }
         return records;
     }

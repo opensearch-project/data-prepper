@@ -14,6 +14,8 @@ public class GrokProcessorConfig {
 
     static final String TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY = "_total_grok_patterns_attempted";
 
+    static final String TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY = "_total_grok_processing_time";
+
     static final String BREAK_ON_MATCH = "break_on_match";
     static final String KEEP_EMPTY_CAPTURES = "keep_empty_captures";
     static final String MATCH = "match";
@@ -28,7 +30,7 @@ public class GrokProcessorConfig {
     static final String TAGS_ON_MATCH_FAILURE = "tags_on_match_failure";
     static final String TAGS_ON_TIMEOUT = "tags_on_timeout";
 
-    static final String INCLUDE_PERFORMANCE_METADATA = "include_performance_metadata";
+    static final String INCLUDE_PERFORMANCE_METADATA = "performance_metadata";
 
     static final boolean DEFAULT_BREAK_ON_MATCH = true;
     static final boolean DEFAULT_KEEP_EMPTY_CAPTURES = false;
