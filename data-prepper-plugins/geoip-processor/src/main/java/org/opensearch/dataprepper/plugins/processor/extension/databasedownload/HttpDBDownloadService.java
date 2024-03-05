@@ -8,8 +8,8 @@ package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.utils.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.opensearch.dataprepper.plugins.processor.exception.DownloadFailedException;
+import org.opensearch.dataprepper.plugins.processor.extension.MaxMindDatabaseConfig;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -17,44 +17,48 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.FileInputStream;
 import java.net.URL;
-import java.util.List;
+import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 /**
  * Implementation class for Download through Url
  */
 public class HttpDBDownloadService implements DBSource {
-
-    private static final Logger LOG = LoggerFactory.getLogger(HttpDBDownloadService.class);
     private final String destinationDirectory;
     private static final int DEFAULT_BYTE_SIZE = 1024;
     private final GeoIPFileManager geoIPFileManager;
+    private final MaxMindDatabaseConfig maxMindDatabaseConfig;
 
     /**
      * HttpDBDownloadService constructor for initialisation of attributes
      * @param destinationDirectory destinationDirectory
      */
-    public HttpDBDownloadService(final String destinationDirectory, final GeoIPFileManager geoIPFileManager) {
+    public HttpDBDownloadService(final String destinationDirectory,
+                                 final GeoIPFileManager geoIPFileManager,
+                                 final MaxMindDatabaseConfig maxMindDatabaseConfig) {
         this.destinationDirectory = destinationDirectory;
         this.geoIPFileManager = geoIPFileManager;
+        this.maxMindDatabaseConfig = maxMindDatabaseConfig;
     }
 
     /**
      * Initialisation of Download through Url
-     * @param urlList urlList
      */
-    public void initiateDownload(List<String> urlList) {
+    public void initiateDownload() {
         final String tarDir = destinationDirectory + File.separator + "tar";
         final String downloadTarFilepath = tarDir + File.separator + "out.tar.gz";
-        for(final String url : urlList) {
+        final Set<String> databasePaths = maxMindDatabaseConfig.getDatabasePaths().keySet();
+        for (final String key: databasePaths) {
             geoIPFileManager.createDirectoryIfNotExist(tarDir);
             try {
                 initiateSSL();
-                buildRequestAndDownloadFile(url, downloadTarFilepath);
-                decompressAndUntarFile(tarDir, downloadTarFilepath, new File(destinationDirectory));
+                buildRequestAndDownloadFile(maxMindDatabaseConfig.getDatabasePaths().get(key), downloadTarFilepath);
+                final File tarFile = decompressAndgetTarFile(tarDir, downloadTarFilepath);
+                unTarFile(tarFile, new File(destinationDirectory), key);
                 deleteTarFolder(tarDir);
             } catch (Exception ex) {
-                LOG.info("InitiateDownload Exception {0} " , ex);
+                throw new DownloadFailedException("Failed to download from " + maxMindDatabaseConfig.getDatabasePaths().get(key)
+                        + " due to: " + ex.getMessage());
             }
         }
     }
@@ -63,19 +67,18 @@ public class HttpDBDownloadService implements DBSource {
      * Decompress and untar the file
      * @param tarFolderPath tarFolderPath
      * @param downloadTarFilepath downloadTarFilepath
-     * @param tmpDir tmpDir
+     *
+     * @return File Tar file
      */
-    private void decompressAndUntarFile(final String tarFolderPath, final String downloadTarFilepath, final File tmpDir) {
+    private File decompressAndgetTarFile(final String tarFolderPath, final String downloadTarFilepath) {
         try {
             final File inputFile = new File(downloadTarFilepath);
             final String outputFile = getFileName(inputFile, tarFolderPath);
             File tarFile = new File(outputFile);
             // Decompress file
-            tarFile = deCompressGZipFile(inputFile, tarFile);
-            // Untar file
-            unTarFile(tarFile, tmpDir);
+            return deCompressGZipFile(inputFile, tarFile);
         } catch (IOException ex) {
-            LOG.info("Decompress and untar the file Exception {0} " , ex);
+            throw new DownloadFailedException("Failed to decompress GZip file." + ex.getMessage());
         }
     }
 
@@ -113,7 +116,7 @@ public class HttpDBDownloadService implements DBSource {
                 fileOutputStream.write(dataBuffer, 0, bytesRead);
             }
         } catch (IOException ex) {
-            LOG.info("download DB File FromMaxmind Exception {0} " , ex);
+            throw new DownloadFailedException("Failed to download from " + maxmindDownloadUrl + " due to: " + ex.getMessage());
         }
     }
 
@@ -154,19 +157,21 @@ public class HttpDBDownloadService implements DBSource {
     /**
      * unTarFile
      * @param tarFile tar File
-     * @param destFile dest File
+     * @param destDir dest directory
+     * @param fileName File name
+     *
      * @throws IOException ioexception
      */
-    private static void unTarFile(File tarFile, File destFile) throws IOException {
+    private static void unTarFile(final File tarFile, final File destDir, final String fileName) throws IOException {
 
         final FileInputStream fileInputStream = new FileInputStream(tarFile);
         final TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(fileInputStream);
         TarArchiveEntry tarEntry = null;
 
         while ((tarEntry = tarArchiveInputStream.getNextTarEntry()) != null) {
-            if(tarEntry.getName().endsWith(".mmdb")) {
-                String fileName = destFile + File.separator + tarEntry.getName().split("/")[1];
-                final File outputFile = new File(fileName);
+            if(tarEntry.getName().endsWith(MAXMIND_DATABASE_EXTENSION)) {
+                final File outputFile = new File(destDir + File.separator + fileName + MAXMIND_DATABASE_EXTENSION);
+
                 if (tarEntry.isDirectory()) {
                     if (!outputFile.exists()) {
                         outputFile.mkdirs();

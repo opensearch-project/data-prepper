@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.plugins.processor.exception.DownloadFailedException;
+import org.opensearch.dataprepper.plugins.processor.extension.MaxMindDatabaseConfig;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -15,42 +16,34 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.List;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-
-import static org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabaseReader.MAXMIND_DATABASE_EXTENSION;
-
 
 public class ManifestDownloadService implements DBSource {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final int DEFAULT_BYTE_SIZE = 1024;
-    private static final String CITY_DATABASE_NAME = "geolite2-city.mmdb";
-    private static final String COUNTRY_DATABASE_NAME = "geolite2-country.mmdb";
-    private static final String ASN_DATABASE_NAME = "geolite2-asn.mmdb";
     private static final String ZIP_FILE_EXTENSION = ".zip";
     private final String directoryName;
+    private final MaxMindDatabaseConfig maxMindDatabaseConfig;
 
-    private Manifest cityManifest;
-    private Manifest countryManifest;
-    private Manifest asnManifest;
-
-    public ManifestDownloadService(final String directoryName) {
+    public ManifestDownloadService(final String directoryName, final MaxMindDatabaseConfig maxMindDatabaseConfig) {
         this.directoryName = directoryName;
+        this.maxMindDatabaseConfig = maxMindDatabaseConfig;
     }
 
     @Override
-    public void initiateDownload(final List<String> databasePaths) {
-        for(final String url : databasePaths) {
-            final Manifest manifest = deserializeManifestFile(url);
-            populateManifestObjects(manifest);
+    public void initiateDownload() {
+        final Set<String> databasePaths = maxMindDatabaseConfig.getDatabasePaths().keySet();
+        for (final String key: databasePaths) {
+            final Manifest manifest = deserializeManifestFile(maxMindDatabaseConfig.getDatabasePaths().get(key));
 
             final String manifestFilePath = manifest.getDbName();
             final String zipFileName = manifestFilePath.substring(0, manifestFilePath.lastIndexOf(".")).concat(ZIP_FILE_EXTENSION);
             final String zipFilePath = directoryName + File.separator + zipFileName;
 
             downloadZipFile(manifest.getUrl(), zipFilePath);
-            unzipDownloadedFile(zipFilePath, directoryName);
+            unzipDownloadedFile(zipFilePath, directoryName, key + MAXMIND_DATABASE_EXTENSION);
         }
     }
 
@@ -69,21 +62,7 @@ public class ManifestDownloadService implements DBSource {
             if (httpURLConnection != null) {
                 httpURLConnection.disconnect();
             }
-            throw new DownloadFailedException("Exception occurred while reading manifest.json file due to: " + ex);
-        }
-    }
-
-    private void populateManifestObjects(final Manifest manifest) {
-        switch (manifest.getDbName()) {
-            case CITY_DATABASE_NAME:
-                cityManifest = manifest;
-                break;
-            case COUNTRY_DATABASE_NAME:
-                countryManifest = manifest;
-                break;
-            case ASN_DATABASE_NAME:
-                asnManifest = manifest;
-                break;
+            throw new DownloadFailedException("Exception occurred while reading manifest.json file due to: " + ex.getMessage());
         }
     }
 
@@ -112,7 +91,7 @@ public class ManifestDownloadService implements DBSource {
         }
     }
 
-    private void unzipDownloadedFile(final String zipFilePath, final String outputFilePath) {
+    private void unzipDownloadedFile(final String zipFilePath, final String outputFilePath, final String fileName) {
         final File inputFile = new File(zipFilePath);
         final File outputDir = new File(outputFilePath);
         if (!outputDir.exists()) {
@@ -126,7 +105,6 @@ public class ManifestDownloadService implements DBSource {
 
             ZipEntry zipEntry = zipInputStream.getNextEntry();
             while (zipEntry != null && zipEntry.getName().endsWith(MAXMIND_DATABASE_EXTENSION)) {
-                final String fileName = zipEntry.getName();
                 final File newFile = new File(outputDir + File.separator + fileName);
 
                 final FileOutputStream fileOutputStream = new FileOutputStream(newFile);
@@ -145,18 +123,5 @@ public class ManifestDownloadService implements DBSource {
             inputFile.delete();
             throw new DownloadFailedException("Exception occurred while unzipping the database file due to: " + e.getMessage());
         }
-    }
-
-
-    public Manifest getCityManifest() {
-        return cityManifest;
-    }
-
-    public Manifest getCountryManifest() {
-        return countryManifest;
-    }
-
-    public Manifest getAsnManifest() {
-        return asnManifest;
     }
 }

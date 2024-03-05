@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DbSourceIdentificationTest {
 
     private static final String S3_URI = "s3://dataprepper/logdata/22833bd46b8e0.mmdb";
-    private static final String URL = "https://www.dataprepper.com";
+    private static final String URL = "https://download.maxmind.com/";
     private static final String DIRECTORY_PATH = "./build/resources/test/mmdb-files/geo-lite2";
     private static final String FILE_PATH = "./build/resources/test/mmdb-files/geo-lite2/GeoLite2-ASN-Test.mmdb";
     private static final String CDN_ENDPOINT_HOST = "https://devo.geoip.maps.opensearch.org/v1/mmdb/geolite2/manifest.json";
@@ -29,7 +29,7 @@ class DbSourceIdentificationTest {
     void test_positive_case() {
         assertTrue(DatabaseSourceIdentification.isS3Uri(S3_URI));
         assertTrue(DatabaseSourceIdentification.isURL(URL));
-        assertTrue(DatabaseSourceIdentification.isFilePath(DIRECTORY_PATH));
+        assertTrue(DatabaseSourceIdentification.isFilePath(FILE_PATH));
         assertTrue(DatabaseSourceIdentification.isCDNEndpoint(CDN_ENDPOINT_HOST));
     }
 
@@ -53,16 +53,16 @@ class DbSourceIdentificationTest {
     }
 
     @Test
-    void getDatabasePathTypeTest_PATH() {
-        List<String> databasePath = List.of(DIRECTORY_PATH);
+    void getDatabasePathTypeTest_should_return_PATH_if_file() {
+        List<String> databasePath = List.of(FILE_PATH);
         DBSourceOptions dbSourceOptions = DatabaseSourceIdentification.getDatabasePathType(databasePath);
         Assertions.assertNotNull(dbSourceOptions);
         assertThat(dbSourceOptions, equalTo(DBSourceOptions.PATH));
     }
 
     @Test
-    void getDatabasePathTypeTest_should_return_null_if_not_directory() {
-        List<String> databasePath = List.of(FILE_PATH);
+    void getDatabasePathTypeTest_should_null_if_directory() {
+        List<String> databasePath = List.of(DIRECTORY_PATH);
         DBSourceOptions dbSourceOptions = DatabaseSourceIdentification.getDatabasePathType(databasePath);
         Assertions.assertNull(dbSourceOptions);
     }

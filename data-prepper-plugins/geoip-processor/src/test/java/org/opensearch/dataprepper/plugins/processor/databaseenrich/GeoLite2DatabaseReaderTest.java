@@ -369,29 +369,16 @@ class GeoLite2DatabaseReaderTest {
     }
 
     @Test
-    void test_database_close_should_not_close_the_reader_unless_close_count_is_zero() {
-        final GeoLite2DatabaseReader objectUnderTest = createObjectUnderTest();
-
-        objectUnderTest.retain();
-        objectUnderTest.close();
-
-        assertThat(objectUnderTest.isExpired(), equalTo(false));
-    }
-
-    @Test
-    void test_database_close_should_close_the_reader_when_close_count_is_zero() throws IOException {
+    void test_database_close_should_close_the_reader() throws IOException {
         doNothing().when(geoIPFileManager).deleteDirectory(any());
         final GeoLite2DatabaseReader objectUnderTest = createObjectUnderTest();
 
-        objectUnderTest.retain();
-        objectUnderTest.close();
         objectUnderTest.close();
 
         assertThat(objectUnderTest.isExpired(), equalTo(false));
         verify(countryDatabaseReader).close();
         verify(cityDatabaseReader).close();
         verify(asnDatabaseReader).close();
-
     }
 
 }

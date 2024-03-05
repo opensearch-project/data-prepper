@@ -9,9 +9,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.processor.exception.InvalidIPAddressException;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ExtendWith(MockitoExtension.class)
 class IPValidationCheckTest {
@@ -32,6 +29,6 @@ class IPValidationCheckTest {
 
     @Test
     void ipValidationcheckTest_invalid() {
-        assertThrows(InvalidIPAddressException.class, () -> IPValidationCheck.isPublicIpAddress(INVALID_IP_ADDRESS));
+        Assertions.assertFalse(IPValidationCheck.isPublicIpAddress(INVALID_IP_ADDRESS));
     }
 }

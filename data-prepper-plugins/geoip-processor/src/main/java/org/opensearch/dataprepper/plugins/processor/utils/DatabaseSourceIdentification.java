@@ -54,6 +54,8 @@ public class DatabaseSourceIdentification {
             final URI uri = new URI(input);
             final URL url = new URL(input);
             return !input.endsWith(MANIFEST_ENDPOINT_PATH) &&
+                    !uri.getHost().contains("geoip.maps.opensearch") &&
+                    uri.getHost().equals("download.maxmind.com") &&
                     uri.getScheme() != null &&
                     !Pattern.matches(S3_DOMAIN_PATTERN, url.getHost()) &&
                     (uri.getScheme().equals("http") || uri.getScheme().equals("https"));
@@ -69,7 +71,7 @@ public class DatabaseSourceIdentification {
      */
     public static boolean isFilePath(final String input) {
         final File file = new File(input);
-        return file.exists() && file.isDirectory();
+        return file.exists() && file.isFile();
     }
 
     /**
@@ -102,15 +104,15 @@ public class DatabaseSourceIdentification {
                 return DBSourceOptions.PATH;
             }
             else if (DatabaseSourceIdentification.isCDNEndpoint(databasePath)) {
-                downloadSourceOptions = DBSourceOptions.HTTP_MANIFEST;
+                return DBSourceOptions.HTTP_MANIFEST;
             }
             else if(DatabaseSourceIdentification.isURL(databasePath))
             {
-                downloadSourceOptions = DBSourceOptions.URL;
+                return DBSourceOptions.URL;
             }
             else if(DatabaseSourceIdentification.isS3Uri(databasePath))
             {
-                downloadSourceOptions = DBSourceOptions.S3;
+                return DBSourceOptions.S3;
             }
         }
         return downloadSourceOptions;

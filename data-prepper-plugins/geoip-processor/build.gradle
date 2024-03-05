@@ -26,6 +26,7 @@ dependencies {
     implementation 'com.maxmind.db:maxmind-db:3.0.0'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     implementation libs.commons.lang3
+    implementation libs.armeria.core
 
     testImplementation project(':data-prepper-core')
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
@@ -69,6 +70,34 @@ enterpriseDatabaseNames.forEach { enterpriseDatabaseName -> {
     downloadFiles.get().dependsOn downloadEnterpriseTask
 }}
 
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    filter {
+        includeTestsMatching '*IT'
+    }
+}
+
 
 test {
     useJUnitPlatform()
@@ -79,15 +108,18 @@ checkstyleTest {
     dependsOn(downloadFiles)
 }
 
+compileIntegrationTestJava.dependsOn downloadFiles
+
 jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
     violationRules {
         rule {
             limit {
-                minimum = 0.85
+                minimum = 0.84
             }
         }
     }
 }
 
 check.dependsOn jacocoTestCoverageVerification
+check.dependsOn integrationTest

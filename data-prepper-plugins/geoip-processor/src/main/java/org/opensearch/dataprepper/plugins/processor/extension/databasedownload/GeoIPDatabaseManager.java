@@ -5,19 +5,25 @@
 
 package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
+import com.linecorp.armeria.client.retry.Backoff;
+import org.opensearch.dataprepper.plugins.processor.databaseenrich.AutoCountingDatabaseReader;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIP2DatabaseReader;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabaseReader;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoLite2DatabaseReader;
 import org.opensearch.dataprepper.plugins.processor.exception.DownloadFailedException;
 import org.opensearch.dataprepper.plugins.processor.exception.NoValidDatabaseFoundException;
 import org.opensearch.dataprepper.plugins.processor.extension.MaxMindConfig;
+import org.opensearch.dataprepper.plugins.processor.extension.MaxMindDatabaseConfig;
 import org.opensearch.dataprepper.plugins.processor.utils.DatabaseSourceIdentification;
 import org.opensearch.dataprepper.plugins.processor.utils.LicenseTypeCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.List;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
@@ -25,18 +31,23 @@ public class GeoIPDatabaseManager {
     private static final Logger LOG = LoggerFactory.getLogger(GeoIPDatabaseManager.class);
     public static final String FIRST_DATABASE_DIR = "first_database";
     public static final String SECOND_DATABASE_DIR = "second_database";
+    private static final long INITIAL_DELAY = Duration.ofMinutes(1).toMillis();
+    private static final long MAXIMUM_DELAY = Duration.ofHours(1).toMillis();
+    private static final double JITTER_RATE = 0.15;
     private final MaxMindConfig maxMindConfig;
     private final LicenseTypeCheck licenseTypeCheck;
     private final DatabaseReaderBuilder databaseReaderBuilder;
-    private final List<String> databasePaths;
+    private final MaxMindDatabaseConfig maxMindDatabaseConfig;
     private final WriteLock writeLock;
     private final int cacheSize;
     private final GeoIPFileManager geoIPFileManager;
-    private DBSourceOptions dbSourceOptions;
+    private final AtomicInteger failedAttemptCount;
+    private final Backoff backoff;
+    private final DBSourceOptions dbSourceOptions;
     private String currentDatabaseDir;
     private GeoIPDatabaseReader geoIPDatabaseReader;
     private boolean databaseDirToggle;
-    private boolean downloadReady;
+    private Instant nextUpdateAt;
 
     public GeoIPDatabaseManager(final MaxMindConfig maxMindConfig,
                                 final LicenseTypeCheck licenseTypeCheck,
@@ -48,59 +59,44 @@ public class GeoIPDatabaseManager {
         this.licenseTypeCheck = licenseTypeCheck;
         this.databaseReaderBuilder = databaseReaderBuilder;
         this.geoIPFileManager = geoIPFileManager;
-        this.databasePaths = maxMindConfig.getDatabasePaths();
+        this.maxMindDatabaseConfig = maxMindConfig.getMaxMindDatabaseConfig();
         this.writeLock = writeLock;
         this.cacheSize = maxMindConfig.getCacheSize();
+        this.failedAttemptCount = new AtomicInteger(0);
+        this.backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY)
+                .withJitter(JITTER_RATE)
+                .withMaxAttempts(Integer.MAX_VALUE);
+        this.dbSourceOptions = DatabaseSourceIdentification.getDatabasePathType(new ArrayList<>(
+                maxMindDatabaseConfig.getDatabasePaths().values()));
+
     }
 
     public void initiateDatabaseDownload() {
-        dbSourceOptions = DatabaseSourceIdentification.getDatabasePathType(databasePaths);
         try {
             downloadDatabases();
-        } catch (final Exception e) {
+            geoIPDatabaseReader = createReader();
+            nextUpdateAt = Instant.now().plus(maxMindConfig.getDatabaseRefreshInterval());
+            failedAttemptCount.set(0);
+        } catch (final Exception  e) {
+            final Duration delay = Duration.ofMillis(applyBackoff());
+            nextUpdateAt = Instant.now().plus(delay);
             throw new DownloadFailedException(e.getMessage());
         }
-        synchronized (this) {
-            try {
-                while (!downloadReady) {
-                    wait();
-                }
-            } catch (final InterruptedException ex) {
-                LOG.info("Thread interrupted while waiting for download to complete: {0}",  ex);
-                Thread.currentThread().interrupt();
-            }
-            if (downloadReady) {
-                try {
-                    geoIPDatabaseReader = createReader();
-                } catch (final NoValidDatabaseFoundException e) {
-                    throw new NoValidDatabaseFoundException(e.getMessage());
-                }
-            }
-        }
-        downloadReady = false;
     }
 
     public void updateDatabaseReader() {
         try {
             downloadDatabases();
+            switchDatabase();
+            LOG.info("Updated geoip database readers");
+            failedAttemptCount.set(0);
         } catch (final Exception e) {
-            LOG.error("Database download failed, using previously loaded database. {}", e.getMessage());
+            LOG.error("Failed to download database and create database readers, will try to use old databases if they exist. {}", e.getMessage());
+            final Duration delay = Duration.ofMillis(applyBackoff());
+            nextUpdateAt = Instant.now().plus(delay);
             final File file = new File(currentDatabaseDir);
             geoIPFileManager.deleteDirectory(file);
             switchDirectory();
-        }
-
-        if (downloadReady) {
-            downloadReady = false;
-            try {
-                switchDatabase();
-            } catch (final Exception e) {
-                LOG.error("Failed to update databases. Please make sure the database files exist at configured path amd are valid. " +
-                        "Using previously loaded database. {}", e.getMessage());
-                final File file = new File(currentDatabaseDir);
-                geoIPFileManager.deleteDirectory(file);
-                switchDirectory();
-            }
         }
     }
 
@@ -110,7 +106,11 @@ public class GeoIPDatabaseManager {
             final GeoIPDatabaseReader newGeoipDatabaseReader = createReader();
             final GeoIPDatabaseReader oldGeoipDatabaseReader = geoIPDatabaseReader;
             geoIPDatabaseReader = newGeoipDatabaseReader;
-            oldGeoipDatabaseReader.close();
+            if (oldGeoipDatabaseReader != null) {
+                oldGeoipDatabaseReader.close();
+            }
+        } catch (Exception e) {
+            LOG.error("Failed to close geoip database readers due to: {}", e.getMessage());
         } finally {
             writeLock.unlock();
         }
@@ -124,24 +124,20 @@ public class GeoIPDatabaseManager {
         geoIPFileManager.createDirectoryIfNotExist(destinationPath);
         switch (dbSourceOptions) {
             case HTTP_MANIFEST:
-                dbSource = new ManifestDownloadService(destinationPath);
-                dbSource.initiateDownload(databasePaths);
-                downloadReady =true;
+                dbSource = new ManifestDownloadService(destinationPath, maxMindDatabaseConfig);
+                dbSource.initiateDownload();
                 break;
             case URL:
-                dbSource = new HttpDBDownloadService(destinationPath, geoIPFileManager);
-                dbSource.initiateDownload(databasePaths);
-                downloadReady = true;
+                dbSource = new HttpDBDownloadService(destinationPath, geoIPFileManager, maxMindDatabaseConfig);
+                dbSource.initiateDownload();
                 break;
             case S3:
-                dbSource = new S3DBService(maxMindConfig.getAwsAuthenticationOptionsConfig(), destinationPath);
-                dbSource.initiateDownload(databasePaths);
-                downloadReady = true;
+                dbSource = new S3DBService(maxMindConfig.getAwsAuthenticationOptionsConfig(), destinationPath, maxMindDatabaseConfig);
+                dbSource.initiateDownload();
                 break;
             case PATH:
-                dbSource = new LocalDBDownloadService(destinationPath);
-                dbSource.initiateDownload(databasePaths);
-                downloadReady = true;
+                dbSource = new LocalDBDownloadService(destinationPath, maxMindDatabaseConfig);
+                dbSource.initiateDownload();
                 break;
         }
     }
@@ -154,9 +150,13 @@ public class GeoIPDatabaseManager {
         }
         GeoIPDatabaseReader newGeoIPDatabaseReader;
         if (licenseType.equals(LicenseTypeOptions.FREE)) {
-            newGeoIPDatabaseReader = new GeoLite2DatabaseReader(databaseReaderBuilder, geoIPFileManager, finalPath, cacheSize);
+            newGeoIPDatabaseReader = new AutoCountingDatabaseReader(
+                    new GeoLite2DatabaseReader(databaseReaderBuilder, geoIPFileManager, finalPath, cacheSize));
+        } else if (licenseType.equals(LicenseTypeOptions.ENTERPRISE)) {
+            newGeoIPDatabaseReader = new AutoCountingDatabaseReader(
+                    new GeoIP2DatabaseReader(databaseReaderBuilder, geoIPFileManager, finalPath, cacheSize));
         } else {
-            newGeoIPDatabaseReader = new GeoIP2DatabaseReader(databaseReaderBuilder, geoIPFileManager, finalPath, cacheSize);
+            throw new NoValidDatabaseFoundException("No valid database found to initialize database readers.");
         }
         return newGeoIPDatabaseReader;
     }
@@ -170,8 +170,27 @@ public class GeoIPDatabaseManager {
         }
     }
 
+    private long applyBackoff() {
+        final long delayMillis = backoff.nextDelayMillis(failedAttemptCount.incrementAndGet());
+        if (delayMillis < 0) {
+            // retries exhausted
+            LOG.info("Retries exhausted to download database. Will retry based on refresh interval");
+        }
+        final Duration delayDuration = Duration.ofMillis(delayMillis);
+        LOG.info("Failed to download databases, will retry after {} seconds", delayDuration.getSeconds());
+        return delayMillis;
+    }
+
     public GeoIPDatabaseReader getGeoIPDatabaseReader() {
         return geoIPDatabaseReader;
+    }
+
+    public Instant getNextUpdateAt() {
+        return nextUpdateAt;
+    }
+
+    public void setNextUpdateAt(final Instant nextUpdateAt) {
+        this.nextUpdateAt = nextUpdateAt;
     }
 
     public void deleteDatabasesOnShutdown() {

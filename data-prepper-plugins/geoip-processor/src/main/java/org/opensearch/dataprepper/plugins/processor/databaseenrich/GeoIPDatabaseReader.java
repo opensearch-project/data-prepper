@@ -29,7 +29,7 @@ import java.util.Set;
  * Interface for storing and maintaining MaxMind database readers
  */
 
-public interface GeoIPDatabaseReader {
+public interface GeoIPDatabaseReader extends AutoCloseable {
     String MAXMIND_DATABASE_EXTENSION = ".mmdb";
     Duration MAX_EXPIRY_DURATION = Duration.ofDays(30);
     String LAT = "lat";
@@ -62,13 +62,6 @@ public interface GeoIPDatabaseReader {
     void retain();
 
     /**
-     * Closes the reader after processing a batch
-     *
-     * @since 2.7
-     */
-    void close();
-
-    /**
      * Enrich attributes
      * @param geoData geoData
      * @param fieldName fieldName
@@ -86,7 +79,7 @@ public interface GeoIPDatabaseReader {
             final String[] list = file.list();
             for (final String fileName: list) {
                 final String lowerCaseFileName = fileName.toLowerCase();
-                if (lowerCaseFileName.contains(database)
+                if (lowerCaseFileName.contains(database.toLowerCase())
                         && fileName.endsWith(MAXMIND_DATABASE_EXTENSION)
                         && lowerCaseFileName.contains(databaseType)) {
                     return Optional.of(fileName);

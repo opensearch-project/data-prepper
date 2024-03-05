@@ -9,8 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.List;
+import org.opensearch.dataprepper.plugins.processor.extension.MaxMindDatabaseConfig;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
@@ -21,6 +20,8 @@ class HttpDBDownloadServiceTest {
     private HttpDBDownloadService downloadThroughUrl;
     @Mock
     private GeoIPFileManager geoIPFileManager;
+    @Mock
+    private MaxMindDatabaseConfig maxMindDatabaseConfig;
 
     @Test
     void initiateDownloadTest() {
@@ -28,11 +29,11 @@ class HttpDBDownloadServiceTest {
 
         downloadThroughUrl = createObjectUnderTest();
         assertDoesNotThrow(() -> {
-            downloadThroughUrl.initiateDownload(List.of(databasePath));
+            downloadThroughUrl.initiateDownload();
         });
     }
 
     private HttpDBDownloadService createObjectUnderTest() {
-        return new HttpDBDownloadService(PREFIX_DIR, geoIPFileManager);
+        return new HttpDBDownloadService(PREFIX_DIR, geoIPFileManager, maxMindDatabaseConfig);
     }
 }

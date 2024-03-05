@@ -39,10 +39,11 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.opensearch.dataprepper.plugins.processor.extension.MaxMindDatabaseConfig.GEOIP2_ENTERPRISE;
+
 public class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(GeoIP2DatabaseReader.class);
     private static final String MAXMIND_GEOIP2_DATABASE_TYPE = "geoip2";
-    private static final String ENTERPRISE_DATABASE = "enterprise";
     private final DatabaseReaderBuilder databaseReaderBuilder;
     private final String databasePath;
     private final int cacheSize;
@@ -66,7 +67,7 @@ public class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable 
 
     private void buildDatabaseReaders() {
         try {
-            final Optional<String> enterpriseDatabaseName = getDatabaseName(ENTERPRISE_DATABASE, databasePath, MAXMIND_GEOIP2_DATABASE_TYPE);
+            final Optional<String> enterpriseDatabaseName = getDatabaseName(GEOIP2_ENTERPRISE, databasePath, MAXMIND_GEOIP2_DATABASE_TYPE);
 
             if (enterpriseDatabaseName.isPresent()) {
                 enterpriseDatabaseReader = databaseReaderBuilder.buildReader(Path.of(
@@ -86,12 +87,12 @@ public class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable 
         Map<String, Object> geoData = new HashMap<>();
 
         try {
-            if (geoIPDatabases.contains(GeoIPDatabase.ENTERPRISE)) {
+            if (enterpriseDatabaseReader != null && !isEnterpriseDatabaseExpired.get() && geoIPDatabases.contains(GeoIPDatabase.ENTERPRISE)) {
                 final Optional<EnterpriseResponse> optionalEnterpriseResponse = enterpriseDatabaseReader.tryEnterprise(inetAddress);
                 optionalEnterpriseResponse.ifPresent(response -> processEnterpriseResponse(response, geoData, fields));
             }
 
-            if (geoIPDatabases.contains(GeoIPDatabase.ASN)) {
+            if (enterpriseDatabaseReader != null && !isEnterpriseDatabaseExpired.get() && geoIPDatabases.contains(GeoIPDatabase.ASN)) {
                 final Optional<AsnResponse> asnResponse = enterpriseDatabaseReader.tryAsn(inetAddress);
                 asnResponse.ifPresent(response -> processAsnResponse(response, geoData, fields));
             }
@@ -149,16 +150,12 @@ public class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable 
 
     @Override
     public void retain() {
-        closeCount.incrementAndGet();
+
     }
 
     @Override
     public void close() {
-        final int count = closeCount.decrementAndGet();
-        if (count == 0) {
-            LOG.debug("Closing old geoip database readers");
-            closeReader();
-        }
+        closeReader();
     }
 
     private void closeReader() {
