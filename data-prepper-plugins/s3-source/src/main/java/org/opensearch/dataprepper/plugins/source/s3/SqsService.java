@@ -16,6 +16,8 @@ import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.sqs.SqsClient;
 
 import java.time.Duration;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
@@ -28,9 +30,9 @@ public class SqsService {
     private final SqsClient sqsClient;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
-
     private Thread sqsWorkerThread;
     private SqsWorker sqsWorker;
+    private ExecutorService executorService;
 
     public SqsService(final AcknowledgementSetManager acknowledgementSetManager,
                       final S3SourceConfig s3SourceConfig,
@@ -42,14 +44,15 @@ public class SqsService {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sqsClient = createSqsClient(credentialsProvider);
+        executorService = Executors.newFixedThreadPool(s3SourceConfig.getNumWorkers());
     }
 
     public void start() {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
-        sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff);
-        sqsWorkerThread = new Thread(sqsWorker);
-        sqsWorkerThread.start();
+        for (int i = 0; i < s3SourceConfig.getNumWorkers(); i++) {
+            executorService.submit(new SqsWorker(acknowledgementSetManager, sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff));
+        }
     }
 
     SqsClient createSqsClient(final AwsCredentialsProvider credentialsProvider) {

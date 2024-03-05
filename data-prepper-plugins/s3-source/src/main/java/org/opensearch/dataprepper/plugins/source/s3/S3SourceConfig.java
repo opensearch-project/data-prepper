@@ -24,6 +24,7 @@ import java.util.Map;
 
 public class S3SourceConfig {
     static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(10);
+    static final Duration DEFAULT_NUMBER_OF_WORKERS = 5;
     static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 100;
     static final String DEFAULT_METADATA_ROOT_KEY = "s3/";
 
@@ -42,6 +43,10 @@ public class S3SourceConfig {
     @JsonProperty("sqs")
     @Valid
     private SqsOptions sqsOptions;
+
+    @JsonProperty("workers")
+    @Valid
+    private int numWorkers = DEFAULT_NUMBER_OF_WORKERS;
 
     @JsonProperty("aws")
     @NotNull
@@ -99,6 +104,10 @@ public class S3SourceConfig {
 
     boolean getAcknowledgements() {
         return acknowledgments;
+    }
+
+    public int getNumWorkers() {
+        return numWorkers;
     }
 
     public CompressionOption getCompression() {
