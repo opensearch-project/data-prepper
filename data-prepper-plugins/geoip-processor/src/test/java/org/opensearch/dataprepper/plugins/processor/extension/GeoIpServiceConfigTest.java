@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
+import software.amazon.awssdk.regions.Region;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,8 +50,11 @@ class GeoIpServiceConfigTest {
 
         assertThat(maxMindConfig, notNullValue());
         assertThat(maxMindConfig.getDatabaseRefreshInterval(), equalTo(Duration.ofDays(10)));
-        assertThat(maxMindConfig.getDatabasePaths().size(), equalTo(2));
+        assertThat(maxMindConfig.getMaxMindDatabaseConfig().getDatabasePaths().size(), equalTo(2));
         assertThat(maxMindConfig.getCacheSize(), equalTo(2048));
+        assertThat(maxMindConfig.getDatabaseDestination(), equalTo("/tst/resources/geoip"));
+        assertThat(maxMindConfig.getAwsAuthenticationOptionsConfig(), notNullValue());
+        assertThat(maxMindConfig.getAwsAuthenticationOptionsConfig().getAwsRegion(), equalTo(Region.of("us-east-1")));
     }
 
     private GeoIpServiceConfig makeConfig(final String filePath) throws IOException {

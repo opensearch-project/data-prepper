@@ -10,34 +10,37 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorConfig;
 import org.opensearch.dataprepper.plugins.processor.exception.DownloadFailedException;
+import org.opensearch.dataprepper.plugins.processor.extension.AwsAuthenticationOptionsConfig;
+import org.opensearch.dataprepper.plugins.processor.extension.MaxMindDatabaseConfig;
 
-import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class S3DBServiceTest {
 
     private static final String S3_URI = "s3://mybucket10012023/GeoLite2/";
-    private static final String PREFIX_DIR = "first_database";
-    private static final String S3_REGION = "us-east-1";
+    private static final String DATABASE_DIR = "first_database";
     @Mock
-    private GeoIPProcessorConfig geoIPProcessorConfig;
+    private MaxMindDatabaseConfig maxMindDatabaseConfig;
+    @Mock
+    private AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig;
 
     @BeforeEach
     void setUp() {
-
+        when(maxMindDatabaseConfig.getDatabasePaths()).thenReturn(Map.of("database-name", S3_URI));
     }
 
     @Test
     void initiateDownloadTest_DownloadFailedException() {
         S3DBService downloadThroughS3 = createObjectUnderTest();
-        assertThrows(DownloadFailedException.class, () -> downloadThroughS3.initiateDownload(List.of(S3_URI)));
+        assertThrows(DownloadFailedException.class, () -> downloadThroughS3.initiateDownload());
     }
 
     private S3DBService createObjectUnderTest() {
-        return new S3DBService(null, PREFIX_DIR);
+        return new S3DBService(awsAuthenticationOptionsConfig, DATABASE_DIR, maxMindDatabaseConfig);
     }
 }

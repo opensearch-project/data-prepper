@@ -7,28 +7,24 @@ package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
 import org.opensearch.dataprepper.plugins.processor.exception.DownloadFailedException;
 import org.opensearch.dataprepper.plugins.processor.extension.AwsAuthenticationOptionsConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.opensearch.dataprepper.plugins.processor.extension.MaxMindDatabaseConfig;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
-import software.amazon.awssdk.transfer.s3.model.DirectoryDownload;
-import software.amazon.awssdk.transfer.s3.model.DownloadDirectoryRequest;
+import software.amazon.awssdk.transfer.s3.model.DownloadFileRequest;
+import software.amazon.awssdk.transfer.s3.model.FileDownload;
 
+import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.Paths;
-import java.util.List;
+import java.util.Set;
 
 /**
  * Implementation class for Download through S3
  */
 public class S3DBService implements DBSource {
-
-    private static final Logger LOG = LoggerFactory.getLogger(S3DBService.class);
-    private String bucketName;
-    private String bucketPath;
     private final AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig;
     private final String destinationDirectory;
+    private final MaxMindDatabaseConfig maxMindDatabaseConfig;
 
     /**
      * S3DBService constructor for initialisation of attributes
@@ -36,72 +32,53 @@ public class S3DBService implements DBSource {
      * @param destinationDirectory destinationDirectory
      */
     public S3DBService(final AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig,
-                       final String destinationDirectory) {
+                       final String destinationDirectory,
+                       final MaxMindDatabaseConfig maxMindDatabaseConfig) {
         this.awsAuthenticationOptionsConfig = awsAuthenticationOptionsConfig;
         this.destinationDirectory = destinationDirectory;
+        this.maxMindDatabaseConfig = maxMindDatabaseConfig;
     }
 
     /**
      * Initialisation of Download through Url
-     * @param s3URLs s3URLs
      */
-    public void initiateDownload(final List<String> s3URLs) {
-        for (String s3Url : s3URLs) {
+    public void initiateDownload() {
+        final Set<String> databasePaths = maxMindDatabaseConfig.getDatabasePaths().keySet();
+
+        for (final String database: databasePaths) {
             try {
-                URI uri = new URI(s3Url);
-                bucketName = uri.getHost();
-                bucketPath = removeTrailingSlash(removeLeadingSlash(uri.getPath()));
-                buildRequestAndDownloadFile(bucketName, bucketPath);
+                final String s3Uri = maxMindDatabaseConfig.getDatabasePaths().get(database);
+                final URI uri = new URI(s3Uri);
+                final String key = uri.getPath().substring(1);
+                final String bucketName = uri.getHost();
+                buildRequestAndDownloadFile(bucketName, key, database);
             } catch (URISyntaxException ex) {
-                LOG.info("Initiate Download Exception", ex);
+                throw new DownloadFailedException("Failed to download database from S3." + ex.getMessage());
             }
         }
     }
 
     /**
-     * Removes leading slashes from the input string
-     * @param str url path
-     * @return String
-     */
-    public String removeLeadingSlash(String str) {
-        StringBuilder sb = new StringBuilder(str);
-        while (sb.length() > 0 && sb.charAt(0) == '/') {
-            sb.deleteCharAt(0);
-        }
-        return sb.toString();
-    }
-
-    /**
-     * Removes trial slashes from the input string
-     * @param str url path
-     * @return String
-     */
-    public String removeTrailingSlash(String str) {
-        StringBuilder sb = new StringBuilder(str);
-        while (sb.length() > 0 && sb.charAt(sb.length() - 1) == '/') {
-            sb.setLength(sb.length() - 1);
-        }
-        return sb.toString();
-    }
-
-    /**
      * Download the mmdb file from the S3
-     * @param path path
+     * @param bucketName Name of the S3 bucket
+     * @param key Name of S3 object key
+     * @param fileName Name of the file to save
      */
-    public void buildRequestAndDownloadFile(String... path) {
+    private void buildRequestAndDownloadFile(final String bucketName, final String key, final String fileName) {
         try {
-            S3TransferManager transferManager = createCustomTransferManager();
-            DirectoryDownload directoryDownload =
-                    transferManager.downloadDirectory(
-                            DownloadDirectoryRequest.builder()
-                                    .destination(Paths.get(destinationDirectory))
-                                    .bucket(path[0])
-                                    .listObjectsV2RequestTransformer(l -> l.prefix(path[1]))
-                                    .build());
-            directoryDownload.completionFuture().join();
+            final S3TransferManager transferManager = createCustomTransferManager();
+
+            DownloadFileRequest downloadFileRequest = DownloadFileRequest.builder()
+                    .getObjectRequest(b -> b.bucket(bucketName).key(key))
+                    .destination(new File(destinationDirectory + File.separator + fileName + MAXMIND_DATABASE_EXTENSION))
+                    .build();
+
+            FileDownload downloadFile = transferManager.downloadFile(downloadFileRequest);
+
+            downloadFile.completionFuture().join();
 
         } catch (Exception ex) {
-            throw new DownloadFailedException("Download failed: " + ex);
+            throw new DownloadFailedException("Failed to download database from S3." + ex.getMessage());
         }
     }
 
@@ -110,7 +87,7 @@ public class S3DBService implements DBSource {
      *
      * @return S3TransferManager
      */
-    public S3TransferManager createCustomTransferManager() {
+    private S3TransferManager createCustomTransferManager() {
         S3AsyncClient s3AsyncClient =
                 S3AsyncClient.crtBuilder()
                         .region(awsAuthenticationOptionsConfig.getAwsRegion())

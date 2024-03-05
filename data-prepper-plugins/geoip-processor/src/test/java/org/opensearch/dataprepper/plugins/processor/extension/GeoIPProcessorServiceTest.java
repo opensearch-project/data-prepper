@@ -14,11 +14,13 @@ import org.opensearch.dataprepper.plugins.processor.databaseenrich.GeoIPDatabase
 import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.GeoIPDatabaseManager;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -52,19 +54,19 @@ class GeoIPProcessorServiceTest {
 
     @Test
     void test_getGeoIPDatabaseReader_should_not_trigger_update_when_refresh_interval_is_high() {
-            when(maxMindConfig.getDatabaseRefreshInterval()).thenReturn(Duration.ofHours(1));
+        when(geoIPDatabaseManager.getNextUpdateAt()).thenReturn(Instant.now().plus(Duration.ofHours(1)));
 
-            final GeoIPProcessorService objectUnderTest = createObjectUnderTest();
+        final GeoIPProcessorService objectUnderTest = createObjectUnderTest();
 
-            final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
-            assertThat(geoIPDatabaseReaderMock, equalTo(geoIPDatabaseReader));
-            verify(geoIPDatabaseManager).getGeoIPDatabaseReader();
-            verifyNoMoreInteractions(geoIPDatabaseManager);
+        final GeoIPDatabaseReader geoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
+        assertThat(geoIPDatabaseReaderMock, equalTo(geoIPDatabaseReader));
+        verify(geoIPDatabaseManager).getGeoIPDatabaseReader();
+        verifyNoMoreInteractions(geoIPDatabaseManager);
     }
 
     @Test
     void test_getGeoIPDatabaseReader_should_trigger_update_when_refresh_interval_is_met() throws InterruptedException {
-        when(maxMindConfig.getDatabaseRefreshInterval()).thenReturn(Duration.ofNanos(1));
+        when(geoIPDatabaseManager.getNextUpdateAt()).thenReturn(Instant.now().plus(Duration.ofNanos(1)));
         doNothing().when(geoIPDatabaseManager).updateDatabaseReader();
 
         final GeoIPProcessorService objectUnderTest = createObjectUnderTest();
@@ -76,6 +78,8 @@ class GeoIPProcessorServiceTest {
         Thread.sleep(1000);
         verify(geoIPDatabaseManager).updateDatabaseReader();
         verify(geoIPDatabaseManager).getGeoIPDatabaseReader();
+        verify(geoIPDatabaseManager).getNextUpdateAt();
+        verify(geoIPDatabaseManager).setNextUpdateAt(any());
         verifyNoMoreInteractions(geoIPDatabaseManager);
 
         final GeoIPDatabaseReader newGeoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();
@@ -84,7 +88,7 @@ class GeoIPProcessorServiceTest {
 
     @Test
     void test_shutdown() throws InterruptedException {
-        when(maxMindConfig.getDatabaseRefreshInterval()).thenReturn(Duration.ofNanos(1));
+        when(geoIPDatabaseManager.getNextUpdateAt()).thenReturn(Instant.now().plus(Duration.ofNanos(1)));
         doNothing().when(geoIPDatabaseManager).updateDatabaseReader();
 
         final GeoIPProcessorService objectUnderTest = createObjectUnderTest();
@@ -96,6 +100,8 @@ class GeoIPProcessorServiceTest {
         Thread.sleep(1000);
         verify(geoIPDatabaseManager).updateDatabaseReader();
         verify(geoIPDatabaseManager).getGeoIPDatabaseReader();
+        verify(geoIPDatabaseManager).getNextUpdateAt();
+        verify(geoIPDatabaseManager).setNextUpdateAt(any());
         verifyNoMoreInteractions(geoIPDatabaseManager);
 
         final GeoIPDatabaseReader newGeoIPDatabaseReader = objectUnderTest.getGeoIPDatabaseReader();

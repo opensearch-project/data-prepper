@@ -30,11 +30,14 @@ class GeoIpConfigExtensionTest {
     private GeoIpServiceConfig geoIpServiceConfig;
     @Mock
     private MaxMindConfig maxMindConfig;
+    @Mock
+    private MaxMindDatabaseConfig maxMindDatabaseConfig;
 
 
     @BeforeEach
     void setUp() {
         when(geoIpServiceConfig.getMaxMindConfig()).thenReturn(maxMindConfig);
+        when(maxMindConfig.getMaxMindDatabaseConfig()).thenReturn(maxMindDatabaseConfig);
     }
 
     private GeoIpConfigExtension createObjectUnderTest() {
