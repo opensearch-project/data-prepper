@@ -26,26 +26,40 @@ import java.util.Map;
 @DataPrepperPlugin(name = "flatten", pluginType = Processor.class, pluginConfigurationType = FlattenProcessorConfig.class)
 public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(FlattenProcessor.class);
-
     private static final String SEPARATOR = "/";
     private final FlattenProcessorConfig config;
     private final ExpressionEvaluator expressionEvaluator;
+    private final Map<String, String> excludeKeysAndJsonPointers = new HashMap<>();
 
     @DataPrepperPluginConstructor
     public FlattenProcessor(final PluginMetrics pluginMetrics, final FlattenProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.config = config;
         this.expressionEvaluator = expressionEvaluator;
+
+        for (final String key : config.getExcludeKeys()) {
+            excludeKeysAndJsonPointers.put(key, getJsonPointer(config.getSource(), key));
+        }
     }
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
+            final Map<String, Object> excludeMap = new HashMap<>();
 
             try {
                 if (config.getFlattenWhen() != null && !expressionEvaluator.evaluateConditional(config.getFlattenWhen(), recordEvent)) {
                     continue;
+                }
+
+                // remove fields specified in "exclude_keys" from the event temporarily
+                for (final String key : excludeKeysAndJsonPointers.keySet()) {
+                    final String keyInEvent = excludeKeysAndJsonPointers.get(key);
+                    if (recordEvent.containsKey(keyInEvent)) {
+                        excludeMap.put(key, recordEvent.get(keyInEvent, Object.class));
+                        recordEvent.delete(keyInEvent);
+                    }
                 }
 
                 final String sourceJson = recordEvent.getAsJsonString(config.getSource());
@@ -69,6 +83,12 @@ public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Ev
             } catch (Exception e) {
                 LOG.error("Fail to perform flatten operation", e);
                 recordEvent.getMetadata().addTags(config.getTagsOnFailure());
+            } finally {
+                // Add temporarily deleted fields back
+                for (final String key : excludeMap.keySet()) {
+                    final String keyInEvent = excludeKeysAndJsonPointers.get(key);
+                    recordEvent.put(keyInEvent, excludeMap.get(key));
+                }
             }
         }
         return records;

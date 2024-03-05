@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.plugins.processor.flatten;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -21,5 +23,6 @@ class FlattenProcessorConfigTest {
         assertThat(FlattenProcessorConfig.isRemoveListIndices(), equalTo(false));
         assertThat(FlattenProcessorConfig.getFlattenWhen(), equalTo(null));
         assertThat(FlattenProcessorConfig.getTagsOnFailure(), equalTo(null));
+        assertThat(FlattenProcessorConfig.getExcludeKeys(), equalTo(List.of()));
     }
 }
