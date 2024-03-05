@@ -33,7 +33,11 @@ public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Recor
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            performStringAction(recordEvent);
+            try {
+                performStringAction(recordEvent);
+            } catch (final Exception e) {
+                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
+            }
         }
 
         return records;

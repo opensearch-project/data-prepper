@@ -5,36 +5,38 @@
 
 package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
-import org.apache.commons.io.FileUtils;
+import com.google.common.io.Files;
+import org.opensearch.dataprepper.plugins.processor.extension.MaxMindDatabaseConfig;
 
 import java.io.File;
-import java.util.List;
+import java.util.Set;
 
 /**
  * Implementation class for Download through local path
  */
 public class LocalDBDownloadService implements DBSource {
 
-    private final String prefixDir;
+    private final String destinationDirectory;
+    private final MaxMindDatabaseConfig maxMindDatabaseConfig;
 
     /**
      * LocalDBDownloadService constructor for initialisation of attributes
-     * @param prefixDir prefixDir
+     * @param destinationDirectory destinationDirectory
      */
-    public LocalDBDownloadService(final String prefixDir) {
-        this.prefixDir = prefixDir;
+    public LocalDBDownloadService(final String destinationDirectory, final MaxMindDatabaseConfig maxMindDatabaseConfig) {
+        this.destinationDirectory = destinationDirectory;
+        this.maxMindDatabaseConfig = maxMindDatabaseConfig;
     }
 
     /**
      * Initialisation of Download from local file path
-     * @param config config
      */
     @Override
-    public void initiateDownload(List<String> config) throws Exception {
-        String destPath = tempFolderPath + File.separator + prefixDir;
-        DBSource.createFolderIfNotExist(destPath);
-        File srcDatabaseConfigPath = new File(config.get(0));
-        File destDatabaseConfigPath = new File(destPath);
-        FileUtils.copyDirectory(srcDatabaseConfigPath, destDatabaseConfigPath);
+    public void initiateDownload() throws Exception {
+        final Set<String> strings = maxMindDatabaseConfig.getDatabasePaths().keySet();
+        for (final String key: strings) {
+            Files.copy(new File(maxMindDatabaseConfig.getDatabasePaths().get(key)),
+                    new File(destinationDirectory + File.separator + key + MAXMIND_DATABASE_EXTENSION));
+        }
     }
 }

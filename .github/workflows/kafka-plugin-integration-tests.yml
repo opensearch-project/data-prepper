@@ -8,12 +8,16 @@ on:
     paths:
       - 'data-prepper-plugins/kafka-plugins/**'
       - '*gradle*'
-  pull_request:
+  pull_request_target:
+    types: [ opened, synchronize, reopened ]
     paths:
       - 'data-prepper-plugins/kafka-plugins/**'
       - '*gradle*'
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   integration-tests:
@@ -41,9 +45,28 @@ jobs:
       - name: Wait for Kafka
         run: |
           ./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaStartIT
+
+      - name: Configure AWS credentials
+        id: aws-credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.TEST_IAM_ROLE_ARN }}
+          aws-region: ${{ secrets.TEST_REGION }}
+          output-credentials: true
+      - name: Configure AWS default credentials
+        run: |
+          aws configure set default.region ${{ secrets.TEST_REGION }}
+          aws configure set default.aws_access_key_id ${{ steps.aws-credentials.outputs.aws-access-key-id }}
+          aws configure set default.aws_secret_access_key ${{ steps.aws-credentials.outputs.aws-secret-access-key }}
+          aws configure set default.aws_session_token ${{ steps.aws-credentials.outputs.aws-session-token }}
+
       - name: Run Kafka integration tests
         run: |
-          ./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaSourceJsonTypeIT --tests KafkaBufferIT --tests KafkaBufferOTelIT
+          ./gradlew data-prepper-plugins:kafka-plugins:integrationTest \
+            -Dtests.kafka.bootstrap_servers=localhost:9092 \
+            -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin \
+            -Dtests.kafka.kms_key=alias/DataPrepperTesting \
+            --tests '*kafka.buffer*' --tests KafkaSourceJsonTypeIT --tests KafkaBufferOTelIT
 
       - name: Upload Unit Test Results
         if: always()

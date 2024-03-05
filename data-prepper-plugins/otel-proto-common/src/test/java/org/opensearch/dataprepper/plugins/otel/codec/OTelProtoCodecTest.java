@@ -211,28 +211,28 @@ public class OTelProtoCodecTest {
         @Test
         public void testParseExportTraceServiceRequest() throws IOException {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_TRACE_JSON_FILE);
-            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest);
+            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest, Instant.now());
             validateSpans(spans);
         }
 
         @Test
         public void testParseExportTraceServiceRequest_InstrumentationLibrarySpans() throws IOException {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_INSTRUMENTATION_LIBRARY_TRACE_JSON_FILE);
-            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest);
+            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest, Instant.now());
             validateSpans(spans);
         }
 
         @Test
         public void testParseExportTraceServiceRequest_ScopeSpansTakesPrecedenceOverInstrumentationLibrarySpans() throws IOException {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_BOTH_SPAN_TYPES_JSON_FILE);
-            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest);
+            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest, Instant.now());
             validateSpans(spans);
         }
 
         @Test
         public void testParseExportTraceServiceRequest_NoSpans() throws IOException {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_NO_SPANS_JSON_FILE);
-            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest);
+            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest, Instant.now());
             assertThat(spans.size(), is(equalTo(0)));
         }
 
@@ -492,7 +492,7 @@ public class OTelProtoCodecTest {
         @Test
         public void testParseExportLogsServiceRequest_ScopedLogs() throws IOException {
             final ExportLogsServiceRequest exportLogsServiceRequest = buildExportLogsServiceRequestFromJsonFile(TEST_REQUEST_LOGS_JSON_FILE);
-            List<OpenTelemetryLog> logs = decoderUnderTest.parseExportLogsServiceRequest(exportLogsServiceRequest);
+            List<OpenTelemetryLog> logs = decoderUnderTest.parseExportLogsServiceRequest(exportLogsServiceRequest, Instant.now());
 
             assertThat(logs.size() , is(equalTo(1)));
             validateLog(logs.get(0));
@@ -501,7 +501,7 @@ public class OTelProtoCodecTest {
         @Test
         public void testParseExportLogsServiceRequest_InstrumentationLibraryLogs() throws IOException {
             final ExportLogsServiceRequest exportLogsServiceRequest = buildExportLogsServiceRequestFromJsonFile(TEST_REQUEST_LOGS_IS_JSON_FILE);
-            List<OpenTelemetryLog> logs = decoderUnderTest.parseExportLogsServiceRequest(exportLogsServiceRequest);
+            List<OpenTelemetryLog> logs = decoderUnderTest.parseExportLogsServiceRequest(exportLogsServiceRequest, Instant.now());
 
             assertThat(logs.size() , is(equalTo(1)));
             validateLog(logs.get(0));
@@ -527,7 +527,7 @@ public class OTelProtoCodecTest {
         @Test
         public void testParseExportLogsServiceRequest_InstrumentationLibrarySpans() throws IOException {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_INSTRUMENTATION_LIBRARY_TRACE_JSON_FILE);
-            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest);
+            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest, Instant.now());
             validateSpans(spans);
         }
 
@@ -535,7 +535,7 @@ public class OTelProtoCodecTest {
         public void testParseExportMetricsServiceRequest_Guage() throws IOException {
             final ExportMetricsServiceRequest exportMetricsServiceRequest = buildExportMetricsServiceRequestFromJsonFile(TEST_REQUEST_GAUGE_METRICS_JSON_FILE);
             AtomicInteger droppedCount = new AtomicInteger(0);
-            final Collection<Record<? extends Metric>> metrics = decoderUnderTest.parseExportMetricsServiceRequest(exportMetricsServiceRequest, droppedCount, 10, true, true, true);
+            final Collection<Record<? extends Metric>> metrics = decoderUnderTest.parseExportMetricsServiceRequest(exportMetricsServiceRequest, droppedCount, 10, Instant.now(), true, true, true);
 
             validateGaugeMetricRequest(metrics);
         }
@@ -544,7 +544,7 @@ public class OTelProtoCodecTest {
         public void testParseExportMetricsServiceRequest_Sum() throws IOException {
             final ExportMetricsServiceRequest exportMetricsServiceRequest = buildExportMetricsServiceRequestFromJsonFile(TEST_REQUEST_SUM_METRICS_JSON_FILE);
             AtomicInteger droppedCount = new AtomicInteger(0);
-            final Collection<Record<? extends Metric>> metrics = decoderUnderTest.parseExportMetricsServiceRequest(exportMetricsServiceRequest, droppedCount, 10, true, true, true);
+            final Collection<Record<? extends Metric>> metrics = decoderUnderTest.parseExportMetricsServiceRequest(exportMetricsServiceRequest, droppedCount, 10, Instant.now(), true, true, true);
             validateSumMetricRequest(metrics);
         }
 
@@ -552,7 +552,7 @@ public class OTelProtoCodecTest {
         public void testParseExportMetricsServiceRequest_Histogram() throws IOException {
             final ExportMetricsServiceRequest exportMetricsServiceRequest = buildExportMetricsServiceRequestFromJsonFile(TEST_REQUEST_HISTOGRAM_METRICS_JSON_FILE);
             AtomicInteger droppedCount = new AtomicInteger(0);
-            final Collection<Record<? extends Metric>> metrics = decoderUnderTest.parseExportMetricsServiceRequest(exportMetricsServiceRequest, droppedCount, 10, true, true, true);
+            final Collection<Record<? extends Metric>> metrics = decoderUnderTest.parseExportMetricsServiceRequest(exportMetricsServiceRequest, droppedCount, 10, Instant.now(), true, true, true);
             validateHistogramMetricRequest(metrics);
         }
 
@@ -560,7 +560,7 @@ public class OTelProtoCodecTest {
         public void testParseExportMetricsServiceRequest_Histogram_WithNoExplicitBounds() throws IOException {
             final ExportMetricsServiceRequest exportMetricsServiceRequest = buildExportMetricsServiceRequestFromJsonFile(TEST_REQUEST_HISTOGRAM_METRICS_NO_EXPLICIT_BOUNDS_JSON_FILE);
             AtomicInteger droppedCount = new AtomicInteger(0);
-            final Collection<Record<? extends Metric>> metrics = decoderUnderTest.parseExportMetricsServiceRequest(exportMetricsServiceRequest, droppedCount, 10, true, true, true);
+            final Collection<Record<? extends Metric>> metrics = decoderUnderTest.parseExportMetricsServiceRequest(exportMetricsServiceRequest, droppedCount, 10, Instant.now(), true, true, true);
             validateHistogramMetricRequestNoExplicitBounds(metrics);
         }
 
@@ -944,13 +944,13 @@ public class OTelProtoCodecTest {
     @Test
     public void testOTelProtoCodecConsistency() throws IOException, DecoderException {
         final ExportTraceServiceRequest request = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_TRACE_JSON_FILE);
-        final List<Span> spansFirstDec = decoderUnderTest.parseExportTraceServiceRequest(request);
+        final List<Span> spansFirstDec = decoderUnderTest.parseExportTraceServiceRequest(request, Instant.now());
         final List<ResourceSpans> resourceSpansList = new ArrayList<>();
         for (final Span span : spansFirstDec) {
             resourceSpansList.add(encoderUnderTest.convertToResourceSpans(span));
         }
         final List<Span> spansSecondDec = resourceSpansList.stream()
-                .flatMap(rs -> decoderUnderTest.parseResourceSpans(rs).stream()).collect(Collectors.toList());
+                .flatMap(rs -> decoderUnderTest.parseResourceSpans(rs, Instant.now()).stream()).collect(Collectors.toList());
         assertThat(spansFirstDec.size(), equalTo(spansSecondDec.size()));
         for (int i = 0; i < spansFirstDec.size(); i++) {
             assertThat(spansFirstDec.get(i).toJsonString(), equalTo(spansSecondDec.get(i).toJsonString()));

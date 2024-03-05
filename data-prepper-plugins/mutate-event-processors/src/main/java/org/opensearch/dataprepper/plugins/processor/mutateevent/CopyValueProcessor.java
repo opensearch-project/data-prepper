@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+
 @DataPrepperPlugin(name = "copy_values", pluginType = Processor.class, pluginConfigurationType = CopyValueProcessorConfig.class)
 public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(CopyValueProcessor.class);
@@ -41,8 +43,9 @@ public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
+            final Event recordEvent = record.getData();
+
             try {
-                final Event recordEvent = record.getData();
                 if (config.getFromList() != null || config.getToList() != null) {
                     // Copying entries between lists
                     if (recordEvent.containsKey(config.getToList()) && !config.getOverwriteIfToListExists()) {
@@ -80,9 +83,8 @@ public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<
                         }
                     }
                 }
-            } catch (Exception e) {
-                LOG.error("Fail to perform copy values operation", e);
-                //TODO: add tagging on failure
+            } catch (final Exception e) {
+                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
             }
         }
 

@@ -152,6 +152,8 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("/status_code == 200", event("{}"), false),
                 Arguments.of("/success == /status_code", event("{\"success\": true, \"status_code\": 200}"), false),
                 Arguments.of("/success != /status_code", event("{\"success\": true, \"status_code\": 200}"), true),
+                Arguments.of("/part1@part2.part3 != 111", event("{\"success\": true, \"part1@part2.part3\":111, \"status_code\": 200}"), false),
+                Arguments.of("/part1.part2@part3 != 111", event("{\"success\": true, \"part1.part2@part3\":222, \"status_code\": 200}"), true),
                 Arguments.of("/pi == 3.14159", event("{\"pi\": 3.14159}"), true),
                 Arguments.of("/value == 12345.678", event("{\"value\": 12345.678}"), true),
                 Arguments.of("/value == 12345.678E12", event("{\"value\": 12345.678E12}"), true),
@@ -208,7 +210,11 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("cidrContains(/sourceIp,\"192.0.2.0/24\",\"192.1.1.0/24\")", event("{\"sourceIp\": \"192.2.2.3\"}"), false),
                 Arguments.of("cidrContains(/sourceIp,\"2001:0db8::/32\")", event("{\"sourceIp\": \"2001:0db8:aaaa:bbbb::\"}"), true),
                 Arguments.of("cidrContains(/sourceIp,\"2001:0db8::/32\",\"2001:aaaa::/32\")", event("{\"sourceIp\": \"2001:0db8:aaaa:bbbb::\"}"), true),
-                Arguments.of("cidrContains(/sourceIp,\"2001:0db8::/32\",\"2001:aaaa::/32\")", event("{\"sourceIp\": \"2001:abcd:aaaa:bbbb::\"}"), false)
+                Arguments.of("cidrContains(/sourceIp,\"2001:0db8::/32\",\"2001:aaaa::/32\")", event("{\"sourceIp\": \"2001:abcd:aaaa:bbbb::\"}"), false),
+                Arguments.of("/sourceIp != null", event("{\"sourceIp\": [10, 20]}"), true),
+                Arguments.of("/sourceIp == null", event("{\"sourceIp\": [\"test\", \"test_two\"]}"), false),
+                Arguments.of("/sourceIp == null", event("{\"sourceIp\": {\"test\": \"test_two\"}}"), false),
+                Arguments.of("/sourceIp != null", event("{\"sourceIp\": {\"test\": \"test_two\"}}"), true)
         );
     }
 

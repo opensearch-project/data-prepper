@@ -12,8 +12,8 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import static org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram.POSITIVE_BUCKETS_KEY;
 import static org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram.NEGATIVE_BUCKETS_KEY;
 import static org.opensearch.dataprepper.model.metric.JacksonHistogram.BUCKETS_KEY;
+import org.opensearch.dataprepper.model.metric.JacksonMetric;
 import org.opensearch.dataprepper.model.metric.Metric;
-import static org.opensearch.dataprepper.model.metric.JacksonMetric.ATTRIBUTES_KEY;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -23,9 +23,9 @@ import io.micrometer.core.instrument.Counter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Map;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -55,13 +55,8 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<?>, Record
                               boolean calcualteExponentialHistogramBuckets) {
         Event event = (Event)record.getData();
 
-        if (flattenAttributes) {
-            Map<String, Object> attributes = event.get(ATTRIBUTES_KEY, Map.class);
-
-            for (Map.Entry<String, Object> entry : attributes.entrySet()) {
-                event.put(entry.getKey(), entry.getValue());
-            }
-            event.delete(ATTRIBUTES_KEY);
+        if (!flattenAttributes) {
+            ((JacksonMetric)record.getData()).setFlattenAttributes(false);
         }
         if (!calcualteHistogramBuckets && event.get(BUCKETS_KEY, List.class) != null) {
             event.delete(BUCKETS_KEY);
@@ -85,7 +80,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<?>, Record
         for (Record<?> rec : records) {
             if ((rec.getData() instanceof Event)) {
                 Record<? extends Metric> newRecord = (Record<? extends Metric>)rec;
-                if (otelMetricsRawProcessorConfig.getFlattenAttributesFlag() ||
+                if (!otelMetricsRawProcessorConfig.getFlattenAttributesFlag() ||
                     !otelMetricsRawProcessorConfig.getCalculateHistogramBuckets() ||
                     !otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets()) {
                     modifyRecord(newRecord, otelMetricsRawProcessorConfig.getFlattenAttributesFlag(), otelMetricsRawProcessorConfig.getCalculateHistogramBuckets(), otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets());
@@ -98,7 +93,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<?>, Record
             }
 
             ExportMetricsServiceRequest request = ((Record<ExportMetricsServiceRequest>)rec).getData();
-            recordsOut.addAll(otelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, otelMetricsRawProcessorConfig.getExponentialHistogramMaxAllowedScale(), otelMetricsRawProcessorConfig.getCalculateHistogramBuckets(), otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets(), flattenAttributesFlag));
+            recordsOut.addAll(otelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, otelMetricsRawProcessorConfig.getExponentialHistogramMaxAllowedScale(), Instant.now(), otelMetricsRawProcessorConfig.getCalculateHistogramBuckets(), otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets(), flattenAttributesFlag));
         }
         recordsDroppedMetricsRawCounter.increment(droppedCounter.get());
         return recordsOut;

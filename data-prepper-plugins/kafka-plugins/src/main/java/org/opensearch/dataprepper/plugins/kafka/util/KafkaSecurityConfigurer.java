@@ -83,6 +83,10 @@ public class KafkaSecurityConfigurer {
     private static final String REGISTRY_BASIC_AUTH_USER_INFO = "schema.registry.basic.auth.user.info";
 
     private static final int MAX_KAFKA_CLIENT_RETRIES = 360; // for one hour every 10 seconds
+    private static final String SSL_ENGINE_FACTORY_CLASS = "ssl.engine.factory.class";
+    private static final String CERTIFICATE_CONTENT = "certificateContent";
+    private static final String SSL_TRUSTSTORE_LOCATION = "ssl.truststore.location";
+    private static final String SSL_TRUSTSTORE_PASSWORD = "ssl.truststore.password";
 
     private static AwsCredentialsProvider credentialsProvider;
     private static GlueSchemaRegistryKafkaDeserializer glueDeserializer;
@@ -108,16 +112,37 @@ public class KafkaSecurityConfigurer {
         properties.put(SASL_JAAS_CONFIG, String.format(PLAINTEXT_JAASCONFIG, username, password));
     }*/
 
-    private static void setPlainTextAuthProperties(Properties properties, final PlainTextAuthConfig plainTextAuthConfig, EncryptionType encryptionType) {
-        String username = plainTextAuthConfig.getUsername();
-        String password = plainTextAuthConfig.getPassword();
+    private static void setPlainTextAuthProperties(final Properties properties, final PlainTextAuthConfig plainTextAuthConfig,
+                                                   final EncryptionConfig encryptionConfig) {
+        final String username = plainTextAuthConfig.getUsername();
+        final String password = plainTextAuthConfig.getPassword();
         properties.put(SASL_MECHANISM, "PLAIN");
         properties.put(SASL_JAAS_CONFIG, "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"" + username + "\" password=\"" + password + "\";");
-        if (encryptionType == EncryptionType.NONE) {
-            properties.put(SECURITY_PROTOCOL, "SASL_PLAINTEXT");
-        } else { // EncryptionType.SSL
+        if (checkEncryptionType(encryptionConfig, EncryptionType.SSL)) {
             properties.put(SECURITY_PROTOCOL, "SASL_SSL");
+            setSecurityProtocolSSLProperties(properties, encryptionConfig);
+        } else { // EncryptionType.NONE
+            properties.put(SECURITY_PROTOCOL, "SASL_PLAINTEXT");
         }
+    }
+
+    private static void setSecurityProtocolSSLProperties(final Properties properties, final EncryptionConfig encryptionConfig) {
+        if (Objects.nonNull(encryptionConfig.getCertificateContent())) {
+            setCustomSslProperties(properties, encryptionConfig.getCertificateContent());
+        } else if (Objects.nonNull(encryptionConfig.getTrustStoreFilePath()) &&
+                Objects.nonNull(encryptionConfig.getTrustStorePassword())) {
+            setTruststoreProperties(properties, encryptionConfig);
+        }
+    }
+
+    private static void setCustomSslProperties(final Properties properties, final String certificateContent) {
+        properties.put(CERTIFICATE_CONTENT, certificateContent);
+        properties.put(SSL_ENGINE_FACTORY_CLASS, CustomClientSslEngineFactory.class);
+    }
+
+    private static void setTruststoreProperties(final Properties properties, final EncryptionConfig encryptionConfig) {
+        properties.put(SSL_TRUSTSTORE_LOCATION, encryptionConfig.getTrustStoreFilePath());
+        properties.put(SSL_TRUSTSTORE_PASSWORD, encryptionConfig.getTrustStorePassword());
     }
 
     public static void setOauthProperties(final KafkaClusterAuthConfig kafkaClusterAuthConfig,
@@ -258,27 +283,25 @@ public class KafkaSecurityConfigurer {
         }
     }
 
-    public static void setAuthProperties(Properties properties, final KafkaClusterAuthConfig kafkaClusterAuthConfig, final Logger LOG) {
+    public static void setAuthProperties(final Properties properties, final KafkaClusterAuthConfig kafkaClusterAuthConfig, final Logger LOG) {
         final AwsConfig awsConfig = kafkaClusterAuthConfig.getAwsConfig();
         final AuthConfig authConfig = kafkaClusterAuthConfig.getAuthConfig();
         final EncryptionConfig encryptionConfig = kafkaClusterAuthConfig.getEncryptionConfig();
-        final EncryptionType encryptionType = encryptionConfig.getType();
-
         credentialsProvider = DefaultCredentialsProvider.create();
 
         String bootstrapServers = "";
         if (Objects.nonNull(kafkaClusterAuthConfig.getBootstrapServers())) {
             bootstrapServers = String.join(",", kafkaClusterAuthConfig.getBootstrapServers());
         }
-        AwsIamAuthConfig awsIamAuthConfig = null;
+
         if (Objects.nonNull(authConfig)) {
-            AuthConfig.SaslAuthConfig saslAuthConfig = authConfig.getSaslAuthConfig();
+            final AuthConfig.SaslAuthConfig saslAuthConfig = authConfig.getSaslAuthConfig();
             if (Objects.nonNull(saslAuthConfig)) {
-                awsIamAuthConfig = saslAuthConfig.getAwsIamAuthConfig();
-                PlainTextAuthConfig plainTextAuthConfig = saslAuthConfig.getPlainTextAuthConfig();
+                final AwsIamAuthConfig awsIamAuthConfig = saslAuthConfig.getAwsIamAuthConfig();
+                final PlainTextAuthConfig plainTextAuthConfig = saslAuthConfig.getPlainTextAuthConfig();
 
                 if (Objects.nonNull(awsIamAuthConfig)) {
-                    if (encryptionType == EncryptionType.NONE) {
+                    if (checkEncryptionType(encryptionConfig, EncryptionType.NONE)) {
                         throw new RuntimeException("Encryption Config must be SSL to use IAM authentication mechanism");
                     }
                     if (Objects.isNull(awsConfig)) {
@@ -288,25 +311,31 @@ public class KafkaSecurityConfigurer {
                     bootstrapServers = getBootStrapServersForMsk(awsIamAuthConfig, awsConfig, LOG);
                 } else if (Objects.nonNull(saslAuthConfig.getOAuthConfig())) {
                     setOauthProperties(kafkaClusterAuthConfig, properties);
-                } else if (Objects.nonNull(plainTextAuthConfig)) {
-                    setPlainTextAuthProperties(properties, plainTextAuthConfig, encryptionType);
+                } else if (Objects.nonNull(plainTextAuthConfig) && Objects.nonNull(kafkaClusterAuthConfig.getEncryptionConfig())) {
+                    setPlainTextAuthProperties(properties, plainTextAuthConfig, kafkaClusterAuthConfig.getEncryptionConfig());
                 } else {
                     throw new RuntimeException("No SASL auth config specified");
                 }
             }
             if (encryptionConfig.getInsecure()) {
-                properties.put("ssl.engine.factory.class", InsecureSslEngineFactory.class);
+                properties.put(SSL_ENGINE_FACTORY_CLASS, InsecureSslEngineFactory.class);
             }
         }
         if (Objects.isNull(authConfig) || Objects.isNull(authConfig.getSaslAuthConfig())) {
-            if (encryptionType == EncryptionType.SSL) {
+            if (checkEncryptionType(encryptionConfig, EncryptionType.SSL)) {
                 properties.put(SECURITY_PROTOCOL, "SSL");
+                setSecurityProtocolSSLProperties(properties, encryptionConfig);
             }
         }
         if (Objects.isNull(bootstrapServers) || bootstrapServers.isEmpty()) {
             throw new RuntimeException("Bootstrap servers are not specified");
         }
+
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    }
+
+    private static boolean checkEncryptionType(final EncryptionConfig encryptionConfig, final EncryptionType encryptionType) {
+        return Objects.nonNull(encryptionConfig) && encryptionConfig.getType() == encryptionType;
     }
 
     public static GlueSchemaRegistryKafkaDeserializer getGlueSerializer(final KafkaConsumerConfig kafkaConsumerConfig) {
@@ -314,7 +343,7 @@ public class KafkaSecurityConfigurer {
         if (Objects.isNull(schemaConfig) || schemaConfig.getType() != SchemaRegistryType.AWS_GLUE) {
             return null;
         }
-        Map<String, Object> configs = new HashMap();
+        Map<String, Object> configs = new HashMap<>();
         configs.put(AWSSchemaRegistryConstants.AWS_REGION, kafkaConsumerConfig.getAwsConfig().getRegion());
         configs.put(AWSSchemaRegistryConstants.AVRO_RECORD_TYPE, AvroRecordType.GENERIC_RECORD.getName());
         configs.put(AWSSchemaRegistryConstants.CACHE_TIME_TO_LIVE_MILLIS, "86400000");

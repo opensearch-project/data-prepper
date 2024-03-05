@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -84,7 +85,7 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
         final List<OpenTelemetryLog> logs;
 
         try {
-            logs = oTelProtoDecoder.parseExportLogsServiceRequest(request);
+            logs = oTelProtoDecoder.parseExportLogsServiceRequest(request, Instant.now());
         } catch (Exception e) {
             LOG.error("Failed to parse the request {} due to:", request, e);
             throw new BadRequestException(e.getMessage(), e);

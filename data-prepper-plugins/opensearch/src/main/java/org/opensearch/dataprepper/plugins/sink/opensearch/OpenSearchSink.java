@@ -309,7 +309,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         }
 
 
-          final UpdateOperation.Builder<Object> updateOperationBuilder = (action.toLowerCase() == OpenSearchBulkActions.UPSERT.toString()) ?
+          final UpdateOperation.Builder<Object> updateOperationBuilder = (StringUtils.equals(action.toLowerCase(), OpenSearchBulkActions.UPSERT.toString())) ?
               new UpdateOperation.Builder<>()
                   .index(indexName)
                   .document(filteredJsonNode)

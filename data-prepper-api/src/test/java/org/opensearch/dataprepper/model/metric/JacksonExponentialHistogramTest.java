@@ -11,8 +11,10 @@ import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.TestObject;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.skyscreamer.jsonassert.JSONAssert;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -156,6 +158,9 @@ public class JacksonExponentialHistogramTest {
     public void testZeroCount() {
         Long zeroCount = histogram.getZeroCount();
         assertThat(zeroCount, is(equalTo(TEST_ZERO_COUNT)));
+        assertThat(((JacksonMetric)histogram).getFlattenAttributes(), equalTo(true));
+        ((JacksonMetric)histogram).setFlattenAttributes(false);
+        assertThat(((JacksonMetric)histogram).getFlattenAttributes(), equalTo(false));
     }
 
     @Test
@@ -241,6 +246,14 @@ public class JacksonExponentialHistogramTest {
         JacksonExponentialHistogram histogram = builder.build();
         histogram.toJsonString();
         assertThat(histogram.getAttributes(), is(anEmptyMap()));
+    }
+
+    @Test
+    public void testGetTimeReceived() {
+        Instant now = Instant.now();
+        builder.withTimeReceived(now);
+        JacksonExponentialHistogram histogram = builder.build();
+        assertThat(((DefaultEventHandle)histogram.getEventHandle()).getInternalOriginationTime(), is(now));
     }
 
     @Test

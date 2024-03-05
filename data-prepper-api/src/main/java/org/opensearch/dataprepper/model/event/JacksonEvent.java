@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -136,10 +137,11 @@ public class JacksonEvent implements Event {
      */
     @Override
     public void put(final String key, final Object value) {
+        checkArgument(!key.isEmpty(), "key cannot be an empty string for put method");
 
         final String trimmedKey = checkAndTrimKey(key);
 
-        final LinkedList<String> keys = new LinkedList<>(Arrays.asList(trimmedKey.split(SEPARATOR)));
+        final LinkedList<String> keys = new LinkedList<>(Arrays.asList(trimmedKey.split(SEPARATOR, -1)));
 
         JsonNode parentNode = jsonNode;
 
@@ -247,7 +249,12 @@ public class JacksonEvent implements Event {
     }
 
     private JsonPointer toJsonPointer(final String key) {
-        String jsonPointerExpression = SEPARATOR + key;
+        final String jsonPointerExpression;
+        if (key.isEmpty() || key.startsWith("/")) {
+            jsonPointerExpression = key;
+        } else {
+            jsonPointerExpression = SEPARATOR + key;
+        }
         return JsonPointer.compile(jsonPointerExpression);
     }
 
@@ -259,6 +266,7 @@ public class JacksonEvent implements Event {
     @Override
     public void delete(final String key) {
 
+        checkArgument(!key.isEmpty(), "key cannot be an empty string for delete method");
         final String trimmedKey = checkAndTrimKey(key);
         final int index = trimmedKey.lastIndexOf(SEPARATOR);
 
@@ -273,6 +281,16 @@ public class JacksonEvent implements Event {
 
         if (!baseNode.isMissingNode()) {
             ((ObjectNode) baseNode).remove(leafKey);
+        }
+    }
+
+    @Override
+    public void clear() {
+        // Delete all entries from the event
+        Iterator iter = toMap().keySet().iterator();
+        JsonNode baseNode = jsonNode;
+        while (iter.hasNext()) {
+            ((ObjectNode) baseNode).remove((String)iter.next());
         }
     }
 
@@ -399,24 +417,31 @@ public class JacksonEvent implements Event {
     }
     private String checkAndTrimKey(final String key) {
         checkKey(key);
-        return trimKey(key);
+        return trimTrailingSlashInKey(key);
     }
 
     private static void checkKey(final String key) {
         checkNotNull(key, "key cannot be null");
-        checkArgument(!key.isEmpty(), "key cannot be an empty string");
+        if (key.isEmpty()) {
+            // Empty string key is valid
+            return;
+        }
         if (key.length() > MAX_KEY_LENGTH) {
             throw new IllegalArgumentException("key cannot be longer than " + MAX_KEY_LENGTH + " characters");
         }
         if (!isValidKey(key)) {
-            throw new IllegalArgumentException("key " + key + " must contain only alphanumeric chars with .-_ and must follow JsonPointer (ie. 'field/to/key')");
+            throw new IllegalArgumentException("key " + key + " must contain only alphanumeric chars with .-_@/ and must follow JsonPointer (ie. 'field/to/key')");
         }
     }
 
     private String trimKey(final String key) {
 
         final String trimmedLeadingSlash = key.startsWith(SEPARATOR) ? key.substring(1) : key;
-        return trimmedLeadingSlash.endsWith(SEPARATOR) ? trimmedLeadingSlash.substring(0, trimmedLeadingSlash.length() - 2) : trimmedLeadingSlash;
+        return trimTrailingSlashInKey(trimmedLeadingSlash);
+    }
+
+    private String trimTrailingSlashInKey(final String key) {
+        return key.length() > 1 && key.endsWith(SEPARATOR) ? key.substring(0, key.length() - 1) : key;
     }
 
     private static boolean isValidKey(final String key) {
@@ -430,7 +455,9 @@ public class JacksonEvent implements Event {
                     || c == '-'
                     || c == '_'
                     || c == '@'
-                    || c == '/')) {
+                    || c == '/'
+                    || c == '['
+                    || c == ']')) {
 
                 return false;
             }

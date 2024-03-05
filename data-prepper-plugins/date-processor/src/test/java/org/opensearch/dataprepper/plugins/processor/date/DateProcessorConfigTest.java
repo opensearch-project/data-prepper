@@ -80,6 +80,8 @@ class DateProcessorConfigTest {
             assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
             setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_nano");
             assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_micro");
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
             setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_xyz");
             assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(false));
             setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "yyyy-MM-dd'T'HH:mm:ss.nnnnnnnnnXXX");

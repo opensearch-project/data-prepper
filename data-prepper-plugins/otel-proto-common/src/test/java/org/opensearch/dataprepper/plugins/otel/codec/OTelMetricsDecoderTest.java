@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.model.metric.JacksonGauge;
 import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.JacksonHistogram;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -87,7 +88,7 @@ public class OTelMetricsDecoderTest {
     public void testParse() throws Exception {
         final ExportMetricsServiceRequest request = buildExportMetricsServiceRequestFromJsonFile(TEST_REQUEST_METRICS_FILE);
         InputStream inputStream = new ByteArrayInputStream((byte[])request.toByteArray());
-        createObjectUnderTest().parse(inputStream, (record) -> {
+        createObjectUnderTest().parse(inputStream, Instant.now(), (record) -> {
             validateMetric((Event)record.getData());
         });
         

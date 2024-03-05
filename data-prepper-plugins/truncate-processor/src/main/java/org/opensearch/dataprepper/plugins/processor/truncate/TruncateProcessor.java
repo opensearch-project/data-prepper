@@ -13,10 +13,14 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 /**
  * This processor takes in a key and truncates its value to a string with
@@ -25,6 +29,7 @@ import java.util.List;
  */
 @DataPrepperPlugin(name = "truncate", pluginType = Processor.class, pluginConfigurationType = TruncateProcessorConfig.class)
 public class TruncateProcessor extends AbstractProcessor<Record<Event>, Record<Event>>{
+    private static final Logger LOG = LoggerFactory.getLogger(TruncateProcessor.class);
     private final ExpressionEvaluator expressionEvaluator;
     private final List<TruncateProcessorConfig.Entry> entries;
 
@@ -48,34 +53,39 @@ public class TruncateProcessor extends AbstractProcessor<Record<Event>, Record<E
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            for (TruncateProcessorConfig.Entry entry: entries) {
-                final List<String> sourceKeys = entry.getSourceKeys();
-                final String truncateWhen = entry.getTruncateWhen();
-                final int startIndex = entry.getStartAt() == null ? 0 : entry.getStartAt();
-                final Integer length = entry.getLength();
-                if (truncateWhen != null && !expressionEvaluator.evaluateConditional(truncateWhen, recordEvent)) {
-                    continue;
-                }
-                for (String sourceKey: sourceKeys) {
-                    if (!recordEvent.containsKey(sourceKey)) {
+
+            try {
+                for (TruncateProcessorConfig.Entry entry : entries) {
+                    final List<String> sourceKeys = entry.getSourceKeys();
+                    final String truncateWhen = entry.getTruncateWhen();
+                    final int startIndex = entry.getStartAt() == null ? 0 : entry.getStartAt();
+                    final Integer length = entry.getLength();
+                    if (truncateWhen != null && !expressionEvaluator.evaluateConditional(truncateWhen, recordEvent)) {
                         continue;
                     }
-
-                    final Object value = recordEvent.get(sourceKey, Object.class);
-                    if (value instanceof String) {
-                        recordEvent.put(sourceKey, getTruncatedValue((String)value, startIndex, length));
-                    } else if (value instanceof List) {
-                        List<Object> result = new ArrayList<>();
-                        for (Object listItem: (List)value) {
-                            if (listItem instanceof String) {
-                                result.add(getTruncatedValue((String)listItem, startIndex, length));
-                            } else {
-                                result.add(listItem);
-                            }
+                    for (String sourceKey : sourceKeys) {
+                        if (!recordEvent.containsKey(sourceKey)) {
+                            continue;
                         }
-                        recordEvent.put(sourceKey, result);
+
+                        final Object value = recordEvent.get(sourceKey, Object.class);
+                        if (value instanceof String) {
+                            recordEvent.put(sourceKey, getTruncatedValue((String) value, startIndex, length));
+                        } else if (value instanceof List) {
+                            List<Object> result = new ArrayList<>();
+                            for (Object listItem : (List) value) {
+                                if (listItem instanceof String) {
+                                    result.add(getTruncatedValue((String) listItem, startIndex, length));
+                                } else {
+                                    result.add(listItem);
+                                }
+                            }
+                            recordEvent.put(sourceKey, result);
+                        }
                     }
                 }
+            } catch (final Exception e) {
+                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
             }
         }
 

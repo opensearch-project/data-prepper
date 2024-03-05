@@ -94,6 +94,13 @@ class JoinExpressionFunctionTest {
                 () -> joinExpressionFunction.evaluate(List.of("/missingKey"), testEvent, testFunction));
     }
 
+    @Test
+    void testSourceFieldNotListOrMapThrowsException() {
+        testEvent = createTestEvent(Map.of("key", "value"));
+        assertThrows(RuntimeException.class,
+                () -> joinExpressionFunction.evaluate(List.of("/key"), testEvent, testFunction));
+    }
+
     private static Stream<Arguments> joinSingleList() {
         final String inputData = "{\"list\":[\"string\", 1, true]}";
         return Stream.of(

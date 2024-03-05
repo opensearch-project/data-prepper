@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFact
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
 import org.opensearch.dataprepper.plugins.kafka.service.TopicService;
+import org.opensearch.dataprepper.plugins.kafka.service.TopicServiceFactory;
 import org.opensearch.dataprepper.plugins.kafka.util.RestUtils;
 //import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
 import org.slf4j.Logger;
@@ -50,6 +51,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private final KafkaSinkConfig kafkaSinkConfig;
     private final KafkaCustomProducerFactory kafkaCustomProducerFactory;
+    private final TopicServiceFactory topicServiceFactory;
 
     private volatile boolean sinkInitialized;
 
@@ -86,7 +88,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         this.sinkContext = sinkContext;
 
         SerializationFactory serializationFactory = new CommonSerializationFactory();
-        kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier);
+        topicServiceFactory = new TopicServiceFactory();
+        kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier, topicServiceFactory);
 
     }
 
@@ -154,7 +157,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     private void checkTopicCreationCriteriaAndCreateTopic() {
         final TopicProducerConfig topic = kafkaSinkConfig.getTopic();
         if (topic.isCreateTopic()) {
-            final TopicService topicService = new TopicService(kafkaSinkConfig);
+            final TopicService topicService = topicServiceFactory.createTopicService(kafkaSinkConfig);
             topicService.createTopic(kafkaSinkConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor(), null);
             topicService.closeAdminClient();
         }
@@ -164,7 +167,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private KafkaCustomProducer createProducer() {
         final DLQSink dlqSink = new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting);
-        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, pluginFactory, pluginSetting, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, true);
+        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, true);
     }
 
 

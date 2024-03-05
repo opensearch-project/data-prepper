@@ -12,7 +12,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
@@ -81,6 +83,14 @@ public class JacksonOtelLogTest {
     public void testGetServiceName() {
         final String name = log.getServiceName();
         assertThat(name, is(equalTo(TEST_SERVICE_NAME)));
+    }
+
+    @Test
+    public void testGetTimeReceived() {
+        Instant now = Instant.now();
+        builder.withTimeReceived(now);
+        log = builder.build();
+        assertThat(((DefaultEventHandle)log.getEventHandle()).getInternalOriginationTime(), is(now));
     }
 
     @Test

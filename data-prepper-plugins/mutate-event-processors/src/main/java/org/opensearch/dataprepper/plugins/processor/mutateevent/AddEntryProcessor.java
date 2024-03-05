@@ -17,10 +17,13 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
@@ -43,42 +46,49 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            for(AddEntryProcessorConfig.Entry entry : entries) {
+            try {
+                for (AddEntryProcessorConfig.Entry entry : entries) {
 
-                if (Objects.nonNull(entry.getAddWhen()) && !expressionEvaluator.evaluateConditional(entry.getAddWhen(), recordEvent)) {
-                    continue;
-                }
+                    if (Objects.nonNull(entry.getAddWhen()) && !expressionEvaluator.evaluateConditional(entry.getAddWhen(), recordEvent)) {
+                        continue;
+                    }
 
-                try {
-                    final String key = entry.getKey();
-                    final String metadataKey = entry.getMetadataKey();
-                    Object value;
-                    if (!Objects.isNull(entry.getValueExpression())) {
-                        value = expressionEvaluator.evaluate(entry.getValueExpression(), recordEvent);
-                    } else if (!Objects.isNull(entry.getFormat())) {
-                        try {
-                            value = recordEvent.formatString(entry.getFormat());
-                        } catch (final EventKeyNotFoundException e) {
-                            value = null;
+                    try {
+                        final String key = (entry.getKey() == null) ? null : recordEvent.formatString(entry.getKey(), expressionEvaluator);
+                        final String metadataKey = entry.getMetadataKey();
+                        Object value;
+                        if (!Objects.isNull(entry.getValueExpression())) {
+                            value = expressionEvaluator.evaluate(entry.getValueExpression(), recordEvent);
+                        } else if (!Objects.isNull(entry.getFormat())) {
+                            try {
+                                value = recordEvent.formatString(entry.getFormat());
+                            } catch (final EventKeyNotFoundException e) {
+                                value = null;
+                            }
+                        } else {
+                            value = entry.getValue();
                         }
-                    } else {
-                        value = entry.getValue();
+                        if (!Objects.isNull(key)) {
+                            if (!recordEvent.containsKey(key) || entry.getOverwriteIfKeyExists()) {
+                                recordEvent.put(key, value);
+                            } else if (recordEvent.containsKey(key) && entry.getAppendIfKeyExists()) {
+                                mergeValueToEvent(recordEvent, key, value);
+                            }
+                        } else {
+                            Map<String, Object> attributes = recordEvent.getMetadata().getAttributes();
+                            if (!attributes.containsKey(metadataKey) || entry.getOverwriteIfKeyExists()) {
+                                recordEvent.getMetadata().setAttribute(metadataKey, value);
+                            } else if (attributes.containsKey(metadataKey) && entry.getAppendIfKeyExists()) {
+                                mergeValueToEventMetadata(recordEvent, metadataKey, value);
+                            }
+                        }
+                    } catch (Exception e) {
+                        LOG.error(EVENT, "Error adding entry to record [{}] with key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]",
+                                recordEvent, entry.getKey(), entry.getMetadataKey(), entry.getValueExpression(), entry.getFormat(), entry.getValue(), e);
                     }
-                    if (!Objects.isNull(key)) {
-                        if (!recordEvent.containsKey(key) || entry.getOverwriteIfKeyExists()) {
-                            recordEvent.put(key, value);
-                        }
-                    } else {
-                        Map<String, Object> attributes = recordEvent.getMetadata().getAttributes();
-                        if (!attributes.containsKey(metadataKey) || entry.getOverwriteIfKeyExists()) {
-                            recordEvent.getMetadata().setAttribute(metadataKey, value);
-    
-                        }
-                    }
-                } catch (Exception e) {
-                    LOG.error(EVENT, "Error adding entry to record [{}] with key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]",
-                            recordEvent, entry.getKey(), entry.getMetadataKey(), entry.getValueExpression(), entry.getFormat(), entry.getValue(), e);
                 }
+            } catch(final Exception e){
+                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
             }
         }
 
@@ -96,5 +106,26 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     @Override
     public void shutdown() {
+    }
+
+    private void mergeValueToEvent(final Event recordEvent, final String key, final Object value) {
+        mergeValue(value, () -> recordEvent.get(key, Object.class), newValue -> recordEvent.put(key, newValue));
+    }
+
+    private void mergeValueToEventMetadata(final Event recordEvent, final String key, final Object value) {
+        mergeValue(value, () -> recordEvent.getMetadata().getAttribute(key), newValue -> recordEvent.getMetadata().setAttribute(key, newValue));
+    }
+
+    private void mergeValue(final Object value, Supplier<Object> getter, Consumer<Object> setter) {
+        final Object currentValue = getter.get();
+        final List<Object> mergedValue = new ArrayList<>();
+        if (currentValue instanceof List) {
+            mergedValue.addAll((List<Object>) currentValue);
+        } else {
+            mergedValue.add(currentValue);
+        }
+
+        mergedValue.add(value);
+        setter.accept(mergedValue);
     }
 }

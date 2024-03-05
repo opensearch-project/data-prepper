@@ -127,7 +127,7 @@ public class KafkaBufferIT {
     }
 
     private KafkaBuffer createObjectUnderTest() {
-        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, null, null, null);
+        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, null, null);
     }
 
     @Test
@@ -150,6 +150,11 @@ public class KafkaBufferIT {
         // TODO: The metadata is not included. It needs to be included in the Buffer, though not in the Sink. This may be something we make configurable in the consumer/producer - whether to serialize the metadata or not.
         //assertThat(onlyResult.getData().getMetadata(), equalTo(record.getData().getMetadata()));
         assertThat(onlyResult.getData().toMap(), equalTo(record.getData().toMap()));
+        assertThat(objectUnderTest.getRecordsInFlight(), equalTo(0));
+        assertThat(objectUnderTest.getInnerBufferRecordsInFlight(), equalTo(1));
+        objectUnderTest.checkpoint(readResult.getValue());
+        assertThat(objectUnderTest.getRecordsInFlight(), equalTo(0));
+        assertThat(objectUnderTest.getInnerBufferRecordsInFlight(), equalTo(0));
     }
 
     @Test
@@ -159,7 +164,7 @@ public class KafkaBufferIT {
         final Map<String, Object> topicConfigMap = Map.of(
                 "name", topicName,
                 "group_id", "buffergroup-" + RandomStringUtils.randomAlphabetic(6),
-                "create_topic", false
+                "create_topic", true
         );
         final Map<String, Object> bufferConfigMap = Map.of(
                 "topics", List.of(topicConfigMap),

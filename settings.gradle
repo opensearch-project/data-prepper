@@ -10,6 +10,19 @@ pluginManagement {
     }
 }
 
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven {
+            url 'https://packages.confluent.io/maven/'
+        }
+        maven {
+            url 'https://jitpack.io'
+            content { includeGroup 'com.github.fge' }
+        }
+    }
+}
+
 rootProject.name = 'opensearch-data-prepper'
 
 dependencyResolutionManagement {
@@ -100,7 +113,6 @@ include 'data-prepper-plugins:blocking-buffer'
 include 'data-prepper-plugins:http-source'
 include 'data-prepper-plugins:drop-events-processor'
 include 'data-prepper-plugins:key-value-processor'
-include 'data-prepper-plugins:type-conversion-processor'
 include 'data-prepper-plugins:mutate-event-processors'
 include 'data-prepper-plugins:geoip-processor'
 include 'data-prepper-plugins:grok-processor'
@@ -134,7 +146,6 @@ include 'data-prepper-plugins:failures-common'
 include 'data-prepper-plugins:newline-codecs'
 include 'data-prepper-plugins:avro-codecs'
 include 'data-prepper-plugins:kafka-plugins'
-include 'data-prepper-plugins:kafka-connect-plugins'
 include 'data-prepper-plugins:user-agent-processor'
 include 'data-prepper-plugins:in-memory-source-coordination-store'
 include 'data-prepper-plugins:aws-plugin-api'
@@ -150,3 +161,7 @@ include 'data-prepper-plugins:buffer-common'
 //include 'data-prepper-plugins:prometheus-sink'
 include 'data-prepper-plugins:dissect-processor'
 include 'data-prepper-plugins:dynamodb-source'
+include 'data-prepper-plugins:decompress-processor'
+include 'data-prepper-plugins:split-event-processor'
+include 'data-prepper-plugins:http-common'
+include 'data-prepper-plugins:flatten-processor'

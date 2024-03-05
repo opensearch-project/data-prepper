@@ -175,7 +175,6 @@ literal
     | Null
     ;
 
-
 Integer
     : ZERO
     | NonZeroDigit Digit*
@@ -217,7 +216,7 @@ JsonPointerCharacters
 
 fragment
 JsonPointerCharacter
-    : [A-Za-z0-9_]
+    : [A-Za-z0-9_.@]
     ;
 
 EscapedJsonPointer

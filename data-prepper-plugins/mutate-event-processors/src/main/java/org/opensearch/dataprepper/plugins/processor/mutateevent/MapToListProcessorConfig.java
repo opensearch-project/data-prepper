@@ -18,7 +18,6 @@ public class MapToListProcessorConfig {
     private static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
     private static final boolean DEFAULT_REMOVE_PROCESSED_FIELDS = false;
 
-    @NotEmpty
     @NotNull
     @JsonProperty("source")
     private String source;
@@ -42,6 +41,12 @@ public class MapToListProcessorConfig {
 
     @JsonProperty("remove_processed_fields")
     private boolean removeProcessedFields = DEFAULT_REMOVE_PROCESSED_FIELDS;
+
+    @JsonProperty("convert_field_to_list")
+    private boolean convertFieldToList = false;
+
+    @JsonProperty("tags_on_failure")
+    private List<String> tagsOnFailure;
 
     public String getSource() {
         return source;
@@ -69,5 +74,13 @@ public class MapToListProcessorConfig {
 
     public boolean getRemoveProcessedFields() {
         return removeProcessedFields;
+    }
+
+    public boolean getConvertFieldToList() {
+        return convertFieldToList;
+    }
+
+    public List<String> getTagsOnFailure() {
+        return tagsOnFailure;
     }
 }

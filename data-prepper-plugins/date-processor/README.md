@@ -66,7 +66,7 @@ valid key and at least one pattern is required if match is configured.
     * `patterns`: List of possible patterns the timestamp value of key can have. The patterns are based on sequence of letters and symbols. 
       The `patterns` support all the patterns listed in Java 
       [DatetimeFormatter](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html).
-      and also supports `epoch_second`, `epoch_milli` and `epoch_nano` values which represents the timestamp as the number of seconds, milliseconds and nano seconds since epoch. Epoch values are always UTC time zone.
+      and also supports `epoch_second`, `epoch_milli`, `epoch_micro` and `epoch_nano` values which represents the timestamp as the number of seconds, milliseconds, microseconds and nano seconds since epoch. Epoch values are always UTC time zone.
       * Type: `List<String>`
 
 The following example of date configuration will use `timestamp` key to match against given patterns and stores the timestamp in ISO 8601

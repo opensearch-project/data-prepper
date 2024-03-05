@@ -30,7 +30,17 @@ public interface PauseConsumePredicate {
     static PauseConsumePredicate circuitBreakingPredicate(final CircuitBreaker circuitBreaker) {
         if(circuitBreaker == null)
             return noPause();
-        return circuitBreaker::isOpen;
+        return new PauseConsumePredicate() {
+            @Override
+            public boolean pauseConsuming() {
+                return circuitBreaker.isOpen();
+            }
+
+            @Override
+            public String toString() {
+                return "Circuit Breaker";
+            }
+        };
     }
 
     /**

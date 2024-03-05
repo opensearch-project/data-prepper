@@ -18,18 +18,20 @@ import java.util.List;
  */
 public class GeoIPProcessorConfig {
 
-    @JsonProperty("entries")
+    @Valid
     @NotNull
     @Size(min = 1)
-    @Valid
+    @JsonProperty("entries")
     private List<EntryConfig> entries;
 
-    @JsonProperty("tags_on_failure")
-    private List<String> tagsOnFailure;
+    @JsonProperty("tags_on_engine_failure")
+    private List<String> tagsOnEngineFailure;
+
+    @JsonProperty("tags_on_ip_not_found")
+    private List<String> tagsOnIPNotFound;
 
     @JsonProperty("geoip_when")
     private String whenCondition;
-
 
     /**
      * Get List of entries
@@ -40,11 +42,19 @@ public class GeoIPProcessorConfig {
     }
 
     /**
-     * Get the List of failure tags
-     * @return List of failure tags
+     * Get the List of engine failure tags
+     * @return List of engine failure tags
      */
-    public List<String> getTagsOnFailure() {
-        return tagsOnFailure;
+    public List<String> getTagsOnEngineFailure() {
+        return tagsOnEngineFailure;
+    }
+
+    /**
+     * Get the List of invalid IP / IP not found in database tags
+     * @return List of invalid IP / IP not found in database tags
+     */
+    public List<String> getTagsOnIPNotFound() {
+        return tagsOnIPNotFound;
     }
 
     /**

@@ -15,13 +15,9 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.TrustAllStrategy;
-import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.message.BasicHeader;
-import org.apache.http.ssl.SSLContextBuilder;
-import org.apache.http.ssl.SSLContexts;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
 import org.opensearch.client.json.jackson.JacksonJsonpMapper;
@@ -35,23 +31,17 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.aws.api.AwsRequestSigningApache4Interceptor;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ConnectionConfiguration;
+import org.opensearch.dataprepper.plugins.truststore.TrustStoreProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
-import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.KeyStore;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateFactory;
 import java.util.List;
 import java.util.Objects;
 
@@ -267,20 +257,15 @@ public class OpenSearchClientFactory {
         });
     }
 
-    private void attachSSLContext(final ApacheHttpClient.Builder apacheHttpClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
-        TrustManager[] trustManagers = createTrustManagers(openSearchSourceConfiguration.getConnectionConfiguration().getCertPath());
-        apacheHttpClientBuilder.tlsTrustManagersProvider(() -> trustManagers);
-    }
-
     private void attachSSLContext(final NettyNioAsyncHttpClient.Builder asyncClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
-        TrustManager[] trustManagers = createTrustManagers(openSearchSourceConfiguration.getConnectionConfiguration().getCertPath());
+        TrustManager[] trustManagers = createTrustManagers(openSearchSourceConfiguration.getConnectionConfiguration());
         asyncClientBuilder.tlsTrustManagersProvider(() -> trustManagers);
     }
 
     private void attachSSLContext(final HttpAsyncClientBuilder httpClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
 
         final ConnectionConfiguration connectionConfiguration = openSearchSourceConfiguration.getConnectionConfiguration();
-        final SSLContext sslContext = Objects.nonNull(connectionConfiguration.getCertPath()) ? getCAStrategy(connectionConfiguration.getCertPath()) : getTrustAllStrategy();
+        final SSLContext sslContext = getCAStrategy(connectionConfiguration);
         httpClientBuilder.setSSLContext(sslContext);
 
         if (connectionConfiguration.isInsecure()) {
@@ -288,53 +273,25 @@ public class OpenSearchClientFactory {
         }
     }
 
-    private static TrustManager[] createTrustManagers(final Path certPath) {
-        if (certPath != null) {
-            LOG.info("Using the cert provided in the config.");
-            try (InputStream certificateInputStream = Files.newInputStream(certPath)) {
-                final CertificateFactory factory = CertificateFactory.getInstance("X.509");
-                final Certificate trustedCa = factory.generateCertificate(certificateInputStream);
-                final KeyStore trustStore = KeyStore.getInstance("pkcs12");
-                trustStore.load(null, null);
-                trustStore.setCertificateEntry("ca", trustedCa);
-
-                final TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("X509");
-                trustManagerFactory.init(trustStore);
-                return trustManagerFactory.getTrustManagers();
-            } catch (Exception ex) {
-                throw new RuntimeException(ex.getMessage(), ex);
-            }
+    private TrustManager[] createTrustManagers(final ConnectionConfiguration connectionConfiguration) {
+        final Path certPath = connectionConfiguration.getCertPath();
+        if (Objects.nonNull(certPath)) {
+            return TrustStoreProvider.createTrustManager(certPath);
+        } else if (Objects.nonNull(connectionConfiguration.getCertificateContent())) {
+            return TrustStoreProvider.createTrustManager(connectionConfiguration.getCertificateContent());
         } else {
-            return new TrustManager[] { new X509TrustAllManager() };
+            return TrustStoreProvider.createTrustAllManager();
         }
     }
 
-    private SSLContext getCAStrategy(final Path certPath) {
-        LOG.info("Using the cert provided in the config.");
-        try {
-            CertificateFactory factory = CertificateFactory.getInstance("X.509");
-            Certificate trustedCa;
-            try (InputStream is = Files.newInputStream(certPath)) {
-                trustedCa = factory.generateCertificate(is);
-            }
-            KeyStore trustStore = KeyStore.getInstance("pkcs12");
-            trustStore.load(null, null);
-            trustStore.setCertificateEntry("ca", trustedCa);
-            SSLContextBuilder sslContextBuilder = SSLContexts.custom()
-                    .loadTrustMaterial(trustStore, null);
-            return sslContextBuilder.build();
-        } catch (Exception ex) {
-            throw new RuntimeException(ex.getMessage(), ex);
-        }
-    }
-
-    private SSLContext getTrustAllStrategy() {
-        LOG.info("Using the trust all strategy");
-        final TrustStrategy trustStrategy = new TrustAllStrategy();
-        try {
-            return SSLContexts.custom().loadTrustMaterial(null, trustStrategy).build();
-        } catch (Exception ex) {
-            throw new RuntimeException(ex.getMessage(), ex);
+    private SSLContext getCAStrategy(final ConnectionConfiguration connectionConfiguration) {
+        final Path certPath = connectionConfiguration.getCertPath();
+        if (Objects.nonNull(certPath)) {
+            return TrustStoreProvider.createSSLContext(certPath);
+        } else if (Objects.nonNull(connectionConfiguration.getCertificateContent())) {
+            return TrustStoreProvider.createSSLContext(connectionConfiguration.getCertificateContent());
+        } else {
+            return TrustStoreProvider.createSSLContextWithTrustAllStrategy();
         }
     }
 }

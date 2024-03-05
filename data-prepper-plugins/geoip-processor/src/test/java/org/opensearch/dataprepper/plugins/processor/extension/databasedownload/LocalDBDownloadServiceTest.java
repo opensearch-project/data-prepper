@@ -5,55 +5,80 @@
 
 package org.opensearch.dataprepper.plugins.processor.extension.databasedownload;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.processor.extension.MaxMindDatabaseConfig;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class LocalDBDownloadServiceTest {
-
-    private static final String PREFIX_DIR = "geo-lite2";
-    String tempFolderPath = System.getProperty("java.io.tmpdir") + File.separator + "GeoIP";
-    String srcDir = System.getProperty("java.io.tmpdir") + File.separator + "Maxmind";
+    private final String destinationDirectory = "./src/test/resources/dest/";
+    private final String sourceDirectory = "./src/test/resources/src/";
     private LocalDBDownloadService downloadThroughLocalPath;
+    @Mock
+    private MaxMindDatabaseConfig maxMindDatabaseConfig;
 
     @Test
     void initiateDownloadTest() throws IOException {
-        createFolder(System.getProperty("java.io.tmpdir") + File.separator + "Maxmind");
-        generateSampleFiles(srcDir, 5);
-
         downloadThroughLocalPath = createObjectUnderTest();
+        generateSampleFiles();
         assertDoesNotThrow(() -> {
-            downloadThroughLocalPath.initiateDownload(List.of(srcDir));
+            downloadThroughLocalPath.initiateDownload();
         });
+
+        assertTrue(new File(destinationDirectory + File.separator + "filename.mmdb").exists());
     }
 
     private LocalDBDownloadService createObjectUnderTest() {
-        return new LocalDBDownloadService(PREFIX_DIR);
+        when(maxMindDatabaseConfig.getDatabasePaths()).thenReturn(Map.of("filename", sourceDirectory + File.separator + "SampleFile.mmdb"));
+        createFolder(destinationDirectory);
+        return new LocalDBDownloadService(destinationDirectory, maxMindDatabaseConfig);
     }
 
-    private static void createFolder(String folderName) {
+    private void createFolder(String folderName) {
         File folder = new File(folderName);
         if (!folder.exists()) {
             folder.mkdir();
         }
     }
 
-    private static void generateSampleFiles(String folderName, int numFiles) throws IOException {
-        for (int i = 1; i <= numFiles; i++) {
-            String fileName = "SampleFile" + i + ".txt";
-            String content = "This is sample file " + i;
+    private void generateSampleFiles() throws IOException {
+        String fileName = "SampleFile.mmdb";
+        String content = "This is sample file";
 
-            try (FileWriter writer = new FileWriter(folderName + File.separator + fileName)) {
-                writer.write(content);
+        createFolder(sourceDirectory);
+        new File(sourceDirectory + File.separator + fileName);
+        try (FileWriter writer = new FileWriter(sourceDirectory + File.separator + fileName)) {
+            writer.write(content);
+        }
+    }
+
+    @AfterEach
+    void cleanUp() {
+        deleteDirectory(new File(sourceDirectory));
+        deleteDirectory(new File(destinationDirectory));
+    }
+
+    public void deleteDirectory(final File file) {
+        if (file.exists()) {
+            for (final File subFile : file.listFiles()) {
+                if (subFile.isDirectory()) {
+                    deleteDirectory(subFile);
+                }
+                subFile.delete();
             }
+            file.delete();
         }
     }
 }

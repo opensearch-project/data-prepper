@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.kafka.buffer;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -25,6 +27,8 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.kafka.admin.KafkaAdminAccessor;
+import org.opensearch.dataprepper.plugins.kafka.common.KafkaMdc;
+import org.opensearch.dataprepper.plugins.kafka.common.thread.KafkaPluginThreadFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
@@ -35,6 +39,7 @@ import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import org.slf4j.MDC;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -137,7 +142,7 @@ class KafkaBufferTest {
             final MockedConstruction<KafkaCustomProducerFactory> producerFactoryMock =
                 mockConstruction(KafkaCustomProducerFactory.class, (mock, context) -> {
                 producerFactory = mock;
-                when(producerFactory.createProducer(any() ,any(), any(), isNull(), isNull(), any(), any(), anyBoolean())).thenReturn(producer);
+                when(producerFactory.createProducer(any(), isNull(), isNull(), any(), any(), anyBoolean())).thenReturn(producer);
             });
             final MockedConstruction<KafkaCustomConsumerFactory> consumerFactoryMock =
                 mockConstruction(KafkaCustomConsumerFactory.class, (mock, context) -> {
@@ -151,8 +156,8 @@ class KafkaBufferTest {
                      blockingBuffer = mock;
                  })) {
 
-            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executorService);
-            return new KafkaBuffer(pluginSetting, bufferConfig, pluginFactory, acknowledgementSetManager, null, awsCredentialsSupplier, circuitBreaker);
+            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(KafkaPluginThreadFactory.class))).thenReturn(executorService);
+            return new KafkaBuffer(pluginSetting, bufferConfig, acknowledgementSetManager, null, awsCredentialsSupplier, circuitBreaker);
         }
     }
 
@@ -292,7 +297,7 @@ class KafkaBufferTest {
     void test_kafkaBuffer_doCheckpoint() {
         kafkaBuffer = createObjectUnderTest();
         kafkaBuffer.doCheckpoint(mock(CheckpointState.class));
-        verify(blockingBuffer).doCheckpoint(any());
+        verify(blockingBuffer).checkpoint(any());
     }
 
     @Test
@@ -352,5 +357,85 @@ class KafkaBufferTest {
         verify(executorService).shutdown();
         verify(executorService).awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.SECONDS));
         verify(executorService).shutdownNow();
+    }
+
+    @Nested
+    class MdcTests {
+        private MockedStatic<MDC> mdcMockedStatic;
+
+        @BeforeEach
+        void setUp() {
+            mdcMockedStatic = mockStatic(MDC.class);
+        }
+
+        @AfterEach
+        void tearDown() {
+            mdcMockedStatic.close();
+        }
+
+        @Test
+        void writeBytes_sets_and_clears_MDC() throws Exception {
+            createObjectUnderTest().writeBytes(new byte[] {}, UUID.randomUUID().toString(), 100);
+
+            mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "buffer"));
+            mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));
+        }
+
+        @Test
+        void doWrite_sets_and_clears_MDC() throws Exception {
+            createObjectUnderTest().doWrite(mock(Record.class), 100);
+
+            mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "buffer"));
+            mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));
+        }
+
+        @Test
+        void doWriteAll_sets_and_clears_MDC() throws Exception {
+            final List<Record<Event>> records = Collections.singletonList(mock(Record.class));
+            createObjectUnderTest().doWriteAll(records, 100);
+
+            mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "buffer"));
+            mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));
+        }
+
+        @Test
+        void doRead_sets_and_clears_MDC() throws Exception {
+            createObjectUnderTest().doRead(100);
+
+            mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "buffer"));
+            mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));
+        }
+
+        @Test
+        void doCheckpoint_sets_and_clears_MDC() throws Exception {
+            createObjectUnderTest().doCheckpoint(mock(CheckpointState.class));
+
+            mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "buffer"));
+            mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));
+        }
+
+        @Test
+        void postProcess_sets_and_clears_MDC() throws Exception {
+            createObjectUnderTest().postProcess(100L);
+
+            mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "buffer"));
+            mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));
+        }
+
+        @Test
+        void isEmpty_sets_and_clears_MDC() throws Exception {
+            createObjectUnderTest().isEmpty();
+
+            mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "buffer"));
+            mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));
+        }
+
+        @Test
+        void shutdown_sets_and_clears_MDC() throws Exception {
+            createObjectUnderTest().shutdown();
+
+            mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "buffer"));
+            mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));
+        }
     }
 }

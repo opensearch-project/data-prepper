@@ -204,7 +204,7 @@ public class S3ScanPartitionCreationSupplierTest {
 
         final S3Object invalidForFirstBucketSuffixObject = mock(S3Object.class);
         given(invalidForFirstBucketSuffixObject.key()).willReturn("test.invalid");
-        given(invalidForFirstBucketSuffixObject.lastModified()).willReturn(Instant.now());
+        given(invalidForFirstBucketSuffixObject.lastModified()).willReturn(Instant.now().minusSeconds(2));
         s3ObjectsList.add(invalidForFirstBucketSuffixObject);
         expectedPartitionIdentifiers.add(PartitionIdentifier.builder().withPartitionKey(secondBucket + "|" + invalidForFirstBucketSuffixObject.key()).build());
 
@@ -223,7 +223,9 @@ public class S3ScanPartitionCreationSupplierTest {
 
         final List<PartitionIdentifier> expectedPartitionIdentifiersSecondScan = new ArrayList<>();
         expectedPartitionIdentifiersSecondScan.add(PartitionIdentifier.builder().withPartitionKey(firstBucket + "|" + secondScanObject.key()).build());
+        expectedPartitionIdentifiersSecondScan.add(PartitionIdentifier.builder().withPartitionKey(firstBucket + "|" + validObject.key()).build());
         expectedPartitionIdentifiersSecondScan.add(PartitionIdentifier.builder().withPartitionKey(secondBucket + "|" + secondScanObject.key()).build());
+        expectedPartitionIdentifiersSecondScan.add(PartitionIdentifier.builder().withPartitionKey(secondBucket + "|" + validObject.key()).build());
 
         final List<S3Object> secondScanObjects = new ArrayList<>(s3ObjectsList);
         secondScanObjects.add(secondScanObject);

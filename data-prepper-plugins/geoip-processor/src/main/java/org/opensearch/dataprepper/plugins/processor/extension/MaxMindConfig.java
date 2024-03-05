@@ -11,44 +11,54 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
+import org.opensearch.dataprepper.plugins.processor.utils.DatabaseSourceIdentification;
 
+import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MaxMindConfig {
+    private static final boolean DEFAULT_INSECURE = false;
     private static final String S3_PREFIX = "s3://";
-
-    //TODO: Add validations to database paths
-    //TODO: Make default path to be a public CDN endpoint
-    private static final List<String> DEFAULT_DATABASE_PATHS = new ArrayList<>();
     private static final Duration DEFAULT_DATABASE_REFRESH_INTERVAL = Duration.ofDays(7);
-    private static final int DEFAULT_CACHE_SIZE = 4096;
+    private static final int DEFAULT_CACHE_COUNT = 4096;
+    static final String DEFAULT_DATABASE_DESTINATION = System.getProperty("data-prepper.dir") + File.separator + "data";
 
-    @JsonProperty("database_paths")
-    private List<String> databasePaths = DEFAULT_DATABASE_PATHS;
+    @Valid
+    @JsonProperty("databases")
+    private MaxMindDatabaseConfig maxMindDatabaseConfig = new MaxMindDatabaseConfig();
 
     @JsonProperty("database_refresh_interval")
     @DurationMin(days = 1)
     @DurationMax(days = 30)
     private Duration databaseRefreshInterval = DEFAULT_DATABASE_REFRESH_INTERVAL;
 
-    @JsonProperty("cache_size")
+    @JsonProperty("cache_count")
     @Min(1)
     //TODO:  Add a Max limit on cache size
-    private int cacheSize = DEFAULT_CACHE_SIZE;
+    private int cacheSize = DEFAULT_CACHE_COUNT;
 
-    //TODO: Add a destination path to store database files
-    @JsonProperty("aws")
     @Valid
+    @JsonProperty("aws")
     private AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig;
+
+    @JsonProperty("insecure")
+    private boolean insecure = DEFAULT_INSECURE;
+
+    @JsonProperty("database_destination")
+    private String databaseDestination = DEFAULT_DATABASE_DESTINATION;
 
     public MaxMindConfig() {
         // This default constructor is used if maxmind is not configured
     }
 
     @AssertTrue(message = "aws should be configured if any path in database_paths is S3 bucket path.")
-    boolean isAwsAuthenticationOptionsRequired() {
+    public boolean isAwsAuthenticationOptionsValid() {
+        final List<String> databasePaths = new ArrayList<>(maxMindDatabaseConfig.getDatabasePaths().values());
+
         for (final String databasePath : databasePaths) {
             if (databasePath.startsWith(S3_PREFIX)) {
                 return awsAuthenticationOptionsConfig != null;
@@ -57,14 +67,28 @@ public class MaxMindConfig {
         return true;
     }
 
+    @AssertTrue(message = "database_paths should be https endpoint if using URL and if insecure is set to false")
+    public boolean isHttpsEndpointOrInsecure() throws URISyntaxException {
+        if (insecure) {
+            return true;
+        }
+        final List<String> databasePaths = new ArrayList<>(maxMindDatabaseConfig.getDatabasePaths().values());
+        for (final String databasePath : databasePaths) {
+            if (DatabaseSourceIdentification.isURL(databasePath)) {
+                return new URI(databasePath).getScheme().equals("https");
+            }
+        }
+        return true;
+    }
+
     /**
-     * Gets the MaxMind database paths
+     * Gets Map of database name and database path
      *
-     * @return The MaxMind database paths
+     * @return Map
      * @since 2.7
      */
-    public List<String> getDatabasePaths() {
-        return databasePaths;
+    public MaxMindDatabaseConfig getMaxMindDatabaseConfig() {
+        return maxMindDatabaseConfig;
     }
 
     /**
@@ -95,5 +119,15 @@ public class MaxMindConfig {
      */
     public AwsAuthenticationOptionsConfig getAwsAuthenticationOptionsConfig() {
         return awsAuthenticationOptionsConfig;
+    }
+
+    /**
+     * Gets the destination folder to store database files
+     *
+     * @return The destination folder
+     * @since 2.7
+     */
+    public String getDatabaseDestination() {
+        return databaseDestination + File.separator + "geoip";
     }
 }

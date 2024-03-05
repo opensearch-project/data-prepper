@@ -11,8 +11,10 @@ import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.TestObject;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.skyscreamer.jsonassert.JSONAssert;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -138,6 +140,14 @@ class JacksonHistogramTest {
     public void testGetCount() {
         final Long count = histogram.getCount();
         assertThat(count, is(equalTo(TEST_COUNT)));
+    }
+
+    @Test
+    public void testGetTimeReceived() {
+        Instant now = Instant.now();
+        builder.withTimeReceived(now);
+        histogram = builder.build();
+        assertThat(((DefaultEventHandle)histogram.getEventHandle()).getInternalOriginationTime(), is(now));
     }
 
     @Test

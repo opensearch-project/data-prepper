@@ -124,7 +124,7 @@ public class KafkaBuffer_KmsIT {
     }
 
     private KafkaBuffer createObjectUnderTest() {
-        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, pluginFactory, acknowledgementSetManager, null, ignored -> DefaultCredentialsProvider.create(), null);
+        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, ignored -> DefaultCredentialsProvider.create(), null);
     }
 
     @Nested

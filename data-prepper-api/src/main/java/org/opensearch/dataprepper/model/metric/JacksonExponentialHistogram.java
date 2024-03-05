@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.metric;
 
 import org.opensearch.dataprepper.model.event.EventType;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -235,6 +236,18 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
         public JacksonExponentialHistogram.Builder withPositiveOffset(int offset) {
             data.put(POSITIVE_OFFSET_KEY, offset);
             return this;
+        }
+
+        /**
+         * Sets the time received for populating event origination time in event handle
+         *
+         * @param timeReceived time received
+         * @return the builder
+         * @since 2.7
+         */
+        @Override
+        public JacksonExponentialHistogram.Builder withTimeReceived(final Instant timeReceived) {
+            return (JacksonExponentialHistogram.Builder)super.withTimeReceived(timeReceived);
         }
 
         /**

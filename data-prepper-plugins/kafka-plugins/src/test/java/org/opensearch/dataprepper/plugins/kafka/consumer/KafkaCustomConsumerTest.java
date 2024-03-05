@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetMana
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -54,6 +55,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -69,6 +71,9 @@ public class KafkaCustomConsumerTest {
     private AtomicBoolean status;
 
     private Buffer<Record<Event>> buffer;
+
+    @Mock
+    private Buffer<Record<Event>> mockBuffer;
 
     @Mock
     private KafkaConsumerConfig sourceConfig;
@@ -106,27 +111,47 @@ public class KafkaCustomConsumerTest {
     private Counter posCounter;
     @Mock
     private Counter negCounter;
+    @Mock
+    private Counter overflowCounter;
     private Duration delayTime;
     private double posCount;
     private double negCount;
+    private double overflowCount;
+    private boolean paused;
+    private boolean resumed;
 
     @BeforeEach
     public void setUp() {
         delayTime = Duration.ofMillis(10);
+        paused = false;
+        resumed = false;
         kafkaConsumer = mock(KafkaConsumer.class);
         topicMetrics = mock(KafkaTopicConsumerMetrics.class);
         counter = mock(Counter.class);
         posCounter = mock(Counter.class);
+        mockBuffer = mock(Buffer.class);
         negCounter = mock(Counter.class);
+        overflowCounter = mock(Counter.class);
         topicConfig = mock(TopicConsumerConfig.class);
         when(topicMetrics.getNumberOfPositiveAcknowledgements()).thenReturn(posCounter);
         when(topicMetrics.getNumberOfNegativeAcknowledgements()).thenReturn(negCounter);
+        when(topicMetrics.getNumberOfBufferSizeOverflows()).thenReturn(overflowCounter);
         when(topicMetrics.getNumberOfRecordsCommitted()).thenReturn(counter);
         when(topicMetrics.getNumberOfDeserializationErrors()).thenReturn(counter);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topicConfig.getAutoCommit()).thenReturn(false);
         when(kafkaConsumer.committed(any(TopicPartition.class))).thenReturn(null);
+
+        doAnswer((i)-> {
+            paused = true;
+            return null;
+        }).when(kafkaConsumer).pause(any());
+
+        doAnswer((i)-> {
+            resumed = true;
+            return null;
+        }).when(kafkaConsumer).resume(any());
 
         doAnswer((i)-> {
             posCount += 1.0;
@@ -136,6 +161,10 @@ public class KafkaCustomConsumerTest {
             negCount += 1.0;
             return null;
         }).when(negCounter).increment();
+        doAnswer((i)-> {
+            overflowCount += 1.0;
+            return null;
+        }).when(overflowCounter).increment();
         doAnswer((i)-> {return posCount;}).when(posCounter).count();
         doAnswer((i)-> {return negCount;}).when(negCounter).count();
         callbackExecutor = Executors.newScheduledThreadPool(2); 
@@ -145,6 +174,11 @@ public class KafkaCustomConsumerTest {
         buffer = getBuffer();
         shutdownInProgress = new AtomicBoolean(false);
         when(topicConfig.getName()).thenReturn(TOPIC_NAME);
+    }
+
+    public KafkaCustomConsumer createObjectUnderTestWithMockBuffer(String schemaType) {
+        return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, mockBuffer, sourceConfig, topicConfig, schemaType,
+                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate);
     }
 
     public KafkaCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
@@ -162,6 +196,56 @@ public class KafkaCustomConsumerTest {
         return new BlockingBuffer<>(pluginSetting);
     }
 
+    @Test
+    public void testBufferOverflowPauseResume() throws InterruptedException, Exception {
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(4000));
+        String topic = topicConfig.getName();
+        consumerRecords = createPlainTextRecords(topic, 0L);
+        doAnswer((i)-> {
+            if (!paused && !resumed)
+                throw new SizeOverflowException("size overflow");
+            buffer.writeAll(i.getArgument(0), i.getArgument(1));
+            return null;
+        }).when(mockBuffer).writeAll(any(), anyInt());
+
+        doAnswer((i) -> {
+            if (paused && !resumed)
+                return List.of();
+            return consumerRecords;
+        }).when(kafkaConsumer).poll(any(Duration.class));
+        consumer = createObjectUnderTestWithMockBuffer("plaintext");
+        try {
+            consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+            consumer.consumeRecords();
+        } catch (Exception e){}
+        assertTrue(paused);
+        assertTrue(resumed);
+
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
+        Assertions.assertEquals(consumerRecords.count(), bufferedRecords.size());
+        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 1);
+        offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {
+            Assertions.assertEquals(topicPartition.partition(), testPartition);
+            Assertions.assertEquals(topicPartition.topic(), topic);
+            Assertions.assertEquals(offsetAndMetadata.offset(), 2L);
+        });
+        Assertions.assertEquals(consumer.getNumRecordsCommitted(), 2L);
+
+        for (Record<Event> record: bufferedRecords) {
+            Event event = record.getData();
+            String value1 = event.get(testKey1, String.class);
+            String value2 = event.get(testKey2, String.class);
+            assertTrue(value1 != null || value2 != null);
+            if (value1 != null) {
+                Assertions.assertEquals(value1, testValue1);
+            }
+            if (value2 != null) {
+                Assertions.assertEquals(value2, testValue2);
+            }
+        }
+    }
     @Test
     public void testPlainTextConsumeRecords() throws InterruptedException {
         String topic = topicConfig.getName();

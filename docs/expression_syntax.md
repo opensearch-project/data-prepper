@@ -137,7 +137,7 @@ Hard coded token that identifies the operation use in an _Expression_.
 
 ### Json Pointer
 A Literal used to reference a value within the Event provided as context for the _Expression String_. Json Pointers are identified by a 
-leading `/` containing alphanumeric character or underscores, delimited by `/`. Json Pointers can use an extended character set if wrapped 
+leading `/` containing one of more of characters from the set `a-zA-Z0-9_.@` , delimited by `/`. Json Pointers can use an extended character set if wrapped
 in double quotes (`"`) using the escape character `\`. Note, Json Pointer require `~` and `/` that should be used as part of the path and 
 not a delimiter to be escaped.
 

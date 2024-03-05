@@ -11,6 +11,11 @@ import java.util.List;
 import java.util.Map;
 
 public class GrokProcessorConfig {
+
+    static final String TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY = "_total_grok_patterns_attempted";
+
+    static final String TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY = "_total_grok_processing_time";
+
     static final String BREAK_ON_MATCH = "break_on_match";
     static final String KEEP_EMPTY_CAPTURES = "keep_empty_captures";
     static final String MATCH = "match";
@@ -24,6 +29,8 @@ public class GrokProcessorConfig {
     static final String GROK_WHEN = "grok_when";
     static final String TAGS_ON_MATCH_FAILURE = "tags_on_match_failure";
     static final String TAGS_ON_TIMEOUT = "tags_on_timeout";
+
+    static final String INCLUDE_PERFORMANCE_METADATA = "performance_metadata";
 
     static final boolean DEFAULT_BREAK_ON_MATCH = true;
     static final boolean DEFAULT_KEEP_EMPTY_CAPTURES = false;
@@ -46,6 +53,8 @@ public class GrokProcessorConfig {
     private final List<String> tagsOnMatchFailure;
     private final List<String> tagsOnTimeout;
 
+    private final boolean includePerformanceMetadata;
+
     private GrokProcessorConfig(final boolean breakOnMatch,
                                 final boolean keepEmptyCaptures,
                                 final Map<String, List<String>> match,
@@ -58,7 +67,8 @@ public class GrokProcessorConfig {
                                 final String targetKey,
                                 final String grokWhen,
                                 final List<String> tagsOnMatchFailure,
-                                final List<String> tagsOnTimeout) {
+                                final List<String> tagsOnTimeout,
+                                final boolean includePerformanceMetadata) {
 
         this.breakOnMatch = breakOnMatch;
         this.keepEmptyCaptures = keepEmptyCaptures;
@@ -73,6 +83,7 @@ public class GrokProcessorConfig {
         this.grokWhen = grokWhen;
         this.tagsOnMatchFailure = tagsOnMatchFailure;
         this.tagsOnTimeout = tagsOnTimeout.isEmpty() ? tagsOnMatchFailure : tagsOnTimeout;
+        this.includePerformanceMetadata = includePerformanceMetadata;
     }
 
     public static GrokProcessorConfig buildConfig(final PluginSetting pluginSetting) {
@@ -88,7 +99,8 @@ public class GrokProcessorConfig {
                 pluginSetting.getStringOrDefault(TARGET_KEY, DEFAULT_TARGET_KEY),
                 pluginSetting.getStringOrDefault(GROK_WHEN, null),
                 pluginSetting.getTypedList(TAGS_ON_MATCH_FAILURE, String.class),
-                pluginSetting.getTypedList(TAGS_ON_TIMEOUT, String.class));
+                pluginSetting.getTypedList(TAGS_ON_TIMEOUT, String.class),
+                pluginSetting.getBooleanOrDefault(INCLUDE_PERFORMANCE_METADATA, false));
     }
 
     public boolean isBreakOnMatch() {
@@ -140,4 +152,6 @@ public class GrokProcessorConfig {
     public List<String> getTagsOnTimeout() {
         return tagsOnTimeout;
     }
+
+    public boolean getIncludePerformanceMetadata() { return includePerformanceMetadata; }
 }
