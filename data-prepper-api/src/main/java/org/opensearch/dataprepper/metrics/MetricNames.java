@@ -86,4 +86,6 @@ public class MetricNames {
      * Delimiter used to separate path components in metric names.
      */
     public static final String DELIMITER = ".";
+
+    public static final String LATENCY = "latency";
 }

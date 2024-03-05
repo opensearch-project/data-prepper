@@ -12,7 +12,11 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 
+import java.time.Instant;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +36,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     private final Counter writeTimeoutCounter;
     private final Counter recordsWriteFailed;
     private final Timer writeTimer;
+    private final Timer latencyTimer;
     private final Timer readTimer;
     private final Timer checkpointTimer;
 
@@ -54,6 +59,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         this.writeTimeoutCounter = pluginMetrics.counter(MetricNames.WRITE_TIMEOUTS);
         this.writeTimer = pluginMetrics.timer(MetricNames.WRITE_TIME_ELAPSED);
         this.readTimer = pluginMetrics.timer(MetricNames.READ_TIME_ELAPSED);
+        this.latencyTimer = pluginMetrics.timer(MetricNames.LATENCY);
         this.checkpointTimer = pluginMetrics.timer(MetricNames.CHECKPOINT_TIME_ELAPSED);
     }
 
@@ -140,6 +146,16 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         }
         postProcess(recordsInBuffer.get());
         return readResult;
+    }
+
+    protected void updateLatency(Collection<T> records) {
+        for (T rec : records) {
+            if (rec instanceof Record) {
+                Record<Event> record = (Record<Event>)rec;
+                Instant receivedTime = ((DefaultEventHandle)(((Event)record.getData()).getEventHandle())).getInternalOriginationTime();
+                latencyTimer.record(Duration.between(receivedTime, Instant.now()));
+            }
+        }
     }
 
     @Override
