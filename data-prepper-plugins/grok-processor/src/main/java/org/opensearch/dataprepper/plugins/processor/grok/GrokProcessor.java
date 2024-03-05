@@ -149,13 +149,15 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
             final Instant endTime = Instant.now();
 
-            Long totalEventTimeInGrok = (Long) event.getMetadata().getAttribute(TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY);
-            if (totalEventTimeInGrok == null) {
-                totalEventTimeInGrok = 0L;
-            }
+            if (grokProcessorConfig.getIncludePerformanceMetadata()) {
+                Long totalEventTimeInGrok = (Long) event.getMetadata().getAttribute(TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY);
+                if (totalEventTimeInGrok == null) {
+                    totalEventTimeInGrok = 0L;
+                }
 
-            final long timeSpentInThisGrok = endTime.toEpochMilli() - startTime.toEpochMilli();
-            event.getMetadata().setAttribute(TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY, totalEventTimeInGrok + timeSpentInThisGrok);
+                final long timeSpentInThisGrok = endTime.toEpochMilli() - startTime.toEpochMilli();
+                event.getMetadata().setAttribute(TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY, totalEventTimeInGrok + timeSpentInThisGrok);
+            }
          }
         return records;
     }

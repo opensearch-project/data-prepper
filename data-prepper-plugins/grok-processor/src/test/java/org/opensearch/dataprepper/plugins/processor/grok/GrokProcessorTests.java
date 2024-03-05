@@ -190,6 +190,7 @@ public class GrokProcessorTests {
         assertThat(grokkedRecords.get(0).getData(), notNullValue());
         assertThat(grokkedRecords.get(0).getData().getMetadata(), notNullValue());
         assertThat(grokkedRecords.get(0).getData().getMetadata().getAttribute(TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY), equalTo(null));
+        assertThat(grokkedRecords.get(0).getData().getMetadata().getAttribute(TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY), equalTo(null));
         assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
 
         verify(grokProcessingMatchCounter, times(1)).increment();
