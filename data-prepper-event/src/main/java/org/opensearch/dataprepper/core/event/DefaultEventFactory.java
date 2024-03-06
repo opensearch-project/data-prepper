@@ -3,34 +3,34 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.event;
+package org.opensearch.dataprepper.core.event;
 
+import org.opensearch.dataprepper.model.event.BaseEventBuilder;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.event.BaseEventBuilder;
 
-import java.util.Map;
-import java.util.Collection;
-import java.util.stream.Collectors;
-import javax.inject.Named;
 import javax.inject.Inject;
+import javax.inject.Named;
+import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Named
 public class DefaultEventFactory implements EventFactory {
-    Map<Class<?>, DefaultEventBuilderFactory> classToFactoryMap;
+    private final Map<Class<?>, DefaultEventBuilderFactory> classToFactoryMap;
 
     @Inject
-    public DefaultEventFactory(Collection< DefaultEventBuilderFactory> factories) {
+    DefaultEventFactory(final Collection<DefaultEventBuilderFactory> factories) {
         classToFactoryMap = factories.stream()
-                  .collect(Collectors.toMap(DefaultEventBuilderFactory::getEventClass, v -> v));   
+                .collect(Collectors.toMap(DefaultEventBuilderFactory::getEventClass, v -> v));
     }
-    
+
     @Override
-    public <T extends Event, B extends BaseEventBuilder<T>> B eventBuilder(Class<B> eventBuilderClass) throws UnsupportedOperationException {
+    public <T extends Event, B extends BaseEventBuilder<T>> B eventBuilder(final Class<B> eventBuilderClass) throws UnsupportedOperationException {
         if (!classToFactoryMap.containsKey(eventBuilderClass)) {
             throw new UnsupportedOperationException("Unsupported class");
         }
-        
+
         return (B) classToFactoryMap.get(eventBuilderClass).createNew();
     }
 }

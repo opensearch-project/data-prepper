@@ -3,20 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.event;
+package org.opensearch.dataprepper.core.event;
 
-import org.opensearch.dataprepper.model.event.EventMetadata;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.event.EventBuilder;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.CoreMatchers.not;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.apache.commons.lang3.RandomStringUtils;
+import org.opensearch.dataprepper.model.event.EventBuilder;
+import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 
-import java.util.Map;
 import java.util.Collections;
+import java.util.Map;
+
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 
 class DefaultEventBuilderFactoryTests {
     private DefaultEventBuilderFactory defaultEventBuilderFactory;
@@ -44,7 +45,7 @@ class DefaultEventBuilderFactoryTests {
         String testValue = RandomStringUtils.randomAlphabetic(10);
         Map<String, Object> data = Map.of(testKey, testValue);
         Map<String, Object> attributes = Collections.emptyMap();
-        EventBuilder eventBuilder = (EventBuilder)baseEventBuilder.withEventMetadataAttributes(attributes).withData(data);
+        EventBuilder eventBuilder = (EventBuilder) baseEventBuilder.withEventMetadataAttributes(attributes).withData(data);
 
         JacksonEvent event = (JacksonEvent) eventBuilder.build();
         EventMetadata eventMetadata = event.getMetadata();

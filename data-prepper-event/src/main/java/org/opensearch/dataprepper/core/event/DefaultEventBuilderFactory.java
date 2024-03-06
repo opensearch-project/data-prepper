@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.event;
+package org.opensearch.dataprepper.core.event;
 
-import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.springframework.stereotype.Component;
 
@@ -22,16 +22,16 @@ class DefaultEventBuilderFactory extends EventBuilderFactory {
         return new DefaultEventBuilder();
     }
 
-    public static class DefaultEventBuilder extends DefaultBaseEventBuilder<Event> implements EventBuilder  {
+    public static class DefaultEventBuilder extends DefaultBaseEventBuilder<Event> implements EventBuilder {
         public String getEventType() {
             return EVENT_TYPE;
         }
 
         public Event build() {
             return (Event) JacksonEvent.builder()
-              .withData(getData())
-              .withEventType(EVENT_TYPE)
-              .build();
+                    .withData(getData())
+                    .withEventType(EVENT_TYPE)
+                    .build();
         }
     }
 }

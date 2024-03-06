@@ -1,0 +1,17 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation 'javax.inject:javax.inject:1'
+    implementation 'javax.annotation:javax.annotation-api:1.3.2'
+    implementation(libs.spring.core) {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+    implementation(libs.spring.context) {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+    testImplementation libs.commons.lang3
+}

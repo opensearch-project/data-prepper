@@ -5,17 +5,19 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
+import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
-import org.opensearch.dataprepper.plugins.TestPlugin;
 import org.opensearch.dataprepper.plugins.TestObjectPlugin;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.TestPlugin;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.HashMap;
@@ -27,8 +29,6 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import org.opensearch.dataprepper.event.DefaultEventFactory;
-import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 
 /**
  * Integration test of the plugin framework. These tests should not mock any portion
@@ -44,10 +44,6 @@ class DefaultPluginFactoryIT {
     private String objectPluginName;
     private String pipelineName;
 
-    private DefaultEventFactory eventFactory;
-
-    private DefaultAcknowledgementSetManager acknowledgementSetManager;
-
     @BeforeEach
     void setUp() {
         pluginName = "test_plugin";
@@ -62,7 +58,7 @@ class DefaultPluginFactoryIT {
         final AnnotationConfigApplicationContext coreContext = new AnnotationConfigApplicationContext();
         coreContext.setParent(publicContext);
 
-        coreContext.scan(DefaultEventFactory.class.getPackage().getName());
+        coreContext.scan(EventFactoryApplicationContextMarker.class.getPackage().getName());
         coreContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
         coreContext.register(PluginBeanFactoryProvider.class);
