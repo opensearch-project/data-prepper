@@ -16,11 +16,13 @@ import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.sqs.SqsClient;
 
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
+    static final long SHUTDOWN_TIMEOUT = 30L;
     static final long INITIAL_DELAY = Duration.ofSeconds(20).toMillis();
     static final long MAXIMUM_DELAY = Duration.ofMinutes(5).toMillis();
     static final double JITTER_RATE = 0.20;
@@ -30,8 +32,6 @@ public class SqsService {
     private final SqsClient sqsClient;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
-    private Thread sqsWorkerThread;
-    private SqsWorker sqsWorker;
     private ExecutorService executorService;
 
     public SqsService(final AcknowledgementSetManager acknowledgementSetManager,
@@ -67,6 +67,19 @@ public class SqsService {
     }
 
     public void stop() {
-        sqsWorker.stop();
+        sqsClient.close();
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(SHUTDOWN_TIMEOUT, TimeUnit.SECONDS)) {
+                LOG.warn("Failed to terminate SqsWorkers");
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            if (e.getCause() instanceof InterruptedException) {
+                LOG.error("Interrupted during shutdown, exiting uncleanly...", e);
+                executorService.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 }
