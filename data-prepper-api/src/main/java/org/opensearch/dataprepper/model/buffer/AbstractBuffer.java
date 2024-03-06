@@ -147,6 +147,10 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         return readResult;
     }
 
+    Timer getLatencyTimer() {
+        return latencyTimer;
+    }
+
     protected void updateLatency(Collection<T> records) {
         for (T rec : records) {
             if (rec instanceof Record) {
