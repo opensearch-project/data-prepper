@@ -80,6 +80,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -139,6 +144,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private DlqProvider dlqProvider;
   private final ConcurrentHashMap<Long, AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> bulkRequestMap;
   private final ConcurrentHashMap<Long, Long> lastFlushTimeMap;
+  private final RequestSender requestSender;
 
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
@@ -185,6 +191,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       dlqPluginSetting.setPipelineName(pluginSetting.getPipelineName());
       dlqProvider = pluginFactory.loadPlugin(DlqProvider.class, dlqPluginSetting);
     }
+
+    this.requestSender = new RequestSender(openSearchSinkConfig.getConnectionConfiguration().getClients());
   }
 
   @Override
@@ -491,6 +499,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {
+    requestSender.sendRequest(() -> doFlushBatch(accumulatingBulkRequest));
+  }
+
+  private Void doFlushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {
     bulkRequestTimer.record(() -> {
       try {
         LOG.debug("Sending data to OpenSearch");
@@ -502,6 +514,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         Thread.currentThread().interrupt();
       }
     });
+
+    return null;
   }
 
   private void logFailureForBulkRequests(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {
