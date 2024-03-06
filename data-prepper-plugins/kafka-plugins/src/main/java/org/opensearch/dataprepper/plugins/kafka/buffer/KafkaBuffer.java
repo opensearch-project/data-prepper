@@ -142,7 +142,9 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         try {
             setMdc();
             Map.Entry<Collection<Record<Event>>, CheckpointState> result =  innerBuffer.read(timeoutInMillis);
-            updateLatency(result.getKey());
+            if (result != null) {
+                updateLatency(result.getKey());
+            }
             return result;
         } finally {
             resetMdc();
