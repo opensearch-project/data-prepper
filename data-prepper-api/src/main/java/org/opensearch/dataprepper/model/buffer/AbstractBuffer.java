@@ -13,7 +13,6 @@ import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 
 import java.time.Instant;
 import java.time.Duration;
@@ -59,7 +58,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         this.writeTimeoutCounter = pluginMetrics.counter(MetricNames.WRITE_TIMEOUTS);
         this.writeTimer = pluginMetrics.timer(MetricNames.WRITE_TIME_ELAPSED);
         this.readTimer = pluginMetrics.timer(MetricNames.READ_TIME_ELAPSED);
-        this.latencyTimer = pluginMetrics.timer(MetricNames.LATENCY);
+        this.latencyTimer = pluginMetrics.timer(MetricNames.READ_LATENCY);
         this.checkpointTimer = pluginMetrics.timer(MetricNames.CHECKPOINT_TIME_ELAPSED);
     }
 
@@ -151,9 +150,12 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     protected void updateLatency(Collection<T> records) {
         for (T rec : records) {
             if (rec instanceof Record) {
-                Record<Event> record = (Record<Event>)rec;
-                Instant receivedTime = ((DefaultEventHandle)(((Event)record.getData()).getEventHandle())).getInternalOriginationTime();
-                latencyTimer.record(Duration.between(receivedTime, Instant.now()));
+                Object data = rec.getData();
+                if (data instanceof Event) {
+                    Event event = (Event) data;
+                    Instant receivedTime = event.getEventHandle().getInternalOriginationTime();
+                    latencyTimer.record(Duration.between(receivedTime, Instant.now()));
+                }
             }
         }
     }

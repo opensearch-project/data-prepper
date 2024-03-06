@@ -87,5 +87,8 @@ public class MetricNames {
      */
     public static final String DELIMITER = ".";
 
-    public static final String LATENCY = "latency";
+    /**
+     * Metric representing buffer read latency
+     */
+    public static final String READ_LATENCY = "readLatency";
 }
