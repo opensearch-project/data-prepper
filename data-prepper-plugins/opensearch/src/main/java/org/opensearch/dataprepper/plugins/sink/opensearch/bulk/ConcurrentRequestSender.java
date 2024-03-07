@@ -1,5 +1,6 @@
-package org.opensearch.dataprepper.plugins.sink.opensearch;
+package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,39 +10,53 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
-public class RequestSender {
-    private static final Logger LOG = LoggerFactory.getLogger(RequestSender.class);
+public class ConcurrentRequestSender implements RequestSender {
+    private static final Logger LOG = LoggerFactory.getLogger(ConcurrentRequestSender.class);
 
     private final List<Future<Void>> pendingRequestFutures;
-    private final ExecutorService requestExecutor;
     private final CompletionService<Void> completionService;
     private final int concurrentRequestCount;
     private final ReentrantLock reentrantLock;
 
-    public RequestSender(final int concurrentRequestCount) {
+    public ConcurrentRequestSender(final int concurrentRequestCount) {
         this.concurrentRequestCount = concurrentRequestCount;
         pendingRequestFutures = new ArrayList<>();
-        requestExecutor = Executors.newFixedThreadPool(concurrentRequestCount);
-        completionService = new ExecutorCompletionService(requestExecutor);
+        completionService = new ExecutorCompletionService(Executors.newFixedThreadPool(concurrentRequestCount));
         reentrantLock = new ReentrantLock();
     }
 
-    public void sendRequest(final Callable<Void> requestRunnable) {
+    @VisibleForTesting
+    ConcurrentRequestSender(final int concurrentRequestCount, final CompletionService<Void> completionService) {
+        this.concurrentRequestCount = concurrentRequestCount;
+        pendingRequestFutures = new ArrayList<>();
+        this.completionService = completionService;
+        reentrantLock = new ReentrantLock();
+    }
+
+    @Override
+    public void sendRequest(final Consumer<AccumulatingBulkRequest> requestConsumer, final AccumulatingBulkRequest request) {
         reentrantLock.lock();
 
-        if (pendingRequestFutures.size() >= concurrentRequestCount) {
+        if (isRequestQueueFull()) {
             waitForRequestSlot();
         }
 
-        final Future<Void> future = completionService.submit(requestRunnable);
+        final Future<Void> future = completionService.submit(convertConsumerIntoCallable(requestConsumer, request));
         pendingRequestFutures.add(future);
 
         reentrantLock.unlock();
+    }
+
+    private Callable<Void> convertConsumerIntoCallable(final Consumer<AccumulatingBulkRequest> requestConsumer, final AccumulatingBulkRequest request) {
+        return () -> {
+            requestConsumer.accept(request);
+            return null;
+        };
     }
 
     private void waitForRequestSlot() {
@@ -49,9 +64,9 @@ public class RequestSender {
             checkFutureCompletion();
             if (isRequestQueueFull()) {
                 try {
-                    LOG.info("Request queue is full, waiting for slot to free up");
+                    LOG.debug("Request queue is full, waiting for slot to free up");
                     completionService.take();
-                } catch (InterruptedException e) {
+                } catch (final Exception e) {
                     LOG.error("Interrupted while waiting for future completion");
                 }
             }
@@ -70,12 +85,9 @@ public class RequestSender {
                     future.get();
                 } catch (final Exception e) {
                     LOG.error("Indexing future was cancelled", e);
-                    iterator.remove();
-                    return;
                 }
-            }
-
-            if (future.isDone()) {
+                iterator.remove();
+            } else if (future.isDone()) {
                 iterator.remove();
             }
         }

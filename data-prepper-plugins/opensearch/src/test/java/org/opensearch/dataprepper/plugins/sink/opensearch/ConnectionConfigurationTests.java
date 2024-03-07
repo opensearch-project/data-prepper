@@ -86,6 +86,7 @@ class ConnectionConfigurationTests {
         assertNull(connectionConfiguration.getSocketTimeout());
         assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
         assertTrue(connectionConfiguration.isRequestCompressionEnabled());
+        assertEquals(-1, connectionConfiguration.getConcurrentRequests());
     }
 
     @Test
@@ -646,6 +647,21 @@ class ConnectionConfigurationTests {
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
         client.close();
+    }
+
+    @Test
+    void testConcurrentRequestsSetting() {
+        final Map<String, Object> metadata = new HashMap<>();
+        metadata.put("hosts", TEST_HOSTS);
+        metadata.put("username", UUID.randomUUID().toString());
+        metadata.put("password", UUID.randomUUID().toString());
+        metadata.put("connect_timeout", 1);
+        metadata.put("socket_timeout", 1);
+        metadata.put("concurrent_requests", 32);
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
+        final ConnectionConfiguration connectionConfiguration = ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+
+        assertThat(connectionConfiguration.getConcurrentRequests(), equalTo(32));
     }
 
     private PluginSetting generatePluginSetting(

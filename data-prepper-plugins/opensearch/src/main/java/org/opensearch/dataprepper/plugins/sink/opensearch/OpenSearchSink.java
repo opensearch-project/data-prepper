@@ -49,8 +49,11 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkR
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkApiWrapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkApiWrapperFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWriter;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.InlineRequestSender;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingCompressedBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingUncompressedBulkRequest;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.ConcurrentRequestSender;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.RequestSender;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperationConverter;
@@ -80,11 +83,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -192,7 +190,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       dlqProvider = pluginFactory.loadPlugin(DlqProvider.class, dlqPluginSetting);
     }
 
-    this.requestSender = new RequestSender(openSearchSinkConfig.getConnectionConfiguration().getClients());
+    final int concurrentRequests = openSearchSinkConfig.getConnectionConfiguration().getConcurrentRequests();
+    if (concurrentRequests > 0) {
+      this.requestSender = new ConcurrentRequestSender(concurrentRequests);
+    } else {
+      this.requestSender = new InlineRequestSender();
+    }
   }
 
   @Override
@@ -499,10 +502,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {
-    requestSender.sendRequest(() -> doFlushBatch(accumulatingBulkRequest));
+    requestSender.sendRequest(this::doFlushBatch, accumulatingBulkRequest);
   }
 
-  private Void doFlushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {
+  private void doFlushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {
     bulkRequestTimer.record(() -> {
       try {
         LOG.debug("Sending data to OpenSearch");
@@ -514,8 +517,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         Thread.currentThread().interrupt();
       }
     });
-
-    return null;
   }
 
   private void logFailureForBulkRequests(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {

@@ -91,7 +91,7 @@ public class ConnectionConfiguration {
   public static final String NETWORK_POLICY_NAME = "network_policy_name";
   public static final String VPCE_ID = "vpce_id";
   public static final String REQUEST_COMPRESSION_ENABLED = "enable_request_compression";
-  public static final String CLIENTS = "clients";
+  public static final String CONCURRENT_REQUESTS = "concurrent_requests";
 
   /**
    * The valid port range per https://tools.ietf.org/html/rfc6335.
@@ -118,7 +118,7 @@ public class ConnectionConfiguration {
   private final String serverlessCollectionName;
   private final String serverlessVpceId;
   private final boolean requestCompressionEnabled;
-  private final Integer clients;
+  private final Integer concurrentRequests;
 
   List<String> getHosts() {
     return hosts;
@@ -180,8 +180,8 @@ public class ConnectionConfiguration {
     return requestCompressionEnabled;
   }
 
-  Integer getClients() {
-    return clients;
+  Integer getConcurrentRequests() {
+    return concurrentRequests;
   }
 
   private ConnectionConfiguration(final Builder builder) {
@@ -204,7 +204,7 @@ public class ConnectionConfiguration {
     this.serverlessVpceId = builder.serverlessVpceId;
     this.requestCompressionEnabled = builder.requestCompressionEnabled;
     this.pipelineName = builder.pipelineName;
-    this.clients = builder.clients;
+    this.concurrentRequests = builder.concurrentRequests;
   }
 
   public static ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
@@ -282,8 +282,8 @@ public class ConnectionConfiguration {
             REQUEST_COMPRESSION_ENABLED, !DistributionVersion.ES6.equals(distributionVersion));
     builder = builder.withRequestCompressionEnabled(requestCompressionEnabled);
 
-    final Integer clients = pluginSetting.getIntegerOrDefault(CLIENTS, 1);
-    builder = builder.withClients(clients);
+    final Integer concurrentRequests = pluginSetting.getIntegerOrDefault(CONCURRENT_REQUESTS, -1);
+    builder = builder.withConcurrentRequests(concurrentRequests);
 
     return builder.build();
   }
@@ -518,7 +518,7 @@ public class ConnectionConfiguration {
     private String serverlessCollectionName;
     private String serverlessVpceId;
     private boolean requestCompressionEnabled;
-    private Integer clients;
+    private Integer concurrentRequests;
 
     private void validateStsRoleArn(final String awsStsRoleArn) {
       final Arn arn = getArn(awsStsRoleArn);
@@ -648,8 +648,8 @@ public class ConnectionConfiguration {
       return this;
     }
 
-    public Builder withClients(final Integer clients) {
-      this.clients = clients;
+    public Builder withConcurrentRequests(final Integer concurrentRequests) {
+      this.concurrentRequests = concurrentRequests;
       return this;
     }
 
