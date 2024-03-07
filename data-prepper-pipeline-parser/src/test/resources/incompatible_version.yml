@@ -1,0 +1,9 @@
+
+version: "3005.0" #far out future version.
+test-pipeline-1:
+  source:
+    stdin:
+  buffer:
+    bounded_blocking: #to check non object nodes for plugins
+  sink:
+    - stdout:

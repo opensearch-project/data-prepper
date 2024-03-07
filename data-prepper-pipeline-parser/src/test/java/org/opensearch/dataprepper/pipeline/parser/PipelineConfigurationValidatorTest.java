@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.parser;
+package org.opensearch.dataprepper.pipeline.parser;
 
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.pipeline.parser.model.PipelineConfiguration;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,7 +16,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 class PipelineConfigurationValidatorTest {
 
     @Test

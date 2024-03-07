@@ -12,7 +12,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
-import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
+import org.opensearch.dataprepper.pipeline.parser.model.PipelineConfiguration;
 
 import java.io.File;
 import java.io.IOException;

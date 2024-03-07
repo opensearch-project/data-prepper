@@ -17,6 +17,7 @@ dependencies {
     implementation project(':data-prepper-plugins:blocking-buffer')
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-logstash-configuration')
+    implementation project(':data-prepper-pipeline-parser')
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
