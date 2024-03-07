@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.parser.model;
+package org.opensearch.dataprepper.pipeline.parser.model;
 
-import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 
 import java.util.Map;
 import java.util.UUID;

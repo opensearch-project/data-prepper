@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.parser;
+package org.opensearch.dataprepper.pipeline.parser;
 
 public class ParseException extends RuntimeException {
     public ParseException(final Throwable cause) {

@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.parser;
+package org.opensearch.dataprepper.pipeline.parser;
 
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
-import org.opensearch.dataprepper.parser.model.SinkContextPluginSetting;
+import org.opensearch.dataprepper.pipeline.parser.model.PipelineConfiguration;
+import org.opensearch.dataprepper.pipeline.parser.model.SinkContextPluginSetting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

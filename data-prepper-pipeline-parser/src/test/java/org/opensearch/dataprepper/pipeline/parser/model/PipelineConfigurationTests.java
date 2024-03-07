@@ -3,17 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.parser.model;
+package org.opensearch.dataprepper.pipeline.parser.model;
 
+import org.hamcrest.CoreMatchers;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.pipeline.parser.TestConfigurationProvider;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
-import org.hamcrest.CoreMatchers;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.TestDataProvider;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,9 +40,9 @@ class PipelineConfigurationTests {
 
     @BeforeEach
     void setUp() {
-        source = TestDataProvider.validSingleConfiguration();
-        processors = TestDataProvider.validMultipleConfigurationOfSizeOne();
-        sinks = TestDataProvider.validMultipleSinkConfiguration();
+        source = TestConfigurationProvider.validSingleConfiguration();
+        processors = TestConfigurationProvider.validMultipleConfigurationOfSizeOne();
+        sinks = TestConfigurationProvider.validMultipleSinkConfiguration();
     }
 
     @Test
@@ -51,8 +51,8 @@ class PipelineConfigurationTests {
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(processors);
         when(pipelineModel.getSinks()).thenReturn(sinks);
-        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
-        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+        when(pipelineModel.getWorkers()).thenReturn(TestConfigurationProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestConfigurationProvider.TEST_DELAY);
         final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
 
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
@@ -60,35 +60,35 @@ class PipelineConfigurationTests {
         final List<PluginSetting> actualProcesserPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
         final List<SinkContextPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
-        comparePluginSettings(actualSourcePluginSetting, TestDataProvider.VALID_PLUGIN_SETTING_1);
+        comparePluginSettings(actualSourcePluginSetting, TestConfigurationProvider.VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
         comparePluginSettings(actualBufferPluginSetting, BlockingBuffer.getDefaultPluginSettings());
         assertThat(actualProcesserPluginSettings.size(), is(1));
-        actualProcesserPluginSettings.forEach(processorSettings -> comparePluginSettings(processorSettings, TestDataProvider.VALID_PLUGIN_SETTING_1));
+        actualProcesserPluginSettings.forEach(processorSettings -> comparePluginSettings(processorSettings, TestConfigurationProvider.VALID_PLUGIN_SETTING_1));
         assertThat(actualSinkPluginSettings.size(), is(2));
-        comparePluginSettings(actualSinkPluginSettings.get(0), TestDataProvider.VALID_PLUGIN_SETTING_1);
-        comparePluginSettings(actualSinkPluginSettings.get(1), TestDataProvider.VALID_PLUGIN_SETTING_2);
-        assertThat(pipelineConfiguration.getWorkers(), CoreMatchers.is(TestDataProvider.TEST_WORKERS));
-        assertThat(pipelineConfiguration.getReadBatchDelay(), CoreMatchers.is(TestDataProvider.TEST_DELAY));
+        comparePluginSettings(actualSinkPluginSettings.get(0), TestConfigurationProvider.VALID_PLUGIN_SETTING_1);
+        comparePluginSettings(actualSinkPluginSettings.get(1), TestConfigurationProvider.VALID_PLUGIN_SETTING_2);
+        assertThat(pipelineConfiguration.getWorkers(), CoreMatchers.is(TestConfigurationProvider.TEST_WORKERS));
+        assertThat(pipelineConfiguration.getReadBatchDelay(), CoreMatchers.is(TestConfigurationProvider.TEST_DELAY));
 
-        pipelineConfiguration.updateCommonPipelineConfiguration(TestDataProvider.TEST_PIPELINE_NAME);
-        assertThat(actualSourcePluginSetting.getPipelineName(), is(equalTo(TestDataProvider.TEST_PIPELINE_NAME)));
-        assertThat(actualSourcePluginSetting.getNumberOfProcessWorkers(), is(equalTo(TestDataProvider.TEST_WORKERS)));
-        assertThat(actualBufferPluginSetting.getPipelineName(), is(equalTo(TestDataProvider.TEST_PIPELINE_NAME)));
-        assertThat(actualBufferPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TestDataProvider.TEST_WORKERS)));
+        pipelineConfiguration.updateCommonPipelineConfiguration(TestConfigurationProvider.TEST_PIPELINE_NAME);
+        assertThat(actualSourcePluginSetting.getPipelineName(), is(equalTo(TestConfigurationProvider.TEST_PIPELINE_NAME)));
+        assertThat(actualSourcePluginSetting.getNumberOfProcessWorkers(), is(equalTo(TestConfigurationProvider.TEST_WORKERS)));
+        assertThat(actualBufferPluginSetting.getPipelineName(), is(equalTo(TestConfigurationProvider.TEST_PIPELINE_NAME)));
+        assertThat(actualBufferPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TestConfigurationProvider.TEST_WORKERS)));
         actualProcesserPluginSettings.forEach(processorPluginSetting -> {
-            assertThat(processorPluginSetting.getPipelineName(), is(equalTo(TestDataProvider.TEST_PIPELINE_NAME)));
-            assertThat(processorPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TestDataProvider.TEST_WORKERS)));
+            assertThat(processorPluginSetting.getPipelineName(), is(equalTo(TestConfigurationProvider.TEST_PIPELINE_NAME)));
+            assertThat(processorPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TestConfigurationProvider.TEST_WORKERS)));
         });
         actualSinkPluginSettings.forEach(sinkPluginSetting -> {
-            assertThat(sinkPluginSetting.getPipelineName(), is(equalTo(TestDataProvider.TEST_PIPELINE_NAME)));
-            assertThat(sinkPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TestDataProvider.TEST_WORKERS)));
+            assertThat(sinkPluginSetting.getPipelineName(), is(equalTo(TestConfigurationProvider.TEST_PIPELINE_NAME)));
+            assertThat(sinkPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TestConfigurationProvider.TEST_WORKERS)));
         });
     }
 
     @Test
     void testOnlySourceAndSink() {
-        sinks = TestDataProvider.validMultipleSinkConfigurationOfSizeOne();
+        sinks = TestConfigurationProvider.validMultipleSinkConfigurationOfSizeOne();
         final PipelineModel pipelineModel = mock(PipelineModel.class);
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getSinks()).thenReturn(sinks);
@@ -101,15 +101,15 @@ class PipelineConfigurationTests {
         final List<PluginSetting> actualProcessorPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
         final List<SinkContextPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
-        comparePluginSettings(actualSourcePluginSetting, TestDataProvider.VALID_PLUGIN_SETTING_1);
+        comparePluginSettings(actualSourcePluginSetting, TestConfigurationProvider.VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
         comparePluginSettings(actualBufferPluginSetting, BlockingBuffer.getDefaultPluginSettings());
         assertThat(actualProcessorPluginSettings, isA(Iterable.class));
         assertThat(actualProcessorPluginSettings.size(), is(0));
         assertThat(actualSinkPluginSettings.size(), is(1));
-        comparePluginSettings(actualSinkPluginSettings.get(0), TestDataProvider.VALID_PLUGIN_SETTING_1);
-        assertThat(pipelineConfiguration.getWorkers(), CoreMatchers.is(TestDataProvider.DEFAULT_WORKERS));
-        assertThat(pipelineConfiguration.getReadBatchDelay(), CoreMatchers.is(TestDataProvider.DEFAULT_READ_BATCH_DELAY));
+        comparePluginSettings(actualSinkPluginSettings.get(0), TestConfigurationProvider.VALID_PLUGIN_SETTING_1);
+        assertThat(pipelineConfiguration.getWorkers(), CoreMatchers.is(TestConfigurationProvider.DEFAULT_WORKERS));
+        assertThat(pipelineConfiguration.getReadBatchDelay(), CoreMatchers.is(TestConfigurationProvider.DEFAULT_READ_BATCH_DELAY));
     }
 
     @Test
@@ -117,8 +117,8 @@ class PipelineConfigurationTests {
         final PipelineModel pipelineModel = mock(PipelineModel.class);
         when(pipelineModel.getProcessors()).thenReturn(processors);
         when(pipelineModel.getSinks()).thenReturn(sinks);
-        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
-        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+        when(pipelineModel.getWorkers()).thenReturn(TestConfigurationProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestConfigurationProvider.TEST_DELAY);
 
         final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
 
@@ -131,8 +131,8 @@ class PipelineConfigurationTests {
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(null);
         when(pipelineModel.getSinks()).thenReturn(sinks);
-        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
-        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+        when(pipelineModel.getWorkers()).thenReturn(TestConfigurationProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestConfigurationProvider.TEST_DELAY);
         final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
         assertThat(pipelineConfiguration.getProcessorPluginSettings(), isA(Iterable.class));
         assertThat(pipelineConfiguration.getProcessorPluginSettings().size(), is(0));
@@ -144,8 +144,8 @@ class PipelineConfigurationTests {
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(new ArrayList<>());
         when(pipelineModel.getSinks()).thenReturn(sinks);
-        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
-        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+        when(pipelineModel.getWorkers()).thenReturn(TestConfigurationProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestConfigurationProvider.TEST_DELAY);
         final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
         assertThat(pipelineConfiguration.getProcessorPluginSettings(), isA(Iterable.class));
         assertThat(pipelineConfiguration.getProcessorPluginSettings().size(), is(0));
@@ -157,8 +157,8 @@ class PipelineConfigurationTests {
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(processors);
         when(pipelineModel.getSinks()).thenReturn(Collections.emptyList());
-        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
-        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+        when(pipelineModel.getWorkers()).thenReturn(TestConfigurationProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestConfigurationProvider.TEST_DELAY);
 
         final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
 
@@ -171,8 +171,8 @@ class PipelineConfigurationTests {
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(processors);
         when(pipelineModel.getSinks()).thenReturn(new ArrayList<>());
-        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
-        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+        when(pipelineModel.getWorkers()).thenReturn(TestConfigurationProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestConfigurationProvider.TEST_DELAY);
 
         final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
 
@@ -186,7 +186,7 @@ class PipelineConfigurationTests {
         when(pipelineModel.getProcessors()).thenReturn(processors);
         when(pipelineModel.getSinks()).thenReturn(sinks);
         when(pipelineModel.getWorkers()).thenReturn(0);
-        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestConfigurationProvider.TEST_DELAY);
         final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
         assertThat(actual.getMessage(), equalTo("Invalid configuration, workers cannot be 0"));
     }
@@ -197,7 +197,7 @@ class PipelineConfigurationTests {
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(processors);
         when(pipelineModel.getSinks()).thenReturn(sinks);
-        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
+        when(pipelineModel.getWorkers()).thenReturn(TestConfigurationProvider.TEST_WORKERS);
         when(pipelineModel.getReadBatchDelay()).thenReturn(-1);
         final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
         assertThat(actual.getMessage(), equalTo("Invalid configuration, delay must be a non-negative integer."));
@@ -224,8 +224,8 @@ class PipelineConfigurationTests {
         final List<SinkContextPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         assertThat(actualSinkPluginSettings.size(), equalTo(2));
-        comparePluginSettings(actualSinkPluginSettings.get(0), TestDataProvider.VALID_PLUGIN_SETTING_1);
-        comparePluginSettings(actualSinkPluginSettings.get(1), TestDataProvider.VALID_PLUGIN_SETTING_2);
+        comparePluginSettings(actualSinkPluginSettings.get(0), TestConfigurationProvider.VALID_PLUGIN_SETTING_1);
+        comparePluginSettings(actualSinkPluginSettings.get(1), TestConfigurationProvider.VALID_PLUGIN_SETTING_2);
         assertThat(actualSinkPluginSettings.get(0).getSinkContext().getRoutes(), equalTo(orderedSinkRoutes.get(0)));
         assertThat(actualSinkPluginSettings.get(1).getSinkContext().getRoutes(), equalTo(orderedSinkRoutes.get(1)));
     }
@@ -251,8 +251,8 @@ class PipelineConfigurationTests {
         final List<SinkContextPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         assertThat(actualSinkPluginSettings.size(), equalTo(2));
-        comparePluginSettings(actualSinkPluginSettings.get(0), TestDataProvider.VALID_PLUGIN_SETTING_1);
-        comparePluginSettings(actualSinkPluginSettings.get(1), TestDataProvider.VALID_PLUGIN_SETTING_2);
+        comparePluginSettings(actualSinkPluginSettings.get(0), TestConfigurationProvider.VALID_PLUGIN_SETTING_1);
+        comparePluginSettings(actualSinkPluginSettings.get(1), TestConfigurationProvider.VALID_PLUGIN_SETTING_2);
         assertThat(actualSinkPluginSettings.get(0).getSinkContext().getTagsTargetKey(), equalTo(orderedSinkTagTagets.get(0)));
         assertThat(actualSinkPluginSettings.get(1).getSinkContext().getTagsTargetKey(), equalTo(orderedSinkTagTagets.get(1)));
     }
