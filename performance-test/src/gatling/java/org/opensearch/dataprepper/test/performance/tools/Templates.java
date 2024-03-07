@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.test.performance.tools;
 
 import io.gatling.javaapi.core.Session;
+import org.opensearch.dataprepper.test.data.generation.IpAddress;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
