@@ -70,7 +70,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
                        final AcknowledgementSetManager acknowledgementSetManager,
                        final ByteDecoder byteDecoder, final AwsCredentialsSupplier awsCredentialsSupplier,
                        final CircuitBreaker circuitBreaker) {
-        super(kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName()), pluginSetting.getPipelineName());
+        super(kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName()+"buffer"), pluginSetting.getPipelineName());
         final SerializationFactory serializationFactory = new BufferSerializationFactory(new CommonSerializationFactory());
         final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier, new TopicServiceFactory());
         this.byteDecoder = byteDecoder;
@@ -141,7 +141,11 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     public Map.Entry<Collection<Record<Event>>, CheckpointState> doRead(int timeoutInMillis) {
         try {
             setMdc();
-            return innerBuffer.read(timeoutInMillis);
+            Map.Entry<Collection<Record<Event>>, CheckpointState> result =  innerBuffer.read(timeoutInMillis);
+            if (result != null) {
+                updateLatency(result.getKey());
+            }
+            return result;
         } finally {
             resetMdc();
         }

@@ -122,6 +122,7 @@ public class PeerForwarderReceiveBuffer<T extends Record<?>> extends AbstractBuf
             }
         }
 
+        updateLatency((Collection<T>)records);
         final CheckpointState checkpointState = new CheckpointState(recordsRead);
         recordsInFlight += checkpointState.getNumRecordsToBeChecked();
         return new AbstractMap.SimpleEntry<>(records, checkpointState);

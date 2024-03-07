@@ -176,6 +176,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
             }
         }
 
+        updateLatency((Collection<T>)records);
         final CheckpointState checkpointState = new CheckpointState(recordsRead);
         return new AbstractMap.SimpleEntry<>(records, checkpointState);
     }

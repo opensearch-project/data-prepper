@@ -86,4 +86,9 @@ public class MetricNames {
      * Delimiter used to separate path components in metric names.
      */
     public static final String DELIMITER = ".";
+
+    /**
+     * Metric representing buffer read latency
+     */
+    public static final String READ_LATENCY = "readLatency";
 }
