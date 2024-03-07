@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 class S3DBServiceTest {
 
     private static final String S3_URI = "s3://mybucket10012023/GeoLite2/";
-    private static final String DATABASE_DIR = "first_database";
+    private static final String DATABASE_DIR = "blue_database";
     @Mock
     private MaxMindDatabaseConfig maxMindDatabaseConfig;
     @Mock

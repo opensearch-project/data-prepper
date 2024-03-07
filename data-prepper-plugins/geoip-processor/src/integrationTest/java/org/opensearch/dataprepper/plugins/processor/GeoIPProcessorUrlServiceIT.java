@@ -37,7 +37,7 @@ public class GeoIPProcessorUrlServiceIT {
     private GeoIPInputJson geoIPInputJson;
     private String jsonInput;
     private static final String TEMP_PATH_FOLDER = "GeoIP";
-    public static final String DATABASE_1 = "first_database";
+    public static final String DATABASE_1 = "blue_database";
     public static final String URL_SUFFIX = "&suffix=tar.gz";
 
     @BeforeEach
