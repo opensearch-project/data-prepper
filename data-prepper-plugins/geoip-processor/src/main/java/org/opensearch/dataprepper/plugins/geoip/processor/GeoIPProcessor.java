@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.geoip.processor;
 
+import com.google.common.net.InetAddresses;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.logging.DataPrepperMarkers;
@@ -26,8 +27,6 @@ import org.opensearch.dataprepper.plugins.geoip.utils.IPValidationCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -129,7 +128,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
           if (ipAddress != null && !ipAddress.isEmpty()) {
             try {
               if (IPValidationCheck.isPublicIpAddress(ipAddress)) {
-                geoData = geoIPDatabaseReader.getGeoData(InetAddress.getByName(ipAddress), fields, databases);
+                geoData = geoIPDatabaseReader.getGeoData(InetAddresses.forString(ipAddress), fields, databases);
                 if (geoData.isEmpty()) {
                   ipNotFound = true;
                   eventSucceeded = false;
@@ -141,12 +140,6 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
                 ipNotFound = true;
                 eventSucceeded = false;
               }
-            } catch (final UnknownHostException e) {
-              ipNotFound = true;
-              eventSucceeded = false;
-              LOG.error(DataPrepperMarkers.EVENT, "Failed to validate IP address: [{}] in event: [{}]. Caused by:[{}]",
-                      ipAddress, event, e.getMessage());
-              LOG.error("Failed to validate IP address: [{}]. Caused by:[{}]", ipAddress, e.getMessage());
             } catch (final EnrichFailedException e) {
               ipNotFound = true;
               eventSucceeded = false;

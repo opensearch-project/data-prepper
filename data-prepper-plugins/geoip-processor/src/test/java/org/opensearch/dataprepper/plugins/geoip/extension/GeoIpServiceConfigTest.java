@@ -52,7 +52,7 @@ class GeoIpServiceConfigTest {
         assertThat(maxMindConfig.getDatabaseRefreshInterval(), equalTo(Duration.ofDays(10)));
         assertThat(maxMindConfig.getMaxMindDatabaseConfig().getDatabasePaths().size(), equalTo(2));
         assertThat(maxMindConfig.getCacheSize(), equalTo(2048));
-        assertThat(maxMindConfig.getDatabaseDestination(), equalTo("/tst/resources/geoip"));
+        assertThat(maxMindConfig.getDatabaseDestination(), equalTo("/tst/resources"));
         assertThat(maxMindConfig.getAwsAuthenticationOptionsConfig(), notNullValue());
         assertThat(maxMindConfig.getAwsAuthenticationOptionsConfig().getAwsRegion(), equalTo(Region.of("us-east-1")));
     }

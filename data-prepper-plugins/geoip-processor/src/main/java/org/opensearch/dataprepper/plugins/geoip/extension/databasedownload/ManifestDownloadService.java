@@ -52,7 +52,7 @@ public class ManifestDownloadService implements DBSource {
         try {
             final URL url = new URL(CDNEndpoint);
             httpURLConnection = (HttpURLConnection) url.openConnection();
-            httpURLConnection.addRequestProperty("User-Agent", "Custom-User-Agent");
+            httpURLConnection.addRequestProperty("User-Agent", "Data Prepper");
 
             final Manifest manifest = OBJECT_MAPPER.readValue(httpURLConnection.getInputStream(), Manifest.class);
             httpURLConnection.disconnect();
