@@ -3,22 +3,29 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.event;
+package org.opensearch.dataprepper.core.event;
 
-import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
-import org.opensearch.dataprepper.model.event.EventMetadata;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.CoreMatchers.not;
-import org.junit.jupiter.api.Test;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
-import java.time.Instant;
+
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 
 class DefaultBaseEventBuilderTests {
     class TestDefaultBaseEventBuilder extends DefaultBaseEventBuilder {
+        @Override
+        public Event build() {
+            return JacksonEvent.builder().build();
+        }
     }
 
     private DefaultBaseEventBuilder createObjectUnderTest() {
@@ -42,7 +49,7 @@ class DefaultBaseEventBuilderTests {
         defaultBaseEventBuilder.withEventType(testEventType);
         Map<String, Object> metadataAttributes = Collections.emptyMap();
         defaultBaseEventBuilder.withEventMetadataAttributes(metadataAttributes);
-        
+
         assertThat(defaultBaseEventBuilder.getTimeReceived(), not(equalTo(null)));
         assertThat(defaultBaseEventBuilder.getData(), equalTo(data));
         assertThat(defaultBaseEventBuilder.getEventType(), equalTo(testEventType));
@@ -63,15 +70,15 @@ class DefaultBaseEventBuilderTests {
         Instant timeReceived = Instant.now();
         Map<String, Object> attributes = Collections.emptyMap();
         EventMetadata eventMetadata = new DefaultEventMetadata.Builder()
-                       .withEventType(testEventType)
-                       .withTimeReceived(timeReceived)
-                       .withAttributes(attributes)
-                       .build();
+                .withEventType(testEventType)
+                .withTimeReceived(timeReceived)
+                .withAttributes(attributes)
+                .build();
 
         defaultBaseEventBuilder.withEventMetadata(eventMetadata);
         defaultBaseEventBuilder.withData(data);
-        
-        assertThat(defaultBaseEventBuilder.getTimeReceived(),equalTo(timeReceived));
+
+        assertThat(defaultBaseEventBuilder.getTimeReceived(), equalTo(timeReceived));
         assertThat(defaultBaseEventBuilder.getData(), equalTo(data));
         assertThat(defaultBaseEventBuilder.getEventType(), equalTo(testEventType));
         assertThat(defaultBaseEventBuilder.getEventMetadataAttributes(), equalTo(attributes));

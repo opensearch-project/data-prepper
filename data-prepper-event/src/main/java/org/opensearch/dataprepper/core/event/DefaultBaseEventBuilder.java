@@ -3,18 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.event;
+package org.opensearch.dataprepper.core.event;
 
 import org.opensearch.dataprepper.model.event.BaseEventBuilder;
+import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
-import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 
-import java.util.Map;
-import java.util.HashMap;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 
-abstract class DefaultBaseEventBuilder<T extends Event> implements BaseEventBuilder<T>{
+abstract class DefaultBaseEventBuilder<T extends Event> implements BaseEventBuilder<T> {
     private EventMetadata eventMetadata;
     private Object data;
     private String eventType;
@@ -36,10 +36,10 @@ abstract class DefaultBaseEventBuilder<T extends Event> implements BaseEventBuil
     public EventMetadata getEventMetadata() {
         if (this.eventMetadata == null) {
             this.eventMetadata = new DefaultEventMetadata.Builder()
-                           .withEventType(eventType)
-                           .withTimeReceived(timeReceived)
-                           .withAttributes(attributes)
-                           .build();
+                    .withEventType(eventType)
+                    .withTimeReceived(timeReceived)
+                    .withAttributes(attributes)
+                    .build();
         }
         return this.eventMetadata;
     }

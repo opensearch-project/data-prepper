@@ -53,4 +53,6 @@ public interface BaseEventBuilder<T extends Event> {
      * @since 2.2
      */
     BaseEventBuilder<T> withData(final Object data);
+
+    T build();
 }

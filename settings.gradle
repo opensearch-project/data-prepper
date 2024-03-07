@@ -94,6 +94,8 @@ dependencyResolutionManagement {
 
 include 'data-prepper-api'
 include 'data-prepper-plugins'
+include 'data-prepper-event'
+include 'data-prepper-test-event'
 include 'data-prepper-core'
 include 'data-prepper-main'
 include 'data-prepper-plugins:common'
