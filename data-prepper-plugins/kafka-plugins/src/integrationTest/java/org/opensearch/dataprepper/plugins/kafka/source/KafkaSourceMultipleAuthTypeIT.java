@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
@@ -84,6 +85,9 @@ public class KafkaSourceMultipleAuthTypeIT {
     @Mock
     private KafkaClusterConfigSupplier kafkaClusterConfigSupplier;
 
+    @Mock
+    private PluginConfigObservable pluginConfigObservable;
+
     private TopicConfig jsonTopic;
     private TopicConfig avroTopic;
 
@@ -101,7 +105,8 @@ public class KafkaSourceMultipleAuthTypeIT {
     private String kafkaPassword;
 
     public KafkaSource createObjectUnderTest() {
-        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, kafkaClusterConfigSupplier);
+        return new KafkaSource(
+                sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, kafkaClusterConfigSupplier, pluginConfigObservable);
     }
 
     @BeforeEach

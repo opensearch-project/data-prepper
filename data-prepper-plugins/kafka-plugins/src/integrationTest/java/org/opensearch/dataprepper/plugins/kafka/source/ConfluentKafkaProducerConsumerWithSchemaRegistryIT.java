@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
@@ -125,6 +126,9 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
 
     @Mock
     private PlainTextAuthConfig plainTextAuthConfig;
+
+    @Mock
+    private PluginConfigObservable pluginConfigObservable;
 
     private KafkaSource kafkaSource;
     private TopicConsumerConfig jsonTopicConfig;
@@ -256,7 +260,8 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
     }
 
     public void consumeRecords(String servers, KafkaSourceConfig sourceConfig) {
-        kafkaSource = new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, null);
+        kafkaSource = new KafkaSource(
+                sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, null, pluginConfigObservable);
         kafkaSource.start(buffer);
     }
 

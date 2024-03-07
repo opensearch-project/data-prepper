@@ -4,10 +4,14 @@
  */
 package org.opensearch.dataprepper.plugins.kafka.util;
 
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.plugins.kafka.authenticator.DynamicSaslClientCallbackHandler;
+import org.opensearch.dataprepper.plugins.kafka.authenticator.DynamicBasicCredentialsProvider;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConnectionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.source.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
@@ -255,6 +259,23 @@ public class KafkaSecurityConfigurer {
             default:
             case SINGLE_VPC:
                 return result.bootstrapBrokerStringSaslIam();
+        }
+    }
+
+    public static void setDynamicSaslClientCallbackHandler(final Properties properties,
+                                                           final KafkaConnectionConfig kafkaConnectionConfig,
+                                                           final PluginConfigObservable pluginConfigObservable) {
+        final AuthConfig authConfig = kafkaConnectionConfig.getAuthConfig();
+        if (Objects.nonNull(authConfig)) {
+            AuthConfig.SaslAuthConfig saslAuthConfig = authConfig.getSaslAuthConfig();
+            if (Objects.nonNull(saslAuthConfig) && Objects.nonNull(saslAuthConfig.getPlainTextAuthConfig())) {
+                final DynamicBasicCredentialsProvider dynamicBasicCredentialsProvider =
+                        DynamicBasicCredentialsProvider.getInstance();
+                pluginConfigObservable.addPluginConfigObserver(
+                        newConfig -> dynamicBasicCredentialsProvider.refresh((KafkaConnectionConfig) newConfig));
+                dynamicBasicCredentialsProvider.refresh(kafkaConnectionConfig);
+                properties.put(SASL_CLIENT_CALLBACK_HANDLER_CLASS, DynamicSaslClientCallbackHandler.class);
+            }
         }
     }
 
