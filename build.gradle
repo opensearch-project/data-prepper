@@ -65,7 +65,7 @@ subprojects {
         }
     }
     dependencies {
-        implementation platform('com.fasterxml.jackson:jackson-bom:2.15.3')
+        implementation platform('com.fasterxml.jackson:jackson-bom:2.16.1')
         implementation platform('org.eclipse.jetty:jetty-bom:9.4.53.v20231009')
         implementation platform('io.micrometer:micrometer-bom:1.10.5')
         implementation libs.guava.core
@@ -200,6 +200,12 @@ subprojects {
                     require '20231013'
                 }
                 because 'CVE-2023-5072, CVE from transitive dependencies'
+            }
+            implementation('org.apache.commons:commons-compress') {
+                version {
+                    require '1.26.0'
+                }
+                because 'CVE-2024-25710, CVE-2024-26308'
             }
         }
     }

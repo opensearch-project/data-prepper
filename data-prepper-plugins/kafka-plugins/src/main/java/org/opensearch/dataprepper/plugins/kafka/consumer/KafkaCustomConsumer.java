@@ -381,6 +381,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     }
 
     private <T> Record<Event> getRecord(ConsumerRecord<String, T> consumerRecord, int partition) {
+        Instant now = Instant.now();
         Map<String, Object> data = new HashMap<>();
         Event event;
         Object value = consumerRecord.value();
@@ -496,7 +497,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 if (schema == MessageFormat.BYTES) {
                     InputStream inputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
                     if(byteDecoder != null) {
-                        byteDecoder.parse(inputStream, (record) -> {
+                        byteDecoder.parse(inputStream, Instant.ofEpochMilli(consumerRecord.timestamp()), (record) -> {
                             processRecord(acknowledgementSet, record);
                         });
                     } else {

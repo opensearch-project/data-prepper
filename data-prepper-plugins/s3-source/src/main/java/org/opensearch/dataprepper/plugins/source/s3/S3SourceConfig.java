@@ -9,6 +9,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.AwsAuthenticationOptions;
@@ -24,6 +26,7 @@ import java.util.Map;
 
 public class S3SourceConfig {
     static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(10);
+    static final int DEFAULT_NUMBER_OF_WORKERS = 1;
     static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 100;
     static final String DEFAULT_METADATA_ROOT_KEY = "s3/";
 
@@ -42,6 +45,12 @@ public class S3SourceConfig {
     @JsonProperty("sqs")
     @Valid
     private SqsOptions sqsOptions;
+
+    @JsonProperty("workers")
+    @Min(1)
+    @Max(1000)
+    @Valid
+    private int numWorkers = DEFAULT_NUMBER_OF_WORKERS;
 
     @JsonProperty("aws")
     @NotNull
@@ -99,6 +108,10 @@ public class S3SourceConfig {
 
     boolean getAcknowledgements() {
         return acknowledgments;
+    }
+
+    public int getNumWorkers() {
+        return numWorkers;
     }
 
     public CompressionOption getCompression() {

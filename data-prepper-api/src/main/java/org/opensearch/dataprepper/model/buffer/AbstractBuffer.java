@@ -12,7 +12,10 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
 
+import java.time.Instant;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +35,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     private final Counter writeTimeoutCounter;
     private final Counter recordsWriteFailed;
     private final Timer writeTimer;
+    private final Timer latencyTimer;
     private final Timer readTimer;
     private final Timer checkpointTimer;
 
@@ -54,6 +58,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         this.writeTimeoutCounter = pluginMetrics.counter(MetricNames.WRITE_TIMEOUTS);
         this.writeTimer = pluginMetrics.timer(MetricNames.WRITE_TIME_ELAPSED);
         this.readTimer = pluginMetrics.timer(MetricNames.READ_TIME_ELAPSED);
+        this.latencyTimer = pluginMetrics.timer(MetricNames.READ_LATENCY);
         this.checkpointTimer = pluginMetrics.timer(MetricNames.CHECKPOINT_TIME_ELAPSED);
     }
 
@@ -142,15 +147,34 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         return readResult;
     }
 
+    Timer getLatencyTimer() {
+        return latencyTimer;
+    }
+
+    protected void updateLatency(Collection<T> records) {
+        for (T rec : records) {
+            if (rec instanceof Record) {
+                Object data = rec.getData();
+                if (data instanceof Event) {
+                    Event event = (Event) data;
+                    Instant receivedTime = event.getEventHandle().getInternalOriginationTime();
+                    latencyTimer.record(Duration.between(receivedTime, Instant.now()));
+                }
+            }
+        }
+    }
+
     @Override
     public void checkpoint(final CheckpointState checkpointState) {
         checkpointTimer.record(() -> doCheckpoint(checkpointState));
-        final int numRecordsToBeChecked = checkpointState.getNumRecordsToBeChecked();
-        recordsInFlight.addAndGet(-numRecordsToBeChecked);
-        recordsProcessedCounter.increment(numRecordsToBeChecked);
+        if (!isByteBuffer()) {
+            final int numRecordsToBeChecked = checkpointState.getNumRecordsToBeChecked();
+            recordsInFlight.addAndGet(-numRecordsToBeChecked);
+            recordsProcessedCounter.increment(numRecordsToBeChecked);
+        }
     }
 
-    protected int getRecordsInFlight() {
+    public int getRecordsInFlight() {
         return recordsInFlight.intValue();
     }
 

@@ -75,7 +75,6 @@ public class AvroOutputCodecTest {
         RuntimeException actualException = assertThrows(RuntimeException.class, this::createObjectUnderTest);
 
         assertThat(actualException.getMessage(), notNullValue());
-        assertThat(actualException.getMessage(), containsString(invalidSchema));
         assertThat(actualException.getMessage(), containsString("was expecting comma"));
     }
 

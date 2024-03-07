@@ -896,7 +896,7 @@ public class OpenSearchSinkIT {
 
     @Test
     public void testBulkActionUpdateWithDocumentRootKey() throws IOException, InterruptedException {
-        final String testIndexAlias = "test-alias-upd1";
+        final String testIndexAlias = "test-alias-update";
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
 
@@ -961,8 +961,39 @@ public class OpenSearchSinkIT {
     }
 
     @Test
+    public void testBulkActionUpsertWithActionsAndNoCreate() throws IOException, InterruptedException {
+        final String testIndexAlias = "test-alias-upsert-no-create2";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
+
+        final String testIdField = "someId";
+        final String testId = "foo";
+        List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "key", "value")));
+
+        List<Map<String, Object>> aList = new ArrayList<>();
+        Map<String, Object> actionMap = new HashMap<>();
+        actionMap.put("type", OpenSearchBulkActions.UPSERT.toString());
+        aList.add(actionMap);
+
+        final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
+        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField); 
+        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+
+        sink.output(testRecords);
+        List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+
+        assertThat(retSources.size(), equalTo(1));
+        Map<String, Object> source = retSources.get(0);
+        assertThat((String) source.get("key"), equalTo("value"));
+        assertThat((String) source.get(testIdField), equalTo(testId));
+        assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
+    }
+
+    @Test
     public void testBulkActionUpsertWithActions() throws IOException, InterruptedException {
-        final String testIndexAlias = "test-alias-upd2";
+        final String testIndexAlias = "test-alias-upsert";
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
 
@@ -1725,6 +1756,7 @@ public class OpenSearchSinkIT {
                 .filter(Predicate.not(indexName -> indexName.startsWith(".opendistro_")))
                 .filter(Predicate.not(indexName -> indexName.startsWith(".opensearch-")))
                 .filter(Predicate.not(indexName -> indexName.startsWith(".opensearch_")))
+                .filter(Predicate.not(indexName -> indexName.startsWith(".ql")))
                 .filter(Predicate.not(indexName -> indexName.startsWith(".plugins-ml-config")))
                 .forEach(indexName -> {
                     try {

@@ -14,6 +14,7 @@ import java.nio.file.Path;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.is;
 
 public class ConnectionConfigurationTest {
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
@@ -35,6 +36,22 @@ public class ConnectionConfigurationTest {
                 "  insecure: true\n";
         final ConnectionConfiguration connectionConfig = objectMapper.readValue(connectionYaml, ConnectionConfiguration.class);
         assertThat(connectionConfig.getCertPath(),equalTo(Path.of("cert")));
+        assertThat(connectionConfig.getSocketTimeout(),equalTo(null));
+        assertThat(connectionConfig.getConnectTimeout(),equalTo(null));
+        assertThat(connectionConfig.isInsecure(),equalTo(true));
+    }
+
+    @Test
+    void connection_configuration_certificate_values_test() throws JsonProcessingException {
+
+        final String connectionYaml =
+                "  cert: \"cert\"\n" +
+                "  certificate_content: \"certificate content\"\n" +
+                "  insecure: true\n";
+        final ConnectionConfiguration connectionConfig = objectMapper.readValue(connectionYaml, ConnectionConfiguration.class);
+        assertThat(connectionConfig.getCertPath(),equalTo(Path.of("cert")));
+        assertThat(connectionConfig.getCertificateContent(),equalTo("certificate content"));
+        assertThat(connectionConfig.certificateFileAndContentAreMutuallyExclusive(), is(false));
         assertThat(connectionConfig.getSocketTimeout(),equalTo(null));
         assertThat(connectionConfig.getConnectTimeout(),equalTo(null));
         assertThat(connectionConfig.isInsecure(),equalTo(true));

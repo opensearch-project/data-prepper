@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -442,6 +443,18 @@ public class JacksonSpan extends JacksonEvent implements Span {
         public Builder withTraceGroup(final String traceGroup) {
             data.put(TRACE_GROUP_KEY, traceGroup);
             return this;
+        }
+
+        /**
+         * Sets the time received for populating event origination time in event handle
+         *
+         * @param timeReceived time received
+         * @return the builder
+         * @since 2.7
+         */
+        @Override
+        public Builder withTimeReceived(final Instant timeReceived) {
+            return (Builder)super.withTimeReceived(timeReceived);
         }
 
         /**

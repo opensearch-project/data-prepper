@@ -158,8 +158,8 @@ public class OpenSearchSinkTest {
 
         when(pluginMetrics.counter(MetricNames.RECORDS_IN)).thenReturn(mock(Counter.class));
         when(pluginMetrics.timer(MetricNames.TIME_ELAPSED)).thenReturn(mock(Timer.class));
-        when(pluginMetrics.summary(INTERNAL_LATENCY)).thenReturn(mock(DistributionSummary.class));
-        when(pluginMetrics.summary(EXTERNAL_LATENCY)).thenReturn(mock(DistributionSummary.class));
+        when(pluginMetrics.timer(INTERNAL_LATENCY)).thenReturn(mock(Timer.class));
+        when(pluginMetrics.timer(EXTERNAL_LATENCY)).thenReturn(mock(Timer.class));
         when(pluginMetrics.timer(BULKREQUEST_LATENCY)).thenReturn(bulkRequestTimer);
         when(pluginMetrics.counter(BULKREQUEST_ERRORS)).thenReturn(bulkRequestErrorsCounter);
         when(pluginMetrics.counter(INVALID_ACTION_ERRORS)).thenReturn(invalidActionErrorsCounter);

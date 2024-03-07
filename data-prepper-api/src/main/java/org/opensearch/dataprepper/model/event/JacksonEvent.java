@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -284,6 +285,16 @@ public class JacksonEvent implements Event {
     }
 
     @Override
+    public void clear() {
+        // Delete all entries from the event
+        Iterator iter = toMap().keySet().iterator();
+        JsonNode baseNode = jsonNode;
+        while (iter.hasNext()) {
+            ((ObjectNode) baseNode).remove((String)iter.next());
+        }
+    }
+
+    @Override
     public String toJsonString() {
         return jsonNode.toString();
     }
@@ -444,7 +455,9 @@ public class JacksonEvent implements Event {
                     || c == '-'
                     || c == '_'
                     || c == '@'
-                    || c == '/')) {
+                    || c == '/'
+                    || c == '['
+                    || c == ']')) {
 
                 return false;
             }

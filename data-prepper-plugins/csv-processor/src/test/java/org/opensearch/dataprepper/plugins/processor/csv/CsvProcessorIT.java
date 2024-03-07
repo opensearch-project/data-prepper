@@ -5,6 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.csv;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -20,6 +24,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
+@ExtendWith(MockitoExtension.class)
 public class CsvProcessorIT {
     private static final String PLUGIN_NAME = "csv";
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
@@ -27,6 +32,9 @@ public class CsvProcessorIT {
     private CsvProcessorConfig csvProcessorConfig;
     private CsvProcessor csvProcessor;
     private VpcFlowLogTypeGenerator vpcFlowLogTypeGenerator;
+
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
 
     @BeforeEach
     void setup() {
@@ -39,7 +47,7 @@ public class CsvProcessorIT {
 
         PluginMetrics pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
 
-        csvProcessor = new CsvProcessor(pluginMetrics, csvProcessorConfig);
+        csvProcessor = new CsvProcessor(pluginMetrics, csvProcessorConfig, expressionEvaluator);
         vpcFlowLogTypeGenerator = new VpcFlowLogTypeGenerator();
     }
 

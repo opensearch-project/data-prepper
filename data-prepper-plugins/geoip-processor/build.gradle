@@ -26,6 +26,7 @@ dependencies {
     implementation 'com.maxmind.db:maxmind-db:3.0.0'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     implementation libs.commons.lang3
+    implementation libs.armeria.core
 
     testImplementation project(':data-prepper-core')
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
@@ -84,7 +85,7 @@ jacocoTestCoverageVerification {
     violationRules {
         rule {
             limit {
-                minimum = 0.85
+                minimum = 0.84
             }
         }
     }

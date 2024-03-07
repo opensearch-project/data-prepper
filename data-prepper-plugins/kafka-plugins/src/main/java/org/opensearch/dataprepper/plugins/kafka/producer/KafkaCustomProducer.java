@@ -169,11 +169,11 @@ public class KafkaCustomProducer<T> {
     }
 
     Future send(final String topicName, String key, final Object record) throws Exception {
-        if (Objects.isNull(key)) {
-            return producer.send(new ProducerRecord(topicName, record), callBack(record));
-        }
+        ProducerRecord producerRecord = Objects.isNull(key) ?
+            new ProducerRecord(topicName, record) :
+            new ProducerRecord(topicName, key, record);
 
-        return producer.send(new ProducerRecord(topicName, key, record), callBack(record));
+        return producer.send(producerRecord, callBack(record));
     }
 
     private void publishJsonMessage(final Record<Event> record, final String key) throws IOException, ProcessingException, Exception {

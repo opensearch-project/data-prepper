@@ -19,6 +19,8 @@ import org.springframework.context.annotation.Lazy;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -45,7 +47,7 @@ public class DataPrepper implements PipelinesProvider {
     @Inject
     @Lazy
     private DataPrepperServer dataPrepperServer;
-    private DataPrepperShutdownListener shutdownListener;
+    private List<DataPrepperShutdownListener> shutdownListeners = new LinkedList<>();
 
     /**
      * returns serviceName if exists or default serviceName
@@ -115,8 +117,8 @@ public class DataPrepper implements PipelinesProvider {
     public void shutdownServers() {
         dataPrepperServer.stop();
         peerForwarderServer.stop();
-        if(shutdownListener != null) {
-            shutdownListener.handleShutdown();
+        if(shutdownListeners != null) {
+            shutdownListeners.forEach(DataPrepperShutdownListener::handleShutdown);
         }
     }
 
@@ -139,7 +141,7 @@ public class DataPrepper implements PipelinesProvider {
     }
 
     public void registerShutdownHandler(final DataPrepperShutdownListener shutdownListener) {
-        this.shutdownListener = shutdownListener;
+        this.shutdownListeners.add(shutdownListener);
     }
 
     private class PipelinesObserver implements PipelineObserver {

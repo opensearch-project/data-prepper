@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -32,11 +33,19 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     protected static final String SCHEMA_URL_KEY = "schemaUrl";
     protected static final String EXEMPLARS_KEY = "exemplars";
     protected static final String FLAGS_KEY = "flags";
-    private final boolean flattenAttributes;
+    private boolean flattenAttributes;
 
     protected JacksonMetric(Builder builder, boolean flattenAttributes) {
         super(builder);
         this.flattenAttributes = flattenAttributes;
+    }
+
+    public void setFlattenAttributes(boolean flattenAttributes) {
+        this.flattenAttributes = flattenAttributes;
+    }
+
+    boolean getFlattenAttributes() {
+        return flattenAttributes;
     }
 
     @Override
@@ -225,6 +234,19 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
             data.put(SCHEMA_URL_KEY, schemaUrl);
             return getThis();
         }
+
+        /**
+         * Sets the time received for populating event origination time in event handle
+         *
+         * @param timeReceived time received
+         * @return the builder
+         * @since 2.7
+         */
+        @Override
+        public T withTimeReceived(final Instant timeReceived) {
+            return (T)super.withTimeReceived(timeReceived);
+        }
+
 
         /**
          * Sets the exemplars that are associated with this metric event

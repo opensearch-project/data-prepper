@@ -14,6 +14,8 @@ import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -36,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class AbstractBufferTest {
     private static final String BUFFER_NAME = "testBuffer";
     private static final String PIPELINE_NAME = "pipelineName";
+    private static final String TEST_MESSAGE = "testMessage";
 
     private PluginSetting testPluginSetting;
 
@@ -223,6 +226,16 @@ public class AbstractBufferTest {
     }
 
     @Test
+    public void testUpdateLatency() {
+        final AbstractBuffer<Record<Event>> abstractBuffer = new AbstractBufferEventImpl(testPluginSetting);
+        final Collection<Record<Event>> testRecords = Arrays.asList(
+                new Record<>(JacksonEvent.fromMessage(TEST_MESSAGE)));
+        abstractBuffer.updateLatency(testRecords);
+        assertEquals(abstractBuffer.getLatencyTimer().count(), 1);
+        
+    }
+
+    @Test
     public void testWriteAllRecordsWriteFailedMetric() {
         // Given
         final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferRuntimeExceptionImpl(testPluginSetting);
@@ -385,6 +398,35 @@ public class AbstractBufferTest {
         @Override
         public void doWriteAll(Collection<Record<String>> records, int timeoutInMillis) throws Exception {
             throw new NullPointerException();
+        }
+    }
+
+    public static class AbstractBufferEventImpl extends AbstractBuffer<Record<Event>> {
+        public AbstractBufferEventImpl(PluginSetting pluginSetting) {
+            super(pluginSetting);
+        }
+
+        @Override
+        public void doWrite(Record<Event> record, int timeoutInMillis) throws TimeoutException {
+        }
+
+        @Override
+        public void doWriteAll(Collection<Record<Event>> records, int timeoutInMillis) throws Exception {
+        }
+
+        @Override
+        public void doCheckpoint(final CheckpointState checkpointState) {
+
+        }
+
+        @Override
+        public Map.Entry<Collection<Record<Event>>, CheckpointState> doRead(int timeoutInMillis) {
+            return null;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return true;
         }
     }
 }

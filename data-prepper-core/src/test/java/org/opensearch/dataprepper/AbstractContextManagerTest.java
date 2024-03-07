@@ -92,7 +92,7 @@ class AbstractContextManagerTest {
 
         objectUnderTest.getDataPrepperBean();
 
-        ArgumentCaptor<DataPrepperShutdownListener> dataPrepperShutdownListenerArgumentCaptor = ArgumentCaptor.forClass(DataPrepperShutdownListener.class);
+        final ArgumentCaptor<DataPrepperShutdownListener> dataPrepperShutdownListenerArgumentCaptor = ArgumentCaptor.forClass(DataPrepperShutdownListener.class);
         verify(dataPrepper).registerShutdownHandler(dataPrepperShutdownListenerArgumentCaptor.capture());
 
         final DataPrepperShutdownListener shutdownListener = dataPrepperShutdownListenerArgumentCaptor.getValue();

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -438,6 +439,13 @@ public class JacksonSpanTest {
     public void testBuilder_withNullDroppedAttributesCount_createsSpanWithDefaultValue() {
         final JacksonSpan span = builder.withDroppedAttributesCount(null).build();
         assertThat(span.getDroppedAttributesCount(), is(equalTo(0)));
+    }
+
+    @Test
+    public void testGetTimeReceived() {
+        Instant now = Instant.now();
+        final JacksonSpan span = builder.withTimeReceived(now).build();
+        assertThat(((DefaultEventHandle)span.getEventHandle()).getInternalOriginationTime(), is(now));
     }
 
     @Test

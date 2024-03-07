@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Consumer;
+import java.time.Instant;
 
 
 public class OTelLogsDecoder implements ByteDecoder {
@@ -23,10 +24,10 @@ public class OTelLogsDecoder implements ByteDecoder {
     public OTelLogsDecoder() {
         otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
     }
-    public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
+    public void parse(InputStream inputStream, Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
         ExportLogsServiceRequest request = ExportLogsServiceRequest.parseFrom(inputStream);
         AtomicInteger droppedCounter = new AtomicInteger(0);
-        List<OpenTelemetryLog> logs = otelProtoDecoder.parseExportLogsServiceRequest(request);
+        List<OpenTelemetryLog> logs = otelProtoDecoder.parseExportLogsServiceRequest(request, timeReceivedMs);
         for (OpenTelemetryLog log: logs) {
             eventConsumer.accept(new Record<>(log));
         }

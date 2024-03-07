@@ -5,16 +5,18 @@
 
 package org.opensearch.dataprepper.plugins.processor.csv;
 
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -25,6 +27,7 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -38,6 +41,9 @@ class CsvProcessorTest {
     private PluginMetrics pluginMetrics;
     @Mock
     private Counter csvInvalidEventsCounter;
+
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
 
     private CsvProcessor csvProcessor;
 
@@ -57,13 +63,21 @@ class CsvProcessorTest {
     }
 
     private CsvProcessor createObjectUnderTest() {
-        return new CsvProcessor(pluginMetrics, processorConfig);
+        return new CsvProcessor(pluginMetrics, processorConfig, expressionEvaluator);
     }
 
     @Test
     void do_nothing_when_source_is_null_value_or_does_not_exist_in_the_Event() {
+
         final Record<Event> eventUnderTest = createMessageEvent("");
+
+        final String csvWhen = UUID.randomUUID().toString();
+        when(processorConfig.getCsvWhen()).thenReturn(csvWhen);
+        when(expressionEvaluator.isValidExpressionStatement(csvWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(csvWhen, eventUnderTest.getData())).thenReturn(true);
         when(processorConfig.getSource()).thenReturn(UUID.randomUUID().toString());
+
+        csvProcessor = createObjectUnderTest();
 
 
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
@@ -326,6 +340,35 @@ class CsvProcessorTest {
         assertThat(parsedEvent.containsKey("column1"), equalTo(false));
         assertThat(parsedEvent.containsKey("column2"), equalTo(false));
         assertThat(parsedEvent.containsKey("column3"), equalTo(false));
+    }
+
+    @Test
+    void invalid_csv_when_throws_InvalidPluginConfigurationException() {
+        final String csvWhen = UUID.randomUUID().toString();
+
+        when(processorConfig.getCsvWhen()).thenReturn(csvWhen);
+        when(expressionEvaluator.isValidExpressionStatement(csvWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void do_nothing_when_expression_evaluation_returns_false_for_event() {
+        final String csvWhen = UUID.randomUUID().toString();
+
+        when(processorConfig.getCsvWhen()).thenReturn(csvWhen);
+        when(expressionEvaluator.isValidExpressionStatement(csvWhen)).thenReturn(true);
+
+        final Record<Event> eventUnderTest = createMessageEvent("");
+        when(expressionEvaluator.evaluateConditional(csvWhen, eventUnderTest.getData())).thenReturn(false);
+
+        csvProcessor = createObjectUnderTest();
+
+
+        final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
+        final Event parsedEvent = getSingleEvent(editedEvents);
+
+        assertThat(parsedEvent, equalTo(eventUnderTest.getData()));
     }
 
     private Record<Event> createMessageEvent(final String message) {
