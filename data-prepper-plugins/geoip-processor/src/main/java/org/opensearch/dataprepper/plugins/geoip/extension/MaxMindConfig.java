@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.geoip.extension;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
@@ -25,20 +26,20 @@ public class MaxMindConfig {
     private static final String S3_PREFIX = "s3://";
     private static final Duration DEFAULT_DATABASE_REFRESH_INTERVAL = Duration.ofDays(7);
     private static final int DEFAULT_CACHE_COUNT = 4096;
-    static final String DEFAULT_DATABASE_DESTINATION = System.getProperty("data-prepper.dir") + File.separator + "data";
+    static final String DEFAULT_DATABASE_DESTINATION = System.getProperty("data-prepper.dir") + File.separator + "data" + File.separator + "geoip";
 
     @Valid
     @JsonProperty("databases")
     private MaxMindDatabaseConfig maxMindDatabaseConfig = new MaxMindDatabaseConfig();
 
     @JsonProperty("database_refresh_interval")
-    @DurationMin(days = 1)
+    @DurationMin(minutes = 15)
     @DurationMax(days = 30)
     private Duration databaseRefreshInterval = DEFAULT_DATABASE_REFRESH_INTERVAL;
 
     @JsonProperty("cache_count")
-    @Min(1)
-    //TODO:  Add a Max limit on cache size
+    @Min(100)
+    @Max(100_000)
     private int cacheSize = DEFAULT_CACHE_COUNT;
 
     @Valid
@@ -128,6 +129,6 @@ public class MaxMindConfig {
      * @since 2.7
      */
     public String getDatabaseDestination() {
-        return databaseDestination + File.separator + "geoip";
+        return databaseDestination;
     }
 }

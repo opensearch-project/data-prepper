@@ -121,7 +121,11 @@ public class GeoIPDatabaseManager {
         switchDirectory();
 
         final String destinationPath = maxMindConfig.getDatabaseDestination() + File.separator + currentDatabaseDir;
+
         geoIPFileManager.createDirectoryIfNotExist(destinationPath);
+
+        LOG.info("Downloading GeoIP database to {}", destinationPath);
+
         switch (dbSourceOptions) {
             case HTTP_MANIFEST:
                 dbSource = new ManifestDownloadService(destinationPath, maxMindDatabaseConfig);
