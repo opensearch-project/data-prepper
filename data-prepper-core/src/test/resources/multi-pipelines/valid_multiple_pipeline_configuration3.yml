@@ -1,8 +1,0 @@
-# this configuration file is solely for testing formatting
-test-pipeline-3:
-  source:
-    pipeline:
-      name: "test-pipeline-2"
-  sink:
-    - file:
-       path: "/tmp/todelete.txt"
