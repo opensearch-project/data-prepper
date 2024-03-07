@@ -5,10 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.processor.keyvalue;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -43,6 +45,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private final KeyValueProcessorConfig keyValueProcessorConfig;
 
+    private final ExpressionEvaluator expressionEvaluator;
+
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
@@ -61,7 +65,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final List<String> tagsOnFailure;
 
     @DataPrepperPluginConstructor
-    public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
+    public KeyValueProcessor(final PluginMetrics pluginMetrics,
+                             final KeyValueProcessorConfig keyValueProcessorConfig,
+                             final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.keyValueProcessorConfig = keyValueProcessorConfig;
 
@@ -184,6 +190,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         if (keyValueProcessorConfig.getRemoveBrackets() && keyValueProcessorConfig.getRecursive()) {
             throw new IllegalArgumentException("Cannot remove brackets needed for determining levels of recursion");
         }
+
+        this.expressionEvaluator = expressionEvaluator;
+        if (keyValueProcessorConfig.getKeyValueWhen() != null
+                && !expressionEvaluator.isValidExpressionStatement(keyValueProcessorConfig.getKeyValueWhen())) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("key_value_when %s is not a valid expression statement", keyValueProcessorConfig.getKeyValueWhen()));
+        }
     }
 
     private String buildRegexFromCharacters(String s) {
@@ -239,6 +252,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             final Event recordEvent = record.getData();
 
             try {
+
+                if (keyValueProcessorConfig.getKeyValueWhen() != null && !expressionEvaluator.evaluateConditional(keyValueProcessorConfig.getKeyValueWhen(), recordEvent)) {
+                    continue;
+                }
+
                 final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
                 if (groupsRaw == null) {
                     continue;
