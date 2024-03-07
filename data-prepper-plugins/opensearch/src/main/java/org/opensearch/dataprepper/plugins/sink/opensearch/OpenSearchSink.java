@@ -228,6 +228,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           .add(pluginSetting.getName()).toString());
       dlqWriter = potentialDlq.isPresent() ? potentialDlq.get() : null;
     }
+
+    // Attempt to update the serverless network policy if required argument are given.
+    maybeUpdateServerlessNetworkPolicy();
+
     indexManager.setupIndex();
 
     final Boolean requireAlias = indexManager.isIndexAlias(configuredIndexAlias);
@@ -256,9 +260,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             maxRetries,
             bulkRequestSupplier,
             pluginSetting);
-
-    // Attempt to update the serverless network policy if required argument are given.
-    maybeUpdateServerlessNetworkPolicy();
 
     objectMapper = new ObjectMapper();
     this.initialized = true;
