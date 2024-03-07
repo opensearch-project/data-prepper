@@ -48,3 +48,8 @@ jacocoTestCoverageVerification {
         }))
     }
 }
+
+tasks.named('sourcesJar').configure {
+    dependsOn 'generateGrammarSource'
+}
+
