@@ -49,6 +49,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -146,17 +147,23 @@ public class FileSourceTests {
         }
 
         @Test
-        public void testFileSourceWithEmptyFilePathThrowsRuntimeException() {
+        public void testFileSourceWithEmptyFilePathDoesNotWriteToBuffer() throws InterruptedException {
+            buffer = mock(Buffer.class);
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "");
             fileSource = createObjectUnderTest();
-            assertThrows(RuntimeException.class, () -> fileSource.start(buffer));
+            fileSource.start(buffer);
+            Thread.sleep(500);
+            verifyNoInteractions(buffer);
         }
 
         @Test
-        public void testFileSourceWithNonexistentFilePathThrowsRuntimeException() {
+        public void testFileSourceWithNonexistentFilePathDoesNotWriteToBuffer() throws InterruptedException {
+            buffer = mock(Buffer.class);
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, FILE_DOES_NOT_EXIST);
             fileSource = createObjectUnderTest();
-            assertThrows(RuntimeException.class, () -> fileSource.start(buffer));
+            fileSource.start(buffer);
+            Thread.sleep(500);
+            verifyNoInteractions(buffer);
         }
 
         @Test
