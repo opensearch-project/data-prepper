@@ -19,8 +19,7 @@ dependencies {
     implementation libs.commons.compress
     implementation libs.commons.io
     implementation 'software.amazon.awssdk:sts'
-    implementation 'software.amazon.awssdk:s3-transfer-manager'
-    implementation 'software.amazon.awssdk.crt:aws-crt:0.29.9'
+    implementation 'software.amazon.awssdk:s3'
     implementation 'com.maxmind.geoip2:geoip2:4.2.0'
     implementation 'com.maxmind.db:maxmind-db:3.1.0'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
