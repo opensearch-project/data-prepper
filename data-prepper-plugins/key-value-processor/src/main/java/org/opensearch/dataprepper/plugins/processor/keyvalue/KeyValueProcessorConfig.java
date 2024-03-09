@@ -101,6 +101,9 @@ public class KeyValueProcessorConfig {
     @JsonProperty("overwrite_if_destination_exists")
     private boolean overwriteIfDestinationExists = true;
 
+    @JsonProperty("key_value_when")
+    private String keyValueWhen;
+
     public String getSource() {
         return source;
     }
@@ -180,4 +183,6 @@ public class KeyValueProcessorConfig {
     public boolean getOverwriteIfDestinationExists() {
         return overwriteIfDestinationExists;
     }
+
+    public String getKeyValueWhen() { return keyValueWhen; }
 }

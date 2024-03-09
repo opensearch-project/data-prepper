@@ -15,7 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
-import org.opensearch.dataprepper.event.DefaultEventFactory;
+import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.EventFactory;
@@ -25,9 +25,9 @@ import org.opensearch.dataprepper.parser.config.FileStructurePathProvider;
 import org.opensearch.dataprepper.parser.config.PipelineParserConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
+import org.opensearch.dataprepper.plugins.TestPluginUsingExtension;
 import org.opensearch.dataprepper.plugins.TestPluginUsingExtensionWithConfig;
 import org.opensearch.dataprepper.plugins.test.TestExtension;
-import org.opensearch.dataprepper.plugins.TestPluginUsingExtension;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
@@ -79,7 +79,7 @@ public class ExtensionsIT {
         coreContext = new AnnotationConfigApplicationContext();
         coreContext.setParent(publicContext);
 
-        coreContext.scan(DefaultEventFactory.class.getPackage().getName());
+        coreContext.scan(EventFactoryApplicationContextMarker.class.getPackage().getName());
         coreContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
 
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());

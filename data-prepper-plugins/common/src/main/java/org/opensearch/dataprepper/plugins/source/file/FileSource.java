@@ -15,7 +15,8 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.event.EventBuilder;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
@@ -45,12 +46,16 @@ public class FileSource implements Source<Record<Object>> {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final FileSourceConfig fileSourceConfig;
     private final FileStrategy fileStrategy;
+    private final EventFactory eventFactory;
 
     private boolean isStopRequested;
     private final int writeTimeout;
 
     @DataPrepperPluginConstructor
-    public FileSource(final FileSourceConfig fileSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
+    public FileSource(
+            final FileSourceConfig fileSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
+            final EventFactory eventFactory) {
+        this.eventFactory = eventFactory;
         fileSourceConfig.validate();
         this.fileSourceConfig = fileSourceConfig;
         this.isStopRequested = false;
@@ -106,8 +111,8 @@ public class FileSource implements Source<Record<Object>> {
                     break;
             }
 
-            return new Record<>(JacksonEvent
-                    .builder()
+            return new Record<>(
+            eventFactory.eventBuilder(EventBuilder.class)
                     .withEventType(fileSourceConfig.getRecordType())
                     .withData(structuredLine)
                     .build());

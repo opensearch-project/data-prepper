@@ -15,5 +15,5 @@ public interface LogEventBuilder extends BaseEventBuilder<Log> {
      * @return a log event
      * @since 2.2
      */
-    public Log build();
+    Log build();
 }

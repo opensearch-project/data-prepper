@@ -1,0 +1,7 @@
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:blocking-buffer')
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'org.apache.commons:commons-collections4:4.4'
+}

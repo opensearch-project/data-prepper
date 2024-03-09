@@ -128,7 +128,6 @@ public class KafkaSecurityConfigurerTest {
         assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
     }
 
-
     @Test
     void testSetDynamicSaslClientCallbackHandlerWithNonNullPlainTextAuthConfig() {
         when(kafkaConnectionConfig.getAuthConfig()).thenReturn(authConfig);

@@ -14,7 +14,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
-import java.io.File;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.Map;
@@ -41,7 +40,7 @@ class MaxMindConfigTest {
         assertThat(maxMindConfig.getDatabaseRefreshInterval(), equalTo(Duration.ofDays(7)));
         assertThat(maxMindConfig.getCacheSize(), equalTo(4096));
         assertThat(maxMindConfig.getAwsAuthenticationOptionsConfig(), equalTo(null));
-        assertThat(maxMindConfig.getDatabaseDestination(), equalTo(DEFAULT_DATABASE_DESTINATION + File.separator + "geoip"));
+        assertThat(maxMindConfig.getDatabaseDestination(), equalTo(DEFAULT_DATABASE_DESTINATION));
         assertThat(maxMindConfig.getMaxMindDatabaseConfig(), instanceOf(MaxMindDatabaseConfig.class));
     }
 
@@ -57,7 +56,7 @@ class MaxMindConfigTest {
 
         assertThat(maxMindConfig.getDatabaseRefreshInterval(), equalTo(Duration.ofDays(10)));
         assertThat(maxMindConfig.getCacheSize(), equalTo(2048));
-        assertThat(maxMindConfig.getDatabaseDestination(), equalTo("/data/geoip"));
+        assertThat(maxMindConfig.getDatabaseDestination(), equalTo("/data"));
         assertThat(maxMindConfig.getAwsAuthenticationOptionsConfig(), equalTo(awsAuthenticationOptionsConfig));
         assertThat(maxMindConfig.getMaxMindDatabaseConfig(), equalTo(maxMindDatabaseConfig));
     }

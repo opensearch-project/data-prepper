@@ -6,8 +6,10 @@
 package org.opensearch.dataprepper.peerforwarder;
 
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
+import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
+import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,8 +18,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_CERTIFICATE_FILE_PATH;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PRIVATE_KEY_FILE_PATH;
-import org.opensearch.dataprepper.event.DefaultEventFactory;
-import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 
 class PeerForwarderAppConfigIT {
 
@@ -26,7 +26,7 @@ class PeerForwarderAppConfigIT {
         applicationContext.scan(PeerForwarderConfiguration.class.getPackageName());
         applicationContext.register(PeerForwarderAppConfig.class);
         applicationContext.register(InnerAppConfig.class);
-        applicationContext.scan(DefaultEventFactory.class.getPackage().getName());
+        applicationContext.scan(EventFactoryApplicationContextMarker.class.getPackage().getName());
         applicationContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
 
         applicationContext.refresh();

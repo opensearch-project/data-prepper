@@ -6,8 +6,10 @@
 ext.coreProjects = [
         project(':data-prepper-api'),
         project(':data-prepper-core'),
-        project('data-prepper-plugins:common'),
-        project('data-prepper-expression'),
-        project(':data-prepper-logstash-configuration')
+        project(':data-prepper-expression'),
+        project(':data-prepper-logstash-configuration'),
+        project(':data-prepper-main'),
+        project(':data-prepper-pipeline-parser'),
+        project(':data-prepper-plugins'),
+        project(':data-prepper-test-common')
 ]
-ext.mavenArtifactProjects = [project(':data-prepper-api')]

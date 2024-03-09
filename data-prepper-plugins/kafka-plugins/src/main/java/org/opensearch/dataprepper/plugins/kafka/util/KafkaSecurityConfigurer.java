@@ -286,7 +286,6 @@ public class KafkaSecurityConfigurer {
                 return result.bootstrapBrokerStringSaslIam();
         }
     }
-
     public static void setDynamicSaslClientCallbackHandler(final Properties properties,
                                                            final KafkaConnectionConfig kafkaConnectionConfig,
                                                            final PluginConfigObservable pluginConfigObservable) {
@@ -303,7 +302,6 @@ public class KafkaSecurityConfigurer {
             }
         }
     }
-
     public static void setAuthProperties(final Properties properties, final KafkaClusterAuthConfig kafkaClusterAuthConfig, final Logger LOG) {
         final AwsConfig awsConfig = kafkaClusterAuthConfig.getAwsConfig();
         final AuthConfig authConfig = kafkaClusterAuthConfig.getAuthConfig();
