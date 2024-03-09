@@ -39,6 +39,16 @@ If you do not have a KMS key, you can skip the KMS tests.
 ./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaSourceJsonTypeIT --tests KafkaBufferIT --tests KafkaBufferOTelIT
 ```
 
+##### Run SASL Plaintext integration tests
+
+First run Kafka with SASL_PLAINTEXT username and password:
+```
+docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/zookeeper/sasl-plaintext --env-file  data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/zookeeper/sasl-plaintext/.env up -d
+```
+Then run
+```
+./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaSourceSaslPlainTextIT
+```
 
 See the Old integration tests section to run other tests. However, these are more involved.
 
