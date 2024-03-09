@@ -27,8 +27,6 @@ import org.opensearch.dataprepper.plugins.geoip.utils.IPValidationCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
