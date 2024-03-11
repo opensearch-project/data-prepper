@@ -24,7 +24,7 @@ dependencies {
     implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
-    implementation platform('org.apache.logging.log4j:log4j-bom:2.22.1')
+    implementation platform('org.apache.logging.log4j:log4j-bom:2.23.0')
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
     implementation 'com.github.seancfoley:ipaddress:5.4.2'
