@@ -29,15 +29,15 @@ export class GitHubAccessStack extends Stack {
     const oidcProviderExists: boolean = scope.node.tryGetContext('gitHubOidcProviderExists');
 
     const gitHubOidcProvider =
-        oidcProviderExists ?
-            OpenIdConnectProvider.fromOpenIdConnectProviderArn(this, 'GitHubOidcProvider', `arn:aws:iam::${this.account}:oidc-provider/${GITHUB_TOKEN_URL}`) :
-            new OpenIdConnectProvider(this, 'GitHubOidcProvider', {
-                url: `https://${GITHUB_TOKEN_URL}`,
-                thumbprints: [
-                    '6938fd4d98bab03faadb97b34396831e3780aea1'
-                ],
-                clientIds: ['sts.amazonaws.com']
-            });
+      oidcProviderExists ?
+        OpenIdConnectProvider.fromOpenIdConnectProviderArn(this, 'GitHubOidcProvider', `arn:aws:iam::${this.account}:oidc-provider/${GITHUB_TOKEN_URL}`) :
+        new OpenIdConnectProvider(this, 'GitHubOidcProvider', {
+          url: `https://${GITHUB_TOKEN_URL}`,
+          thumbprints: [
+            '6938fd4d98bab03faadb97b34396831e3780aea1'
+          ],
+          clientIds: ['sts.amazonaws.com']
+        });
 
     const dataPrepperOrganization: string = scope.node.tryGetContext('dataPrepperOrganization') || DEFAULT_ORGANIZATION;
 
@@ -53,8 +53,8 @@ export class GitHubAccessStack extends Stack {
     this.gitHubActionsTestingRole = new Role(this, 'GitHubActionsTestingRole', {
       roleName: 'GitHubActionsTesting',
       assumedBy: new CompositePrincipal(
-          gitHubPrincipal,
-          currentAccountPrincipal
+        gitHubPrincipal,
+        currentAccountPrincipal
       )
     });
   }
