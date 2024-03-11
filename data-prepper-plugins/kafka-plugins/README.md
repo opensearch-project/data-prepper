@@ -108,7 +108,7 @@ bin/kafka-server-start.sh config/server.properties
 Before issuing the command, make sure the `json-topic-name` and `avro-topic-name` are already created on the Confluent cloud and schemas are correctly set
 
 ```
-./gradlew      data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=<confluent-bootstrap-servers> -Dtest.kafka.schema_registry_url=<confluent-schema-reg-url> -Dtest.kafka.schema_registry_userinfo="<confluent-schema-reg-api-key>:<confluent-schema-reg-secret>" -Dtests.kafka.json_topic_name=<json-topic-name> -Dtests.kafka.avro_topic_name=<avro-topic-name> -Dtests.kafka.username=<confluent-cloud-api-key> -Dtests.kafka.password=<confluent-cloud-api-secret> --tests "*ConfluentKafkaProducerConsumerWithSchemaRegistryIT*"
+./gradlew      data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=<confluent-bootstrap-servers> -Dtests.kafka.schema_registry_url=<confluent-schema-reg-url> -Dtests.kafka.schema_registry_userinfo="<confluent-schema-reg-api-key>:<confluent-schema-reg-secret>" -Dtests.kafka.json_topic_name=<json-topic-name> -Dtests.kafka.avro_topic_name=<avro-topic-name> -Dtests.kafka.username=<confluent-cloud-api-key> -Dtests.kafka.password=<confluent-cloud-api-secret> --tests "*ConfluentKafkaProducerConsumerWithSchemaRegistryIT*"
 ```
 
 Schema for `json-topic-name-value` should be
