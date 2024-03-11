@@ -6,6 +6,7 @@
 dependencies {
     implementation 'org.apache.httpcomponents:httpcore:4.4.16'
     testImplementation testLibs.bundles.junit
+    testImplementation testLibs.mockito.inline
 }
 
 jacocoTestCoverageVerification {
