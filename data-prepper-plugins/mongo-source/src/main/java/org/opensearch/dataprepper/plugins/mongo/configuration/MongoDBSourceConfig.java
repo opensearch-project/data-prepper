@@ -22,7 +22,6 @@ public class MongoDBSourceConfig {
     private String trustStorePassword;
     @JsonProperty("credentials")
     private CredentialsConfig credentialsConfig;
-
     @JsonProperty("snapshot_fetch_size")
     private String snapshotFetchSize;
     @JsonProperty("read_preference")
@@ -35,6 +34,8 @@ public class MongoDBSourceConfig {
     private Boolean ssl;
     @JsonProperty("ssl_invalid_host_allowed")
     private Boolean sslInvalidHostAllowed;
+    @JsonProperty("directConnection")
+    private Boolean directConnection;
 
     public MongoDBSourceConfig() {
         this.snapshotFetchSize = DEFAULT_SNAPSHOT_FETCH_SIZE;
@@ -70,6 +71,10 @@ public class MongoDBSourceConfig {
 
     public Boolean getSSLInvalidHostAllowed() {
         return this.sslInvalidHostAllowed;
+    }
+
+    public Boolean getDirectConnection() {
+        return this.directConnection;
     }
 
     public List<CollectionConfig> getCollections() {

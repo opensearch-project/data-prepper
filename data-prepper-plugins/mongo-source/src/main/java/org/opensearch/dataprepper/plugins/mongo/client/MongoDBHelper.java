@@ -28,7 +28,7 @@ import static com.mongodb.client.model.Filters.gte;
 import static com.mongodb.client.model.Filters.lte;
 
 public class MongoDBHelper {
-    private static final String MONGO_CONNECTION_STRING_TEMPLATE = "mongodb://%s:%s@%s:%s/?replicaSet=rs0&directConnection=true&readpreference=%s&ssl=%s&tlsAllowInvalidHostnames=%s&directConnection=true";
+    private static final String MONGO_CONNECTION_STRING_TEMPLATE = "mongodb://%s:%s@%s:%s/?replicaSet=rs0&directConnection=true&readpreference=%s&ssl=%s&tlsAllowInvalidHostnames=%s&directConnection=%s";
     private static final String BINARY_PARTITION_FORMAT = "%s-%s";
     private static final String BINARY_PARTITION_SPLITTER = "-";
     private static final String TIMESTAMP_PARTITION_FORMAT = "%s-%s";
@@ -62,8 +62,9 @@ public class MongoDBHelper {
         final String ssl = sourceConfig.getSSLEnabled().toString();
         final String invalidHostAllowed = sourceConfig.getSSLInvalidHostAllowed().toString();
         final String readPreference = sourceConfig.getReadPreference();
+        final String directionConnection = sourceConfig.getDirectConnection().toString();
         return String.format(MONGO_CONNECTION_STRING_TEMPLATE, username, password, hostname, port,
-                readPreference, ssl, invalidHostAllowed);
+                readPreference, ssl, invalidHostAllowed, directionConnection);
     }
 
     public static String getPartitionStringFromMongoDBId(Object id, String className) {
