@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 @ExtendWith(MockitoExtension.class)
 class HttpDBDownloadServiceTest {
 
-    private static final String PREFIX_DIR = "first_database";
+    private static final String PREFIX_DIR = "blue_database";
     private HttpDBDownloadService downloadThroughUrl;
     @Mock
     private GeoIPFileManager geoIPFileManager;

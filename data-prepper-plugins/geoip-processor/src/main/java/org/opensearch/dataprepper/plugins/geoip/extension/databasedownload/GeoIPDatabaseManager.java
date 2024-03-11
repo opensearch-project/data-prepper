@@ -29,8 +29,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
 public class GeoIPDatabaseManager {
     private static final Logger LOG = LoggerFactory.getLogger(GeoIPDatabaseManager.class);
-    public static final String FIRST_DATABASE_DIR = "first_database";
-    public static final String SECOND_DATABASE_DIR = "second_database";
+    public static final String BLUE_DATABASE_DIR = "blue_database";
+    public static final String GREEN_DATABASE_DIR = "green_database";
     private static final long INITIAL_DELAY = Duration.ofMinutes(1).toMillis();
     private static final long MAXIMUM_DELAY = Duration.ofHours(1).toMillis();
     private static final double JITTER_RATE = 0.15;
@@ -168,9 +168,9 @@ public class GeoIPDatabaseManager {
     private void switchDirectory() {
         databaseDirToggle = !databaseDirToggle;
         if (databaseDirToggle) {
-            currentDatabaseDir = FIRST_DATABASE_DIR;
+            currentDatabaseDir = BLUE_DATABASE_DIR;
         } else {
-            currentDatabaseDir = SECOND_DATABASE_DIR;
+            currentDatabaseDir = GREEN_DATABASE_DIR;
         }
     }
 
@@ -198,8 +198,8 @@ public class GeoIPDatabaseManager {
     }
 
     public void deleteDatabasesOnShutdown() {
-        geoIPFileManager.deleteDirectory(new File(maxMindConfig.getDatabaseDestination() + File.separator + FIRST_DATABASE_DIR));
-        geoIPFileManager.deleteDirectory(new File(maxMindConfig.getDatabaseDestination() + File.separator + SECOND_DATABASE_DIR));
+        geoIPFileManager.deleteDirectory(new File(maxMindConfig.getDatabaseDestination() + File.separator + BLUE_DATABASE_DIR));
+        geoIPFileManager.deleteDirectory(new File(maxMindConfig.getDatabaseDestination() + File.separator + GREEN_DATABASE_DIR));
     }
 
     public void deleteDirectory(final File file) {
