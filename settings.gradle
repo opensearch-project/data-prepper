@@ -168,4 +168,3 @@ include 'data-prepper-plugins:decompress-processor'
 include 'data-prepper-plugins:split-event-processor'
 include 'data-prepper-plugins:http-common'
 include 'data-prepper-plugins:flatten-processor'
-

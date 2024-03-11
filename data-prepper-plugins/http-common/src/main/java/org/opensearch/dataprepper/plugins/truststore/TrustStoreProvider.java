@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.truststore;
 
-import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
 import org.apache.http.ssl.TrustStrategy;
 import org.slf4j.Logger;
@@ -63,6 +62,12 @@ public class TrustStoreProvider {
         }
     }
 
+    private static KeyStore createKeyStore(final InputStream trustStoreInputStream, final String password) throws Exception {
+        final KeyStore trustStore = KeyStore.getInstance("JKS");
+        trustStore.load(trustStoreInputStream, password.toCharArray());
+        return trustStore;
+    }
+
     private static KeyStore createKeyStore(final InputStream certificateInputStream) throws Exception {
         final CertificateFactory factory = CertificateFactory.getInstance("X.509");
         final Certificate trustedCa = factory.generateCertificate(certificateInputStream);
@@ -81,6 +86,15 @@ public class TrustStoreProvider {
         }
     }
 
+    public static SSLContext createSSLContext(final Path trustStorePath, final String password) {
+        LOG.info("Using the truststore path and password to create SSL context.");
+        try (InputStream is = Files.newInputStream(trustStorePath)) {
+            return createSSLContext(is, password);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex.getMessage(), ex);
+        }
+    }
+
     public static SSLContext createSSLContext(final String certificateContent) {
         LOG.info("Using the certificate content to create SSL context.");
         try (InputStream certificateInputStream = new ByteArrayInputStream(certificateContent.getBytes())) {
@@ -91,10 +105,20 @@ public class TrustStoreProvider {
     }
 
     private static SSLContext createSSLContext(final InputStream certificateInputStream) throws Exception {
-        KeyStore trustStore = createKeyStore(certificateInputStream);
-        SSLContextBuilder sslContextBuilder = SSLContexts.custom()
-                .loadTrustMaterial(trustStore, null);
-        return sslContextBuilder.build();
+        final KeyStore trustStore = createKeyStore(certificateInputStream);
+        return SSLContexts.custom()
+               .loadTrustMaterial(trustStore, null).build();
+    }
+
+    private static SSLContext createSSLContext(final InputStream certificateInputStream, final String password) throws Exception {
+        final KeyStore trustStore = createKeyStore(certificateInputStream, password);
+        final TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        trustManagerFactory.init(trustStore);
+        // Create an SSLContext that uses the truststore
+        final SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, trustManagerFactory.getTrustManagers(), null);
+        SSLContext.setDefault(sslContext);
+        return sslContext;
     }
 
     public static SSLContext createSSLContextWithTrustAllStrategy() {
