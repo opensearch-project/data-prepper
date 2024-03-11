@@ -1,0 +1,20 @@
+dependencies {
+    implementation project(path: ':data-prepper-api')
+
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'org.mongodb:mongodb-driver-sync:4.7.1'
+    implementation 'org.mongodb:mongodb-driver-core:4.7.1'
+    implementation 'org.mongodb:bson:4.7.1'
+
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    implementation project(path: ':data-prepper-plugins:aws-plugin-api')
+    implementation project(path: ':data-prepper-plugins:buffer-common')
+    implementation project(':data-prepper-plugins:http-common')
+
+
+    testImplementation testLibs.mockito.inline
+    testImplementation testLibs.bundles.junit
+
+}
