@@ -313,6 +313,9 @@ public class FileSourceTests {
 
             final ArgumentCaptor<Consumer> consumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
 
+            await().atMost(2, TimeUnit.SECONDS)
+                    .untilAsserted(() -> verify(inputCodec).parse(any(InputStream.class), any(Consumer.class)));
+
             verify(inputCodec).parse(any(InputStream.class), consumerArgumentCaptor.capture());
 
             final Consumer<Record<Event>> actualConsumer = consumerArgumentCaptor.getValue();

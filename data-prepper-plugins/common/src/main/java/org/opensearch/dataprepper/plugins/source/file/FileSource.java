@@ -44,6 +44,7 @@ public class FileSource implements Source<Record<Object>> {
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() { };
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final long STOP_WAIT_MILLIS = 200;
     private final FileSourceConfig fileSourceConfig;
     private final FileStrategy fileStrategy;
     private final EventFactory eventFactory;
@@ -88,6 +89,12 @@ public class FileSource implements Source<Record<Object>> {
     @Override
     public void stop() {
         isStopRequested = true;
+
+        try {
+            readThread.join(STOP_WAIT_MILLIS);
+        } catch (final InterruptedException e) {
+            readThread.interrupt();
+        }
     }
 
     private interface FileStrategy {
