@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugin;
+package org.opensearch.dataprepper.plugins;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,8 +26,9 @@ import org.opensearch.dataprepper.parser.config.FileStructurePathProvider;
 import org.opensearch.dataprepper.parser.config.PipelineParserConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
-import org.opensearch.dataprepper.plugins.TestPluginUsingExtension;
-import org.opensearch.dataprepper.plugins.TestPluginUsingExtensionWithConfig;
+import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
+import org.opensearch.dataprepper.plugin.ObjectMapperConfiguration;
+import org.opensearch.dataprepper.plugin.TestPluggableInterface;
 import org.opensearch.dataprepper.plugins.test.TestExtension;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -114,7 +116,7 @@ public class ExtensionsIT {
 
     @Test
     void applyExtensions_creates_a_single_instance_of_the_extension() {
-        assertThat(TestExtension.getConstructedInstances(), equalTo(1));
+        MatcherAssert.assertThat(TestExtension.getConstructedInstances(), equalTo(1));
     }
 
     @Test

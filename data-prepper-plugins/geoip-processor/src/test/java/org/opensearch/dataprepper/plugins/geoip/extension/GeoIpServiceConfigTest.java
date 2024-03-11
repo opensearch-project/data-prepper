@@ -11,7 +11,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import software.amazon.awssdk.regions.Region;
 

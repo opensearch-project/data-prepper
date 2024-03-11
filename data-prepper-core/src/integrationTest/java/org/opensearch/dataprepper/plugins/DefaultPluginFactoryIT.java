@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugin;
+package org.opensearch.dataprepper.plugins;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,9 +15,12 @@ import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarke
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
-import org.opensearch.dataprepper.plugins.TestObjectPlugin;
-import org.opensearch.dataprepper.plugins.TestPlugin;
+import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
+import org.opensearch.dataprepper.plugin.ExtensionsConfiguration;
+import org.opensearch.dataprepper.plugin.PluginBeanFactoryProvider;
+import org.opensearch.dataprepper.plugin.TestPluggableInterface;
+import org.opensearch.dataprepper.plugin.TestPluginConfiguration;
+import org.opensearch.dataprepper.plugins.test.TestPlugin;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.HashMap;
@@ -39,7 +42,7 @@ class DefaultPluginFactoryIT {
     @Mock
     private PipelinesDataFlowModel pipelinesDataFlowModel;
     @Mock
-    private DataPrepperConfiguration dataPrepperConfiguration;
+    private ExtensionsConfiguration extensionsConfiguration;
     private String pluginName;
     private String objectPluginName;
     private String pipelineName;
@@ -62,7 +65,7 @@ class DefaultPluginFactoryIT {
         coreContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
         coreContext.register(PluginBeanFactoryProvider.class);
-        coreContext.registerBean(DataPrepperConfiguration.class, () -> dataPrepperConfiguration);
+        coreContext.registerBean(ExtensionsConfiguration.class, () -> extensionsConfiguration);
         coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
         coreContext.refresh();
 

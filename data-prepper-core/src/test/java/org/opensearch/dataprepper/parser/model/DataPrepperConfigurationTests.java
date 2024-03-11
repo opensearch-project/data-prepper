@@ -7,9 +7,9 @@ package org.opensearch.dataprepper.parser.model;
 
 import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.parser.ByteCountDeserializer;
+import org.opensearch.dataprepper.pipeline.parser.ByteCountDeserializer;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;

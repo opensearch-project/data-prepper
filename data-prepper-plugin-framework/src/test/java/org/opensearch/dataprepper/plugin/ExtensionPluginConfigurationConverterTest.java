@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Path;
 import jakarta.validation.Validator;
+import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -73,7 +74,7 @@ class ExtensionPluginConfigurationConverterTest {
         ));
         final Object testExtensionConfig = objectUnderTest.convert(true, TestExtensionConfig.class, "/" + rootKey);
         assertThat(testExtensionConfig, instanceOf(TestExtensionConfig.class));
-        assertThat(((TestExtensionConfig) testExtensionConfig).getTestAttribute(), equalTo(testValue));
+        MatcherAssert.assertThat(((TestExtensionConfig) testExtensionConfig).getTestAttribute(), equalTo(testValue));
     }
 
     @Test
@@ -86,7 +87,7 @@ class ExtensionPluginConfigurationConverterTest {
         ));
         final Object testExtensionConfig = objectUnderTest.convert(false, TestExtensionConfig.class, "/" + rootKey);
         assertThat(testExtensionConfig, instanceOf(TestExtensionConfig.class));
-        assertThat(((TestExtensionConfig) testExtensionConfig).getTestAttribute(), equalTo(testValue));
+        MatcherAssert.assertThat(((TestExtensionConfig) testExtensionConfig).getTestAttribute(), equalTo(testValue));
     }
 
     @Test
