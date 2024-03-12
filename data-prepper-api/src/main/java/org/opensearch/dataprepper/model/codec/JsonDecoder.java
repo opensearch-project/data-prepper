@@ -25,6 +25,13 @@ public class JsonDecoder implements ByteDecoder {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final JsonFactory jsonFactory = new JsonFactory();
 
+    private void parseObject(final JsonParser jsonParser, final Instant timeReceived, final Consumer<Record<Event>> eventConsumer) throws IOException {
+        final Map<String, Object> innerJson = objectMapper.readValue(jsonParser, Map.class);
+
+        final Record<Event> record = createRecord(innerJson, timeReceived);
+        eventConsumer.accept(record);
+    }
+
     public void parse(InputStream inputStream, Instant timeReceived, Consumer<Record<Event>> eventConsumer) throws IOException {
         Objects.requireNonNull(inputStream);
         Objects.requireNonNull(eventConsumer);
@@ -34,16 +41,15 @@ public class JsonDecoder implements ByteDecoder {
         while (!jsonParser.isClosed() && jsonParser.nextToken() != JsonToken.END_OBJECT) {
             if (jsonParser.getCurrentToken() == JsonToken.START_ARRAY) {
                 parseRecordsArray(jsonParser, timeReceived, eventConsumer);
+            } else if (jsonParser.getCurrentToken() == JsonToken.START_OBJECT) {
+                parseObject(jsonParser, timeReceived, eventConsumer);
             }
         }
     }
 
     private void parseRecordsArray(final JsonParser jsonParser, final Instant timeReceived, final Consumer<Record<Event>> eventConsumer) throws IOException {
         while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
-            final Map<String, Object> innerJson = objectMapper.readValue(jsonParser, Map.class);
-
-            final Record<Event> record = createRecord(innerJson, timeReceived);
-            eventConsumer.accept(record);
+            parseObject(jsonParser, timeReceived, eventConsumer);
         }
     }
 
