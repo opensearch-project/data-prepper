@@ -87,9 +87,10 @@ public class LogHTTPService {
         }
         try {
             if (buffer.isByteBuffer()) {
-                // jsonList is ignored in this path but parse() was done to make 
-                // sure that the data is in the expected json format
-                buffer.writeBytes(content.array(), null, bufferWriteTimeoutInMillis);
+                for (final String json: jsonList) {
+                    final String jsonArray = "["+json+"]";
+                    buffer.writeBytes(jsonArray.getBytes(), null, bufferWriteTimeoutInMillis);
+                }
             } else {
                 final List<Record<Log>> records = jsonList.stream()
                         .map(this::buildRecordLog)
