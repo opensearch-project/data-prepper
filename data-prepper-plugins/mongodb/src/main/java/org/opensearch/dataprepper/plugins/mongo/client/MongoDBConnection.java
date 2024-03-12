@@ -11,7 +11,7 @@ import java.io.File;
 import java.util.Objects;
 
 public class MongoDBConnection {
-    private static final String MONGO_CONNECTION_STRING_TEMPLATE = "mongodb://%s:%s@%s:%s/?replicaSet=rs0&directConnection=true&readpreference=%s&ssl=%s&tlsAllowInvalidHostnames=%s&directConnection=%s";
+    private static final String MONGO_CONNECTION_STRING_TEMPLATE = "mongodb://%s:%s@%s:%s/?replicaSet=rs0&readpreference=%s&ssl=%s&tlsAllowInvalidHostnames=%s&directConnection=%s";
 
     public static MongoClient getMongoClient(final MongoDBSourceConfig sourceConfig) {
 
