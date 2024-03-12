@@ -18,7 +18,6 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Map;
 
@@ -93,8 +92,8 @@ public abstract class RecordConverter {
         }
         final EventMetadata eventMetadata = event.getMetadata();
 
-        eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_COLLECTION_METADATA_ATTRIBUTE, collectionConfig.getCollection());
-        eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreationTimeMillis);
+        eventMetadata.setAttribute(MetadataKeyAttributes.MONGODB_EVENT_COLLECTION_METADATA_ATTRIBUTE, collectionConfig.getCollection());
+        eventMetadata.setAttribute(MetadataKeyAttributes.MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreationTimeMillis);
         eventMetadata.setAttribute(MetadataKeyAttributes.MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE, eventName);
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, mapStreamEventNameToBulkAction(eventName));
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP, eventVersionNumber);
@@ -121,6 +120,7 @@ public abstract class RecordConverter {
             return DEFAULT_ACTION;
         }
 
+        // https://www.mongodb.com/docs/manual/reference/change-events/
         switch (streamEventName) {
             case "INSERT":
             case "MODIFY":

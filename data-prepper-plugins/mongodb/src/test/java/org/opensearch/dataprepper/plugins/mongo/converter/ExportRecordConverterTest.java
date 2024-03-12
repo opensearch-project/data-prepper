@@ -47,7 +47,7 @@ import static org.opensearch.dataprepper.plugins.mongo.converter.ExportRecordCon
 import static org.opensearch.dataprepper.plugins.mongo.converter.ExportRecordConverter.EXPORT_RECORDS_PROCESSING_ERROR_COUNT;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
-import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 
@@ -148,9 +148,9 @@ class ExportRecordConverterTest {
         assertThat(event.getMetadata().getAttribute(PARTITION_KEY_METADATA_ATTRIBUTE), equalTo(id));
         assertThat(event.getMetadata().getAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE), equalTo(id));
         assertThat(event.getMetadata().getAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE), equalTo(OpenSearchBulkActions.INDEX.toString()));
-        assertThat(event.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), notNullValue());
+        assertThat(event.getMetadata().getAttribute(MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE), notNullValue());
         assertThat(event.getMetadata().getAttribute(MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), nullValue());
-        assertThat(event.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(exportStartTime));
+        assertThat(event.getMetadata().getAttribute(MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(exportStartTime));
         assertThat(event.getEventHandle(), notNullValue());
         assertThat(event.getEventHandle().getExternalOriginationTime(), nullValue());
         verify(bytesReceivedSummary, times(1)).record(record.getBytes().length);

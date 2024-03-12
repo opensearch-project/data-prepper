@@ -11,7 +11,7 @@ public class MetadataKeyAttributes {
 
     static final String PARTITION_KEY_METADATA_ATTRIBUTE = "partition_key";
 
-    static final String EVENT_TIMESTAMP_METADATA_ATTRIBUTE = "mongodb_timestamp";
+    static final String MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE = "mongodb_timestamp";
 
     static final String EVENT_VERSION_FROM_TIMESTAMP = "document_version";
 
@@ -19,6 +19,6 @@ public class MetadataKeyAttributes {
 
     static final String MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE = "mongodb_event_name";
 
-    static final String EVENT_COLLECTION_METADATA_ATTRIBUTE = "collection";
+    static final String MONGODB_EVENT_COLLECTION_METADATA_ATTRIBUTE = "mongodb_collection";
 }
 
