@@ -88,8 +88,7 @@ public class LogHTTPService {
         try {
             if (buffer.isByteBuffer()) {
                 for (final String json: jsonList) {
-                    final String jsonArray = "["+json+"]";
-                    buffer.writeBytes(jsonArray.getBytes(), null, bufferWriteTimeoutInMillis);
+                    buffer.writeBytes(json.getBytes(), null, bufferWriteTimeoutInMillis);
                 }
             } else {
                 final List<Record<Log>> records = jsonList.stream()
