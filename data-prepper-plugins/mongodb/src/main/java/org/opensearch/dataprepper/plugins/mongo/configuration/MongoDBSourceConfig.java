@@ -8,8 +8,8 @@ import java.util.List;
 
 public class MongoDBSourceConfig {
     private static final int DEFAULT_PORT = 27017;
-    private static final Boolean SSL_ENABLED = false;
-    private static final Boolean SSL_INVALID_HOST_ALLOWED = false;
+    private static final Boolean DEFAULT_INSECURE = false;
+    private static final Boolean DEFAULT_INSECURE_DISABLE_VERIFICATION = false;
     private static final String DEFAULT_SNAPSHOT_FETCH_SIZE = "1000";
     private static final String DEFAULT_READ_PREFERENCE = "secondaryPreferred";
     @JsonProperty("hostname")
@@ -31,10 +31,10 @@ public class MongoDBSourceConfig {
     private List<CollectionConfig> collections;
     @JsonProperty("acknowledgments")
     private Boolean acknowledgments = false;
-    @JsonProperty("ssl")
-    private Boolean ssl;
-    @JsonProperty("ssl_invalid_host_allowed")
-    private Boolean sslInvalidHostAllowed;
+    @JsonProperty("insecure")
+    private Boolean insecure;
+    @JsonProperty("ssl_insecure_disable_verification")
+    private Boolean sslInsecureDisableVerification;
     @JsonProperty("direct_connection")
     private Boolean directConnection;
 
@@ -42,8 +42,8 @@ public class MongoDBSourceConfig {
         this.snapshotFetchSize = DEFAULT_SNAPSHOT_FETCH_SIZE;
         this.readPreference = DEFAULT_READ_PREFERENCE;
         this.collections = new ArrayList<>();
-        this.ssl = SSL_ENABLED;
-        this.sslInvalidHostAllowed = SSL_INVALID_HOST_ALLOWED;
+        this.insecure = DEFAULT_INSECURE;
+        this.sslInsecureDisableVerification = DEFAULT_INSECURE_DISABLE_VERIFICATION;
     }
 
     public CredentialsConfig getCredentialsConfig() {
@@ -66,12 +66,12 @@ public class MongoDBSourceConfig {
         return this.trustStorePassword;
     }
 
-    public Boolean getSSLEnabled() {
-        return this.ssl;
+    public Boolean getInsecure() {
+        return this.insecure;
     }
 
-    public Boolean getSSLInvalidHostAllowed() {
-        return this.sslInvalidHostAllowed;
+    public Boolean getSslInsecureDisableVerification() {
+        return this.sslInsecureDisableVerification;
     }
 
     public Boolean getDirectConnection() {
@@ -91,14 +91,14 @@ public class MongoDBSourceConfig {
     }
 
     public static class CredentialsConfig {
-        @JsonProperty("user_name")
-        private String userName;
+        @JsonProperty("username")
+        private String username;
 
         @JsonProperty("password")
         private String password;
 
-        public String getUserName() {
-            return userName;
+        public String getUsername() {
+            return username;
         }
 
         public String getPassword() {
