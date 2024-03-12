@@ -36,9 +36,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -49,6 +51,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -146,17 +149,23 @@ public class FileSourceTests {
         }
 
         @Test
-        public void testFileSourceWithEmptyFilePathThrowsRuntimeException() {
+        public void testFileSourceWithEmptyFilePathDoesNotWriteToBuffer() throws InterruptedException {
+            buffer = mock(Buffer.class);
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "");
             fileSource = createObjectUnderTest();
-            assertThrows(RuntimeException.class, () -> fileSource.start(buffer));
+            fileSource.start(buffer);
+            Thread.sleep(500);
+            verifyNoInteractions(buffer);
         }
 
         @Test
-        public void testFileSourceWithNonexistentFilePathThrowsRuntimeException() {
+        public void testFileSourceWithNonexistentFilePathDoesNotWriteToBuffer() throws InterruptedException {
+            buffer = mock(Buffer.class);
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, FILE_DOES_NOT_EXIST);
             fileSource = createObjectUnderTest();
-            assertThrows(RuntimeException.class, () -> fileSource.start(buffer));
+            fileSource.start(buffer);
+            Thread.sleep(500);
+            verifyNoInteractions(buffer);
         }
 
         @Test
@@ -285,6 +294,8 @@ public class FileSourceTests {
 
             final ArgumentCaptor<InputStream> inputStreamArgumentCaptor = ArgumentCaptor.forClass(InputStream.class);
 
+            await().atMost(2, TimeUnit.SECONDS)
+                            .untilAsserted(() -> verify(inputCodec).parse(any(InputStream.class), any(Consumer.class)));
             verify(inputCodec).parse(inputStreamArgumentCaptor.capture(), any(Consumer.class));
 
             final InputStream actualInputStream = inputStreamArgumentCaptor.getValue();
@@ -302,6 +313,9 @@ public class FileSourceTests {
 
             final ArgumentCaptor<Consumer> consumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
 
+            await().atMost(2, TimeUnit.SECONDS)
+                    .untilAsserted(() -> verify(inputCodec).parse(any(InputStream.class), any(Consumer.class)));
+
             verify(inputCodec).parse(any(InputStream.class), consumerArgumentCaptor.capture());
 
             final Consumer<Record<Event>> actualConsumer = consumerArgumentCaptor.getValue();
@@ -313,7 +327,7 @@ public class FileSourceTests {
         }
 
         @Test
-        void start_will_throw_exception_if_codec_throws() throws IOException, TimeoutException {
+        void start_will_throw_exception_if_codec_throws() throws IOException, TimeoutException, InterruptedException {
 
             final IOException mockedException = mock(IOException.class);
             doThrow(mockedException)
@@ -321,9 +335,11 @@ public class FileSourceTests {
 
             FileSource objectUnderTest = createObjectUnderTest();
 
-            RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.start(buffer));
+            objectUnderTest.start(buffer);
 
-            assertThat(actualException.getCause(), equalTo(mockedException));
+            Thread.sleep(2_000);
+
+            verifyNoInteractions(buffer);
         }
 
     }
