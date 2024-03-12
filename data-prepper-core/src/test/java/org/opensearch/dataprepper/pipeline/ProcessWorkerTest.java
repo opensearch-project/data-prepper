@@ -208,4 +208,47 @@ public class ProcessWorkerTest {
 
         verify(skippedProcessor, never()).execute(any());
     }
+
+    @Test
+    void testProcessWorkerWithProcessorDroppingAllRecordsAndAcknowledgmentsEnabledIsHandledProperly() {
+
+        when(source.areAcknowledgementsEnabled()).thenReturn(true);
+
+        final List<Record<Event>> records = new ArrayList<>();
+        final Record<Event> mockRecord = mock(Record.class);
+        final Event mockEvent = mock(Event.class);
+        final EventHandle eventHandle = mock(DefaultEventHandle.class);
+        when(((DefaultEventHandle) eventHandle).getAcknowledgementSet()).thenReturn(mock(AcknowledgementSet.class));
+        doNothing().when(eventHandle).release(true);
+        when(mockRecord.getData()).thenReturn(mockEvent);
+        when(mockEvent.getEventHandle()).thenReturn(eventHandle);
+
+        records.add(mockRecord);
+
+        final CheckpointState checkpointState = mock(CheckpointState.class);
+        final Map.Entry<Collection, CheckpointState> readResult = Map.entry(records, checkpointState);
+        when(buffer.read(pipeline.getReadBatchTimeoutInMillis())).thenReturn(readResult);
+
+        final Processor processor = mock(Processor.class);
+        when(processor.execute(records)).thenReturn(Collections.emptyList());
+        when(processor.isReadyForShutdown()).thenReturn(true);
+
+        final Processor secondProcessor = mock(Processor.class);
+        when(secondProcessor.isReadyForShutdown()).thenReturn(true);
+        when(secondProcessor.execute(Collections.emptyList())).thenReturn(Collections.emptyList());
+        processors = List.of(processor, secondProcessor);
+
+        final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
+        when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
+
+
+        try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
+            futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
+                    .thenReturn(futureHelperResult);
+
+            final ProcessWorker processWorker = createObjectUnderTest();
+
+            processWorker.run();
+        }
+    }
 }

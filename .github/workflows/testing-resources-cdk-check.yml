@@ -1,0 +1,34 @@
+name: Testing Resources CDK App Check
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'testing/aws-testing-cdk/**'
+  pull_request:
+    paths:
+      - 'testing/aws-testing-cdk/**'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./testing/aws-testing-cdk
+    steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '18'
+
+    - name: Checkout Data Prepper
+      uses: actions/checkout@v2
+
+    - name: Install NPM Dependencies
+      run: npm install
+    - name: Test
+      run: npm run test
+    - name: Lint
+      run: npm run lint
