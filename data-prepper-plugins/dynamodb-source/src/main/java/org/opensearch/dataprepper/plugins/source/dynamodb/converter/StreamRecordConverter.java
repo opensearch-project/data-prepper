@@ -14,11 +14,13 @@ import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.OperationType;
 import software.amazon.awssdk.services.dynamodb.model.Record;
 
 import java.time.Instant;
@@ -40,6 +42,8 @@ public class StreamRecordConverter extends RecordConverter {
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {
     };
 
+    private final StreamConfig streamConfig;
+
     private final PluginMetrics pluginMetrics;
 
     private final Counter changeEventSuccessCounter;
@@ -50,13 +54,18 @@ public class StreamRecordConverter extends RecordConverter {
     private Instant currentSecond;
     private int recordsSeenThisSecond = 0;
 
-    public StreamRecordConverter(final BufferAccumulator<org.opensearch.dataprepper.model.record.Record<Event>> bufferAccumulator, TableInfo tableInfo, PluginMetrics pluginMetrics) {
+    public StreamRecordConverter(final BufferAccumulator<org.opensearch.dataprepper.model.record.Record<Event>> bufferAccumulator,
+                                 final TableInfo tableInfo,
+                                 final PluginMetrics pluginMetrics,
+                                 final StreamConfig streamConfig) {
         super(bufferAccumulator, tableInfo);
         this.pluginMetrics = pluginMetrics;
         this.changeEventSuccessCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSED_COUNT);
         this.changeEventErrorCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT);
         this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
         this.bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
+        this.streamConfig = streamConfig;
+
     }
 
     @Override
@@ -73,8 +82,10 @@ public class StreamRecordConverter extends RecordConverter {
             Map<String, Object> data;
             Map<String, Object> keys;
             try {
+                final Map<String, AttributeValue> streamRecord = getStreamRecordFromImage(record);
+
                 // NewImage may be empty
-                data = convertData(record.dynamodb().newImage());
+                data = convertData(streamRecord);
                 // Always get keys from dynamodb().keys()
                 keys = convertKeys(record.dynamodb().keys());
             } catch (final Exception e) {
@@ -149,5 +160,22 @@ public class StreamRecordConverter extends RecordConverter {
         }
 
         return eventTimeInSeconds.getEpochSecond() * 1_000_000 + recordsSeenThisSecond;
+    }
+
+    private Map<String, AttributeValue> getStreamRecordFromImage(final Record record) {
+        if (!OperationType.REMOVE.equals(record.eventName())) {
+            return record.dynamodb().newImage();
+        }
+
+        if (streamConfig.shouldUseOldImageForDeletes()) {
+            if (!record.dynamodb().hasOldImage()) {
+                LOG.warn("use_old_image_for_deletes is enabled, but no old image can be found on the stream record, using new image");
+                return record.dynamodb().newImage();
+            } else {
+                return record.dynamodb().oldImage();
+            }
+        }
+
+        return record.dynamodb().newImage();
     }
 }

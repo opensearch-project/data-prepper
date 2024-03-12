@@ -61,6 +61,11 @@ public class FailedBulkOperationConverter {
 
     private Object convertDocumentToGenericMap(final BulkOperationWrapper bulkOperation) {
         final SerializedJson document = (SerializedJson) bulkOperation.getDocument();
+
+        if (document == null) {
+            return ImmutableMap.of();
+        }
+
         final byte[] documentBytes = document.getSerializedJson();
         final String jsonString = new String(documentBytes, StandardCharsets.UTF_8);
 

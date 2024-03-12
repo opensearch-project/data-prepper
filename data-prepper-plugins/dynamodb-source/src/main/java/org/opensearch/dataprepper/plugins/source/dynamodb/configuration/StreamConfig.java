@@ -12,8 +12,15 @@ public class StreamConfig {
     @JsonProperty(value = "start_position")
     private StreamStartPosition startPosition = StreamStartPosition.LATEST;
 
+    @JsonProperty("use_old_image_for_deletes")
+    private boolean useOldImageForDeletes = false;
+
     public StreamStartPosition getStartPosition() {
         return startPosition;
+    }
+
+    public boolean shouldUseOldImageForDeletes() {
+        return useOldImageForDeletes;
     }
 
 }
