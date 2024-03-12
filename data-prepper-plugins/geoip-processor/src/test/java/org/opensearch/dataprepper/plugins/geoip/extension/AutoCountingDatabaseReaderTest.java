@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.geoip.databaseenrich;
+package org.opensearch.dataprepper.plugins.geoip.extension;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.geoip.GeoIPDatabase;
 import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 
 import java.net.InetAddress;
 import java.util.List;

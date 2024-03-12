@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.geoip.databaseenrich;
+package org.opensearch.dataprepper.plugins.geoip.extension;
 
 import org.opensearch.dataprepper.plugins.geoip.GeoIPDatabase;
 import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class AutoCountingDatabaseReader implements GeoIPDatabaseReader {
+class AutoCountingDatabaseReader implements GeoIPDatabaseReader {
     private static final Logger LOG = LoggerFactory.getLogger(AutoCountingDatabaseReader.class);
     private final GeoIPDatabaseReader delegateDatabaseReader;
     private final AtomicInteger closeCount;

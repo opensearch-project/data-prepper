@@ -6,10 +6,11 @@
 package org.opensearch.dataprepper.plugins.geoip.extension;
 
 import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIpConfigSupplier;
 
 import java.util.Optional;
 
-public class GeoIpConfigProvider implements ExtensionProvider<GeoIpConfigSupplier> {
+class GeoIpConfigProvider implements ExtensionProvider<GeoIpConfigSupplier> {
     private final GeoIpConfigSupplier geoIpConfigSupplier;
 
     public GeoIpConfigProvider(final GeoIpConfigSupplier geoIpConfigSupplier) {

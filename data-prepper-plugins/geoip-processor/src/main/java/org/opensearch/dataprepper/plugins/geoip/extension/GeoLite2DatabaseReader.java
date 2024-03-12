@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.geoip.databaseenrich;
+package org.opensearch.dataprepper.plugins.geoip.extension;
 
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.exception.GeoIp2Exception;
@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.plugins.geoip.exception.DatabaseReaderInitiali
 import org.opensearch.dataprepper.plugins.geoip.exception.EngineFailureException;
 import org.opensearch.dataprepper.plugins.geoip.exception.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.geoip.exception.NoValidDatabaseFoundException;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.DatabaseReaderBuilder;
 import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.GeoIPFileManager;
 import org.slf4j.Logger;
@@ -44,7 +45,7 @@ import static org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabase
 import static org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabaseConfig.GEOLITE2_CITY;
 import static org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabaseConfig.GEOLITE2_COUNTRY;
 
-public class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
+class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(GeoLite2DatabaseReader.class);
     static final String MAXMIND_GEOLITE2_DATABASE_TYPE = "geolite2";
     private final DatabaseReaderBuilder databaseReaderBuilder;
