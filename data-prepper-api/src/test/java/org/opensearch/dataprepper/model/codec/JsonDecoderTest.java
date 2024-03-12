@@ -51,6 +51,24 @@ public class JsonDecoderTest {
     }
 
     @Test
+    void test_basicJsonDecoder_withObject() {
+        String stringValue = UUID.randomUUID().toString();
+        Random r = new Random();
+        int intValue = r.nextInt();
+        String inputString = "{\"key1\":\""+stringValue+"\", \"key2\":"+intValue+"}";
+        try {
+            jsonDecoder.parse(new ByteArrayInputStream(inputString.getBytes()), null, (record) -> {
+                receivedRecord = record;
+            });
+        } catch (Exception e){}
+
+        assertNotEquals(receivedRecord, null);
+        Map<String, Object> map = receivedRecord.getData().toMap();
+        assertThat(map.get("key1"), equalTo(stringValue));
+        assertThat(map.get("key2"), equalTo(intValue));
+    }
+
+    @Test
     void test_basicJsonDecoder_withTimeReceived() {
         String stringValue = UUID.randomUUID().toString();
         Random r = new Random();
