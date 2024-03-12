@@ -43,6 +43,8 @@ class RandomStringSourceTests {
         await().atMost(3, TimeUnit.SECONDS)
                 .pollDelay(200, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> verify(buffer).write(any(), anyInt()));
+
+        randomStringSource.stop();
     }
 
     @Test
@@ -55,6 +57,8 @@ class RandomStringSourceTests {
         await().atMost(3, TimeUnit.SECONDS)
                 .pollDelay(200, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> verify(buffer, atLeast(2)).write(any(), anyInt()));
+
+        randomStringSource.stop();
     }
 
     @Test
@@ -81,5 +85,7 @@ class RandomStringSourceTests {
         objectUnderTest.start(buffer);
 
         assertThrows(IllegalStateException.class, () -> objectUnderTest.start(buffer));
+
+        objectUnderTest.stop();
     }
 }
