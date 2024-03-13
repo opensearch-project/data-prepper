@@ -64,6 +64,9 @@ public class IpAddress {
     }
 
     private static InputStream loadStream(final String file) {
-        return IpAddress.class.getResourceAsStream("/data/" + file);
+        final InputStream resourceAsStream = IpAddress.class.getResourceAsStream(file);
+        if(resourceAsStream == null)
+            throw new RuntimeException("Unable to load stream: " + file);
+        return resourceAsStream;
     }
 }
