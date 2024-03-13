@@ -4,7 +4,7 @@ import java.util.Map;
 
 public class LoadStatus {
 
-    static final String TOTAL_PARTITIONS = "totalPartitions";
+    private static final String TOTAL_PARTITIONS = "totalPartitions";
     private static final String LOADED_PARTITIONS = "loadedPartitions";
     private static final String LOADED_RECORDS = "loadedRecords";
 
