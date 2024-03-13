@@ -7,13 +7,10 @@ package org.opensearch.dataprepper.plugins.mongo.converter;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.document.JacksonDocument;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,27 +20,18 @@ import java.util.Map;
 
 
 /**
- * Base Record Processor definition.
- * The record processor is to transform the source data into a JacksonEvent,
- * and then write to buffer.
+ * The record convert transform the source data into a JacksonEvent.
  */
-public abstract class RecordConverter {
+public class RecordConverter {
     private static final Logger LOG = LoggerFactory.getLogger(RecordConverter.class);
-
     private static final String DEFAULT_ACTION = OpenSearchBulkActions.INDEX.toString();
-
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final BufferAccumulator<Record<Event>> bufferAccumulator;
+    private final CollectionConfig collectionConfig;
 
-    final CollectionConfig collectionConfig;
-
-    public RecordConverter(final BufferAccumulator<Record<Event>> bufferAccumulator, final CollectionConfig collectionConfig) {
-        this.bufferAccumulator = bufferAccumulator;
+    public RecordConverter(final CollectionConfig collectionConfig) {
         this.collectionConfig = collectionConfig;
     }
-
-    abstract String getEventType();
 
     /**
      * Extract the value based on attribute map
@@ -60,27 +48,20 @@ public abstract class RecordConverter {
         return null;
     }
 
-    void flushBuffer() throws Exception {
-        bufferAccumulator.flush();
-    }
-
     /**
-     * Add event record to buffer
+     * Convert the source data into a JacksonEvent.
      *
-     * @param data                    A map to hold event data, note that it may be empty.
-     * @param keys                    A map to hold the keys (partition key)
+     * @param record                  record that will be converted to Event.
      * @param eventCreationTimeMillis Creation timestamp of the event
+     * @param eventVersionNumber      Event version number to handle conflicts
      * @param eventName               Event name
-     * @throws Exception Exception if failed to write to buffer.
      */
-    public void addToBuffer(final AcknowledgementSet acknowledgementSet,
-                            final Map<String, Object> data,
-                            final Map<String, Object> keys,
-                            final long eventCreationTimeMillis,
-                            final long eventVersionNumber,
-                            final String eventName) throws Exception {
-        final Event event = JacksonEvent.builder()
-                .withEventType(getEventType())
+    public Event convert(final String record,
+                        final long eventCreationTimeMillis,
+                        final long eventVersionNumber,
+                        final String eventName) {
+        final Map<String, Object> data = convertToMap(record);
+        final Event event = JacksonDocument.builder()
                 .withData(data)
                 .build();
 
@@ -98,21 +79,24 @@ public abstract class RecordConverter {
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, mapStreamEventNameToBulkAction(eventName));
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP, eventVersionNumber);
 
-        final String partitionKey = getAttributeValue(keys, MetadataKeyAttributes.MONGODB_PRIMARY_KEY_ATTRIBUTE_NAME);
+        final String partitionKey = getAttributeValue(data, MetadataKeyAttributes.MONGODB_PRIMARY_KEY_ATTRIBUTE_NAME);
         eventMetadata.setAttribute(MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE, partitionKey);
         eventMetadata.setAttribute(MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE, partitionKey);
 
-        if (acknowledgementSet != null) {
-            acknowledgementSet.add(event);
-        }
-        bufferAccumulator.add(new Record<>(event));
+        return event;
     }
 
-    public void addToBuffer(final AcknowledgementSet acknowledgementSet,
-                            final Map<String, Object> data,
-                            final long timestamp,
-                            final long eventVersionNumber) throws Exception {
-        addToBuffer(acknowledgementSet, data, data, timestamp, eventVersionNumber, null);
+    /**
+     * Convert the source data into a JacksonEvent.
+     *
+     * @param record                  record that will be converted to Event.
+     * @param eventCreationTimeMillis Creation timestamp of the event
+     * @param eventVersionNumber      Event version number to handle conflicts
+     */
+    public Event convert(final String record,
+                        final long eventCreationTimeMillis,
+                        final long eventVersionNumber) {
+        return convert(record, eventCreationTimeMillis, eventVersionNumber, null);
     }
 
     private String mapStreamEventNameToBulkAction(final String streamEventName) {
@@ -132,7 +116,8 @@ public abstract class RecordConverter {
         }
     }
 
-    Map<String, Object> convertToMap(String jsonData) {
+
+    private Map<String, Object> convertToMap(String jsonData) {
         try {
             return MAPPER.readValue(jsonData, Map.class);
         } catch (final JsonProcessingException e) {
@@ -140,5 +125,4 @@ public abstract class RecordConverter {
             return null;
         }
     }
-
 }
