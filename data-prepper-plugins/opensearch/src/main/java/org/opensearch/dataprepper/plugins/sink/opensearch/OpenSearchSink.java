@@ -35,6 +35,7 @@ import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundExcepti
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
@@ -81,6 +82,7 @@ import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -128,6 +130,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final DistributionSummary bulkRequestSizeBytesSummary;
   private final Counter dynamicDocumentVersionDroppedEvents;
   private OpenSearchClient openSearchClient;
+  private OpenSearchClientRefresher openSearchClientRefresher;
   private ObjectMapper objectMapper;
   private volatile boolean initialized;
   private PluginSetting pluginSetting;
@@ -139,13 +142,15 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private DlqProvider dlqProvider;
   private final ConcurrentHashMap<Long, AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> bulkRequestMap;
   private final ConcurrentHashMap<Long, Long> lastFlushTimeMap;
+  private final PluginConfigObservable pluginConfigObservable;
 
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
                         final PluginFactory pluginFactory,
                         final SinkContext sinkContext,
                         final ExpressionEvaluator expressionEvaluator,
-                        final AwsCredentialsSupplier awsCredentialsSupplier) {
+                        final AwsCredentialsSupplier awsCredentialsSupplier,
+                        final PluginConfigObservable pluginConfigObservable) {
     super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
     this.awsCredentialsSupplier = awsCredentialsSupplier;
     this.sinkContext = sinkContext != null ? sinkContext : new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
@@ -178,6 +183,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.pluginSetting = pluginSetting;
     this.bulkRequestMap = new ConcurrentHashMap<>();
     this.lastFlushTimeMap = new ConcurrentHashMap<>();
+    this.pluginConfigObservable = pluginConfigObservable;
 
     final Optional<PluginModel> dlqConfig = openSearchSinkConfig.getRetryConfiguration().getDlq();
     if (dlqConfig.isPresent()) {
@@ -210,8 +216,21 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private void doInitializeInternal() throws IOException {
     LOG.info("Initializing OpenSearch sink");
-    restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient(awsCredentialsSupplier);
-    openSearchClient = openSearchSinkConfig.getConnectionConfiguration().createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier);
+    final ConnectionConfiguration connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
+    restHighLevelClient = connectionConfiguration.createClient(awsCredentialsSupplier);
+    openSearchClient = connectionConfiguration.createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier);
+    final BiFunction<AwsCredentialsSupplier, ConnectionConfiguration, OpenSearchClient> clientBiFunction =
+            (awsCredentialsSupplier1, connectionConfiguration1) -> {
+      final RestHighLevelClient restHighLevelClient1 = connectionConfiguration1.createClient(awsCredentialsSupplier1);
+      return connectionConfiguration1.createOpenSearchClient(restHighLevelClient1, awsCredentialsSupplier1).withTransportOptions(
+              TransportOptions.builder()
+                      .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
+                      .build());
+    };
+    openSearchClientRefresher = new OpenSearchClientRefresher(
+            awsCredentialsSupplier, openSearchClient, connectionConfiguration, clientBiFunction);
+    pluginConfigObservable.addPluginConfigObserver(
+            newPluginSetting -> openSearchClientRefresher.update((PluginSetting) newPluginSetting));
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
     final IndexTemplateAPIWrapper indexTemplateAPIWrapper = IndexTemplateAPIWrapperFactory.getWrapper(
             openSearchSinkConfig.getIndexConfiguration(), openSearchClient);
@@ -249,11 +268,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
 
     final int maxRetries = openSearchSinkConfig.getRetryConfiguration().getMaxRetries();
-    final OpenSearchClient filteringOpenSearchClient = openSearchClient.withTransportOptions(
-            TransportOptions.builder()
-                    .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
-                    .build());
-    bulkApiWrapper = BulkApiWrapperFactory.getWrapper(openSearchSinkConfig.getIndexConfiguration(), filteringOpenSearchClient);
+    bulkApiWrapper = BulkApiWrapperFactory.getWrapper(openSearchSinkConfig.getIndexConfiguration(),
+            () -> openSearchClientRefresher.get());
     bulkRetryStrategy = new BulkRetryStrategy(bulkRequest -> bulkApiWrapper.bulk(bulkRequest.getRequest()),
             this::logFailureForBulkRequests,
             pluginMetrics,

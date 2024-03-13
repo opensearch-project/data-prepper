@@ -23,14 +23,14 @@ class BulkApiWrapperFactoryTest {
     @Test
     void testGetEs6BulkApiWrapper() {
         when(indexConfiguration.getDistributionVersion()).thenReturn(DistributionVersion.ES6);
-        assertThat(BulkApiWrapperFactory.getWrapper(indexConfiguration, openSearchClient),
+        assertThat(BulkApiWrapperFactory.getWrapper(indexConfiguration, () -> openSearchClient),
                 instanceOf(Es6BulkApiWrapper.class));
     }
 
     @Test
     void testGetOpenSearchDefaultBulkApiWrapper() {
         when(indexConfiguration.getDistributionVersion()).thenReturn(DistributionVersion.DEFAULT);
-        assertThat(BulkApiWrapperFactory.getWrapper(indexConfiguration, openSearchClient),
+        assertThat(BulkApiWrapperFactory.getWrapper(indexConfiguration, () -> openSearchClient),
                 instanceOf(OpenSearchDefaultBulkApiWrapper.class));
     }
 }

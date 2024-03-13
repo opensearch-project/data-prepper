@@ -24,7 +24,7 @@ class OpenSearchDefaultBulkApiWrapperTest {
 
     @BeforeEach
     void setUp() {
-        objectUnderTest = new OpenSearchDefaultBulkApiWrapper(openSearchClient);
+        objectUnderTest = new OpenSearchDefaultBulkApiWrapper(() -> openSearchClient);
     }
 
     @Test

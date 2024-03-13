@@ -14,18 +14,20 @@ import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class Es6BulkApiWrapper implements BulkApiWrapper {
-    private final OpenSearchClient openSearchClient;
+    private final Supplier<OpenSearchClient> openSearchClientSupplier;
 
-    public Es6BulkApiWrapper(final OpenSearchClient openSearchClient) {
-        this.openSearchClient = openSearchClient;
+    public Es6BulkApiWrapper(final Supplier<OpenSearchClient> openSearchClientSupplier) {
+        this.openSearchClientSupplier = openSearchClientSupplier;
     }
 
     @Override
     public BulkResponse bulk(BulkRequest request) throws IOException, OpenSearchException {
         final JsonEndpoint<BulkRequest, BulkResponse, ErrorResponse> endpoint = es6BulkEndpoint(request);
+        final OpenSearchClient openSearchClient = openSearchClientSupplier.get();
         return openSearchClient._transport().performRequest(request, endpoint, openSearchClient._transportOptions());
     }
 
