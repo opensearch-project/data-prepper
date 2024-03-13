@@ -29,9 +29,9 @@ public class GlobalState extends EnhancedSourcePartition<Map<String, Object>> {
         this.state = convertStringToPartitionProgressState(null, sourcePartitionStoreItem.getPartitionProgressState());
     }
 
-    public GlobalState(String stateName, Optional<Map<String, Object>> state) {
+    public GlobalState(String stateName, Map<String, Object> state) {
         this.stateName = stateName;
-        this.state = state.orElse(null);
+        this.state = state;
 
     }
 
