@@ -11,6 +11,8 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.PipelineTransformer;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
+import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
+import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
@@ -46,9 +48,15 @@ public class PipelineParserConfiguration {
     }
 
     @Bean
-    public PipelinesDataflowModelParser pipelinesDataflowModelParser(
+    public PipelineConfigurationReader pipelineConfigurationReader(
             final FileStructurePathProvider fileStructurePathProvider) {
-        return new PipelinesDataflowModelParser(fileStructurePathProvider.getPipelineConfigFileLocation());
+        return new PipelineConfigurationFileReader(fileStructurePathProvider.getPipelineConfigFileLocation());
+    }
+
+    @Bean
+    public PipelinesDataflowModelParser pipelinesDataflowModelParser(
+            final PipelineConfigurationReader pipelineConfigurationReader) {
+        return new PipelinesDataflowModelParser(pipelineConfigurationReader);
     }
 
     @Bean

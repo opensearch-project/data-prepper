@@ -31,6 +31,7 @@ import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.pipeline.Pipeline;
+import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
@@ -115,8 +116,9 @@ class PipelineTransformerTests {
     }
 
     private PipelineTransformer createObjectUnderTest(final String pipelineConfigurationFileLocation) {
+
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataflowModelParser(
-                pipelineConfigurationFileLocation).parseConfiguration();
+                new PipelineConfigurationFileReader(pipelineConfigurationFileLocation)).parseConfiguration();
         return new PipelineTransformer(pipelinesDataFlowModel, pluginFactory, peerForwarderProvider,
                                   routerFactory, dataPrepperConfiguration, circuitBreakerManager, eventFactory,
                                   acknowledgementSetManager, sourceCoordinatorFactory);
