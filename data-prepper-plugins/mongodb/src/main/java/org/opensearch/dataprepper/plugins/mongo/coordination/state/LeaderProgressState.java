@@ -2,8 +2,6 @@ package org.opensearch.dataprepper.plugins.mongo.coordination.state;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.List;
-
 public class LeaderProgressState {
 
     @JsonProperty("initialized")
