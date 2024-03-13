@@ -17,29 +17,29 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import org.junit.jupiter.api.BeforeEach;
 
-public class JsonObjDecoderTest {
-    private JsonObjDecoder jsonObjDecoder;
+public class JsonObjectDecoderTest {
+    private JsonObjectDecoder jsonObjectDecoder;
     private Record<Event> receivedRecord;
     private Instant receivedTime;
 
-    private JsonObjDecoder createObjectUnderTest() {
-        return new JsonObjDecoder();
+    private JsonObjectDecoder createObjectUnderTest() {
+        return new JsonObjectDecoder();
     }
 
     @BeforeEach
     void setup() {
-        jsonObjDecoder = createObjectUnderTest();
+        jsonObjectDecoder = createObjectUnderTest();
         receivedRecord = null;
     }
 
     @Test
-    void test_basicJsonObjDecoder() {
+    void test_basicJsonObjectDecoder() {
         String stringValue = UUID.randomUUID().toString();
         Random r = new Random();
         int intValue = r.nextInt();
         String inputString = "{\"key1\":\""+stringValue+"\", \"key2\":"+intValue+"}";
         try {
-            jsonObjDecoder.parse(new ByteArrayInputStream(inputString.getBytes()), null, (record) -> {
+            jsonObjectDecoder.parse(new ByteArrayInputStream(inputString.getBytes()), null, (record) -> {
                 receivedRecord = record;
             });
         } catch (Exception e){}
@@ -51,7 +51,7 @@ public class JsonObjDecoderTest {
     }
 
     @Test
-    void test_basicJsonObjDecoder_withTimeReceived() {
+    void test_basicJsonObjectDecoder_withTimeReceived() {
         String stringValue = UUID.randomUUID().toString();
         Random r = new Random();
         int intValue = r.nextInt();
@@ -59,7 +59,7 @@ public class JsonObjDecoderTest {
         String inputString = "{\"key1\":\""+stringValue+"\", \"key2\":"+intValue+"}";
         final Instant now = Instant.now();
         try {
-            jsonObjDecoder.parse(new ByteArrayInputStream(inputString.getBytes()), now, (record) -> {
+            jsonObjectDecoder.parse(new ByteArrayInputStream(inputString.getBytes()), now, (record) -> {
                 receivedRecord = record;
                 receivedTime = ((DefaultEventHandle)(((Event)record.getData()).getEventHandle())).getInternalOriginationTime();
             });

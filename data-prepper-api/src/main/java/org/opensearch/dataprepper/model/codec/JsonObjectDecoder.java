@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-public class JsonObjDecoder implements ByteDecoder {
+public class JsonObjectDecoder implements ByteDecoder {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final JsonFactory jsonFactory = new JsonFactory();
 
