@@ -66,7 +66,7 @@ public class MongoDBConnectionTest {
     }
 
     private Boolean getRandomBoolean() {
-        return Math.random() < 0.5;
+        return random.nextBoolean();
     }
 
     private int getRandomInteger() {

@@ -16,5 +16,6 @@ dependencies {
 
     testImplementation testLibs.mockito.inline
     testImplementation testLibs.bundles.junit
+    testImplementation project(path: ':data-prepper-test-common')
 
 }
