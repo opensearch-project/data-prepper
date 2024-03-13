@@ -24,6 +24,7 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -120,25 +121,30 @@ public class ExportSchedulerTest {
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(2)).createPartition(argumentCaptor.capture());
         final List<EnhancedSourcePartition> partitions = argumentCaptor.getAllValues();
-        partitions.forEach(partition -> {
-            if (partition instanceof DataQueryPartition) {
-                final DataQueryPartition dataQueryPartition = (DataQueryPartition) partition;
-                assertThat(dataQueryPartition.getCollection(), equalTo(collection));
-                assertThat(dataQueryPartition.getPartitionKey(), equalTo(partitionKey));
-                assertThat(dataQueryPartition.getQuery(), equalTo(partitionKey));
-                assertThat(partitions.get(0).getPartitionType(), equalTo(DataQueryPartition.PARTITION_TYPE));
-            } else {
-                final GlobalState globalState = (GlobalState) partition;
-                assertThat(globalState.getPartitionKey(), equalTo(EXPORT_PREFIX + globalPartitionKey));
-                assertThat(globalState.getProgressState().get().toString(), is(Map.of(
-                        "totalPartitions", 1,
-                        "loadedPartitions", 0,
-                        "loadedRecords", 0
-                ).toString()));
-                assertThat(globalState.getPartitionType(), equalTo(null));
-            }
+        var dataQueryPartitions = partitions.stream()
+            .filter(partition -> partition instanceof DataQueryPartition)
+            .map(partition -> (DataQueryPartition)partition).collect(Collectors.toList());
+        assertThat(dataQueryPartitions.size(), equalTo(1));
+        dataQueryPartitions.forEach(dataQueryPartition -> {
+            assertThat(dataQueryPartition.getCollection(), equalTo(collection));
+            assertThat(dataQueryPartition.getPartitionKey(), equalTo(partitionKey));
+            assertThat(dataQueryPartition.getQuery(), equalTo(partitionKey));
+            assertThat(partitions.get(0).getPartitionType(), equalTo(DataQueryPartition.PARTITION_TYPE));
         });
 
+        var globalStates = partitions.stream()
+                .filter(partition -> partition instanceof GlobalState)
+                .map(partition -> (GlobalState)partition).collect(Collectors.toList());
+        assertThat(globalStates.size(), equalTo(1));
+        globalStates.forEach(globalState -> {
+            assertThat(globalState.getPartitionKey(), equalTo(EXPORT_PREFIX + globalPartitionKey));
+            assertThat(globalState.getProgressState().get().toString(), is(Map.of(
+                    "totalPartitions", 1,
+                    "loadedPartitions", 0,
+                    "loadedRecords", 0
+            ).toString()));
+            assertThat(globalState.getPartitionType(), equalTo(null));
+        });
         verify(exportPartitionTotalCounter).increment(1);
     }
 
@@ -169,25 +175,30 @@ public class ExportSchedulerTest {
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(4)).createPartition(argumentCaptor.capture());
         final List<EnhancedSourcePartition> partitions = argumentCaptor.getAllValues();
-        partitions.forEach(partition -> {
-            if (partition instanceof DataQueryPartition) {
-                final DataQueryPartition dataQueryPartition = (DataQueryPartition) partition;
-                assertThat(dataQueryPartition.getCollection(), equalTo(collection));
-                assertThat(dataQueryPartition.getPartitionKey(), equalTo(partitionKey));
-                assertThat(dataQueryPartition.getQuery(), equalTo(partitionKey));
-                assertThat(partitions.get(0).getPartitionType(), equalTo(DataQueryPartition.PARTITION_TYPE));
-            } else {
-                final GlobalState globalState = (GlobalState) partition;
-                assertThat(globalState.getPartitionKey(), equalTo(EXPORT_PREFIX + globalPartitionKey));
-                assertThat(globalState.getProgressState().get().toString(), is(Map.of(
-                        "totalPartitions", 3,
-                        "loadedPartitions", 0,
-                        "loadedRecords", 0
-                ).toString()));
-                assertThat(globalState.getPartitionType(), equalTo(null));
-            }
+        var dataQueryPartitions = partitions.stream()
+                .filter(partition -> partition instanceof DataQueryPartition)
+                .map(partition -> (DataQueryPartition)partition).collect(Collectors.toList());
+        assertThat(dataQueryPartitions.size(), equalTo(3));
+        dataQueryPartitions.forEach(dataQueryPartition -> {
+            assertThat(dataQueryPartition.getCollection(), equalTo(collection));
+            assertThat(dataQueryPartition.getPartitionKey(), equalTo(partitionKey));
+            assertThat(dataQueryPartition.getQuery(), equalTo(partitionKey));
+            assertThat(partitions.get(0).getPartitionType(), equalTo(DataQueryPartition.PARTITION_TYPE));
         });
 
+        var globalStates = partitions.stream()
+                .filter(partition -> partition instanceof GlobalState)
+                .map(partition -> (GlobalState)partition).collect(Collectors.toList());
+        assertThat(globalStates.size(), equalTo(1));
+        globalStates.forEach(globalState -> {
+            assertThat(globalState.getPartitionKey(), equalTo(EXPORT_PREFIX + globalPartitionKey));
+            assertThat(globalState.getProgressState().get().toString(), is(Map.of(
+                    "totalPartitions", 3,
+                    "loadedPartitions", 0,
+                    "loadedRecords", 0
+            ).toString()));
+            assertThat(globalState.getPartitionType(), equalTo(null));
+        });
         verify(exportPartitionTotalCounter).increment(3);
     }
 }

@@ -17,8 +17,6 @@ import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ExportScheduler implements Runnable {
@@ -32,8 +30,6 @@ public class ExportScheduler implements Runnable {
     private final PluginMetrics pluginMetrics;
     private final EnhancedSourceCoordinator enhancedSourceCoordinator;
     private final MongoDBExportPartitionSupplier mongoDBExportPartitionSupplier;
-    private final ExecutorService executor;
-
     private final Counter exportJobSuccessCounter;
     private final Counter exportJobFailureCounter;
 
@@ -46,8 +42,6 @@ public class ExportScheduler implements Runnable {
         this.enhancedSourceCoordinator = enhancedSourceCoordinator;
         this.mongoDBExportPartitionSupplier = mongoDBExportPartitionSupplier;
         this.pluginMetrics = pluginMetrics;
-
-        executor = Executors.newCachedThreadPool();
 
         exportJobSuccessCounter = pluginMetrics.counter(EXPORT_JOB_SUCCESS_COUNT);
         exportJobFailureCounter = pluginMetrics.counter(EXPORT_JOB_FAILURE_COUNT);
@@ -63,7 +57,7 @@ public class ExportScheduler implements Runnable {
                 final Optional<EnhancedSourcePartition> sourcePartition = enhancedSourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE);
                 if (sourcePartition.isPresent()) {
                     final ExportPartition exportPartition = (ExportPartition) sourcePartition.get();
-                    LOG.info("Acquired an export partition: " + exportPartition.getPartitionKey());
+                    LOG.info("Acquired an export partition: {}", exportPartition.getPartitionKey());
 
                     final List<PartitionIdentifier> partitionIdentifiers = mongoDBExportPartitionSupplier.apply(exportPartition);
 
@@ -86,21 +80,19 @@ public class ExportScheduler implements Runnable {
             }
         }
         LOG.warn("Export scheduler interrupted, looks like shutdown has triggered");
-        executor.shutdownNow();
-
     }
 
     private void createDataQueryPartitions(final String collection,
                                            final Instant exportTime,
                                            final List<PartitionIdentifier> partitionIdentifiers) {
-        final AtomicInteger totalQueries = new AtomicInteger();
+        AtomicInteger totalQueries = new AtomicInteger();
         partitionIdentifiers.forEach(partitionIdentifier -> {
             final DataQueryProgressState progressState = new DataQueryProgressState();
             progressState.setExecutedQueries(0);
             progressState.setLoadedRecords(0);
             progressState.setStartTime(exportTime.toEpochMilli());
 
-            totalQueries.addAndGet(1);
+            totalQueries.getAndIncrement();
             final DataQueryPartition partition = new DataQueryPartition(partitionIdentifier.getPartitionKey(), progressState);
             enhancedSourceCoordinator.createPartition(partition);
         });

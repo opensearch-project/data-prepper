@@ -102,13 +102,13 @@ public class LeaderScheduler implements Runnable {
     }
 
     private boolean isExportRequired(final CollectionConfig.IngestionMode ingestionMode) {
-        return ingestionMode.equals(CollectionConfig.IngestionMode.EXPORT_STREAM) ||
-                ingestionMode.equals(CollectionConfig.IngestionMode.EXPORT);
+        return ingestionMode == CollectionConfig.IngestionMode.EXPORT_STREAM ||
+                ingestionMode == CollectionConfig.IngestionMode.EXPORT;
     }
 
     private boolean isStreamRequired(final CollectionConfig.IngestionMode ingestionMode) {
-        return ingestionMode.equals(CollectionConfig.IngestionMode.EXPORT_STREAM) ||
-                ingestionMode.equals(CollectionConfig.IngestionMode.STREAM);
+        return ingestionMode == CollectionConfig.IngestionMode.EXPORT_STREAM ||
+                ingestionMode == CollectionConfig.IngestionMode.STREAM;
     }
     private void init() {
         LOG.info("Try to initialize DocumentDB Leader Partition");
