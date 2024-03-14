@@ -39,11 +39,11 @@ public class ExportPartition extends EnhancedSourcePartition<ExportProgressState
     }
 
     public ExportPartition(final String collection, final int partitionSize, final Instant exportTime,
-                           final Optional<ExportProgressState> state) {
+                           final ExportProgressState state) {
         this.collection = collection;
         this.partitionSize = partitionSize;
         this.exportTime = exportTime;
-        this.state = state.orElse(null);
+        this.state = state;
 
     }
     
