@@ -1,7 +1,8 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.slf4j.Logger;
@@ -10,25 +11,29 @@ import org.slf4j.LoggerFactory;
 import java.util.Objects;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class OpenSearchClientRefresher implements PluginComponentRefresher<OpenSearchClient, PluginSetting> {
+    static final String CREDENTIALS_CHANGED = "credentialsChanged";
+    static final String CLIENT_REFRESH_ERRORS = "clientRefreshErrors";
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchClientRefresher.class);
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-    private final AwsCredentialsSupplier awsCredentialsSupplier;
-    private final BiFunction<AwsCredentialsSupplier, ConnectionConfiguration, OpenSearchClient> clientBiFunction;
+    private final Function<ConnectionConfiguration, OpenSearchClient> clientFunction;
     private OpenSearchClient currentClient;
     private ConnectionConfiguration currentConfig;
 
-    public OpenSearchClientRefresher(final AwsCredentialsSupplier awsCredentialsSupplier,
+    private final Counter credentialsChangeCounter;
+    private final Counter clientRefreshErrorsCounter;
+
+    public OpenSearchClientRefresher(final PluginMetrics pluginMetrics,
                                      final OpenSearchClient openSearchClient,
                                      final ConnectionConfiguration connectionConfiguration,
-                                     final BiFunction<AwsCredentialsSupplier, ConnectionConfiguration, OpenSearchClient>
-                                             clientBiFunction) {
-        this.awsCredentialsSupplier = awsCredentialsSupplier;
-        this.clientBiFunction = clientBiFunction;
+                                     final Function<ConnectionConfiguration, OpenSearchClient> clientFunction) {
+        this.clientFunction = clientFunction;
         this.currentConfig = connectionConfiguration;
         this.currentClient = openSearchClient;
+        credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
+        clientRefreshErrorsCounter = pluginMetrics.counter(CLIENT_REFRESH_ERRORS);
     }
 
     @Override
@@ -50,11 +55,13 @@ public class OpenSearchClientRefresher implements PluginComponentRefresher<OpenS
     public void update(PluginSetting pluginSetting) {
         final ConnectionConfiguration newConfig = ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         if (basicAuthChanged(newConfig)) {
+            credentialsChangeCounter.increment();
             readWriteLock.writeLock().lock();
             try {
-                currentClient = clientBiFunction.apply(awsCredentialsSupplier, newConfig);
+                currentClient = clientFunction.apply(newConfig);
                 currentConfig = newConfig;
             } catch (Exception e) {
+                clientRefreshErrorsCounter.increment();
                 LOG.error("Refreshing {} failed.", getComponentClass(), e);
             } finally {
                 readWriteLock.writeLock().unlock();

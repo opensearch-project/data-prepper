@@ -82,7 +82,7 @@ import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -219,16 +219,16 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     final ConnectionConfiguration connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
     restHighLevelClient = connectionConfiguration.createClient(awsCredentialsSupplier);
     openSearchClient = connectionConfiguration.createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier);
-    final BiFunction<AwsCredentialsSupplier, ConnectionConfiguration, OpenSearchClient> clientBiFunction =
-            (awsCredentialsSupplier1, connectionConfiguration1) -> {
-      final RestHighLevelClient restHighLevelClient1 = connectionConfiguration1.createClient(awsCredentialsSupplier1);
-      return connectionConfiguration1.createOpenSearchClient(restHighLevelClient1, awsCredentialsSupplier1).withTransportOptions(
+    final Function<ConnectionConfiguration, OpenSearchClient> clientFunction =
+            (connectionConfiguration1) -> {
+      final RestHighLevelClient restHighLevelClient1 = connectionConfiguration1.createClient(awsCredentialsSupplier);
+      return connectionConfiguration1.createOpenSearchClient(restHighLevelClient1, awsCredentialsSupplier).withTransportOptions(
               TransportOptions.builder()
                       .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
                       .build());
     };
     openSearchClientRefresher = new OpenSearchClientRefresher(
-            awsCredentialsSupplier, openSearchClient, connectionConfiguration, clientBiFunction);
+            pluginMetrics, openSearchClient, connectionConfiguration, clientFunction);
     pluginConfigObservable.addPluginConfigObserver(
             newPluginSetting -> openSearchClientRefresher.update((PluginSetting) newPluginSetting));
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
