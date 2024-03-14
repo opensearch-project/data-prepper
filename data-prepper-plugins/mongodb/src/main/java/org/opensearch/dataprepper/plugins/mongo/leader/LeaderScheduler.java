@@ -145,7 +145,7 @@ public class LeaderScheduler implements Runnable {
      * @param streamTime the start time for change events, any change events with creation datetime before this should be ignored.
      */
     private void createStreamPartition(final CollectionConfig collectionConfig, final Instant streamTime, final boolean waitForExport) {
-        LOG.info("Creating stream global partition");
+        LOG.info("Creating stream global partition: {}", collectionConfig.getCollection());
         final StreamProgressState streamProgressState = new StreamProgressState();
         streamProgressState.setWaitForExport(waitForExport);
         streamProgressState.setStartTime(streamTime.toEpochMilli());
@@ -159,7 +159,7 @@ public class LeaderScheduler implements Runnable {
      * @param exportTime the start time for Export
      */
     private void createExportPartition(final CollectionConfig collectionConfig, final Instant exportTime) {
-        LOG.info("Creating export global partition");
+        LOG.info("Creating export global partition for collection: {}", collectionConfig.getCollection());
         final ExportProgressState exportProgressState = new ExportProgressState();
         exportProgressState.setCollectionName(collectionConfig.getCollectionName());
         exportProgressState.setDatabaseName(collectionConfig.getDatabaseName());

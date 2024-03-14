@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.mongo.export.partition;
+package org.opensearch.dataprepper.plugins.mongo.export;
 
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;

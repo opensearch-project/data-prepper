@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.mongo.export.partition;
+package org.opensearch.dataprepper.plugins.mongo.export;
 
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
@@ -50,7 +50,7 @@ public class MongoDBExportPartitionSupplier implements Function<ExportPartition,
                     .projection(new Document("_id", 1))
                     .sort(new Document("_id", 1))
                     .limit(1);
-            while (true) {
+            while (!Thread.currentThread().isInterrupted()) {
                 try (final MongoCursor<Document> startCursor = startIterable.iterator()) {
                     if (!startCursor.hasNext()) {
                         break;

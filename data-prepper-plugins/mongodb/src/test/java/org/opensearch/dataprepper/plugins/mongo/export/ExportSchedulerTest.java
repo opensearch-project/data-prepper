@@ -14,7 +14,6 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
-import org.opensearch.dataprepper.plugins.mongo.export.partition.MongoDBExportPartitionSupplier;
 
 import java.time.Instant;
 import java.util.List;
