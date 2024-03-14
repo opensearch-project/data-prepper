@@ -30,7 +30,7 @@ public class ExportRecordBufferWriter extends RecordBufferWriter {
     private final DistributionSummary bytesReceivedSummary;
     private final DistributionSummary bytesProcessedSummary;
 
-    public ExportRecordBufferWriter(final BufferAccumulator<Record<Event>> bufferAccumulator,
+    private ExportRecordBufferWriter(final BufferAccumulator<Record<Event>> bufferAccumulator,
                                     final CollectionConfig collectionConfig,
                                     final RecordConverter recordConverter,
                                     final PluginMetrics pluginMetrics,
@@ -42,6 +42,14 @@ public class ExportRecordBufferWriter extends RecordBufferWriter {
         this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
         this.bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
         this.exportStartTime = exportStartTime;
+    }
+
+    public static ExportRecordBufferWriter create(final BufferAccumulator<Record<Event>> bufferAccumulator,
+                                                  final CollectionConfig collectionConfig,
+                                                  final RecordConverter recordConverter,
+                                                  final PluginMetrics pluginMetrics,
+                                                  final long exportStartTime) {
+        return new ExportRecordBufferWriter(bufferAccumulator, collectionConfig, recordConverter, pluginMetrics, exportStartTime);
     }
 
     @Override

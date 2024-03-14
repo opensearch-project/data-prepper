@@ -55,6 +55,7 @@ public class RecordConverter {
      * @param eventCreationTimeMillis Creation timestamp of the event
      * @param eventVersionNumber      Event version number to handle conflicts
      * @param eventName               Event name
+     * @return Jackson document event
      */
     public Event convert(final String record,
                         final long eventCreationTimeMillis,

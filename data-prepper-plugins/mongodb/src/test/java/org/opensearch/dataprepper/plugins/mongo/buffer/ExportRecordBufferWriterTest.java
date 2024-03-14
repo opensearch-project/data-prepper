@@ -111,7 +111,7 @@ class ExportRecordBufferWriterTest {
         int numberOfRecords = random.nextInt(10);
 
         final List<String> data = generateData(numberOfRecords);
-        final ExportRecordBufferWriter recordBufferWriter = new ExportRecordBufferWriter(bufferAccumulator, collectionConfig,
+        final ExportRecordBufferWriter recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, collectionConfig,
                 recordConverter, pluginMetrics, Instant.now().toEpochMilli());
 
         recordBufferWriter.writeToBuffer(null, data);
@@ -137,7 +137,7 @@ class ExportRecordBufferWriterTest {
 
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
 
-        final ExportRecordBufferWriter recordBufferWriter = new ExportRecordBufferWriter(bufferAccumulator, collectionConfig,
+        final ExportRecordBufferWriter recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, collectionConfig,
                 recordConverter, pluginMetrics, exportStartTime);
         when(recordConverter.convert(record, exportStartTime, eventVersionNumber, null)).thenReturn(event);
 
@@ -165,7 +165,7 @@ class ExportRecordBufferWriterTest {
 
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
 
-        final ExportRecordBufferWriter recordBufferWriter = new ExportRecordBufferWriter(bufferAccumulator, collectionConfig,
+        final ExportRecordBufferWriter recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, collectionConfig,
                 recordConverter, pluginMetrics, exportStartTime);
         when(recordConverter.convert(record, exportStartTime, eventVersionNumber, null)).thenReturn(event);
 
@@ -194,7 +194,7 @@ class ExportRecordBufferWriterTest {
 
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
 
-        final ExportRecordBufferWriter recordBufferWriter = new ExportRecordBufferWriter(bufferAccumulator, collectionConfig,
+        final ExportRecordBufferWriter recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, collectionConfig,
                 recordConverter, pluginMetrics, exportStartTime);
         when(recordConverter.convert(record, exportStartTime, eventVersionNumber, null)).thenReturn(event);
         doThrow(RuntimeException.class).when(bufferAccumulator).flush();
