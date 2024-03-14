@@ -52,8 +52,6 @@ public class LeaderSchedulerTest {
             .atMost(Duration.ofSeconds(2))
             .untilAsserted(() -> verifyNoInteractions(collectionConfig));
         executorService.shutdownNow();
-
-
     }
 
     @Test
@@ -77,9 +75,11 @@ public class LeaderSchedulerTest {
 
         executorService.shutdownNow();
 
+        verify(coordinator).giveUpPartition(leaderPartition);
+
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(3)).createPartition(any(EnhancedSourcePartition.class));
-        verify(coordinator).giveUpPartition(leaderPartition);
+
 
         assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));
     }
@@ -101,13 +101,14 @@ public class LeaderSchedulerTest {
         // Acquire the init partition
         await()
             .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() -> verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+            .untilAsserted(() ->  verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
 
         executorService.shutdownNow();
 
+        verify(coordinator).giveUpPartition(leaderPartition);
+
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(2)).createPartition(any(EnhancedSourcePartition.class));
-        verify(coordinator).giveUpPartition(leaderPartition);
 
         assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));
     }
@@ -124,14 +125,15 @@ public class LeaderSchedulerTest {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> leaderScheduler.run());
         await()
-                .atMost(Duration.ofSeconds(2))
-                .untilAsserted(() -> verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() -> verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
 
         executorService.shutdownNow();
 
+        verify(coordinator).giveUpPartition(leaderPartition);
+
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(2)).createPartition(any(EnhancedSourcePartition.class));
-        verify(coordinator).giveUpPartition(leaderPartition);
 
         assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));
     }
