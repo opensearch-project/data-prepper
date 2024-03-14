@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:blocking-buffer')

@@ -11,8 +11,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.parser.ByteCountDeserializer;
-import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
+import org.opensearch.dataprepper.pipeline.parser.ByteCountDeserializer;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
 
 import java.io.IOException;
 import java.io.InputStream;

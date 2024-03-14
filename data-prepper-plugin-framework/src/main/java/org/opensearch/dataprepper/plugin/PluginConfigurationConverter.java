@@ -6,12 +6,12 @@
 package org.opensearch.dataprepper.plugin;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Named;

@@ -11,7 +11,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 
 import java.util.Map;
 
@@ -23,7 +22,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ExtensionPluginConfigurationResolverTest {
     @Mock
-    private DataPrepperConfiguration dataPrepperConfiguration;
+    private ExtensionsConfiguration extensionsConfiguration;
     @Mock
     private PipelinesDataFlowModel pipelinesDataFlowModel;
     @Mock
@@ -32,28 +31,28 @@ class ExtensionPluginConfigurationResolverTest {
     private ExtensionPluginConfigurationResolver objectUnderTest;
 
     @Test
-    void testGetExtensionMap_defined_in_dataPrepperConfiguration_only() {
-        when(dataPrepperConfiguration.getPipelineExtensions()).thenReturn(pipelineExtensions);
+    void testGetExtensionMap_defined_in_extensionsConfiguration_only() {
+        when(extensionsConfiguration.getPipelineExtensions()).thenReturn(pipelineExtensions);
         final Map<String, Object> extensionMap = Map.of("test_extension", Map.of("test_key", "test_value"));
         when(pipelineExtensions.getExtensionMap()).thenReturn(extensionMap);
         when(pipelinesDataFlowModel.getPipelineExtensions()).thenReturn(null);
-        objectUnderTest = new ExtensionPluginConfigurationResolver(dataPrepperConfiguration, pipelinesDataFlowModel);
+        objectUnderTest = new ExtensionPluginConfigurationResolver(extensionsConfiguration, pipelinesDataFlowModel);
         assertThat(objectUnderTest.getCombinedExtensionMap(), equalTo(extensionMap));
     }
 
     @Test
     void testGetExtensionMap_defined_in_pipelinesDataFlowModel_only() {
-        when(dataPrepperConfiguration.getPipelineExtensions()).thenReturn(null);
+        when(extensionsConfiguration.getPipelineExtensions()).thenReturn(null);
         when(pipelinesDataFlowModel.getPipelineExtensions()).thenReturn(pipelineExtensions);
         final Map<String, Object> extensionMap = Map.of("test_extension", Map.of("test_key", "test_value"));
         when(pipelineExtensions.getExtensionMap()).thenReturn(extensionMap);
-        objectUnderTest = new ExtensionPluginConfigurationResolver(dataPrepperConfiguration, pipelinesDataFlowModel);
+        objectUnderTest = new ExtensionPluginConfigurationResolver(extensionsConfiguration, pipelinesDataFlowModel);
         assertThat(objectUnderTest.getCombinedExtensionMap(), equalTo(extensionMap));
     }
 
     @Test
     void testGetExtensionMap_defined_in_both() {
-        when(dataPrepperConfiguration.getPipelineExtensions()).thenReturn(pipelineExtensions);
+        when(extensionsConfiguration.getPipelineExtensions()).thenReturn(pipelineExtensions);
         final Map<String, Object> dataPrepperConfigurationExtensionMap = Map.of(
                 "test_extension1", Map.of("test_key1", "test_value1"),
                 "test_extension2", Map.of("test_key1", "test_value1")
@@ -65,7 +64,7 @@ class ExtensionPluginConfigurationResolverTest {
                 "test_extension1", Map.of("test_key2", "test_value2")
         );
         when(pipelineExtensions1.getExtensionMap()).thenReturn(pipelinesDataFlowModelExtensionMap);
-        objectUnderTest = new ExtensionPluginConfigurationResolver(dataPrepperConfiguration, pipelinesDataFlowModel);
+        objectUnderTest = new ExtensionPluginConfigurationResolver(extensionsConfiguration, pipelinesDataFlowModel);
         final Map<String, Object> expectedExtensionMap = Map.of(
                 "test_extension1", Map.of("test_key2", "test_value2"),
                 "test_extension2", Map.of("test_key1", "test_value1")

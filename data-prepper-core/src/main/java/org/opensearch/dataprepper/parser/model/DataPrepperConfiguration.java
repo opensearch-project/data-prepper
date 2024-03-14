@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.parser.config.MetricTagFilter;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.pipeline.PipelineShutdownOption;
+import org.opensearch.dataprepper.plugin.ExtensionsConfiguration;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -28,7 +29,7 @@ import java.util.Objects;
 /**
  * Class to hold configuration for DataPrepper, including server port and Log4j settings
  */
-public class DataPrepperConfiguration {
+public class DataPrepperConfiguration implements ExtensionsConfiguration {
     static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(30L);
 
     private static final String DEFAULT_SOURCE_COORDINATION_STORE = "in_memory";
@@ -225,6 +226,7 @@ public class DataPrepperConfiguration {
         return pipelineShutdown;
     }
 
+    @Override
     public PipelineExtensions getPipelineExtensions() {
         return pipelineExtensions;
     }

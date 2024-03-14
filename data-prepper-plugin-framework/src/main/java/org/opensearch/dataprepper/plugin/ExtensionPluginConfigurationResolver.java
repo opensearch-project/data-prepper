@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -21,10 +20,10 @@ public class ExtensionPluginConfigurationResolver {
     private final Map<String, Object> dataPrepperConfigExtensionMap;
 
     @Inject
-    public ExtensionPluginConfigurationResolver(final DataPrepperConfiguration dataPrepperConfiguration,
+    public ExtensionPluginConfigurationResolver(final ExtensionsConfiguration extensionsConfiguration,
                                                 final PipelinesDataFlowModel pipelinesDataFlowModel) {
-        this.dataPrepperConfigExtensionMap = dataPrepperConfiguration.getPipelineExtensions() == null?
-                new HashMap<>() : new HashMap<>(dataPrepperConfiguration.getPipelineExtensions().getExtensionMap());
+        this.dataPrepperConfigExtensionMap = extensionsConfiguration.getPipelineExtensions() == null?
+                new HashMap<>() : new HashMap<>(extensionsConfiguration.getPipelineExtensions().getExtensionMap());
         combinedExtensionMap = new HashMap<>(dataPrepperConfigExtensionMap);
         if (pipelinesDataFlowModel.getPipelineExtensions() != null) {
             combinedExtensionMap.putAll(pipelinesDataFlowModel.getPipelineExtensions().getExtensionMap());
