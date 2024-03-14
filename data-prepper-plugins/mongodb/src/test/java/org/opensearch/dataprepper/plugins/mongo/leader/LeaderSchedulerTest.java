@@ -43,7 +43,7 @@ public class LeaderSchedulerTest {
 
     @Test
     void test_non_leader_run() {
-        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig));
+        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.empty());
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -59,7 +59,7 @@ public class LeaderSchedulerTest {
     @Test
     void test_should_init() {
 
-        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig));
+        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         given(collectionConfig.getIngestionMode()).willReturn(CollectionConfig.IngestionMode.EXPORT_STREAM);
@@ -74,6 +74,7 @@ public class LeaderSchedulerTest {
         await()
             .atMost(Duration.ofSeconds(2))
             .untilAsserted(() -> verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+
         executorService.shutdownNow();
 
         // Should create 1 export partition + 1 stream partitions + 1 global table state
@@ -84,9 +85,9 @@ public class LeaderSchedulerTest {
     }
 
     @Test
-    void test_should_init_export() throws InterruptedException {
+    void test_should_init_export() {
 
-        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig));
+        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         given(collectionConfig.getIngestionMode()).willReturn(CollectionConfig.IngestionMode.EXPORT);
@@ -96,7 +97,6 @@ public class LeaderSchedulerTest {
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> leaderScheduler.run());
-        Thread.sleep(100);
 
         // Acquire the init partition
         await()
@@ -113,9 +113,9 @@ public class LeaderSchedulerTest {
     }
 
     @Test
-    void test_should_init_stream() throws InterruptedException {
+    void test_should_init_stream() {
 
-        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig));
+        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         given(collectionConfig.getIngestionMode()).willReturn(CollectionConfig.IngestionMode.STREAM);
@@ -123,12 +123,11 @@ public class LeaderSchedulerTest {
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> leaderScheduler.run());
-        Thread.sleep(100);
+        await()
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+
         executorService.shutdownNow();
-
-
-        // Acquire the init partition
-        verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE));
 
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(2)).createPartition(any(EnhancedSourcePartition.class));
