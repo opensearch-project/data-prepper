@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.LeaderPartition;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,20 +42,22 @@ public class LeaderSchedulerTest {
     private LeaderPartition leaderPartition;
 
     @Test
-    void test_non_leader_run() throws InterruptedException {
+    void test_non_leader_run() {
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig));
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.empty());
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> leaderScheduler.run());
-        Thread.sleep(100);
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() -> verifyNoInteractions(collectionConfig));
         executorService.shutdownNow();
 
-        verifyNoInteractions(collectionConfig);
+
     }
 
     @Test
-    void test_should_init() throws InterruptedException {
+    void test_should_init() {
 
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig));
         leaderPartition = new LeaderPartition();
@@ -65,12 +69,12 @@ public class LeaderSchedulerTest {
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> leaderScheduler.run());
-        Thread.sleep(100);
-        executorService.shutdownNow();
-
 
         // Acquire the init partition
-        verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE));
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() -> verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+        executorService.shutdownNow();
 
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(3)).createPartition(any(EnhancedSourcePartition.class));
@@ -93,11 +97,13 @@ public class LeaderSchedulerTest {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> leaderScheduler.run());
         Thread.sleep(100);
-        executorService.shutdownNow();
-
 
         // Acquire the init partition
-        verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE));
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() -> verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+
+        executorService.shutdownNow();
 
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(2)).createPartition(any(EnhancedSourcePartition.class));
