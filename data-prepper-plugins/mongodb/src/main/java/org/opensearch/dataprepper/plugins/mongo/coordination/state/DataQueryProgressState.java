@@ -11,27 +11,27 @@ public class DataQueryProgressState {
 
 
     @JsonProperty("executedQueries")
-    private int executedQueries;
+    private long executedQueries;
 
     @JsonProperty("loadedRecords")
-    private int loadedRecords;
+    private long loadedRecords;
 
     @JsonProperty("exportStartTime")
     private long startTime;
 
-    public int getExecutedQueries() {
+    public long getExecutedQueries() {
         return executedQueries;
     }
 
-    public int getLoadedRecords() {
+    public long getLoadedRecords() {
         return loadedRecords;
     }
 
-    public void setExecutedQueries(int executedQueries) {
+    public void setExecutedQueries(long executedQueries) {
         this.executedQueries = executedQueries;
     }
 
-    public void setLoadedRecords(int loadedRecords) {
+    public void setLoadedRecords(long loadedRecords) {
         this.loadedRecords = loadedRecords;
     }
 

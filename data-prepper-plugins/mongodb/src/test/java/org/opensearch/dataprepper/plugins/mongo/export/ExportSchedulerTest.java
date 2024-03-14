@@ -100,7 +100,6 @@ public class ExportSchedulerTest {
         final int partitionSize = new Random().nextInt();
         final Instant exportTime = Instant.now();
         final String partitionKey = collection + "|" + UUID.randomUUID();
-        final String globalPartitionKey = collection + "|" + partitionSize + "|" + exportTime.toEpochMilli();
 
         exportPartition = new ExportPartition(collection, partitionSize, exportTime, null);
         given(partitionIdentifier.getPartitionKey()).willReturn(partitionKey);
@@ -136,7 +135,7 @@ public class ExportSchedulerTest {
                 .map(partition -> (GlobalState)partition).collect(Collectors.toList());
         assertThat(globalStates.size(), equalTo(1));
         globalStates.forEach(globalState -> {
-            assertThat(globalState.getPartitionKey(), equalTo(EXPORT_PREFIX + globalPartitionKey));
+            assertThat(globalState.getPartitionKey(), equalTo(EXPORT_PREFIX + collection));
             assertThat(globalState.getProgressState().get().toString(), is(Map.of(
                     "totalPartitions", 1,
                     "loadedPartitions", 0,
@@ -154,8 +153,7 @@ public class ExportSchedulerTest {
         final int partitionSize = new Random().nextInt();
         final Instant exportTime = Instant.now();
         final String partitionKey = collection + "|" + UUID.randomUUID();
-        final String globalPartitionKey = collection + "|" + partitionSize + "|" + exportTime.toEpochMilli();
-
+        
         exportPartition = new ExportPartition(collection, partitionSize, exportTime, null);
         given(partitionIdentifier.getPartitionKey()).willReturn(partitionKey);
         given(mongoDBExportPartitionSupplier.apply(exportPartition)).willReturn(List.of(partitionIdentifier, partitionIdentifier, partitionIdentifier));
@@ -190,7 +188,7 @@ public class ExportSchedulerTest {
                 .map(partition -> (GlobalState)partition).collect(Collectors.toList());
         assertThat(globalStates.size(), equalTo(1));
         globalStates.forEach(globalState -> {
-            assertThat(globalState.getPartitionKey(), equalTo(EXPORT_PREFIX + globalPartitionKey));
+            assertThat(globalState.getPartitionKey(), equalTo(EXPORT_PREFIX + collection));
             assertThat(globalState.getProgressState().get().toString(), is(Map.of(
                     "totalPartitions", 3,
                     "loadedPartitions", 0,

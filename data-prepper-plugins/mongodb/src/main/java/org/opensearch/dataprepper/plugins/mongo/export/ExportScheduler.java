@@ -60,7 +60,7 @@ public class ExportScheduler implements Runnable {
 
                     final List<PartitionIdentifier> partitionIdentifiers = mongoDBExportPartitionSupplier.apply(exportPartition);
 
-                    createDataQueryPartitions(exportPartition.getPartitionKey(), Instant.now(), partitionIdentifiers);
+                    createDataQueryPartitions(exportPartition.getCollection(), Instant.now(), partitionIdentifiers);
                 }
                 try {
                     Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
