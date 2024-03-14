@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins;
+package org.opensearch.dataprepper.plugin;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,11 +15,7 @@ import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarke
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
-import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
-import org.opensearch.dataprepper.plugin.ExtensionsConfiguration;
-import org.opensearch.dataprepper.plugin.PluginBeanFactoryProvider;
-import org.opensearch.dataprepper.plugin.TestPluggableInterface;
-import org.opensearch.dataprepper.plugin.TestPluginConfiguration;
+import org.opensearch.dataprepper.plugins.TestObjectPlugin;
 import org.opensearch.dataprepper.plugins.test.TestPlugin;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 

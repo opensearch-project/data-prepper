@@ -25,7 +25,7 @@ import java.util.Objects;
  * <p><i>publicContext</i> is the root {@link ApplicationContext}</p>
  */
 @Named
-public class PluginBeanFactoryProvider implements Provider<BeanFactory> {
+class PluginBeanFactoryProvider implements Provider<BeanFactory> {
     private final GenericApplicationContext sharedPluginApplicationContext;
     private final GenericApplicationContext coreApplicationContext;
 
