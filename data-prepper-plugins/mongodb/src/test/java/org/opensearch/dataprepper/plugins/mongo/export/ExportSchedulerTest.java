@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQuery
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
@@ -108,7 +110,9 @@ public class ExportSchedulerTest {
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> exportScheduler.run());
-        Thread.sleep(100);
+        await()
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator, times(2)).createPartition(any()));
         executorService.shutdownNow();
 
 
@@ -161,7 +165,9 @@ public class ExportSchedulerTest {
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> exportScheduler.run());
-        Thread.sleep(100);
+        await()
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator, times(4)).createPartition(any()));
         executorService.shutdownNow();
 
 

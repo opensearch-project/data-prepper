@@ -28,12 +28,14 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -160,7 +162,9 @@ public class ExportWorkerTest {
             }
         });
 
-        Thread.sleep(100);
+        await()
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(mongoClient).getDatabase(eq("test")));
         executorService.shutdownNow();
         // Then dependencies are called
         verify(mongoClient).getDatabase(eq("test"));
