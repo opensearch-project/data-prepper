@@ -48,8 +48,8 @@ class PartitionFactoryTest {
 
     private final int partitionSize = random.nextInt(10000);
 
-    private final int totalRecords = random.nextInt(10000);
-    private final int loadedRecords = random.nextInt(10000);
+    private final long totalRecords = random.nextLong();
+    private final long loadedRecords = random.nextLong();
 
 
     @Test
