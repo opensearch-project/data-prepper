@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.geoip.processor;
 
-import com.google.common.net.InetAddresses;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.logging.DataPrepperMarkers;
@@ -23,16 +22,18 @@ import org.opensearch.dataprepper.plugins.geoip.exception.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.geoip.extension.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIpConfigSupplier;
-import org.opensearch.dataprepper.plugins.geoip.utils.IPValidationCheck;
+import org.opensearch.dataprepper.plugins.geoip.utils.GeoInetAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -59,7 +60,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   private final GeoIPProcessorService geoIPProcessorService;
   private final ExpressionEvaluator expressionEvaluator;
   private final Map<EntryConfig, List<GeoIPField>> entryFieldsMap;
-  final Map<EntryConfig, Set<GeoIPDatabase>> entryDatabaseMap;
+  private final Map<EntryConfig, Set<GeoIPDatabase>> entryDatabaseMap;
 
   /**
    * GeoIPProcessor constructor for initialization of required attributes
@@ -96,76 +97,81 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
    */
   @Override
   public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
-    Map<String, Object> geoData;
-    try (final GeoIPDatabaseReader geoIPDatabaseReader = geoIPProcessorService.getGeoIPDatabaseReader()) {
-
-      for (final Record<Event> eventRecord : records) {
-        final Event event = eventRecord.getData();
-        final String whenCondition = geoIPProcessorConfig.getWhenCondition();
-        // continue if when condition is null or is false
-        // or if database reader is null or database reader is expired
-        if (checkConditionAndDatabaseReader(geoIPDatabaseReader, event, whenCondition)) continue;
-
-        boolean eventSucceeded = true;
-        boolean ipNotFound = false;
-        boolean engineFailure = false;
-
-        for (final EntryConfig entry : geoIPProcessorConfig.getEntries()) {
-          final String source = entry.getSource();
-          final List<GeoIPField> fields = entryFieldsMap.get(entry);
-          final Set<GeoIPDatabase> databases = entryDatabaseMap.get(entry);
-          String ipAddress = null;
-          try {
-            ipAddress = event.get(source, String.class);
-          } catch (final Exception e) {
-            eventSucceeded = false;
-            ipNotFound = true;
-            LOG.error(DataPrepperMarkers.EVENT, "Failed to get IP address from [{}] in event: [{}]. Caused by:[{}]",
-                    source, event, e.getMessage());
-          }
-
-          //Lookup from DB
-          if (ipAddress != null && !ipAddress.isEmpty()) {
-            try {
-              if (IPValidationCheck.isPublicIpAddress(ipAddress)) {
-                geoData = geoIPDatabaseReader.getGeoData(InetAddresses.forString(ipAddress), fields, databases);
-                if (geoData.isEmpty()) {
-                  ipNotFound = true;
-                  eventSucceeded = false;
-                } else {
-                  eventRecord.getData().put(entry.getTarget(), geoData);
-                }
-              } else {
-                // no enrichment if IP is not public
-                ipNotFound = true;
-                eventSucceeded = false;
-              }
-            } catch (final EnrichFailedException e) {
-              ipNotFound = true;
-              eventSucceeded = false;
-              LOG.error(DataPrepperMarkers.EVENT, "IP address not found in database for IP: [{}] in event: [{}]. Caused by:[{}]",
-                      ipAddress, event, e.getMessage());
-              LOG.error("IP address not found in database for IP: [{}]. Caused by:[{}]", ipAddress, e.getMessage());
-            } catch (final EngineFailureException e) {
-              engineFailure = true;
-              eventSucceeded = false;
-              LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]. Caused by:{}",
-                      event, ipAddress, e.getMessage());
-              LOG.error("Failed to get Geo data for the IP address [{}]. Caused by:{}", ipAddress, e.getMessage());
-            }
-          } else {
-            //No Enrichment if IP is null or empty
-            eventSucceeded = false;
-            ipNotFound = true;
-          }
-        }
-
-        updateTagsAndMetrics(event, eventSucceeded, ipNotFound, engineFailure);
-      }
+    try (final GeoIPDatabaseReader geoIPDatabaseReader = BatchGeoIPDatabaseReader.decorate(geoIPProcessorService.getGeoIPDatabaseReader())) {
+       processRecords(records, geoIPDatabaseReader);
     } catch (final Exception e) {
       LOG.error("Encountered exception in geoip processor.", e);
     }
     return records;
+  }
+
+  private void processRecords(Collection<Record<Event>> records, GeoIPDatabaseReader geoIPDatabaseReader) {
+    Map<String, Object> geoData;
+    for (final Record<Event> eventRecord : records) {
+      final Event event = eventRecord.getData();
+      final String whenCondition = geoIPProcessorConfig.getWhenCondition();
+      // continue if when condition is null or is false
+      // or if database reader is null or database reader is expired
+      if (checkConditionAndDatabaseReader(geoIPDatabaseReader, event, whenCondition))
+        continue;
+
+      boolean eventSucceeded = true;
+      boolean ipNotFound = false;
+      boolean engineFailure = false;
+
+      for (final EntryConfig entry : geoIPProcessorConfig.getEntries()) {
+        final String source = entry.getSource();
+        final List<GeoIPField> fields = entryFieldsMap.get(entry);
+        final Set<GeoIPDatabase> databases = entryDatabaseMap.get(entry);
+        String ipAddress = null;
+        try {
+          ipAddress = event.get(source, String.class);
+        } catch (final Exception e) {
+          eventSucceeded = false;
+          ipNotFound = true;
+          LOG.error(DataPrepperMarkers.EVENT, "Failed to get IP address from [{}] in event: [{}]. Caused by:[{}]",
+                  source, event, e.getMessage());
+        }
+
+        //Lookup from DB
+        if (ipAddress != null && !ipAddress.isEmpty()) {
+          try {
+            final Optional<InetAddress> optionalInetAddress = GeoInetAddress.usableInetFromString(ipAddress);
+            if (optionalInetAddress.isPresent()) {
+              geoData = geoIPDatabaseReader.getGeoData(optionalInetAddress.get(), fields, databases);
+              if (geoData.isEmpty()) {
+                ipNotFound = true;
+                eventSucceeded = false;
+              } else {
+                eventRecord.getData().put(entry.getTarget(), geoData);
+              }
+            } else {
+              // no enrichment if IP is not public
+              ipNotFound = true;
+              eventSucceeded = false;
+            }
+          } catch (final EnrichFailedException e) {
+            ipNotFound = true;
+            eventSucceeded = false;
+            LOG.error(DataPrepperMarkers.EVENT, "IP address not found in database for IP: [{}] in event: [{}]. Caused by:[{}]",
+                    ipAddress, event, e.getMessage());
+            LOG.error("IP address not found in database for IP: [{}]. Caused by:[{}]", ipAddress, e.getMessage());
+          } catch (final EngineFailureException e) {
+            engineFailure = true;
+            eventSucceeded = false;
+            LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]. Caused by:{}",
+                    event, ipAddress, e.getMessage());
+            LOG.error("Failed to get Geo data for the IP address [{}]. Caused by:{}", ipAddress, e.getMessage());
+          }
+        } else {
+          //No Enrichment if IP is null or empty
+          eventSucceeded = false;
+          ipNotFound = true;
+        }
+      }
+
+      updateTagsAndMetrics(event, eventSucceeded, ipNotFound, engineFailure);
+    }
   }
 
   private void updateTagsAndMetrics(final Event event, final boolean eventSucceeded, final boolean ipNotFound, final boolean engineFailure) {
