@@ -78,7 +78,9 @@ public class LeaderSchedulerTest {
 
         future.cancel(true);
 
-        verify(coordinator).giveUpPartition(leaderPartition);
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
 
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(3)).createPartition(any(EnhancedSourcePartition.class));
@@ -104,12 +106,14 @@ public class LeaderSchedulerTest {
 
         // Acquire the init partition
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() ->  verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() ->  verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
 
         future.cancel(true);
 
-        verify(coordinator).giveUpPartition(leaderPartition);
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
 
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(2)).createPartition(any(EnhancedSourcePartition.class));
@@ -136,7 +140,9 @@ public class LeaderSchedulerTest {
 
         future.cancel(true);
 
-        verify(coordinator).giveUpPartition(leaderPartition);
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
 
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(2)).createPartition(any(EnhancedSourcePartition.class));
