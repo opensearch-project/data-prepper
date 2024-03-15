@@ -22,7 +22,6 @@ import org.opensearch.dataprepper.plugins.geoip.exception.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.geoip.extension.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIpConfigSupplier;
-import org.opensearch.dataprepper.plugins.geoip.utils.GeoInetAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.geoip.utils;
+package org.opensearch.dataprepper.plugins.geoip.processor;
 
 import com.google.common.net.InetAddresses;
 
@@ -16,9 +16,9 @@ import java.util.Optional;
  * Implementation of class for checking IP validation
  * IP should be public it can be either IPV4 or IPV6
  */
-public class GeoInetAddress {
+class GeoInetAddress {
 
-    public static Optional<InetAddress> usableInetFromString(final String ipAddress) {
+    static Optional<InetAddress> usableInetFromString(final String ipAddress) {
         final InetAddress address;
         try {
             address = InetAddresses.forString(ipAddress);
