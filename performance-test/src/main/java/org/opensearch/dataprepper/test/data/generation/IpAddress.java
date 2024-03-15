@@ -20,7 +20,7 @@ public class IpAddress {
 
     private IpAddress() {
         ipAddressProviders = new ArrayList<>();
-        getIpAddressProvider("ipv4", IpAddressGenerationOption.GENERATED)
+        getIpAddressProvider("ipv4", IpAddressGenerationOption.DEFINED)
                 .ifPresent(ipAddressProviders::add);
         getIpAddressProvider("ipv6", IpAddressGenerationOption.OFF)
                 .ifPresent(ipAddressProviders::add);
