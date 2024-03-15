@@ -25,7 +25,7 @@ public class LeaderScheduler implements Runnable {
     /**
      * Default duration to extend the timeout of lease
      */
-    private static final int DEFAULT_EXTEND_LEASE_MINUTES = 3;
+    static final int DEFAULT_EXTEND_LEASE_MINUTES = 3;
 
     /**
      * Default interval to run lease check and shard discovery
@@ -78,8 +78,8 @@ public class LeaderScheduler implements Runnable {
 
                 }
 
-            } catch (Exception e) {
-                LOG.error("Exception occurred in primary scheduling loop", e);
+            } catch (final Exception e) {
+                LOG.error("Exception occurred in primary leader scheduling loop", e);
             } finally {
                 if(leaderPartition != null) {
                     // Extend the timeout
