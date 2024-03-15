@@ -9,21 +9,26 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.LeaderPartition;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.opensearch.dataprepper.plugins.mongo.leader.LeaderScheduler.DEFAULT_EXTEND_LEASE_MINUTES;
 
 @ExtendWith(MockitoExtension.class)
 public class LeaderSchedulerTest {
@@ -40,22 +45,22 @@ public class LeaderSchedulerTest {
     private LeaderPartition leaderPartition;
 
     @Test
-    void test_non_leader_run() throws InterruptedException {
-        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig));
+    void test_non_leader_run() {
+        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.empty());
 
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> leaderScheduler.run());
-        Thread.sleep(100);
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() -> verifyNoInteractions(collectionConfig));
         executorService.shutdownNow();
-
-        verifyNoInteractions(collectionConfig);
     }
 
     @Test
-    void test_should_init() throws InterruptedException {
+    void test_should_init() {
 
-        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig));
+        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         given(collectionConfig.getIngestionMode()).willReturn(CollectionConfig.IngestionMode.EXPORT_STREAM);
@@ -63,26 +68,32 @@ public class LeaderSchedulerTest {
         given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
         given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
 
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.submit(() -> leaderScheduler.run());
-        Thread.sleep(100);
-        executorService.shutdownNow();
-
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> leaderScheduler.run());
 
         // Acquire the init partition
-        verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE));
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() -> verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+
+        future.cancel(true);
+
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
 
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(3)).createPartition(any(EnhancedSourcePartition.class));
-        verify(coordinator).giveUpPartition(leaderPartition);
+        verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
 
         assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));
+        executorService.shutdownNow();
     }
 
     @Test
-    void test_should_init_export() throws InterruptedException {
+    void test_should_init_export() {
 
-        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig));
+        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         given(collectionConfig.getIngestionMode()).willReturn(CollectionConfig.IngestionMode.EXPORT);
@@ -90,44 +101,54 @@ public class LeaderSchedulerTest {
         given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
         given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
 
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.submit(() -> leaderScheduler.run());
-        Thread.sleep(100);
-        executorService.shutdownNow();
-
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> leaderScheduler.run());
 
         // Acquire the init partition
-        verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE));
+        await()
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() ->  verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+
+        future.cancel(true);
+
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
 
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(2)).createPartition(any(EnhancedSourcePartition.class));
-        verify(coordinator).giveUpPartition(leaderPartition);
+        verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
 
         assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));
+        executorService.shutdownNow();
     }
 
     @Test
-    void test_should_init_stream() throws InterruptedException {
+    void test_should_init_stream() {
 
-        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig));
+        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         given(collectionConfig.getIngestionMode()).willReturn(CollectionConfig.IngestionMode.STREAM);
         given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
 
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.submit(() -> leaderScheduler.run());
-        Thread.sleep(100);
-        executorService.shutdownNow();
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> leaderScheduler.run());
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() -> verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
 
+        future.cancel(true);
 
-        // Acquire the init partition
-        verify(coordinator).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE));
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
 
         // Should create 1 export partition + 1 stream partitions + 1 global table state
         verify(coordinator, times(2)).createPartition(any(EnhancedSourcePartition.class));
-        verify(coordinator).giveUpPartition(leaderPartition);
+        verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
 
         assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));
+        executorService.shutdownNow();
     }
 }

@@ -51,6 +51,7 @@ import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.EX
 public class ExportWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ExportWorker.class);
     public static final String STREAM_PREFIX = "STREAM-";
+    private static final int PARTITION_KEY_PARTS = 4;
     private final AtomicInteger numOfWorkers = new AtomicInteger(0);
 
     private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
@@ -96,7 +97,7 @@ public class ExportWorker implements Runnable {
     private final AtomicInteger activeExportPartitionConsumerGauge;
 
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
-    static final int DEFAULT_BUFFER_BATCH_SIZE = 1_0;
+    static final int DEFAULT_BUFFER_BATCH_SIZE = 10;
 
     private final RecordBufferWriter recordBufferWriter;
     private final EnhancedSourceCoordinator sourceCoordinator;
@@ -172,7 +173,7 @@ public class ExportWorker implements Runnable {
 
     private void processDataQueryPartition(final DataQueryPartition partition) {
         final List<String> partitionKeys = List.of(partition.getPartitionKey().split(PARTITION_KEY_SPLITTER));
-        if (partitionKeys.size() < 4) {
+        if (partitionKeys.size() < PARTITION_KEY_PARTS) {
             throw new RuntimeException("Invalid Partition Key. Must as db.collection|gte|lte format. Key: " + partition.getPartitionKey());
         }
         final List<String> collection = List.of(partitionKeys.get(0).split(COLLECTION_SPLITTER));
@@ -243,7 +244,7 @@ public class ExportWorker implements Runnable {
                 throw new RuntimeException(e);
             }
 
-            LOG.info("Records processed: " + totalRecords + " , recordCount: " + recordCount);
+            LOG.info("Records processed: {}, recordCount: {}", totalRecords, recordCount);
         }
     }
 

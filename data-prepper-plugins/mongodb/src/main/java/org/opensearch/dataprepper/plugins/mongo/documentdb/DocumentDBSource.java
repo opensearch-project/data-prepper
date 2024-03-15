@@ -19,8 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 
@@ -31,7 +29,6 @@ public class DocumentDBSource implements Source<Record<Event>>, UsesEnhancedSour
 
     private final PluginMetrics pluginMetrics;
     private final MongoDBSourceConfig sourceConfig;
-    private final ExecutorService executor;
     private EnhancedSourceCoordinator sourceCoordinator;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private DocumentDBService documentDBService;
@@ -42,7 +39,6 @@ public class DocumentDBSource implements Source<Record<Event>>, UsesEnhancedSour
                             final AcknowledgementSetManager acknowledgementSetManager) {
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
-        executor = Executors.newFixedThreadPool(2);
         this.acknowledgementSetManager = acknowledgementSetManager;
     }
 
