@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.geoip.extension.databasedownload;
+package org.opensearch.dataprepper.plugins.geoip.extension;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,14 +11,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.geoip.databaseenrich.AutoCountingDatabaseReader;
-import org.opensearch.dataprepper.plugins.geoip.databaseenrich.GeoIP2DatabaseReader;
-import org.opensearch.dataprepper.plugins.geoip.databaseenrich.GeoIPDatabaseReader;
-import org.opensearch.dataprepper.plugins.geoip.databaseenrich.GeoLite2DatabaseReader;
 import org.opensearch.dataprepper.plugins.geoip.exception.DownloadFailedException;
-import org.opensearch.dataprepper.plugins.geoip.extension.MaxMindConfig;
-import org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabaseConfig;
-import org.opensearch.dataprepper.plugins.geoip.utils.LicenseTypeCheck;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.DatabaseReaderBuilder;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.GeoIPFileManager;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.HttpDBDownloadService;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.LicenseTypeOptions;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.LocalDBDownloadService;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.ManifestDownloadService;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.S3DBService;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.time.Duration;

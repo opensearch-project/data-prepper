@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.geoip.databaseenrich;
+package org.opensearch.dataprepper.plugins.geoip.extension;
 
 import com.maxmind.db.Metadata;
 import com.maxmind.db.Network;
@@ -75,8 +75,8 @@ import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.REPRESENTED_CO
 import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.REPRESENTED_COUNTRY_NAME;
 import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.REPRESENTED_COUNTRY_TYPE;
 import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.TIME_ZONE;
-import static org.opensearch.dataprepper.plugins.geoip.databaseenrich.GeoIPDatabaseReader.LAT;
-import static org.opensearch.dataprepper.plugins.geoip.databaseenrich.GeoIPDatabaseReader.LON;
+import static org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader.LAT;
+import static org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader.LON;
 
 
 @ExtendWith(MockitoExtension.class)

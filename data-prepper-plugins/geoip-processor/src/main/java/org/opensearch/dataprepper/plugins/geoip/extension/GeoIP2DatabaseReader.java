@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.geoip.databaseenrich;
+package org.opensearch.dataprepper.plugins.geoip.extension;
 
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.exception.GeoIp2Exception;
@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
 import org.opensearch.dataprepper.plugins.geoip.exception.DatabaseReaderInitializationException;
 import org.opensearch.dataprepper.plugins.geoip.exception.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.geoip.exception.NoValidDatabaseFoundException;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.DatabaseReaderBuilder;
 import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.GeoIPFileManager;
 import org.slf4j.Logger;
@@ -41,7 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabaseConfig.GEOIP2_ENTERPRISE;
 
-public class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
+class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(GeoIP2DatabaseReader.class);
     private static final String MAXMIND_GEOIP2_DATABASE_TYPE = "geoip2";
     private final DatabaseReaderBuilder databaseReaderBuilder;

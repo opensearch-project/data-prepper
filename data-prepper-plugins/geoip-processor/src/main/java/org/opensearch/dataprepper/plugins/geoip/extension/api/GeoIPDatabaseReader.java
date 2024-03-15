@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.geoip.databaseenrich;
+package org.opensearch.dataprepper.plugins.geoip.extension.api;
 
 import com.maxmind.geoip2.model.AsnResponse;
 import com.maxmind.geoip2.record.City;

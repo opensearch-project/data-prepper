@@ -22,11 +22,11 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
-import org.opensearch.dataprepper.plugins.geoip.databaseenrich.GeoIPDatabaseReader;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 import org.opensearch.dataprepper.plugins.geoip.exception.EngineFailureException;
 import org.opensearch.dataprepper.plugins.geoip.exception.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.geoip.extension.GeoIPProcessorService;
-import org.opensearch.dataprepper.plugins.geoip.extension.GeoIpConfigSupplier;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIpConfigSupplier;
 import org.opensearch.dataprepper.plugins.geoip.utils.IPValidationCheck;
 
 import java.util.ArrayList;

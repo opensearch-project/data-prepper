@@ -3,19 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.geoip.extension.databasedownload;
+package org.opensearch.dataprepper.plugins.geoip.extension;
 
 import com.linecorp.armeria.client.retry.Backoff;
-import org.opensearch.dataprepper.plugins.geoip.databaseenrich.AutoCountingDatabaseReader;
-import org.opensearch.dataprepper.plugins.geoip.databaseenrich.GeoIP2DatabaseReader;
-import org.opensearch.dataprepper.plugins.geoip.databaseenrich.GeoIPDatabaseReader;
-import org.opensearch.dataprepper.plugins.geoip.databaseenrich.GeoLite2DatabaseReader;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 import org.opensearch.dataprepper.plugins.geoip.exception.DownloadFailedException;
 import org.opensearch.dataprepper.plugins.geoip.exception.NoValidDatabaseFoundException;
-import org.opensearch.dataprepper.plugins.geoip.extension.MaxMindConfig;
-import org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabaseConfig;
-import org.opensearch.dataprepper.plugins.geoip.utils.DatabaseSourceIdentification;
-import org.opensearch.dataprepper.plugins.geoip.utils.LicenseTypeCheck;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.DBSource;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.DBSourceOptions;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.DatabaseReaderBuilder;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.GeoIPFileManager;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.HttpDBDownloadService;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.LicenseTypeOptions;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.LocalDBDownloadService;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.ManifestDownloadService;
+import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.S3DBService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
-public class GeoIPDatabaseManager {
+class GeoIPDatabaseManager {
     private static final Logger LOG = LoggerFactory.getLogger(GeoIPDatabaseManager.class);
     public static final String BLUE_DATABASE_DIR = "blue_database";
     public static final String GREEN_DATABASE_DIR = "green_database";

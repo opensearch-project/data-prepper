@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.geoip.utils;
+package org.opensearch.dataprepper.plugins.geoip.extension;
 
 import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.LicenseTypeOptions;
 
@@ -16,7 +16,7 @@ import java.nio.file.Paths;
  * 
  * Implementation of class logic to check maxmind database id free or enterprise version
  */
-public class LicenseTypeCheck {
+class LicenseTypeCheck {
     private static final String GEOIP2_DATABASE = "geoip2";
     private static final String GEOLITE2_DATABASE = "geolite2";
     private static final String MMDB = "mmdb";

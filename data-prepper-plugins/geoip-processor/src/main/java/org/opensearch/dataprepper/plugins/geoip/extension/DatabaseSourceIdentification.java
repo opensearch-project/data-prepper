@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.geoip.utils;
+package org.opensearch.dataprepper.plugins.geoip.extension;
 
 import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.DBSourceOptions;
 
@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 /**
  * Implementation of class for checking whether URL type is S3 or file path
  */
-public class DatabaseSourceIdentification {
+class DatabaseSourceIdentification {
 
     private DatabaseSourceIdentification() {
 

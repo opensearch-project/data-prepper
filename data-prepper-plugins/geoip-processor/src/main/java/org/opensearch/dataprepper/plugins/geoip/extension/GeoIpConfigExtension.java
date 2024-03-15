@@ -10,9 +10,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.DatabaseReaderBuilder;
-import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.GeoIPDatabaseManager;
 import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.GeoIPFileManager;
-import org.opensearch.dataprepper.plugins.geoip.utils.LicenseTypeCheck;
 
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
