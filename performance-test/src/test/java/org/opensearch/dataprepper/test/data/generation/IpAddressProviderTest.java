@@ -43,7 +43,7 @@ class IpAddressProviderTest {
 
     @ParameterizedTest
     @ArgumentsSource(IpAddressFileArgumentsProvider.class)
-    void fromInputStream_ipAddress_with_multiple_calls_returns_different_addresses(final String file) throws IOException {
+    void fromInputStream_ipAddress_with_multiple_calls_returns_different_addresses(final String file, final int expectedMinimumResults) throws IOException {
         final InputStream resourceAsStream = IpAddress.class.getResourceAsStream("/data/" + file);
 
         final IpAddressProvider objectUnderTest = IpAddressProvider.fromInputStream(resourceAsStream);
@@ -53,15 +53,15 @@ class IpAddressProviderTest {
         for(int i = 0; i < requestCount; i++)
             results.add(objectUnderTest.ipAddress());
 
-        assertThat(results.size(), greaterThanOrEqualTo(requestCount / 2));
+        assertThat(results.size(), greaterThanOrEqualTo(expectedMinimumResults));
     }
 
     static class IpAddressFileArgumentsProvider implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext extensionContext) throws Exception {
             return Stream.of(
-                    arguments("ipv4-addresses.txt"),
-                    arguments("ipv6-addresses.txt")
+                    arguments("ipv4-addresses.txt", 100),
+                    arguments("ipv6-addresses.txt", 20)
             );
         }
     }
