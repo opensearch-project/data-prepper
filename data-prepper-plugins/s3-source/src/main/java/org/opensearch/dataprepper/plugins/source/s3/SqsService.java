@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import com.linecorp.armeria.client.retry.Backoff;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.slf4j.Logger;
@@ -32,7 +33,7 @@ public class SqsService {
     private final SqsClient sqsClient;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
-    private ExecutorService executorService;
+    private final ExecutorService executorService;
 
     public SqsService(final AcknowledgementSetManager acknowledgementSetManager,
                       final S3SourceConfig s3SourceConfig,
@@ -44,7 +45,7 @@ public class SqsService {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sqsClient = createSqsClient(credentialsProvider);
-        executorService = Executors.newFixedThreadPool(s3SourceConfig.getNumWorkers());
+        executorService = Executors.newFixedThreadPool(s3SourceConfig.getNumWorkers(), BackgroundThreadFactory.defaultExecutorThreadFactory("s3-source-sqs"));
     }
 
     public void start() {
