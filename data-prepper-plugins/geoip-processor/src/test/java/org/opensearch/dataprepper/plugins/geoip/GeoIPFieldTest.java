@@ -11,18 +11,17 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.ASN_ORGANIZATION;
 import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.CONTINENT_CODE;
@@ -43,38 +42,29 @@ class GeoIPFieldTest {
         assertThat(geoIPField, equalTo(null));
     }
 
-    @Test
-    void getGeoIPDatabasesForFields_throws_if_given_null_list() {
-        assertThrows(NullPointerException.class, () -> GeoIPField.getGeoIPDatabasesForFields(null));
-    }
-
-    @Test
-    void getGeoIPDatabasesForFields_returns_empty_collection_when_given_empty_collection() {
-        final Collection<GeoIPDatabase> actualDatabases = GeoIPField.getGeoIPDatabasesForFields(Collections.emptyList());
-        assertThat(actualDatabases, notNullValue());
-        assertThat(actualDatabases, empty());
+    @ParameterizedTest
+    @EnumSource(GeoIPField.class)
+    void getGeoIPDatabasesForFields_returns_non_empty_for_all_fields(final GeoIPField field) {
+        final Collection<GeoIPDatabase> geoIPDatabases = field.getGeoIPDatabases();
+        assertThat(geoIPDatabases, notNullValue());
+        assertThat(geoIPDatabases, not(empty()));
     }
 
     @ParameterizedTest
-    @ArgumentsSource(KnownDatabasesForFields.class)
-    void getGeoIPDatabasesForFields_returns_expected_results(final Collection<GeoIPField> providedFields, final Collection<GeoIPDatabase> expectedDatabases) {
-        final Collection<GeoIPDatabase> actualDatabases = GeoIPField.getGeoIPDatabasesForFields(providedFields);
-        assertThat(actualDatabases, notNullValue());
-        assertThat(actualDatabases.size(), equalTo(expectedDatabases.size()));
-        assertThat(actualDatabases, equalTo(expectedDatabases));
+    @ArgumentsSource(SampleOfKnownDatabasesForField.class)
+    void getGeoIPDatabasesForFields_returns_expected_results(final GeoIPField field, final Collection<GeoIPDatabase> expectedDatabases) {
+        assertThat(field.getGeoIPDatabases(),
+            equalTo(expectedDatabases));
     }
 
-    static class KnownDatabasesForFields implements ArgumentsProvider {
+    static class SampleOfKnownDatabasesForField implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext extensionContext) {
             return Stream.of(
-                    arguments(List.of(CONTINENT_CODE), EnumSet.of(GeoIPDatabase.CITY, GeoIPDatabase.COUNTRY, GeoIPDatabase.ENTERPRISE)),
-                    arguments(List.of(COUNTRY_CONFIDENCE), EnumSet.of(GeoIPDatabase.ENTERPRISE)),
-                    arguments(List.of(LOCATION), EnumSet.of(GeoIPDatabase.CITY, GeoIPDatabase.ENTERPRISE)),
-                    arguments(List.of(LOCATION, CONTINENT_CODE), EnumSet.of(GeoIPDatabase.CITY, GeoIPDatabase.COUNTRY, GeoIPDatabase.ENTERPRISE)),
-                    arguments(List.of(ASN_ORGANIZATION), EnumSet.of(GeoIPDatabase.ASN)),
-                    arguments(List.of(ASN_ORGANIZATION, COUNTRY_CONFIDENCE), EnumSet.of(GeoIPDatabase.ASN, GeoIPDatabase.ENTERPRISE)),
-                    arguments(List.of(ASN_ORGANIZATION, CONTINENT_CODE), EnumSet.of(GeoIPDatabase.CITY, GeoIPDatabase.COUNTRY, GeoIPDatabase.ENTERPRISE, GeoIPDatabase.ASN))
+                    arguments(CONTINENT_CODE, EnumSet.of(GeoIPDatabase.CITY, GeoIPDatabase.COUNTRY, GeoIPDatabase.ENTERPRISE)),
+                    arguments(COUNTRY_CONFIDENCE, EnumSet.of(GeoIPDatabase.ENTERPRISE)),
+                    arguments(LOCATION, EnumSet.of(GeoIPDatabase.CITY, GeoIPDatabase.ENTERPRISE)),
+                    arguments(ASN_ORGANIZATION, EnumSet.of(GeoIPDatabase.ASN))
             );
         }
     }

@@ -5,44 +5,53 @@
 
 package org.opensearch.dataprepper.plugins.geoip;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 
 public enum GeoIPDatabase {
-    CITY(),
-    COUNTRY(CITY),
-    ASN(),
-    ENTERPRISE();
-    private final Collection<GeoIPDatabase> isReplaceableBy;
+    COUNTRY,
+    CITY,
+    ASN,
+    ENTERPRISE;
 
-    GeoIPDatabase(final GeoIPDatabase... isReplaceableBy) {
-        this.isReplaceableBy = Arrays.asList(isReplaceableBy);
-    }
-
+    /**
+     * Selects the databases needed for the given GeoIP fields. This will choose the
+     * as many databases as needed to extract the requested fields. But, it will also
+     * reduce the databases to avoid redundant calls.
+     *
+     * @param geoIPFields The necessary GeoIP fields
+     * @return The GeoIPDatabases needed to extract all fields.
+     */
     public static Collection<GeoIPDatabase> selectDatabasesForFields(final Collection<GeoIPField> geoIPFields) {
-        // TODO: With some additional refactoring we can also choose COUNTRY over CITY if no CITY fields are needed.
-        final Collection<GeoIPDatabase> geoIPDatabasesForFields = GeoIPField.getGeoIPDatabasesForFields(geoIPFields);
-        return GeoIPDatabase.selectDatabases(geoIPDatabasesForFields);
+        if(geoIPFields == null)
+            throw new NullPointerException("The geoIPFields parameter must be non-null.");
+
+        final EnumSet<GeoIPDatabase> selectedDatabases = EnumSet.noneOf(GeoIPDatabase.class);
+        for (final GeoIPField geoIPField : geoIPFields) {
+            selectedDatabases.addAll(leastCommonDatabase(geoIPField.getGeoIPDatabases()));
+        }
+
+        if(selectedDatabases.contains(CITY)) {
+            selectedDatabases.remove(COUNTRY);
+        }
+
+        return selectedDatabases;
     }
 
-    static Collection<GeoIPDatabase> selectDatabases(final Collection<GeoIPDatabase> databases) {
+    /**
+     * Gets the fewest number of databases needed for the databases provided. This
+     * generally expects that the input covers a single field.
+     *
+     * @param databases All the databases that have the data.
+     * @return The least common set of databases
+     */
+    private static Collection<GeoIPDatabase> leastCommonDatabase(final Collection<GeoIPDatabase> databases) {
         if(databases == null)
             throw new NullPointerException("A null databases collection was provided to selectDatabases.");
 
-        final EnumSet<GeoIPDatabase> selectedDatabases = EnumSet.noneOf(GeoIPDatabase.class);
-        for (final GeoIPDatabase database : databases) {
-            boolean includeDatabase = true;
-            for (final GeoIPDatabase isReplacedBy : database.isReplaceableBy) {
-                if (databases.contains(isReplacedBy)) {
-                    includeDatabase = false;
-                    break;
-                }
-            }
-
-            if(includeDatabase)
-                selectedDatabases.add(database);
-        }
+        final EnumSet<GeoIPDatabase> selectedDatabases = EnumSet.copyOf(databases);
+        if(selectedDatabases.contains(CITY) && selectedDatabases.contains(COUNTRY))
+            selectedDatabases.remove(CITY);
 
         return selectedDatabases;
     }

@@ -74,17 +74,4 @@ public enum GeoIPField {
     Collection<GeoIPDatabase> getGeoIPDatabases() {
         return geoIPDatabases;
     }
-
-    static Collection<GeoIPDatabase> getGeoIPDatabasesForFields(final Collection<GeoIPField> fields) {
-        if(fields == null)
-            throw new NullPointerException("The fields parameter must be non-null.");
-
-        final EnumSet<GeoIPDatabase> databases = EnumSet.noneOf(GeoIPDatabase.class);
-
-        for (final GeoIPField field : fields) {
-            databases.addAll(field.geoIPDatabases);
-        }
-
-        return databases;
-    }
 }
