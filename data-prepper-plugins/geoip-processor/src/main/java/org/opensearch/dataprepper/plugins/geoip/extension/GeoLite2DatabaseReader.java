@@ -34,11 +34,11 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabaseConfig.GEOLITE2_ASN;
@@ -104,7 +104,7 @@ class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
     }
 
     @Override
-    public Map<String, Object> getGeoData(final InetAddress inetAddress, final List<GeoIPField> fields, final Set<GeoIPDatabase> geoIPDatabases) {
+    public Map<String, Object> getGeoData(final InetAddress inetAddress, final List<GeoIPField> fields, final Collection<GeoIPDatabase> geoIPDatabases) {
         final Map<String, Object> geoData = new HashMap<>();
 
         try {
@@ -147,7 +147,7 @@ class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
     private void processCityResponse(final CityResponse cityResponse,
                                      final Map<String, Object> geoData,
                                      final List<GeoIPField> fields,
-                                     final Set<GeoIPDatabase> geoIPDatabases) {
+                                     final Collection<GeoIPDatabase> geoIPDatabases) {
         // Continent and Country fields are added from City database only if they are not extracted from Country database
         if (!geoIPDatabases.contains(GeoIPDatabase.COUNTRY)) {
             final Continent continent = cityResponse.getContinent();
