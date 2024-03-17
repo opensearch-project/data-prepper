@@ -12,8 +12,9 @@ public class LoadStatus {
     private long loadedPartitions;
     private long loadedRecords;
 
-    public LoadStatus(int totalPartitions, long loadedRecords) {
+    public LoadStatus(long totalPartitions, long loadedPartitions, long loadedRecords) {
         this.totalPartitions = totalPartitions;
+        this.loadedPartitions = loadedPartitions;
         this.loadedRecords = loadedRecords;
     }
 
@@ -52,6 +53,7 @@ public class LoadStatus {
     public static LoadStatus fromMap(Map<String, Object> map) {
         return new LoadStatus(
                 ((Number) map.get(TOTAL_PARTITIONS)).intValue(),
+                ((Number) map.get(LOADED_PARTITIONS)).intValue(),
                 ((Number) map.get(LOADED_RECORDS)).longValue()
         );
     }

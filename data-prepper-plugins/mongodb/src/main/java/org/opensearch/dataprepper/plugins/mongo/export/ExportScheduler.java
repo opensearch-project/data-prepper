@@ -9,10 +9,12 @@ import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQuery
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.DataQueryProgressState;
+import org.opensearch.dataprepper.plugins.mongo.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.mongo.model.LoadStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +24,10 @@ public class ExportScheduler implements Runnable {
     public static final String EXPORT_PREFIX = "EXPORT-";
     private static final Logger LOG = LoggerFactory.getLogger(ExportScheduler.class);
     private static final int DEFAULT_TAKE_LEASE_INTERVAL_MILLIS = 60_000;
+    private static final Duration DEFAULT_CLOSE_DURATION = Duration.ofMinutes(10);
+    private static final int DEFAULT_MAX_CLOSE_COUNT = 36;
+    private static final String COMPLETED_STATUS = "Completed";
+    private static final String FAILED_STATUS = "Failed";
     static final String EXPORT_JOB_SUCCESS_COUNT = "exportJobSuccess";
     static final String EXPORT_JOB_FAILURE_COUNT = "exportJobFailure";
     static final String EXPORT_PARTITION_QUERY_TOTAL_COUNT = "exportPartitionQueryTotal";
@@ -60,7 +66,13 @@ public class ExportScheduler implements Runnable {
 
                     final List<PartitionIdentifier> partitionIdentifiers = mongoDBExportPartitionSupplier.apply(exportPartition);
 
-                    createDataQueryPartitions(exportPartition.getCollection(), Instant.now(), partitionIdentifiers);
+                    final boolean createStatus = createDataQueryPartitions(exportPartition.getCollection(), Instant.now(), partitionIdentifiers);
+
+                    if (createStatus) {
+                        completeExportPartition(exportPartition);
+                    } else {
+                        closeExportPartitionWithError(exportPartition);
+                    }
                 }
                 try {
                     Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
@@ -81,7 +93,7 @@ public class ExportScheduler implements Runnable {
         LOG.warn("Export scheduler interrupted, looks like shutdown has triggered");
     }
 
-    private void createDataQueryPartitions(final String collection,
+    private boolean createDataQueryPartitions(final String collection,
                                            final Instant exportTime,
                                            final List<PartitionIdentifier> partitionIdentifiers) {
         AtomicInteger totalQueries = new AtomicInteger();
@@ -96,12 +108,32 @@ public class ExportScheduler implements Runnable {
             enhancedSourceCoordinator.createPartition(partition);
         });
 
-        exportPartitionTotalCounter.increment(totalQueries.get());
+        if (totalQueries.get() > 0) {
+            exportPartitionTotalCounter.increment(totalQueries.get());
 
-        // Currently, we need to maintain a global state to track the overall progress.
-        // So that we can easily tell if all the export files are loaded
-        final LoadStatus loadStatus = new LoadStatus(totalQueries.get(), 0);
-        enhancedSourceCoordinator.createPartition(new GlobalState(EXPORT_PREFIX + collection, loadStatus.toMap()));
+            // Currently, we need to maintain a global state to track the overall progress.
+            // So that we can easily tell if all the export files are loaded
+            final LoadStatus loadStatus = new LoadStatus(totalQueries.get(), 0, 0);
+            enhancedSourceCoordinator.createPartition(new GlobalState(EXPORT_PREFIX + collection, loadStatus.toMap()));
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private void completeExportPartition(final ExportPartition exportPartition) {
+        exportJobSuccessCounter.increment();
+        final ExportProgressState state = exportPartition.getProgressState().get();
+        state.setStatus(COMPLETED_STATUS);
+        enhancedSourceCoordinator.completePartition(exportPartition);
+    }
+
+    private void closeExportPartitionWithError(final ExportPartition exportPartition) {
+        LOG.error("The export from DocumentDB failed, it will be retried");
+        exportJobFailureCounter.increment();
+        final ExportProgressState exportProgressState = exportPartition.getProgressState().get();
+        exportProgressState.setStatus(FAILED_STATUS);
+        enhancedSourceCoordinator.closePartition(exportPartition, DEFAULT_CLOSE_DURATION, DEFAULT_MAX_CLOSE_COUNT);
     }
 
 }

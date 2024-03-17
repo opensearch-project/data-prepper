@@ -23,7 +23,7 @@ public class MongoDBConnection {
         if (Objects.nonNull(sourceConfig.getTrustStoreFilePath())) {
             final File truststoreFilePath = new File(sourceConfig.getTrustStoreFilePath());
             settingBuilder.applyToSslSettings(builder -> {
-                builder.enabled(sourceConfig.getInsecure());
+                builder.enabled(sourceConfig.getTls());
                 builder.invalidHostNameAllowed(sourceConfig.getSslInsecureDisableVerification());
                 builder.context(TrustStoreProvider.createSSLContext(truststoreFilePath.toPath(),
                         sourceConfig.getTrustStorePassword()));
@@ -38,11 +38,11 @@ public class MongoDBConnection {
         final String password = sourceConfig.getCredentialsConfig().getPassword();
         final String hostname = sourceConfig.getHostname();
         final int port = sourceConfig.getPort();
-        final String ssl = sourceConfig.getInsecure().toString();
+        final String tls = sourceConfig.getTls().toString();
         final String invalidHostAllowed = sourceConfig.getSslInsecureDisableVerification().toString();
         final String readPreference = sourceConfig.getReadPreference();
         final String directionConnection = sourceConfig.getDirectConnection().toString();
         return String.format(MONGO_CONNECTION_STRING_TEMPLATE, username, password, hostname, port,
-                readPreference, ssl, invalidHostAllowed, directionConnection);
+                readPreference, tls, invalidHostAllowed, directionConnection);
     }
 }
