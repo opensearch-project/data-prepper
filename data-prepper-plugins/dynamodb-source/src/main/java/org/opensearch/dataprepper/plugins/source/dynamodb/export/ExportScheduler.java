@@ -259,7 +259,7 @@ public class ExportScheduler implements Runnable {
 
     }
 
-    private String  getOrCreateExportArn(ExportPartition exportPartition) {
+    private String getOrCreateExportArn(ExportPartition exportPartition) {
         // State cannot be empty
         ExportProgressState state = exportPartition.getProgressState().get();
         // Check the progress state
