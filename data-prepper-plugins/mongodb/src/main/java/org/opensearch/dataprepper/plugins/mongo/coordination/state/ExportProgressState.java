@@ -18,6 +18,9 @@ public class ExportProgressState {
     @JsonProperty("exportTime")
     private String exportTime;
 
+    @JsonProperty("status")
+    private String status;
+
 
     public String getDatabaseName() {
         return databaseName;
@@ -41,5 +44,13 @@ public class ExportProgressState {
 
     public void setExportTime(String exportTime) {
         this.exportTime = exportTime;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

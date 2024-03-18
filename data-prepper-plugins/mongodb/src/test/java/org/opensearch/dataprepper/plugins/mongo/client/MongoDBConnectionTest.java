@@ -39,7 +39,7 @@ public class MongoDBConnectionTest {
         when(credentialsConfig.getPassword()).thenReturn(UUID.randomUUID().toString());
         when(mongoDBSourceConfig.getHostname()).thenReturn(UUID.randomUUID().toString());
         when(mongoDBSourceConfig.getPort()).thenReturn(getRandomInteger());
-        when(mongoDBSourceConfig.getInsecure()).thenReturn(getRandomBoolean());
+        when(mongoDBSourceConfig.getTls()).thenReturn(getRandomBoolean());
         when(mongoDBSourceConfig.getSslInsecureDisableVerification()).thenReturn(getRandomBoolean());
         when(mongoDBSourceConfig.getReadPreference()).thenReturn("secondaryPreferred");
     }

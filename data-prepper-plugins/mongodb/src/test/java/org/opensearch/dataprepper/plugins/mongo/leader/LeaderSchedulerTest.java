@@ -106,8 +106,8 @@ public class LeaderSchedulerTest {
 
         // Acquire the init partition
         await()
-                .atMost(Duration.ofSeconds(2))
-                .untilAsserted(() ->  verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() ->  verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
 
         future.cancel(true);
 
