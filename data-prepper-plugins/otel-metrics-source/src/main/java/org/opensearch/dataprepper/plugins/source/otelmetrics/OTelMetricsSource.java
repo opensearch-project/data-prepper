@@ -112,8 +112,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
                     .useClientTimeoutHeader(false)
-                    .useBlockingTaskExecutor(true)
-                    .exceptionMapping(requestExceptionHandler);
+                    .useBlockingTaskExecutor(true).exceptionHandler(requestExceptionHandler);
 
             final MethodDescriptor<ExportMetricsServiceRequest, ExportMetricsServiceResponse> methodDescriptor = MetricsServiceGrpc.getExportMethod();
             final String oTelMetricsSourcePath = oTelMetricsSourceConfig.getPath();

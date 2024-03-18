@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper;
 
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.rpc.RetryInfo;
 import com.linecorp.armeria.common.RequestContext;
 import com.linecorp.armeria.server.RequestTimeoutException;
 import io.grpc.Metadata;
@@ -13,6 +15,9 @@ import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.exceptions.BadRequestException;
@@ -22,9 +27,11 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
+import static com.linecorp.armeria.internal.common.grpc.MetadataUtil.GRPC_STATUS_DETAILS_BIN_KEY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.times;
@@ -54,6 +61,9 @@ public class GrpcRequestExceptionHandlerTest {
 
     @Mock
     private Metadata metadata;
+
+    @Captor
+    private ArgumentCaptor<com.google.rpc.Status> status;
 
     private GrpcRequestExceptionHandler grpcRequestExceptionHandler;
 
@@ -99,6 +109,22 @@ public class GrpcRequestExceptionHandlerTest {
         assertThat(messageStatus.getDescription(), equalTo(exceptionMessage));
 
         verify(requestTimeoutsCounter, times(2)).increment();
+
+        // TODO: Adjust to retry delay logic
+        verify(metadata, times(2)).put(ArgumentMatchers.eq(GRPC_STATUS_DETAILS_BIN_KEY), status.capture());
+        assertThat(status.getValue().getDetailsCount(), equalTo(1));
+
+        status.getAllValues().stream().map(com.google.rpc.Status::getDetailsList).flatMap(List::stream).map(e -> {
+            try {
+                return e.unpack(
+                        RetryInfo.class);
+            } catch (InvalidProtocolBufferException ex) {
+                throw new AssertionError("unxepected status detail item",ex);
+            }
+        }).forEach(info -> {
+            assertThat(info.getRetryDelay().getSeconds(), equalTo(0L));
+            assertThat(info.getRetryDelay().getNanos(), equalTo(100_000_000));
+        });
     }
 
     @Test

@@ -110,7 +110,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
                     .builder()
                     .useClientTimeoutHeader(false)
                     .useBlockingTaskExecutor(true)
-                    .exceptionMapping(requestExceptionHandler);
+                    .exceptionHandler(requestExceptionHandler);
 
             final MethodDescriptor<ExportLogsServiceRequest, ExportLogsServiceResponse> methodDescriptor = LogsServiceGrpc.getExportMethod();
             final String oTelLogsSourcePath = oTelLogsSourceConfig.getPath();

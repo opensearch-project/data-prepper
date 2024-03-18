@@ -5,9 +5,12 @@
 
 package org.opensearch.dataprepper;
 
+import com.google.protobuf.Any;
+import com.google.protobuf.Duration;
+import com.google.rpc.RetryInfo;
 import com.linecorp.armeria.common.RequestContext;
 import com.linecorp.armeria.common.annotation.Nullable;
-import com.linecorp.armeria.common.grpc.GrpcStatusFunction;
+import com.linecorp.armeria.common.grpc.GoogleGrpcExceptionHandlerFunction;
 import com.linecorp.armeria.server.RequestTimeoutException;
 import io.grpc.Metadata;
 import io.grpc.Status;
@@ -24,7 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeoutException;
 
-public class GrpcRequestExceptionHandler implements GrpcStatusFunction {
+public class GrpcRequestExceptionHandler implements GoogleGrpcExceptionHandlerFunction {
     private static final Logger LOG = LoggerFactory.getLogger(GrpcRequestExceptionHandler.class);
     static final String ARMERIA_REQUEST_TIMEOUT_MESSAGE = "Timeout waiting for request to be served. This is usually due to the buffer being full.";
 
@@ -46,44 +49,52 @@ public class GrpcRequestExceptionHandler implements GrpcStatusFunction {
     }
 
     @Override
-    public @Nullable Status apply(final RequestContext context, final Throwable exception, final Metadata metadata) {
-        final Throwable exceptionCause = exception instanceof BufferWriteException ? exception.getCause() : exception;
-
+    public com.google.rpc.@Nullable Status applyStatusProto(RequestContext ctx, Throwable throwable,
+                                                            Metadata metadata) {
+        final Throwable exceptionCause = throwable instanceof BufferWriteException ? throwable.getCause() : throwable;
         return handleExceptions(exceptionCause);
     }
 
-    private Status handleExceptions(final Throwable e) {
+    private com.google.rpc.Status handleExceptions(final Throwable e) {
         String message = e.getMessage();
         if (e instanceof RequestTimeoutException || e instanceof TimeoutException) {
             requestTimeoutsCounter.increment();
-            return createStatus(e, Status.RESOURCE_EXHAUSTED);
+            return createStatus(e, Status.Code.RESOURCE_EXHAUSTED);
         } else if (e instanceof SizeOverflowException) {
             requestsTooLargeCounter.increment();
-            return createStatus(e, Status.RESOURCE_EXHAUSTED);
+            return createStatus(e, Status.Code.RESOURCE_EXHAUSTED);
         } else if (e instanceof BadRequestException) {
             badRequestsCounter.increment();
-            return createStatus(e, Status.INVALID_ARGUMENT);
+            return createStatus(e, Status.Code.INVALID_ARGUMENT);
         } else if ((e instanceof StatusRuntimeException) && (message.contains("Invalid protobuf byte sequence") || message.contains("Can't decode compressed frame"))) {
             badRequestsCounter.increment();
-            return createStatus(e, Status.INVALID_ARGUMENT);
+            return createStatus(e, Status.Code.INVALID_ARGUMENT);
         } else if (e instanceof RequestCancelledException) {
             requestTimeoutsCounter.increment();
-            return createStatus(e, Status.CANCELLED);
+            return createStatus(e, Status.Code.CANCELLED);
         }
 
         internalServerErrorCounter.increment();
         LOG.error("Unexpected exception handling gRPC request", e);
-        return createStatus(e, Status.INTERNAL);
+        return createStatus(e, Status.Code.INTERNAL);
     }
 
-    private Status createStatus(final Throwable e, final Status status) {
-        final String message;
+    private com.google.rpc.Status createStatus(final Throwable e, final Status.Code code) {
+        com.google.rpc.Status.Builder builder = com.google.rpc.Status.newBuilder().setCode(code.value());
         if (e instanceof RequestTimeoutException) {
-            message = ARMERIA_REQUEST_TIMEOUT_MESSAGE;
+            builder.setMessage(ARMERIA_REQUEST_TIMEOUT_MESSAGE);
         } else {
-            message = e.getMessage() == null ? status.getCode().name() : e.getMessage();
+            builder.setMessage(e.getMessage() == null ? code.name() :e.getMessage());
         }
+        if (code == Status.Code.RESOURCE_EXHAUSTED) {
+            builder.addDetails(Any.pack(createRetryInfo()));
+        }
+        return builder.build();
+    }
 
-        return status.withDescription(message);
+    // TODO: Implement logic for the response retry delay to be sent with the retry info
+    private RetryInfo createRetryInfo() {
+        Duration.Builder duration = Duration.newBuilder().setSeconds(0L).setNanos(100_000_000);
+        return RetryInfo.newBuilder().setRetryDelay(duration).build();
     }
 }

@@ -113,7 +113,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
                     .builder()
                     .useClientTimeoutHeader(false)
                     .useBlockingTaskExecutor(true)
-                    .exceptionMapping(requestExceptionHandler);
+                    .exceptionHandler(requestExceptionHandler);
 
             final MethodDescriptor<ExportTraceServiceRequest, ExportTraceServiceResponse> methodDescriptor = TraceServiceGrpc.getExportMethod();
             final String oTelTraceSourcePath = oTelTraceSourceConfig.getPath();
