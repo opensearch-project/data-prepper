@@ -22,6 +22,7 @@ import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.OperationType;
 import software.amazon.awssdk.services.dynamodb.model.Record;
+import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -167,9 +168,9 @@ public class StreamRecordConverter extends RecordConverter {
             return record.dynamodb().newImage();
         }
 
-        if (streamConfig.shouldUseOldImageForDeletes()) {
+        if (StreamViewType.OLD_IMAGE.equals(streamConfig.getStreamViewForRemoves())) {
             if (!record.dynamodb().hasOldImage()) {
-                LOG.warn("use_old_image_for_deletes is enabled, but no old image can be found on the stream record, using new image");
+                LOG.warn("view_on_remove with OLD_IMAGE is enabled, but no old image can be found on the stream record, using NEW_IMAGE");
                 return record.dynamodb().newImage();
             } else {
                 return record.dynamodb().oldImage();

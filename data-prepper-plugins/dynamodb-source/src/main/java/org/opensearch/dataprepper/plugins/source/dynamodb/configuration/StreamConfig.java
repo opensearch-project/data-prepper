@@ -6,21 +6,22 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
 
 public class StreamConfig {
     
     @JsonProperty(value = "start_position")
     private StreamStartPosition startPosition = StreamStartPosition.LATEST;
 
-    @JsonProperty("use_old_image_for_deletes")
-    private boolean useOldImageForDeletes = false;
+    @JsonProperty("view_on_remove")
+    private StreamViewType viewForRemoves = StreamViewType.NEW_IMAGE;
 
     public StreamStartPosition getStartPosition() {
         return startPosition;
     }
 
-    public boolean shouldUseOldImageForDeletes() {
-        return useOldImageForDeletes;
+    public StreamViewType getStreamViewForRemoves() {
+        return viewForRemoves;
     }
 
 }

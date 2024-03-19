@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.OperationType;
 import software.amazon.awssdk.services.dynamodb.model.StreamRecord;
+import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -344,7 +345,7 @@ class StreamRecordConverterTest {
 
     @Test
     void remove_record_with_use_old_image_on_delete_uses_old_image() throws Exception {
-        when(streamConfig.shouldUseOldImageForDeletes()).thenReturn(true);
+        when(streamConfig.getStreamViewForRemoves()).thenReturn(StreamViewType.OLD_IMAGE);
 
         final String newImageKey = UUID.randomUUID().toString();
         final String newImageValue = UUID.randomUUID().toString();
@@ -390,7 +391,7 @@ class StreamRecordConverterTest {
 
     @Test
     void remove_record_with_use_old_image_on_delete_with_no_new_image_found_uses_new_image() throws Exception {
-        when(streamConfig.shouldUseOldImageForDeletes()).thenReturn(true);
+        when(streamConfig.getStreamViewForRemoves()).thenReturn(StreamViewType.OLD_IMAGE);
 
         final String newImageKey = UUID.randomUUID().toString();
         final String newImageValue = UUID.randomUUID().toString();
@@ -431,7 +432,7 @@ class StreamRecordConverterTest {
 
     @Test
     void remove_record_without_use_old_image_on_delete_uses_new_image() throws Exception {
-        when(streamConfig.shouldUseOldImageForDeletes()).thenReturn(false);
+        when(streamConfig.getStreamViewForRemoves()).thenReturn(StreamViewType.NEW_IMAGE);
 
         final String newImageKey = UUID.randomUUID().toString();
         final String newImageValue = UUID.randomUUID().toString();
