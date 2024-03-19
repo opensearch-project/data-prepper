@@ -15,5 +15,5 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation libs.commons.lang3
     implementation libs.commons.codec
-    testImplementation 'org.assertj:assertj-core:3.25.2'
+    testImplementation 'org.assertj:assertj-core:3.25.3'
 }
