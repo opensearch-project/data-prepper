@@ -90,7 +90,6 @@ class SqsServiceIT {
         numMessagesCounter = mock(Counter.class);
         lenient().when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_RECEIVED_METRIC_NAME)).thenReturn(numMessagesCounter);
         lenient().when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_DELETED_METRIC_NAME)).thenReturn(deletedCounter);
-        lenient().when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_DELETED_METRIC_NAME)).thenReturn(deletedCounter);
         lenient().when(pluginMetrics.counter(SqsWorker.S3_OBJECTS_EMPTY_METRIC_NAME)).thenReturn(mock(Counter.class));
         lenient().when(pluginMetrics.summary(anyString())).thenReturn(distributionSummary);
         when(pluginMetrics.timer(anyString())).thenReturn(sqsMessageDelayTimer);
