@@ -27,7 +27,6 @@ import org.opensearch.dataprepper.plugins.geoip.exception.EngineFailureException
 import org.opensearch.dataprepper.plugins.geoip.exception.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.geoip.extension.GeoIPProcessorService;
 import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIpConfigSupplier;
-import org.opensearch.dataprepper.plugins.geoip.utils.IPValidationCheck;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -346,8 +345,8 @@ class GeoIPProcessorTest {
 
     @Test
     void doExecuteTest_should_not_add_geodata_if_ip_address_is_not_public() {
-        try (final MockedStatic<IPValidationCheck> ipValidationCheckMockedStatic = mockStatic(IPValidationCheck.class)) {
-            ipValidationCheckMockedStatic.when(() -> IPValidationCheck.isPublicIpAddress(any())).thenReturn(false);
+        try (final MockedStatic<GeoInetAddress> ipValidationCheckMockedStatic = mockStatic(GeoInetAddress.class)) {
+            ipValidationCheckMockedStatic.when(() -> GeoInetAddress.usableInetFromString(any())).thenReturn(Optional.empty());
 
             when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
             when(entry.getSource()).thenReturn(SOURCE);
