@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
@@ -121,7 +122,7 @@ public class ShardConsumer implements Runnable {
         this.startTime = builder.startTime == null ? Instant.MIN : builder.startTime.minus(STREAM_EVENT_OVERLAP_TIME);
         this.waitForExport = builder.waitForExport;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(builder.buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-        recordConverter = new StreamRecordConverter(bufferAccumulator, builder.tableInfo, builder.pluginMetrics);
+        recordConverter = new StreamRecordConverter(bufferAccumulator, builder.tableInfo, builder.pluginMetrics, builder.streamConfig);
         this.acknowledgementSet = builder.acknowledgementSet;
         this.shardAcknowledgmentTimeout = builder.dataFileAcknowledgmentTimeout;
         this.shardId = builder.shardId;
@@ -132,8 +133,9 @@ public class ShardConsumer implements Runnable {
     public static Builder builder(final DynamoDbStreamsClient dynamoDbStreamsClient,
                                   final PluginMetrics pluginMetrics,
                                   final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics,
-                                  final Buffer<Record<Event>> buffer) {
-        return new Builder(dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer);
+                                  final Buffer<Record<Event>> buffer,
+                                  final StreamConfig streamConfig) {
+        return new Builder(dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
     }
 
 
@@ -164,14 +166,18 @@ public class ShardConsumer implements Runnable {
         private AcknowledgementSet acknowledgementSet;
         private Duration dataFileAcknowledgmentTimeout;
 
+        private StreamConfig streamConfig;
+
         public Builder(final DynamoDbStreamsClient dynamoDbStreamsClient,
                        final PluginMetrics pluginMetrics,
                        final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics,
-                       final Buffer<Record<Event>> buffer) {
+                       final Buffer<Record<Event>> buffer,
+                       final StreamConfig streamConfig) {
             this.dynamoDbStreamsClient = dynamoDbStreamsClient;
             this.pluginMetrics = pluginMetrics;
             this.dynamoDBSourceAggregateMetrics = dynamoDBSourceAggregateMetrics;
             this.buffer = buffer;
+            this.streamConfig = streamConfig;
         }
 
         public Builder tableInfo(TableInfo tableInfo) {

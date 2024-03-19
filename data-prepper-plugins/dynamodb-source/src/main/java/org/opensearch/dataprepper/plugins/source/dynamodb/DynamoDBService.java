@@ -98,7 +98,7 @@ public class DynamoDBService {
         DataFileLoaderFactory loaderFactory = new DataFileLoaderFactory(coordinator, s3Client, pluginMetrics, buffer);
         Runnable fileLoaderScheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
 
-        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer);
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, dynamoDBSourceConfig.getTableConfigs().get(0).getStreamConfig());
         Runnable streamScheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, new BackoffCalculator(dynamoDBSourceConfig.getTableConfigs().get(0).getExportConfig() != null));
         // leader scheduler will handle the initialization
         Runnable leaderScheduler = new LeaderScheduler(coordinator, dynamoDbClient, shardManager, tableConfigs);
@@ -109,8 +109,10 @@ public class DynamoDBService {
         executor.submit(leaderScheduler);
         executor.submit(exportScheduler);
         executor.submit(fileLoaderScheduler);
-        executor.submit(streamScheduler);
 
+        if (tableConfigs.get(0).getStreamConfig() != null) {
+            executor.submit(streamScheduler);
+        }
     }
 
     /**

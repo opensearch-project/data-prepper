@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
@@ -45,18 +46,21 @@ public class ShardConsumerFactory {
     private final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics;
     private final Buffer<Record<Event>> buffer;
 
+    private final StreamConfig streamConfig;
+
 
     public ShardConsumerFactory(final EnhancedSourceCoordinator enhancedSourceCoordinator,
                                 final DynamoDbStreamsClient streamsClient,
                                 final PluginMetrics pluginMetrics,
                                 final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics,
-                                final Buffer<Record<Event>> buffer) {
+                                final Buffer<Record<Event>> buffer,
+                                final StreamConfig streamConfig) {
         this.streamsClient = streamsClient;
         this.enhancedSourceCoordinator = enhancedSourceCoordinator;
         this.pluginMetrics = pluginMetrics;
         this.dynamoDBSourceAggregateMetrics = dynamoDBSourceAggregateMetrics;
         this.buffer = buffer;
-
+        this.streamConfig = streamConfig;
     }
 
     public Runnable createConsumer(final StreamPartition streamPartition,
@@ -97,7 +101,7 @@ public class ShardConsumerFactory {
 
         LOG.debug("Create shard consumer for {} with shardIter {}", streamPartition.getShardId(), shardIterator);
         LOG.debug("Create shard consumer for {} with lastShardIter {}", streamPartition.getShardId(), lastShardIterator);
-        ShardConsumer shardConsumer = ShardConsumer.builder(streamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer)
+        ShardConsumer shardConsumer = ShardConsumer.builder(streamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig)
                 .tableInfo(tableInfo)
                 .checkpointer(checkpointer)
                 .shardIterator(shardIterator)

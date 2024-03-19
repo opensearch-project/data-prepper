@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
@@ -67,6 +68,9 @@ class ShardConsumerFactoryTest {
     @Mock
     private GlobalState tableInfoGlobalState;
 
+    @Mock
+    private StreamConfig streamConfig;
+
 
     private final String tableName = UUID.randomUUID().toString();
     private final String tableArn = "arn:aws:dynamodb:us-west-2:123456789012:table/" + tableName;
@@ -111,7 +115,7 @@ class ShardConsumerFactoryTest {
         state.setStartTime(Instant.now().toEpochMilli());
         streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
 
-        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer);
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
         Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
         assertThat(consumer, notNullValue());
         verify(dynamoDbStreamsClient).getShardIterator(any(GetShardIteratorRequest.class));
@@ -128,7 +132,7 @@ class ShardConsumerFactoryTest {
         state.setEndingSequenceNumber(UUID.randomUUID().toString());
         streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
 
-        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer);
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
         Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
         assertThat(consumer, notNullValue());
         // Should get iterators twice
@@ -149,7 +153,7 @@ class ShardConsumerFactoryTest {
         final Counter stream5xxErrors = mock(Counter.class);
         when(dynamoDBSourceAggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
 
-        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer);
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
         Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
         assertThat(consumer, nullValue());
         verify(stream5xxErrors).increment();
@@ -167,7 +171,7 @@ class ShardConsumerFactoryTest {
         final Counter stream4xxErrors = mock(Counter.class);
         when(dynamoDBSourceAggregateMetrics.getStream4xxErrors()).thenReturn(stream4xxErrors);
 
-        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer);
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
         Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
         assertThat(consumer, nullValue());
         verify(stream4xxErrors).increment();
