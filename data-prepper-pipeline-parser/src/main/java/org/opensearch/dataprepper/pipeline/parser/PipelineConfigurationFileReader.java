@@ -32,8 +32,13 @@ public class PipelineConfigurationFileReader implements PipelineConfigurationRea
         final File configurationLocation = new File(pipelineConfigurationFileLocation);
 
         if (configurationLocation.isFile()) {
-            return Stream.of(configurationLocation).map(this::getInputStreamForFile)
+            final List<InputStream> inputStreams = Stream.of(configurationLocation).map(this::getInputStreamForFile)
                     .filter(Objects::nonNull).collect(Collectors.toList());
+
+            if (inputStreams.size() != 1) {
+                throw new ParseException(format("Pipeline configuration file not loadable at %s", configurationLocation.getName()));
+            }
+            return inputStreams;
         } else if (configurationLocation.isDirectory()) {
             FileFilter yamlFilter = pathname -> (pathname.getName().endsWith(".yaml") || pathname.getName().endsWith(".yml"));
             List<InputStream> inputStreams = Stream.of(configurationLocation.listFiles(yamlFilter))
@@ -59,7 +64,7 @@ public class PipelineConfigurationFileReader implements PipelineConfigurationRea
         try {
             return new FileInputStream(pipelineConfigurationFile);
         } catch (IOException e) {
-            LOG.warn("Pipeline configuration file {} not found", pipelineConfigurationFile.getName());
+            LOG.warn("Unable to load pipeline configuration file {}", pipelineConfigurationFile.getName());
             return null;
         }
     }

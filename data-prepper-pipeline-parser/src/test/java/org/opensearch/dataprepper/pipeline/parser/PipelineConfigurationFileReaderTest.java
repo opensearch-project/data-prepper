@@ -49,6 +49,22 @@ public class PipelineConfigurationFileReaderTest {
         }
 
         @Test
+        void getPipelineConfigurationInputStreams_with_a_configuration_file_exists_and_is_not_loadable_should_throw() throws IOException {
+            final String yamlContent = UUID.randomUUID().toString();
+            final Path file = tempDir.resolve("test-pipeline.yaml");
+            Files.writeString(file, yamlContent);
+
+            file.toFile().setReadable(false, false);
+
+            final PipelineConfigurationReader objectUnderTest =
+                    new PipelineConfigurationFileReader(file.toString());
+
+            final RuntimeException actualException = assertThrows(RuntimeException.class,
+                    objectUnderTest::getPipelineConfigurationInputStreams);
+            assertThat(actualException.getMessage(), equalTo("Pipeline configuration file not loadable at test-pipeline.yaml"));
+        }
+
+        @Test
         void getPipelineConfigurationInput_streams_from_existing_file() throws IOException {
 
             final String yamlContent = UUID.randomUUID().toString();
