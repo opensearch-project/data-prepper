@@ -29,11 +29,10 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Implementation class of geoIP-processor plugin. It is responsible for enrichment of
@@ -59,7 +58,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   private final GeoIPProcessorService geoIPProcessorService;
   private final ExpressionEvaluator expressionEvaluator;
   private final Map<EntryConfig, List<GeoIPField>> entryFieldsMap;
-  private final Map<EntryConfig, Set<GeoIPDatabase>> entryDatabaseMap;
+  final Map<EntryConfig, Collection<GeoIPDatabase>> entryDatabaseMap;
 
   /**
    * GeoIPProcessor constructor for initialization of required attributes
@@ -118,19 +117,19 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
       boolean ipNotFound = false;
       boolean engineFailure = false;
 
-      for (final EntryConfig entry : geoIPProcessorConfig.getEntries()) {
-        final String source = entry.getSource();
-        final List<GeoIPField> fields = entryFieldsMap.get(entry);
-        final Set<GeoIPDatabase> databases = entryDatabaseMap.get(entry);
-        String ipAddress = null;
-        try {
-          ipAddress = event.get(source, String.class);
-        } catch (final Exception e) {
-          eventSucceeded = false;
-          ipNotFound = true;
-          LOG.error(DataPrepperMarkers.EVENT, "Failed to get IP address from [{}] in event: [{}]. Caused by:[{}]",
-                  source, event, e.getMessage());
-        }
+        for (final EntryConfig entry : geoIPProcessorConfig.getEntries()) {
+          final String source = entry.getSource();
+          final List<GeoIPField> fields = entryFieldsMap.get(entry);
+          final Collection<GeoIPDatabase> databases = entryDatabaseMap.get(entry);
+          String ipAddress = null;
+          try {
+            ipAddress = event.get(source, String.class);
+          } catch (final Exception e) {
+            eventSucceeded = false;
+            ipNotFound = true;
+            LOG.error(DataPrepperMarkers.EVENT, "Failed to get IP address from [{}] in event: [{}]. Caused by:[{}]",
+                    source, event, e.getMessage());
+          }
 
         //Lookup from DB
         if (ipAddress != null && !ipAddress.isEmpty()) {
@@ -233,17 +232,20 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
     return entryConfigFieldsMap;
   }
 
-  private Map<EntryConfig, Set<GeoIPDatabase>> populateGeoIPDatabases() {
-    final Map<EntryConfig, Set<GeoIPDatabase>> entryConfigGeoIPDatabaseMap = new HashMap<>();
+  private Map<EntryConfig, Collection<GeoIPDatabase>> populateGeoIPDatabases() {
+    final Map<EntryConfig, Collection<GeoIPDatabase>> entryConfigGeoIPDatabaseMap = new HashMap<>();
     for (final EntryConfig entry : geoIPProcessorConfig.getEntries()) {
       final List<GeoIPField> geoIPFields = entryFieldsMap.get(entry);
-      final Set<GeoIPDatabase> geoIPDatabasesToUse = new HashSet<>();
-      for (final GeoIPField geoIPField : geoIPFields) {
-        final Set<GeoIPDatabase> geoIPDatabases = geoIPField.getGeoIPDatabases();
-        geoIPDatabasesToUse.addAll(geoIPDatabases);
-      }
+      final Collection<GeoIPDatabase> geoIPDatabasesToUse = GeoIPDatabase.selectDatabasesForFields(geoIPFields);
       entryConfigGeoIPDatabaseMap.put(entry, geoIPDatabasesToUse);
     }
+
+    if(LOG.isDebugEnabled()) {
+      for (final Collection<GeoIPDatabase> geoIPDatabases : entryConfigGeoIPDatabaseMap.values()) {
+        LOG.debug("Entry configuration using databases: {}", geoIPDatabases.stream().map(Enum::name).collect(Collectors.joining(", ")));
+      }
+    }
+
     return entryConfigGeoIPDatabaseMap;
   }
 

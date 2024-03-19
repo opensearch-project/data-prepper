@@ -10,9 +10,9 @@ import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
 import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 
 import java.net.InetAddress;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * A {@link GeoIPDatabaseReader} useful for a single batch of processing.
@@ -32,7 +32,7 @@ class BatchGeoIPDatabaseReader implements GeoIPDatabaseReader {
     }
 
     @Override
-    public Map<String, Object> getGeoData(final InetAddress inetAddress, final List<GeoIPField> fields, final Set<GeoIPDatabase> geoIPDatabases) {
+    public Map<String, Object> getGeoData(final InetAddress inetAddress, final List<GeoIPField> fields, final Collection<GeoIPDatabase> geoIPDatabases) {
         return delegate.getGeoData(inetAddress, fields, geoIPDatabases);
     }
 

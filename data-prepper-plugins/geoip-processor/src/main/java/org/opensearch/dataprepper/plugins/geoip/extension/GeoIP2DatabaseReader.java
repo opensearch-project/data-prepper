@@ -32,11 +32,11 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -84,7 +84,7 @@ class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
         }
     }
     @Override
-    public Map<String, Object> getGeoData(final InetAddress inetAddress, final List<GeoIPField> fields, final Set<GeoIPDatabase> geoIPDatabases) {
+    public Map<String, Object> getGeoData(final InetAddress inetAddress, final List<GeoIPField> fields, final Collection<GeoIPDatabase> geoIPDatabases) {
         Map<String, Object> geoData = new HashMap<>();
 
         try {

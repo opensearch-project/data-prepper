@@ -19,11 +19,11 @@ import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
 import java.io.File;
 import java.net.InetAddress;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * Interface for storing and maintaining MaxMind database readers
@@ -43,7 +43,7 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
      *
      * @since 2.7
      */
-    Map<String, Object> getGeoData(InetAddress inetAddress, List<GeoIPField> fields, Set<GeoIPDatabase> geoIPDatabases);
+    Map<String, Object> getGeoData(InetAddress inetAddress, List<GeoIPField> fields, Collection<GeoIPDatabase> geoIPDatabases);
 
     /**
      * Gets if the database is expired from metadata or last updated timestamp
