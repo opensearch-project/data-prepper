@@ -18,7 +18,7 @@ dependencies {
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
     testImplementation project(':data-prepper-api').sourceSets.test.output
-    testImplementation 'org.assertj:assertj-core:3.25.2'
+    testImplementation 'org.assertj:assertj-core:3.25.3'
 }
 
 jacocoTestCoverageVerification {
