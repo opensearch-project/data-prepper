@@ -6,33 +6,92 @@
 package org.opensearch.dataprepper.pipeline.parser;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class PipelinesDataflowModelParserTest {
+
+    @Mock
+    private PipelineConfigurationReader pipelineConfigurationReader;
+
     @Test
-    void parseConfiguration_with_multiple_valid_pipelines() {
+    void parseConfiguration_with_multiple_valid_pipelines() throws FileNotFoundException {
+        when(pipelineConfigurationReader.getPipelineConfigurationInputStreams())
+                .thenReturn(List.of(new FileInputStream(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE)));
+
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
     }
 
     @Test
-    void parseConfiguration_with_valid_pipelines_and_extensions() {
+    void parseConfiguration_from_string_input_stream_creates_the_correct_model() {
+
+        final String configurationYamlString = "# this configuration file is solely for testing formatting\n" +
+                "test-pipeline-1:\n" +
+                "  source:\n" +
+                "    file:\n" +
+                "      path: \"/tmp/file-source.tmp\"\n" +
+                "  buffer:\n" +
+                "    bounded_blocking: #to check non object nodes for plugins\n" +
+                "  sink:\n" +
+                "    - pipeline:\n" +
+                "       name: \"test-pipeline-2\"\n" +
+                "test-pipeline-2:\n" +
+                "  source:\n" +
+                "    pipeline:\n" +
+                "      name: \"test-pipeline-1\"\n" +
+                "  sink:\n" +
+                "    - pipeline:\n" +
+                "       name: \"test-pipeline-3\"\n" +
+                "test-pipeline-3:\n" +
+                "  source:\n" +
+                "    pipeline:\n" +
+                "      name: \"test-pipeline-2\"\n" +
+                "  sink:\n" +
+                "    - file:\n" +
+                "       path: \"/tmp/todelete.txt\"";
+
+        when(pipelineConfigurationReader.getPipelineConfigurationInputStreams())
+                .thenReturn(List.of(new ByteArrayInputStream(configurationYamlString.getBytes())));
+
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(TestConfigurationProvider.VALID_PIPELINE_CONFIG_FILE_WITH_EXTENSIONS);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+        final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
+        assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
+                equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
+    }
+
+    @Test
+    void parseConfiguration_with_valid_pipelines_and_extensions() throws FileNotFoundException {
+        when(pipelineConfigurationReader.getPipelineConfigurationInputStreams())
+                .thenReturn(List.of(new FileInputStream(TestConfigurationProvider.VALID_PIPELINE_CONFIG_FILE_WITH_EXTENSIONS)));
+
+        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
@@ -43,9 +102,12 @@ class PipelinesDataflowModelParserTest {
     }
 
     @Test
-    void parseConfiguration_with_incompatible_version_should_throw() {
+    void parseConfiguration_with_incompatible_version_should_throw() throws FileNotFoundException {
+        when(pipelineConfigurationReader.getPipelineConfigurationInputStreams())
+                .thenReturn(List.of(new FileInputStream(TestConfigurationProvider.INCOMPATIBLE_VERSION_CONFIG_FILE)));
+
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(TestConfigurationProvider.INCOMPATIBLE_VERSION_CONFIG_FILE);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
         final RuntimeException actualException = assertThrows(
                 RuntimeException.class, pipelinesDataflowModelParser::parseConfiguration);
@@ -54,33 +116,45 @@ class PipelinesDataflowModelParserTest {
     }
 
     @Test
-    void parseConfiguration_with_a_configuration_file_which_does_not_exist_should_throw() {
-        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser("file_does_no_exist.yml");
-        final RuntimeException actualException = assertThrows(RuntimeException.class,
-                pipelinesDataflowModelParser::parseConfiguration);
-        assertThat(actualException.getMessage(), equalTo("Pipelines configuration file not found at file_does_no_exist.yml"));
-    }
+    void parseConfiguration_from_directory_with_multiple_files_creates_the_correct_model() throws Exception {
+        final File directoryLocation = new File(TestConfigurationProvider.MULTI_FILE_PIPELINE_DIRECTOTRY);
+        final List<InputStream> fileInputStreams = Stream.of(directoryLocation.listFiles())
+                .map(file -> {
+                    try {
+                        return new FileInputStream(file);
+                    } catch (FileNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.toList());
 
-    @Test
-    void parseConfiguration_from_directory_with_multiple_files_creates_the_correct_model() {
+        when(pipelineConfigurationReader.getPipelineConfigurationInputStreams()).thenReturn(fileInputStreams);
+
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(TestConfigurationProvider.MULTI_FILE_PIPELINE_DIRECTOTRY);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
         assertThat(actualPipelinesDataFlowModel.getDataPrepperVersion(), nullValue());
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {
-            TestConfigurationProvider.MULTI_FILE_PIPELINE_WITH_DISTRIBUTED_PIPELINE_CONFIGURATIONS_DIRECTOTRY,
-            TestConfigurationProvider.MULTI_FILE_PIPELINE_WITH_SINGLE_PIPELINE_CONFIGURATIONS_DIRECTOTRY
-    })
+    @Test
     void parseConfiguration_from_directory_with_multiple_files_and_pipeline_extensions_should_throw() {
+        final File directoryLocation = new File(TestConfigurationProvider.MULTI_FILE_PIPELINE_WITH_DISTRIBUTED_PIPELINE_CONFIGURATIONS_DIRECTOTRY);
+        final List<InputStream> fileInputStreams = Stream.of(directoryLocation.listFiles())
+                .map(file -> {
+                    try {
+                        return new FileInputStream(file);
+                    } catch (FileNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.toList());
+
+        when(pipelineConfigurationReader.getPipelineConfigurationInputStreams()).thenReturn(fileInputStreams);
+
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(
-                        TestConfigurationProvider.MULTI_FILE_PIPELINE_WITH_DISTRIBUTED_PIPELINE_CONFIGURATIONS_DIRECTOTRY);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
         final ParseException actualException = assertThrows(
                 ParseException.class, pipelinesDataflowModelParser::parseConfiguration);
         assertThat(actualException.getMessage(), equalTo(
@@ -90,20 +164,23 @@ class PipelinesDataflowModelParserTest {
 
     @Test
     void parseConfiguration_from_directory_with_single_file_creates_the_correct_model() {
+        final File directoryLocation = new File(TestConfigurationProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY);
+        final List<InputStream> fileInputStreams = Stream.of(directoryLocation.listFiles())
+                .map(file -> {
+                    try {
+                        return new FileInputStream(file);
+                    } catch (FileNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.toList());
+
+        when(pipelineConfigurationReader.getPipelineConfigurationInputStreams()).thenReturn(fileInputStreams);
+
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(TestConfigurationProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
-    }
-
-    @Test
-    void parseConfiguration_from_directory_with_no_yaml_files_should_throw() {
-        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(TestConfigurationProvider.EMPTY_PIPELINE_DIRECTOTRY);
-        final RuntimeException actualException = assertThrows(RuntimeException.class,
-                pipelinesDataflowModelParser::parseConfiguration);
-        assertThat(actualException.getMessage(), equalTo(
-                String.format("Pipelines configuration file not found at %s", TestConfigurationProvider.EMPTY_PIPELINE_DIRECTOTRY)));
     }
 }

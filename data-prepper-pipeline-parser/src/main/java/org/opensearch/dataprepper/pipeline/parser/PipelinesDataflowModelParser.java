@@ -15,17 +15,12 @@ import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.lang.String.format;
 
@@ -34,14 +29,14 @@ public class PipelinesDataflowModelParser {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
             .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
 
-    private final String pipelineConfigurationFileLocation;
+    private final PipelineConfigurationReader pipelineConfigurationReader;
 
-    public PipelinesDataflowModelParser(final String pipelineConfigurationFileLocation) {
-        this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
+    public PipelinesDataflowModelParser(final PipelineConfigurationReader pipelineConfigurationReader) {
+        this.pipelineConfigurationReader = pipelineConfigurationReader;
     }
 
     public PipelinesDataFlowModel parseConfiguration() {
-        final List<PipelinesDataFlowModel> pipelinesDataFlowModels = parsePipelineConfigurationFiles();
+        final List<PipelinesDataFlowModel> pipelinesDataFlowModels = parseStreamsToPipelinesDataFlowModel();
         return mergePipelinesDataModels(pipelinesDataFlowModels);
     }
 
@@ -53,35 +48,14 @@ public class PipelinesDataflowModelParser {
         }
     }
 
-    private List<PipelinesDataFlowModel> parsePipelineConfigurationFiles() {
-        final File configurationLocation = new File(pipelineConfigurationFileLocation);
-
-        if (configurationLocation.isFile()) {
-            return Stream.of(configurationLocation).map(this::parsePipelineConfigurationFile)
-                    .filter(Objects::nonNull).collect(Collectors.toList());
-        } else if (configurationLocation.isDirectory()) {
-            FileFilter yamlFilter = pathname -> (pathname.getName().endsWith(".yaml") || pathname.getName().endsWith(".yml"));
-            List<PipelinesDataFlowModel> pipelinesDataFlowModels = Stream.of(configurationLocation.listFiles(yamlFilter))
-                    .map(this::parsePipelineConfigurationFile)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-
-            if (pipelinesDataFlowModels.isEmpty()) {
-                LOG.error("Pipelines configuration file not found at {}", pipelineConfigurationFileLocation);
-                throw new ParseException(
-                        format("Pipelines configuration file not found at %s", pipelineConfigurationFileLocation));
-            }
-
-            return pipelinesDataFlowModels;
-        } else {
-            LOG.error("Pipelines configuration file not found at {}", pipelineConfigurationFileLocation);
-            throw new ParseException(format("Pipelines configuration file not found at %s", pipelineConfigurationFileLocation));
-        }
+    private List<PipelinesDataFlowModel> parseStreamsToPipelinesDataFlowModel() {
+        return pipelineConfigurationReader.getPipelineConfigurationInputStreams().stream()
+                .map(this::parseStreamToPipelineDataFlowModel)
+                .collect(Collectors.toList());
     }
 
-    private PipelinesDataFlowModel parsePipelineConfigurationFile(final File pipelineConfigurationFile) {
-        try (final InputStream pipelineConfigurationInputStream = new FileInputStream(pipelineConfigurationFile)) {
-            LOG.info("Reading pipeline configuration from {}", pipelineConfigurationFile.getName());
+    private PipelinesDataFlowModel parseStreamToPipelineDataFlowModel(final InputStream configurationInputStream) {
+        try (final InputStream pipelineConfigurationInputStream = configurationInputStream) {
             final PipelinesDataFlowModel pipelinesDataFlowModel = OBJECT_MAPPER.readValue(pipelineConfigurationInputStream,
                     PipelinesDataFlowModel.class);
 
@@ -90,12 +64,7 @@ public class PipelinesDataflowModelParser {
 
             return pipelinesDataFlowModel;
         } catch (IOException e) {
-            if (e instanceof FileNotFoundException) {
-                LOG.warn("Pipeline configuration file {} not found", pipelineConfigurationFile.getName());
-                return null;
-            }
-            LOG.error("Failed to parse the configuration file {}", pipelineConfigurationFileLocation);
-            throw new ParseException(format("Failed to parse the configuration file %s", pipelineConfigurationFileLocation), e);
+            throw new ParseException("Failed to parse the configuration", e);
         }
     }
 
