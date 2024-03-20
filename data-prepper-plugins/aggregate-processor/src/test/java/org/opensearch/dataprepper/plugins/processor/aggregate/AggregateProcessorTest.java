@@ -122,6 +122,7 @@ public class AggregateProcessorTest {
     @BeforeEach
     void setUp() {
         when(aggregateProcessorConfig.getAggregateAction()).thenReturn(actionConfiguration);
+        when(aggregateProcessorConfig.getLocalOnly()).thenReturn(false);
         when(actionConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
         when(actionConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
@@ -230,6 +231,69 @@ public class AggregateProcessorTest {
             Collection<Record<Event>> c = recordsIn;
             assertThat(objectUnderTest.isApplicableEventForPeerForwarding(event), equalTo(true));
             assertThat(objectUnderTest.isApplicableEventForPeerForwarding(firstEvent), equalTo(true));
+            assertThat(objectUnderTest.isApplicableEventForPeerForwarding(secondEvent), equalTo(false));
+            final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(c);
+
+            assertThat(recordsOut.size(), equalTo(2));
+            assertThat(recordsOut.get(0), notNullValue());
+            assertThat(recordsOut.get(0).getData(), equalTo(firstEvent));
+            assertThat(recordsOut.get(1), notNullValue());
+            assertThat(recordsOut.get(1).getData(), equalTo(event));
+
+            verify(actionHandleEventsDroppedCounter).increment(1);
+            verify(actionHandleEventsOutCounter).increment(2);
+            verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
+            verifyNoInteractions(actionConcludeGroupEventsOutCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
+        }
+
+        @Test
+        void handleEvent_returning_with_condition_eliminates_one_record_local_only() {
+            final String eventKey = UUID.randomUUID().toString();
+            final String key1 = UUID.randomUUID().toString();
+            final String key2 = UUID.randomUUID().toString();
+            final String condition = "/" + eventKey + " == "+key1;
+            Event firstEvent;
+            Event secondEvent;
+            final Map<String, Object> eventMap1 = new HashMap<>();
+            eventMap1.put(eventKey, key1);
+
+            firstEvent = JacksonEvent.builder()
+                .withData(eventMap1)
+                .withEventType("event")
+                .build();
+
+            final Map<String, Object> eventMap2 = new HashMap<>();
+            eventMap2.put(eventKey, key2);
+
+            secondEvent = JacksonEvent.builder()
+                .withData(eventMap2)
+                .withEventType("event")
+                .build();
+
+
+            when(identificationKeysHasher.createIdentificationKeysMapFromEvent(firstEvent))
+                    .thenReturn(identificationKeysMap);
+            when(aggregateActionSynchronizer.handleEventForGroup(firstEvent, identificationKeysMap, aggregateGroup)).thenReturn(firstAggregateActionResponse);
+            when(expressionEvaluator.evaluateConditional(condition, event)).thenReturn(true);
+            when(expressionEvaluator.evaluateConditional(condition, firstEvent)).thenReturn(true);
+            when(expressionEvaluator.evaluateConditional(condition, secondEvent)).thenReturn(false);
+            when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
+            when(aggregateProcessorConfig.getLocalOnly()).thenReturn(true);
+            final AggregateProcessor objectUnderTest = createObjectUnderTest();
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.emptyList());
+            when(aggregateActionResponse.getEvent()).thenReturn(event);
+            when(firstAggregateActionResponse.getEvent()).thenReturn(firstEvent);
+
+            event.toMap().put(eventKey, key1);
+            List<Record<Event>> recordsIn = new ArrayList<>();
+            recordsIn.add(new Record<Event>(firstEvent));
+            recordsIn.add(new Record<Event>(secondEvent));
+            recordsIn.add(new Record<Event>(event));
+            Collection<Record<Event>> c = recordsIn;
+            assertThat(objectUnderTest.isApplicableEventForPeerForwarding(event), equalTo(false));
+            assertThat(objectUnderTest.isApplicableEventForPeerForwarding(firstEvent), equalTo(false));
             assertThat(objectUnderTest.isApplicableEventForPeerForwarding(secondEvent), equalTo(false));
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(c);
 

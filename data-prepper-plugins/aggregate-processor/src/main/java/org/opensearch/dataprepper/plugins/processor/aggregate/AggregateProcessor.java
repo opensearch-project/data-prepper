@@ -46,6 +46,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     private final AggregateAction aggregateAction;
 
     private boolean forceConclude = false;
+    private boolean localOnly = false;
     private final String whenCondition;
     private final ExpressionEvaluator expressionEvaluator;
 
@@ -69,6 +70,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         this.actionHandleEventsOutCounter = pluginMetrics.counter(ACTION_HANDLE_EVENTS_OUT);
         this.actionHandleEventsDroppedCounter = pluginMetrics.counter(ACTION_HANDLE_EVENTS_DROPPED);
         this.whenCondition = aggregateProcessorConfig.getWhenCondition();
+        this.localOnly = aggregateProcessorConfig.getLocalOnly();
 
         pluginMetrics.gauge(CURRENT_AGGREGATE_GROUPS, aggregateGroupManager, AggregateGroupManager::getAllGroupsSize);
     }
@@ -152,6 +154,9 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     public boolean isApplicableEventForPeerForwarding(Event event) {
         if (whenCondition == null) {
             return true;
+        }
+        if (localOnly) {
+            return false;
         }
         return expressionEvaluator.evaluateConditional(whenCondition, event);
     }
