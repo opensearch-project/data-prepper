@@ -6,13 +6,18 @@
 package org.opensearch.dataprepper.plugins.geoip.processor;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
+import java.util.Collection;
 import java.util.List;
 
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.opensearch.dataprepper.plugins.geoip.processor.EntryConfig.DEFAULT_TARGET;
 
@@ -89,5 +94,42 @@ class EntryConfigTest {
         final EntryConfig entryConfig = createObjectUnderTest();
 
         assertThat(entryConfig.areFieldsValid(), equalTo(false));
+    }
+
+    @Test
+    void getGeoIPFields_returns_all_GeoIPField_when_no_include_or_exclude_fields() throws NoSuchFieldException, IllegalAccessException {
+        final EntryConfig entryConfig = createObjectUnderTest();
+
+        final Collection<GeoIPField> fields = entryConfig.getGeoIPFields();
+        assertThat(fields, notNullValue());
+        assertThat(fields.size(), equalTo(GeoIPField.values().length));
+        assertThat(fields, hasItems(GeoIPField.values()));
+    }
+
+    @Test
+    void getGeoIPFields_returns_selected_fields_when_include_fields_is_provided() throws NoSuchFieldException, IllegalAccessException {
+        final EntryConfig entryConfig = createObjectUnderTest();
+
+        final List<String> includeFields = List.of("city_name", "continent_code", "network");
+        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "includeFields", includeFields);
+
+        final Collection<GeoIPField> fields = entryConfig.getGeoIPFields();
+        assertThat(fields, notNullValue());
+        assertThat(fields.size(), equalTo(includeFields.size()));
+        assertThat(fields, hasItems(GeoIPField.CITY_NAME, GeoIPField.CONTINENT_CODE, GeoIPField.NETWORK));
+    }
+
+    @Test
+    void getGeoIPFields_returns_all_fields_except_for_exclude_fields() throws NoSuchFieldException, IllegalAccessException {
+        final EntryConfig entryConfig = createObjectUnderTest();
+
+        final List<String> excludeFields = List.of("asn", "registered_country_name", "metro_code");
+        ReflectivelySetField.setField(EntryConfig.class, entryConfig, "excludeFields", excludeFields);
+
+        final Collection<GeoIPField> fields = entryConfig.getGeoIPFields();
+        assertThat(fields, notNullValue());
+        assertThat(fields.size(), equalTo(GeoIPField.values().length - excludeFields.size()));
+        assertThat(fields, not(hasItems(GeoIPField.ASN, GeoIPField.REGISTERED_COUNTRY_NAME, GeoIPField.METRO_CODE)));
+        assertThat(fields, hasItems(GeoIPField.COUNTRY_NAME, GeoIPField.COUNTRY_ISO_CODE, GeoIPField.REGISTERED_COUNTRY_ISO_CODE, GeoIPField.NETWORK));
     }
 }

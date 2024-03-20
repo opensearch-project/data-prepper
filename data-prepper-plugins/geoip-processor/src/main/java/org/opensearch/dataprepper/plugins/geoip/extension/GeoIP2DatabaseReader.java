@@ -34,7 +34,6 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -84,7 +83,7 @@ class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
         }
     }
     @Override
-    public Map<String, Object> getGeoData(final InetAddress inetAddress, final List<GeoIPField> fields, final Collection<GeoIPDatabase> geoIPDatabases) {
+    public Map<String, Object> getGeoData(final InetAddress inetAddress, final Collection<GeoIPField> fields, final Collection<GeoIPDatabase> geoIPDatabases) {
         Map<String, Object> geoData = new HashMap<>();
 
         try {
@@ -106,7 +105,7 @@ class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
         return geoData;
     }
 
-    private void processEnterpriseResponse(final EnterpriseResponse enterpriseResponse, final Map<String, Object> geoData, final List<GeoIPField> fields) {
+    private void processEnterpriseResponse(final EnterpriseResponse enterpriseResponse, final Map<String, Object> geoData, final Collection<GeoIPField> fields) {
         final Continent continent = enterpriseResponse.getContinent();
         final Country country = enterpriseResponse.getCountry();
         final Country registeredCountry = enterpriseResponse.getRegisteredCountry();
@@ -129,7 +128,7 @@ class GeoIP2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
         extractLeastSpecifiedSubdivisionFields(leastSpecificSubdivision, geoData, fields, true);
     }
 
-    private void processAsnResponse(final AsnResponse asnResponse, final Map<String, Object> geoData, final List<GeoIPField> fields) {
+    private void processAsnResponse(final AsnResponse asnResponse, final Map<String, Object> geoData, final Collection<GeoIPField> fields) {
         extractAsnFields(asnResponse, geoData, fields);
     }
 

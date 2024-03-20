@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.stream.Stream;
 
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
@@ -67,5 +68,14 @@ class GeoIPFieldTest {
                     arguments(ASN_ORGANIZATION, EnumSet.of(GeoIPDatabase.ASN))
             );
         }
+    }
+
+    @ParameterizedTest
+    @EnumSource(GeoIPField.class)
+    void allFields_includes_each_enum_value(final GeoIPField geoIPField) {
+        final Collection<GeoIPField> allFields = GeoIPField.allFields();
+        assertThat(allFields, notNullValue());
+        assertThat(allFields.size(), equalTo(GeoIPField.values().length));
+        assertThat(allFields, hasItem(geoIPField));
     }
 }

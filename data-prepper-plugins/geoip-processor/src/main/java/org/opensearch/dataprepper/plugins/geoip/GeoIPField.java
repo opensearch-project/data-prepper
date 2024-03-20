@@ -74,4 +74,8 @@ public enum GeoIPField {
     Collection<GeoIPDatabase> getGeoIPDatabases() {
         return geoIPDatabases;
     }
+
+    public static Collection<GeoIPField> allFields() {
+        return EnumSet.allOf(GeoIPField.class);
+    }
 }

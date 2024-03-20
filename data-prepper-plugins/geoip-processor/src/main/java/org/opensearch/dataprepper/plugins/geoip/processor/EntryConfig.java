@@ -8,7 +8,10 @@ package org.opensearch.dataprepper.plugins.geoip.processor;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
+import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
 
+import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 
 public class EntryConfig {
@@ -34,11 +37,11 @@ public class EntryConfig {
         return target;
     }
 
-    public List<String> getIncludeFields() {
+    List<String> getIncludeFields() {
         return includeFields;
     }
 
-    public List<String> getExcludeFields() {
+    List<String> getExcludeFields() {
         return excludeFields;
     }
 
@@ -48,5 +51,35 @@ public class EntryConfig {
             return false;
         }
         return includeFields == null || excludeFields == null;
+    }
+
+    /**
+     * Gets the desired {@link GeoIPField} based on the configuration.
+     * @return A collection of {@link GeoIPField}
+     */
+    public Collection<GeoIPField> getGeoIPFields() {
+
+        if (includeFields != null && !includeFields.isEmpty()) {
+            final EnumSet<GeoIPField> geoIPFields = EnumSet.noneOf(GeoIPField.class);
+            for (final String field : includeFields) {
+                final GeoIPField geoIPField = GeoIPField.findByName(field);
+                if (geoIPField != null) {
+                    geoIPFields.add(geoIPField);
+                }
+            }
+            return geoIPFields;
+        } else if (excludeFields != null) {
+            final EnumSet<GeoIPField> geoIPFields = EnumSet.allOf(GeoIPField.class);
+            for (final String field : excludeFields) {
+                final GeoIPField geoIPField = GeoIPField.findByName(field);
+                if (geoIPField != null) {
+                    geoIPFields.remove(geoIPField);
+                }
+            }
+            return geoIPFields;
+        }
+
+        return GeoIPField.allFields();
+
     }
 }

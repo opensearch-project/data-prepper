@@ -36,7 +36,6 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -104,7 +103,7 @@ class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
     }
 
     @Override
-    public Map<String, Object> getGeoData(final InetAddress inetAddress, final List<GeoIPField> fields, final Collection<GeoIPDatabase> geoIPDatabases) {
+    public Map<String, Object> getGeoData(final InetAddress inetAddress, final Collection<GeoIPField> fields, final Collection<GeoIPDatabase> geoIPDatabases) {
         final Map<String, Object> geoData = new HashMap<>();
 
         try {
@@ -131,7 +130,7 @@ class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
         return geoData;
     }
 
-    private void processCountryResponse(final CountryResponse countryResponse, final Map<String, Object> geoData, final List<GeoIPField> fields) {
+    private void processCountryResponse(final CountryResponse countryResponse, final Map<String, Object> geoData, final Collection<GeoIPField> fields) {
         final Continent continent = countryResponse.getContinent();
         final Country country = countryResponse.getCountry();
         final Country registeredCountry = countryResponse.getRegisteredCountry();
@@ -146,7 +145,7 @@ class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
 
     private void processCityResponse(final CityResponse cityResponse,
                                      final Map<String, Object> geoData,
-                                     final List<GeoIPField> fields,
+                                     final Collection<GeoIPField> fields,
                                      final Collection<GeoIPDatabase> geoIPDatabases) {
         // Continent and Country fields are added from City database only if they are not extracted from Country database
         if (!geoIPDatabases.contains(GeoIPDatabase.COUNTRY)) {
@@ -174,7 +173,7 @@ class GeoLite2DatabaseReader implements GeoIPDatabaseReader, AutoCloseable {
         extractLeastSpecifiedSubdivisionFields(leastSpecificSubdivision, geoData, fields, false);
     }
 
-    private void processAsnResponse(final AsnResponse asnResponse, final Map<String, Object> geoData, final List<GeoIPField> fields) {
+    private void processAsnResponse(final AsnResponse asnResponse, final Map<String, Object> geoData, final Collection<GeoIPField> fields) {
         extractAsnFields(asnResponse, geoData, fields);
     }
 
