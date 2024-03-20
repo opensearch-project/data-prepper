@@ -46,7 +46,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   static final String GEO_IP_EVENTS_SUCCEEDED = "eventsSucceeded";
   static final String GEO_IP_EVENTS_FAILED = "eventsFailed";
   static final String GEO_IP_EVENTS_FAILED_ENGINE_EXCEPTION = "eventsFailedEngineException";
-  static final String GEO_IP_EVENTS_FAILED_IP_NOT_FOUND = "eventsFailedIpNotFound";
+  static final String GEO_IP_EVENTS_FAILED_IP_NOT_FOUND = "eventsFailedLocationNotFound";
   private final Counter geoIpEventsProcessed;
   private final Counter geoIpEventsSucceeded;
   private final Counter geoIpEventsFailed;
@@ -55,6 +55,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   private final GeoIPProcessorConfig geoIPProcessorConfig;
   private final List<String> tagsOnEngineFailure;
   private final List<String> tagsOnIPNotFound;
+  private final List<String> tagsOnInvalidIP;
   private final GeoIPProcessorService geoIPProcessorService;
   private final ExpressionEvaluator expressionEvaluator;
   private final Map<EntryConfig, Collection<GeoIPField>> entryFieldsMap;
@@ -77,6 +78,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
     this.geoIPProcessorConfig = geoIPProcessorConfig;
     this.tagsOnEngineFailure = geoIPProcessorConfig.getTagsOnEngineFailure();
     this.tagsOnIPNotFound = geoIPProcessorConfig.getTagsOnIPNotFound();
+    this.tagsOnInvalidIP = geoIPProcessorConfig.getTagsOnNoValidIp();
     this.expressionEvaluator = expressionEvaluator;
     this.geoIpEventsProcessed = pluginMetrics.counter(GEO_IP_EVENTS_PROCESSED);
     this.geoIpEventsSucceeded = pluginMetrics.counter(GEO_IP_EVENTS_SUCCEEDED);
@@ -115,6 +117,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
       boolean eventSucceeded = true;
       boolean ipNotFound = false;
+      boolean invalidIp = false;
       boolean engineFailure = false;
 
         for (final EntryConfig entry : geoIPProcessorConfig.getEntries()) {
@@ -136,16 +139,17 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
           try {
             final Optional<InetAddress> optionalInetAddress = GeoInetAddress.usableInetFromString(ipAddress);
             if (optionalInetAddress.isPresent()) {
-              geoData = geoIPDatabaseReader.getGeoData(optionalInetAddress.get(), fields, databases);
-              if (geoData.isEmpty()) {
-                ipNotFound = true;
-                eventSucceeded = false;
-              } else {
-                eventRecord.getData().put(entry.getTarget(), geoData);
-              }
+                geoData = geoIPDatabaseReader.getGeoData(optionalInetAddress.get(), fields, databases);
+                if (geoData.isEmpty()) {
+                  ipNotFound = true;
+                  eventSucceeded = false;
+                } else {
+                  eventRecord.getData().put(entry.getTarget(), geoData);
+                }
             } else {
               // no enrichment if IP is not public
-              ipNotFound = true;
+              //ipNotFound = true;
+              invalidIp = true;
               eventSucceeded = false;
             }
           } catch (final EnrichFailedException e) {
@@ -164,15 +168,18 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
         } else {
           //No Enrichment if IP is null or empty
           eventSucceeded = false;
-          ipNotFound = true;
+          invalidIp = true;
         }
       }
 
-      updateTagsAndMetrics(event, eventSucceeded, ipNotFound, engineFailure);
+      updateTagsAndMetrics(event, eventSucceeded, ipNotFound, engineFailure, invalidIp);
     }
   }
 
-  private void updateTagsAndMetrics(final Event event, final boolean eventSucceeded, final boolean ipNotFound, final boolean engineFailure) {
+  private void updateTagsAndMetrics(final Event event, final boolean eventSucceeded, final boolean ipNotFound, final boolean engineFailure, final boolean invalidIp) {
+    if (invalidIp) {
+      event.getMetadata().addTags(tagsOnInvalidIP);
+    }
     if (ipNotFound) {
       event.getMetadata().addTags(tagsOnIPNotFound);
       geoIpEventsFailedIPNotFound.increment();

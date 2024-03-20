@@ -29,6 +29,9 @@ public class GeoIPProcessorConfig {
     @JsonProperty("tags_on_ip_not_found")
     private List<String> tagsOnIPNotFound;
 
+    @JsonProperty("tags_on_no_valid_ip")
+    private List<String> tagsOnNoValidIp;
+
     @JsonProperty("geoip_when")
     private String whenCondition;
 
@@ -49,11 +52,19 @@ public class GeoIPProcessorConfig {
     }
 
     /**
-     * Get the List of invalid IP / IP not found in database tags
-     * @return List of invalid IP / IP not found in database tags
+     * Get the List of IP not found in database tags
+     * @return List of IP not found in database tags
      */
     public List<String> getTagsOnIPNotFound() {
         return tagsOnIPNotFound;
+    }
+
+    /**
+     * Gets the list of tags to apply when a field is not a valid IP address.
+     * @return List of tags
+     */
+    public List<String> getTagsOnNoValidIp() {
+        return tagsOnNoValidIp;
     }
 
     /**
