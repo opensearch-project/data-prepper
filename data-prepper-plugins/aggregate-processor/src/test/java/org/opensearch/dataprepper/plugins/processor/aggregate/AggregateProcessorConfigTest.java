@@ -18,6 +18,6 @@ public class AggregateProcessorConfigTest {
         final AggregateProcessorConfig aggregateConfig = new AggregateProcessorConfig();
 
         assertThat(aggregateConfig.getGroupDuration(), equalTo(Duration.ofSeconds(AggregateProcessorConfig.DEFAULT_GROUP_DURATION_SECONDS)));
-        assertThat(aggregateConfig.getLocalOnly(), equalTo(false));
+        assertThat(aggregateConfig.getLocalMode(), equalTo(false));
     }
 }

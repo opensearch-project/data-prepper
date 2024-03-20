@@ -28,9 +28,9 @@ public class AggregateProcessorConfig {
     @NotNull
     private PluginModel aggregateAction;
 
-    @JsonProperty("local_only")
+    @JsonProperty("local_mode")
     @NotNull
-    private Boolean localOnly = false;
+    private Boolean localMode = false;
 
     @JsonProperty("aggregate_when")
     private String whenCondition;
@@ -47,8 +47,8 @@ public class AggregateProcessorConfig {
         return whenCondition;
     }
 
-    public Boolean getLocalOnly() {
-        return localOnly;
+    public Boolean getLocalMode() {
+        return localMode;
     }
 
     public PluginModel getAggregateAction() { return aggregateAction; }

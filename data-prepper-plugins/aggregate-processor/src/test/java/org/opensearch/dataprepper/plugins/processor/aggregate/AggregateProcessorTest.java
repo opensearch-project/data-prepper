@@ -122,7 +122,7 @@ public class AggregateProcessorTest {
     @BeforeEach
     void setUp() {
         when(aggregateProcessorConfig.getAggregateAction()).thenReturn(actionConfiguration);
-        when(aggregateProcessorConfig.getLocalOnly()).thenReturn(false);
+        when(aggregateProcessorConfig.getLocalMode()).thenReturn(false);
         when(actionConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
         when(actionConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
@@ -280,7 +280,7 @@ public class AggregateProcessorTest {
             when(expressionEvaluator.evaluateConditional(condition, firstEvent)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, secondEvent)).thenReturn(false);
             when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
-            when(aggregateProcessorConfig.getLocalOnly()).thenReturn(true);
+            when(aggregateProcessorConfig.getLocalMode()).thenReturn(true);
             final AggregateProcessor objectUnderTest = createObjectUnderTest();
             when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.emptyList());
             when(aggregateActionResponse.getEvent()).thenReturn(event);
