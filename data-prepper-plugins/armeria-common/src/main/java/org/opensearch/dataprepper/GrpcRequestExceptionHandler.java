@@ -6,8 +6,6 @@
 package org.opensearch.dataprepper;
 
 import com.google.protobuf.Any;
-import com.google.protobuf.Duration;
-import com.google.rpc.RetryInfo;
 import com.linecorp.armeria.common.RequestContext;
 import com.linecorp.armeria.common.annotation.Nullable;
 import com.linecorp.armeria.common.grpc.GoogleGrpcExceptionHandlerFunction;
@@ -25,6 +23,7 @@ import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
 public class GrpcRequestExceptionHandler implements GoogleGrpcExceptionHandlerFunction {
@@ -40,12 +39,14 @@ public class GrpcRequestExceptionHandler implements GoogleGrpcExceptionHandlerFu
     private final Counter badRequestsCounter;
     private final Counter requestsTooLargeCounter;
     private final Counter internalServerErrorCounter;
+    private final GrpcRetryInfoCalculator retryInfoCalculator;
 
     public GrpcRequestExceptionHandler(final PluginMetrics pluginMetrics) {
         requestTimeoutsCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         badRequestsCounter = pluginMetrics.counter(BAD_REQUESTS);
         requestsTooLargeCounter = pluginMetrics.counter(REQUESTS_TOO_LARGE);
         internalServerErrorCounter = pluginMetrics.counter(INTERNAL_SERVER_ERROR);
+        retryInfoCalculator = new GrpcRetryInfoCalculator(Duration.ofMillis(100), Duration.ofSeconds(2));
     }
 
     @Override
@@ -87,14 +88,8 @@ public class GrpcRequestExceptionHandler implements GoogleGrpcExceptionHandlerFu
             builder.setMessage(e.getMessage() == null ? code.name() :e.getMessage());
         }
         if (code == Status.Code.RESOURCE_EXHAUSTED) {
-            builder.addDetails(Any.pack(createRetryInfo()));
+            builder.addDetails(Any.pack(retryInfoCalculator.createRetryInfo()));
         }
         return builder.build();
-    }
-
-    // TODO: Implement logic for the response retry delay to be sent with the retry info
-    private RetryInfo createRetryInfo() {
-        Duration.Builder duration = Duration.newBuilder().setSeconds(0L).setNanos(100_000_000);
-        return RetryInfo.newBuilder().setRetryDelay(duration).build();
     }
 }

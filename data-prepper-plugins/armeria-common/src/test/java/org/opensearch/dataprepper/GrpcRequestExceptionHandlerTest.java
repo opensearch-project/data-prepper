@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper;
 
-import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.Any;
 import com.google.rpc.RetryInfo;
 import com.linecorp.armeria.common.RequestContext;
 import com.linecorp.armeria.server.RequestTimeoutException;
@@ -27,13 +27,14 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import static com.linecorp.armeria.internal.common.grpc.MetadataUtil.GRPC_STATUS_DETAILS_BIN_KEY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -110,21 +111,11 @@ public class GrpcRequestExceptionHandlerTest {
 
         verify(requestTimeoutsCounter, times(2)).increment();
 
-        // TODO: Adjust to retry delay logic
         verify(metadata, times(2)).put(ArgumentMatchers.eq(GRPC_STATUS_DETAILS_BIN_KEY), status.capture());
-        assertThat(status.getValue().getDetailsCount(), equalTo(1));
-
-        status.getAllValues().stream().map(com.google.rpc.Status::getDetailsList).flatMap(List::stream).map(e -> {
-            try {
-                return e.unpack(
-                        RetryInfo.class);
-            } catch (InvalidProtocolBufferException ex) {
-                throw new AssertionError("unxepected status detail item",ex);
-            }
-        }).forEach(info -> {
-            assertThat(info.getRetryDelay().getSeconds(), equalTo(0L));
-            assertThat(info.getRetryDelay().getNanos(), equalTo(100_000_000));
-        });
+        for (com.google.rpc.Status currentStatus: status.getAllValues()) {
+            Optional<Any> retryInfo = currentStatus.getDetailsList().stream().filter(d -> d.is(RetryInfo.class)).findFirst();
+            assertTrue(retryInfo.isPresent(), "No RetryInfo at status:\n" + currentStatus.toString());
+        }
     }
 
     @Test
