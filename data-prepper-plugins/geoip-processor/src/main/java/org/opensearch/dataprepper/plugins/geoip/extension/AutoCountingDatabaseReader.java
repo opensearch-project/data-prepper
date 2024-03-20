@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -29,7 +28,7 @@ class AutoCountingDatabaseReader implements GeoIPDatabaseReader {
 
     @Override
     public Map<String, Object> getGeoData(final InetAddress inetAddress,
-                                          final List<GeoIPField> fields,
+                                          final Collection<GeoIPField> fields,
                                           final Collection<GeoIPDatabase> geoIPDatabases) {
         return delegateDatabaseReader.getGeoData(inetAddress, fields, geoIPDatabases);
     }

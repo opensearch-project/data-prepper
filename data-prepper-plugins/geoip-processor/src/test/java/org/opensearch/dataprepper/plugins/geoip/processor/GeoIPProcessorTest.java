@@ -22,10 +22,10 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
-import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 import org.opensearch.dataprepper.plugins.geoip.exception.EngineFailureException;
 import org.opensearch.dataprepper.plugins.geoip.exception.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.geoip.extension.GeoIPProcessorService;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIpConfigSupplier;
 
 import java.util.ArrayList;
@@ -50,30 +50,6 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.CITY_CONFIDENCE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.CONTINENT_CODE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.CONTINENT_NAME;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.COUNTRY_CONFIDENCE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.IS_COUNTRY_IN_EUROPEAN_UNION;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.LATITUDE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.LEAST_SPECIFIED_SUBDIVISION_CONFIDENCE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.LEAST_SPECIFIED_SUBDIVISION_ISO_CODE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.LEAST_SPECIFIED_SUBDIVISION_NAME;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.LOCATION;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.LOCATION_ACCURACY_RADIUS;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.LONGITUDE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.METRO_CODE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.MOST_SPECIFIED_SUBDIVISION_CONFIDENCE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.MOST_SPECIFIED_SUBDIVISION_ISO_CODE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.MOST_SPECIFIED_SUBDIVISION_NAME;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.POSTAL_CODE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.POSTAL_CODE_CONFIDENCE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.REGISTERED_COUNTRY_ISO_CODE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.REGISTERED_COUNTRY_NAME;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.REPRESENTED_COUNTRY_ISO_CODE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.REPRESENTED_COUNTRY_NAME;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.REPRESENTED_COUNTRY_TYPE;
-import static org.opensearch.dataprepper.plugins.geoip.GeoIPField.TIME_ZONE;
 import static org.opensearch.dataprepper.plugins.geoip.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED;
 import static org.opensearch.dataprepper.plugins.geoip.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED_ENGINE_EXCEPTION;
 import static org.opensearch.dataprepper.plugins.geoip.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED_IP_NOT_FOUND;
@@ -143,7 +119,7 @@ class GeoIPProcessorTest {
         when(geoIPProcessorConfig.getWhenCondition()).thenReturn(whenCondition);
         when(entry.getSource()).thenReturn("/peer/ip");
         when(entry.getTarget()).thenReturn(TARGET);
-        when(entry.getIncludeFields()).thenReturn(setFields());
+        when(entry.getGeoIPFields()).thenReturn(setFields());
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
@@ -196,7 +172,7 @@ class GeoIPProcessorTest {
         when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
         when(entry.getSource()).thenReturn(SOURCE);
         when(entry.getTarget()).thenReturn(TARGET);
-        when(entry.getIncludeFields()).thenReturn(setFields());
+        when(entry.getGeoIPFields()).thenReturn(setFields());
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
@@ -217,9 +193,8 @@ class GeoIPProcessorTest {
         when(entry.getSource()).thenReturn(SOURCE);
         when(entry.getTarget()).thenReturn(TARGET);
 
-        final List<String> includeFields = List.of("city_name", "asn");
         final List<GeoIPField> includeFieldsResult = List.of(GeoIPField.CITY_NAME, GeoIPField.ASN);
-        when(entry.getIncludeFields()).thenReturn(includeFields);
+        when(entry.getGeoIPFields()).thenReturn(includeFieldsResult);
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
@@ -240,43 +215,10 @@ class GeoIPProcessorTest {
     }
 
     @Test
-    void doExecuteTest_should_add_geo_data_with_expected_fields_to_event_when_exclude_fields_is_configured() {
-        when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
-        when(entry.getSource()).thenReturn(SOURCE);
-        when(entry.getTarget()).thenReturn(TARGET);
-
-        final List<String> excludeFields = List.of("country_name", "country_iso_code", "city_name", "asn", "asn_organization", "network", "ip");
-        final List<GeoIPField> excludeFieldsResult = List.of(CONTINENT_NAME, CONTINENT_CODE, IS_COUNTRY_IN_EUROPEAN_UNION,
-                REPRESENTED_COUNTRY_NAME, REPRESENTED_COUNTRY_ISO_CODE, REPRESENTED_COUNTRY_TYPE, REGISTERED_COUNTRY_NAME,
-                REGISTERED_COUNTRY_ISO_CODE, LOCATION, LOCATION_ACCURACY_RADIUS, LATITUDE, LONGITUDE, METRO_CODE, TIME_ZONE, POSTAL_CODE,
-                MOST_SPECIFIED_SUBDIVISION_NAME, MOST_SPECIFIED_SUBDIVISION_ISO_CODE, LEAST_SPECIFIED_SUBDIVISION_NAME,
-                LEAST_SPECIFIED_SUBDIVISION_ISO_CODE, COUNTRY_CONFIDENCE, CITY_CONFIDENCE, MOST_SPECIFIED_SUBDIVISION_CONFIDENCE,
-                LEAST_SPECIFIED_SUBDIVISION_CONFIDENCE, POSTAL_CODE_CONFIDENCE);
-        when(entry.getExcludeFields()).thenReturn(excludeFields);
-
-        final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
-
-        when(geoIPDatabaseReader.getGeoData(any(), any(), any())).thenReturn(prepareGeoData());
-        Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
-        verify(geoIPDatabaseReader).getGeoData(any(), geoIPFieldCaptor.capture(), any());
-
-        for (final Record<Event> record : records) {
-            final Event event = record.getData();
-            assertThat(event.get("/peer/ip", String.class), equalTo("136.226.242.205"));
-            assertThat(event.containsKey(TARGET), equalTo(true));
-            verify(geoIpEventsProcessed).increment();
-            verify(geoIpEventsSucceeded).increment();
-        }
-
-        final List<GeoIPField> value = geoIPFieldCaptor.getValue();
-        assertThat(value, containsInAnyOrder(excludeFieldsResult.toArray()));
-    }
-
-    @Test
     void doExecuteTest_should_not_add_geo_data_to_event_if_source_is_null() {
         when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
         when(entry.getSource()).thenReturn("ip");
-        when(entry.getIncludeFields()).thenReturn(setFields());
+        when(entry.getGeoIPFields()).thenReturn(setFields());
         List<String> testTags = List.of("tag1", "tag2");
         when(geoIPProcessorConfig.getTagsOnIPNotFound()).thenReturn(testTags);
 
@@ -298,7 +240,7 @@ class GeoIPProcessorTest {
     void doExecuteTest_should_not_add_geo_data_to_event_if_returned_data_is_empty() {
         when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
         when(entry.getSource()).thenReturn(SOURCE);
-        when(entry.getIncludeFields()).thenReturn(setFields());
+        when(entry.getGeoIPFields()).thenReturn(setFields());
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
@@ -350,7 +292,7 @@ class GeoIPProcessorTest {
 
             when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
             when(entry.getSource()).thenReturn(SOURCE);
-            when(entry.getIncludeFields()).thenReturn(setFields());
+            when(entry.getGeoIPFields()).thenReturn(setFields());
 
             final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
@@ -368,7 +310,7 @@ class GeoIPProcessorTest {
     @Test
     void test_ip_not_found_tags_when_EnrichFailedException_is_thrown() {
         when(entry.getSource()).thenReturn(SOURCE);
-        when(entry.getIncludeFields()).thenReturn(setFields());
+        when(entry.getGeoIPFields()).thenReturn(setFields());
 
         List<String> testTags = List.of("tag1", "tag2");
         when(geoIPProcessorConfig.getTagsOnIPNotFound()).thenReturn(testTags);
@@ -392,7 +334,7 @@ class GeoIPProcessorTest {
     @Test
     void test_ip_not_found_tags_when_EngineFailureException_is_thrown() {
         when(entry.getSource()).thenReturn(SOURCE);
-        when(entry.getIncludeFields()).thenReturn(setFields());
+        when(entry.getGeoIPFields()).thenReturn(setFields());
 
         List<String> testTags = List.of("tag1", "tag2");
         when(geoIPProcessorConfig.getTagsOnEngineFailure()).thenReturn(testTags);
@@ -434,10 +376,10 @@ class GeoIPProcessorTest {
         return geoDataMap;
     }
 
-    private List<String> setFields() {
-        final List<String> attributes = new ArrayList<>();
-        attributes.add("city_name");
-        attributes.add("country_name");
+    private Collection<GeoIPField> setFields() {
+        final List<GeoIPField> attributes = new ArrayList<>();
+        attributes.add(GeoIPField.CITY_NAME);
+        attributes.add(GeoIPField.COUNTRY_NAME);
         return attributes;
     }
 

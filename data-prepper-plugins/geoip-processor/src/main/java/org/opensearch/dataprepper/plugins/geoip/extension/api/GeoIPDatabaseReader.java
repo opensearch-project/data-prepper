@@ -21,7 +21,6 @@ import java.net.InetAddress;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -43,7 +42,7 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
      *
      * @since 2.7
      */
-    Map<String, Object> getGeoData(InetAddress inetAddress, List<GeoIPField> fields, Collection<GeoIPDatabase> geoIPDatabases);
+    Map<String, Object> getGeoData(InetAddress inetAddress, Collection<GeoIPField> fields, Collection<GeoIPDatabase> geoIPDatabases);
 
     /**
      * Gets if the database is expired from metadata or last updated timestamp
@@ -91,7 +90,7 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
 
     default void extractContinentFields(final Continent continent,
                                         final Map<String, Object> geoData,
-                                        final List<GeoIPField> fields) {
+                                        final Collection<GeoIPField> fields) {
         if (!fields.isEmpty()) {
             for (final GeoIPField field : fields) {
                 switch (field) {
@@ -112,7 +111,7 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
 
     default void extractCountryFields(final Country country,
                                       final Map<String, Object> geoData,
-                                      final List<GeoIPField> fields,
+                                      final Collection<GeoIPField> fields,
                                       final boolean isEnterpriseDatabase) {
         if (!fields.isEmpty()) {
             for (final GeoIPField field : fields) {
@@ -144,7 +143,7 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
 
     default void extractRegisteredCountryFields(final Country registeredCountry,
                                                 final Map<String, Object> geoData,
-                                                final List<GeoIPField> fields) {
+                                                final Collection<GeoIPField> fields) {
         if (!fields.isEmpty()) {
             for (final GeoIPField field : fields) {
                 switch (field) {
@@ -165,7 +164,7 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
 
     default void extractRepresentedCountryFields(final RepresentedCountry representedCountry,
                                                      final Map<String, Object> geoData,
-                                                     final List<GeoIPField> fields) {
+                                                     final Collection<GeoIPField> fields) {
         if (!fields.isEmpty()) {
             for (final GeoIPField field : fields) {
                 switch (field) {
@@ -190,7 +189,7 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
 
     default void extractCityFields(final City city,
                                    final Map<String, Object> geoData,
-                                   final List<GeoIPField> fields,
+                                   final Collection<GeoIPField> fields,
                                    final boolean isEnterpriseDatabase) {
         if (!fields.isEmpty()) {
             for (final GeoIPField field : fields) {
@@ -209,7 +208,7 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
 
     default void extractLocationFields(final Location location,
                                        final Map<String, Object> geoData,
-                                       final List<GeoIPField> fields) {
+                                       final Collection<GeoIPField> fields) {
         final Map<String, Object> locationObject = new HashMap<>();
         locationObject.put(LAT, location.getLatitude());
         locationObject.put(LON, location.getLongitude());
@@ -248,7 +247,7 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
 
     default void extractPostalFields(final Postal postal,
                                                     final Map<String, Object> geoData,
-                                                    final List<GeoIPField> fields,
+                                                    final Collection<GeoIPField> fields,
                                                     final boolean isEnterpriseDatabase) {
         if (!fields.isEmpty()) {
             for (final GeoIPField field : fields) {
@@ -267,7 +266,7 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
 
     default void extractMostSpecifiedSubdivisionFields(final Subdivision subdivision,
                                                          final Map<String, Object> geoData,
-                                                         final List<GeoIPField> fields,
+                                                         final Collection<GeoIPField> fields,
                                                          final boolean isEnterpriseDatabase) {
         if (!fields.isEmpty()) {
             for (final GeoIPField field : fields) {
@@ -295,7 +294,7 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
 
     default void extractLeastSpecifiedSubdivisionFields(final Subdivision subdivision,
                                           final Map<String, Object> geoData,
-                                          final List<GeoIPField> fields,
+                                          final Collection<GeoIPField> fields,
                                           final boolean isEnterpriseDatabase) {
         if (!fields.isEmpty()) {
             for (final GeoIPField field : fields) {
@@ -323,7 +322,7 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
 
     default void extractAsnFields(final AsnResponse asnResponse,
                                   final Map<String, Object> geoData,
-                                  final List<GeoIPField> fields) {
+                                  final Collection<GeoIPField> fields) {
         if (!fields.isEmpty()) {
             for (final GeoIPField field : fields) {
                 switch (field) {

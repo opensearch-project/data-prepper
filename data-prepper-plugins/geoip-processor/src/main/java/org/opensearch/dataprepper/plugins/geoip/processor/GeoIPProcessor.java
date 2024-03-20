@@ -26,12 +26,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -57,7 +57,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   private final List<String> tagsOnIPNotFound;
   private final GeoIPProcessorService geoIPProcessorService;
   private final ExpressionEvaluator expressionEvaluator;
-  private final Map<EntryConfig, List<GeoIPField>> entryFieldsMap;
+  private final Map<EntryConfig, Collection<GeoIPField>> entryFieldsMap;
   final Map<EntryConfig, Collection<GeoIPDatabase>> entryDatabaseMap;
 
   /**
@@ -119,7 +119,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
         for (final EntryConfig entry : geoIPProcessorConfig.getEntries()) {
           final String source = entry.getSource();
-          final List<GeoIPField> fields = entryFieldsMap.get(entry);
+          final Collection<GeoIPField> fields = entryFieldsMap.get(entry);
           final Collection<GeoIPDatabase> databases = entryDatabaseMap.get(entry);
           String ipAddress = null;
           try {
@@ -203,39 +203,16 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
     return false;
   }
 
-  private Map<EntryConfig, List<GeoIPField>> populateGeoIPFields() {
-    final Map<EntryConfig, List<GeoIPField>> entryConfigFieldsMap = new HashMap<>();
-    for (final EntryConfig entry: geoIPProcessorConfig.getEntries()) {
-      final List<String> includeFields = entry.getIncludeFields();
-      final List<String> excludeFields = entry.getExcludeFields();
-      List<GeoIPField> geoIPFields = new ArrayList<>();
-      if (includeFields != null && !includeFields.isEmpty()) {
-        for (final String field : includeFields) {
-          final GeoIPField geoIPField = GeoIPField.findByName(field);
-          if (geoIPField != null) {
-            geoIPFields.add(geoIPField);
-          }
-        }
-      } else if (excludeFields != null) {
-        final List<GeoIPField> excludeGeoIPFields = new ArrayList<>();
-        for (final String field : excludeFields) {
-          final GeoIPField geoIPField = GeoIPField.findByName(field);
-          if (geoIPField != null) {
-            excludeGeoIPFields.add(geoIPField);
-          }
-        }
-        geoIPFields = new ArrayList<>(List.of(GeoIPField.values()));
-        geoIPFields.removeAll(excludeGeoIPFields);
-      }
-      entryConfigFieldsMap.put(entry, geoIPFields);
-    }
-    return entryConfigFieldsMap;
+  private Map<EntryConfig, Collection<GeoIPField>> populateGeoIPFields() {
+    return geoIPProcessorConfig.getEntries()
+            .stream()
+            .collect(Collectors.toMap(Function.identity(), EntryConfig::getGeoIPFields));
   }
 
   private Map<EntryConfig, Collection<GeoIPDatabase>> populateGeoIPDatabases() {
     final Map<EntryConfig, Collection<GeoIPDatabase>> entryConfigGeoIPDatabaseMap = new HashMap<>();
     for (final EntryConfig entry : geoIPProcessorConfig.getEntries()) {
-      final List<GeoIPField> geoIPFields = entryFieldsMap.get(entry);
+      final Collection<GeoIPField> geoIPFields = entryFieldsMap.get(entry);
       final Collection<GeoIPDatabase> geoIPDatabasesToUse = GeoIPDatabase.selectDatabasesForFields(geoIPFields);
       entryConfigGeoIPDatabaseMap.put(entry, geoIPDatabasesToUse);
     }
