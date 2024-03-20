@@ -50,7 +50,7 @@ public class ProcessWorker implements Runnable {
         this.pipeline = pipeline;
         this.pluginMetrics = PluginMetrics.fromNames("ProcessWorker", pipeline.getName());
         this.invalidEventHandlesCounter = pluginMetrics.counter(INVALID_EVENT_HANDLES);
-        this.acknowledgementsEnabled = pipeline.getSource().areAcknowledgementsEnabled();
+        this.acknowledgementsEnabled = pipeline.getSource().areAcknowledgementsEnabled() || readBuffer.isByteBuffer();
     }
 
     @Override
