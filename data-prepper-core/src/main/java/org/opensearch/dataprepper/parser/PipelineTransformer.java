@@ -59,7 +59,6 @@ public class PipelineTransformer {
     private final EventFactory eventFactory;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final SourceCoordinatorFactory sourceCoordinatorFactory;
-    private boolean acknowledgementsEnabled;
 
     public PipelineTransformer(final PipelinesDataFlowModel pipelinesDataFlowModel,
                                final PluginFactory pluginFactory,
@@ -79,7 +78,6 @@ public class PipelineTransformer {
         this.eventFactory = eventFactory;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceCoordinatorFactory = sourceCoordinatorFactory;
-        this.acknowledgementsEnabled = false;
     }
 
     public Map<String, Pipeline> transformConfiguration() {
@@ -119,11 +117,6 @@ public class PipelineTransformer {
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
             final Buffer pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, pipelineConfiguration.getBufferPluginSetting(), source.getDecoder());
 
-            // If any buffer in the pipeline has acknowledgements enabled, then entire pipeline will have
-            // acknowledgements enabled. Usually, only the first pipeline's buffer can have acknowledgements enabled
-            // resulting in entire pipeline to be ack enabled
-            if (pipelineDefinedBuffer.areAcknowledgementsEnabled())
-                acknowledgementsEnabled = true;
             LOG.info("Building processors for the pipeline [{}]", pipelineName);
             final int processorThreads = pipelineConfiguration.getWorkers();
 
@@ -210,7 +203,7 @@ public class PipelineTransformer {
             Pipeline sourcePipeline = pipelineMap.get(connectedPipeline);
             final PipelineConnector pipelineConnector = sourceConnectorMap.get(sourcePipelineName);
             pipelineConnector.setSourcePipelineName(pipelineNameOptional.get());
-            if (sourcePipeline.getSource().areAcknowledgementsEnabled() || acknowledgementsEnabled) {
+            if (sourcePipeline.getSource().areAcknowledgementsEnabled() || sourcePipeline.getBuffer().areAcknowledgementsEnabled()) {
                 pipelineConnector.enableAcknowledgements();
             }
             return Optional.of(pipelineConnector);
