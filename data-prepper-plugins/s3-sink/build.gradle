@@ -11,7 +11,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation libs.commons.compress
-    implementation 'joda-time:joda-time:2.12.5'
+    implementation 'joda-time:joda-time:2.12.7'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'software.amazon.awssdk:s3'
