@@ -28,6 +28,10 @@ public class AggregateProcessorConfig {
     @NotNull
     private PluginModel aggregateAction;
 
+    @JsonProperty("local_mode")
+    @NotNull
+    private Boolean localMode = false;
+
     @JsonProperty("aggregate_when")
     private String whenCondition;
 
@@ -41,6 +45,10 @@ public class AggregateProcessorConfig {
 
     public String getWhenCondition() {
         return whenCondition;
+    }
+
+    public Boolean getLocalMode() {
+        return localMode;
     }
 
     public PluginModel getAggregateAction() { return aggregateAction; }
