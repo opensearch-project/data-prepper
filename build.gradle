@@ -146,12 +146,6 @@ subprojects {
                 }
                 because 'the build fails if the Log4j API is not update along with log4j-core'
             }
-            implementation('org.apache.zookeeper:zookeeper') {
-                version {
-                    require '3.7.2'
-                }
-                because 'Fixes CVE-2023-44981'
-            }
             implementation('com.google.code.gson:gson') {
                 version {
                     require '2.8.9'
@@ -223,12 +217,6 @@ subprojects {
                     require '2.9.0'
                 }
                 because 'Fixes CVE-2023-51074 from transitive dependencies'
-            }
-            implementation('org.bitbucket.b_c:jose4j') {
-                version {
-                    require '0.9.3'
-                }
-                because 'CVE from transitive dependencies'
             }
             implementation('org.scala-lang:scala-library') {
                 version {

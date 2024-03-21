@@ -88,6 +88,12 @@ dependencies {
             }
             because 'Fixes SNYK-JAVA-ORGMOZILLA-1314295.'
         }
+        implementation('org.bitbucket.b_c:jose4j') {
+            version {
+                require '0.9.4'
+            }
+            because 'Fixes CVE-2023-51775 and other CVEs from transitive dependencies'
+        }
     }
 }
 
