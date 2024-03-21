@@ -22,7 +22,7 @@ dependencies {
             version {
                 require '9.37.1'
             }
-            because 'Fixes CVE-2021-31684 and CVE-2023-1370 by using a newer shaded version of json-smart.'
+            because 'Fixes CVE-2023-52428, CVE-2021-31684 and CVE-2023-1370 by using a newer shaded version of json-smart.'
         }
     }
 }
