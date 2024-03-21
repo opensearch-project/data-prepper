@@ -266,6 +266,10 @@ class RemotePeerForwarder implements PeerForwarder {
                 final CompletableFuture<AggregatedHttpResponse> responseFuture =
                         peerForwarderClient.serializeRecordsAndSendHttpRequest(recordsToForward, destinationIp, pluginId, pipelineName);
                 forwardingRequestsMap.put(responseFuture, recordsToForward);
+                for (Record<Event> record: recordsToForward) {
+                    Event event = record.getData();
+                    event.getEventHandle().release(true);
+                }
             } catch (final Exception e) {
                 LOG.warn("Unable to submit request for forwarding, processing locally.", e);
                 processFailedRequestsLocally(null, recordsToForward);

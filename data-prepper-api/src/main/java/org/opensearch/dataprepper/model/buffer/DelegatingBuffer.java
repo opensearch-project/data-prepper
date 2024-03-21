@@ -74,6 +74,11 @@ public abstract class DelegatingBuffer<T extends Record<?>> implements Buffer<T>
     }
 
     @Override
+    public boolean areAcknowledgementsEnabled() {
+        return delegateBuffer.areAcknowledgementsEnabled();
+    }
+
+    @Override
     public Duration getDrainTimeout() {
         return delegateBuffer.getDrainTimeout();
     }

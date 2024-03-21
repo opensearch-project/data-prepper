@@ -90,6 +90,14 @@ class CircuitBreakingBufferTest {
         assertThat(createObjectUnderTest().isByteBuffer(), equalTo(innerIsByteBuffer));
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void areAcknowledgementsEnabled_returns_value_of_inner_buffer(boolean ackEnabled) {
+        when(buffer.areAcknowledgementsEnabled()).thenReturn(ackEnabled);
+
+        assertThat(createObjectUnderTest().areAcknowledgementsEnabled(), equalTo(ackEnabled));
+    }
+
     @Nested
     class NoCircuitBreakerChecks {
         @AfterEach

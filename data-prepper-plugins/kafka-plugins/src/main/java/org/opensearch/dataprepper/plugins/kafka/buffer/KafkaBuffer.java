@@ -131,6 +131,11 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     }
 
     @Override
+    public boolean areAcknowledgementsEnabled() {
+        return true;
+    }
+
+    @Override
     public void doWriteAll(Collection<Record<Event>> records, int timeoutInMillis) throws Exception {
         for (Record<Event> record : records) {
             doWrite(record, timeoutInMillis);

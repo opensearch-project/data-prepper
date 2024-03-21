@@ -184,6 +184,15 @@ class DelegatingBufferTest {
                 equalTo(isByteBuffer));
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void areAcksEnabled_returns_inner_areAcksEnabled(final boolean ackEnabled) {
+        when(innerBuffer.areAcknowledgementsEnabled()).thenReturn(ackEnabled);
+
+        assertThat(createObjectUnderTest().areAcknowledgementsEnabled(),
+                equalTo(ackEnabled));
+    }
+
     @Test
     void getDrainTimeout_returns_inner_getDrainTimeout() {
         final Duration drainTimeout = Duration.ofSeconds(random.nextInt(10_000) + 100);

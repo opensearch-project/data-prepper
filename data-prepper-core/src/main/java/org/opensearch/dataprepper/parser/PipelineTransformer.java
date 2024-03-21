@@ -203,7 +203,7 @@ public class PipelineTransformer {
             Pipeline sourcePipeline = pipelineMap.get(connectedPipeline);
             final PipelineConnector pipelineConnector = sourceConnectorMap.get(sourcePipelineName);
             pipelineConnector.setSourcePipelineName(pipelineNameOptional.get());
-            if (sourcePipeline.getSource().areAcknowledgementsEnabled()) {
+            if (sourcePipeline.getSource().areAcknowledgementsEnabled() || sourcePipeline.getBuffer().areAcknowledgementsEnabled()) {
                 pipelineConnector.enableAcknowledgements();
             }
             return Optional.of(pipelineConnector);

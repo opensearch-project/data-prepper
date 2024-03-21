@@ -339,7 +339,7 @@ public class Pipeline {
 
         final RouterGetRecordStrategy getRecordStrategy =
                 new RouterCopyRecordStrategy(eventFactory,
-                (source.areAcknowledgementsEnabled() || buffer.isByteBuffer()) ?
+                (source.areAcknowledgementsEnabled() || buffer.areAcknowledgementsEnabled()) ?
                     acknowledgementSetManager :
                     InactiveAcknowledgementSetManager.getInstance(),
                 sinks);

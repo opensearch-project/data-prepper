@@ -1,0 +1,25 @@
+# this configuration file is solely for testing formatting
+test-pipeline-1:
+  source:
+    file:
+      path: "/tmp/file-source.tmp"
+  buffer:
+    test_off_heap: 
+  sink:
+    - pipeline:
+       name: "test-pipeline-2"
+test-pipeline-2:
+  source:
+    pipeline:
+      name: "test-pipeline-1"
+  sink:
+    - file:
+       path: "/tmp/todelete2.txt"
+test-pipeline-3:
+  source:
+    file:
+      path: "/tmp/file-source2.tmp"
+  sink:
+    - file:
+       path: "/tmp/todelete.txt"
+
