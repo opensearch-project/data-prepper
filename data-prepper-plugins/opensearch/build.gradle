@@ -36,7 +36,7 @@ dependencies {
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'software.amazon.awssdk:netty-nio-client'
     implementation 'co.elastic.clients:elasticsearch-java:7.17.0'
-    implementation('org.apache.maven:maven-artifact:3.0.3') {
+    implementation('org.apache.maven:maven-artifact:3.9.6') {
         exclude group: 'org.codehaus.plexus'
     }
     testImplementation testLibs.junit.vintage
