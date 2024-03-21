@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.geoip.extension;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import jakarta.validation.Valid;
 
 public class GeoIpServiceConfig {
@@ -13,6 +15,7 @@ public class GeoIpServiceConfig {
 
     @Valid
     @JsonProperty("maxmind")
+    @JsonSetter(nulls = Nulls.SKIP)
     private MaxMindConfig maxMindConfig = DEFAULT_MAXMIND_CONFIG;
 
     /**
