@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
@@ -41,12 +42,36 @@ public class TruncateProcessor extends AbstractProcessor<Record<Event>, Record<E
     }
 
     private String getTruncatedValue(final String value, final int startIndex, final Integer length) {
-        String truncatedValue = 
-            (length == null || startIndex+length >= value.length()) ? 
-            value.substring(startIndex) : 
+        String truncatedValue =
+            (length == null || startIndex+length >= value.length()) ?
+            value.substring(startIndex) :
             value.substring(startIndex, startIndex + length);
 
         return truncatedValue;
+    }
+
+    private void truncateKey(Event event, String key, Object value, TruncateProcessorConfig.Entry entryConfig) {
+        final boolean recurse = entryConfig.getRecurse();
+        final int startIndex = entryConfig.getStartAt() == null ? 0 : entryConfig.getStartAt();
+        final Integer length = entryConfig.getLength();
+        if (value instanceof String) {
+            event.put(key, getTruncatedValue((String) value, startIndex, length));
+        } else if (value instanceof List) {
+            List<Object> result = new ArrayList<>();
+            for (Object listItem : (List) value) {
+                if (listItem instanceof String) {
+                    result.add(getTruncatedValue((String) listItem, startIndex, length));
+                } else {
+                    result.add(listItem);
+                }
+            }
+            event.put(key, result);
+        } else if (recurse && (value instanceof Map)) {
+            Map<String, Object> valueMap = (Map<String, Object>)value;
+            for (Map.Entry<String, Object> mapEntry: valueMap.entrySet()) {
+                truncateKey(event, key+"/"+mapEntry.getKey(), mapEntry.getValue(), entryConfig);
+            }
+        }
     }
 
     @Override
@@ -58,30 +83,33 @@ public class TruncateProcessor extends AbstractProcessor<Record<Event>, Record<E
                 for (TruncateProcessorConfig.Entry entry : entries) {
                     final List<String> sourceKeys = entry.getSourceKeys();
                     final String truncateWhen = entry.getTruncateWhen();
+                    final boolean recurse = entry.getRecurse();
                     final int startIndex = entry.getStartAt() == null ? 0 : entry.getStartAt();
                     final Integer length = entry.getLength();
                     if (truncateWhen != null && !expressionEvaluator.evaluateConditional(truncateWhen, recordEvent)) {
                         continue;
                     }
+                    boolean truncateAll = false;
+                    for (String sourceKey : sourceKeys) {
+                        if (sourceKey.equals("*")) {
+                            truncateAll = true;
+                            break;
+                        }
+                    }
+                    if (truncateAll) {
+                        for (Map.Entry<String, Object> mapEntry: recordEvent.toMap().entrySet()) {
+                            truncateKey(recordEvent, mapEntry.getKey(), mapEntry.getValue(), entry);
+                        }
+                        continue;
+                    }
+
                     for (String sourceKey : sourceKeys) {
                         if (!recordEvent.containsKey(sourceKey)) {
                             continue;
                         }
 
                         final Object value = recordEvent.get(sourceKey, Object.class);
-                        if (value instanceof String) {
-                            recordEvent.put(sourceKey, getTruncatedValue((String) value, startIndex, length));
-                        } else if (value instanceof List) {
-                            List<Object> result = new ArrayList<>();
-                            for (Object listItem : (List) value) {
-                                if (listItem instanceof String) {
-                                    result.add(getTruncatedValue((String) listItem, startIndex, length));
-                                } else {
-                                    result.add(listItem);
-                                }
-                            }
-                            recordEvent.put(sourceKey, result);
-                        }
+                        truncateKey(recordEvent, sourceKey, value, entry);
                     }
                 }
             } catch (final Exception e) {

@@ -26,14 +26,18 @@ public class TruncateProcessorConfig {
         @JsonProperty("length")
         private Integer length;
 
+        @JsonProperty("do_recursively")
+        private Boolean recurse = false;
+
         @JsonProperty("truncate_when")
         private String truncateWhen;
 
-        public Entry(final List<String> sourceKeys, final Integer startAt, final Integer length, final String truncateWhen) {
+        public Entry(final List<String> sourceKeys, final Integer startAt, final Integer length, final String truncateWhen, final Boolean recurse) {
             this.sourceKeys = sourceKeys;
             this.startAt = startAt;
             this.length = length;
             this.truncateWhen = truncateWhen;
+            this.recurse = recurse;
         }
 
         public Entry() {}
@@ -44,6 +48,10 @@ public class TruncateProcessorConfig {
 
         public Integer getStartAt() {
             return startAt;
+        }
+
+        public Boolean getRecurse() {
+            return recurse;
         }
 
         public Integer getLength() {
