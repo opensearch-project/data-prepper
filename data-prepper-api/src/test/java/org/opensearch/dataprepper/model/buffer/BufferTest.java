@@ -41,6 +41,7 @@ class BufferTest {
         final Buffer<Record<Event>> buffer = createObjectUnderTest();
 
         assertEquals(false, buffer.isByteBuffer());
+        assertEquals(false, buffer.areAcknowledgementsEnabled());
     }
 
     @Test
