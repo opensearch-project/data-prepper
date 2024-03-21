@@ -60,8 +60,8 @@ dependencies {
     testImplementation project(':data-prepper-plugin-framework')
     testImplementation project(':data-prepper-pipeline-parser')
     testImplementation testLibs.mockito.inline
-    testImplementation 'org.apache.kafka:kafka_2.13:3.6.1'
-    testImplementation 'org.apache.kafka:kafka_2.13:3.6.1:test'
+    testImplementation 'org.apache.kafka:kafka_2.13:3.7.0'
+    testImplementation 'org.apache.kafka:kafka_2.13:3.7.0:test'
     testImplementation 'org.apache.curator:curator-test:5.5.0'
     testImplementation('com.kjetland:mbknor-jackson-jsonschema_2.13:1.0.39')
     testImplementation group: 'org.powermock', name: 'powermock-api-mockito2', version: '2.0.9'
