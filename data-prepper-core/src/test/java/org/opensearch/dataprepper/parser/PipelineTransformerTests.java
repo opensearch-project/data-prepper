@@ -136,6 +136,31 @@ class PipelineTransformerTests {
     }
 
     @Test
+    void parseConfiguration_with_multiple_valid_pipelines_creates_the_correct_pipelineMap_with_acks() {
+        mockDataPrepperConfigurationAccesses();
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.VALID_OFF_HEAP_FILE_WITH_ACKS);
+        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration();
+        assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
+        verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
+        verify(dataPrepperConfiguration).getPipelineExtensions();
+
+        assertThat(actualPipelineMap, hasKey("test-pipeline-1"));
+        assertThat(actualPipelineMap, hasKey("test-pipeline-2"));
+        assertThat(actualPipelineMap, hasKey("test-pipeline-3"));
+        Pipeline pipeline = actualPipelineMap.get("test-pipeline-1");
+        assertThat(pipeline, notNullValue());
+        assertThat(pipeline.getBuffer(), CoreMatchers.not(instanceOf(CircuitBreakingBuffer.class)));
+        assertThat(pipeline.getBuffer().areAcknowledgementsEnabled(),equalTo(true));
+        pipeline = actualPipelineMap.get("test-pipeline-2");
+        assertThat(pipeline, notNullValue());
+        assertThat(pipeline.getSource().areAcknowledgementsEnabled(),equalTo(true));
+        pipeline = actualPipelineMap.get("test-pipeline-3");
+        assertThat(pipeline, notNullValue());
+        assertThat(pipeline.getSource().areAcknowledgementsEnabled(),equalTo(true));
+    }
+
+    @Test
     void parseConfiguration_with_invalid_root_pipeline_creates_empty_pipelinesMap() {
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.CONNECTED_PIPELINE_ROOT_SOURCE_INCORRECT);

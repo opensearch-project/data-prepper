@@ -84,6 +84,15 @@ public interface Buffer<T extends Record<?>> {
     }
 
     /**
+     * Checks if the buffer enables acknowledgements for the pipeline
+     *
+     * @return true if the buffer supports raw bytes, false otherwise
+     */
+    default boolean areAcknowledgementsEnabled() {
+        return false;
+    }
+
+    /**
      * Returns buffer's drain timeout as duration
      *
      * @return buffers drain timeout

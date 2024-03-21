@@ -42,6 +42,11 @@ public class TestOffHeapBuffer implements Buffer {
     }
 
     @Override
+    public boolean areAcknowledgementsEnabled() {
+        return true;
+    }
+
+    @Override
     public boolean isEmpty() {
         return false;
     }
