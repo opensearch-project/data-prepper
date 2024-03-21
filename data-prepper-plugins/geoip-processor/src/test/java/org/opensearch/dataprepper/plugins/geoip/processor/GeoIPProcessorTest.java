@@ -36,6 +36,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -48,6 +49,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.geoip.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED;
@@ -220,7 +222,9 @@ class GeoIPProcessorTest {
         when(entry.getSource()).thenReturn("ip");
         when(entry.getGeoIPFields()).thenReturn(setFields());
         List<String> testTags = List.of("tag1", "tag2");
-        when(geoIPProcessorConfig.getTagsOnIPNotFound()).thenReturn(testTags);
+        List<String> unexpectedTags = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        when(geoIPProcessorConfig.getTagsOnNoValidIp()).thenReturn(testTags);
+        when(geoIPProcessorConfig.getTagsOnIPNotFound()).thenReturn(unexpectedTags);
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
@@ -228,12 +232,13 @@ class GeoIPProcessorTest {
 
         for (final Record<Event> record : records) {
             final Event event = record.getData();
-            assertThat(!event.containsKey("geo"), equalTo(true));
-            assertTrue(event.getMetadata().hasTags(testTags));
+            assertThat(event.containsKey("geo"), equalTo(false));
+            assertThat(event.getMetadata().hasTags(testTags), equalTo(true));
+            assertThat(event.getMetadata().hasTags(unexpectedTags), equalTo(false));
             verify(geoIpEventsProcessed).increment();
             verify(geoIpEventsFailed).increment();
-            verify(geoIpEventsFailedIPNotFound).increment();
         }
+        verifyNoInteractions(geoIpEventsFailedIPNotFound);
     }
 
     @Test
@@ -287,6 +292,11 @@ class GeoIPProcessorTest {
 
     @Test
     void doExecuteTest_should_not_add_geodata_if_ip_address_is_not_public() {
+        List<String> testTags = List.of("tag1", "tag2");
+        List<String> unexpectedTags = Collections.singletonList(UUID.randomUUID().toString());
+        when(geoIPProcessorConfig.getTagsOnIPNotFound()).thenReturn(unexpectedTags);
+        when(geoIPProcessorConfig.getTagsOnNoValidIp()).thenReturn(testTags);
+
         try (final MockedStatic<GeoInetAddress> ipValidationCheckMockedStatic = mockStatic(GeoInetAddress.class)) {
             ipValidationCheckMockedStatic.when(() -> GeoInetAddress.usableInetFromString(any())).thenReturn(Optional.empty());
 
@@ -299,12 +309,14 @@ class GeoIPProcessorTest {
             final Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
             for (final Record<Event> record : records) {
                 final Event event = record.getData();
-                assertThat(!event.containsKey("geo"), equalTo(true));
+                assertThat(event.containsKey("geo"), equalTo(false));
+                assertThat(event.getMetadata().hasTags(testTags), equalTo(true));
+                assertThat(event.getMetadata().hasTags(unexpectedTags), equalTo(false));
                 verify(geoIpEventsProcessed).increment();
                 verify(geoIpEventsFailed).increment();
-                verify(geoIpEventsFailedIPNotFound).increment();
             }
         }
+        verifyNoInteractions(geoIpEventsFailedIPNotFound);
     }
 
     @Test
