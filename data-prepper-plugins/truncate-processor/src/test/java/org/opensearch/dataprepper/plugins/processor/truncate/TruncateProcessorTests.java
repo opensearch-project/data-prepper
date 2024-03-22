@@ -95,7 +95,7 @@ class TruncateProcessorTests {
 
     @Test
     void test_event_with_all_fields_truncated() {
-        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry(List.of("*"), null, 5, null, false)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry(null, null, 5, null, false)));
         final TruncateProcessor truncateProcessor = createObjectUnderTest();
         final Record<Event> record = createEventWithMultipleKeys(Map.of("key1", "aaaaa12345", "key2", "bbbbb12345", "key3", "ccccccc12345"));
         final List<Record<Event>> truncatedRecords = (List<Record<Event>>) truncateProcessor.doExecute(Collections.singletonList(record));
@@ -107,7 +107,7 @@ class TruncateProcessorTests {
 
     @Test
     void test_event_with_all_fields_truncated_recursively() {
-        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry(List.of("*"), null, 5, null, true)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry(null, null, 5, null, true)));
         final TruncateProcessor truncateProcessor = createObjectUnderTest();
         final Record<Event> record = createEventWithMultipleKeys(ImmutableMap.of("key1", "aaaaa12345", "key2", ImmutableMap.of("key3", "bbbbb12345", "key4", ImmutableMap.of("key5", "ccccccc12345"))));
         final List<Record<Event>> truncatedRecords = (List<Record<Event>>) truncateProcessor.doExecute(Collections.singletonList(record));

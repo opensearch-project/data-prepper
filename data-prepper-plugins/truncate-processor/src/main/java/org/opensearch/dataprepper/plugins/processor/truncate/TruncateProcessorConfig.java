@@ -15,8 +15,6 @@ import java.util.List;
 
 public class TruncateProcessorConfig {
     public static class Entry {
-        @NotEmpty
-        @NotNull
         @JsonProperty("source_keys")
         private List<String> sourceKeys;
 
@@ -62,7 +60,7 @@ public class TruncateProcessorConfig {
             return truncateWhen;
         }
 
-        @AssertTrue(message = "source_keys must be specified and at least one of start_at or length or both must be specified and the values must be positive integers")
+        @AssertTrue(message = "At least one of start_at or length or both must be specified and the values must be positive integers")
         public boolean isValidConfig() {
             if (length == null && startAt == null) {
                 return false;

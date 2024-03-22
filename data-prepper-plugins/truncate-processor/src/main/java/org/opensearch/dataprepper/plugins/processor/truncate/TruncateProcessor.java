@@ -89,14 +89,7 @@ public class TruncateProcessor extends AbstractProcessor<Record<Event>, Record<E
                     if (truncateWhen != null && !expressionEvaluator.evaluateConditional(truncateWhen, recordEvent)) {
                         continue;
                     }
-                    boolean truncateAll = false;
-                    for (String sourceKey : sourceKeys) {
-                        if (sourceKey.equals("*")) {
-                            truncateAll = true;
-                            break;
-                        }
-                    }
-                    if (truncateAll) {
+                    if (sourceKeys == null) {
                         for (Map.Entry<String, Object> mapEntry: recordEvent.toMap().entrySet()) {
                             truncateKey(recordEvent, mapEntry.getKey(), mapEntry.getValue(), entry);
                         }
