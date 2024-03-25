@@ -8,6 +8,8 @@ plugins {
     id 'idea'
 }
 
+group = 'org.opensearch.dataprepper.core'
+
 ext {
     antlrGeneratedPackageDirectory = "org/opensearch/dataprepper/logstash/"
 }
