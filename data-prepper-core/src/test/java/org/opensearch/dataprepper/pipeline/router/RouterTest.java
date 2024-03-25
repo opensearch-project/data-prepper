@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
@@ -170,9 +171,9 @@ class RouterTest {
             Record record2 = mock(Record.class);
             Record record3 = mock(Record.class);
             Record record4 = mock(Record.class);
-            when(record3.getData()).thenReturn(event3);
+            lenient().when(record3.getData()).thenReturn(event3);
             Object notAnEvent = mock(Object.class);
-            when(record4.getData()).thenReturn(notAnEvent);
+            lenient().when(record4.getData()).thenReturn(notAnEvent);
             List<Record> recordsIn = List.of(record1, record2, record3, record4);
             Map<Record, Set<String>> recordsToRoutes = new HashMap<>();
             recordsToRoutes.put(record1, Set.of(UUID.randomUUID().toString()));
@@ -184,6 +185,8 @@ class RouterTest {
             for (int i = 0; i < 5; i++) {
                 final DataFlowComponent dataFlowComponent = mock(DataFlowComponent.class);
                 dataFlowComponents.add(dataFlowComponent);
+                final Set<String> routes = Set.of(UUID.randomUUID().toString());
+                when(dataFlowComponent.getRoutes()).thenReturn(routes);
             }
 
             createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
@@ -194,6 +197,44 @@ class RouterTest {
             // Verify noRouteHandler gets invoked only for record3 and not
             // for record4, because record4 has non-Event type data
             verify(noRouteHandler, times(1)).accept(any());
+        }
+
+        @Test
+        void route_with_multiple_DataFlowComponents_with_unrouted_events_with_allrouted() {
+            Event event1 = mock(Event.class);
+            Event event2 = mock(Event.class);
+            Event event3 = mock(Event.class);
+            EventHandle eventHandle3 = mock(EventHandle.class);
+            Record record1 = mock(Record.class);
+            Record record2 = mock(Record.class);
+            Record record3 = mock(Record.class);
+            Record record4 = mock(Record.class);
+            lenient().when(record3.getData()).thenReturn(event3);
+            Object notAnEvent = mock(Object.class);
+            lenient().when(record4.getData()).thenReturn(notAnEvent);
+            List<Record> recordsIn = List.of(record1, record2, record3, record4);
+            Map<Record, Set<String>> recordsToRoutes = new HashMap<>();
+            recordsToRoutes.put(record1, Set.of(UUID.randomUUID().toString()));
+            recordsToRoutes.put(record2, Set.of(UUID.randomUUID().toString()));
+            recordsToRoutes.put(record3, Set.of());
+            recordsToRoutes.put(record4, Set.of());
+            when(routeEventEvaluator.evaluateEventRoutes(recordsIn)).thenReturn(recordsToRoutes);
+            dataFlowComponents = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
+                final DataFlowComponent dataFlowComponent = mock(DataFlowComponent.class);
+                dataFlowComponents.add(dataFlowComponent);
+                final Set<String> routes = i ==0 ? Collections.emptySet() : Set.of(UUID.randomUUID().toString());
+                lenient().when(dataFlowComponent.getRoutes()).thenReturn(routes);
+            }
+
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
+
+            for (DataFlowComponent<TestComponent> dataFlowComponent : dataFlowComponents) {
+                verify(dataFlowComponentRouter).route(eq(recordsIn), eq(dataFlowComponent), eq(recordsToRoutes), eq(getRecordStrategy), any(BiConsumer.class));
+            }
+            // Verify noRouteHandler gets invoked only for record3 and not
+            // for record4, because record4 has non-Event type data
+            verify(noRouteHandler, times(0)).accept(any());
         }
 
         @Test

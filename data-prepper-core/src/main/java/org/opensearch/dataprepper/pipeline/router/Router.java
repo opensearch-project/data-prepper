@@ -43,18 +43,33 @@ public class Router {
 
         final Map<Record, Set<String>> recordsToRoutes = routeEventEvaluator.evaluateEventRoutes(allRecords);
 
-        Set<Record> recordsUnRouted = new HashSet<>(allRecords);
+        boolean allRecordsRouted = false;
+
+        for (DataFlowComponent<C> dataFlowComponent : dataFlowComponents) {
+            if (dataFlowComponent.getRoutes().isEmpty()) {
+                allRecordsRouted = true;
+                break;
+            }
+        }
+
+        final Set<Record> recordsUnRouted = (allRecordsRouted) ? null : new HashSet<>(allRecords);
 
         for (DataFlowComponent<C> dataFlowComponent : dataFlowComponents) {
             dataFlowComponentRouter.route(allRecords, dataFlowComponent, recordsToRoutes, getRecordStrategy, (component, records) -> { 
-                recordsUnRouted.removeAll(records);
+                if (recordsUnRouted != null) {
+                    for (final Record record: records) {
+                        recordsUnRouted.remove(record);
+                    }
+                }
                 componentRecordsConsumer.accept(component, records);
             });
         }
 
-        for (Record record: recordsUnRouted) {
-            if (record.getData() instanceof Event) {
-                noRouteHandler.accept((Event)record.getData());
+        if (recordsUnRouted != null) {
+            for (Record record: recordsUnRouted) {
+                if (record.getData() instanceof Event) {
+                    noRouteHandler.accept((Event)record.getData());
+                }
             }
         }
     }
