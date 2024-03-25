@@ -15,8 +15,6 @@ import java.util.List;
 
 public class TruncateProcessorConfig {
     public static class Entry {
-        @NotEmpty
-        @NotNull
         @JsonProperty("source_keys")
         private List<String> sourceKeys;
 
@@ -26,14 +24,18 @@ public class TruncateProcessorConfig {
         @JsonProperty("length")
         private Integer length;
 
+        @JsonProperty("recursive")
+        private Boolean recurse = false;
+
         @JsonProperty("truncate_when")
         private String truncateWhen;
 
-        public Entry(final List<String> sourceKeys, final Integer startAt, final Integer length, final String truncateWhen) {
+        public Entry(final List<String> sourceKeys, final Integer startAt, final Integer length, final String truncateWhen, final Boolean recurse) {
             this.sourceKeys = sourceKeys;
             this.startAt = startAt;
             this.length = length;
             this.truncateWhen = truncateWhen;
+            this.recurse = recurse;
         }
 
         public Entry() {}
@@ -46,6 +48,10 @@ public class TruncateProcessorConfig {
             return startAt;
         }
 
+        public Boolean getRecurse() {
+            return recurse;
+        }
+
         public Integer getLength() {
             return length;
         }
@@ -54,7 +60,7 @@ public class TruncateProcessorConfig {
             return truncateWhen;
         }
 
-        @AssertTrue(message = "source_keys must be specified and at least one of start_at or length or both must be specified and the values must be positive integers")
+        @AssertTrue(message = "At least one of start_at or length or both must be specified and the values must be positive integers")
         public boolean isValidConfig() {
             if (length == null && startAt == null) {
                 return false;

@@ -20,6 +20,7 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.google.common.collect.ImmutableMap;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,7 +54,7 @@ class TruncateProcessorTests {
     @ArgumentsSource(TruncateArgumentsProvider.class)
     void testTruncateProcessor(final Object messageValue, final Integer startAt, final Integer truncateLength, final Object truncatedMessage) {
 
-        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry(List.of("message"), startAt, truncateLength, null)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry(List.of("message"), startAt, truncateLength, null, false)));
         final TruncateProcessor truncateProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent("message", messageValue);
         final List<Record<Event>> truncatedRecords = (List<Record<Event>>) truncateProcessor.doExecute(Collections.singletonList(record));
@@ -64,8 +65,8 @@ class TruncateProcessorTests {
     @ParameterizedTest
     @ArgumentsSource(MultipleTruncateArgumentsProvider.class)
     void testTruncateProcessorMultipleEntries(final Object messageValue, final Integer startAt1, final Integer truncateLength1, final Integer startAt2, final Integer truncateLength2, final Object truncatedMessage1, final Object truncatedMessage2) {
-        TruncateProcessorConfig.Entry entry1 = createEntry(List.of("message1"), startAt1, truncateLength1, null);
-        TruncateProcessorConfig.Entry entry2 = createEntry(List.of("message2"), startAt2, truncateLength2, null);
+        TruncateProcessorConfig.Entry entry1 = createEntry(List.of("message1"), startAt1, truncateLength1, null, false);
+        TruncateProcessorConfig.Entry entry2 = createEntry(List.of("message2"), startAt2, truncateLength2, null, false);
         when(config.getEntries()).thenReturn(List.of(entry1, entry2));
         final Record<Event> record1 = createEvent("message1", messageValue);
         final Record<Event> record2 = createEvent("message2", messageValue);
@@ -82,7 +83,7 @@ class TruncateProcessorTests {
         final String truncateWhen = UUID.randomUUID().toString();
         final String message = UUID.randomUUID().toString();
 
-        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry(List.of("message"), null, 5, truncateWhen)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry(List.of("message"), null, 5, truncateWhen, false)));
 
         final TruncateProcessor truncateProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent("message", message);
@@ -92,8 +93,32 @@ class TruncateProcessorTests {
         assertThat(truncatedRecords.get(0).getData().toMap(), equalTo(record.getData().toMap()));
     }
 
-    private TruncateProcessorConfig.Entry createEntry(final List<String> sourceKeys, final Integer startAt, final Integer length, final String truncateWhen) {
-        return new TruncateProcessorConfig.Entry(sourceKeys, startAt, length, truncateWhen);
+    @Test
+    void test_event_with_all_fields_truncated() {
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry(null, null, 5, null, false)));
+        final TruncateProcessor truncateProcessor = createObjectUnderTest();
+        final Record<Event> record = createEventWithMultipleKeys(Map.of("key1", "aaaaa12345", "key2", "bbbbb12345", "key3", "ccccccc12345"));
+        final List<Record<Event>> truncatedRecords = (List<Record<Event>>) truncateProcessor.doExecute(Collections.singletonList(record));
+        Event event = truncatedRecords.get(0).getData();
+        assertThat(event.get("key1", String.class), equalTo("aaaaa"));
+        assertThat(event.get("key2", String.class), equalTo("bbbbb"));
+        assertThat(event.get("key3", String.class), equalTo("ccccc"));
+    }
+
+    @Test
+    void test_event_with_all_fields_truncated_recursively() {
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry(null, null, 5, null, true)));
+        final TruncateProcessor truncateProcessor = createObjectUnderTest();
+        final Record<Event> record = createEventWithMultipleKeys(ImmutableMap.of("key1", "aaaaa12345", "key2", ImmutableMap.of("key3", "bbbbb12345", "key4", ImmutableMap.of("key5", "ccccccc12345"))));
+        final List<Record<Event>> truncatedRecords = (List<Record<Event>>) truncateProcessor.doExecute(Collections.singletonList(record));
+        Event event = truncatedRecords.get(0).getData();
+        assertThat(event.get("key1", String.class), equalTo("aaaaa"));
+        assertThat(event.get("key2/key3", String.class), equalTo("bbbbb"));
+        assertThat(event.get("key2/key4/key5", String.class), equalTo("ccccc"));
+    }
+
+    private TruncateProcessorConfig.Entry createEntry(final List<String> sourceKeys, final Integer startAt, final Integer length, final String truncateWhen, final boolean recurse) {
+        return new TruncateProcessorConfig.Entry(sourceKeys, startAt, length, truncateWhen, recurse);
     }
 
     private Record<Event> createEvent(final String key, final Object value) {
@@ -102,6 +127,13 @@ class TruncateProcessorTests {
         return new Record<>(JacksonEvent.builder()
                 .withEventType("event")
                 .withData(eventData)
+                .build());
+    }
+
+    private Record<Event> createEventWithMultipleKeys(final Map<String, Object> data) {
+        return new Record<>(JacksonEvent.builder()
+                .withEventType("event")
+                .withData(data)
                 .build());
     }
 
