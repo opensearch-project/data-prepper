@@ -26,8 +26,8 @@ public class IndexConstants {
 
   public static final String METRICS_DEFAULT_TEMPLATE_FILE = "metrics-otel-v1-index-template.json";
   public static final String METRICS_ISM_POLICY = "metrics-policy";
-  public static final String METRICS_ISM_FILE_NO_ISM_TEMPLATE = "logs-policy-no-ism-template.json";
-  public static final String METRICS_ISM_FILE_WITH_ISM_TEMPLATE = "logs-policy-with-ism-template.json";
+  public static final String METRICS_ISM_FILE_NO_ISM_TEMPLATE = "metrics-policy-no-ism-template.json";
+  public static final String METRICS_ISM_FILE_WITH_ISM_TEMPLATE = "metrics-policy-with-ism-template.json";
 
   public static final String ISM_ENABLED_SETTING = "opendistro.index_state_management.enabled";
   public static final String ISM_POLICY_ID_SETTING = "opendistro.index_state_management.policy_id";
