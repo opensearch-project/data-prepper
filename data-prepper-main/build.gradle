@@ -11,6 +11,8 @@ sourceSets {
     }
 }
 
+group = 'org.opensearch.dataprepper.core'
+
 dependencies {
     implementation project(':data-prepper-core')
     implementation project(':data-prepper-plugins')

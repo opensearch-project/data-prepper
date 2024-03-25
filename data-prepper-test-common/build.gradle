@@ -7,6 +7,8 @@ plugins {
     id 'java'
 }
 
+group = 'org.opensearch.dataprepper.test'
+
 dependencies {
     implementation testLibs.hamcrest
     testRuntimeOnly testLibs.junit.engine

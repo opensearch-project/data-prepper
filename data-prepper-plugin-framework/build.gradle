@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+group = 'org.opensearch.dataprepper.core'
+
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-pipeline-parser')
