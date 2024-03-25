@@ -230,7 +230,7 @@ public class OpenSearchSinkIT {
 
     @Test
     @DisabledIf(value = "isES6", disabledReason = LOG_INGESTION_TEST_DISABLED_REASON)
-    public void testInstantiateSinkMetricsDefaultLogSink() throws IOException {
+    public void testInstantiateSinkLogsDefaultLogSink() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(IndexType.LOG_ANALYTICS.getValue(), null, null);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.LOG_ANALYTICS);
