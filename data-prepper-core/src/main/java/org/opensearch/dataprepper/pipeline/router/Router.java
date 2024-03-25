@@ -24,13 +24,11 @@ public class Router {
     private final RouteEventEvaluator routeEventEvaluator;
     private final DataFlowComponentRouter dataFlowComponentRouter;
     private final Consumer<Event> noRouteHandler;
-    private Set<Record> recordsUnRouted;
 
     Router(final RouteEventEvaluator routeEventEvaluator, final DataFlowComponentRouter dataFlowComponentRouter, final Consumer<Event> noRouteHandler) {
         this.routeEventEvaluator = Objects.requireNonNull(routeEventEvaluator);
         this.dataFlowComponentRouter = dataFlowComponentRouter;
         this.noRouteHandler = noRouteHandler;
-        this.recordsUnRouted = null;
     }
 
     public <C> void route(
@@ -44,7 +42,6 @@ public class Router {
         Objects.requireNonNull(componentRecordsConsumer);
 
         final Map<Record, Set<String>> recordsToRoutes = routeEventEvaluator.evaluateEventRoutes(allRecords);
-        recordsUnRouted = null;
 
         boolean allRecordsRouted = false;
 
@@ -55,9 +52,7 @@ public class Router {
             }
         }
 
-        if (!allRecordsRouted) {
-            recordsUnRouted = new HashSet<>(allRecords);
-        }
+        final Set<Record> recordsUnRouted = (allRecordsRouted) ? null : new HashSet<>(allRecords);
 
         for (DataFlowComponent<C> dataFlowComponent : dataFlowComponents) {
             dataFlowComponentRouter.route(allRecords, dataFlowComponent, recordsToRoutes, getRecordStrategy, (component, records) -> { 
