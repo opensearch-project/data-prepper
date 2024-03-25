@@ -24,7 +24,7 @@ public class TruncateProcessorConfig {
         @JsonProperty("length")
         private Integer length;
 
-        @JsonProperty("do_recursively")
+        @JsonProperty("recursive")
         private Boolean recurse = false;
 
         @JsonProperty("truncate_when")
