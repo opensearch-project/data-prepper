@@ -24,11 +24,13 @@ public class Router {
     private final RouteEventEvaluator routeEventEvaluator;
     private final DataFlowComponentRouter dataFlowComponentRouter;
     private final Consumer<Event> noRouteHandler;
+    private Set<Record> recordsUnRouted;
 
     Router(final RouteEventEvaluator routeEventEvaluator, final DataFlowComponentRouter dataFlowComponentRouter, final Consumer<Event> noRouteHandler) {
         this.routeEventEvaluator = Objects.requireNonNull(routeEventEvaluator);
         this.dataFlowComponentRouter = dataFlowComponentRouter;
         this.noRouteHandler = noRouteHandler;
+        this.recordsUnRouted = null;
     }
 
     public <C> void route(
@@ -42,19 +44,37 @@ public class Router {
         Objects.requireNonNull(componentRecordsConsumer);
 
         final Map<Record, Set<String>> recordsToRoutes = routeEventEvaluator.evaluateEventRoutes(allRecords);
+        recordsUnRouted = null;
 
-        Set<Record> recordsUnRouted = new HashSet<>(allRecords);
+        boolean allRecordsRouted = false;
+
+        for (DataFlowComponent<C> dataFlowComponent : dataFlowComponents) {
+            if (dataFlowComponent.getRoutes().isEmpty()) {
+                allRecordsRouted = true;
+                break;
+            }
+        }
+
+        if (!allRecordsRouted) {
+            recordsUnRouted = new HashSet<>(allRecords);
+        }
 
         for (DataFlowComponent<C> dataFlowComponent : dataFlowComponents) {
             dataFlowComponentRouter.route(allRecords, dataFlowComponent, recordsToRoutes, getRecordStrategy, (component, records) -> { 
-                recordsUnRouted.removeAll(records);
+                if (recordsUnRouted != null) {
+                    for (final Record record: records) {
+                        recordsUnRouted.remove(record);
+                    }
+                }
                 componentRecordsConsumer.accept(component, records);
             });
         }
 
-        for (Record record: recordsUnRouted) {
-            if (record.getData() instanceof Event) {
-                noRouteHandler.accept((Event)record.getData());
+        if (recordsUnRouted != null) {
+            for (Record record: recordsUnRouted) {
+                if (record.getData() instanceof Event) {
+                    noRouteHandler.accept((Event)record.getData());
+                }
             }
         }
     }
