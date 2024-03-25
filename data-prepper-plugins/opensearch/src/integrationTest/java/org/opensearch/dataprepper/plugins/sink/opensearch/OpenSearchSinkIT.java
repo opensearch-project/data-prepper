@@ -234,6 +234,7 @@ public class OpenSearchSinkIT {
         final PluginSetting pluginSetting = generatePluginSetting(IndexType.LOG_ANALYTICS.getValue(), null, null);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.LOG_ANALYTICS);
+        assertThat(indexAlias, equalTo("logs-otel-v1"));
         Request request = new Request(HttpMethod.HEAD, indexAlias);
         Response response = client.performRequest(request);
         assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
@@ -278,6 +279,7 @@ public class OpenSearchSinkIT {
         final PluginSetting pluginSetting = generatePluginSetting(IndexType.METRIC_ANALYTICS.getValue(), null, null);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.METRIC_ANALYTICS);
+        assertThat(indexAlias, equalTo("metrics-otel-v1"));
         Request request = new Request(HttpMethod.HEAD, indexAlias);
         Response response = client.performRequest(request);
         assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
