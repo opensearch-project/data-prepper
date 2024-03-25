@@ -9,7 +9,7 @@ import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguratio
 
 import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
-import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;

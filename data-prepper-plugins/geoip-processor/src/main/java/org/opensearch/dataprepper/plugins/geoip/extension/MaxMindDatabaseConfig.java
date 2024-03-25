@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.geoip.extension;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.DBSourceOptions;
-import org.opensearch.dataprepper.plugins.geoip.utils.DatabaseSourceIdentification;
 
 import java.util.ArrayList;
 import java.util.HashMap;

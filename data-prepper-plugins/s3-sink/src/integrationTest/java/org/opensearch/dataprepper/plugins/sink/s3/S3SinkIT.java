@@ -40,15 +40,11 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
-import software.amazon.awssdk.transfer.s3.S3TransferManager;
-import software.amazon.awssdk.transfer.s3.model.DownloadFileRequest;
-import software.amazon.awssdk.transfer.s3.model.FileDownload;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -107,7 +103,6 @@ public class S3SinkIT {
 
     @TempDir
     private File s3FileLocation;
-    private S3TransferManager transferManager;
     private static String pathPrefixForTestSuite;
 
     @BeforeAll
@@ -134,7 +129,6 @@ public class S3SinkIT {
         final AwsCredentialsProvider awsCredentialsProvider = DefaultCredentialsProvider.create();
 
         final Region region = Region.of(s3region);
-        s3Client = S3Client.builder().region(region).build();
         bucketName = System.getProperty("tests.s3sink.bucket");
 
         when(s3SinkConfig.getBucketName()).thenReturn(bucketName);
@@ -156,14 +150,9 @@ public class S3SinkIT {
 
         when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
 
-        final S3AsyncClient s3AsyncClient = S3AsyncClient
-                .crtBuilder()
+        s3Client = S3Client.builder()
                 .credentialsProvider(awsCredentialsProvider)
                 .region(region)
-                .build();
-
-        transferManager = S3TransferManager.builder()
-                .s3Client(s3AsyncClient)
                 .build();
     }
 
@@ -227,15 +216,11 @@ public class S3SinkIT {
 
         LOG.info("Downloading S3 object to local file {}.", target);
 
-        final FileDownload fileDownload = transferManager.downloadFile(DownloadFileRequest.builder()
-                .destination(target)
-                .getObjectRequest(GetObjectRequest.builder()
-                        .bucket(bucketName)
-                        .key(s3Object.key())
-                        .build())
-                .build());
-
-        fileDownload.completionFuture().join();
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(s3Object.key())
+                .build();
+        s3Client.getObject(getObjectRequest, target.toPath());
 
         File actualContentFile = decompressFileIfNecessary(outputScenario, compressionScenario, testRun, target);
 

@@ -20,7 +20,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
-import org.opensearch.dataprepper.model.codec.JsonDecoder;
+import org.opensearch.dataprepper.model.codec.JsonObjectDecoder;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
@@ -64,7 +64,7 @@ public class HTTPSource implements Source<Record<Log>> {
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.pipelineName = pipelineDescription.getPipelineName();
-        this.byteDecoder = new JsonDecoder();
+        this.byteDecoder = new JsonObjectDecoder();
         this.certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
         final PluginModel authenticationConfiguration = sourceConfig.getAuthentication();
         final PluginSetting authenticationPluginSetting;

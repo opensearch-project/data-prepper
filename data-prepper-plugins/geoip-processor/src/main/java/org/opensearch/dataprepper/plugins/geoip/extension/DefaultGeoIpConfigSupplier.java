@@ -5,12 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.geoip.extension;
 
-import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.GeoIPDatabaseManager;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIpConfigSupplier;
 
 import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class DefaultGeoIpConfigSupplier implements GeoIpConfigSupplier {
+class DefaultGeoIpConfigSupplier implements GeoIpConfigSupplier {
     private final GeoIpServiceConfig geoIpServiceConfig;
     private final ReentrantReadWriteLock.ReadLock readLock;
     private final GeoIPDatabaseManager geoIPDatabaseManager;

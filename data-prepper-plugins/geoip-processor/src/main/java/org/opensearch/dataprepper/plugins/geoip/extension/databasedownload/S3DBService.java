@@ -8,10 +8,7 @@ package org.opensearch.dataprepper.plugins.geoip.extension.databasedownload;
 import org.opensearch.dataprepper.plugins.geoip.exception.DownloadFailedException;
 import org.opensearch.dataprepper.plugins.geoip.extension.AwsAuthenticationOptionsConfig;
 import org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabaseConfig;
-import software.amazon.awssdk.services.s3.S3AsyncClient;
-import software.amazon.awssdk.transfer.s3.S3TransferManager;
-import software.amazon.awssdk.transfer.s3.model.DownloadFileRequest;
-import software.amazon.awssdk.transfer.s3.model.FileDownload;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.File;
 import java.net.URI;
@@ -45,7 +42,7 @@ public class S3DBService implements DBSource {
     public void initiateDownload() {
         final Set<String> databasePaths = maxMindDatabaseConfig.getDatabasePaths().keySet();
 
-        for (final String database: databasePaths) {
+        for (final String database : databasePaths) {
             try {
                 final String s3Uri = maxMindDatabaseConfig.getDatabasePaths().get(database);
                 final URI uri = new URI(s3Uri);
@@ -60,42 +57,27 @@ public class S3DBService implements DBSource {
 
     /**
      * Download the mmdb file from the S3
+     *
      * @param bucketName Name of the S3 bucket
-     * @param key Name of S3 object key
-     * @param fileName Name of the file to save
+     * @param key        Name of S3 object key
+     * @param fileName   Name of the file to save
      */
     private void buildRequestAndDownloadFile(final String bucketName, final String key, final String fileName) {
         try {
-            final S3TransferManager transferManager = createCustomTransferManager();
+            final S3Client s3Client = createS3Client();
 
-            DownloadFileRequest downloadFileRequest = DownloadFileRequest.builder()
-                    .getObjectRequest(b -> b.bucket(bucketName).key(key))
-                    .destination(new File(destinationDirectory + File.separator + fileName + MAXMIND_DATABASE_EXTENSION))
-                    .build();
+            final File destination = new File(destinationDirectory + File.separator + fileName + MAXMIND_DATABASE_EXTENSION);
 
-            FileDownload downloadFile = transferManager.downloadFile(downloadFileRequest);
-
-            downloadFile.completionFuture().join();
-
+            s3Client.getObject(b -> b.bucket(bucketName).key(key), destination.toPath());
         } catch (Exception ex) {
             throw new DownloadFailedException("Failed to download database from S3." + ex.getMessage());
         }
     }
 
-    /**
-     * Create S3TransferManager instance
-     *
-     * @return S3TransferManager
-     */
-    private S3TransferManager createCustomTransferManager() {
-        S3AsyncClient s3AsyncClient =
-                S3AsyncClient.crtBuilder()
-                        .region(awsAuthenticationOptionsConfig.getAwsRegion())
-                        .credentialsProvider(awsAuthenticationOptionsConfig.authenticateAwsConfiguration())
-                        .build();
-
-        return S3TransferManager.builder()
-                .s3Client(s3AsyncClient)
+    private S3Client createS3Client() {
+        return S3Client.builder()
+                .region(awsAuthenticationOptionsConfig.getAwsRegion())
+                .credentialsProvider(awsAuthenticationOptionsConfig.authenticateAwsConfiguration())
                 .build();
     }
 }

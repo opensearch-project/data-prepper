@@ -12,7 +12,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
-import org.opensearch.dataprepper.plugins.geoip.utils.DatabaseSourceIdentification;
 
 import java.io.File;
 import java.net.URI;

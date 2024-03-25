@@ -5,12 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.geoip.utils;
 
+import com.google.common.net.InetAddresses;
 import org.opensearch.dataprepper.plugins.geoip.exception.InvalidIPAddressException;
 
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 /**
  * Implementation of class for checking IP validation
@@ -27,8 +27,8 @@ public class IPValidationCheck {
     public static boolean isPublicIpAddress(final String ipAddress) {
         InetAddress address;
         try {
-            address = InetAddress.getByName(ipAddress);
-        } catch (final UnknownHostException e) {
+            address = InetAddresses.forString(ipAddress);
+        } catch (final IllegalArgumentException e) {
             return false;
         }
         if (address instanceof Inet6Address || address instanceof Inet4Address) {

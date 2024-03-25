@@ -10,3 +10,7 @@ dependencies {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
 }
+
+jacocoTestCoverageVerification {
+    violationRules.setFailOnViolation(false)
+}

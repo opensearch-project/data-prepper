@@ -5,8 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.geoip.extension;
 
-import org.opensearch.dataprepper.plugins.geoip.databaseenrich.GeoIPDatabaseReader;
-import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.GeoIPDatabaseManager;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
