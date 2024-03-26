@@ -139,7 +139,7 @@ public class StreamWorker {
                             recordBufferWriter.writeToBuffer(acknowledgementSet, records);
                             records.clear();
                             partitionCheckpoint.checkpoint(checkPointToken, recordCount);
-                            LOG.debug("Perform regular checkpointing for Data Query Loader");
+                            LOG.debug("Perform regular checkpointing for stream Loader");
                             partitionCheckpoint.checkpoint(checkPointToken, recordCount);
                         }
                         successItemsCounter.increment();

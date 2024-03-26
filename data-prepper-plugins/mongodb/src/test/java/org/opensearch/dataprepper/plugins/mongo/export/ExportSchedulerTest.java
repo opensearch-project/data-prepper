@@ -24,11 +24,13 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -73,7 +75,7 @@ public class ExportSchedulerTest {
     private ExportPartition exportPartition;
 
     @BeforeEach
-    void setup() throws Exception {
+    void setup() {
         given(pluginMetrics.counter(EXPORT_JOB_SUCCESS_COUNT)).willReturn(exportJobSuccessCounter);
         given(pluginMetrics.counter(EXPORT_JOB_FAILURE_COUNT)).willReturn(exportJobFailureCounter);
         given(pluginMetrics.counter(EXPORT_PARTITION_QUERY_TOTAL_COUNT)).willReturn(exportPartitionTotalCounter);
@@ -82,17 +84,20 @@ public class ExportSchedulerTest {
     }
 
     @Test
-    void test_no_export_run() throws InterruptedException {
+    void test_no_export_run() {
         exportScheduler = new ExportScheduler(coordinator, mongoDBExportPartitionSupplier, pluginMetrics);
         given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).willReturn(Optional.empty());
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.submit(() -> exportScheduler.run());
-        Thread.sleep(100);
-        executorService.shutdownNow();
+        final Future<?> future = executorService.submit(() -> exportScheduler.run());
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() ->  verify(coordinator).acquireAvailablePartition(eq(ExportPartition.PARTITION_TYPE)));
 
+        future.cancel(true);
         verifyNoInteractions(mongoDBExportPartitionSupplier);
         verify(coordinator, never()).createPartition(any());
+        executorService.shutdownNow();
     }
 
     @Test
@@ -109,12 +114,12 @@ public class ExportSchedulerTest {
         given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).willReturn(Optional.of(exportPartition));
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.submit(() -> exportScheduler.run());
+        final Future<?> future = executorService.submit(() -> exportScheduler.run());
         await()
-                .atMost(Duration.ofSeconds(2))
-                .untilAsserted(() -> verify(coordinator, times(2)).createPartition(any()));
-        executorService.shutdownNow();
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() -> verify(coordinator, times(2)).createPartition(any()));
 
+        future.cancel(true);
 
         // Acquire the init partition
         verify(coordinator).acquireAvailablePartition(eq(ExportPartition.PARTITION_TYPE));
@@ -140,14 +145,16 @@ public class ExportSchedulerTest {
         assertThat(globalStates.size(), equalTo(1));
         globalStates.forEach(globalState -> {
             assertThat(globalState.getPartitionKey(), equalTo(EXPORT_PREFIX + collection));
-            assertThat(globalState.getProgressState().get().toString(), is(Map.of(
-                    "totalPartitions", 1,
-                    "loadedPartitions", 0,
-                    "loadedRecords", 0
-            ).toString()));
+            final Map<String, Object> globalStateMap = globalState.getProgressState().get();
+            assertThat(globalStateMap.get("totalPartitions"), is(1L));
+            assertThat(globalStateMap.get("loadedPartitions"), is(0L));
+            assertThat(globalStateMap.get("loadedRecords"), is(0L));
+            assertThat((Long) globalStateMap.get("lastUpdateTimestamp"),
+                    is(greaterThanOrEqualTo(exportTime.toEpochMilli())));
             assertThat(globalState.getPartitionType(), equalTo(null));
         });
         verify(exportPartitionTotalCounter).increment(1);
+        executorService.shutdownNow();
     }
 
     @Test
@@ -164,12 +171,12 @@ public class ExportSchedulerTest {
         given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).willReturn(Optional.of(exportPartition));
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.submit(() -> exportScheduler.run());
+        final Future<?> future = executorService.submit(() -> exportScheduler.run());
         await()
-                .atMost(Duration.ofSeconds(2))
-                .untilAsserted(() -> verify(coordinator, times(4)).createPartition(any()));
-        executorService.shutdownNow();
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() -> verify(coordinator, times(4)).createPartition(any()));
 
+        future.cancel(true);
 
         // Acquire the init partition
         verify(coordinator).acquireAvailablePartition(eq(ExportPartition.PARTITION_TYPE));
@@ -195,13 +202,15 @@ public class ExportSchedulerTest {
         assertThat(globalStates.size(), equalTo(1));
         globalStates.forEach(globalState -> {
             assertThat(globalState.getPartitionKey(), equalTo(EXPORT_PREFIX + collection));
-            assertThat(globalState.getProgressState().get().toString(), is(Map.of(
-                    "totalPartitions", 3,
-                    "loadedPartitions", 0,
-                    "loadedRecords", 0
-            ).toString()));
+            final Map<String, Object> globalStateMap = globalState.getProgressState().get();
+            assertThat(globalStateMap.get("totalPartitions"), is(3L));
+            assertThat(globalStateMap.get("loadedPartitions"), is(0L));
+            assertThat(globalStateMap.get("loadedRecords"), is(0L));
+            assertThat((Long) globalStateMap.get("lastUpdateTimestamp"),
+                    is(greaterThanOrEqualTo(exportTime.toEpochMilli())));
             assertThat(globalState.getPartitionType(), equalTo(null));
         });
         verify(exportPartitionTotalCounter).increment(3);
+        executorService.shutdownNow();
     }
 }
