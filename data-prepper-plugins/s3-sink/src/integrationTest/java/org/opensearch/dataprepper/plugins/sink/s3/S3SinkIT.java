@@ -45,6 +45,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -71,6 +72,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -97,6 +99,9 @@ public class S3SinkIT {
     private ThresholdOptions thresholdOptions;
     @Mock
     private ObjectKeyOptions objectKeyOptions;
+
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
     private String s3region;
     private String bucketName;
     private S3Client s3Client;
@@ -154,10 +159,12 @@ public class S3SinkIT {
                 .credentialsProvider(awsCredentialsProvider)
                 .region(region)
                 .build();
+
+        when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(true);
     }
 
     private S3Sink createObjectUnderTest() {
-        return new S3Sink(pluginSetting, s3SinkConfig, pluginFactory, sinkContext, awsCredentialsSupplier);
+        return new S3Sink(pluginSetting, s3SinkConfig, pluginFactory, sinkContext, awsCredentialsSupplier, expressionEvaluator);
     }
 
     @ParameterizedTest
