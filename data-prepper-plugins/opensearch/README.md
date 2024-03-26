@@ -596,3 +596,20 @@ The default behavior is to process all indices.
 #### <a name="index_configuration">Index Configuration</a>
 
 * `index_name_regex`: A regex pattern to represent the index names for filtering
+
+## Developer guide
+
+### Integration tests
+
+#### Run OpenSearch
+
+Start an instance of OpenSearch that listens to opens port 9200 with default user admin:admin.
+```
+docker run -p 9200:9200 -e "discovery.type=single-node" opensearchproject/opensearch:1.0.0
+```
+
+#### Run tests
+
+```
+./gradlew data-prepper-plugins:opensearch:integrationTest -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=admin
+```
