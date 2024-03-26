@@ -10,7 +10,6 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.StreamProgressState;
-import org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus;
 import org.opensearch.dataprepper.plugins.mongo.model.StreamLoadStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
