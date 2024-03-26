@@ -42,19 +42,19 @@ jobs:
         aws-region: us-east-1
 
     - name: Build Archives
-      run: ./gradlew --parallel --max-workers 2 :release:archives:buildArchives -Prelease
+      run: ./gradlew --parallel --max-workers 2 :release:archives:buildArchives
 
     - name: Build Maven Artifacts
       run: ./gradlew publish
 
     - name: Build Docker Image
-      run: ./gradlew :release:docker:docker -Prelease
+      run: ./gradlew :release:docker:docker
 
     - name: Upload Archives to Archives Bucket
-      run: ./gradlew :release:archives:uploadArchives -Prelease -Pregion=us-east-1 -Pbucket=${{ secrets.ARCHIVES_BUCKET_NAME }} -Pprofile=default -PbuildNumber=${{ github.run_number }}
+      run: ./gradlew :release:archives:uploadArchives -Pregion=us-east-1 -Pbucket=${{ secrets.ARCHIVES_BUCKET_NAME }} -Pprofile=default -PbuildNumber=${{ github.run_number }}
 
     - name: Upload Maven Artifacts to Archives Bucket
-      run: ./gradlew :release:maven:uploadArtifacts -Prelease -Pregion=us-east-1 -Pbucket=${{ secrets.ARCHIVES_BUCKET_NAME }} -Pprofile=default -PbuildNumber=${{ github.run_number }}
+      run: ./gradlew :release:maven:uploadArtifact -Pregion=us-east-1 -Pbucket=${{ secrets.ARCHIVES_BUCKET_NAME }} -Pprofile=default -PbuildNumber=${{ github.run_number }}
 
     - name: Log into Amazon ECR Public
       id: login-ecr
