@@ -245,8 +245,9 @@ public final class BulkRetryStrategy {
                 LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", retryCount, exceptionFromRequest);
                 if (exceptionFromRequest == null) {
                     for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
-                        if (bulkItemResponse.error() != null) {
-                            LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.error().reason());
+                        if(isItemInError(bulkItemResponse)) {
+                            final ErrorCause error = bulkItemResponse.error();
+                            LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), error != null ? error.reason() : "");
                         }
                     }
                 }
@@ -266,7 +267,7 @@ public final class BulkRetryStrategy {
                     // Skip logging the error for version conflicts
                     final ErrorCause error = bulkItemResponse.error();
                     if (error != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(error.type())) {
-                        break;
+                        continue;
                     }
                     LOG.warn("operation = {}, status = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.status(), error != null ? error.reason() : "");
                 }
