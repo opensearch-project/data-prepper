@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPar
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.DataQueryProgressState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.ExportProgressState;
-import org.opensearch.dataprepper.plugins.mongo.model.LoadStatus;
+import org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,8 +113,8 @@ public class ExportScheduler implements Runnable {
 
             // Currently, we need to maintain a global state to track the overall progress.
             // So that we can easily tell if all the export files are loaded
-            final LoadStatus loadStatus = new LoadStatus(totalQueries.get(), 0, 0);
-            enhancedSourceCoordinator.createPartition(new GlobalState(EXPORT_PREFIX + collection, loadStatus.toMap()));
+            final ExportLoadStatus exportLoadStatus = new ExportLoadStatus(totalQueries.get(), 0, 0, Instant.now().toEpochMilli());
+            enhancedSourceCoordinator.createPartition(new GlobalState(EXPORT_PREFIX + collection, exportLoadStatus.toMap()));
             return true;
         } else {
             return false;

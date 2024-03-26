@@ -96,7 +96,7 @@ public class ExportSchedulerTest {
     }
 
     @Test
-    void test_export_run() throws InterruptedException {
+    void test_export_run() {
         exportScheduler = new ExportScheduler(coordinator, mongoDBExportPartitionSupplier, pluginMetrics);
         final String collection = UUID.randomUUID().toString();
         final int partitionSize = new Random().nextInt();
@@ -151,7 +151,7 @@ public class ExportSchedulerTest {
     }
 
     @Test
-    void test_export_run_multiple_partitions() throws InterruptedException {
+    void test_export_run_multiple_partitions() {
         exportScheduler = new ExportScheduler(coordinator, mongoDBExportPartitionSupplier, pluginMetrics);
         final String collection = UUID.randomUUID().toString();
         final int partitionSize = new Random().nextInt();

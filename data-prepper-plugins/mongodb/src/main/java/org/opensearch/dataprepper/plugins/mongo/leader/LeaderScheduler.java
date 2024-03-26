@@ -149,7 +149,8 @@ public class LeaderScheduler implements Runnable {
         final StreamProgressState streamProgressState = new StreamProgressState();
         streamProgressState.setWaitForExport(waitForExport);
         streamProgressState.setStartTime(streamTime.toEpochMilli());
-        coordinator.createPartition(new StreamPartition(collectionConfig.getCollection(), Optional.of(streamProgressState)));
+        streamProgressState.setLastUpdateTimestamp(Instant.now().toEpochMilli());
+        coordinator.createPartition(new StreamPartition(collectionConfig.getCollection(), streamProgressState));
     }
 
     /**

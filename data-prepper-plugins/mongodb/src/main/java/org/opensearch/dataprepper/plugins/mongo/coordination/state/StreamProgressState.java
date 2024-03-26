@@ -15,6 +15,11 @@ public class StreamProgressState {
     @JsonProperty("resumeToken")
     private String resumeToken;
 
+    @JsonProperty("loadedRecords")
+    private long loadedRecords;
+
+    @JsonProperty("lastUpdateTimestamp")
+    private long lastUpdateTimestamp;
 
     @JsonProperty("waitForExport")
     private boolean waitForExport = false;
@@ -33,6 +38,20 @@ public class StreamProgressState {
 
     public void setResumeToken(String resumeToken) {
         this.resumeToken = resumeToken;
+    }
+
+    public long getLoadedRecords() {
+        return loadedRecords;
+    }
+    public void setLoadedRecords(long loadedRecords) {
+        this.loadedRecords = loadedRecords;
+    }
+
+    public long getLastUpdateTimestamp() {
+        return lastUpdateTimestamp;
+    }
+    public void setLastUpdateTimestamp(long lastUpdateTimestamp) {
+        this.lastUpdateTimestamp = lastUpdateTimestamp;
     }
 
     public boolean shouldWaitForExport() {

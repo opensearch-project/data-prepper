@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfi
 import org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.mongo.export.ExportWorker;
 import org.opensearch.dataprepper.plugins.mongo.leader.LeaderScheduler;
+import org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +28,7 @@ public class DocumentDBService {
     private ExportScheduler exportScheduler;
     private ExportWorker exportWorker;
     private LeaderScheduler leaderScheduler;
+    private StreamScheduler streamScheduler;
     private final MongoDBExportPartitionSupplier mongoDBExportPartitionSupplier;
     public DocumentDBService(final EnhancedSourceCoordinator sourceCoordinator,
                              final MongoDBSourceConfig sourceConfig,
@@ -38,7 +40,7 @@ public class DocumentDBService {
         this.sourceConfig = sourceConfig;
 
         this.mongoDBExportPartitionSupplier = new MongoDBExportPartitionSupplier(sourceConfig);
-        executor = Executors.newFixedThreadPool(3);
+        executor = Executors.newFixedThreadPool(4);
     }
 
     /**
@@ -52,10 +54,12 @@ public class DocumentDBService {
         this.exportScheduler = new ExportScheduler(sourceCoordinator, mongoDBExportPartitionSupplier, pluginMetrics);
         this.exportWorker = new ExportWorker(sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, sourceConfig);
         this.leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig.getCollections());
+        this.streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, pluginMetrics);
 
         executor.submit(leaderScheduler);
         executor.submit(exportScheduler);
         executor.submit(exportWorker);
+        executor.submit(streamScheduler);
     }
 
     /**
