@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
@@ -214,7 +215,7 @@ public final class BulkRetryStrategy {
 
     public boolean canRetry(final BulkResponse response) {
         for (final BulkResponseItem bulkItemResponse : response.items()) {
-            if (bulkItemResponse.error() != null && !NON_RETRY_STATUS.contains(bulkItemResponse.status())) {
+            if (isItemInError(bulkItemResponse) && !NON_RETRY_STATUS.contains(bulkItemResponse.status())) {
                 return true;
             }
         }
@@ -234,7 +235,7 @@ public final class BulkRetryStrategy {
         final boolean doRetry = (Objects.isNull(exceptionFromRequest)) ? canRetry(bulkResponse) : canRetry(exceptionFromRequest);
         if (!Objects.isNull(bulkResponse) && retryCount == 1) { // first attempt
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
-                if (bulkItemResponse.error() == null) {
+                if (!isItemInError(bulkItemResponse)) {
                     sentDocumentsOnFirstAttemptCounter.increment();
                 }
             }
@@ -244,8 +245,9 @@ public final class BulkRetryStrategy {
                 LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", retryCount, exceptionFromRequest);
                 if (exceptionFromRequest == null) {
                     for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
-                        if (bulkItemResponse.error() != null) {
-                            LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.error().reason());
+                        if(isItemInError(bulkItemResponse)) {
+                            final ErrorCause error = bulkItemResponse.error();
+                            LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), error != null ? error.reason() : "");
                         }
                     }
                 }
@@ -261,9 +263,13 @@ public final class BulkRetryStrategy {
     private void handleFailures(final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest, final BulkResponse bulkResponse, final Throwable failure) {
         if (failure == null) {
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
-                // Skip logging the error for version conflicts
-                if (bulkItemResponse.error() != null && !VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
-                    LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.error().reason());
+                if(isItemInError(bulkItemResponse)) {
+                    // Skip logging the error for version conflicts
+                    final ErrorCause error = bulkItemResponse.error();
+                    if (error != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(error.type())) {
+                        continue;
+                    }
+                    LOG.warn("operation = {}, status = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.status(), error != null ? error.reason() : "");
                 }
             }
             handleFailures(bulkRequest, bulkResponse.items());
@@ -315,10 +321,10 @@ public final class BulkRetryStrategy {
             for (final BulkResponseItem bulkItemResponse : response.items()) {
                 BulkOperationWrapper bulkOperation =
                     (BulkOperationWrapper)request.getOperationAt(index);
-                if (bulkItemResponse.error() != null) {
+                if (isItemInError(bulkItemResponse)) {
                     if (!NON_RETRY_STATUS.contains(bulkItemResponse.status())) {
                         requestToReissue.addOperation(bulkOperation);
-                    } else if (VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
+                    } else if (bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
                         documentsVersionConflictErrors.increment();
                         LOG.debug("Received version conflict from OpenSearch: {}", bulkItemResponse.error().reason());
                         bulkOperation.releaseEventHandle(true);
@@ -349,8 +355,8 @@ public final class BulkRetryStrategy {
         for (int i = 0; i < itemResponses.size(); i++) {
             final BulkResponseItem bulkItemResponse = itemResponses.get(i);
             final BulkOperationWrapper bulkOperation = accumulatingBulkRequest.getOperationAt(i);
-            if (bulkItemResponse.error() != null) {
-                if (VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
+            if (isItemInError(bulkItemResponse)) {
+                if (bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
                     documentsVersionConflictErrors.increment();
                     LOG.debug("Received version conflict from OpenSearch: {}", bulkItemResponse.error().reason());
                     bulkOperation.releaseEventHandle(true);
@@ -384,4 +390,7 @@ public final class BulkRetryStrategy {
         logFailure.accept(failures.build(), failure);
     }
 
+    private static boolean isItemInError(final BulkResponseItem item) {
+        return item.status() >= 300 || item.error() != null;
+    }
 }
