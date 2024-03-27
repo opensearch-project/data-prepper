@@ -550,6 +550,12 @@ public class BulkRetryStrategyTests {
         }
 
         verifyNoMoreInteractions(logFailureConsumer);
+
+        final List<Measurement> documentsDuplicatesMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_DUPLICATES).toString());
+        assertThat(documentsDuplicatesMeasurements.size(), equalTo(1));
+        assertThat(documentsDuplicatesMeasurements.get(0).getValue(), equalTo(0.0));
     }
 
     @Test
@@ -619,6 +625,56 @@ public class BulkRetryStrategyTests {
         }
 
         verifyNoMoreInteractions(logFailureConsumer);
+
+        final List<Measurement> documentsDuplicatesMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_DUPLICATES).toString());
+        assertThat(documentsDuplicatesMeasurements.size(), equalTo(1));
+        assertThat(documentsDuplicatesMeasurements.get(0).getValue(), equalTo(0.0));
+    }
+
+    @Test
+    void execute_with_duplicate_documents_increments_metrics() throws Exception {
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = mock(Supplier.class);
+
+        final int maxRetries = 3;
+        final BulkRetryStrategy objectUnderTest = createObjectUnderTest(
+                requestFunction, logFailureConsumer, maxRetries,
+                bulkRequestSupplier);
+
+        final List<BulkOperationWrapper> operations = new ArrayList<>();
+        final List<BulkResponseItem> responseItems = new ArrayList<>();
+
+        for (int i = 0; i < 5; i++) {
+            final BulkOperationWrapper bulkOperationWrapper = mock(BulkOperationWrapper.class);
+            operations.add(bulkOperationWrapper);
+
+            final BulkResponseItem responseItem = mock(BulkResponseItem.class);
+            when(responseItem.seqNo()).thenReturn(1L);
+
+            when(responseItem.status()).thenReturn(200);
+            responseItems.add(responseItem);
+        }
+        final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = mock(AccumulatingBulkRequest.class);
+        when(bulkRequest.getOperationsCount()).thenReturn(operations.size());
+        when(bulkRequest.getOperationAt(anyInt())).thenAnswer(a -> operations.get(a.getArgument(0)));
+
+        final BulkResponse allFailingItemsResponse = mock(BulkResponse.class);
+        when(allFailingItemsResponse.errors()).thenReturn(true);
+        when(allFailingItemsResponse.items()).thenReturn(responseItems);
+
+
+        when(requestFunction.apply(bulkRequest)).thenReturn(allFailingItemsResponse);
+
+        objectUnderTest.execute(bulkRequest);
+
+
+        final List<Measurement> documentsDuplicatesMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_DUPLICATES).toString());
+        assertThat(documentsDuplicatesMeasurements.size(), equalTo(1));
+        assertThat(documentsDuplicatesMeasurements.get(0).getValue(), equalTo(5.0));
     }
 
     private static BulkResponseItem successItemResponse(final String index) {
