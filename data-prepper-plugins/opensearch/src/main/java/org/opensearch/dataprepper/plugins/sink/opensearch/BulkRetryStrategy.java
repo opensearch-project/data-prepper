@@ -36,6 +36,7 @@ public final class BulkRetryStrategy {
     public static final String DOCUMENTS_SUCCESS = "documentsSuccess";
     public static final String DOCUMENTS_SUCCESS_FIRST_ATTEMPT = "documentsSuccessFirstAttempt";
     public static final String DOCUMENT_ERRORS = "documentErrors";
+    public static final String DOCUMENT_STATUSES = "documentStatuses";
     public static final String BULK_REQUEST_FAILED = "bulkRequestFailed";
     public static final String BULK_REQUEST_NUMBER_OF_RETRIES = "bulkRequestNumberOfRetries";
     public static final String BULK_BAD_REQUEST_ERRORS = "bulkBadRequestErrors";
@@ -45,6 +46,7 @@ public final class BulkRetryStrategy {
     public static final String BULK_REQUEST_TIMEOUT_ERRORS = "bulkRequestTimeoutErrors";
     public static final String BULK_REQUEST_SERVER_ERRORS = "bulkRequestServerErrors";
     public static final String DOCUMENTS_VERSION_CONFLICT_ERRORS = "documentsVersionConflictErrors";
+    public static final String DOCUMENTS_DUPLICATES = "documentsDuplicates";
     static final long INITIAL_DELAY_MS = 50;
     static final long MAXIMUM_DELAY_MS = Duration.ofMinutes(10).toMillis();
     static final String VERSION_CONFLICT_EXCEPTION_TYPE = "version_conflict_engine_exception";
@@ -120,6 +122,7 @@ public final class BulkRetryStrategy {
     private final Counter bulkRequestTimeoutErrors;
     private final Counter bulkRequestServerErrors;
     private final Counter documentsVersionConflictErrors;
+    private final Counter documentsDuplicates;
     private static final Logger LOG = LoggerFactory.getLogger(BulkRetryStrategy.class);
 
     static class BulkOperationRequestResponse {
@@ -165,6 +168,7 @@ public final class BulkRetryStrategy {
         bulkRequestTimeoutErrors = pluginMetrics.counter(BULK_REQUEST_TIMEOUT_ERRORS);
         bulkRequestServerErrors = pluginMetrics.counter(BULK_REQUEST_SERVER_ERRORS);
         documentsVersionConflictErrors = pluginMetrics.counter(DOCUMENTS_VERSION_CONFLICT_ERRORS);
+        documentsDuplicates = pluginMetrics.counter(DOCUMENTS_DUPLICATES);
     }
 
     private void incrementErrorCounters(final Exception e) {
@@ -305,6 +309,8 @@ public final class BulkRetryStrategy {
             for (final BulkOperationWrapper bulkOperation: bulkRequestForRetry.getOperations()) {
                 bulkOperation.releaseEventHandle(true);
             }
+            final int totalDuplicateDocuments = bulkResponse.items().stream().filter(this::isDuplicateDocument).mapToInt(i -> 1).sum();
+            documentsDuplicates.increment(totalDuplicateDocuments);
         }
         return null;
     }
@@ -334,9 +340,13 @@ public final class BulkRetryStrategy {
                                 .withBulkResponseItem(bulkItemResponse)
                                 .build());
                         documentErrorsCounter.increment();
+                        getDocumentStatusCounter(bulkItemResponse.status()).increment();
                     }
                 } else {
                     sentDocumentsCounter.increment();
+                    if(isDuplicateDocument(bulkItemResponse)) {
+                        documentsDuplicates.increment();
+                    }
                     bulkOperation.releaseEventHandle(true);
                 }
                 index++;
@@ -367,8 +377,12 @@ public final class BulkRetryStrategy {
                             .build());
                 }
                 documentErrorsCounter.increment();
+                getDocumentStatusCounter(bulkItemResponse.status()).increment();
             } else {
                 sentDocumentsCounter.increment();
+                if(isDuplicateDocument(bulkItemResponse)) {
+                    documentsDuplicates.increment();
+                }
                 bulkOperation.releaseEventHandle(true);
             }
         }
@@ -392,5 +406,13 @@ public final class BulkRetryStrategy {
 
     private static boolean isItemInError(final BulkResponseItem item) {
         return item.status() >= 300 || item.error() != null;
+    }
+
+    private boolean isDuplicateDocument(final BulkResponseItem item) {
+        return item.seqNo() != null && item.seqNo() > 0;
+    }
+
+    private Counter getDocumentStatusCounter(final int status) {
+        return pluginMetrics.counterWithTags(DOCUMENT_STATUSES, "status", Integer.toString(status));
     }
 }
