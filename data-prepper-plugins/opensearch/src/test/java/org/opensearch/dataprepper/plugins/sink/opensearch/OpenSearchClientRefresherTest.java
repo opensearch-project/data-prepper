@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import io.micrometer.core.instrument.Counter;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -14,11 +15,14 @@ import java.util.function.Function;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchClientRefresher.CLIENT_REFRESH_ERRORS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchClientRefresher.CREDENTIALS_CHANGED;
@@ -47,8 +51,12 @@ class OpenSearchClientRefresherTest {
     private Counter clientRefreshErrorsCounter;
 
     private OpenSearchClientRefresher createObjectUnderTest() {
-        return new OpenSearchClientRefresher(
-                pluginMetrics, openSearchClient, connectionConfiguration, clientFunction);
+        return new OpenSearchClientRefresher(pluginMetrics, connectionConfiguration, clientFunction);
+    }
+
+    @BeforeEach
+    void setUp() {
+        when(clientFunction.apply(eq(connectionConfiguration))).thenReturn(openSearchClient);
     }
 
     @Test
@@ -60,6 +68,7 @@ class OpenSearchClientRefresherTest {
     @Test
     void testGetAfterUpdateWithBasicAuthUnchanged() {
         final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
+        verify(clientFunction, times(1)).apply(any());
         when(connectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(connectionConfiguration.getPassword()).thenReturn(TEST_PASSWORD);
         final PluginSetting newConfig = mock(PluginSetting.class);
@@ -73,13 +82,14 @@ class OpenSearchClientRefresherTest {
             objectUnderTest.update(newConfig);
         }
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
-        verifyNoInteractions(clientFunction);
+        verifyNoMoreInteractions(clientFunction);
     }
 
     @Test
     void testGetAfterUpdateWithUsernameChanged() {
         when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
         final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
+        verify(clientFunction, times(1)).apply(any());
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         when(connectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         final PluginSetting newConfig = mock(PluginSetting.class);
@@ -95,12 +105,14 @@ class OpenSearchClientRefresherTest {
         }
         assertThat(objectUnderTest.get(), equalTo(newClient));
         verify(credentialsChangeCounter).increment();
+        verify(clientFunction, times(2)).apply(any());
     }
 
     @Test
     void testGetAfterUpdateWithPasswordChanged() {
         when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
         final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
+        verify(clientFunction, times(1)).apply(any());
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         when(connectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(connectionConfiguration.getPassword()).thenReturn(TEST_PASSWORD);
@@ -118,6 +130,7 @@ class OpenSearchClientRefresherTest {
         }
         assertThat(objectUnderTest.get(), equalTo(newClient));
         verify(credentialsChangeCounter).increment();
+        verify(clientFunction, times(2)).apply(any());
     }
 
     @Test
@@ -125,6 +138,7 @@ class OpenSearchClientRefresherTest {
         when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
         when(pluginMetrics.counter(CLIENT_REFRESH_ERRORS)).thenReturn(clientRefreshErrorsCounter);
         final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
+        verify(clientFunction, times(1)).apply(any());
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         when(connectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(connectionConfiguration.getPassword()).thenReturn(TEST_PASSWORD);
@@ -143,5 +157,6 @@ class OpenSearchClientRefresherTest {
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         verify(credentialsChangeCounter).increment();
         verify(clientRefreshErrorsCounter).increment();
+        verify(clientFunction, times(2)).apply(any());
     }
 }

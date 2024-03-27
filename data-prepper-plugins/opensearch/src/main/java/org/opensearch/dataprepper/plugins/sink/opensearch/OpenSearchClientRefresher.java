@@ -26,12 +26,11 @@ public class OpenSearchClientRefresher implements PluginComponentRefresher<OpenS
     private final Counter clientRefreshErrorsCounter;
 
     public OpenSearchClientRefresher(final PluginMetrics pluginMetrics,
-                                     final OpenSearchClient openSearchClient,
                                      final ConnectionConfiguration connectionConfiguration,
                                      final Function<ConnectionConfiguration, OpenSearchClient> clientFunction) {
         this.clientFunction = clientFunction;
         this.currentConfig = connectionConfiguration;
-        this.currentClient = openSearchClient;
+        this.currentClient = clientFunction.apply(connectionConfiguration);
         credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
         clientRefreshErrorsCounter = pluginMetrics.counter(CLIENT_REFRESH_ERRORS);
     }

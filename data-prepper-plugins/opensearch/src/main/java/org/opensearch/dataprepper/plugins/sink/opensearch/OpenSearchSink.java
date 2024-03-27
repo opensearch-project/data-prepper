@@ -228,7 +228,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                       .build());
     };
     openSearchClientRefresher = new OpenSearchClientRefresher(
-            pluginMetrics, openSearchClient, connectionConfiguration, clientFunction);
+            pluginMetrics, connectionConfiguration, clientFunction);
     pluginConfigObservable.addPluginConfigObserver(
             newPluginSetting -> openSearchClientRefresher.update((PluginSetting) newPluginSetting));
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
