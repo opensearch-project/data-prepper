@@ -19,9 +19,11 @@ import org.opensearch.dataprepper.plugins.mongo.buffer.ExportRecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.converter.RecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
+import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
-import org.opensearch.dataprepper.plugins.mongo.model.LoadStatus;
+import org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus;
+import org.opensearch.dataprepper.plugins.mongo.model.StreamLoadStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,10 +37,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.EXPORT_PREFIX;
+import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.STREAM_PREFIX;
 
 public class ExportWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ExportWorker.class);
-    public static final String STREAM_PREFIX = "STREAM-";
     private final AtomicInteger numOfWorkers = new AtomicInteger(0);
 
     static final String SUCCESS_PARTITION_COUNTER_NAME = "exportPartitionSuccessTotal";
@@ -60,7 +62,6 @@ public class ExportWorker implements Runnable {
      */
     private final int startLine;
 
-    private final Buffer<Record<Event>> buffer;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final MongoDBSourceConfig sourceConfig;
     private final Counter successPartitionCounter;
@@ -73,7 +74,7 @@ public class ExportWorker implements Runnable {
     private final RecordBufferWriter recordBufferWriter;
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final ExecutorService executor;
-    private final  PluginMetrics pluginMetrics;
+    private final PluginMetrics pluginMetrics;
 
 
     public ExportWorker(final EnhancedSourceCoordinator sourceCoordinator,
@@ -82,10 +83,9 @@ public class ExportWorker implements Runnable {
                         final AcknowledgementSetManager acknowledgementSetManager,
                         final MongoDBSourceConfig sourceConfig) {
         this.sourceCoordinator = sourceCoordinator;
-        this.buffer = buffer;
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-        final RecordConverter recordConverter = new RecordConverter(sourceConfig.getCollections().get(0));
+        final RecordConverter recordConverter = new RecordConverter(sourceConfig.getCollections().get(0), ExportPartition.PARTITION_TYPE);
         recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, sourceConfig.getCollections().get(0),
                 recordConverter, pluginMetrics, Instant.now().toEpochMilli());
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -148,9 +148,9 @@ public class ExportWorker implements Runnable {
             return Optional.of(acknowledgementSetManager.create((result) -> {
                 if (result) {
                     completeDataLoader(partition).accept(null, null);
-                    LOG.info("Received acknowledgment of completion from sink for data file {}", partition.getPartitionKey());
+                    LOG.info("Received acknowledgment of completion from sink for data query {}", partition.getPartitionKey());
                 } else {
-                    LOG.warn("Negative acknowledgment received for data file {}, retrying", partition.getPartitionKey());
+                    LOG.warn("Negative acknowledgment received for data query {}, retrying", partition.getPartitionKey());
                     sourceCoordinator.giveUpPartition(partition);
                 }
             }, sourceConfig.getPartitionAcknowledgmentTimeout()));
@@ -225,19 +225,21 @@ public class ExportWorker implements Runnable {
             }
 
             final GlobalState globalState = (GlobalState) globalPartition.get();
-            final LoadStatus loadStatus = LoadStatus.fromMap(globalState.getProgressState().get());
-            loadStatus.setLoadedPartitions(loadStatus.getLoadedPartitions() + 1);
-            LOG.info("Current status: total {}, loaded {}", loadStatus.getTotalPartitions(), loadStatus.getLoadedPartitions());
+            final ExportLoadStatus exportLoadStatus = ExportLoadStatus.fromMap(globalState.getProgressState().get());
+            exportLoadStatus.setLoadedPartitions(exportLoadStatus.getLoadedPartitions() + 1);
+            LOG.info("Current status: total {}, loaded {}", exportLoadStatus.getTotalPartitions(), exportLoadStatus.getLoadedPartitions());
 
-            loadStatus.setLoadedRecords(loadStatus.getLoadedRecords() + loaded);
-            globalState.setProgressState(loadStatus.toMap());
+            exportLoadStatus.setLoadedRecords(exportLoadStatus.getLoadedRecords() + loaded);
+            exportLoadStatus.setLastUpdateTimestamp(Instant.now().toEpochMilli());
+            globalState.setProgressState(exportLoadStatus.toMap());
 
             try {
                 sourceCoordinator.saveProgressStateForPartition(globalState, null);
                 // if all load are completed.
-                if (loadStatus.getLoadedPartitions() == loadStatus.getTotalPartitions()) {
+                if (exportLoadStatus.getLoadedPartitions() == exportLoadStatus.getTotalPartitions()) {
                     LOG.info("All Exports are done, streaming can continue...");
-                    sourceCoordinator.createPartition(new GlobalState(STREAM_PREFIX + collection, null));
+                    final StreamLoadStatus streamLoadStatus = new StreamLoadStatus(Instant.now().toEpochMilli());
+                    sourceCoordinator.createPartition(new GlobalState(STREAM_PREFIX + collection, streamLoadStatus.toMap()));
                 }
                 break;
             } catch (Exception e) {

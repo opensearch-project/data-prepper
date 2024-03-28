@@ -12,6 +12,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
+import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
+import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.time.Instant;
@@ -24,6 +26,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
+import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.INGESTION_EVENT_TYPE_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
@@ -54,7 +57,7 @@ class RecordConverterTest {
         final long exportStartTime = Instant.now().toEpochMilli();
         final long eventVersionNumber = random.nextLong();
 
-        final RecordConverter recordConverter = new RecordConverter(collectionConfig);
+        final RecordConverter recordConverter = new RecordConverter(collectionConfig, ExportPartition.PARTITION_TYPE);
 
         final JacksonEvent event = (JacksonEvent) recordConverter.convert(record, exportStartTime, eventVersionNumber);
         assertThat(event.getMetadata(), notNullValue());
@@ -66,6 +69,7 @@ class RecordConverterTest {
         assertThat(event.getMetadata().getAttribute(MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), nullValue());
         assertThat(event.getMetadata().getAttribute(MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(exportStartTime));
         assertThat(event.getMetadata().getAttribute(EVENT_VERSION_FROM_TIMESTAMP), equalTo(eventVersionNumber));
+        assertThat(event.getMetadata().getAttribute(INGESTION_EVENT_TYPE_ATTRIBUTE), equalTo(ExportPartition.PARTITION_TYPE));
         assertThat(event.getEventHandle(), notNullValue());
         assertThat(event.getEventHandle().getExternalOriginationTime(), nullValue());
     }
@@ -83,7 +87,7 @@ class RecordConverterTest {
         final long eventVersionNumber = random.nextLong();
         final String eventName = "insert";
 
-        final RecordConverter recordConverter = new RecordConverter(collectionConfig);
+        final RecordConverter recordConverter = new RecordConverter(collectionConfig, StreamPartition.PARTITION_TYPE);
 
         final JacksonEvent event = (JacksonEvent) recordConverter.convert(record, exportStartTime, eventVersionNumber, eventName);
         assertThat(event.getMetadata(), notNullValue());
@@ -95,6 +99,8 @@ class RecordConverterTest {
         assertThat(event.getMetadata().getAttribute(MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), equalTo(eventName));
         assertThat(event.getMetadata().getAttribute(MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(exportStartTime));
         assertThat(event.getMetadata().getAttribute(EVENT_VERSION_FROM_TIMESTAMP), equalTo(eventVersionNumber));
+        assertThat(event.getMetadata().getAttribute(INGESTION_EVENT_TYPE_ATTRIBUTE), equalTo(StreamPartition.PARTITION_TYPE));
+
         assertThat(event.getEventHandle(), notNullValue());
         assertThat(event.getEventHandle().getExternalOriginationTime(), equalTo(Instant.ofEpochMilli(exportStartTime)));
         assertThat(event.getMetadata().getExternalOriginationTime(), equalTo(Instant.ofEpochMilli(exportStartTime)));

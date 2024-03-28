@@ -61,7 +61,10 @@ public class ExportPartitionWorker implements Runnable {
     private final DataQueryPartition dataQueryPartition;
     private final AcknowledgementSet acknowledgementSet;
     private final DataQueryPartitionCheckpoint partitionCheckpoint;
-
+    private final JsonWriterSettings writerSettings = JsonWriterSettings.builder()
+            .outputMode(JsonMode.RELAXED)
+            .objectIdConverter((value, writer) -> writer.writeString(value.toHexString()))
+            .build();
 
     public ExportPartitionWorker(final RecordBufferWriter recordBufferWriter,
                                  final DataQueryPartition dataQueryPartition,
@@ -120,10 +123,6 @@ public class ExportPartitionWorker implements Runnable {
                     }
 
                     try {
-                        final JsonWriterSettings writerSettings = JsonWriterSettings.builder()
-                                .outputMode(JsonMode.RELAXED)
-                                .objectIdConverter((value, writer) -> writer.writeString(value.toHexString()))
-                                .build();
                         final String record = cursor.next().toJson(writerSettings);
                         records.add(record);
 

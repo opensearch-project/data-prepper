@@ -19,9 +19,9 @@ public class StreamPartition extends EnhancedSourcePartition<StreamProgressState
 
     private final StreamProgressState state;
 
-    public StreamPartition(String collection, Optional<StreamProgressState> state) {
+    public StreamPartition(final String collection, final StreamProgressState state) {
         this.collection = collection;
-        this.state = state.orElse(null);
+        this.state = state;
     }
 
     public StreamPartition(SourcePartitionStoreItem sourcePartitionStoreItem) {

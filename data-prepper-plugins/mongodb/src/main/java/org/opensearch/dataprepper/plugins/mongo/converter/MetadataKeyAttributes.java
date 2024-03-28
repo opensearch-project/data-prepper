@@ -20,5 +20,7 @@ public class MetadataKeyAttributes {
     static final String MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE = "mongodb_event_name";
 
     static final String MONGODB_EVENT_COLLECTION_METADATA_ATTRIBUTE = "mongodb_collection";
+
+    static final String INGESTION_EVENT_TYPE_ATTRIBUTE = "ingestion_type";
 }
 
