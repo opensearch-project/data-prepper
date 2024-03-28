@@ -484,7 +484,7 @@ public class BulkRetryStrategyTests {
     }
 
     @Test
-    void execute_will_not_send_messages_to_logWriter_when_all_items_fail_with_retryable_status() throws Exception {
+    void execute_will_not_send_messages_to_logWriter_when_all_items_fail_with_retryable_status_when_error_is_provided() throws Exception {
         final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
         final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = mock(Supplier.class);
 
@@ -503,6 +503,74 @@ public class BulkRetryStrategyTests {
             final BulkResponseItem responseItem = mock(BulkResponseItem.class);
 
             when(responseItem.error()).thenReturn(mock(ErrorCause.class));
+            responseItems.add(responseItem);
+        }
+        final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = mock(AccumulatingBulkRequest.class);
+        when(bulkRequest.getOperationsCount()).thenReturn(operations.size());
+        when(bulkRequest.getOperationAt(anyInt())).thenAnswer(a -> operations.get(a.getArgument(0)));
+
+        final BulkResponse allFailingItemsResponse = mock(BulkResponse.class);
+        when(allFailingItemsResponse.errors()).thenReturn(true);
+        when(allFailingItemsResponse.items()).thenReturn(responseItems);
+
+
+        final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> reissueRequest = mock(AccumulatingBulkRequest.class);
+        when(reissueRequest.getOperationsCount()).thenReturn(operations.size());
+        when(reissueRequest.getOperationAt(anyInt())).thenAnswer(a -> operations.get(a.getArgument(0)));
+        when(reissueRequest.getOperations()).thenReturn(operations);
+
+        when(requestFunction.apply(bulkRequest)).thenReturn(allFailingItemsResponse);
+        when(requestFunction.apply(reissueRequest)).thenReturn(allFailingItemsResponse);
+
+        when(bulkRequestSupplier.get()).thenReturn(reissueRequest);
+
+        objectUnderTest.execute(bulkRequest);
+
+        for (int i = 0; i < operations.size(); i++) {
+            final BulkOperationWrapper operation = operations.get(i);
+            verify(reissueRequest, times(maxRetries - 1)).addOperation(operation);
+            verify(reissueRequest, times(1)).getOperationAt(i);
+        }
+        verify(reissueRequest, times(maxRetries)).getOperationsCount();
+        verify(reissueRequest).getOperations();
+        verifyNoMoreInteractions(reissueRequest);
+
+        final ArgumentCaptor<List<FailedBulkOperation>> actualFailedOperationsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(logFailureConsumer).accept(actualFailedOperationsCaptor.capture(), any());
+
+        final List<FailedBulkOperation> failedBulkOperations = actualFailedOperationsCaptor.getValue();
+        assertThat(failedBulkOperations.size(), equalTo(operations.size()));
+        for (int i = 0; i < operations.size(); i++) {
+            final FailedBulkOperation failedBulkOperation = failedBulkOperations.get(i);
+            final BulkOperationWrapper operation = operations.get(i);
+
+            assertThat(failedBulkOperation, notNullValue());
+            assertThat(failedBulkOperation.getBulkOperation(), equalTo(operation));
+            assertThat(failedBulkOperation.getFailure(), notNullValue());
+        }
+
+        verifyNoMoreInteractions(logFailureConsumer);
+    }
+
+    @Test
+    void execute_will_not_send_messages_to_logWriter_when_all_items_fail_with_retryable_status_when_no_error() throws Exception {
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = mock(Supplier.class);
+
+        final int maxRetries = 3;
+        final BulkRetryStrategy objectUnderTest = createObjectUnderTest(
+                requestFunction, logFailureConsumer, maxRetries,
+                bulkRequestSupplier);
+
+        final List<BulkOperationWrapper> operations = new ArrayList<>();
+        final List<BulkResponseItem> responseItems = new ArrayList<>();
+
+        for (int i = 0; i < 5; i++) {
+            final BulkOperationWrapper bulkOperationWrapper = mock(BulkOperationWrapper.class);
+            operations.add(bulkOperationWrapper);
+
+            final BulkResponseItem responseItem = mock(BulkResponseItem.class);
+
             when(responseItem.status()).thenReturn(403);
             responseItems.add(responseItem);
         }
@@ -554,7 +622,9 @@ public class BulkRetryStrategyTests {
     }
 
     private static BulkResponseItem successItemResponse(final String index) {
-        return mock(BulkResponseItem.class);
+        final BulkResponseItem response = mock(BulkResponseItem.class);
+        lenient().when(response.status()).thenReturn(200);
+        return response;
     }
 
     private static BulkResponseItem badRequestItemResponse(final String index) {
