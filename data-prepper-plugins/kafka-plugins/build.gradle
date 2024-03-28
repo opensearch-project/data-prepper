@@ -36,7 +36,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation libs.commons.lang3
     implementation 'io.confluent:kafka-avro-serializer:7.4.0'
-    implementation 'io.confluent:kafka-json-schema-serializer:7.4.0'
+    implementation 'io.confluent:kafka-json-schema-serializer:7.6.0'
     implementation 'io.confluent:kafka-schema-registry-client:7.4.0'
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:auth'
