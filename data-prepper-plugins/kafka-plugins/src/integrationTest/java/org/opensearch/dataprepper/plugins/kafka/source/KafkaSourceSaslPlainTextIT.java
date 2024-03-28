@@ -13,10 +13,13 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.config.SaslConfigs;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -26,11 +29,13 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
+import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
@@ -43,8 +48,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.awaitility.Awaitility.await;
@@ -56,11 +61,21 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class KafkaSourceJsonTypeIT {
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaSourceJsonTypeIT.class);
+@ExtendWith(MockitoExtension.class)
+public class KafkaSourceSaslPlainTextIT {
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaSourceSaslPlainTextIT.class);
     private static final int TEST_ID = 123456;
     @Mock
     private KafkaSourceConfig sourceConfig;
+
+    @Mock
+    private PlainTextAuthConfig plainTextAuthConfig;
+
+    @Mock
+    private AuthConfig.SaslAuthConfig saslAuthConfig;
+
+    @Mock
+    private AuthConfig authConfig;
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -106,6 +121,13 @@ public class KafkaSourceJsonTypeIT {
     @BeforeEach
     public void setup() throws Throwable {
         sourceConfig = mock(KafkaSourceConfig.class);
+        when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
+        when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
+        when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
+        String username = System.getProperty("tests.kafka.authconfig.username");
+        String password = System.getProperty("tests.kafka.authconfig.password");
+        when(plainTextAuthConfig.getUsername()).thenReturn(username);
+        when(plainTextAuthConfig.getPassword()).thenReturn(password);
         pluginMetrics = mock(PluginMetrics.class);
         counter = mock(Counter.class);
         buffer = mock(Buffer.class);
@@ -150,6 +172,7 @@ public class KafkaSourceJsonTypeIT {
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
         Throwable[] createThrowable = new Throwable[1];
+        configureJasConfForSASLPlainText(props);
         try (AdminClient adminClient = AdminClient.create(props)) {
             adminClient.createTopics(
                             Collections.singleton(new NewTopic(testTopic, 1, (short) 1)))
@@ -169,6 +192,7 @@ public class KafkaSourceJsonTypeIT {
     void tearDown() {
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configureJasConfForSASLPlainText(props);
         AtomicBoolean deleted = new AtomicBoolean(false);
         Throwable[] createThrowable = new Throwable[1];
         final String topicName = jsonTopic.getName();
@@ -187,7 +211,6 @@ public class KafkaSourceJsonTypeIT {
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
         when(sourceConfig.getTopics()).thenReturn((List) List.of(jsonTopic));
-        when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
 
         kafkaSource.start(buffer);
@@ -212,150 +235,9 @@ public class KafkaSourceJsonTypeIT {
         }
     }
 
-    @Test
-    public void TestJsonRecordsWithNegativeAcknowledgements() throws Exception {
-        final int numRecords = 1;
-        when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
-        when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.DISCARD);
-        when(sourceConfig.getTopics()).thenReturn((List) List.of(jsonTopic));
-        when(sourceConfig.getAuthConfig()).thenReturn(null);
-        when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(true);
-        kafkaSource = createObjectUnderTest();
-
-        kafkaSource.start(buffer);
-        produceJsonRecords(bootstrapServers, testTopic, numRecords);
-        int numRetries = 0;
-        while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {
-            Thread.sleep(1000);
-        }
-        assertThat(receivedRecords.size(), equalTo(numRecords));
-        for (int i = 0; i < numRecords; i++) {
-            Record<Event> record = receivedRecords.get(i);
-            Event event = (Event) record.getData();
-            EventMetadata metadata = event.getMetadata();
-            Map<String, Object> map = event.toMap();
-            assertThat(map.get("name"), equalTo("testName" + i));
-            assertThat(map.get("id"), equalTo(TEST_ID + i));
-            assertThat(map.get("status"), equalTo(true));
-            assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
-            event.getEventHandle().release(false);
-        }
-        receivedRecords.clear();
-        Thread.sleep(10000);
-        while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {
-            Thread.sleep(1000);
-        }
-        assertThat(receivedRecords.size(), equalTo(numRecords));
-        for (int i = 0; i < numRecords; i++) {
-            Record<Event> record = receivedRecords.get(i);
-            Event event = (Event) record.getData();
-            EventMetadata metadata = event.getMetadata();
-            Map<String, Object> map = event.toMap();
-            assertThat(map.get("name"), equalTo("testName" + i));
-            assertThat(map.get("id"), equalTo(TEST_ID + i));
-            assertThat(map.get("status"), equalTo(true));
-            assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
-            event.getEventHandle().release(true);
-        }
-    }
-
-    @Test
-    public void TestJsonRecordsWithKafkaKeyModeDiscard() throws Exception {
-        final int numRecords = 1;
-        when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
-        when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.DISCARD);
-        when(sourceConfig.getTopics()).thenReturn((List) List.of(jsonTopic));
-        when(sourceConfig.getAuthConfig()).thenReturn(null);
-        kafkaSource = createObjectUnderTest();
-
-        kafkaSource.start(buffer);
-        produceJsonRecords(bootstrapServers, testTopic, numRecords);
-        int numRetries = 0;
-        while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {
-            Thread.sleep(1000);
-        }
-        assertThat(receivedRecords.size(), equalTo(numRecords));
-        for (int i = 0; i < numRecords; i++) {
-            Record<Event> record = receivedRecords.get(i);
-            Event event = (Event) record.getData();
-            EventMetadata metadata = event.getMetadata();
-            Map<String, Object> map = event.toMap();
-            assertThat(map.get("name"), equalTo("testName" + i));
-            assertThat(map.get("id"), equalTo(TEST_ID + i));
-            assertThat(map.get("status"), equalTo(true));
-            assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
-        }
-    }
-
-    @Test
-    public void TestJsonRecordsWithKafkaKeyModeAsField() throws Exception {
-        final int numRecords = 1;
-        when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
-        when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
-        when(sourceConfig.getTopics()).thenReturn((List) List.of(jsonTopic));
-        when(sourceConfig.getAuthConfig()).thenReturn(null);
-        kafkaSource = createObjectUnderTest();
-
-        kafkaSource.start(buffer);
-        produceJsonRecords(bootstrapServers, testTopic, numRecords);
-        int numRetries = 0;
-        while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {
-            Thread.sleep(1000);
-        }
-        assertThat(receivedRecords.size(), equalTo(numRecords));
-        for (int i = 0; i < numRecords; i++) {
-            Record<Event> record = receivedRecords.get(i);
-            Event event = (Event) record.getData();
-            EventMetadata metadata = event.getMetadata();
-            Map<String, Object> map = event.toMap();
-            assertThat(map.get("name"), equalTo("testName" + i));
-            assertThat(map.get("id"), equalTo(TEST_ID + i));
-            assertThat(map.get("status"), equalTo(true));
-            assertThat(map.get("kafka_key"), equalTo(testKey));
-            assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
-        }
-    }
-
-    @Test
-    public void TestJsonRecordsWithKafkaKeyModeAsMetadata() throws Exception {
-        final int numRecords = 1;
-        when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
-        when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_METADATA);
-        when(sourceConfig.getTopics()).thenReturn((List) List.of(jsonTopic));
-        when(sourceConfig.getAuthConfig()).thenReturn(null);
-        kafkaSource = createObjectUnderTest();
-
-        kafkaSource.start(buffer);
-        produceJsonRecords(bootstrapServers, testTopic, numRecords);
-        int numRetries = 0;
-        while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {
-            Thread.sleep(1000);
-        }
-        assertThat(receivedRecords.size(), equalTo(numRecords));
-        for (int i = 0; i < numRecords; i++) {
-            Record<Event> record = receivedRecords.get(i);
-            Event event = (Event) record.getData();
-            EventMetadata metadata = event.getMetadata();
-            Map<String, Object> map = event.toMap();
-            assertThat(map.get("name"), equalTo("testName" + i));
-            assertThat(map.get("id"), equalTo(TEST_ID + i));
-            assertThat(map.get("status"), equalTo(true));
-            assertThat(metadata.getAttributes().get("kafka_key"), equalTo(testKey));
-            assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
-        }
-    }
-
     public void produceJsonRecords(final String servers, final String topicName, final int numRecords) {
         Properties props = new Properties();
+        configureJasConfForSASLPlainText(props);
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
                 org.apache.kafka.common.serialization.StringSerializer.class);
@@ -373,5 +255,15 @@ public class KafkaSourceJsonTypeIT {
             }
         }
         producer.close();
+    }
+
+    private void configureJasConfForSASLPlainText(final Properties props) {
+        String username = System.getProperty("tests.kafka.authconfig.username");
+        String password = System.getProperty("tests.kafka.authconfig.password");
+
+        String jasConf = "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"" + username + "\" password=\"" + password + "\";";
+        props.put(SaslConfigs.SASL_JAAS_CONFIG, jasConf);
+        props.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
+        props.put(AdminClientConfig.SECURITY_PROTOCOL_CONFIG, "SASL_PLAINTEXT");
     }
 }
