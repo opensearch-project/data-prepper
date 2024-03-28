@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -37,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -58,6 +60,7 @@ class S3SinkTest {
     private PluginFactory pluginFactory;
     private AwsCredentialsSupplier awsCredentialsSupplier;
     private SinkContext sinkContext;
+    private ExpressionEvaluator expressionEvaluator;
     private OutputCodec codec;
 
     @BeforeEach
@@ -73,6 +76,7 @@ class S3SinkTest {
         PluginModel pluginModel = mock(PluginModel.class);
         pluginFactory = mock(PluginFactory.class);
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
+        expressionEvaluator = mock(ExpressionEvaluator.class);
 
         when(s3SinkConfig.getBufferType()).thenReturn(BufferTypeOptions.INMEMORY);
         when(s3SinkConfig.getThresholdOptions()).thenReturn(thresholdOptions);
@@ -89,10 +93,12 @@ class S3SinkTest {
         when(pluginSetting.getName()).thenReturn(SINK_PLUGIN_NAME);
         when(pluginSetting.getPipelineName()).thenReturn(SINK_PIPELINE_NAME);
         when(s3SinkConfig.getBucketName()).thenReturn(BUCKET_NAME);
+        when(s3SinkConfig.getObjectKeyOptions()).thenReturn(objectKeyOptions);
+        when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(true);
     }
 
     private S3Sink createObjectUnderTest() {
-        return new S3Sink(pluginSetting, s3SinkConfig, pluginFactory, sinkContext, awsCredentialsSupplier);
+        return new S3Sink(pluginSetting, s3SinkConfig, pluginFactory, sinkContext, awsCredentialsSupplier, expressionEvaluator);
     }
 
     @Test

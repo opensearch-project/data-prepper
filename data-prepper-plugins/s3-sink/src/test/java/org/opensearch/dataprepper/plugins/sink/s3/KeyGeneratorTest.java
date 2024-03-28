@@ -9,19 +9,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.plugins.sink.s3.accumulator.ObjectKey;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.TimeZone;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,54 +37,87 @@ class KeyGeneratorTest {
     private ExtensionProvider extensionProvider;
 
     @Mock
-    private ObjectKeyOptions objectKeyOptions;
+    private ExpressionEvaluator expressionEvaluator;
 
     @BeforeEach
     void setUp() {
-        when(s3SinkConfig.getObjectKeyOptions()).thenReturn(objectKeyOptions);
-        when(objectKeyOptions.getNamePattern()).thenReturn(OBJECT_KEY_NAME_PATTERN);
+
     }
 
     private KeyGenerator createObjectUnderTest() {
-        return new KeyGenerator(s3SinkConfig, extensionProvider);
+        return new KeyGenerator(s3SinkConfig, extensionProvider, expressionEvaluator);
     }
 
     @Test
     void test_generateKey_with_general_prefix() {
         String pathPrefix = "events/";
-        when(s3SinkConfig.getObjectKeyOptions().getPathPrefix()).thenReturn(pathPrefix);
-        String key = createObjectUnderTest().generateKey();
-        assertNotNull(key);
-        assertThat(key, true);
-        assertThat(key, key.contains(pathPrefix));
+        final String objectName = UUID.randomUUID().toString();
+        final Event event = mock(Event.class);
+
+        final KeyGenerator objectUnderTest = createObjectUnderTest();
+
+        try (final MockedStatic<ObjectKey> objectKeyMockedStatic = mockStatic(ObjectKey.class)) {
+
+            objectKeyMockedStatic.when(() -> ObjectKey.buildingPathPrefix(s3SinkConfig, event, expressionEvaluator))
+                    .thenReturn(pathPrefix);
+            objectKeyMockedStatic.when(() -> ObjectKey.objectFileNameWithoutDateTimeAndCodecInjection(s3SinkConfig, event, expressionEvaluator))
+                    .thenReturn(objectName);
+
+            String key = objectUnderTest.generateKeyForEvent(event, false);
+
+            assertNotNull(key);
+            assertThat(key, true);
+            assertThat(key, key.contains(pathPrefix));
+            assertThat(key.contains(objectName), equalTo(true));
+        }
     }
 
     @Test
     void test_generateKey_with_date_prefix() {
         String pathPrefix = "logdata/";
-        String datePattern = "%{yyyy}/%{MM}/%{dd}/";
+        final String objectName = UUID.randomUUID().toString();
+        when(extensionProvider.getExtension()).thenReturn(null);
 
-        DateTimeFormatter fomatter = DateTimeFormatter.ofPattern("yyyy/MM/dd");
-        ZonedDateTime zdt = LocalDateTime.now().atZone(ZoneId.systemDefault())
-                .withZoneSameInstant(ZoneId.of(TimeZone.getTimeZone("UTC").getID()));
-        String dateString = fomatter.format(zdt);
+        final KeyGenerator objectUnderTest = createObjectUnderTest();
 
-        when(s3SinkConfig.getObjectKeyOptions()
-                .getPathPrefix()).thenReturn(pathPrefix + datePattern);
-        String key = createObjectUnderTest().generateKey();
-        assertNotNull(key);
-        assertThat(key, true);
-        assertThat(key, key.contains(pathPrefix + dateString));
+        final Event event = mock(Event.class);
+
+        try (final MockedStatic<ObjectKey> objectKeyMockedStatic = mockStatic(ObjectKey.class)) {
+
+            objectKeyMockedStatic.when(() -> ObjectKey.buildingPathPrefix(s3SinkConfig, event, expressionEvaluator))
+                    .thenReturn(pathPrefix);
+            objectKeyMockedStatic.when(() -> ObjectKey.objectFileName(s3SinkConfig, null, event, expressionEvaluator))
+                    .thenReturn(objectName);
+
+            String key = objectUnderTest.generateKeyForEvent(event, true);
+            assertNotNull(key);
+            assertThat(key, true);
+            assertThat(key.contains(pathPrefix), equalTo(true));
+            assertThat(key.contains(objectName), equalTo(true));
+        }
     }
 
     @Test
-    void generateKey_ends_with_extension() {
+    void generateKey_with_extension() {
         String extension = UUID.randomUUID().toString();
+        final String objectName = UUID.randomUUID().toString();
         when(extensionProvider.getExtension()).thenReturn(extension);
         String pathPrefix = "events/";
-        when(s3SinkConfig.getObjectKeyOptions().getPathPrefix()).thenReturn(pathPrefix);
-        String key = createObjectUnderTest().generateKey();
-        assertThat(key, notNullValue());
-        assertThat(key, key.endsWith("." + extension));
+
+        final Event event = mock(Event.class);
+        final KeyGenerator objectUnderTest = createObjectUnderTest();
+        try (final MockedStatic<ObjectKey> objectKeyMockedStatic = mockStatic(ObjectKey.class)) {
+
+            objectKeyMockedStatic.when(() -> ObjectKey.buildingPathPrefix(s3SinkConfig, event, expressionEvaluator))
+                    .thenReturn(pathPrefix);
+            objectKeyMockedStatic.when(() -> ObjectKey.objectFileName(s3SinkConfig, extension, event, expressionEvaluator))
+                    .thenReturn(objectName);
+
+            String key = objectUnderTest.generateKeyForEvent(event, true);
+            assertThat(key, notNullValue());
+            assertThat(key.contains(pathPrefix), equalTo(true));
+            assertThat(key.contains(objectName), equalTo(true));
+        }
+
     }
 }

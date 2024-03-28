@@ -15,7 +15,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
-import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
+import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3Group;
+import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifier;
+import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -28,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -45,11 +48,9 @@ public class S3SinkService {
     static final String S3_OBJECTS_SIZE = "s3SinkObjectSizeBytes";
     private final S3SinkConfig s3SinkConfig;
     private final Lock reentrantLock;
-    private final BufferFactory bufferFactory;
     private final Collection<EventHandle> bufferedEventHandles;
     private final OutputCodec codec;
     private final S3Client s3Client;
-    private Buffer currentBuffer;
     private final int maxEvents;
     private final ByteCount maxBytes;
     private final Duration maxCollectionDuration;
@@ -64,18 +65,18 @@ public class S3SinkService {
     private final KeyGenerator keyGenerator;
     private final Duration retrySleepTime;
 
+    private final S3GroupManager s3GroupManager;
+
     /**
      * @param s3SinkConfig  s3 sink related configuration.
-     * @param bufferFactory factory of buffer.
      * @param codec         parser.
      * @param s3Client
      * @param pluginMetrics metrics.
      */
-    public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory,
-                         final OutputCodec codec, final OutputCodecContext codecContext, final S3Client s3Client, final KeyGenerator keyGenerator,
-                         final Duration retrySleepTime, final PluginMetrics pluginMetrics) {
+    public S3SinkService(final S3SinkConfig s3SinkConfig, final OutputCodec codec,
+                         final OutputCodecContext codecContext, final S3Client s3Client, final KeyGenerator keyGenerator,
+                         final Duration retrySleepTime, final PluginMetrics pluginMetrics, final S3GroupManager s3GroupManager) {
         this.s3SinkConfig = s3SinkConfig;
-        this.bufferFactory = bufferFactory;
         this.codec = codec;
         this.s3Client = s3Client;
         this.codecContext = codecContext;
@@ -98,7 +99,7 @@ public class S3SinkService {
         numberOfRecordsFailedCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED);
         s3ObjectSizeSummary = pluginMetrics.summary(S3_OBJECTS_SIZE);
 
-        currentBuffer = bufferFactory.getBuffer(s3Client, () -> bucket, keyGenerator::generateKey);
+        this.s3GroupManager = s3GroupManager;
     }
 
     /**
@@ -106,7 +107,7 @@ public class S3SinkService {
      */
     void output(Collection<Record<Event>> records) {
         // Don't acquire the lock if there's no work to be done
-        if (records.isEmpty() && currentBuffer.getEventCount() == 0) {
+        if (records.isEmpty() && s3GroupManager.hasNoGroups()) {
             return;
         }
 
@@ -115,8 +116,10 @@ public class S3SinkService {
         reentrantLock.lock();
         try {
             for (Record<Event> record : records) {
-
                 final Event event = record.getData();
+                final Map.Entry<S3GroupIdentifier, S3Group> s3GroupEntry = s3GroupManager.getOrCreateGroupForEvent(event);
+                final Buffer currentBuffer = s3GroupEntry.getValue().getBuffer();
+
                 try {
                     if (currentBuffer.getEventCount() == 0) {
                         codec.start(currentBuffer.getOutputStream(), event, codecContext);
@@ -135,9 +138,20 @@ public class S3SinkService {
                     failedEvents.add(event);
                 }
 
-                flushToS3IfNeeded();
+                final boolean flushed = flushToS3IfNeeded(currentBuffer);
+
+                if (flushed) {
+                    s3GroupManager.removeGroup(s3GroupEntry.getKey());
+                }
             }
-            flushToS3IfNeeded();
+
+            for (final Map.Entry<S3GroupIdentifier, S3Group> s3GroupEntry : s3GroupManager.getS3GroupEntries()) {
+                final boolean flushed = flushToS3IfNeeded(s3GroupEntry.getValue().getBuffer());
+
+                if (flushed) {
+                    s3GroupManager.removeGroup(s3GroupEntry.getKey());
+                }
+            }
         } finally {
             reentrantLock.unlock();
         }
@@ -159,7 +173,10 @@ public class S3SinkService {
         bufferedEventHandles.clear();
     }
 
-    private void flushToS3IfNeeded() {
+    /**
+     * @return whether the flush was attempted
+     */
+    private boolean flushToS3IfNeeded(final Buffer currentBuffer) {
         LOG.trace("Flush to S3 check: currentBuffer.size={}, currentBuffer.events={}, currentBuffer.duration={}",
                 currentBuffer.getSize(), currentBuffer.getEventCount(), currentBuffer.getDuration());
         if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
@@ -181,11 +198,14 @@ public class S3SinkService {
                     objectsFailedCounter.increment();
                     releaseEventHandles(false);
                 }
-                currentBuffer = bufferFactory.getBuffer(s3Client, () -> bucket, keyGenerator::generateKey);
+
+                return true;
             } catch (final IOException e) {
                 LOG.error("Exception while completing codec", e);
             }
         }
+
+        return false;
     }
 
     /**

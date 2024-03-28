@@ -12,26 +12,27 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
-import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.InMemoryBuffer;
-import org.opensearch.dataprepper.plugins.sink.s3.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
+import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3Group;
+import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifier;
+import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -43,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -81,12 +83,13 @@ class S3SinkServiceTest {
     private OutputCodecContext codecContext;
     private KeyGenerator keyGenerator = mock(KeyGenerator.class);
     private PluginMetrics pluginMetrics;
-    private BufferFactory bufferFactory;
     private Counter snapshotSuccessCounter;
     private DistributionSummary s3ObjectSizeSummary;
     private Random random;
     private String tagsTargetKey;
     private AcknowledgementSet acknowledgementSet;
+
+    private S3GroupManager s3GroupManager;
 
     @BeforeEach
     void setUp() {
@@ -111,7 +114,7 @@ class S3SinkServiceTest {
         Counter numberOfRecordsFailedCounter = mock(Counter.class);
         s3ObjectSizeSummary = mock(DistributionSummary.class);
 
-        bufferFactory = new InMemoryBufferFactory();
+        s3GroupManager = mock(S3GroupManager.class);
 
         when(objectKeyOptions.getNamePattern()).thenReturn(OBJECT_KEY_NAME_PATTERN);
         when(s3SinkConfig.getMaxUploadRetries()).thenReturn(MAX_RETRIES);
@@ -143,7 +146,7 @@ class S3SinkServiceTest {
     }
 
     private S3SinkService createObjectUnderTest() {
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, codecContext, s3Client, keyGenerator, Duration.ofMillis(100), pluginMetrics);
+        return new S3SinkService(s3SinkConfig, codec, codecContext, s3Client, keyGenerator, Duration.ofMillis(100), pluginMetrics, s3GroupManager);
     }
 
     @Test
@@ -155,15 +158,20 @@ class S3SinkServiceTest {
 
     @Test
     void test_output_with_threshold_set_as_more_then_zero_event_count() throws IOException {
-        bufferFactory = mock(BufferFactory.class);
         InMemoryBuffer buffer = mock(InMemoryBuffer.class);
         when(buffer.getEventCount()).thenReturn(10);
         doNothing().when(buffer).flushToS3();
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
 
         when(s3SinkConfig.getThresholdOptions().getEventCount()).thenReturn(5);
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(Map.entry(s3GroupIdentifier, s3Group)));
         doNothing().when(codec).writeEvent(event, outputStream);
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
@@ -177,16 +185,20 @@ class S3SinkServiceTest {
     @Test
     void test_output_with_threshold_set_as_zero_event_count() throws IOException {
 
-        bufferFactory = mock(BufferFactory.class);
         InMemoryBuffer buffer = mock(InMemoryBuffer.class);
         when(buffer.getSize()).thenReturn(25500L);
         doNothing().when(buffer).flushToS3();
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
 
         when(s3SinkConfig.getThresholdOptions().getEventCount()).thenReturn(0);
         when(s3SinkConfig.getThresholdOptions().getMaximumSize()).thenReturn(ByteCount.parse("2kb"));
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(Map.entry(s3GroupIdentifier, s3Group)));
         doNothing().when(codec).writeEvent(event, outputStream);
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
@@ -197,14 +209,19 @@ class S3SinkServiceTest {
     @Test
     void test_output_with_uploadedToS3_success() throws IOException {
 
-        bufferFactory = mock(BufferFactory.class);
         InMemoryBuffer buffer = mock(InMemoryBuffer.class);
         when(buffer.getEventCount()).thenReturn(10);
         doNothing().when(buffer).flushToS3();
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(Map.entry(s3GroupIdentifier, s3Group)));
+
         doNothing().when(codec).writeEvent(event, outputStream);
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
@@ -216,15 +233,20 @@ class S3SinkServiceTest {
     @Test
     void test_output_with_uploadedToS3_success_records_byte_count() throws IOException {
 
-        bufferFactory = mock(BufferFactory.class);
         Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
 
         final long objectSize = random.nextInt(1_000_000) + 10_000;
         when(buffer.getSize()).thenReturn(objectSize);
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(Map.entry(s3GroupIdentifier, s3Group)));
+
         doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         s3SinkService.output(generateRandomStringEventRecord());
@@ -235,16 +257,21 @@ class S3SinkServiceTest {
     @Test
     void test_output_with_uploadedToS3_midBatch_generatesNewOutputStream() throws IOException {
 
-        bufferFactory = mock(BufferFactory.class);
         InMemoryBuffer buffer = mock(InMemoryBuffer.class);
         when(buffer.getEventCount()).thenReturn(10);
         doNothing().when(buffer).flushToS3();
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
         final OutputStream outputStream1 = mock(OutputStream.class);
         final OutputStream outputStream2 = mock(OutputStream.class);
         when(buffer.getOutputStream())
                 .thenReturn(outputStream1)
                 .thenReturn(outputStream2);
+
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(Map.entry(s3GroupIdentifier, s3Group)));
 
         doNothing().when(codec).writeEvent(any(), eq(outputStream1));
         doNothing().when(codec).writeEvent(any(), eq(outputStream2));
@@ -267,6 +294,15 @@ class S3SinkServiceTest {
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         doNothing().when(codec).writeEvent(event, outputStream);
+
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        Buffer buffer = mock(Buffer.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(Map.entry(s3GroupIdentifier, s3Group)));
+
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         assertThat(s3SinkService, instanceOf(S3SinkService.class));
@@ -277,9 +313,7 @@ class S3SinkServiceTest {
     @Test
     void test_output_with_uploadedToS3_failure_does_not_record_byte_count() throws IOException {
 
-        bufferFactory = mock(BufferFactory.class);
         Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
 
         doThrow(AwsServiceException.class).when(buffer).flushToS3();
 
@@ -288,6 +322,13 @@ class S3SinkServiceTest {
 
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(Map.entry(s3GroupIdentifier, s3Group)));
+
         final OutputStream outputStream = mock(OutputStream.class);
         doNothing().when(codec).writeEvent(event, outputStream);
         s3SinkService.output(Collections.singletonList(new Record<>(event)));
@@ -299,13 +340,19 @@ class S3SinkServiceTest {
     @Test
     void test_output_with_no_incoming_records_flushes_batch() throws IOException {
 
-        bufferFactory = mock(BufferFactory.class);
         Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
         when(buffer.getEventCount()).thenReturn(10);
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(event)).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(Map.entry(s3GroupIdentifier, s3Group)));
+
         doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         s3SinkService.output(Collections.emptyList());
@@ -316,37 +363,30 @@ class S3SinkServiceTest {
 
     @Test
     void test_output_with_no_incoming_records_or_buffered_records_short_circuits() throws IOException {
-
-        bufferFactory = mock(BufferFactory.class);
-        Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
-        when(buffer.getEventCount()).thenReturn(0);
-        final long objectSize = random.nextInt(1_000_000) + 10_000;
-        when(buffer.getSize()).thenReturn(objectSize);
-
-        final OutputStream outputStream = mock(OutputStream.class);
-        final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        doNothing().when(codec).writeEvent(event, outputStream);
+        when(s3GroupManager.hasNoGroups()).thenReturn(true);
         final S3SinkService s3SinkService = createObjectUnderTest();
         s3SinkService.output(Collections.emptyList());
 
         verify(snapshotSuccessCounter, times(0)).increment();
-        verify(buffer, times(0)).flushToS3();
     }
 
     @Test
     void test_retryFlushToS3_positive() throws InterruptedException, IOException {
-
-        bufferFactory = mock(BufferFactory.class);
         InMemoryBuffer buffer = mock(InMemoryBuffer.class);
         doNothing().when(buffer).flushToS3();
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
 
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         assertNotNull(buffer);
         OutputStream outputStream = buffer.getOutputStream();
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(event)).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(Map.entry(s3GroupIdentifier, s3Group)));
+
         codec.writeEvent(event, outputStream);
         final String s3Key = UUID.randomUUID().toString();
         boolean isUploadedToS3 = s3SinkService.retryFlushToS3(buffer, s3Key);
@@ -355,14 +395,19 @@ class S3SinkServiceTest {
 
     @Test
     void test_retryFlushToS3_negative() throws InterruptedException, IOException {
-        bufferFactory = mock(BufferFactory.class);
         InMemoryBuffer buffer = mock(InMemoryBuffer.class);
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
         when(s3SinkConfig.getBucketName()).thenReturn("");
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         OutputStream outputStream = buffer.getOutputStream();
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(event)).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(Map.entry(s3GroupIdentifier, s3Group)));
+
         codec.writeEvent(event, outputStream);
         final String s3Key = UUID.randomUUID().toString();
         doThrow(AwsServiceException.class).when(buffer).flushToS3();
@@ -373,15 +418,20 @@ class S3SinkServiceTest {
 
     @Test
     void output_will_release_all_handles_since_a_flush() throws IOException {
-        bufferFactory = mock(BufferFactory.class);
         final Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
 
         final long objectSize = random.nextInt(1_000_000) + 10_000;
         when(buffer.getSize()).thenReturn(objectSize);
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(Map.entry(s3GroupIdentifier, s3Group)));
+
         doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Collection<Record<Event>> records = generateRandomStringEventRecord();
@@ -399,15 +449,18 @@ class S3SinkServiceTest {
 
     @Test
     void output_will_skip_releasing_events_without_EventHandle_objects() throws IOException {
-        bufferFactory = mock(BufferFactory.class);
         final Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
-
         final long objectSize = random.nextInt(1_000_000) + 10_000;
         when(buffer.getSize()).thenReturn(objectSize);
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event1 = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+
         doNothing().when(codec).writeEvent(event1, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Collection<Record<Event>> records = generateRandomStringEventRecord();
@@ -438,9 +491,7 @@ class S3SinkServiceTest {
 
     @Test
     void output_will_release_all_handles_since_a_flush_when_S3_fails() throws IOException {
-        bufferFactory = mock(BufferFactory.class);
         final Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
 
         doThrow(AwsServiceException.class).when(buffer).flushToS3();
 
@@ -449,6 +500,12 @@ class S3SinkServiceTest {
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+
         doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final List<Record<Event>> records = generateEventRecords(1);
@@ -466,15 +523,19 @@ class S3SinkServiceTest {
 
     @Test
     void output_will_release_only_new_handles_since_a_flush() throws IOException {
-        bufferFactory = mock(BufferFactory.class);
         final Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
 
         final long objectSize = random.nextInt(1_000_000) + 10_000;
         when(buffer.getSize()).thenReturn(objectSize);
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+
         doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Collection<Record<Event>> records = generateRandomStringEventRecord();
@@ -500,9 +561,7 @@ class S3SinkServiceTest {
 
     @Test
     void output_will_skip_and_drop_failed_records() throws IOException {
-        bufferFactory = mock(BufferFactory.class);
         final Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
 
         final long objectSize = random.nextInt(1_000_000) + 10_000;
         when(buffer.getSize()).thenReturn(objectSize);
@@ -514,6 +573,12 @@ class S3SinkServiceTest {
         List<Record<Event>> records = generateEventRecords(2);
         Event event1 = records.get(0).getData();
         Event event2 = records.get(1).getData();
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+
         DefaultEventHandle eventHandle1 = (DefaultEventHandle)event1.getEventHandle();
         DefaultEventHandle eventHandle2 = (DefaultEventHandle)event2.getEventHandle();
         eventHandle1.setAcknowledgementSet(acknowledgementSet);
@@ -536,9 +601,7 @@ class S3SinkServiceTest {
 
     @Test
     void output_will_release_only_new_handles_since_a_flush_when_S3_fails() throws IOException {
-        bufferFactory = mock(BufferFactory.class);
         final Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
 
         doThrow(AwsServiceException.class).when(buffer).flushToS3();
 
@@ -547,6 +610,12 @@ class S3SinkServiceTest {
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getBuffer()).thenReturn(buffer);
+
+        when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(Map.entry(s3GroupIdentifier, s3Group));
+
         doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final List<Record<Event>> records = generateEventRecords(1);
