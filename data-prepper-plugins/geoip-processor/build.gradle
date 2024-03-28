@@ -48,7 +48,7 @@ databaseNames.forEach { databaseName -> {
     def gradleName = databaseName.replaceAll('-', '')
     def downloadTask = tasks.register("download${gradleName}", Download) {
         src(url)
-        dest "build/resources/test/mmdb-files/geo-lite2/${databaseName}.mmdb"
+        dest "${project.layout.buildDirectory.get()}/resources/test/mmdb-files/geo-lite2/${databaseName}.mmdb"
         overwrite true
     }
     downloadFiles.get().dependsOn downloadTask
@@ -64,21 +64,55 @@ enterpriseDatabaseNames.forEach { enterpriseDatabaseName -> {
     def gradleName = enterpriseDatabaseName.replaceAll('-', '')
     def downloadEnterpriseTask = tasks.register("download${gradleName}", Download) {
         src(url)
-        dest "build/resources/test/mmdb-files/geo-ip2/${enterpriseDatabaseName}.mmdb"
+        dest "${project.layout.buildDirectory.get()}/resources/test/mmdb-files/geo-ip2/${enterpriseDatabaseName}.mmdb"
         overwrite true
     }
     downloadFiles.get().dependsOn downloadEnterpriseTask
 }}
 
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    systemProperty 'data-prepper.dir', project.layout.buildDirectory.get().getAsFile().absolutePath
+
+    filter {
+        includeTestsMatching '*IT'
+    }
+}
+
 
 test {
     useJUnitPlatform()
     dependsOn(downloadFiles)
+
+    systemProperty 'data-prepper.dir', project.layout.buildDirectory.get().getAsFile().absolutePath
 }
 
 checkstyleTest {
     dependsOn(downloadFiles)
 }
+
+compileIntegrationTestJava.dependsOn downloadFiles
 
 jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
@@ -92,3 +126,4 @@ jacocoTestCoverageVerification {
 }
 
 check.dependsOn jacocoTestCoverageVerification
+check.dependsOn integrationTest
