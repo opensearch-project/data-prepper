@@ -19,6 +19,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.io.InputFile;
@@ -61,7 +62,7 @@ public class CsvCodecTest {
     private Consumer<Record<Event>> eventConsumer;
     private CsvInputCodec csvCodec;
     private CsvInputCodec createObjectUnderTest() {
-        return new CsvInputCodec(config);
+        return new CsvInputCodec(config, TestEventFactory.getTestEventFactory());
     }
 
     @BeforeEach

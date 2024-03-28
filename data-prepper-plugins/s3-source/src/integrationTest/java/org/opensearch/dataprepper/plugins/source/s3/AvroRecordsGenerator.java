@@ -7,6 +7,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumWriter;
+import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.codec.avro.AvroInputCodec;
@@ -52,7 +53,7 @@ public class AvroRecordsGenerator implements RecordsGenerator {
 
     @Override
     public InputCodec getCodec() {
-        return new AvroInputCodec();
+        return new AvroInputCodec(TestEventFactory.getTestEventFactory());
     }
 
     @Override

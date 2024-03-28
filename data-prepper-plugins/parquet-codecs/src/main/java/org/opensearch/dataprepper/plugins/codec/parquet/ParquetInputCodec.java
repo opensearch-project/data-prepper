@@ -10,10 +10,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.avro.AvroParquetReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.event.EventBuilder;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
@@ -45,8 +47,11 @@ public class ParquetInputCodec implements InputCodec {
     private static final Logger LOG = LoggerFactory.getLogger(ParquetInputCodec.class);
 
     private final Configuration configuration;
+    private final EventFactory eventFactory;
 
-    public ParquetInputCodec() {
+    @DataPrepperPluginConstructor
+    public ParquetInputCodec(final EventFactory eventFactory) {
+        this.eventFactory = eventFactory;
         configuration = new Configuration();
         configuration.setBoolean(READ_INT96_AS_FIXED, true);
     }
@@ -84,7 +89,7 @@ public class ParquetInputCodec implements InputCodec {
             while ((record = reader.read()) != null) {
                 final String json = encoder.serialize(record);
 
-                final JacksonEvent event = JacksonEvent.builder()
+                final Event event = eventFactory.eventBuilder(EventBuilder.class)
                         .withEventType(EVENT_TYPE)
                         .withData(json)
                         .build();

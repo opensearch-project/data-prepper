@@ -18,34 +18,35 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.event.LogEventBuilder;
 import org.opensearch.dataprepper.model.io.InputFile;
-import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.codec.NoneDecompressionEngine;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ByteArrayInputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.ArrayList;
 import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 public class AvroInputCodecTest {
@@ -70,7 +71,7 @@ public class AvroInputCodecTest {
     private static File testDataFile;
 
     private AvroInputCodec createObjectUnderTest(){
-        return new AvroInputCodec();
+        return new AvroInputCodec(TestEventFactory.getTestEventFactory());
     }
 
     @BeforeAll
@@ -82,7 +83,7 @@ public class AvroInputCodecTest {
 
     @Test
     public void test_when_nullInputStream_then_throwsException(){
-        avroInputCodec=new AvroInputCodec();
+        avroInputCodec=new AvroInputCodec(TestEventFactory.getTestEventFactory());
         Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
         assertThrows(NullPointerException.class,()->
                 avroInputCodec.parse((InputStream) null, eventConsumer));
@@ -93,7 +94,7 @@ public class AvroInputCodecTest {
 
     @Test
     public void test_when_nullInputFile_then_throwsException(){
-        avroInputCodec=new AvroInputCodec();
+        avroInputCodec=new AvroInputCodec(TestEventFactory.getTestEventFactory());
         Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
         assertThrows(NullPointerException.class,()->
                 avroInputCodec.parse((InputFile) null, new NoneDecompressionEngine(), eventConsumer));
@@ -211,7 +212,7 @@ public class AvroInputCodecTest {
             eventData.put(field.name(), record.get(field.name()));
 
         }
-        final Event event = JacksonLog.builder().withData(eventData).build();
+        final Event event = TestEventFactory.getTestEventFactory().eventBuilder(LogEventBuilder.class).withData(eventData).build();
         return event;
     }
 

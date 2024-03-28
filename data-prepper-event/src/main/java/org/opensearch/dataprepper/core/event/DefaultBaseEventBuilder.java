@@ -33,10 +33,12 @@ abstract class DefaultBaseEventBuilder<T extends Event> implements BaseEventBuil
         return this.eventType;
     }
 
+    abstract String getDefaultEventType();
+
     public EventMetadata getEventMetadata() {
         if (this.eventMetadata == null) {
             this.eventMetadata = new DefaultEventMetadata.Builder()
-                    .withEventType(eventType)
+                    .withEventType(eventType != null ? eventType : getDefaultEventType())
                     .withTimeReceived(timeReceived)
                     .withAttributes(attributes)
                     .build();

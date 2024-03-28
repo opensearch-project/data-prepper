@@ -15,7 +15,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.codec.NoneDecompressionEngine;
@@ -47,6 +49,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec.EVENT_TYPE;
 import static org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec.FILE_PREFIX;
 import static org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec.FILE_SUFFIX;
 
@@ -64,6 +67,7 @@ public class ParquetInputCodecTest {
                     "     {\"name\": \"metadata\", \"type\": {\"type\": \"map\", \"values\": \"string\"}}," +
                     "     {\"name\": \"lastUpdated\", \"type\": \"long\", \"logicalType\": \"timestamp-millis\"}" +
                     " ]}";
+    private static EventFactory testEventFactory;
 
     private ParquetInputCodec parquetInputCodec;
     private Consumer<Record<Event>> mockConsumer;
@@ -75,19 +79,24 @@ public class ParquetInputCodecTest {
         testDataFile = File.createTempFile(FILE_PREFIX + "-", FILE_SUFFIX);
         testDataFile.deleteOnExit();
         generateTestData(testDataFile);
+        testEventFactory = TestEventFactory.getTestEventFactory();
+    }
+
+    private static ParquetInputCodec createObjectUnderTest() {
+        return new ParquetInputCodec(testEventFactory);
     }
 
     @SuppressWarnings("unchecked")
     @BeforeEach
     public void setUp() throws IOException {
-        parquetInputCodec = new ParquetInputCodec();
+        parquetInputCodec = createObjectUnderTest();
         mockConsumer = Mockito.mock(Consumer.class);
         mockReader = Mockito.mock(ParquetReader.class);
     }
 
     @Test
     public void test_when_nullInputStream_then_throwsException(){
-        parquetInputCodec = new ParquetInputCodec();
+        parquetInputCodec = createObjectUnderTest();
         Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
         assertThrows(NullPointerException.class,()->
                 parquetInputCodec.parse((InputStream) null, eventConsumer));
@@ -97,7 +106,7 @@ public class ParquetInputCodecTest {
 
     @Test
     public void test_when_InputStreamNullConfig_then_throwsException(){
-        parquetInputCodec = new ParquetInputCodec();
+        parquetInputCodec = createObjectUnderTest();
         InputStream inputStream = mock(InputStream.class);
         assertThrows(NullPointerException.class,()->
                 parquetInputCodec.parse(inputStream, null));
@@ -107,7 +116,7 @@ public class ParquetInputCodecTest {
 
     @Test
     public void test_when_nullInputFile_then_throwsException(){
-        parquetInputCodec = new ParquetInputCodec();
+        parquetInputCodec = createObjectUnderTest();
         Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
         assertThrows(NullPointerException.class,()->
                 parquetInputCodec.parse((InputFile) null, new NoneDecompressionEngine(), eventConsumer));
@@ -117,7 +126,7 @@ public class ParquetInputCodecTest {
 
     @Test
     public void test_when_InputFileNullConfig_then_throwsException(){
-        parquetInputCodec = new ParquetInputCodec();
+        parquetInputCodec = createObjectUnderTest();
         InputFile inputFile = mock(InputFile.class);
         assertThrows(NullPointerException.class,()->
                 parquetInputCodec.parse(inputFile, new NoneDecompressionEngine(),null));
@@ -228,7 +237,7 @@ public class ParquetInputCodecTest {
             assertThat(lastUpdated, equalTo(1684509331977L));
 
             assertThat(record.getData().getMetadata(), notNullValue());
-            assertThat(record.getData().getMetadata().getEventType(), equalTo("event"));
+            assertThat(record.getData().getMetadata().getEventType(), equalTo(EVENT_TYPE));
         }
     }
 }

@@ -26,6 +26,11 @@ class DefaultBaseEventBuilderTests {
         public Event build() {
             return JacksonEvent.builder().build();
         }
+
+        @Override
+        String getDefaultEventType() {
+            return null;
+        }
     }
 
     private DefaultBaseEventBuilder createObjectUnderTest() {

@@ -5,6 +5,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec;
@@ -67,7 +68,7 @@ public class ParquetRecordsGenerator implements RecordsGenerator {
 
     @Override
     public InputCodec getCodec() {
-        return new ParquetInputCodec();
+        return new ParquetInputCodec(TestEventFactory.getTestEventFactory());
     }
 
     @Override

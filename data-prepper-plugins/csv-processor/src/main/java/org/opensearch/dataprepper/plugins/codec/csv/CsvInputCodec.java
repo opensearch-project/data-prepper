@@ -14,7 +14,8 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.event.LogEventBuilder;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,11 +37,13 @@ import java.util.function.Consumer;
 public class CsvInputCodec implements InputCodec {
     private static final Logger LOG = LoggerFactory.getLogger(CsvInputCodec.class);
     private final CsvInputCodecConfig config;
+    private final EventFactory eventFactory;
 
     @DataPrepperPluginConstructor
-    public CsvInputCodec(CsvInputCodecConfig config) {
+    public CsvInputCodec(final CsvInputCodecConfig config, final EventFactory eventFactory) {
         Objects.requireNonNull(config);
         this.config = config;
+        this.eventFactory = eventFactory;
     }
 
     @Override
@@ -93,7 +96,7 @@ public class CsvInputCodec implements InputCodec {
         try {
             final Map<String, String> parsedLine = parsingIterator.nextValue();
 
-            final Event event = JacksonLog.builder()
+            final Event event = eventFactory.eventBuilder(LogEventBuilder.class)
                     .withData(parsedLine)
                     .build();
             eventConsumer.accept(new Record<>(event));

@@ -5,17 +5,18 @@
 package org.opensearch.dataprepper.plugins.codec.avro;
 
 import org.apache.avro.Schema;
+import org.apache.avro.file.DataFileStream;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericEnumSymbol;
 import org.apache.avro.generic.GenericRecord;
-
-import org.apache.avro.file.DataFileStream;
 import org.apache.avro.util.Utf8;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.event.LogEventBuilder;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,12 @@ import java.util.function.Consumer;
 public class AvroInputCodec implements InputCodec {
 
     private static final Logger LOG =  LoggerFactory.getLogger(AvroInputCodec.class);
+    private final EventFactory eventFactory;
+
+    @DataPrepperPluginConstructor
+    public AvroInputCodec(final EventFactory eventFactory) {
+        this.eventFactory = eventFactory;
+    }
 
     @Override
     public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
@@ -60,7 +67,7 @@ public class AvroInputCodec implements InputCodec {
 
                 final Map<String, Object> eventData = convertRecordToMap(avroRecord, schema);
 
-                final Event event = JacksonLog.builder().withData(eventData).build();
+                final Event event = eventFactory.eventBuilder(LogEventBuilder.class).withData(eventData).build();
                 eventConsumer.accept(new Record<>(event));
             }
 
