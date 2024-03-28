@@ -23,14 +23,15 @@ class DefaultEventBuilderFactory extends EventBuilderFactory {
     }
 
     public static class DefaultEventBuilder extends DefaultBaseEventBuilder<Event> implements EventBuilder {
-        public String getEventType() {
+        @Override
+        String getDefaultEventType() {
             return EVENT_TYPE;
         }
 
         public Event build() {
             return (Event) JacksonEvent.builder()
+                    .withEventMetadata(getEventMetadata())
                     .withData(getData())
-                    .withEventType(EVENT_TYPE)
                     .build();
         }
     }
