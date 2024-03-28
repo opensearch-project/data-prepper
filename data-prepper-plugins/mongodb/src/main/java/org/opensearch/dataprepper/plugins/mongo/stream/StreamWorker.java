@@ -138,11 +138,10 @@ public class StreamWorker {
                             LOG.debug("Write to buffer for line " + (recordCount - defaultFlushBatchSize) + " to " + recordCount);
                             recordBufferWriter.writeToBuffer(acknowledgementSet, records);
                             records.clear();
-                            partitionCheckpoint.checkpoint(checkPointToken, recordCount);
                             LOG.debug("Perform regular checkpointing for stream Loader");
                             partitionCheckpoint.checkpoint(checkPointToken, recordCount);
+                            successItemsCounter.increment();
                         }
-                        successItemsCounter.increment();
                     } catch (Exception e) {
                         LOG.error("Failed to add record to buffer with error {}", e.getMessage());
                         failureItemsCounter.increment();

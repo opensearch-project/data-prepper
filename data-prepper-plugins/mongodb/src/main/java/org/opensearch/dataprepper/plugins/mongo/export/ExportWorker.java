@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.mongo.buffer.ExportRecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.converter.RecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
+import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus;
@@ -84,7 +85,7 @@ public class ExportWorker implements Runnable {
         this.sourceCoordinator = sourceCoordinator;
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-        final RecordConverter recordConverter = new RecordConverter(sourceConfig.getCollections().get(0));
+        final RecordConverter recordConverter = new RecordConverter(sourceConfig.getCollections().get(0), ExportPartition.PARTITION_TYPE);
         recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, sourceConfig.getCollections().get(0),
                 recordConverter, pluginMetrics, Instant.now().toEpochMilli());
         this.acknowledgementSetManager = acknowledgementSetManager;

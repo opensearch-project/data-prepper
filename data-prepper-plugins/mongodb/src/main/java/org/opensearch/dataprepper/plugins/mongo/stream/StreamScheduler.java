@@ -44,7 +44,7 @@ public class StreamScheduler implements Runnable {
                            final PluginMetrics pluginMetrics) {
         this.sourceCoordinator = sourceCoordinator;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-        final RecordConverter recordConverter = new RecordConverter(sourceConfig.getCollections().get(0));
+        final RecordConverter recordConverter = new RecordConverter(sourceConfig.getCollections().get(0), StreamPartition.PARTITION_TYPE);
         recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, sourceConfig.getCollections().get(0),
                 recordConverter, pluginMetrics, Instant.now().toEpochMilli());
         this.acknowledgementSetManager = acknowledgementSetManager;
