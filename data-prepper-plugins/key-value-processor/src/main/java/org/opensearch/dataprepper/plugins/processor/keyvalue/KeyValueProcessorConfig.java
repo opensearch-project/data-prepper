@@ -40,7 +40,6 @@ public class KeyValueProcessorConfig {
     private String fieldDelimiterRegex;
 
     @JsonProperty("field_split_characters")
-    @NotEmpty
     private String fieldSplitCharacters = DEFAULT_FIELD_SPLIT_CHARACTERS;
 
     @JsonProperty("include_keys")
