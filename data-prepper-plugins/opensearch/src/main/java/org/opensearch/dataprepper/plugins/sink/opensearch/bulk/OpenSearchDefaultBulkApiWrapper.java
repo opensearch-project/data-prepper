@@ -5,16 +5,17 @@ import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 
 public class OpenSearchDefaultBulkApiWrapper implements BulkApiWrapper {
-    private final OpenSearchClient openSearchClient;
+    private final Supplier<OpenSearchClient> openSearchClientSupplier;
 
-    public OpenSearchDefaultBulkApiWrapper(final OpenSearchClient openSearchClient) {
-        this.openSearchClient = openSearchClient;
+    public OpenSearchDefaultBulkApiWrapper(final Supplier<OpenSearchClient> openSearchClientSupplier) {
+        this.openSearchClientSupplier = openSearchClientSupplier;
     }
 
     @Override
     public BulkResponse bulk(BulkRequest request) throws IOException {
-        return openSearchClient.bulk(request);
+        return openSearchClientSupplier.get().bulk(request);
     }
 }

@@ -75,7 +75,7 @@ class Es6BulkApiWrapperTest {
 
     @BeforeEach
     void setUp() {
-        objectUnderTest = new Es6BulkApiWrapper(openSearchClient);
+        objectUnderTest = new Es6BulkApiWrapper(() -> openSearchClient);
         testIndex = RandomStringUtils.randomAlphabetic(5);
         lenient().when(bulkOperation.index()).thenReturn(indexOperation);
         lenient().when(bulkOperation.create()).thenReturn(createOperation);

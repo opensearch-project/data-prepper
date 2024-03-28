@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.failures.DlqObject;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
@@ -123,6 +124,9 @@ public class OpenSearchSinkTest {
     @Mock
     private Counter dynamicDocumentVersionDroppedEvents;
 
+    @Mock
+    private PluginConfigObservable pluginConfigObservable;
+
     @BeforeEach
     void setup() {
         when(pluginSetting.getPipelineName()).thenReturn(UUID.randomUUID().toString());
@@ -167,9 +171,9 @@ public class OpenSearchSinkTest {
         when(pluginMetrics.counter(INVALID_VERSION_EXPRESSION_DROPPED_EVENTS)).thenReturn(dynamicDocumentVersionDroppedEvents);
         when(pluginMetrics.summary(BULKREQUEST_SIZE_BYTES)).thenReturn(bulkRequestSizeBytesSummary);
 
-        when(sinkContext.getTagsTargetKey()).thenReturn(null);
-        when(sinkContext.getIncludeKeys()).thenReturn(null);
-        when(sinkContext.getExcludeKeys()).thenReturn(null);
+        lenient().when(sinkContext.getTagsTargetKey()).thenReturn(null);
+        lenient().when(sinkContext.getIncludeKeys()).thenReturn(null);
+        lenient().when(sinkContext.getExcludeKeys()).thenReturn(null);
     }
 
     private OpenSearchSink createObjectUnderTest() throws IOException {
@@ -181,8 +185,20 @@ public class OpenSearchSinkTest {
             pluginMetricsMockedStatic.when(() -> PluginMetrics.fromPluginSetting(pluginSetting)).thenReturn(pluginMetrics);
             openSearchSinkConfigurationMockedStatic.when(() -> OpenSearchSinkConfiguration.readESConfig(pluginSetting, expressionEvaluator))
                     .thenReturn(openSearchSinkConfiguration);
-            return new OpenSearchSink(pluginSetting, pluginFactory, sinkContext, expressionEvaluator, awsCredentialsSupplier);
+            return new OpenSearchSink(
+                    pluginSetting, pluginFactory, sinkContext, expressionEvaluator, awsCredentialsSupplier, pluginConfigObservable);
         }
+    }
+
+    @Test
+    void test_initialization() throws IOException {
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
     }
 
     @Test

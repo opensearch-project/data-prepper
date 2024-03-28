@@ -43,6 +43,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
@@ -92,6 +93,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createContentParser;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createOpenSearchClient;
@@ -131,8 +133,12 @@ public class OpenSearchSinkIT {
     @Mock
     private ExpressionEvaluator expressionEvaluator;
 
+    @Mock
+    private PluginConfigObservable pluginConfigObservable;
+
     public OpenSearchSink createObjectUnderTest(PluginSetting pluginSetting, boolean doInitialize) {
-        OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, null, expressionEvaluator, awsCredentialsSupplier);
+        OpenSearchSink sink = new OpenSearchSink(
+                pluginSetting, pluginFactory, null, expressionEvaluator, awsCredentialsSupplier, pluginConfigObservable);
         if (doInitialize) {
             sink.doInitialize();
         }
@@ -143,7 +149,8 @@ public class OpenSearchSinkIT {
         sinkContext = mock(SinkContext.class);
         testTagsTargetKey = RandomStringUtils.randomAlphabetic(5);
         when(sinkContext.getTagsTargetKey()).thenReturn(testTagsTargetKey);
-        OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, sinkContext, expressionEvaluator, awsCredentialsSupplier);
+        OpenSearchSink sink = new OpenSearchSink(
+                pluginSetting, pluginFactory, sinkContext, expressionEvaluator, awsCredentialsSupplier, pluginConfigObservable);
         if (doInitialize) {
             sink.doInitialize();
         }
@@ -152,7 +159,7 @@ public class OpenSearchSinkIT {
 
     @BeforeEach
     public void setup() {
-
+        pluginConfigObservable = mock(PluginConfigObservable.class);
         expressionEvaluator = mock(ExpressionEvaluator.class);
         when(expressionEvaluator.isValidExpressionStatement(any(String.class))).thenReturn(false);
 
@@ -1140,6 +1147,7 @@ public class OpenSearchSinkIT {
 
         final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
         final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
         sink.output(testRecords);
 
         final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
