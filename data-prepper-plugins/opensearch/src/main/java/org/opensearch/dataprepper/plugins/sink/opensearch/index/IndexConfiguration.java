@@ -412,6 +412,10 @@ public class IndexConfiguration {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
+            } else if (indexType.equals(IndexType.LOG_ANALYTICS)) {
+                templateURL = loadExistingTemplate(templateType, IndexConstants.LOGS_DEFAULT_TEMPLATE_FILE);
+            } else if (indexType.equals(IndexType.METRIC_ANALYTICS)) {
+                templateURL = loadExistingTemplate(templateType, IndexConstants.METRICS_DEFAULT_TEMPLATE_FILE);
             } else if (templateFile != null) {
                 if (templateFile.toLowerCase().startsWith(S3_PREFIX)) {
                     FileReader s3FileReader = new S3FileReader(s3Client);

@@ -58,6 +58,14 @@ public class IndexManagerFactory {
                 indexManager = new TraceAnalyticsServiceMapIndexManager(
                         restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
                 break;
+            case LOG_ANALYTICS:
+                indexManager = new LogAnalyticsIndexManager(
+                        restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
+                break;
+            case METRIC_ANALYTICS:
+                indexManager = new MetricAnalyticsIndexManager(
+                        restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
+                break;
             case MANAGEMENT_DISABLED:
                 indexManager = new ManagementDisabledIndexManager(
                         restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
@@ -137,6 +145,42 @@ public class IndexManagerFactory {
                                                     final String indexAlias) {
             super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
             this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(openSearchClient, restHighLevelClient);
+        }
+    }
+
+    private static class LogAnalyticsIndexManager extends AbstractIndexManager {
+
+        public LogAnalyticsIndexManager(final RestHighLevelClient restHighLevelClient,
+                                                    final OpenSearchClient openSearchClient,
+                                                    final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                                    final ClusterSettingsParser clusterSettingsParser,
+                                                    final TemplateStrategy templateStrategy,
+                                                    final String indexAlias) {
+            super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
+            this.ismPolicyManagementStrategy = new IsmPolicyManagement(
+                    openSearchClient,
+                    restHighLevelClient,
+                    IndexConstants.LOGS_ISM_POLICY,
+                    IndexConstants.LOGS_ISM_FILE_WITH_ISM_TEMPLATE,
+                    IndexConstants.LOGS_ISM_FILE_NO_ISM_TEMPLATE);
+        }
+    }
+
+    private static class MetricAnalyticsIndexManager extends AbstractIndexManager {
+
+        public MetricAnalyticsIndexManager(final RestHighLevelClient restHighLevelClient,
+                                                    final OpenSearchClient openSearchClient,
+                                                    final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                                    final ClusterSettingsParser clusterSettingsParser,
+                                                    final TemplateStrategy templateStrategy,
+                                                    final String indexAlias) {
+            super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
+            this.ismPolicyManagementStrategy = new IsmPolicyManagement(
+                    openSearchClient,
+                    restHighLevelClient,
+                    IndexConstants.METRICS_ISM_POLICY,
+                    IndexConstants.METRICS_ISM_FILE_WITH_ISM_TEMPLATE,
+                    IndexConstants.METRICS_ISM_FILE_NO_ISM_TEMPLATE);
         }
     }
 
