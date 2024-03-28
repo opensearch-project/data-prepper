@@ -8,7 +8,11 @@ package org.opensearch.dataprepper.expression;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
@@ -16,13 +20,21 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 
+import java.util.Calendar;
+import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -142,5 +154,43 @@ class GenericExpressionEvaluatorTest {
         assertThat(statementEvaluator.isValidFormatExpression(format), equalTo(false));
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(FormatExpressionsToExtractedDynamicKeysArgumentProvider.class)
+    void extractDynamicKeysFromFormatExpression_returns_expected_result(final String formatExpression, final List<String> expectedDynamicKeys) {
+        final List<String> result = statementEvaluator.extractDynamicKeysFromFormatExpression(formatExpression);
+
+        assertThat(result, notNullValue());
+        assertThat(result.equals(expectedDynamicKeys), equalTo(true));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(FormatExpressionsToExtractedDynamicExpressionsArgumentProvider.class)
+    void extractDynamicExpressionsFromFormatExpression_returns_expected_result(final String formatExpression, final List<String> expectedDynamicExpressions) {
+        final List<String> result = statementEvaluator.extractDynamicExpressionsFromFormatExpression(formatExpression);
+
+        assertThat(result, notNullValue());
+        assertThat(result.equals(expectedDynamicExpressions), equalTo(true));
+    }
+
+    static class FormatExpressionsToExtractedDynamicKeysArgumentProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
+            return Stream.of(
+                    arguments("test-${foo}-${bar}", List.of("/foo", "/bar")),
+                    arguments("test-${getMetadata(\"key\"}-${/test}", List.of("/test")),
+                    arguments("test-format", List.of())
+            );
+        }
+    }
+
+    static class FormatExpressionsToExtractedDynamicExpressionsArgumentProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
+            return Stream.of(
+                    arguments("test-${foo}-${bar}", List.of()),
+                    arguments("test-${getMetadata(\"key\")}-${/test}", List.of("getMetadata(\"key\")"))
+            );
+        }
+    }
 }
 

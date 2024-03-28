@@ -5,13 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3.grouping;
 
+import java.util.Map;
 import java.util.Objects;
 
-public class S3GroupIdentifier {
-    private final String groupIdentifierHash;
+class S3GroupIdentifier {
+    private final Map<String, Object> groupIdentifierHash;
     private final String groupIdentifierFullObjectKey;
 
-    public S3GroupIdentifier(final String groupIdentifierHash,
+    public S3GroupIdentifier(final Map<String, Object> groupIdentifierHash,
                              final String groupIdentifierFullObjectKey) {
         this.groupIdentifierHash = groupIdentifierHash;
         this.groupIdentifierFullObjectKey = groupIdentifierFullObjectKey;
@@ -32,5 +33,5 @@ public class S3GroupIdentifier {
 
     public String getGroupIdentifierFullObjectKey() { return groupIdentifierFullObjectKey; }
 
-    public String getGroupIdentifierHash() { return groupIdentifierHash; }
+    public Map<String, Object> getGroupIdentifierHash() { return groupIdentifierHash; }
 }

@@ -11,11 +11,17 @@ public class S3Group {
 
     private final Buffer buffer;
 
-    public S3Group(final Buffer buffer) {
+    private final S3GroupIdentifier s3GroupIdentifier;
+
+    public S3Group(final S3GroupIdentifier s3GroupIdentifier,
+                   final Buffer buffer) {
         this.buffer = buffer;
+        this.s3GroupIdentifier = s3GroupIdentifier;
     }
 
     public Buffer getBuffer() {
         return buffer;
     }
+
+    S3GroupIdentifier getS3GroupIdentifier() { return s3GroupIdentifier; }
 }

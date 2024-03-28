@@ -45,6 +45,8 @@ import java.util.Collection;
 public class S3Sink extends AbstractSink<Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(S3Sink.class);
+
+    private static final Duration RETRY_FLUSH_BACKOFF = Duration.ofSeconds(5);
     private final S3SinkConfig s3SinkConfig;
     private final OutputCodec codec;
     private volatile boolean sinkInitialized;
@@ -102,11 +104,11 @@ public class S3Sink extends AbstractSink<Record<Event>> {
 
         codec.validateAgainstCodecContext(s3OutputCodecContext);
 
-        final S3GroupIdentifierFactory s3GroupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator);
+        final S3GroupIdentifierFactory s3GroupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig);
         final S3GroupManager s3GroupManager = new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, s3Client);
 
 
-        s3SinkService = new S3SinkService(s3SinkConfig, codec, s3OutputCodecContext, s3Client, keyGenerator, Duration.ofSeconds(5), pluginMetrics, s3GroupManager);
+        s3SinkService = new S3SinkService(s3SinkConfig, codec, s3OutputCodecContext, s3Client, keyGenerator, RETRY_FLUSH_BACKOFF, pluginMetrics, s3GroupManager);
     }
 
     @Override

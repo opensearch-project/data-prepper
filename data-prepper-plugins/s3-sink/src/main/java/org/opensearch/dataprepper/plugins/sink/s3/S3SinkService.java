@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3Group;
-import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifier;
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -117,8 +115,8 @@ public class S3SinkService {
         try {
             for (Record<Event> record : records) {
                 final Event event = record.getData();
-                final Map.Entry<S3GroupIdentifier, S3Group> s3GroupEntry = s3GroupManager.getOrCreateGroupForEvent(event);
-                final Buffer currentBuffer = s3GroupEntry.getValue().getBuffer();
+                final S3Group s3Group = s3GroupManager.getOrCreateGroupForEvent(event);
+                final Buffer currentBuffer = s3Group.getBuffer();
 
                 try {
                     if (currentBuffer.getEventCount() == 0) {
@@ -141,15 +139,15 @@ public class S3SinkService {
                 final boolean flushed = flushToS3IfNeeded(currentBuffer);
 
                 if (flushed) {
-                    s3GroupManager.removeGroup(s3GroupEntry.getKey());
+                    s3GroupManager.removeGroup(s3Group);
                 }
             }
 
-            for (final Map.Entry<S3GroupIdentifier, S3Group> s3GroupEntry : s3GroupManager.getS3GroupEntries()) {
-                final boolean flushed = flushToS3IfNeeded(s3GroupEntry.getValue().getBuffer());
+            for (final S3Group s3Group : s3GroupManager.getS3GroupEntries()) {
+                final boolean flushed = flushToS3IfNeeded(s3Group.getBuffer());
 
                 if (flushed) {
-                    s3GroupManager.removeGroup(s3GroupEntry.getKey());
+                    s3GroupManager.removeGroup(s3Group);
                 }
             }
         } finally {

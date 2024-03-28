@@ -15,8 +15,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
 import software.amazon.awssdk.services.s3.S3Client;
 
-import java.util.Map;
-import java.util.Set;
+import java.util.Collection;
 import java.util.function.Supplier;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -67,14 +66,13 @@ public class S3GroupManagerTest {
 
         final S3GroupManager objectUnderTest = createObjectUnderTest();
 
-        final Map.Entry<S3GroupIdentifier, S3Group> result = objectUnderTest.getOrCreateGroupForEvent(event);
+        final S3Group result = objectUnderTest.getOrCreateGroupForEvent(event);
 
         assertThat(result, notNullValue());
-        assertThat(result.getKey(), equalTo(s3GroupIdentifier));
-        assertThat(result.getValue(), notNullValue());
-        assertThat(result.getValue().getBuffer(), equalTo(buffer));
+        assertThat(result.getS3GroupIdentifier(), equalTo(s3GroupIdentifier));
+        assertThat(result.getBuffer(), equalTo(buffer));
 
-        final Set<Map.Entry<S3GroupIdentifier, S3Group>> groups = (Set<Map.Entry<S3GroupIdentifier, S3Group>>) objectUnderTest.getS3GroupEntries();
+        final Collection<S3Group> groups = objectUnderTest.getS3GroupEntries();
         assertThat(groups, notNullValue());
         assertThat(groups.size(), equalTo(1));
 
@@ -94,25 +92,23 @@ public class S3GroupManagerTest {
 
         final S3GroupManager objectUnderTest = createObjectUnderTest();
 
-        final Map.Entry<S3GroupIdentifier, S3Group> result = objectUnderTest.getOrCreateGroupForEvent(event);
+        final S3Group result = objectUnderTest.getOrCreateGroupForEvent(event);
 
         assertThat(result, notNullValue());
-        assertThat(result.getKey(), equalTo(s3GroupIdentifier));
-        assertThat(result.getValue(), notNullValue());
-        assertThat(result.getValue().getBuffer(), equalTo(buffer));
+        assertThat(result.getS3GroupIdentifier(), equalTo(s3GroupIdentifier));
+        assertThat(result.getBuffer(), equalTo(buffer));
 
-        final Map.Entry<S3GroupIdentifier, S3Group> secondResult = objectUnderTest.getOrCreateGroupForEvent(event);
+        final S3Group secondResult = objectUnderTest.getOrCreateGroupForEvent(event);
 
         assertThat(secondResult,  notNullValue());
         assertThat(secondResult, notNullValue());
-        assertThat(secondResult.getKey(), equalTo(s3GroupIdentifier));
-        assertThat(secondResult.getValue(), notNullValue());
-        assertThat(secondResult.getValue().getBuffer(), equalTo(buffer));
+        assertThat(secondResult.getS3GroupIdentifier(), equalTo(s3GroupIdentifier));
+        assertThat(secondResult.getBuffer(), equalTo(buffer));
 
         verify(s3GroupIdentifierFactory, times(2)).getS3GroupIdentifierForEvent(event);
         verify(bufferFactory, times(1)).getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class));
 
-        final Set<Map.Entry<S3GroupIdentifier, S3Group>> groups = (Set<Map.Entry<S3GroupIdentifier, S3Group>>) objectUnderTest.getS3GroupEntries();
+        final Collection<S3Group> groups = objectUnderTest.getS3GroupEntries();
         assertThat(groups, notNullValue());
         assertThat(groups.size(), equalTo(1));
 

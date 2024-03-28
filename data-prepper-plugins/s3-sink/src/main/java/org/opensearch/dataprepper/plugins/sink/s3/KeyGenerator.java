@@ -28,10 +28,9 @@ public class KeyGenerator {
      *
      * @return object key path.
      */
-    public String generateKeyForEvent(final Event event, final boolean includeDateAndCodec) {
+    public String generateKeyForEvent(final Event event) {
         final String pathPrefix = ObjectKey.buildingPathPrefix(s3SinkConfig, event, expressionEvaluator);
-        final String namePattern = includeDateAndCodec ? ObjectKey.objectFileName(s3SinkConfig, extensionProvider.getExtension(), event, expressionEvaluator) :
-                ObjectKey.objectFileNameWithoutDateTimeAndCodecInjection(s3SinkConfig, event, expressionEvaluator);
+        final String namePattern = ObjectKey.objectFileName(s3SinkConfig, extensionProvider.getExtension(), event, expressionEvaluator);
         return (!pathPrefix.isEmpty()) ? pathPrefix + namePattern : namePattern;
     }
 }

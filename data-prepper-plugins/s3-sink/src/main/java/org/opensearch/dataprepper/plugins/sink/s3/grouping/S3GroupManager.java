@@ -38,25 +38,25 @@ public class S3GroupManager {
         return allGroups.isEmpty();
     }
 
-    public void removeGroup(final S3GroupIdentifier s3GroupIdentifier) {
-        allGroups.remove(s3GroupIdentifier);
+    public void removeGroup(final S3Group s3Group) {
+        allGroups.remove(s3Group.getS3GroupIdentifier());
     }
 
-    public Collection<Map.Entry<S3GroupIdentifier, S3Group>> getS3GroupEntries() {
-        return allGroups.entrySet();
+    public Collection<S3Group> getS3GroupEntries() {
+        return allGroups.values();
     }
 
-    public Map.Entry<S3GroupIdentifier, S3Group> getOrCreateGroupForEvent(final Event event) {
+    public S3Group getOrCreateGroupForEvent(final Event event) {
 
         final S3GroupIdentifier s3GroupIdentifier = s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(event);
 
         if (allGroups.containsKey(s3GroupIdentifier)) {
-            return Map.entry(s3GroupIdentifier, allGroups.get(s3GroupIdentifier));
+            return allGroups.get(s3GroupIdentifier);
         } else {
             final Buffer bufferForNewGroup =  bufferFactory.getBuffer(s3Client, s3SinkConfig::getBucketName, s3GroupIdentifier::getGroupIdentifierFullObjectKey);
-            final S3Group s3Group = new S3Group(bufferForNewGroup);
+            final S3Group s3Group = new S3Group(s3GroupIdentifier, bufferForNewGroup);
             allGroups.put(s3GroupIdentifier, s3Group);
-            return Map.entry(s3GroupIdentifier, s3Group);
+            return s3Group;
         }
     }
 
