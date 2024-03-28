@@ -119,7 +119,7 @@ public class StreamWorkerTest {
         verify(mongoClient, times(1)).close();
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
-        verify(successItemsCounter, times(2)).increment();
+        verify(successItemsCounter, times(1)).increment();
         verify(failureItemsCounter, never()).increment();
     }
 
