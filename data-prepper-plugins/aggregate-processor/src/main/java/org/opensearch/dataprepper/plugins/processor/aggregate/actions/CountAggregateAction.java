@@ -47,7 +47,6 @@ public class CountAggregateAction implements AggregateAction {
     public final String startTimeKey;
     public final String outputFormat;
     private long startTimeNanos;
-    private List<Exemplar> exemplarList;
 
     @DataPrepperPluginConstructor
     public CountAggregateAction(final CountAggregateActionConfig countAggregateActionConfig) {
