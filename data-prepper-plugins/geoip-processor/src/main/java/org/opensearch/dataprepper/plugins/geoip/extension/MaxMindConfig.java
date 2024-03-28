@@ -25,7 +25,6 @@ public class MaxMindConfig {
     private static final String S3_PREFIX = "s3://";
     private static final Duration DEFAULT_DATABASE_REFRESH_INTERVAL = Duration.ofDays(7);
     private static final int DEFAULT_CACHE_COUNT = 4096;
-    static final String DEFAULT_DATABASE_DESTINATION = System.getProperty("data-prepper.dir") + File.separator + "data" + File.separator + "geoip";
 
     @Valid
     @JsonProperty("databases")
@@ -49,7 +48,7 @@ public class MaxMindConfig {
     private boolean insecure = DEFAULT_INSECURE;
 
     @JsonProperty("database_destination")
-    private String databaseDestination = DEFAULT_DATABASE_DESTINATION;
+    private String databaseDestination = System.getProperty("data-prepper.dir") + File.separator + "data" + File.separator + "geoip";
 
     public MaxMindConfig() {
         // This default constructor is used if maxmind is not configured

@@ -48,7 +48,7 @@ databaseNames.forEach { databaseName -> {
     def gradleName = databaseName.replaceAll('-', '')
     def downloadTask = tasks.register("download${gradleName}", Download) {
         src(url)
-        dest "build/resources/test/mmdb-files/geo-lite2/${databaseName}.mmdb"
+        dest "${project.layout.buildDirectory.get()}/resources/test/mmdb-files/geo-lite2/${databaseName}.mmdb"
         overwrite true
     }
     downloadFiles.get().dependsOn downloadTask
@@ -64,7 +64,7 @@ enterpriseDatabaseNames.forEach { enterpriseDatabaseName -> {
     def gradleName = enterpriseDatabaseName.replaceAll('-', '')
     def downloadEnterpriseTask = tasks.register("download${gradleName}", Download) {
         src(url)
-        dest "build/resources/test/mmdb-files/geo-ip2/${enterpriseDatabaseName}.mmdb"
+        dest "${project.layout.buildDirectory.get()}/resources/test/mmdb-files/geo-ip2/${enterpriseDatabaseName}.mmdb"
         overwrite true
     }
     downloadFiles.get().dependsOn downloadEnterpriseTask
@@ -93,6 +93,8 @@ task integrationTest(type: Test) {
 
     classpath = sourceSets.integrationTest.runtimeClasspath
 
+    systemProperty 'data-prepper.dir', project.layout.buildDirectory.get().getAsFile().absolutePath
+
     filter {
         includeTestsMatching '*IT'
     }
@@ -102,6 +104,8 @@ task integrationTest(type: Test) {
 test {
     useJUnitPlatform()
     dependsOn(downloadFiles)
+
+    systemProperty 'data-prepper.dir', project.layout.buildDirectory.get().getAsFile().absolutePath
 }
 
 checkstyleTest {

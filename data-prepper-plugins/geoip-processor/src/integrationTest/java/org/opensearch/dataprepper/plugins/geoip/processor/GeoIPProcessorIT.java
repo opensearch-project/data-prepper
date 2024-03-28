@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor;
+package org.opensearch.dataprepper.plugins.geoip.processor;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,38 +16,38 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
+import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.processor.extension.DefaultGeoIpConfigSupplier;
-import org.opensearch.dataprepper.plugins.processor.extension.GeoIpServiceConfig;
-import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.DatabaseReaderBuilder;
-import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.GeoIPDatabaseManager;
-import org.opensearch.dataprepper.plugins.processor.extension.databasedownload.GeoIPFileManager;
-import org.opensearch.dataprepper.plugins.processor.utils.LicenseTypeCheck;
+import org.opensearch.dataprepper.plugins.geoip.extension.GeoIpConfigExtension;
+import org.opensearch.dataprepper.plugins.geoip.extension.GeoIpServiceConfig;
+import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIpConfigSupplier;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED;
-import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED_ENGINE_EXCEPTION;
-import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED_IP_NOT_FOUND;
-import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_PROCESSED;
-import static org.opensearch.dataprepper.plugins.processor.GeoIPProcessor.GEO_IP_EVENTS_SUCCEEDED;
+import static org.opensearch.dataprepper.plugins.geoip.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED;
+import static org.opensearch.dataprepper.plugins.geoip.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED_ENGINE_EXCEPTION;
+import static org.opensearch.dataprepper.plugins.geoip.processor.GeoIPProcessor.GEO_IP_EVENTS_FAILED_IP_NOT_FOUND;
+import static org.opensearch.dataprepper.plugins.geoip.processor.GeoIPProcessor.GEO_IP_EVENTS_PROCESSED;
+import static org.opensearch.dataprepper.plugins.geoip.processor.GeoIPProcessor.GEO_IP_EVENTS_SUCCEEDED;
 
 @ExtendWith(MockitoExtension.class)
 public class GeoIPProcessorIT {
@@ -58,7 +58,7 @@ public class GeoIPProcessorIT {
     private static final String CITY_URL = "https://geoip.maps.opensearch.org/v1/mmdb/geolite2-city/manifest.json";
     private static final String ASN_URL = "https://geoip.maps.opensearch.org/v1/mmdb/geolite2-asn/manifest.json";
     private static GeoIPProcessorConfig geoipProcessorConfig;
-    private static DefaultGeoIpConfigSupplier defaultGeoIpConfigSupplier;
+    private static GeoIpConfigSupplier defaultGeoIpConfigSupplier;
     @Mock
     private PluginMetrics pluginMetrics;
     @Mock
@@ -81,7 +81,7 @@ public class GeoIPProcessorIT {
                 "              target: \"geo\"\n" +
                 "              include_fields: [\"country_name\", \"continent_name\", \"location\", \"asn\"]\n" +
                 "          geoip_when: '/peer/status == \"success\"'\n" +
-                "          tags_on_ip_not_found: [\"private_ip\", \"invalid_ip\"]";
+                "          tags_on_no_valid_ip: [\"private_ip\", \"invalid_ip\"]";
         String geoipServiceConfigYaml = "        maxmind:\n" +
                 "            databases:\n" +
                 "              country: " + COUNTRY_URL + "\n" +
@@ -93,15 +93,14 @@ public class GeoIPProcessorIT {
         geoipProcessorConfig = OBJECT_MAPPER.readValue(geoipProcessorConfigYaml, GeoIPProcessorConfig.class);
         GeoIpServiceConfig geoipServiceConfig = OBJECT_MAPPER.readValue(geoipServiceConfigYaml, GeoIpServiceConfig.class);
 
-        final ReentrantReadWriteLock reentrantReadWriteLock = new ReentrantReadWriteLock(true);
-        final GeoIPDatabaseManager geoIPDatabaseManager = new GeoIPDatabaseManager(geoipServiceConfig.getMaxMindConfig(),
-                new LicenseTypeCheck(),
-                new DatabaseReaderBuilder(),
-                new GeoIPFileManager(),
-                reentrantReadWriteLock.writeLock());
-        defaultGeoIpConfigSupplier = new DefaultGeoIpConfigSupplier(geoipServiceConfig,
-                geoIPDatabaseManager,
-                reentrantReadWriteLock.readLock());
+        System.setProperty("data-prepper.dir", "build");
+        final ExtensionPoints extensionPoints = mock(ExtensionPoints.class);
+        final GeoIpConfigExtension geoIpConfigExtension = new GeoIpConfigExtension(geoipServiceConfig);
+        geoIpConfigExtension.apply(extensionPoints);
+        final ArgumentCaptor<ExtensionProvider<GeoIpConfigSupplier>> extensionProviderArgumentCaptor = ArgumentCaptor.forClass(ExtensionProvider.class);
+        verify(extensionPoints).addExtensionProvider(extensionProviderArgumentCaptor.capture());
+        final ExtensionProvider<GeoIpConfigSupplier> extensionProvider = extensionProviderArgumentCaptor.getValue();
+        defaultGeoIpConfigSupplier = extensionProvider.provideInstance(null).get();
     }
 
     @BeforeEach
@@ -168,7 +167,6 @@ public class GeoIPProcessorIT {
 
             verify(geoIpEventsProcessed).increment();
             verify(geoIpEventsFailed).increment();
-            verify(geoIpEventsFailedIPNotFound).increment();
         }
     }
 
@@ -189,7 +187,6 @@ public class GeoIPProcessorIT {
 
             verify(geoIpEventsProcessed).increment();
             verify(geoIpEventsFailed).increment();
-            verify(geoIpEventsFailedIPNotFound).increment();
         }
     }
 
