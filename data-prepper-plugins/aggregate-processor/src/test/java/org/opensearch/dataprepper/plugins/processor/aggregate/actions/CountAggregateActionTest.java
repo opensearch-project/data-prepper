@@ -9,7 +9,6 @@ import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setFie
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.metric.JacksonMetric;
-import org.opensearch.dataprepper.model.metric.Exemplar;
 import org.junit.jupiter.api.extension.ExtendWith; 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
