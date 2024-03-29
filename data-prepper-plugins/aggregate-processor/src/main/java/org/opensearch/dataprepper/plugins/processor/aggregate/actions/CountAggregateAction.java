@@ -22,7 +22,6 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import io.opentelemetry.proto.metrics.v1.AggregationTemporality;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
