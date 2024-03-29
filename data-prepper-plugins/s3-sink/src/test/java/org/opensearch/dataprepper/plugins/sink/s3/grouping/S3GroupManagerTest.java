@@ -98,14 +98,14 @@ public class S3GroupManagerTest {
         assertThat(result.getS3GroupIdentifier(), equalTo(s3GroupIdentifier));
         assertThat(result.getBuffer(), equalTo(buffer));
 
-        final S3Group secondResult = objectUnderTest.getOrCreateGroupForEvent(event);
+        final Event secondEvent = mock(Event.class);
+        when(s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(secondEvent)).thenReturn(s3GroupIdentifier);
+        final S3Group secondResult = objectUnderTest.getOrCreateGroupForEvent(secondEvent);
 
         assertThat(secondResult,  notNullValue());
-        assertThat(secondResult, notNullValue());
         assertThat(secondResult.getS3GroupIdentifier(), equalTo(s3GroupIdentifier));
         assertThat(secondResult.getBuffer(), equalTo(buffer));
 
-        verify(s3GroupIdentifierFactory, times(2)).getS3GroupIdentifierForEvent(event);
         verify(bufferFactory, times(1)).getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class));
 
         final Collection<S3Group> groups = objectUnderTest.getS3GroupEntries();

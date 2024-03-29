@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.sink.s3.S3SinkConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
@@ -84,17 +83,5 @@ class ObjectKeyTest {
         String objectFileName = ObjectKey.objectFileName(s3SinkConfig, null, event, expressionEvaluator);
         Assertions.assertNotNull(objectFileName);
         Assertions.assertTrue(objectFileName.contains(".json"));
-    }
-
-    @Test
-    void test_objectFileName_without_date_time_and_codec_injection() {
-        final String namePattern = "events-%{yyyy-MM-dd'T'hh-mm-ss}";
-
-        when(s3SinkConfig.getObjectKeyOptions().getNamePattern())
-                .thenReturn(namePattern);
-        when(event.formatString(namePattern, expressionEvaluator)).thenReturn(namePattern);
-        String objectFileName = ObjectKey.objectFileNameWithoutDateTimeAndCodecInjection(s3SinkConfig, event, expressionEvaluator);
-        Assertions.assertNotNull(objectFileName);
-        assertThat(objectFileName, equalTo(namePattern));
     }
 }

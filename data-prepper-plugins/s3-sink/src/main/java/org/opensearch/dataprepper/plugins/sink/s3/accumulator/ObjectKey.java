@@ -84,11 +84,4 @@ public class ObjectKey {
                     (codecExtension!=null? codecExtension : DEFAULT_CODEC_FILE_EXTENSION);
         }
     }
-
-    public static String objectFileNameWithoutDateTimeAndCodecInjection(final S3SinkConfig s3SinkConfig,
-                                                                final Event event,
-                                                                final ExpressionEvaluator expressionEvaluator) {
-        String configNamePattern = s3SinkConfig.getObjectKeyOptions().getNamePattern();
-        return event.formatString(configNamePattern, expressionEvaluator);
-    }
 }

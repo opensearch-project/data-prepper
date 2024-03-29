@@ -59,6 +59,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
+import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifierFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.regions.Region;
@@ -92,6 +93,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -109,7 +111,7 @@ class S3SinkServiceIT {
     private static final String FILE_SUFFIX = ".parquet";
     @Mock
     private S3SinkConfig s3SinkConfig;
-    @Mock
+
     private S3GroupManager s3GroupManager;
 
     @Mock
@@ -165,6 +167,11 @@ class S3SinkServiceIT {
         lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED)).
                 thenReturn(numberOfRecordsFailedCounter);
         lenient().when(pluginMetrics.summary(S3SinkService.S3_OBJECTS_SIZE)).thenReturn(s3ObjectSizeSummary);
+
+        when(expressionEvaluator.extractDynamicExpressionsFromFormatExpression(anyString()))
+                .thenReturn(Collections.emptyList());
+        when(expressionEvaluator.extractDynamicKeysFromFormatExpression(anyString()))
+                .thenReturn(Collections.emptyList());
     }
 
     @Test
@@ -248,6 +255,9 @@ class S3SinkServiceIT {
 
     private S3SinkService createObjectUnderTest() {
         OutputCodecContext codecContext = new OutputCodecContext("Tag", Collections.emptyList(), Collections.emptyList());
+        final S3GroupIdentifierFactory groupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig);
+        s3GroupManager = new S3GroupManager(s3SinkConfig, groupIdentifierFactory, bufferFactory, s3Client);
+
         return new S3SinkService(s3SinkConfig, codec, codecContext, s3Client, keyGenerator, Duration.ofSeconds(5), pluginMetrics, s3GroupManager);
     }
 

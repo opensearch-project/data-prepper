@@ -10,7 +10,6 @@ import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
@@ -27,7 +26,6 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -46,7 +44,6 @@ public class S3SinkService {
     static final String S3_OBJECTS_SIZE = "s3SinkObjectSizeBytes";
     private final S3SinkConfig s3SinkConfig;
     private final Lock reentrantLock;
-    private final Collection<EventHandle> bufferedEventHandles;
     private final OutputCodec codec;
     private final S3Client s3Client;
     private final int maxEvents;
@@ -81,8 +78,6 @@ public class S3SinkService {
         this.keyGenerator = keyGenerator;
         this.retrySleepTime = retrySleepTime;
         reentrantLock = new ReentrantLock();
-
-        bufferedEventHandles = new LinkedList<>();
 
         maxEvents = s3SinkConfig.getThresholdOptions().getEventCount();
         maxBytes = s3SinkConfig.getThresholdOptions().getMaximumSize();
@@ -126,8 +121,7 @@ public class S3SinkService {
                     codec.writeEvent(event, currentBuffer.getOutputStream());
                     int count = currentBuffer.getEventCount() + 1;
                     currentBuffer.setEventCount(count);
-
-                    bufferedEventHandles.add(event.getEventHandle());
+                    s3Group.addEventHandle(event.getEventHandle());
                 } catch (Exception ex) {
                     if(sampleException == null) {
                         sampleException = ex;
@@ -136,7 +130,7 @@ public class S3SinkService {
                     failedEvents.add(event);
                 }
 
-                final boolean flushed = flushToS3IfNeeded(currentBuffer);
+                final boolean flushed = flushToS3IfNeeded(s3Group);
 
                 if (flushed) {
                     s3GroupManager.removeGroup(s3Group);
@@ -144,7 +138,7 @@ public class S3SinkService {
             }
 
             for (final S3Group s3Group : s3GroupManager.getS3GroupEntries()) {
-                final boolean flushed = flushToS3IfNeeded(s3Group.getBuffer());
+                final boolean flushed = flushToS3IfNeeded(s3Group);
 
                 if (flushed) {
                     s3GroupManager.removeGroup(s3Group);
@@ -163,38 +157,30 @@ public class S3SinkService {
         }
     }
 
-    private void releaseEventHandles(final boolean result) {
-        for (EventHandle eventHandle : bufferedEventHandles) {
-            eventHandle.release(result);
-        }
-
-        bufferedEventHandles.clear();
-    }
-
     /**
      * @return whether the flush was attempted
      */
-    private boolean flushToS3IfNeeded(final Buffer currentBuffer) {
+    private boolean flushToS3IfNeeded(final S3Group s3Group) {
         LOG.trace("Flush to S3 check: currentBuffer.size={}, currentBuffer.events={}, currentBuffer.duration={}",
-                currentBuffer.getSize(), currentBuffer.getEventCount(), currentBuffer.getDuration());
-        if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
+                s3Group.getBuffer().getSize(), s3Group.getBuffer().getEventCount(), s3Group.getBuffer().getDuration());
+        if (ThresholdCheck.checkThresholdExceed(s3Group.getBuffer(), maxEvents, maxBytes, maxCollectionDuration)) {
             try {
-                codec.complete(currentBuffer.getOutputStream());
-                String s3Key = currentBuffer.getKey();
+                codec.complete(s3Group.getBuffer().getOutputStream());
+                String s3Key = s3Group.getBuffer().getKey();
                 LOG.info("Writing {} to S3 with {} events and size of {} bytes.",
-                        s3Key, currentBuffer.getEventCount(), currentBuffer.getSize());
-                final boolean isFlushToS3 = retryFlushToS3(currentBuffer, s3Key);
+                        s3Key, s3Group.getBuffer().getEventCount(), s3Group.getBuffer().getSize());
+                final boolean isFlushToS3 = retryFlushToS3(s3Group.getBuffer(), s3Key);
                 if (isFlushToS3) {
                     LOG.info("Successfully saved {} to S3.", s3Key);
-                    numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
+                    numberOfRecordsSuccessCounter.increment(s3Group.getBuffer().getEventCount());
                     objectsSucceededCounter.increment();
-                    s3ObjectSizeSummary.record(currentBuffer.getSize());
-                    releaseEventHandles(true);
+                    s3ObjectSizeSummary.record(s3Group.getBuffer().getSize());
+                    s3Group.releaseEventHandles(true);
                 } else {
                     LOG.error("Failed to save {} to S3.", s3Key);
-                    numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
+                    numberOfRecordsFailedCounter.increment(s3Group.getBuffer().getEventCount());
                     objectsFailedCounter.increment();
-                    releaseEventHandles(false);
+                    s3Group.releaseEventHandles(false);
                 }
 
                 return true;

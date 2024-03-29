@@ -423,14 +423,13 @@ class S3SinkServiceTest {
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Collection<Record<Event>> records = generateRandomStringEventRecord();
         final List<DefaultEventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
-        for (DefaultEventHandle eventHandle : eventHandles) {
-            eventHandle.setAcknowledgementSet(acknowledgementSet);
-        }
         s3SinkService.output(records);
 
-        for (EventHandle eventHandle : eventHandles) {
-            verify(acknowledgementSet).release(eventHandle, true);
+        InOrder inOrder = inOrder(s3Group);
+        for (final EventHandle eventHandle : eventHandles) {
+            inOrder.verify(s3Group).addEventHandle(eventHandle);
         }
+        inOrder.verify(s3Group).releaseEventHandles(true);
 
     }
 
@@ -451,27 +450,23 @@ class S3SinkServiceTest {
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Collection<Record<Event>> records = generateRandomStringEventRecord();
         final List<DefaultEventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
-        for (DefaultEventHandle eventHandle : eventHandles) {
-            eventHandle.setAcknowledgementSet(acknowledgementSet);
-        }
 
         s3SinkService.output(records);
-        for (EventHandle eventHandle : eventHandles) {
-            verify(acknowledgementSet).release(eventHandle, true);
-        }
 
         final Collection<Record<Event>> records2 = generateRandomStringEventRecord();
         final List<DefaultEventHandle> eventHandles2 = records2.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
 
-        for (DefaultEventHandle eventHandle : eventHandles2) {
-            eventHandle.setAcknowledgementSet(acknowledgementSet);
-        }
-
         s3SinkService.output(records2);
 
-        for (EventHandle eventHandle : eventHandles2) {
-            verify(acknowledgementSet).release(eventHandle, true);
+        InOrder inOrder = inOrder(s3Group);
+        for (final EventHandle eventHandle : eventHandles) {
+            inOrder.verify(s3Group).addEventHandle(eventHandle);
         }
+        inOrder.verify(s3Group).releaseEventHandles(true);
+        for (final EventHandle eventHandle : eventHandles2) {
+            inOrder.verify(s3Group).addEventHandle(eventHandle);
+        }
+        inOrder.verify(s3Group).releaseEventHandles(true);
 
     }
 
@@ -496,14 +491,13 @@ class S3SinkServiceTest {
         final List<Record<Event>> records = generateEventRecords(1);
         final List<DefaultEventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
 
-        for (DefaultEventHandle eventHandle : eventHandles) {
-            eventHandle.setAcknowledgementSet(acknowledgementSet);
-        }
         s3SinkService.output(records);
 
-        for (EventHandle eventHandle : eventHandles) {
-            verify(acknowledgementSet).release(eventHandle, false);
+        InOrder inOrder = inOrder(s3Group);
+        for (final EventHandle eventHandle : eventHandles) {
+            inOrder.verify(s3Group).addEventHandle(eventHandle);
         }
+        inOrder.verify(s3Group).releaseEventHandles(false);
     }
 
     @Test
@@ -524,23 +518,20 @@ class S3SinkServiceTest {
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Collection<Record<Event>> records = generateRandomStringEventRecord();
         final List<DefaultEventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
-        for (DefaultEventHandle eventHandle : eventHandles) {
-            eventHandle.setAcknowledgementSet(acknowledgementSet);
-        }
         s3SinkService.output(records);
-        for (EventHandle eventHandle : eventHandles) {
-            verify(acknowledgementSet).release(eventHandle, true);
-        }
         final Collection<Record<Event>> records2 = generateRandomStringEventRecord();
         final List<DefaultEventHandle> eventHandles2 = records2.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
-        for (DefaultEventHandle eventHandle : eventHandles2) {
-            eventHandle.setAcknowledgementSet(acknowledgementSet);
-        }
         s3SinkService.output(records2);
-        for (EventHandle eventHandle : eventHandles2) {
-            verify(acknowledgementSet).release(eventHandle, true);
-        }
 
+        InOrder inOrder = inOrder(s3Group);
+        for (final EventHandle eventHandle : eventHandles) {
+            inOrder.verify(s3Group).addEventHandle(eventHandle);
+        }
+        inOrder.verify(s3Group).releaseEventHandles(true);
+        for (final EventHandle eventHandle : eventHandles2) {
+            inOrder.verify(s3Group).addEventHandle(eventHandle);
+        }
+        inOrder.verify(s3Group).releaseEventHandles(true);
     }
 
     @Test
@@ -571,14 +562,17 @@ class S3SinkServiceTest {
 
         createObjectUnderTest().output(records);
 
-        InOrder inOrder = inOrder(codec);
+        InOrder inOrder = inOrder(codec, s3Group);
         inOrder.verify(codec).start(eq(outputStream), eq(event1), any());
         inOrder.verify(codec).writeEvent(event1, outputStream);
+        inOrder.verify(s3Group, never()).addEventHandle(eventHandle1);
+        inOrder.verify(s3Group).releaseEventHandles(true);
         inOrder.verify(codec).writeEvent(event2, outputStream);
+        inOrder.verify(s3Group).addEventHandle(eventHandle2);
+        inOrder.verify(s3Group).releaseEventHandles(true);
 
         verify(acknowledgementSet).release(eventHandle1, false);
         verify(acknowledgementSet, never()).release(eventHandle1, true);
-        verify(acknowledgementSet).release(eventHandle2, true);
         verify(acknowledgementSet, never()).release(eventHandle2, false);
     }
 
@@ -592,34 +586,30 @@ class S3SinkServiceTest {
         when(buffer.getSize()).thenReturn(objectSize);
 
         final OutputStream outputStream = mock(OutputStream.class);
-        final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
 
-        doNothing().when(codec).writeEvent(event, outputStream);
+        doNothing().when(codec).writeEvent(any(Event.class), eq(outputStream));
         final S3SinkService s3SinkService = createObjectUnderTest();
         final List<Record<Event>> records = generateEventRecords(1);
         final List<DefaultEventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
-        for (DefaultEventHandle eventHandle : eventHandles) {
-            eventHandle.setAcknowledgementSet(acknowledgementSet);
-        }
         s3SinkService.output(records);
-        for (EventHandle eventHandle : eventHandles) {
-            verify(acknowledgementSet).release(eventHandle, false);
-        }
 
         final List<Record<Event>> records2 = generateEventRecords(1);
         final List<DefaultEventHandle> eventHandles2 = records2.stream().map(Record::getData).map(Event::getEventHandle).map(this::castToDefaultHandle).collect(Collectors.toList());
 
-        for (DefaultEventHandle eventHandle : eventHandles2) {
-            eventHandle.setAcknowledgementSet(acknowledgementSet);
-        }
         s3SinkService.output(records2);
-        for (EventHandle eventHandle : eventHandles2) {
-            verify(acknowledgementSet).release(eventHandle, false);
+        InOrder inOrder = inOrder(s3Group);
+        for (final EventHandle eventHandle : eventHandles) {
+            inOrder.verify(s3Group).addEventHandle(eventHandle);
         }
+        inOrder.verify(s3Group).releaseEventHandles(false);
+        for (final EventHandle eventHandle : eventHandles2) {
+            inOrder.verify(s3Group).addEventHandle(eventHandle);
+        }
+        inOrder.verify(s3Group).releaseEventHandles(false);
 
     }
 
