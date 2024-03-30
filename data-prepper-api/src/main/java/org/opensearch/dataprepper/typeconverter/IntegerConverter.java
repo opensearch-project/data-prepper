@@ -19,9 +19,6 @@ public class IntegerConverter implements TypeConverter<Integer> {
         if (source instanceof Integer) {
             return (Integer)source;
         }
-        if (source instanceof Long) {
-            return ((Long)source).intValue();
-        }
         throw new IllegalArgumentException("Unsupported type conversion. Source class: " + source.getClass());
     }
 }
