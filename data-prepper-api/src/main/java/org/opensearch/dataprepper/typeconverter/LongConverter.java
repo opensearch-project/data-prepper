@@ -13,6 +13,9 @@
          if (source instanceof Float) {
              return (long)(float)((Float)source);
          }
+         if (source instanceof Double) {
+             return (long)(double)((Double)source);
+         }
          if (source instanceof Boolean) {
              return ((Boolean)source) ? 1L : 0L;
          }
