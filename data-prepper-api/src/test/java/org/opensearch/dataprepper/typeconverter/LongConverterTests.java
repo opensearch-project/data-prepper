@@ -25,10 +25,10 @@
          assertThat(converter.convert(floatConstant), equalTo((long)(float)floatConstant));
      }
      @Test
-     void testDoubleToIntegerConversion() {
-        IntegerConverter converter = new IntegerConverter();
-        final Double doubleConstant = 12345678.12345678;
-        assertThat(converter.convert(doubleConstant), equalTo((int)(double)doubleConstant));
+     void testDoubleToLongConversion() {
+        LongConverter converter = new LongConverter();
+        final Double doubleConstant = (double)12345678.12345678;
+        assertThat(converter.convert(doubleConstant), equalTo((long)(double)doubleConstant));
      }
      @Test
      void testBooleanToLongConversion() {
@@ -46,6 +46,8 @@
      }
      @Test
      void testInvalidStringConversion() {
+         IntegerConverter converter = new IntegerConverter();
+         assertThrows(IllegalArgumentException.class, () -> converter.convert(new Object()));
          IntegerConverter converter = new IntegerConverter();
          assertThrows(IllegalArgumentException.class, () -> converter.convert(new Object()));
      }
