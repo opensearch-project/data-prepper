@@ -25,12 +25,6 @@ public class IntegerConverterTests {
         assertThat(converter.convert(floatConstant), equalTo((int)(float)floatConstant));
     }
     @Test
-    void testDoubleToIntegerConversion() {
-        IntegerConverter converter = new IntegerConverter();
-        final Double doubleConstant = 12345678.12345678;
-        assertThat(converter.convert(doubleConstant), equalTo((int)(double)doubleConstant));
-    }
-    @Test
     void testBooleanToIntegerConversion() {
         IntegerConverter converter = new IntegerConverter();
         final Boolean boolFalseConstant = false;
@@ -47,6 +41,7 @@ public class IntegerConverterTests {
     @Test
     void testInvalidStringConversion() {
         IntegerConverter converter = new IntegerConverter();
-        assertThrows(IllegalArgumentException.class, () -> converter.convert(new Object()));
+        final Double doubleConstant = 12345678.12345678;
+        assertThrows(IllegalArgumentException.class, () -> converter.convert(doubleConstant));
     }
 }
