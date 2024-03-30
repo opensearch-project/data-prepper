@@ -31,6 +31,12 @@
         assertThat(converter.convert(doubleConstant), equalTo((long)(double)doubleConstant));
      }
      @Test
+     void testDoubleToLongConversionWithBigValue() {
+        LongConverter converter = new LongConverter();
+        final Double doubleConstant = (double)2.0 * Integer.MAX_VALUE;
+        assertThat(converter.convert(doubleConstant), equalTo((long)(double)doubleConstant));
+     }
+     @Test
      void testBooleanToLongConversion() {
          LongConverter converter = new LongConverter();
          final Boolean boolFalseConstant = false;
@@ -46,9 +52,7 @@
      }
      @Test
      void testInvalidStringConversion() {
-         IntegerConverter converter = new IntegerConverter();
-         assertThrows(IllegalArgumentException.class, () -> converter.convert(new Object()));
-         IntegerConverter converter = new IntegerConverter();
+         LongConverter converter = new LongConverter();
          assertThrows(IllegalArgumentException.class, () -> converter.convert(new Object()));
      }
  }
