@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.typeconverter.IntegerConverter;
 import org.opensearch.dataprepper.typeconverter.StringConverter;
 import org.opensearch.dataprepper.typeconverter.DoubleConverter;
 import org.opensearch.dataprepper.typeconverter.BooleanConverter;
+import org.opensearch.dataprepper.typeconverter.LongConverter;
 
 import java.util.Map;
 import java.util.Arrays;
@@ -20,7 +21,8 @@ public enum TargetType {
     INTEGER("integer", new IntegerConverter()),
     STRING("string", new StringConverter()),
     DOUBLE("double", new DoubleConverter()),
-    BOOLEAN("boolean", new BooleanConverter());
+    BOOLEAN("boolean", new BooleanConverter()),
+    LONG("long", new LongConverter());
 
     private static final Map<String, TargetType> OPTIONS_MAP = Arrays.stream(TargetType.values())
             .collect(Collectors.toMap(
