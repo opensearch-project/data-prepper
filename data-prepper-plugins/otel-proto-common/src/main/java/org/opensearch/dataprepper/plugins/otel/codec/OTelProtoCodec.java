@@ -1086,7 +1086,7 @@ public class OTelProtoCodec {
      */
     public static Map<String, Object> convertKeysOfDataPointAttributes(final NumberDataPoint numberDataPoint) {
         return numberDataPoint.getAttributesList().stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue()), (existing, replacement) -> existing));
     }
 
     /**
@@ -1099,7 +1099,7 @@ public class OTelProtoCodec {
      */
     public static Map<String, Object> unpackKeyValueList(List<KeyValue> attributesList) {
         return attributesList.stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue()), (existing, replacement) -> existing));
     }
 
     /**
@@ -1112,7 +1112,7 @@ public class OTelProtoCodec {
      */
     public static Map<String, Object> unpackKeyValueListLog(List<KeyValue> attributesList) {
         return attributesList.stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_LOG_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(Collectors.toMap(i -> PREFIX_AND_LOG_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue()), (existing, replacement) -> existing));
     }
 
 
@@ -1126,7 +1126,7 @@ public class OTelProtoCodec {
      */
     public static Map<String, Object> unpackExemplarValueList(List<KeyValue> attributesList) {
         return attributesList.stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_EXEMPLAR_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(Collectors.toMap(i -> PREFIX_AND_EXEMPLAR_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue()), (existing, replacement) -> existing));
     }
 
 
