@@ -16,17 +16,19 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class S3GroupManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(S3GroupManager.class);
-
     private final Map<S3GroupIdentifier, S3Group> allGroups = Maps.newConcurrentMap();
     private final S3SinkConfig s3SinkConfig;
     private final S3GroupIdentifierFactory s3GroupIdentifierFactory;
     private final BufferFactory bufferFactory;
-
     private final S3Client s3Client;
+
+    private long totalGroupSize;
+
 
     public S3GroupManager(final S3SinkConfig s3SinkConfig,
                           final S3GroupIdentifierFactory s3GroupIdentifierFactory,
@@ -36,11 +38,14 @@ public class S3GroupManager {
         this.s3GroupIdentifierFactory = s3GroupIdentifierFactory;
         this.bufferFactory = bufferFactory;
         this.s3Client = s3Client;
+        totalGroupSize = 0;
     }
 
     public boolean hasNoGroups() {
         return allGroups.isEmpty();
     }
+
+    public int getNumberOfGroups() { return allGroups.size(); }
 
     public void removeGroup(final S3Group s3Group) {
         allGroups.remove(s3Group.getS3GroupIdentifier());
@@ -48,6 +53,10 @@ public class S3GroupManager {
 
     public Collection<S3Group> getS3GroupEntries() {
         return allGroups.values();
+    }
+
+    public Collection<S3Group> getS3GroupsSortedBySize() {
+        return allGroups.values().stream().sorted().collect(Collectors.toList());
     }
 
     public S3Group getOrCreateGroupForEvent(final Event event) {
@@ -65,5 +74,13 @@ public class S3GroupManager {
         }
     }
 
+    public long recalculateAndGetGroupSize() {
+        long totalSize = 0;
 
+        for (final S3Group s3Group : allGroups.values()) {
+            totalSize += s3Group.getBuffer().getSize();
+        }
+
+        return totalSize;
+    }
 }

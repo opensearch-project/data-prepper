@@ -11,7 +11,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import java.util.Collection;
 import java.util.LinkedList;
 
-public class S3Group {
+public class S3Group implements Comparable<S3Group> {
 
     private final Buffer buffer;
 
@@ -44,7 +44,8 @@ public class S3Group {
         groupEventHandles.clear();
     }
 
-    Collection<EventHandle> getGroupEventHandles() {
-        return groupEventHandles;
+    @Override
+    public int compareTo(final S3Group o) {
+        return Long.compare(o.getBuffer().getSize(), buffer.getSize());
     }
 }

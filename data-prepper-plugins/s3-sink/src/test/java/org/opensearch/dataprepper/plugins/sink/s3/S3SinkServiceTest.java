@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.InMemoryBuffer;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.AggregateThresholdOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
@@ -64,6 +65,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.sink.s3.S3SinkService.NUMBER_OF_GROUPS_FORCE_FLUSHED;
 
 class S3SinkServiceTest {
 
@@ -82,6 +84,8 @@ class S3SinkServiceTest {
     private KeyGenerator keyGenerator = mock(KeyGenerator.class);
     private PluginMetrics pluginMetrics;
     private Counter snapshotSuccessCounter;
+
+    private Counter s3ObjectsForceFlushedCounter;
     private DistributionSummary s3ObjectSizeSummary;
     private Random random;
     private String tagsTargetKey;
@@ -111,6 +115,7 @@ class S3SinkServiceTest {
         Counter numberOfRecordsSuccessCounter = mock(Counter.class);
         Counter numberOfRecordsFailedCounter = mock(Counter.class);
         s3ObjectSizeSummary = mock(DistributionSummary.class);
+        s3ObjectsForceFlushedCounter = mock(Counter.class);
 
         s3GroupManager = mock(S3GroupManager.class);
 
@@ -137,6 +142,13 @@ class S3SinkServiceTest {
         lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED)).
                 thenReturn(numberOfRecordsFailedCounter);
         lenient().when(pluginMetrics.summary(S3SinkService.S3_OBJECTS_SIZE)).thenReturn(s3ObjectSizeSummary);
+
+        lenient().when(pluginMetrics.counter(NUMBER_OF_GROUPS_FORCE_FLUSHED)).thenReturn(s3ObjectsForceFlushedCounter);
+
+        final AggregateThresholdOptions aggregateThresholdOptions = mock(AggregateThresholdOptions.class);
+        when(aggregateThresholdOptions.getMaximumSize()).thenReturn(ByteCount.ofBytes(Integer.MAX_VALUE));
+        when(s3SinkConfig.getAggregateThresholdOptions()).thenReturn(aggregateThresholdOptions);
+        when(s3GroupManager.recalculateAndGetGroupSize()).thenReturn(100_000L);
     }
 
     private DefaultEventHandle castToDefaultHandle(EventHandle eventHandle) {
@@ -611,6 +623,69 @@ class S3SinkServiceTest {
         }
         inOrder.verify(s3Group).releaseEventHandles(false);
 
+    }
+
+    @Test
+    void output_will_flush_the_largest_group_until_below_aggregate_threshold_when_aggregate_threshold_is_reached() throws IOException {
+        final long bytesThreshold = 100_000L;
+        final long bufferOneSize = 50_000L;
+        final long bufferTwoSize = 30_000L;
+        final long bufferThreeSize = 70_000L;
+
+        final AggregateThresholdOptions aggregateThresholdOptions = mock(AggregateThresholdOptions.class);
+        when(aggregateThresholdOptions.getMaximumSize()).thenReturn(ByteCount.ofBytes(bytesThreshold));
+        when(aggregateThresholdOptions.getFlushCapacityRatio()).thenReturn(0.5);
+        when(s3SinkConfig.getAggregateThresholdOptions()).thenReturn(aggregateThresholdOptions);
+        when(s3GroupManager.recalculateAndGetGroupSize()).thenReturn(bufferOneSize + bufferTwoSize + bufferThreeSize);
+
+        when(s3SinkConfig.getThresholdOptions().getMaximumSize()).thenReturn(ByteCount.parse("1gb"));
+
+
+        final Event firstGroupEvent = mock(Event.class);
+        final S3Group firstGroup = mock(S3Group.class);
+        final Buffer firstGroupBuffer = mock(Buffer.class);
+        when(firstGroupBuffer.getOutputStream()).thenReturn(mock(OutputStream.class));
+        when(firstGroupBuffer.getSize()).thenReturn(bufferOneSize);
+        when(firstGroup.getBuffer()).thenReturn(firstGroupBuffer);
+        when(s3GroupManager.getOrCreateGroupForEvent(firstGroupEvent)).thenReturn(firstGroup);
+
+        final Event secondGroupEvent = mock(Event.class);
+        final S3Group secondGroup = mock(S3Group.class);
+        final Buffer secondGroupBuffer = mock(Buffer.class);
+        when(secondGroupBuffer.getSize()).thenReturn(bufferTwoSize);
+        when(secondGroupBuffer.getOutputStream()).thenReturn(mock(OutputStream.class));
+        when(secondGroup.getBuffer()).thenReturn(secondGroupBuffer);
+        when(s3GroupManager.getOrCreateGroupForEvent(secondGroupEvent)).thenReturn(secondGroup);
+
+        final Event thirdGroupEvent = mock(Event.class);
+        final S3Group thirdGroup = mock(S3Group.class);
+        final Buffer thirdGroupBuffer = mock(Buffer.class);
+        when(thirdGroupBuffer.getSize()).thenReturn(bufferThreeSize);
+        when(thirdGroupBuffer.getOutputStream()).thenReturn(mock(OutputStream.class));
+        when(thirdGroup.getBuffer()).thenReturn(thirdGroupBuffer);
+        when(s3GroupManager.getOrCreateGroupForEvent(thirdGroupEvent)).thenReturn(thirdGroup);
+
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(List.of(firstGroup, secondGroup, thirdGroup));
+        when(s3GroupManager.getS3GroupsSortedBySize()).thenReturn(List.of(thirdGroup, firstGroup, secondGroup));
+
+        doNothing().when(codec).start(any(OutputStream.class), any(Event.class), any(OutputCodecContext.class));
+        doNothing().when(codec).writeEvent(any(Event.class), any(OutputStream.class));
+
+        final S3SinkService s3SinkService = createObjectUnderTest();
+        s3SinkService.output(List.of(new Record<>(firstGroupEvent), new Record<>(secondGroupEvent), new Record<>(thirdGroupEvent)));
+
+        verify(thirdGroupBuffer).flushToS3();
+        verify(firstGroupBuffer).flushToS3();
+
+        verify(codec, times(2)).complete(any(OutputStream.class));
+
+        verify(s3GroupManager).removeGroup(thirdGroup);
+        verify(s3GroupManager).removeGroup(firstGroup);
+
+        verify(s3GroupManager, never()).removeGroup(secondGroup);
+        verify(secondGroupBuffer, never()).flushToS3();
+
+        verify(s3ObjectsForceFlushedCounter, times(2)).increment();
     }
 
     private Collection<Record<Event>> generateRandomStringEventRecord() {

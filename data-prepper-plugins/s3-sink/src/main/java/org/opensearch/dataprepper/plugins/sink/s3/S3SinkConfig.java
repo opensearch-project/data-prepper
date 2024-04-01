@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.AggregateThresholdOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
@@ -46,6 +47,9 @@ public class S3SinkConfig {
     @NotNull
     private ThresholdOptions thresholdOptions;
 
+    @JsonProperty("aggregate_threshold")
+    private AggregateThresholdOptions aggregateThresholdOptions;
+
     @JsonProperty("codec")
     @NotNull
     private PluginModel codec;
@@ -67,12 +71,17 @@ public class S3SinkConfig {
     }
 
     /**
-     * Threshold configuration Options.
+     * Threshold configuration Options at the individual S3 group level
      * @return threshold option object.
      */
     public ThresholdOptions getThresholdOptions() {
         return thresholdOptions;
     }
+
+    /**
+     * Threshold configuration for the aggregation of all S3 groups
+     */
+    public AggregateThresholdOptions getAggregateThresholdOptions() { return aggregateThresholdOptions; }
 
     /**
      * Read s3 bucket name configuration.
