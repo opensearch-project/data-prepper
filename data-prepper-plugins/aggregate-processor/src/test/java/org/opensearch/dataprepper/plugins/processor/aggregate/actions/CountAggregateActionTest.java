@@ -9,7 +9,6 @@ import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setFie
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.metric.JacksonMetric;
-import org.opensearch.dataprepper.model.metric.Exemplar;
 import org.junit.jupiter.api.extension.ExtendWith; 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -20,6 +19,7 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionRes
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -78,22 +78,34 @@ public class CountAggregateActionTest {
     void testCountAggregateOTelFormat(int testCount) {
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
         countAggregateAction = createObjectUnderTest(countAggregateActionConfig);
-        final String key = UUID.randomUUID().toString();
-        final String value = UUID.randomUUID().toString();
-        final String dataKey = UUID.randomUUID().toString();
-        Map<Object, Object> eventMap = Collections.singletonMap(key, value);
+        final String key1 = "key-"+UUID.randomUUID().toString();
+        final String value1 = UUID.randomUUID().toString();
+        final String dataKey1 = "datakey-"+UUID.randomUUID().toString();
+        final String key2 = "key-"+UUID.randomUUID().toString();
+        final String value2 = UUID.randomUUID().toString();
+        final String dataKey2 = "datakey-"+UUID.randomUUID().toString();
+        Map<Object, Object> eventMap = Collections.singletonMap(key1, value1);
         Event testEvent = JacksonEvent.builder()
                 .withEventType("event")
                 .withData(eventMap)
                 .build();
-        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
+        Map<Object, Object> eventMap2 = Collections.singletonMap(key2, value2);
+        JacksonEvent testEvent2 = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(eventMap2)
+                .build();
+        AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
+        AggregateActionInput aggregateActionInput2 = new AggregateActionTestUtils.TestAggregateActionInput(eventMap2);
         for (int i = 0; i < testCount; i++) { 
-            testEvent.put(dataKey, UUID.randomUUID().toString());
-            final AggregateActionResponse aggregateActionResponse = countAggregateAction.handleEvent(testEvent, aggregateActionInput);
+            testEvent.put(dataKey1, UUID.randomUUID().toString());
+            testEvent2.put(dataKey2, UUID.randomUUID().toString());
+            AggregateActionResponse aggregateActionResponse = countAggregateAction.handleEvent(testEvent, aggregateActionInput);
+            assertThat(aggregateActionResponse.getEvent(), equalTo(null));
+            aggregateActionResponse = countAggregateAction.handleEvent(testEvent2, aggregateActionInput2);
             assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         }
 
-        final AggregateActionOutput actionOutput = countAggregateAction.concludeGroup(aggregateActionInput);
+        AggregateActionOutput actionOutput = countAggregateAction.concludeGroup(aggregateActionInput);
         final List<Event> result = actionOutput.getEvents();
         assertThat(result.size(), equalTo(1));
         Map<String, Object> expectedEventMap = new HashMap<>();
@@ -109,7 +121,22 @@ public class CountAggregateActionTest {
         assertThat(metric.toJsonString().indexOf("attributes"), not(-1));
         assertThat(result.get(0).toMap(), hasKey("startTime"));
         assertThat(result.get(0).toMap(), hasKey("time"));
-        List<Exemplar> exemplars = (List <Exemplar>)result.get(0).toMap().get("exemplars");
+        List<Map<String, Object>> exemplars = (List <Map<String, Object>>)result.get(0).toMap().get("exemplars");
         assertThat(exemplars.size(), equalTo(1));
+        Map<String, Object> exemplar = exemplars.get(0);
+        Map<String, Object> attributes = (Map<String, Object>)exemplar.get("attributes");
+        assertThat(attributes.get(key1), equalTo(value1));
+        assertTrue(attributes.containsKey(dataKey1));
+
+        actionOutput = countAggregateAction.concludeGroup(aggregateActionInput2);
+        final List<Event> result2 = actionOutput.getEvents();
+        assertThat(result2.size(), equalTo(1));
+
+        exemplars = (List <Map<String, Object>>)result2.get(0).toMap().get("exemplars");
+        assertThat(exemplars.size(), equalTo(1));
+        exemplar = exemplars.get(0);
+        attributes = (Map<String, Object>)exemplar.get("attributes");
+        assertThat(attributes.get(key2), equalTo(value2));
+        assertTrue(attributes.containsKey(dataKey2));
     }
 }

@@ -22,7 +22,6 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import io.opentelemetry.proto.metrics.v1.AggregationTemporality;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -37,6 +36,7 @@ import java.util.HashMap;
 @DataPrepperPlugin(name = "count", pluginType = AggregateAction.class, pluginConfigurationType = CountAggregateActionConfig.class)
 public class CountAggregateAction implements AggregateAction {
     private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
+    private static final String exemplarKey = "__exemplar";
     static final String EVENT_TYPE = "event";
     static final String SUM_METRIC_NAME = "count";
     static final String SUM_METRIC_DESCRIPTION = "Number of events";
@@ -46,7 +46,6 @@ public class CountAggregateAction implements AggregateAction {
     public final String startTimeKey;
     public final String outputFormat;
     private long startTimeNanos;
-    private List<Exemplar> exemplarList;
 
     @DataPrepperPluginConstructor
     public CountAggregateAction(final CountAggregateActionConfig countAggregateActionConfig) {
@@ -86,8 +85,7 @@ public class CountAggregateAction implements AggregateAction {
             groupState.put(startTimeKey, Instant.now());
             groupState.putAll(aggregateActionInput.getIdentificationKeys());
             groupState.put(countKey, 1);
-            exemplarList = new ArrayList<>();
-            exemplarList.add(createExemplar(event));
+            groupState.put(exemplarKey, createExemplar(event));
         } else {
             Integer v = (Integer)groupState.get(countKey) + 1;
             groupState.put(countKey, v);
@@ -108,6 +106,8 @@ public class CountAggregateAction implements AggregateAction {
                 .build();
         } else {
             Integer countValue = (Integer)groupState.get(countKey);
+            Exemplar exemplar = (Exemplar)groupState.get(exemplarKey);
+            groupState.remove(exemplarKey);
             groupState.remove(countKey);
             groupState.remove(startTimeKey);
             long currentTimeNanos = getTimeNanos(Instant.now());
@@ -123,7 +123,7 @@ public class CountAggregateAction implements AggregateAction {
                 .withUnit(SUM_METRIC_UNIT)
                 .withAggregationTemporality(AggregationTemporality.AGGREGATION_TEMPORALITY_DELTA.name())
                 .withValue((double)countValue)
-                .withExemplars(exemplarList)
+                .withExemplars(List.of(exemplar))
                 .withAttributes(attr)
                 .build(false);
             event = (Event)sum;
