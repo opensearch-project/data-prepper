@@ -32,7 +32,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -91,23 +90,23 @@ public class StreamWorkerTest {
         MongoCollection col = mock(MongoCollection.class);
         ChangeStreamIterable changeStreamIterable = mock(ChangeStreamIterable.class);
         MongoCursor cursor = mock(MongoCursor.class);
-        lenient().when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
-        lenient().when(mongoDatabase.getCollection(anyString())).thenReturn(col);
-        lenient().when(col.watch()).thenReturn(changeStreamIterable);
-        lenient().when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
-        lenient().when(changeStreamIterable.iterator()).thenReturn(cursor);
-        lenient().when(cursor.hasNext()).thenReturn(true, true, false);
-        ChangeStreamDocument streamDoc1  = mock(ChangeStreamDocument.class);
-        ChangeStreamDocument streamDoc2  = mock(ChangeStreamDocument.class);
+        when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
+        when(mongoDatabase.getCollection(anyString())).thenReturn(col);
+        when(col.watch()).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.iterator()).thenReturn(cursor);
+        when(cursor.hasNext()).thenReturn(true, true, false);
+        ChangeStreamDocument streamDoc1 = mock(ChangeStreamDocument.class);
+        ChangeStreamDocument streamDoc2 = mock(ChangeStreamDocument.class);
         Document doc1 = mock(Document.class);
         Document doc2 = mock(Document.class);
         BsonDocument bsonDoc1 = new BsonDocument("resumeToken1", new BsonInt32(123));
         BsonDocument bsonDoc2 = new BsonDocument("resumeToken2", new BsonInt32(234));
         when(streamDoc1.getResumeToken()).thenReturn(bsonDoc1);
         when(streamDoc2.getResumeToken()).thenReturn(bsonDoc2);
-        lenient().when(cursor.next())
-                .thenReturn(streamDoc1)
-                .thenReturn(streamDoc2);
+        when(cursor.next())
+            .thenReturn(streamDoc1)
+            .thenReturn(streamDoc2);
         when(streamDoc1.getFullDocument()).thenReturn(doc1);
         when(streamDoc2.getFullDocument()).thenReturn(doc2);
 
@@ -142,7 +141,8 @@ public class StreamWorkerTest {
     }
 
     @Test
-    void test_processStream_highCheckPointIntervalSuccess() {
+    void test_processStream_checkPointIntervalSuccess() {
+        when(mockSourceConfig.isAcknowledgmentsEnabled()).thenReturn(false)
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
         when(streamPartition.getCollection()).thenReturn("database.collection");
@@ -151,15 +151,15 @@ public class StreamWorkerTest {
         MongoCollection col = mock(MongoCollection.class);
         ChangeStreamIterable changeStreamIterable = mock(ChangeStreamIterable.class);
         MongoCursor cursor = mock(MongoCursor.class);
-        lenient().when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
-        lenient().when(mongoDatabase.getCollection(anyString())).thenReturn(col);
-        lenient().when(col.watch()).thenReturn(changeStreamIterable);
-        lenient().when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
-        lenient().when(changeStreamIterable.iterator()).thenReturn(cursor);
-        lenient().when(cursor.hasNext()).thenReturn(true, true, true, false);
-        ChangeStreamDocument streamDoc1  = mock(ChangeStreamDocument.class);
-        ChangeStreamDocument streamDoc2  = mock(ChangeStreamDocument.class);
-        ChangeStreamDocument streamDoc3  = mock(ChangeStreamDocument.class);
+        when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
+        when(mongoDatabase.getCollection(anyString())).thenReturn(col);
+        when(col.watch()).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.iterator()).thenReturn(cursor);
+        when(cursor.hasNext()).thenReturn(true, true, true, false);
+        ChangeStreamDocument streamDoc1 = mock(ChangeStreamDocument.class);
+        ChangeStreamDocument streamDoc2 = mock(ChangeStreamDocument.class);
+        ChangeStreamDocument streamDoc3 = mock(ChangeStreamDocument.class);
         Document doc1 = mock(Document.class);
         Document doc2 = mock(Document.class);
         Document doc3 = mock(Document.class);
@@ -169,10 +169,10 @@ public class StreamWorkerTest {
         when(streamDoc1.getResumeToken()).thenReturn(bsonDoc1);
         when(streamDoc2.getResumeToken()).thenReturn(bsonDoc2);
         when(streamDoc3.getResumeToken()).thenReturn(bsonDoc3);
-        lenient().when(cursor.next())
-                .thenReturn(streamDoc1)
-                .thenReturn(streamDoc2)
-                .thenReturn(streamDoc3);
+        when(cursor.next())
+            .thenReturn(streamDoc1)
+            .thenReturn(streamDoc2)
+            .thenReturn(streamDoc3);
         when(streamDoc1.getFullDocument()).thenReturn(doc1);
         when(streamDoc2.getFullDocument()).thenReturn(doc2);
         when(streamDoc3.getFullDocument()).thenReturn(doc3);
