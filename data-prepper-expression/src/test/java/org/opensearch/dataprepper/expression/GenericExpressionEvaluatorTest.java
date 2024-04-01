@@ -20,13 +20,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 
-import java.util.Calendar;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -178,7 +174,9 @@ class GenericExpressionEvaluatorTest {
             return Stream.of(
                     arguments("test-${foo}-${bar}", List.of("/foo", "/bar")),
                     arguments("test-${getMetadata(\"key\"}-${/test}", List.of("/test")),
-                    arguments("test-format", List.of())
+                    arguments("test-format", List.of()),
+                    arguments("test-${/test", List.of()),
+                    arguments(null, List.of())
             );
         }
     }
@@ -188,7 +186,9 @@ class GenericExpressionEvaluatorTest {
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
             return Stream.of(
                     arguments("test-${foo}-${bar}", List.of()),
-                    arguments("test-${getMetadata(\"key\")}-${/test}", List.of("getMetadata(\"key\")"))
+                    arguments("test-${getMetadata(\"key\")}-${/test}", List.of("getMetadata(\"key\")")),
+                    arguments("test-${/test", List.of()),
+                    arguments(null, List.of())
             );
         }
     }

@@ -5,12 +5,16 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.junit.jupiter.api.Test;
+
+import java.util.Collections;
+import java.util.List;
+
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.hamcrest.CoreMatchers.equalTo;
 
 public class ExpressionEvaluatorTest {
     private ExpressionEvaluator expressionEvaluator;
@@ -27,6 +31,16 @@ public class ExpressionEvaluatorTest {
         @Override
         public Boolean isValidFormatExpression(String format) {
             return true;
+        }
+
+        @Override
+        public List<String> extractDynamicKeysFromFormatExpression(String format) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<String> extractDynamicExpressionsFromFormatExpression(String format) {
+            return Collections.emptyList();
         }
     }
 
