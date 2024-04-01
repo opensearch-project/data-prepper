@@ -143,6 +143,7 @@ public class StreamWorkerTest {
     @Test
     void test_processStream_checkPointIntervalSuccess() {
         try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
+            when(mockPartitionCheckpoint.getGlobalStreamLoadStatus()).thenReturn(Optional.empty());
             when(mockSourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
             when(streamProgressState.shouldWaitForExport()).thenReturn(false);
             when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
@@ -183,6 +184,7 @@ public class StreamWorkerTest {
             streamWorker.processStream(streamPartition);
             verify(mongoClient, times(1)).close();
             verify(mongoDatabase).getCollection(eq("collection"));
+            verify(cursor, times(4)).hasNext();
         }
         //verify(mockRecordBufferWriter, times(2)).writeToBuffer(eq(null), any());
         verify(mockPartitionCheckpoint).checkpoint("{\"resumeToken3\": 456}", 3);
