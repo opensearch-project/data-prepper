@@ -85,6 +85,8 @@ public class AggregateProcessorTest {
 
     @Mock
     private AggregateActionResponse firstAggregateActionResponse;
+    @Mock
+    private AggregateActionResponse secondAggregateActionResponse;
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -305,6 +307,71 @@ public class AggregateProcessorTest {
 
             verify(actionHandleEventsDroppedCounter).increment(1);
             verify(actionHandleEventsOutCounter).increment(2);
+            verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
+            verifyNoInteractions(actionConcludeGroupEventsOutCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
+        }
+
+        @Test
+        void handleEvent_returning_no_condition_eliminates_one_record_local_only() {
+            final String eventKey = UUID.randomUUID().toString();
+            final String key1 = UUID.randomUUID().toString();
+            final String key2 = UUID.randomUUID().toString();
+            Event firstEvent;
+            Event secondEvent;
+            final Map<String, Object> eventMap1 = new HashMap<>();
+            eventMap1.put(eventKey, key1);
+
+            firstEvent = JacksonEvent.builder()
+                .withData(eventMap1)
+                .withEventType("event")
+                .build();
+
+            final Map<String, Object> eventMap2 = new HashMap<>();
+            eventMap2.put(eventKey, key2);
+
+            secondEvent = JacksonEvent.builder()
+                .withData(eventMap2)
+                .withEventType("event")
+                .build();
+
+
+            when(identificationKeysHasher.createIdentificationKeysMapFromEvent(firstEvent))
+                    .thenReturn(identificationKeysMap);
+            when(identificationKeysHasher.createIdentificationKeysMapFromEvent(secondEvent))
+                    .thenReturn(identificationKeysMap);
+            when(aggregateActionSynchronizer.handleEventForGroup(firstEvent, identificationKeysMap, aggregateGroup)).thenReturn(firstAggregateActionResponse);
+            when(aggregateActionSynchronizer.handleEventForGroup(secondEvent, identificationKeysMap, aggregateGroup)).thenReturn(secondAggregateActionResponse);
+            when(aggregateProcessorConfig.getWhenCondition()).thenReturn(null);
+            when(aggregateProcessorConfig.getLocalMode()).thenReturn(true);
+            final AggregateProcessor objectUnderTest = createObjectUnderTest();
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.emptyList());
+            when(aggregateActionResponse.getEvent()).thenReturn(event);
+            when(firstAggregateActionResponse.getEvent()).thenReturn(firstEvent);
+            when(secondAggregateActionResponse.getEvent()).thenReturn(secondEvent);
+
+            event.toMap().put(eventKey, key1);
+            List<Record<Event>> recordsIn = new ArrayList<>();
+            recordsIn.add(new Record<Event>(firstEvent));
+            recordsIn.add(new Record<Event>(secondEvent));
+            recordsIn.add(new Record<Event>(event));
+            Collection<Record<Event>> c = recordsIn;
+            assertThat(objectUnderTest.isApplicableEventForPeerForwarding(event), equalTo(false));
+            assertThat(objectUnderTest.isApplicableEventForPeerForwarding(firstEvent), equalTo(false));
+            assertThat(objectUnderTest.isApplicableEventForPeerForwarding(secondEvent), equalTo(false));
+            final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(c);
+
+            assertThat(recordsOut.size(), equalTo(3));
+            assertThat(recordsOut.get(0), notNullValue());
+            assertThat(recordsOut.get(0).getData(), equalTo(firstEvent));
+            assertThat(recordsOut.get(1), notNullValue());
+            assertThat(recordsOut.get(1).getData(), equalTo(secondEvent));
+            assertThat(recordsOut.get(2), notNullValue());
+            assertThat(recordsOut.get(2).getData(), equalTo(event));
+
+            verify(actionHandleEventsDroppedCounter).increment(0);
+            verify(actionHandleEventsOutCounter).increment(3);
             verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
             verifyNoInteractions(actionConcludeGroupEventsOutCounter);
 
