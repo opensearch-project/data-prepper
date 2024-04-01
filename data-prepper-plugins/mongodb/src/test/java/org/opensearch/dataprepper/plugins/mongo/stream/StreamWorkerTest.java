@@ -185,10 +185,10 @@ public class StreamWorkerTest {
             verify(mongoDatabase).getCollection(eq("collection"));
         }
         //verify(mockRecordBufferWriter, times(2)).writeToBuffer(eq(null), any());
-        verify(mockPartitionCheckpoint).checkpoint("{\"resumeToken2\": 234}", 2);
-        verify(successItemsCounter).increment(2);
         verify(mockPartitionCheckpoint).checkpoint("{\"resumeToken3\": 456}", 3);
         verify(successItemsCounter).increment(1);
+        verify(mockPartitionCheckpoint).checkpoint("{\"resumeToken2\": 234}", 2);
+        verify(successItemsCounter).increment(2);
         verify(failureItemsCounter, never()).increment();
 
     }

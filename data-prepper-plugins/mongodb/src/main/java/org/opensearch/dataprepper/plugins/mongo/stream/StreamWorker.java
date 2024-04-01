@@ -154,7 +154,7 @@ public class StreamWorker {
                             recordBufferWriter.writeToBuffer(acknowledgementSet, records);
                             successItemsCounter.increment(records.size());
                             records.clear();
-                            if (!sourceConfig.isAcknowledgmentsEnabled() && System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) {
+                            if (!sourceConfig.isAcknowledgmentsEnabled() && (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs)) {
                                 LOG.debug("Perform regular checkpointing for resume token {} at record count {}", checkPointToken, recordCount);
                                 partitionCheckpoint.checkpoint(checkPointToken, recordCount);
                                 lastCheckpointTime = System.currentTimeMillis();
