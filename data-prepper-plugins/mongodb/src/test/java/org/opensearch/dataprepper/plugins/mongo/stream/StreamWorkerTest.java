@@ -11,6 +11,7 @@ import io.micrometer.core.instrument.Counter;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.Document;
+import org.bson.json.JsonWriterSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -107,6 +108,8 @@ public class StreamWorkerTest {
         when(cursor.next())
             .thenReturn(streamDoc1)
             .thenReturn(streamDoc2);
+        when(doc1.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
+        when(doc2.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
         when(streamDoc1.getFullDocument()).thenReturn(doc1);
         when(streamDoc2.getFullDocument()).thenReturn(doc2);
 
@@ -175,6 +178,9 @@ public class StreamWorkerTest {
                 .thenReturn(streamDoc1)
                 .thenReturn(streamDoc2)
                 .thenReturn(streamDoc3);
+            when(doc1.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
+            when(doc2.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
+            when(doc3.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
             when(streamDoc1.getFullDocument()).thenReturn(doc1);
             when(streamDoc2.getFullDocument()).thenReturn(doc2);
             when(streamDoc3.getFullDocument()).thenReturn(doc3);
