@@ -22,7 +22,7 @@ dependencies {
     implementation libs.hadoop.common
     implementation 'org.apache.parquet:parquet-avro:1.13.1'
     implementation 'software.amazon.awssdk:apache-client'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.23'
     implementation libs.commons.lang3
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
