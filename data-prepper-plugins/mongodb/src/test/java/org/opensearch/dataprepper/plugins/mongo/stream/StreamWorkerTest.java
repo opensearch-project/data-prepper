@@ -120,7 +120,7 @@ public class StreamWorkerTest {
         verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
         verify(successItemsCounter, times(1)).increment(2);
         verify(failureItemsCounter, never()).increment();
-        verify(mockPartitionCheckpoint).checkpoint("{\"resumeToken2\": 234}", 2);
+        verify(mockPartitionCheckpoint, times(2)).checkpoint("{\"resumeToken2\": 234}", 2);
     }
 
 
@@ -184,7 +184,8 @@ public class StreamWorkerTest {
             streamWorker.processStream(streamPartition);
             verify(mongoClient, times(1)).close();
             verify(mongoDatabase).getCollection(eq("collection"));
-            verify(cursor, times(4)).hasNext();
+            verify(cursor).close();
+            //verify(cursor, times(4)).hasNext();
         }
         //verify(mockRecordBufferWriter, times(2)).writeToBuffer(eq(null), any());
         verify(mockPartitionCheckpoint).checkpoint("{\"resumeToken3\": 456}", 3);

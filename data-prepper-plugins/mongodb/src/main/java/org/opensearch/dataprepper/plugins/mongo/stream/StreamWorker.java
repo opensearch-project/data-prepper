@@ -178,10 +178,10 @@ public class StreamWorker {
                 acknowledgementSet = streamAcknowledgementManager.createAcknowledgementSet(checkPointToken, recordCount).orElse(null);
                 recordBufferWriter.writeToBuffer(acknowledgementSet, records);
                 successItemsCounter.increment(records.size());
-                // Do final checkpoint.
-                if (!sourceConfig.isAcknowledgmentsEnabled()) {
-                    partitionCheckpoint.checkpoint(checkPointToken, recordCount);
-                }
+            }
+            // Do final checkpoint.
+            if (!sourceConfig.isAcknowledgmentsEnabled()) {
+                partitionCheckpoint.checkpoint(checkPointToken, recordCount);
             }
 
             // shutdown acknowledgement monitoring thread
