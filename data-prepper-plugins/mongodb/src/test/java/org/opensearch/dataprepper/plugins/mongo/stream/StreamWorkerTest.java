@@ -175,9 +175,7 @@ public class StreamWorkerTest {
             when(streamDoc2.getResumeToken()).thenReturn(bsonDoc2);
             when(streamDoc3.getResumeToken()).thenReturn(bsonDoc3);
             when(cursor.next())
-                .thenReturn(streamDoc1)
-                .thenReturn(streamDoc2)
-                .thenReturn(streamDoc3);
+                .thenReturn(streamDoc1, streamDoc2, streamDoc3);
             when(doc1.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
             when(doc2.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
             when(doc3.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
