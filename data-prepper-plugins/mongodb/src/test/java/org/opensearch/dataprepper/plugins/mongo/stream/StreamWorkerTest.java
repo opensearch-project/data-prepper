@@ -166,7 +166,7 @@ public class StreamWorkerTest {
             Document doc3 = mock(Document.class);
             BsonDocument bsonDoc1 = new BsonDocument("resumeToken1", new BsonInt32(123));
             BsonDocument bsonDoc2 = new BsonDocument("resumeToken2", new BsonInt32(234));
-            BsonDocument bsonDoc3 = new BsonDocument("resumeToken2", new BsonInt32(456));
+            BsonDocument bsonDoc3 = new BsonDocument("resumeToken3", new BsonInt32(456));
             when(streamDoc1.getResumeToken()).thenReturn(bsonDoc1);
             when(streamDoc2.getResumeToken()).thenReturn(bsonDoc2);
             when(streamDoc3.getResumeToken()).thenReturn(bsonDoc3);
@@ -188,6 +188,7 @@ public class StreamWorkerTest {
         verify(successItemsCounter).increment(2);
         verify(successItemsCounter).increment(1);
         verify(failureItemsCounter, never()).increment();
-        verify(mockPartitionCheckpoint).checkpoint("{\"resumeToken2\": 456}", 3);
+        verify(mockPartitionCheckpoint).checkpoint("{\"resumeToken2\": 234}", 2);
+        verify(mockPartitionCheckpoint).checkpoint("{\"resumeToken3\": 456}", 3);
     }
 }
