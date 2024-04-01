@@ -142,48 +142,48 @@ public class StreamWorkerTest {
 
     @Test
     void test_processStream_checkPointIntervalSuccess() {
-        when(mockSourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
-        when(streamProgressState.shouldWaitForExport()).thenReturn(false);
-        when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
-        when(streamPartition.getCollection()).thenReturn("database.collection");
-        MongoClient mongoClient = mock(MongoClient.class);
-        MongoDatabase mongoDatabase = mock(MongoDatabase.class);
-        MongoCollection col = mock(MongoCollection.class);
-        ChangeStreamIterable changeStreamIterable = mock(ChangeStreamIterable.class);
-        MongoCursor cursor = mock(MongoCursor.class);
-        when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
-        when(mongoDatabase.getCollection(anyString())).thenReturn(col);
-        when(col.watch()).thenReturn(changeStreamIterable);
-        when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
-        when(changeStreamIterable.iterator()).thenReturn(cursor);
-        when(cursor.hasNext()).thenReturn(true, true, true, false);
-        ChangeStreamDocument streamDoc1 = mock(ChangeStreamDocument.class);
-        ChangeStreamDocument streamDoc2 = mock(ChangeStreamDocument.class);
-        ChangeStreamDocument streamDoc3 = mock(ChangeStreamDocument.class);
-        Document doc1 = mock(Document.class);
-        Document doc2 = mock(Document.class);
-        Document doc3 = mock(Document.class);
-        BsonDocument bsonDoc1 = new BsonDocument("resumeToken1", new BsonInt32(123));
-        BsonDocument bsonDoc2 = new BsonDocument("resumeToken2", new BsonInt32(234));
-        BsonDocument bsonDoc3 = new BsonDocument("resumeToken2", new BsonInt32(456));
-        when(streamDoc1.getResumeToken()).thenReturn(bsonDoc1);
-        when(streamDoc2.getResumeToken()).thenReturn(bsonDoc2);
-        when(streamDoc3.getResumeToken()).thenReturn(bsonDoc3);
-        when(cursor.next())
-            .thenReturn(streamDoc1)
-            .thenReturn(streamDoc2)
-            .thenReturn(streamDoc3);
-        when(streamDoc1.getFullDocument()).thenReturn(doc1);
-        when(streamDoc2.getFullDocument()).thenReturn(doc2);
-        when(streamDoc3.getFullDocument()).thenReturn(doc3);
-
         try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
+            when(mockSourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
+            when(streamProgressState.shouldWaitForExport()).thenReturn(false);
+            when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
+            when(streamPartition.getCollection()).thenReturn("database.collection");
+            MongoClient mongoClient = mock(MongoClient.class);
+            MongoDatabase mongoDatabase = mock(MongoDatabase.class);
+            MongoCollection col = mock(MongoCollection.class);
+            ChangeStreamIterable changeStreamIterable = mock(ChangeStreamIterable.class);
+            MongoCursor cursor = mock(MongoCursor.class);
+            when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
+            when(mongoDatabase.getCollection(anyString())).thenReturn(col);
+            when(col.watch()).thenReturn(changeStreamIterable);
+            when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
+            when(changeStreamIterable.iterator()).thenReturn(cursor);
+            when(cursor.hasNext()).thenReturn(true, true, true, false);
+            ChangeStreamDocument streamDoc1 = mock(ChangeStreamDocument.class);
+            ChangeStreamDocument streamDoc2 = mock(ChangeStreamDocument.class);
+            ChangeStreamDocument streamDoc3 = mock(ChangeStreamDocument.class);
+            Document doc1 = mock(Document.class);
+            Document doc2 = mock(Document.class);
+            Document doc3 = mock(Document.class);
+            BsonDocument bsonDoc1 = new BsonDocument("resumeToken1", new BsonInt32(123));
+            BsonDocument bsonDoc2 = new BsonDocument("resumeToken2", new BsonInt32(234));
+            BsonDocument bsonDoc3 = new BsonDocument("resumeToken2", new BsonInt32(456));
+            when(streamDoc1.getResumeToken()).thenReturn(bsonDoc1);
+            when(streamDoc2.getResumeToken()).thenReturn(bsonDoc2);
+            when(streamDoc3.getResumeToken()).thenReturn(bsonDoc3);
+            when(cursor.next())
+                .thenReturn(streamDoc1)
+                .thenReturn(streamDoc2)
+                .thenReturn(streamDoc3);
+            when(streamDoc1.getFullDocument()).thenReturn(doc1);
+            when(streamDoc2.getFullDocument()).thenReturn(doc2);
+            when(streamDoc3.getFullDocument()).thenReturn(doc3);
+
             mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
                     .thenReturn(mongoClient);
             streamWorker.processStream(streamPartition);
+            verify(mongoClient, times(1)).close();
+            verify(mongoDatabase).getCollection(eq("collection"));
         }
-        verify(mongoClient, times(1)).close();
-        verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockRecordBufferWriter, times(2)).writeToBuffer(eq(null), any());
         verify(successItemsCounter).increment(2);
         verify(successItemsCounter).increment(1);
