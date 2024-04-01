@@ -16,13 +16,13 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.23'
     implementation project(':data-prepper-plugins:avro-codecs')
     implementation libs.avro.core
     implementation libs.hadoop.common
     implementation 'org.apache.parquet:parquet-avro:1.13.1'
     implementation 'software.amazon.awssdk:apache-client'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.23'
     implementation libs.commons.lang3
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
