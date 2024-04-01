@@ -58,20 +58,21 @@ public class StreamAcknowledgementManager {
                 if (checkpointStatus.isAcknowledged()) {
                     lastCheckpointStatus = checkpoints.poll();
                     ackStatus.remove(checkpointStatus.getResumeToken());
-                    if (System.currentTimeMillis() - lastCheckpointTime > checkPointIntervalInMs) {
+                    if (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) {
                         LOG.debug("Perform regular checkpointing for resume token {} at record count {}", checkpointStatus.getResumeToken(), checkpointStatus.getRecordCount());
                         partitionCheckpoint.checkpoint(checkpointStatus.getResumeToken(), checkpointStatus.getRecordCount());
                         lastCheckpointTime = System.currentTimeMillis();
                     }
                 } else {
-                    LOG.info("Checkpoint not complete");
+                    LOG.debug("Checkpoint not complete for resume token {}", checkpointStatus.getResumeToken());
                     final Duration ackWaitDuration = Duration.between(Instant.ofEpochMilli(checkpointStatus.getCreateTimestamp()), Instant.now());
-                    // Acknowledgement not received for the checkpoint after twice ack wait duration
+                    // Acknowledgement not received for the checkpoint after twice ack wait time
                     if (ackWaitDuration.getSeconds() > partitionAcknowledgmentTimeout.getSeconds() * 2) {
                         // Give up partition and should interrupt parent thread to stop processing stream
                         if (lastCheckpointStatus != null && lastCheckpointStatus.isAcknowledged()) {
                             partitionCheckpoint.checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
                         }
+                        LOG.warn("Acknowledgement not received for the checkpoint {} past wait time. Giving up partition.", checkpointStatus.getResumeToken());
                         partitionCheckpoint.giveUpPartition();
                         Thread.currentThread().interrupt();
                     }

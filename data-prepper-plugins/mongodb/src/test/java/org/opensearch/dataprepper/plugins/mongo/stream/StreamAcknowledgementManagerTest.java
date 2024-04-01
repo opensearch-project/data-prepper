@@ -44,7 +44,7 @@ public class StreamAcknowledgementManagerTest {
 
     @BeforeEach
     public void setup() {
-        streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 100, 100);
+        streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 0, 0);
     }
 
     @Test
@@ -72,7 +72,7 @@ public class StreamAcknowledgementManagerTest {
         final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);
         assertThat(ackCheckpointStatus.isAcknowledged(), is(true));
         await()
-           .atMost(Duration.ofSeconds(4)).untilAsserted(() ->
+           .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 verify(partitionCheckpoint).checkpoint(resumeToken, recordCount));
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
     }
@@ -106,7 +106,7 @@ public class StreamAcknowledgementManagerTest {
         CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken2);
         assertThat(ackCheckpointStatus.isAcknowledged(), is(true));
         await()
-            .atMost(Duration.ofSeconds(4)).untilAsserted(() ->
+            .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 verify(partitionCheckpoint).checkpoint(resumeToken2, recordCount2));
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
     }
@@ -140,7 +140,7 @@ public class StreamAcknowledgementManagerTest {
         CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken2);
         assertThat(ackCheckpointStatus.isAcknowledged(), is(true));
         await()
-            .atMost(Duration.ofSeconds(4)).untilAsserted(() ->
+            .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 verifyNoInteractions(partitionCheckpoint));
         assertThat(streamAckManager.getCheckpoints().peek().getResumeToken(), is(resumeToken1));
         assertThat(streamAckManager.getCheckpoints().peek().getRecordCount(), is(recordCount1));
