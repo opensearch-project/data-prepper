@@ -142,7 +142,7 @@ public class StreamWorkerTest {
 
     @Test
     void test_processStream_checkPointIntervalSuccess() {
-        when(mockSourceConfig.isAcknowledgmentsEnabled()).thenReturn(false)
+        when(mockSourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
         when(streamPartition.getCollection()).thenReturn("database.collection");
