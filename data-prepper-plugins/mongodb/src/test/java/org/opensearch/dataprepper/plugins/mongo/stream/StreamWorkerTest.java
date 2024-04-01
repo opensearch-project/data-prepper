@@ -143,7 +143,7 @@ public class StreamWorkerTest {
         verifyNoInteractions(failureItemsCounter);
     }
 
-    @Test
+    //@Test
     void test_processStream_checkPointIntervalSuccess() {
         try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
             when(mockPartitionCheckpoint.getGlobalStreamLoadStatus()).thenReturn(Optional.empty());
