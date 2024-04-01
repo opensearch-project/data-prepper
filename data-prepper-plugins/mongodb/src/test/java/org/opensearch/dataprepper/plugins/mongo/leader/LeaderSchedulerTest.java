@@ -63,7 +63,8 @@ public class LeaderSchedulerTest {
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        given(collectionConfig.getIngestionMode()).willReturn(CollectionConfig.IngestionMode.EXPORT_STREAM);
+        given(collectionConfig.isExportRequired()).willReturn(true);
+        given(collectionConfig.isStreamRequired()).willReturn(true);
         given(collectionConfig.getExportConfig()).willReturn(exportConfig);
         given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
         given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
@@ -96,7 +97,7 @@ public class LeaderSchedulerTest {
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        given(collectionConfig.getIngestionMode()).willReturn(CollectionConfig.IngestionMode.EXPORT);
+        given(collectionConfig.isExportRequired()).willReturn(true);
         given(collectionConfig.getExportConfig()).willReturn(exportConfig);
         given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
         given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
@@ -129,7 +130,7 @@ public class LeaderSchedulerTest {
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        given(collectionConfig.getIngestionMode()).willReturn(CollectionConfig.IngestionMode.STREAM);
+        given(collectionConfig.isStreamRequired()).willReturn(true);
         given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();

@@ -32,6 +32,8 @@ public class StreamWorker {
     public static final String STREAM_PREFIX = "STREAM-";
     private static final Logger LOG = LoggerFactory.getLogger(StreamWorker.class);
     private static final int DEFAULT_EXPORT_COMPLETE_WAIT_INTERVAL_MILLIS = 90_000;
+    private static final int DEFAULT_MONITOR_WAIT_TIME_MS = 15_000;
+
     private static final String COLLECTION_SPLITTER = "\\.";
     static final String SUCCESS_ITEM_COUNTER_NAME = "streamRecordsSuccessTotal";
     static final String FAILURE_ITEM_COUNTER_NAME = "streamRecordsFailedTotal";
@@ -43,7 +45,9 @@ public class StreamWorker {
     private final Counter failureItemsCounter;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final  PluginMetrics pluginMetrics;
-    private final int defaultFlushBatchSize;
+    private final int recordFlushBatchSize;
+    final int checkPointIntervalInMs;
+    private final StreamAcknowledgementManager streamAcknowledgementManager;
 
     private final JsonWriterSettings writerSettings = JsonWriterSettings.builder()
             .outputMode(JsonMode.RELAXED)
@@ -55,26 +59,35 @@ public class StreamWorker {
                          final MongoDBSourceConfig sourceConfig,
                          final DataStreamPartitionCheckpoint partitionCheckpoint,
                          final PluginMetrics pluginMetrics,
-                         final int defaultFlushBatchSize
+                         final int recordFlushBatchSize,
+                         final int checkPointIntervalInMs
     ) {
         return new StreamWorker(recordBufferWriter, acknowledgementSetManager,
-                sourceConfig, partitionCheckpoint, pluginMetrics, defaultFlushBatchSize);
+                sourceConfig, partitionCheckpoint, pluginMetrics, recordFlushBatchSize, checkPointIntervalInMs);
     }
     public StreamWorker(final RecordBufferWriter recordBufferWriter,
                         final AcknowledgementSetManager acknowledgementSetManager,
                         final MongoDBSourceConfig sourceConfig,
                         final DataStreamPartitionCheckpoint partitionCheckpoint,
                         final PluginMetrics pluginMetrics,
-                        final int defaultFlushBatchSize
+                        final int recordFlushBatchSize,
+                        final int checkPointIntervalInMs
                         ) {
         this.recordBufferWriter = recordBufferWriter;
         this.sourceConfig = sourceConfig;
         this.partitionCheckpoint = partitionCheckpoint;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginMetrics = pluginMetrics;
-        this.defaultFlushBatchSize = defaultFlushBatchSize;
+        this.recordFlushBatchSize = recordFlushBatchSize;
+        this.checkPointIntervalInMs = checkPointIntervalInMs;
         this.successItemsCounter = pluginMetrics.counter(SUCCESS_ITEM_COUNTER_NAME);
         this.failureItemsCounter = pluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME);
+        streamAcknowledgementManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint,
+                sourceConfig.getPartitionAcknowledgmentTimeout(), DEFAULT_MONITOR_WAIT_TIME_MS, checkPointIntervalInMs);
+        if (sourceConfig.isAcknowledgmentsEnabled()) {
+            // starts acknowledgement monitoring thread
+            streamAcknowledgementManager.init();
+        }
     }
 
     private MongoCursor<ChangeStreamDocument<Document>> getChangeStreamCursor(final MongoCollection<Document> collection,
@@ -101,7 +114,7 @@ public class StreamWorker {
         if (collectionDBNameList.size() < 2) {
             throw new IllegalArgumentException("Invalid Collection Name. Must be in db.collection format");
         }
-        int recordCount = 0;
+        long recordCount = 0;
         final List<String> records = new ArrayList<>();
         // TODO: create acknowledgementSet
         AcknowledgementSet acknowledgementSet = null;
@@ -120,10 +133,11 @@ public class StreamWorker {
                         Thread.sleep(DEFAULT_EXPORT_COMPLETE_WAIT_INTERVAL_MILLIS);
                     } catch (final InterruptedException ex) {
                         LOG.info("The StreamScheduler was interrupted while waiting to retry, stopping processing");
+                        Thread.currentThread().interrupt();
                         break;
                     }
                 }
-
+                long lastCheckpointTime = System.currentTimeMillis();
                 while (cursor.hasNext() && !Thread.currentThread().isInterrupted()) {
                     try {
                         final ChangeStreamDocument<Document> document = cursor.next();
@@ -134,17 +148,24 @@ public class StreamWorker {
                         records.add(record);
                         recordCount += 1;
 
-                        if (recordCount % defaultFlushBatchSize == 0) {
-                            LOG.debug("Write to buffer for line " + (recordCount - defaultFlushBatchSize) + " to " + recordCount);
+                        if (recordCount % recordFlushBatchSize == 0) {
+                            LOG.debug("Write to buffer for line " + (recordCount - recordFlushBatchSize) + " to " + recordCount);
+                            acknowledgementSet = streamAcknowledgementManager.createAcknowledgementSet(checkPointToken, recordCount).orElse(null);
                             recordBufferWriter.writeToBuffer(acknowledgementSet, records);
+                            successItemsCounter.increment(records.size());
                             records.clear();
-                            LOG.debug("Perform regular checkpointing for stream Loader");
-                            partitionCheckpoint.checkpoint(checkPointToken, recordCount);
-                            successItemsCounter.increment();
+                            if (!sourceConfig.isAcknowledgmentsEnabled() && System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) {
+                                LOG.debug("Perform regular checkpointing for resume token {} at record count {}", checkPointToken, recordCount);
+                                partitionCheckpoint.checkpoint(checkPointToken, recordCount);
+                                lastCheckpointTime = System.currentTimeMillis();
+                            }
                         }
                     } catch (Exception e) {
-                        LOG.error("Failed to add record to buffer with error {}", e.getMessage());
-                        failureItemsCounter.increment();
+                        // TODO handle documents with size > 10 MB.
+                        // this will only happen if writing to buffer gets interrupted from shutdown,
+                        // otherwise it's infinite backoff and retry
+                        LOG.error("Failed to add records to buffer with error {}", e.getMessage());
+                        failureItemsCounter.increment(records.size());
                     }
                 }
             }
@@ -152,12 +173,21 @@ public class StreamWorker {
             LOG.error("Exception connecting to cluster and processing stream", e);
             throw new RuntimeException(e);
         } finally {
-            LOG.info("Checkpointing processing stream");
             if (!records.isEmpty()) {
+                LOG.info("Flushing and checkpointing last processed record batch from the stream before terminating");
+                acknowledgementSet = streamAcknowledgementManager.createAcknowledgementSet(checkPointToken, recordCount).orElse(null);
                 recordBufferWriter.writeToBuffer(acknowledgementSet, records);
+                successItemsCounter.increment(records.size());
+                // Do final checkpoint.
+                if (!sourceConfig.isAcknowledgmentsEnabled()) {
+                    partitionCheckpoint.checkpoint(checkPointToken, recordCount);
+                }
             }
-            // Do final checkpoint.
-            partitionCheckpoint.checkpoint(checkPointToken, recordCount);
+
+            // shutdown acknowledgement monitoring thread
+            if (streamAcknowledgementManager != null) {
+                streamAcknowledgementManager.shutdown();
+            }
         }
     }
 }

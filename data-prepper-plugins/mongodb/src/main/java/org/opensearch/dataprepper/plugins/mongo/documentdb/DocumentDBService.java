@@ -6,6 +6,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.export.MongoDBExportPartitionSupplier;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler;
@@ -15,6 +16,8 @@ import org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -24,11 +27,7 @@ public class DocumentDBService {
     private final PluginMetrics pluginMetrics;
     private final MongoDBSourceConfig sourceConfig;
     private final AcknowledgementSetManager acknowledgementSetManager;
-    private final ExecutorService executor;
-    private ExportScheduler exportScheduler;
-    private ExportWorker exportWorker;
-    private LeaderScheduler leaderScheduler;
-    private StreamScheduler streamScheduler;
+    private ExecutorService executor;
     private final MongoDBExportPartitionSupplier mongoDBExportPartitionSupplier;
     public DocumentDBService(final EnhancedSourceCoordinator sourceCoordinator,
                              final MongoDBSourceConfig sourceConfig,
@@ -38,9 +37,7 @@ public class DocumentDBService {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceConfig = sourceConfig;
-
         this.mongoDBExportPartitionSupplier = new MongoDBExportPartitionSupplier(sourceConfig);
-        executor = Executors.newFixedThreadPool(4);
     }
 
     /**
@@ -51,15 +48,25 @@ public class DocumentDBService {
      * @param buffer Data Prepper Buffer
      */
     public void start(Buffer<Record<Event>> buffer) {
-        this.exportScheduler = new ExportScheduler(sourceCoordinator, mongoDBExportPartitionSupplier, pluginMetrics);
-        this.exportWorker = new ExportWorker(sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, sourceConfig);
-        this.leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig.getCollections());
-        this.streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, pluginMetrics);
+        final List<Runnable> runnableList = new ArrayList<>();
 
-        executor.submit(leaderScheduler);
-        executor.submit(exportScheduler);
-        executor.submit(exportWorker);
-        executor.submit(streamScheduler);
+        final LeaderScheduler leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig.getCollections());
+        runnableList.add(leaderScheduler);
+
+        if (sourceConfig.getCollections().stream().anyMatch(CollectionConfig::isExportRequired)) {
+            final ExportScheduler exportScheduler = new ExportScheduler(sourceCoordinator, mongoDBExportPartitionSupplier, pluginMetrics);
+            final ExportWorker exportWorker = new ExportWorker(sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, sourceConfig);
+            runnableList.add(exportScheduler);
+            runnableList.add(exportWorker);
+        }
+
+        if (sourceConfig.getCollections().stream().anyMatch(CollectionConfig::isStreamRequired)) {
+            final StreamScheduler streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, pluginMetrics);
+            runnableList.add(streamScheduler);
+        }
+
+        executor = Executors.newFixedThreadPool(runnableList.size());
+        runnableList.forEach(executor::submit);
     }
 
     /**
@@ -67,7 +74,9 @@ public class DocumentDBService {
      * Each scheduler must implement logic for gracefully shutdown.
      */
     public void shutdown() {
-        LOG.info("shutdown DocumentDB Service scheduler and worker");
-        executor.shutdownNow();
+        if (executor != null) {
+            LOG.info("shutdown DocumentDB Service scheduler and worker");
+            executor.shutdownNow();
+        }
     }
 }

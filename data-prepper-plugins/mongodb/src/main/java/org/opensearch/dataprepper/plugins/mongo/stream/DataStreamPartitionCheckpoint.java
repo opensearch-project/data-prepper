@@ -76,4 +76,8 @@ public class DataStreamPartitionCheckpoint {
     public void updateStreamPartitionForAcknowledgmentWait(final Duration acknowledgmentSetTimeout) {
         enhancedSourceCoordinator.saveProgressStateForPartition(streamPartition, acknowledgmentSetTimeout);
     }
+
+    public void giveUpPartition() {
+        enhancedSourceCoordinator.giveUpPartition(streamPartition);
+    }
 }

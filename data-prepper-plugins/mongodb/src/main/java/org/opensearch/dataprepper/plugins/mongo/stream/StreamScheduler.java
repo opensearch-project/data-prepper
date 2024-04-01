@@ -23,6 +23,7 @@ import java.util.Optional;
 public class StreamScheduler implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(StreamScheduler.class);
     private static final int DEFAULT_TAKE_LEASE_INTERVAL_MILLIS = 60_000;
+    static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 120_000;
     /**
      * Number of records to accumulate before flushing to buffer
      */
@@ -30,7 +31,7 @@ public class StreamScheduler implements Runnable {
     /**
      * Number of stream records to accumulate to write to buffer and checkpoint
      */
-    private static final int DEFAULT_STREAM_BATCH_SIZE = 100;
+    static final int DEFAULT_STREAM_BATCH_SIZE = 100;
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final RecordBufferWriter recordBufferWriter;
@@ -62,7 +63,7 @@ public class StreamScheduler implements Runnable {
                     streamPartition = (StreamPartition) sourcePartition.get();
                     final DataStreamPartitionCheckpoint partitionCheckpoint = new DataStreamPartitionCheckpoint(sourceCoordinator, streamPartition);
                     final StreamWorker streamWorker = StreamWorker.create(recordBufferWriter, acknowledgementSetManager,
-                            sourceConfig, partitionCheckpoint, pluginMetrics, DEFAULT_STREAM_BATCH_SIZE);
+                            sourceConfig, partitionCheckpoint, pluginMetrics, DEFAULT_STREAM_BATCH_SIZE, DEFAULT_CHECKPOINT_INTERVAL_MILLS);
                     streamWorker.processStream(streamPartition);
                 }
                 try {

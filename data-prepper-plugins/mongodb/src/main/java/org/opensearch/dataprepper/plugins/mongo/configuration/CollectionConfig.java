@@ -44,6 +44,16 @@ public class CollectionConfig {
         return this.exportConfig;
     }
 
+    public boolean isExportRequired() {
+        return this.ingestionMode == CollectionConfig.IngestionMode.EXPORT_STREAM ||
+                this.ingestionMode == CollectionConfig.IngestionMode.EXPORT;
+    }
+
+    public boolean isStreamRequired() {
+        return this.ingestionMode == CollectionConfig.IngestionMode.EXPORT_STREAM ||
+                this.ingestionMode == CollectionConfig.IngestionMode.STREAM;
+    }
+
     public static class ExportConfig {
         private static final int DEFAULT_ITEMS_PER_PARTITION = 4000;
         @JsonProperty("items_per_partition")
