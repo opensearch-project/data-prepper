@@ -168,9 +168,9 @@ public class StreamWorkerTest {
             Document doc1 = mock(Document.class);
             Document doc2 = mock(Document.class);
             Document doc3 = mock(Document.class);
-            BsonDocument bsonDoc1 = new BsonDocument("resumeToken1", new BsonInt32(123));
-            BsonDocument bsonDoc2 = new BsonDocument("resumeToken2", new BsonInt32(234));
-            BsonDocument bsonDoc3 = new BsonDocument("resumeToken3", new BsonInt32(456));
+            BsonDocument bsonDoc1 = mock(BsonDocument.class); //new BsonDocument("resumeToken1", new BsonInt32(123));
+            BsonDocument bsonDoc2 = mock(BsonDocument.class); //new BsonDocument("resumeToken2", new BsonInt32(234));
+            BsonDocument bsonDoc3 = mock(BsonDocument.class); //new BsonDocument("resumeToken3", new BsonInt32(456));
             when(streamDoc1.getResumeToken()).thenReturn(bsonDoc1);
             when(streamDoc2.getResumeToken()).thenReturn(bsonDoc2);
             when(streamDoc3.getResumeToken()).thenReturn(bsonDoc3);
@@ -184,6 +184,12 @@ public class StreamWorkerTest {
             when(streamDoc1.getFullDocument()).thenReturn(doc1);
             when(streamDoc2.getFullDocument()).thenReturn(doc2);
             when(streamDoc3.getFullDocument()).thenReturn(doc3);
+            final String resumeToken1 = UUID.randomUUID().toString();
+            final String resumeToken2 = UUID.randomUUID().toString();
+            final String resumeToken3 = UUID.randomUUID().toString();
+            when(bsonDoc1.toJson(any(JsonWriterSettings.class))).thenReturn(resumeToken1);
+            when(bsonDoc2.toJson(any(JsonWriterSettings.class))).thenReturn(resumeToken2);
+            when(bsonDoc3.toJson(any(JsonWriterSettings.class))).thenReturn(resumeToken3);
 
             mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
                     .thenReturn(mongoClient);
@@ -192,11 +198,11 @@ public class StreamWorkerTest {
             verify(mongoDatabase).getCollection(eq("collection"));
             verify(cursor).close();
             //verify(cursor, times(4)).hasNext();
+            verify(mockPartitionCheckpoint).checkpoint(resumeToken3, 3);
+            verify(successItemsCounter).increment(1);
+            verify(mockPartitionCheckpoint).checkpoint(resumeToken2, 2);
         }
         //verify(mockRecordBufferWriter, times(2)).writeToBuffer(eq(null), any());
-        verify(mockPartitionCheckpoint).checkpoint("{\"resumeToken3\": 456}", 3);
-        verify(successItemsCounter).increment(1);
-        verify(mockPartitionCheckpoint).checkpoint("{\"resumeToken2\": 234}", 2);
         verify(successItemsCounter).increment(2);
         verify(failureItemsCounter, never()).increment();
 
