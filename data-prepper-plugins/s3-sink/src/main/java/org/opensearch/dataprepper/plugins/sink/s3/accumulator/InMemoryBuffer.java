@@ -20,8 +20,8 @@ import java.util.function.Supplier;
  */
 public class InMemoryBuffer implements Buffer {
 
-    private static final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    private static final ByteArrayPositionOutputStream byteArrayPositionOutputStream = new ByteArrayPositionOutputStream(byteArrayOutputStream);
+    private final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    private final ByteArrayPositionOutputStream byteArrayPositionOutputStream = new ByteArrayPositionOutputStream(byteArrayOutputStream);
     private final S3Client s3Client;
     private final Supplier<String> bucketSupplier;
     private final Supplier<String> keySupplier;

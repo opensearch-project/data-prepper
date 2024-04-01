@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.model.event.Event;
 
+import java.util.List;
+
 /**
  * @since 1.3
  * ExpressionEvaluator interface to abstract the parse and evaluate implementations.
@@ -36,4 +38,8 @@ public interface ExpressionEvaluator {
     Boolean isValidExpressionStatement(final String statement);
 
     Boolean isValidFormatExpression(final String format);
+
+    List<String> extractDynamicKeysFromFormatExpression(final String format);
+
+    List<String> extractDynamicExpressionsFromFormatExpression(final String format);
 }

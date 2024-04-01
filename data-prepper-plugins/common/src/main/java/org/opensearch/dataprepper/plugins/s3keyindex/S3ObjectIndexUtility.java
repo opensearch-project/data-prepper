@@ -31,6 +31,8 @@ public class S3ObjectIndexUtility {
     // For a string like "data-prepper-%{yyyy-MM}", "yyyy-MM" is matched.
     private static final String TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION = "\\%\\{(.*?)\\}";
 
+    private static final Pattern DATE_TIME_PATTERN = Pattern.compile(TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION);
+
     private static final ZoneId UTC_ZONE_ID = ZoneId.of(TimeZone.getTimeZone("UTC").getID());
 
     S3ObjectIndexUtility() {
@@ -76,8 +78,7 @@ public class S3ObjectIndexUtility {
      * @return returns date time formatter
      */
     public static DateTimeFormatter validateAndGetDateTimeFormatter(final String indexAlias) {
-        final Pattern pattern = Pattern.compile(TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION);
-        final Matcher timePatternMatcher = pattern.matcher(indexAlias);
+        final Matcher timePatternMatcher = DATE_TIME_PATTERN.matcher(indexAlias);
         if (timePatternMatcher.find()) {
             final String timePattern = timePatternMatcher.group(1);
             if (timePatternMatcher.find()) { // check if there is a one more match.

@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
@@ -58,6 +59,8 @@ import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
+import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifierFactory;
+import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -90,6 +93,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -107,6 +111,9 @@ class S3SinkServiceIT {
     private static final String FILE_SUFFIX = ".parquet";
     @Mock
     private S3SinkConfig s3SinkConfig;
+
+    private S3GroupManager s3GroupManager;
+
     @Mock
     private ThresholdOptions thresholdOptions;
     @Mock
@@ -125,6 +132,9 @@ class S3SinkServiceIT {
     private Counter numberOfRecordsFailedCounter;
     @Mock
     private DistributionSummary s3ObjectSizeSummary;
+
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
 
     private OutputCodec codec;
     private KeyGenerator keyGenerator;
@@ -157,6 +167,11 @@ class S3SinkServiceIT {
         lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED)).
                 thenReturn(numberOfRecordsFailedCounter);
         lenient().when(pluginMetrics.summary(S3SinkService.S3_OBJECTS_SIZE)).thenReturn(s3ObjectSizeSummary);
+
+        when(expressionEvaluator.extractDynamicExpressionsFromFormatExpression(anyString()))
+                .thenReturn(Collections.emptyList());
+        when(expressionEvaluator.extractDynamicKeysFromFormatExpression(anyString()))
+                .thenReturn(Collections.emptyList());
     }
 
     @Test
@@ -171,7 +186,7 @@ class S3SinkServiceIT {
 
     void configureNewLineCodec() {
         codec = new NdjsonOutputCodec(ndjsonOutputConfig);
-        keyGenerator = new KeyGenerator(s3SinkConfig, StandardExtensionProvider.create(codec, CompressionOption.NONE));
+        keyGenerator = new KeyGenerator(s3SinkConfig, StandardExtensionProvider.create(codec, CompressionOption.NONE), expressionEvaluator);
     }
 
     @Test
@@ -240,7 +255,10 @@ class S3SinkServiceIT {
 
     private S3SinkService createObjectUnderTest() {
         OutputCodecContext codecContext = new OutputCodecContext("Tag", Collections.emptyList(), Collections.emptyList());
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, codecContext, s3Client, keyGenerator, Duration.ofSeconds(5), pluginMetrics);
+        final S3GroupIdentifierFactory groupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig);
+        s3GroupManager = new S3GroupManager(s3SinkConfig, groupIdentifierFactory, bufferFactory, s3Client);
+
+        return new S3SinkService(s3SinkConfig, codec, codecContext, s3Client, keyGenerator, Duration.ofSeconds(5), pluginMetrics, s3GroupManager);
     }
 
     private int gets3ObjectCount() {
@@ -352,7 +370,7 @@ class S3SinkServiceIT {
         parquetOutputCodecConfig = new ParquetOutputCodecConfig();
         parquetOutputCodecConfig.setSchema(parseSchema().toString());
         codec = new ParquetOutputCodec(parquetOutputCodecConfig);
-        keyGenerator = new KeyGenerator(s3SinkConfig, StandardExtensionProvider.create(codec, CompressionOption.NONE));
+        keyGenerator = new KeyGenerator(s3SinkConfig, StandardExtensionProvider.create(codec, CompressionOption.NONE), expressionEvaluator);
     }
 
     private Collection<Record<Event>> getRecordList() {

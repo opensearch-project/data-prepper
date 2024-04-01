@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.s3;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
@@ -27,6 +28,8 @@ import org.opensearch.dataprepper.plugins.sink.s3.accumulator.CompressionBufferF
 import org.opensearch.dataprepper.plugins.sink.s3.codec.BufferedCodec;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
+import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifierFactory;
+import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -42,6 +45,8 @@ import java.util.Collection;
 public class S3Sink extends AbstractSink<Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(S3Sink.class);
+
+    private static final Duration RETRY_FLUSH_BACKOFF = Duration.ofSeconds(5);
     private final S3SinkConfig s3SinkConfig;
     private final OutputCodec codec;
     private volatile boolean sinkInitialized;
@@ -59,7 +64,8 @@ public class S3Sink extends AbstractSink<Record<Event>> {
                   final S3SinkConfig s3SinkConfig,
                   final PluginFactory pluginFactory,
                   final SinkContext sinkContext,
-                  final AwsCredentialsSupplier awsCredentialsSupplier) {
+                  final AwsCredentialsSupplier awsCredentialsSupplier,
+                  final ExpressionEvaluator expressionEvaluator) {
         super(pluginSetting);
         this.s3SinkConfig = s3SinkConfig;
         this.sinkContext = sinkContext;
@@ -82,13 +88,27 @@ public class S3Sink extends AbstractSink<Record<Event>> {
         bufferFactory = new CompressionBufferFactory(innerBufferFactory, compressionEngine, codec);
 
         ExtensionProvider extensionProvider = StandardExtensionProvider.create(codec, compressionOption);
-        KeyGenerator keyGenerator = new KeyGenerator(s3SinkConfig, extensionProvider);
+        KeyGenerator keyGenerator = new KeyGenerator(s3SinkConfig, extensionProvider, expressionEvaluator);
+
+        if (s3SinkConfig.getObjectKeyOptions().getPathPrefix() != null &&
+            !expressionEvaluator.isValidFormatExpression(s3SinkConfig.getObjectKeyOptions().getPathPrefix())) {
+            throw new InvalidPluginConfigurationException("path_prefix is not a valid format expression");
+        }
+
+        if (s3SinkConfig.getObjectKeyOptions().getNamePattern() != null &&
+                !expressionEvaluator.isValidFormatExpression(s3SinkConfig.getObjectKeyOptions().getNamePattern())) {
+            throw new InvalidPluginConfigurationException("name_pattern is not a valid format expression");
+        }
 
         S3OutputCodecContext s3OutputCodecContext = new S3OutputCodecContext(OutputCodecContext.fromSinkContext(sinkContext), compressionOption);
 
         codec.validateAgainstCodecContext(s3OutputCodecContext);
 
-        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, s3OutputCodecContext, s3Client, keyGenerator, Duration.ofSeconds(5), pluginMetrics);
+        final S3GroupIdentifierFactory s3GroupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig);
+        final S3GroupManager s3GroupManager = new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, s3Client);
+
+
+        s3SinkService = new S3SinkService(s3SinkConfig, codec, s3OutputCodecContext, s3Client, keyGenerator, RETRY_FLUSH_BACKOFF, pluginMetrics, s3GroupManager);
     }
 
     @Override

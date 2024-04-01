@@ -5,15 +5,22 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.ObjectKey;
 
 public class KeyGenerator {
     private final S3SinkConfig s3SinkConfig;
     private final ExtensionProvider extensionProvider;
 
-    public KeyGenerator(S3SinkConfig s3SinkConfig, ExtensionProvider extensionProvider) {
+    private final ExpressionEvaluator expressionEvaluator;
+
+    public KeyGenerator(final S3SinkConfig s3SinkConfig,
+                        final ExtensionProvider extensionProvider,
+                        final ExpressionEvaluator expressionEvaluator) {
         this.s3SinkConfig = s3SinkConfig;
         this.extensionProvider = extensionProvider;
+        this.expressionEvaluator = expressionEvaluator;
     }
 
     /**
@@ -21,9 +28,9 @@ public class KeyGenerator {
      *
      * @return object key path.
      */
-    String generateKey() {
-        final String pathPrefix = ObjectKey.buildingPathPrefix(s3SinkConfig);
-        final String namePattern = ObjectKey.objectFileName(s3SinkConfig, extensionProvider.getExtension());
+    public String generateKeyForEvent(final Event event) {
+        final String pathPrefix = ObjectKey.buildingPathPrefix(s3SinkConfig, event, expressionEvaluator);
+        final String namePattern = ObjectKey.objectFileName(s3SinkConfig, extensionProvider.getExtension(), event, expressionEvaluator);
         return (!pathPrefix.isEmpty()) ? pathPrefix + namePattern : namePattern;
     }
 }
