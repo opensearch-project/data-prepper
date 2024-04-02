@@ -132,6 +132,5 @@ public class ExportPartitionWorkerTest {
         verify(mockRecordBufferWriter).writeToBuffer(eq(mockAcknowledgementSet), any());
         verify(successItemsCounter, times(2)).increment();
         verify(failureItemsCounter, never()).increment();
-        executorService.shutdownNow();
     }
 }

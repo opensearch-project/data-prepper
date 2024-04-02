@@ -26,7 +26,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,6 +39,8 @@ public class StreamAcknowledgementManagerTest {
     private Duration timeout;
     @Mock
     private AcknowledgementSet acknowledgementSet;
+    @Mock
+    private Consumer<Void> stopWorkerConsumer;
     private StreamAcknowledgementManager streamAckManager;
 
     @BeforeEach
@@ -55,7 +56,9 @@ public class StreamAcknowledgementManagerTest {
 
     @Test
     public void createAcknowledgementSet_enabled_ackSetWithAck() {
-        streamAckManager.init();
+        when(timeout.getSeconds()).thenReturn(10_000L);
+        streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 0, 0);
+        streamAckManager.init(stopWorkerConsumer);
         final String resumeToken = UUID.randomUUID().toString();
         final long recordCount = new Random().nextLong();
         when(acknowledgementSetManager.create(any(Consumer.class), eq(timeout))).thenReturn(acknowledgementSet);
@@ -79,7 +82,9 @@ public class StreamAcknowledgementManagerTest {
 
     @Test
     public void createAcknowledgementSet_enabled_multipleAckSetWithAck() {
-        streamAckManager.init();
+        when(timeout.getSeconds()).thenReturn(10_000L);
+        streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 0, 0);
+        streamAckManager.init(stopWorkerConsumer);
         final String resumeToken1 = UUID.randomUUID().toString();
         final long recordCount1 = new Random().nextLong();
         when(acknowledgementSetManager.create(any(Consumer.class), eq(timeout))).thenReturn(acknowledgementSet);
@@ -113,7 +118,7 @@ public class StreamAcknowledgementManagerTest {
 
     @Test
     public void createAcknowledgementSet_enabled_multipleAckSetWithAckFailure() {
-        streamAckManager.init();
+        streamAckManager.init(stopWorkerConsumer);
         final String resumeToken1 = UUID.randomUUID().toString();
         final long recordCount1 = new Random().nextLong();
         when(acknowledgementSetManager.create(any(Consumer.class), eq(timeout))).thenReturn(acknowledgementSet);
@@ -141,14 +146,15 @@ public class StreamAcknowledgementManagerTest {
         assertThat(ackCheckpointStatus.isAcknowledged(), is(true));
         await()
             .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                verifyNoInteractions(partitionCheckpoint));
+                verify(partitionCheckpoint).giveUpPartition());
         assertThat(streamAckManager.getCheckpoints().peek().getResumeToken(), is(resumeToken1));
         assertThat(streamAckManager.getCheckpoints().peek().getRecordCount(), is(recordCount1));
+        verify(stopWorkerConsumer).accept(null);
     }
 
     @Test
     public void createAcknowledgementSet_enabled_ackSetWithNoAck() {
-        streamAckManager.init();
+        streamAckManager.init(stopWorkerConsumer);
         final String resumeToken = UUID.randomUUID().toString();
         final long recordCount = new Random().nextLong();
         when(acknowledgementSetManager.create(any(Consumer.class), eq(timeout))).thenReturn(acknowledgementSet);
@@ -164,5 +170,8 @@ public class StreamAcknowledgementManagerTest {
         final ConcurrentHashMap<String, CheckpointStatus> ackStatus = streamAckManager.getAcknowledgementStatus();
         final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);
         assertThat(ackCheckpointStatus.isAcknowledged(), is(false));
-    }
+        await()
+            .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+                verify(stopWorkerConsumer).accept(null));
+}
 }

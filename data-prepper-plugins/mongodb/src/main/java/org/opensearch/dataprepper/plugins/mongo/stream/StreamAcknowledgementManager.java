@@ -14,11 +14,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 public class StreamAcknowledgementManager {
     private static final Logger LOG = LoggerFactory.getLogger(StreamAcknowledgementManager.class);
-    private final ConcurrentLinkedQueue<CheckpointStatus> checkpoints = new ConcurrentLinkedQueue<>();
-    private final ConcurrentHashMap<String, CheckpointStatus> ackStatus = new ConcurrentHashMap<>();
+    private ConcurrentLinkedQueue<CheckpointStatus> checkpoints;
+    private ConcurrentHashMap<String, CheckpointStatus> ackStatus;
 
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final DataStreamPartitionCheckpoint partitionCheckpoint;
@@ -43,13 +44,14 @@ public class StreamAcknowledgementManager {
         executorService = Executors.newSingleThreadExecutor();
     }
 
-    void init() {
+    void init(final Consumer<Void> stopWorkerConsumer) {
         enableAcknowledgement = true;
-        final Thread currentThread = Thread.currentThread();
-        executorService.submit(() -> monitorCheckpoints(executorService, currentThread));
+        executorService.submit(() -> monitorCheckpoints(executorService, stopWorkerConsumer));
     }
 
-    private void monitorCheckpoints(final ExecutorService executorService, final Thread parentThread) {
+    private void monitorCheckpoints(final ExecutorService executorService, final Consumer<Void> stopWorkerConsumer) {
+        checkpoints = new ConcurrentLinkedQueue<>();
+        ackStatus = new ConcurrentHashMap<>();
         long lastCheckpointTime = System.currentTimeMillis();
         CheckpointStatus lastCheckpointStatus = null;
         while (!Thread.currentThread().isInterrupted()) {
@@ -67,14 +69,14 @@ public class StreamAcknowledgementManager {
                     LOG.debug("Checkpoint not complete for resume token {}", checkpointStatus.getResumeToken());
                     final Duration ackWaitDuration = Duration.between(Instant.ofEpochMilli(checkpointStatus.getCreateTimestamp()), Instant.now());
                     // Acknowledgement not received for the checkpoint after twice ack wait time
-                    if (ackWaitDuration.getSeconds() > partitionAcknowledgmentTimeout.getSeconds() * 2) {
+                    if (ackWaitDuration.getSeconds() >= partitionAcknowledgmentTimeout.getSeconds() * 2) {
                         // Give up partition and should interrupt parent thread to stop processing stream
                         if (lastCheckpointStatus != null && lastCheckpointStatus.isAcknowledged()) {
                             partitionCheckpoint.checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
                         }
                         LOG.warn("Acknowledgement not received for the checkpoint {} past wait time. Giving up partition.", checkpointStatus.getResumeToken());
                         partitionCheckpoint.giveUpPartition();
-                        Thread.currentThread().interrupt();
+                        break;
                     }
                 }
             }
@@ -82,10 +84,10 @@ public class StreamAcknowledgementManager {
             try {
                 Thread.sleep(acknowledgementMonitorWaitTimeInMs);
             } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
+                break;
             }
         }
-        parentThread.interrupt();
+        stopWorkerConsumer.accept(null);
         executorService.shutdown();
     }
 

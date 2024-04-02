@@ -13,7 +13,6 @@ import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.client.MongoDBConnection;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
@@ -32,8 +31,6 @@ public class StreamWorker {
     public static final String STREAM_PREFIX = "STREAM-";
     private static final Logger LOG = LoggerFactory.getLogger(StreamWorker.class);
     private static final int DEFAULT_EXPORT_COMPLETE_WAIT_INTERVAL_MILLIS = 90_000;
-    private static final int DEFAULT_MONITOR_WAIT_TIME_MS = 15_000;
-
     private static final String COLLECTION_SPLITTER = "\\.";
     static final String SUCCESS_ITEM_COUNTER_NAME = "streamRecordsSuccessTotal";
     static final String FAILURE_ITEM_COUNTER_NAME = "streamRecordsFailedTotal";
@@ -43,11 +40,12 @@ public class StreamWorker {
     private final MongoDBSourceConfig sourceConfig;
     private final Counter successItemsCounter;
     private final Counter failureItemsCounter;
-    private final AcknowledgementSetManager acknowledgementSetManager;
+    private final StreamAcknowledgementManager streamAcknowledgementManager;
     private final  PluginMetrics pluginMetrics;
     private final int recordFlushBatchSize;
     final int checkPointIntervalInMs;
-    private final StreamAcknowledgementManager streamAcknowledgementManager;
+    private boolean stopWorker = false;
+
 
     private final JsonWriterSettings writerSettings = JsonWriterSettings.builder()
             .outputMode(JsonMode.RELAXED)
@@ -55,19 +53,19 @@ public class StreamWorker {
             .build();
 
     public static StreamWorker create(final RecordBufferWriter recordBufferWriter,
-                         final AcknowledgementSetManager acknowledgementSetManager,
                          final MongoDBSourceConfig sourceConfig,
+                         final StreamAcknowledgementManager streamAcknowledgementManager,
                          final DataStreamPartitionCheckpoint partitionCheckpoint,
                          final PluginMetrics pluginMetrics,
                          final int recordFlushBatchSize,
                          final int checkPointIntervalInMs
     ) {
-        return new StreamWorker(recordBufferWriter, acknowledgementSetManager,
-                sourceConfig, partitionCheckpoint, pluginMetrics, recordFlushBatchSize, checkPointIntervalInMs);
+        return new StreamWorker(recordBufferWriter, sourceConfig, streamAcknowledgementManager, partitionCheckpoint,
+                pluginMetrics, recordFlushBatchSize, checkPointIntervalInMs);
     }
     public StreamWorker(final RecordBufferWriter recordBufferWriter,
-                        final AcknowledgementSetManager acknowledgementSetManager,
                         final MongoDBSourceConfig sourceConfig,
+                        final StreamAcknowledgementManager streamAcknowledgementManager,
                         final DataStreamPartitionCheckpoint partitionCheckpoint,
                         final PluginMetrics pluginMetrics,
                         final int recordFlushBatchSize,
@@ -75,18 +73,16 @@ public class StreamWorker {
                         ) {
         this.recordBufferWriter = recordBufferWriter;
         this.sourceConfig = sourceConfig;
+        this.streamAcknowledgementManager = streamAcknowledgementManager;
         this.partitionCheckpoint = partitionCheckpoint;
-        this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginMetrics = pluginMetrics;
         this.recordFlushBatchSize = recordFlushBatchSize;
         this.checkPointIntervalInMs = checkPointIntervalInMs;
         this.successItemsCounter = pluginMetrics.counter(SUCCESS_ITEM_COUNTER_NAME);
         this.failureItemsCounter = pluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME);
-        streamAcknowledgementManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint,
-                sourceConfig.getPartitionAcknowledgmentTimeout(), DEFAULT_MONITOR_WAIT_TIME_MS, checkPointIntervalInMs);
         if (sourceConfig.isAcknowledgmentsEnabled()) {
             // starts acknowledgement monitoring thread
-            streamAcknowledgementManager.init();
+            streamAcknowledgementManager.init((Void) -> stop());
         }
     }
 
@@ -138,7 +134,7 @@ public class StreamWorker {
                     }
                 }
                 long lastCheckpointTime = System.currentTimeMillis();
-                while (cursor.hasNext() && !Thread.currentThread().isInterrupted()) {
+                while (cursor.hasNext() && !Thread.currentThread().isInterrupted() && !stopWorker) {
                     try {
                         final ChangeStreamDocument<Document> document = cursor.next();
                         final String record = document.getFullDocument().toJson(writerSettings);
@@ -189,5 +185,9 @@ public class StreamWorker {
                 streamAcknowledgementManager.shutdown();
             }
         }
+    }
+
+    void stop() {
+        stopWorker = true;
     }
 }

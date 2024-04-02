@@ -16,6 +16,7 @@ dependencies {
 
     testImplementation testLibs.mockito.inline
     testImplementation testLibs.bundles.junit
+    testImplementation testLibs.slf4j.simple
     testImplementation project(path: ':data-prepper-test-common')
 
 }
