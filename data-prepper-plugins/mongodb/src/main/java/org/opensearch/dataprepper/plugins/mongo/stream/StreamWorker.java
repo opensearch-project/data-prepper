@@ -145,7 +145,7 @@ public class StreamWorker {
                         recordCount += 1;
 
                         if (recordCount % recordFlushBatchSize == 0) {
-                            LOG.debug("Write to buffer for line " + (recordCount - recordFlushBatchSize) + " to " + recordCount);
+                            LOG.debug("Write to buffer for line {} to {}", (recordCount - recordFlushBatchSize), recordCount);
                             acknowledgementSet = streamAcknowledgementManager.createAcknowledgementSet(checkPointToken, recordCount).orElse(null);
                             recordBufferWriter.writeToBuffer(acknowledgementSet, records);
                             successItemsCounter.increment(records.size());

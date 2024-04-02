@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.mongo.documentdb;
 
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -65,7 +66,7 @@ public class DocumentDBService {
             runnableList.add(streamScheduler);
         }
 
-        executor = Executors.newFixedThreadPool(runnableList.size());
+        executor = Executors.newFixedThreadPool(runnableList.size(), BackgroundThreadFactory.defaultExecutorThreadFactory("documentdb-source"));
         runnableList.forEach(executor::submit);
     }
 

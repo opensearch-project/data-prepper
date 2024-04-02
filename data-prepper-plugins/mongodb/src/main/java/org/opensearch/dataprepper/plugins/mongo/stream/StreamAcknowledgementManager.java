@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.mongo.stream;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.mongo.model.CheckpointStatus;
@@ -18,9 +19,8 @@ import java.util.function.Consumer;
 
 public class StreamAcknowledgementManager {
     private static final Logger LOG = LoggerFactory.getLogger(StreamAcknowledgementManager.class);
-    private ConcurrentLinkedQueue<CheckpointStatus> checkpoints;
-    private ConcurrentHashMap<String, CheckpointStatus> ackStatus;
-
+    private final ConcurrentLinkedQueue<CheckpointStatus> checkpoints = new ConcurrentLinkedQueue<>();
+    private final ConcurrentHashMap<String, CheckpointStatus> ackStatus = new ConcurrentHashMap<>();
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final DataStreamPartitionCheckpoint partitionCheckpoint;
 
@@ -41,17 +41,15 @@ public class StreamAcknowledgementManager {
         this.partitionAcknowledgmentTimeout = partitionAcknowledgmentTimeout;
         this.acknowledgementMonitorWaitTimeInMs = acknowledgementMonitorWaitTimeInMs;
         this.checkPointIntervalInMs = checkPointIntervalInMs;
-        executorService = Executors.newSingleThreadExecutor();
+        executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("mongodb-stream-ack-monitor"));
     }
 
     void init(final Consumer<Void> stopWorkerConsumer) {
         enableAcknowledgement = true;
-        executorService.submit(() -> monitorCheckpoints(executorService, stopWorkerConsumer));
+        executorService.submit(() -> monitorAcknowledgment(executorService, stopWorkerConsumer));
     }
 
-    private void monitorCheckpoints(final ExecutorService executorService, final Consumer<Void> stopWorkerConsumer) {
-        checkpoints = new ConcurrentLinkedQueue<>();
-        ackStatus = new ConcurrentHashMap<>();
+    private void monitorAcknowledgment(final ExecutorService executorService, final Consumer<Void> stopWorkerConsumer) {
         long lastCheckpointTime = System.currentTimeMillis();
         CheckpointStatus lastCheckpointStatus = null;
         while (!Thread.currentThread().isInterrupted()) {
