@@ -273,6 +273,10 @@ subprojects {
 
     test {
         useJUnitPlatform()
+        reports {
+            junitXml.required
+            html.required
+        }
     }
 
     build.dependsOn test
@@ -280,6 +284,7 @@ subprojects {
         dependsOn test // tests are required to run before generating the report
         reports {
             xml.required
+            html.required
         }
     }
 
