@@ -32,6 +32,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler.DEFAULT_CHECKPOINT_INTERVAL_MILLS;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -85,9 +86,9 @@ public class StreamSchedulerTest {
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> {
             try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class)) {
-                streamWorkerMockedStatic.when(() -> StreamWorker.create(any(RecordBufferWriter.class), eq(acknowledgementSetManager),
-                                eq(sourceConfig), any(DataStreamPartitionCheckpoint.class), eq(pluginMetrics), eq(100)))
-                        .thenReturn(streamWorker);
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(any(RecordBufferWriter.class), eq(sourceConfig),
+                    any(StreamAcknowledgementManager.class), any(DataStreamPartitionCheckpoint.class), eq(pluginMetrics), eq(100), eq(DEFAULT_CHECKPOINT_INTERVAL_MILLS)))
+                    .thenReturn(streamWorker);
                 streamScheduler.run();
             }
         });

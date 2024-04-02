@@ -12,10 +12,12 @@ dependencies {
     implementation project(path: ':data-prepper-plugins:aws-plugin-api')
     implementation project(path: ':data-prepper-plugins:buffer-common')
     implementation project(':data-prepper-plugins:http-common')
+    implementation project(path: ':data-prepper-plugins:common')
 
 
     testImplementation testLibs.mockito.inline
     testImplementation testLibs.bundles.junit
+    testImplementation testLibs.slf4j.simple
     testImplementation project(path: ':data-prepper-test-common')
 
 }
