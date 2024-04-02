@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.plugins.mongo.model.CheckpointStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

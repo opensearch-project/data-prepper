@@ -8,7 +8,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.plugins.mongo.model.CheckpointStatus;
 
 import java.time.Duration;
 import java.util.List;
@@ -83,7 +82,7 @@ public class StreamAcknowledgementManagerTest {
 
     @Test
     public void createAcknowledgementSet_enabled_multipleAckSetWithAck() {
-        when(timeout.getSeconds()).thenReturn(10_000L);
+        lenient().when(timeout.getSeconds()).thenReturn(10_000L);
         streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 0, 0);
         streamAckManager.init(stopWorkerConsumer);
         final String resumeToken1 = UUID.randomUUID().toString();
@@ -174,5 +173,5 @@ public class StreamAcknowledgementManagerTest {
         await()
             .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 verify(stopWorkerConsumer).accept(null));
-}
+    }
 }
