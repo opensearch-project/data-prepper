@@ -24,6 +24,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,7 +57,7 @@ public class StreamAcknowledgementManagerTest {
 
     @Test
     public void createAcknowledgementSet_enabled_ackSetWithAck() {
-        when(timeout.getSeconds()).thenReturn(10_000L);
+        lenient().when(timeout.getSeconds()).thenReturn(10_000L);
         streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 0, 0);
         streamAckManager.init(stopWorkerConsumer);
         final String resumeToken = UUID.randomUUID().toString();
