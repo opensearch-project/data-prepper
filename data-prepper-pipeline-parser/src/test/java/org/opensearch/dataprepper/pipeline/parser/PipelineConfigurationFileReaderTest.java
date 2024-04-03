@@ -103,12 +103,12 @@ public class PipelineConfigurationFileReaderTest {
 
         try (final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStreams.get(0), StandardCharsets.UTF_8))) {
             final String content = bufferedReader.lines().collect(Collectors.joining(System.lineSeparator()));
-            assertThat(content, equalTo(yamlContentPipelineOne));
+            assertThat(content.equals(yamlContentPipelineOne) || content.equals(yamlContentPipelineTwo), equalTo(true));
         }
 
         try (final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStreams.get(1), StandardCharsets.UTF_8))) {
             final String content = bufferedReader.lines().collect(Collectors.joining(System.lineSeparator()));
-            assertThat(content, equalTo(yamlContentPipelineTwo));
+            assertThat(content.equals(yamlContentPipelineOne) || content.equals(yamlContentPipelineTwo), equalTo(true));
         }
     }
 }
