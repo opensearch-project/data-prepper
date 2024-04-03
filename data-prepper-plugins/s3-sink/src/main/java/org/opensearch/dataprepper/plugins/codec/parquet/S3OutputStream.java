@@ -15,6 +15,8 @@ import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartResponse;
 
@@ -26,6 +28,8 @@ import java.util.function.Supplier;
 
 public class S3OutputStream extends PositionOutputStream {
     private static final Logger LOG = LoggerFactory.getLogger(S3OutputStream.class);
+
+    static final String ACCESS_DENIED = "Access Denied";
 
     /**
      * Default chunk size is 10MB
@@ -41,6 +45,8 @@ public class S3OutputStream extends PositionOutputStream {
      * The key (path) name within the bucket
      */
     private final String key;
+
+    private String targetBucket;
 
     /**
      * The temporary buffer used for storing the chunks
@@ -66,20 +72,30 @@ public class S3OutputStream extends PositionOutputStream {
     private boolean open;
 
     /**
+     * The default bucket to send to when upload fails with dynamic bucket
+     */
+    private String defaultBucket;
+
+    /**
      * Creates a new S3 OutputStream
      *
      * @param s3Client the AmazonS3 client
      * @param bucketSupplier  name of the bucket
      * @param keySupplier     path within the bucket
      */
-    public S3OutputStream(final S3Client s3Client, Supplier<String> bucketSupplier, Supplier<String> keySupplier) {
+    public S3OutputStream(final S3Client s3Client,
+                          final Supplier<String> bucketSupplier,
+                          final Supplier<String> keySupplier,
+                          final String defaultBucket) {
         this.s3Client = s3Client;
         this.bucket = bucketSupplier.get();
+        this.targetBucket = bucketSupplier.get();
         this.key = keySupplier.get();
         buf = new byte[BUFFER_SIZE];
         position = 0;
         etags = new ArrayList<>();
         open = true;
+        this.defaultBucket = defaultBucket;
     }
 
     @Override
@@ -157,7 +173,7 @@ public class S3OutputStream extends PositionOutputStream {
                     .parts(completedParts)
                     .build();
             CompleteMultipartUploadRequest completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
-                    .bucket(bucket)
+                    .bucket(targetBucket)
                     .key(key)
                     .uploadId(uploadId)
                     .multipartUpload(completedMultipartUpload)
@@ -184,21 +200,27 @@ public class S3OutputStream extends PositionOutputStream {
 
     private void possiblyStartMultipartUpload() {
         if (uploadId == null) {
-            CreateMultipartUploadRequest uploadRequest = CreateMultipartUploadRequest.builder()
-                    .bucket(bucket)
-                    .key(key)
-                    .build();
-            CreateMultipartUploadResponse multipartUpload = s3Client.createMultipartUpload(uploadRequest);
-            uploadId = multipartUpload.uploadId();
 
-            LOG.debug("Created multipart upload {} bucket='{}',key='{}'.", uploadId, bucket, key);
+            try {
+                createMultipartUpload();
+            } catch (final S3Exception e) {
+                if (defaultBucket != null && (e instanceof NoSuchBucketException || e.getMessage().contains(ACCESS_DENIED))) {
+                    targetBucket = defaultBucket;
+                    LOG.warn("Bucket {} could not be accessed to create multi-part upload, attempting to create multi-part upload to default_bucket {}", bucket, defaultBucket);
+                    createMultipartUpload();
+                } else {
+                    throw e;
+                }
+            }
+
+            LOG.debug("Created multipart upload {} bucket='{}',key='{}'.", uploadId, targetBucket, key);
         }
     }
 
     private void uploadPart() {
         int partNumber = etags.size() + 1;
         UploadPartRequest uploadRequest = UploadPartRequest.builder()
-                .bucket(bucket)
+                .bucket(targetBucket)
                 .key(key)
                 .uploadId(uploadId)
                 .partNumber(partNumber)
@@ -216,6 +238,15 @@ public class S3OutputStream extends PositionOutputStream {
     @Override
     public long getPos() throws IOException {
         return position + (long) etags.size() * (long) BUFFER_SIZE;
+    }
+
+    private void createMultipartUpload() {
+        CreateMultipartUploadRequest uploadRequest = CreateMultipartUploadRequest.builder()
+                .bucket(targetBucket)
+                .key(key)
+                .build();
+        CreateMultipartUploadResponse multipartUpload = s3Client.createMultipartUpload(uploadRequest);
+        uploadId = multipartUpload.uploadId();
     }
 }
 

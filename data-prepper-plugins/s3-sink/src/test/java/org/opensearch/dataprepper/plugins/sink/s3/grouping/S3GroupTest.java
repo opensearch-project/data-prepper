@@ -53,8 +53,8 @@ public class S3GroupTest {
         final S3Group largeGroup = new S3Group(mock(S3GroupIdentifier.class), largeBuffer, mock(OutputCodec.class));
         final S3Group anotherLargeGroup = new S3Group(mock(S3GroupIdentifier.class), equalBuffer, mock(OutputCodec.class));
 
-        assertThat(smallGroup.compareTo(largeGroup), equalTo(1));
-        assertThat(largeGroup.compareTo(smallGroup), equalTo(-1));
+        assertThat(smallGroup.compareTo(largeGroup), equalTo(-1));
+        assertThat(largeGroup.compareTo(smallGroup), equalTo(1));
         assertThat(largeGroup.compareTo(anotherLargeGroup), equalTo(0));
     }
 }

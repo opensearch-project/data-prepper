@@ -25,6 +25,8 @@ public class ObjectKey {
     private static final String TIME_PATTERN_REGULAR_EXPRESSION = "\\%\\{.*?\\}";
     private static final Pattern SIMPLE_DURATION_PATTERN = Pattern.compile(TIME_PATTERN_REGULAR_EXPRESSION);
 
+    static final String REPLACEMENT_FOR_NON_EXISTENT_KEYS = "";
+
     private ObjectKey(){}
 
     /**
@@ -47,7 +49,7 @@ public class ObjectKey {
                                                      final Event event,
                                                      final ExpressionEvaluator expressionEvaluator) {
         String pathPrefix = s3SinkConfig.getObjectKeyOptions().getPathPrefix();
-        String pathPrefixExpressionResult = expressionEvaluator != null ? event.formatString(pathPrefix, expressionEvaluator) : pathPrefix;
+        String pathPrefixExpressionResult = expressionEvaluator != null ? event.formatString(pathPrefix, expressionEvaluator, REPLACEMENT_FOR_NON_EXISTENT_KEYS) : pathPrefix;
         StringBuilder s3ObjectPath = new StringBuilder();
         if (pathPrefixExpressionResult != null && !pathPrefixExpressionResult.isEmpty()) {
             String[] pathPrefixList = pathPrefixExpressionResult.split("\\/");
@@ -74,7 +76,7 @@ public class ObjectKey {
                                         final Event event,
                                         final ExpressionEvaluator expressionEvaluator) {
         String configNamePattern = s3SinkConfig.getObjectKeyOptions().getNamePattern();
-        String configNamePatternExpressionResult = event.formatString(configNamePattern, expressionEvaluator);
+        String configNamePatternExpressionResult = event.formatString(configNamePattern, expressionEvaluator, REPLACEMENT_FOR_NON_EXISTENT_KEYS);
         int extensionIndex = configNamePatternExpressionResult.lastIndexOf('.');
         if (extensionIndex > 0) {
             return S3ObjectIndexUtility.getObjectNameWithDateTimeId(configNamePatternExpressionResult.substring(0, extensionIndex)) + "."

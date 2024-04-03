@@ -112,7 +112,7 @@ public class KafkaCustomProducer<T> {
     public void produceRecords(final Record<Event> record) throws Exception {
         bufferedEventHandles.add(record.getData().getEventHandle());
         Event event = getEvent(record);
-        final String key = event.formatString(kafkaProducerConfig.getPartitionKey(), expressionEvaluator);
+        final String key = event.formatString(kafkaProducerConfig.getPartitionKey(), expressionEvaluator, null);
         try {
             if (Objects.equals(serdeFormat, MessageFormat.JSON.toString())) {
                 publishJsonMessage(record, key);

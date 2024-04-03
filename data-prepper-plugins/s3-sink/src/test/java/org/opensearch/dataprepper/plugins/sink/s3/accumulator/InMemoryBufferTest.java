@@ -51,7 +51,7 @@ class InMemoryBufferTest {
 
     @Test
     void test_with_write_event_into_buffer() throws IOException {
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null);
 
         while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
             OutputStream outputStream = inMemoryBuffer.getOutputStream();
@@ -79,7 +79,7 @@ class InMemoryBufferTest {
      */
     void getDuration_provides_duration_within_expected_range() throws IOException, InterruptedException {
         Instant startTime = Instant.now();
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null);
         Instant endTime = Instant.now();
 
 
@@ -103,7 +103,7 @@ class InMemoryBufferTest {
 
     @Test
     void test_with_write_event_into_buffer_and_flush_toS3() throws IOException {
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null);
 
         while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
             OutputStream outputStream = inMemoryBuffer.getOutputStream();
@@ -118,7 +118,7 @@ class InMemoryBufferTest {
 
     @Test
     void test_uploadedToS3_success() {
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null);
         Assertions.assertNotNull(inMemoryBuffer);
         assertDoesNotThrow(() -> {
             inMemoryBuffer.flushToS3();
@@ -127,7 +127,7 @@ class InMemoryBufferTest {
 
     @Test
     void test_uploadedToS3_fails() {
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null);
         Assertions.assertNotNull(inMemoryBuffer);
         SdkClientException sdkClientException = mock(SdkClientException.class);
         when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
@@ -139,14 +139,14 @@ class InMemoryBufferTest {
 
     @Test
     void getOutputStream_is_PositionOutputStream() {
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null);
 
         assertThat(inMemoryBuffer.getOutputStream(), instanceOf(PositionOutputStream.class));
     }
 
     @Test
     void getOutputStream_getPos_equals_written_size() throws IOException {
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null);
 
         while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
             OutputStream outputStream = inMemoryBuffer.getOutputStream();
@@ -163,7 +163,7 @@ class InMemoryBufferTest {
 
     @Test
     void getSize_across_multiple_in_sequence() throws IOException {
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null);
 
         while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
             OutputStream outputStream = inMemoryBuffer.getOutputStream();
@@ -173,7 +173,7 @@ class InMemoryBufferTest {
         }
         assertThat(inMemoryBuffer.getSize(), equalTo((long) MAX_EVENTS * 1000));
 
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null);
         assertThat(inMemoryBuffer.getSize(), equalTo(0L));
 
         while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {

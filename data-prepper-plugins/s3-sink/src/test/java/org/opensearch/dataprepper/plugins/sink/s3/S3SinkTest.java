@@ -165,4 +165,11 @@ class S3SinkTest {
 
         assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
+
+    @Test
+    void invalid_bucket_name_expression_format_throws_InvalidPluginConfigurationException() {
+        when(expressionEvaluator.isValidFormatExpression(s3SinkConfig.getBucketName())).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
 }

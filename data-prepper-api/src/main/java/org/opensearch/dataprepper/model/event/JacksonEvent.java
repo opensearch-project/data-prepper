@@ -320,7 +320,7 @@ public class JacksonEvent implements Event {
      */
     @Override
     public String formatString(final String format) {
-        return formatStringInternal(format, null);
+        return formatStringInternal(format, null, null);
     }
 
     /**
@@ -333,11 +333,11 @@ public class JacksonEvent implements Event {
      * @throws RuntimeException if the format is incorrect or the value is not a string
      */
     @Override
-    public String formatString(final String format, final ExpressionEvaluator expressionEvaluator) {
-        return formatStringInternal(format, expressionEvaluator);
+    public String formatString(final String format, final ExpressionEvaluator expressionEvaluator, final String replacementForFailures) {
+        return formatStringInternal(format, expressionEvaluator, replacementForFailures);
     }
 
-    private String formatStringInternal(final String format, final ExpressionEvaluator expressionEvaluator) {
+    private String formatStringInternal(final String format, final ExpressionEvaluator expressionEvaluator, final String replacementForFailures) {
         int fromIndex = 0;
         String result = "";
         int position = 0;
@@ -361,7 +361,11 @@ public class JacksonEvent implements Event {
                 if (expressionEvaluator != null && expressionEvaluator.isValidExpressionStatement(name)) {
                     val = expressionEvaluator.evaluate(name, this);
                 } else {
-                    throw new EventKeyNotFoundException(String.format("The key %s could not be found in the Event when formatting", name));
+                    if (replacementForFailures == null) {
+                        throw new EventKeyNotFoundException(String.format("The key %s could not be found in the Event when formatting", name));
+                    }
+
+                    val = replacementForFailures;
                 }
             }
 

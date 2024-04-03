@@ -89,7 +89,7 @@ public class S3SinkIT {
 
     @Mock
     private PluginSetting pluginSetting;
-    @Mock
+    @Mock(stubOnly = true)
     private S3SinkConfig s3SinkConfig;
     @Mock
     private PluginFactory pluginFactory;
@@ -166,6 +166,8 @@ public class S3SinkIT {
                 .build();
 
         when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(true);
+
+        when(s3SinkConfig.getDefaultBucket()).thenReturn(null);
     }
 
     private S3Sink createObjectUnderTest() {

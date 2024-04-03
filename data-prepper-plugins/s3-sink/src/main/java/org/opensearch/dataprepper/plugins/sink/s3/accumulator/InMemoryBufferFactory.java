@@ -11,7 +11,10 @@ import java.util.function.Supplier;
 
 public class InMemoryBufferFactory implements BufferFactory {
     @Override
-    public Buffer getBuffer(S3Client s3Client, Supplier<String> bucketSupplier, Supplier<String> keySupplier) {
-        return new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+    public Buffer getBuffer(final S3Client s3Client,
+                            final Supplier<String> bucketSupplier,
+                            final Supplier<String> keySupplier,
+                            final String defaultBucket) {
+        return new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket);
     }
 }
