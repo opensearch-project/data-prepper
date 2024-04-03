@@ -109,7 +109,7 @@ public class ExportPartitionWorker implements Runnable {
             int lastRecordNumberProcessed = 0;
             final List<String> records = new ArrayList<>();
             try (MongoCursor<Document> cursor = col.find(query).iterator()) {
-                while (cursor.hasNext()) {
+                while (cursor.hasNext() && !Thread.currentThread().isInterrupted()) {
                     if (shouldStop) {
                         partitionCheckpoint.checkpoint(lastRecordNumberProcessed);
                         LOG.warn("Loading data query {} was interrupted by a shutdown signal, giving up ownership of " +

@@ -101,15 +101,7 @@ public class LeaderScheduler implements Runnable {
         }
     }
 
-    private boolean isExportRequired(final CollectionConfig.IngestionMode ingestionMode) {
-        return ingestionMode == CollectionConfig.IngestionMode.EXPORT_STREAM ||
-                ingestionMode == CollectionConfig.IngestionMode.EXPORT;
-    }
 
-    private boolean isStreamRequired(final CollectionConfig.IngestionMode ingestionMode) {
-        return ingestionMode == CollectionConfig.IngestionMode.EXPORT_STREAM ||
-                ingestionMode == CollectionConfig.IngestionMode.STREAM;
-    }
     private void init() {
         LOG.info("Try to initialize DocumentDB Leader Partition");
 
@@ -120,13 +112,13 @@ public class LeaderScheduler implements Runnable {
             coordinator.createPartition(new GlobalState(collectionConfig.getCollection(), null));
 
             final Instant startTime = Instant.now();
-            final boolean exportRequired = isExportRequired(collectionConfig.getIngestionMode());
+            final boolean exportRequired = collectionConfig.isExportRequired();
             LOG.info("Ingestion mode {} for Collection {}", collectionConfig.getIngestionMode(), collectionConfig.getCollection());
             if (exportRequired) {
                 createExportPartition(collectionConfig, startTime);
             }
 
-            if (isStreamRequired(collectionConfig.getIngestionMode())) {
+            if (collectionConfig.isStreamRequired()) {
                 createStreamPartition(collectionConfig, startTime, exportRequired);
             }
 

@@ -50,16 +50,16 @@ public class DataStreamPartitionCheckpoint {
     }
 
     /**
-     * This method is to do a checkpoint with latest sequence number processed.
-     * Note that this should be called on a regular basis even there are no changes to sequence number
+     * This method is to do a checkpoint with latest resume token processed.
+     * Note that this should be called on a regular basis even there are no changes to resume token
      * As the checkpoint will also extend the timeout for the lease
      *
-     * @param resumeToken
-     * @param recordNumber The last record number
+     * @param resumeToken checkpoint token to start resuming the stream when MongoDB/DocumentDB cursor is open
+     * @param recordCount The last processed record count
      */
-    public void checkpoint(final String resumeToken, final long recordNumber) {
-        LOG.debug("Checkpoint stream partition for collection " + streamPartition.getCollection() + " with record number " + recordNumber);
-        setProgressState(resumeToken, recordNumber);
+    public void checkpoint(final String resumeToken, final long recordCount) {
+        LOG.debug("Checkpoint stream partition for collection " + streamPartition.getCollection() + " with record number " + recordCount);
+        setProgressState(resumeToken, recordCount);
         enhancedSourceCoordinator.saveProgressStateForPartition(streamPartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
     }
 
@@ -75,5 +75,9 @@ public class DataStreamPartitionCheckpoint {
 
     public void updateStreamPartitionForAcknowledgmentWait(final Duration acknowledgmentSetTimeout) {
         enhancedSourceCoordinator.saveProgressStateForPartition(streamPartition, acknowledgmentSetTimeout);
+    }
+
+    public void giveUpPartition() {
+        enhancedSourceCoordinator.giveUpPartition(streamPartition);
     }
 }

@@ -152,11 +152,11 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
     @Override
     public boolean isApplicableEventForPeerForwarding(Event event) {
-        if (whenCondition == null) {
-            return true;
-        }
         if (localMode) {
             return false;
+        }
+        if (whenCondition == null) {
+            return true;
         }
         return expressionEvaluator.evaluateConditional(whenCondition, event);
     }

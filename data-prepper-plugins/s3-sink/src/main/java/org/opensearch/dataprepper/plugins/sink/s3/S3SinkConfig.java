@@ -37,7 +37,7 @@ public class S3SinkConfig {
     private String bucketName;
 
     @JsonProperty("object_key")
-    private ObjectKeyOptions objectKeyOptions;
+    private ObjectKeyOptions objectKeyOptions = new ObjectKeyOptions();
 
     @JsonProperty("compression")
     private CompressionOption compression = CompressionOption.NONE;

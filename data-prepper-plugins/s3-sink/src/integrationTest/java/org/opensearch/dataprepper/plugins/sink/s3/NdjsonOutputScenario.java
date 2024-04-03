@@ -56,6 +56,25 @@ public class NdjsonOutputScenario implements OutputScenario {
         assertThat(sampledData, equalTo(sampleEventData.size()));
     }
 
+    public void validateDynamicPartition(int expectedRecords, int partitionNumber, final File actualContentFile, final CompressionScenario compressionScenario) throws IOException {
+        final InputStream inputStream = new BufferedInputStream(new FileInputStream(actualContentFile), 64 * 1024);
+
+        final Scanner scanner = new Scanner(inputStream);
+
+        int count = 0;
+        while (scanner.hasNext()) {
+
+            final String actualJsonString = scanner.next();
+
+            final Map<String, Object> actualData = OBJECT_MAPPER.readValue(actualJsonString, Map.class);
+            assertThat(actualData.get("sequence"), equalTo(partitionNumber));
+
+            count++;
+        }
+
+        assertThat(count, equalTo(expectedRecords));
+    }
+
     @Override
     public String toString() {
         return "NDJSON";
