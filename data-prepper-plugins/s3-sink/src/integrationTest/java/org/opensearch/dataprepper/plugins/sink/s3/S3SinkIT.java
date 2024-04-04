@@ -19,6 +19,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -32,6 +33,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.AggregateThresholdOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
@@ -45,7 +47,6 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
-import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -70,6 +71,8 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThan;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -321,6 +324,99 @@ public class S3SinkIT {
 
             LOG.info("Validating output. totalSize={}; sampleDataSize={}", expectedTotalSize, sampleEventData.size());
             outputScenario.validateDynamicPartition(expectedTotalSize / sizeCombination.getBatchSize(), folderNumber, actualContentFile, compressionScenario);
+        }
+    }
+
+    @Test
+    void testWithDynamicGroupsAndAggregateThreshold() throws IOException {
+        final BufferScenario bufferScenario = new InMemoryBufferScenario();
+        final CompressionScenario compressionScenario = new NoneCompressionScenario();
+        final NdjsonOutputScenario outputScenario = new NdjsonOutputScenario();
+        final SizeCombination sizeCombination = SizeCombination.MEDIUM_SMALLER;
+
+        BufferTypeOptions bufferTypeOptions = bufferScenario.getBufferType();
+        String testRun = "grouping-" + outputScenario + "-" + bufferTypeOptions + "-" + compressionScenario + "-" + sizeCombination.getBatchSize() + "-" + sizeCombination.getNumberOfBatches();
+
+        final String staticPrefix = "s3-sink-grouping-integration-test/aggregate-threshold-" + UUID.randomUUID() + "/";
+        final String pathPrefix = staticPrefix +  "folder-${/sequence}/";
+        final List<String> dynamicKeys = new ArrayList<>();
+        dynamicKeys.add("/sequence");
+
+        final AggregateThresholdOptions aggregateThresholdOptions = mock(AggregateThresholdOptions.class);
+        when(aggregateThresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("100kb"));
+        when(s3SinkConfig.getAggregateThresholdOptions()).thenReturn(aggregateThresholdOptions);
+
+        when(objectKeyOptions.getPathPrefix()).thenReturn(pathPrefix);
+
+        when(expressionEvaluator.extractDynamicExpressionsFromFormatExpression(objectKeyOptions.getPathPrefix()))
+                .thenReturn(Collections.emptyList());
+        when(expressionEvaluator.extractDynamicKeysFromFormatExpression(objectKeyOptions.getPathPrefix()))
+                .thenReturn(dynamicKeys);
+        when(expressionEvaluator.extractDynamicKeysFromFormatExpression(objectKeyOptions.getNamePattern()))
+                .thenReturn(Collections.emptyList());
+        when(expressionEvaluator.extractDynamicExpressionsFromFormatExpression(objectKeyOptions.getNamePattern()))
+                .thenReturn(Collections.emptyList());
+
+        when(pluginFactory.loadPlugin(eq(OutputCodec.class), any())).thenReturn(outputScenario.getCodec());
+        when(s3SinkConfig.getBufferType()).thenReturn(bufferTypeOptions);
+        when(s3SinkConfig.getCompression()).thenReturn(compressionScenario.getCompressionOption());
+        int expectedTotalSize = sizeCombination.getTotalSize();
+
+        // This will not be hit since these are grouped dynamically
+        when(thresholdOptions.getEventCount()).thenReturn(expectedTotalSize);
+
+        final S3Sink objectUnderTest = createObjectUnderTest();
+
+        final int maxEventDataToSample = 2000;
+        final List<Map<String, Object>> sampleEventData = new ArrayList<>(maxEventDataToSample);
+        for (int batchNumber = 0; batchNumber < sizeCombination.getNumberOfBatches(); batchNumber++) {
+            final int currentBatchNumber = batchNumber;
+            final List<Record<Event>> events = IntStream.range(0, sizeCombination.getBatchSize())
+                    .mapToObj(this::generateEventData)
+                    .peek(data -> {
+                        if (sampleEventData.size() < maxEventDataToSample)
+                            sampleEventData.add(data);
+                    })
+                    .map(this::generateTestEvent)
+                    .map(Record::new)
+                    .collect(Collectors.toList());
+
+            LOG.debug("Writing dynamic batch {} with size {}.", currentBatchNumber, events.size());
+            objectUnderTest.doOutput(events);
+        }
+
+        for (int folderNumber = 0; folderNumber < 100; folderNumber++) {
+            LOG.info("Listing S3 path prefix: {}", staticPrefix + "folder-" + folderNumber + "/");
+
+            final ListObjectsV2Response listObjectsResponse = s3Client.listObjectsV2(ListObjectsV2Request.builder()
+                    .bucket(bucketName)
+                    .prefix(staticPrefix + "folder-" + folderNumber + "/")
+                    .build());
+
+            assertThat(listObjectsResponse.contents(), notNullValue());
+            assertThat(listObjectsResponse.contents().size(), greaterThanOrEqualTo(1));
+
+            int objectIndex = 0;
+            for (final S3Object s3Object : listObjectsResponse.contents()) {
+                final File target = new File(s3FileLocation, "folder-" + folderNumber + "-" + objectIndex + ".original");
+
+                LOG.info("Downloading S3 object to local file {}.", target);
+
+                GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(s3Object.key())
+                        .build();
+                s3Client.getObject(getObjectRequest, target.toPath());
+
+                File actualContentFile = decompressFileIfNecessary(outputScenario, compressionScenario, testRun, target);
+
+                // Since data is evenly distributed between all groups, and flush_capacity_ratio is 0
+                // all objects should be less than 10 kb (100 groups * 10 kb = aggregate threshold of 1 mb)
+                assertThat(actualContentFile.length(), lessThan(10_000L));
+                LOG.info("Validating output. object size is {}", actualContentFile.length());
+                outputScenario.validateDynamicPartition(-1, folderNumber, actualContentFile, compressionScenario);
+                objectIndex++;
+            }
         }
     }
 

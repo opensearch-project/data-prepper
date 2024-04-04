@@ -41,6 +41,10 @@ public class S3SinkService {
     public static final String OBJECTS_FAILED = "s3SinkObjectsFailed";
     public static final String NUMBER_OF_RECORDS_FLUSHED_TO_S3_SUCCESS = "s3SinkObjectsEventsSucceeded";
     public static final String NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED = "s3SinkObjectsEventsFailed";
+
+    private static final String CURRENT_S3_GROUPS = "s3SinkNumberOfGroups";
+
+    static final String NUMBER_OF_GROUPS_FORCE_FLUSHED = "s3SinkObjectsForceFlushed";
     static final String S3_OBJECTS_SIZE = "s3SinkObjectSizeBytes";
     private final S3SinkConfig s3SinkConfig;
     private final Lock reentrantLock;
@@ -56,6 +60,8 @@ public class S3SinkService {
     private final Counter numberOfRecordsSuccessCounter;
     private final Counter numberOfRecordsFailedCounter;
     private final DistributionSummary s3ObjectSizeSummary;
+
+    private final Counter numberOfObjectsForceFlushed;
     private final OutputCodecContext codecContext;
     private final KeyGenerator keyGenerator;
     private final Duration retrySleepTime;
@@ -91,6 +97,9 @@ public class S3SinkService {
         numberOfRecordsSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_S3_SUCCESS);
         numberOfRecordsFailedCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED);
         s3ObjectSizeSummary = pluginMetrics.summary(S3_OBJECTS_SIZE);
+        numberOfObjectsForceFlushed = pluginMetrics.counter(NUMBER_OF_GROUPS_FORCE_FLUSHED);
+        pluginMetrics.gauge(CURRENT_S3_GROUPS, s3GroupManager, S3GroupManager::getNumberOfGroups);
+
 
         this.s3GroupManager = s3GroupManager;
     }
@@ -110,10 +119,10 @@ public class S3SinkService {
         try {
             for (Record<Event> record : records) {
                 final Event event = record.getData();
-                final S3Group s3Group = s3GroupManager.getOrCreateGroupForEvent(event);
-                final Buffer currentBuffer = s3Group.getBuffer();
-
                 try {
+                    final S3Group s3Group = s3GroupManager.getOrCreateGroupForEvent(event);
+                    final Buffer currentBuffer = s3Group.getBuffer();
+
                     if (currentBuffer.getEventCount() == 0) {
                         codec.start(currentBuffer.getOutputStream(), event, codecContext);
                     }
@@ -122,6 +131,12 @@ public class S3SinkService {
                     int count = currentBuffer.getEventCount() + 1;
                     currentBuffer.setEventCount(count);
                     s3Group.addEventHandle(event.getEventHandle());
+
+                    final boolean flushed = flushToS3IfNeeded(s3Group, false);
+
+                    if (flushed) {
+                        s3GroupManager.removeGroup(s3Group);
+                    }
                 } catch (Exception ex) {
                     if(sampleException == null) {
                         sampleException = ex;
@@ -129,20 +144,18 @@ public class S3SinkService {
 
                     failedEvents.add(event);
                 }
+            }
 
-                final boolean flushed = flushToS3IfNeeded(s3Group);
+            for (final S3Group s3Group : s3GroupManager.getS3GroupEntries()) {
+                final boolean flushed = flushToS3IfNeeded(s3Group, false);
 
                 if (flushed) {
                     s3GroupManager.removeGroup(s3Group);
                 }
             }
 
-            for (final S3Group s3Group : s3GroupManager.getS3GroupEntries()) {
-                final boolean flushed = flushToS3IfNeeded(s3Group);
-
-                if (flushed) {
-                    s3GroupManager.removeGroup(s3Group);
-                }
+            if (s3SinkConfig.getAggregateThresholdOptions() != null) {
+                checkAggregateThresholdsAndFlushIfNeeded();
             }
         } finally {
             reentrantLock.unlock();
@@ -160,10 +173,10 @@ public class S3SinkService {
     /**
      * @return whether the flush was attempted
      */
-    private boolean flushToS3IfNeeded(final S3Group s3Group) {
+    private boolean flushToS3IfNeeded(final S3Group s3Group, final boolean forceFlush) {
         LOG.trace("Flush to S3 check: currentBuffer.size={}, currentBuffer.events={}, currentBuffer.duration={}",
                 s3Group.getBuffer().getSize(), s3Group.getBuffer().getEventCount(), s3Group.getBuffer().getDuration());
-        if (ThresholdCheck.checkThresholdExceed(s3Group.getBuffer(), maxEvents, maxBytes, maxCollectionDuration)) {
+        if (forceFlush || ThresholdCheck.checkThresholdExceed(s3Group.getBuffer(), maxEvents, maxBytes, maxCollectionDuration)) {
             try {
                 codec.complete(s3Group.getBuffer().getOutputStream());
                 String s3Key = s3Group.getBuffer().getKey();
@@ -223,5 +236,33 @@ public class S3SinkService {
             }
         } while (!isUploadedToS3);
         return isUploadedToS3;
+    }
+
+    private void checkAggregateThresholdsAndFlushIfNeeded() {
+        long currentTotalGroupSize = s3GroupManager.recalculateAndGetGroupSize();
+        LOG.debug("Total groups size is {} bytes", currentTotalGroupSize);
+
+        final long aggregateThresholdBytes = s3SinkConfig.getAggregateThresholdOptions().getMaximumSize().getBytes();
+        final double aggregateThresholdFlushRatio = s3SinkConfig.getAggregateThresholdOptions().getFlushCapacityRatio();
+
+        if (currentTotalGroupSize >= aggregateThresholdBytes) {
+            LOG.info("aggregate_threshold reached, the largest groups will be flushed until {} percent of the maximum size {} is remaining", aggregateThresholdFlushRatio * 100, aggregateThresholdBytes);
+
+            for (final S3Group s3Group : s3GroupManager.getS3GroupsSortedBySize()) {
+                LOG.info("Forcing a flush of object with key {} due to aggregate_threshold of {} bytes being reached", s3Group.getBuffer().getKey(), aggregateThresholdBytes);
+
+                boolean flushed = flushToS3IfNeeded(s3Group, true);
+                numberOfObjectsForceFlushed.increment();
+
+                if (flushed) {
+                    currentTotalGroupSize -= s3Group.getBuffer().getSize();
+                    s3GroupManager.removeGroup(s3Group);
+                }
+
+                if (currentTotalGroupSize <= aggregateThresholdBytes * aggregateThresholdFlushRatio) {
+                    break;
+                }
+            }
+        }
     }
 }
