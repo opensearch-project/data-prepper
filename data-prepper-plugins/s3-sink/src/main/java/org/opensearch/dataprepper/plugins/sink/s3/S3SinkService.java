@@ -119,10 +119,10 @@ public class S3SinkService {
         try {
             for (Record<Event> record : records) {
                 final Event event = record.getData();
-                final S3Group s3Group = s3GroupManager.getOrCreateGroupForEvent(event);
-                final Buffer currentBuffer = s3Group.getBuffer();
-
                 try {
+                    final S3Group s3Group = s3GroupManager.getOrCreateGroupForEvent(event);
+                    final Buffer currentBuffer = s3Group.getBuffer();
+
                     if (currentBuffer.getEventCount() == 0) {
                         codec.start(currentBuffer.getOutputStream(), event, codecContext);
                     }
@@ -131,18 +131,18 @@ public class S3SinkService {
                     int count = currentBuffer.getEventCount() + 1;
                     currentBuffer.setEventCount(count);
                     s3Group.addEventHandle(event.getEventHandle());
+
+                    final boolean flushed = flushToS3IfNeeded(s3Group, false);
+
+                    if (flushed) {
+                        s3GroupManager.removeGroup(s3Group);
+                    }
                 } catch (Exception ex) {
                     if(sampleException == null) {
                         sampleException = ex;
                     }
 
                     failedEvents.add(event);
-                }
-
-                final boolean flushed = flushToS3IfNeeded(s3Group, false);
-
-                if (flushed) {
-                    s3GroupManager.removeGroup(s3Group);
                 }
             }
 

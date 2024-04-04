@@ -17,7 +17,7 @@ public class AggregateThresholdOptions {
     private static final String DEFAULT_BYTE_CAPACITY = "50mb";
 
     @JsonProperty("maximum_size")
-    private String maximumSize = DEFAULT_BYTE_CAPACITY;
+    private ByteCount maximumSize = ByteCount.parse(DEFAULT_BYTE_CAPACITY);
 
     /**
      * Controls how aggressive the force flush is when the maximum_size is reached.
@@ -31,7 +31,7 @@ public class AggregateThresholdOptions {
      * @return maximum byte count.
      */
     public ByteCount getMaximumSize() {
-        return ByteCount.parse(maximumSize);
+        return maximumSize;
     }
 
     public double getFlushCapacityRatio() { return flushCapacityRatio; }

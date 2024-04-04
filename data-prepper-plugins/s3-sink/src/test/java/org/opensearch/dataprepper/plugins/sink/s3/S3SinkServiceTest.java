@@ -564,6 +564,7 @@ class S3SinkServiceTest {
         when(s3Group.getBuffer()).thenReturn(buffer);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(List.of(s3Group));
 
         DefaultEventHandle eventHandle1 = (DefaultEventHandle)event1.getEventHandle();
         DefaultEventHandle eventHandle2 = (DefaultEventHandle)event2.getEventHandle();
@@ -578,7 +579,6 @@ class S3SinkServiceTest {
         inOrder.verify(codec).start(eq(outputStream), eq(event1), any());
         inOrder.verify(codec).writeEvent(event1, outputStream);
         inOrder.verify(s3Group, never()).addEventHandle(eventHandle1);
-        inOrder.verify(s3Group).releaseEventHandles(true);
         inOrder.verify(codec).writeEvent(event2, outputStream);
         inOrder.verify(s3Group).addEventHandle(eventHandle2);
         inOrder.verify(s3Group).releaseEventHandles(true);

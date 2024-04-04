@@ -16,10 +16,10 @@ import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.function.Supplier;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
@@ -189,21 +189,16 @@ public class S3GroupManagerTest {
 
         final S3GroupManager objectUnderTest = createObjectUnderTest();
 
-        objectUnderTest.getOrCreateGroupForEvent(event);
+        final S3Group firstGroup = objectUnderTest.getOrCreateGroupForEvent(event);
         final S3Group secondGroup = objectUnderTest.getOrCreateGroupForEvent(secondEvent);
-        objectUnderTest.getOrCreateGroupForEvent(thirdEvent);
+        final S3Group thirdGroup = objectUnderTest.getOrCreateGroupForEvent(thirdEvent);
 
         assertThat(objectUnderTest.getNumberOfGroups(), equalTo(3));
 
         final Collection<S3Group> sortedGroups = objectUnderTest.getS3GroupsSortedBySize();
 
-        final List<Buffer> expectedOrder = List.of(thirdBuffer, secondBuffer, buffer);
-
-        int index = 0;
-        for (final S3Group s3Group : sortedGroups) {
-            assertThat(s3Group.getBuffer(), equalTo(expectedOrder.get(index)));
-            index++;
-        }
+        assertThat(sortedGroups.size(), equalTo(3));
+        assertThat(sortedGroups, contains(thirdGroup, secondGroup, firstGroup));
 
         objectUnderTest.removeGroup(secondGroup);
 
@@ -211,12 +206,6 @@ public class S3GroupManagerTest {
 
         assertThat(sortedGroupsAfterRemoval.size(), equalTo(2));
         assertThat(objectUnderTest.getNumberOfGroups(), equalTo(2));
-
-        final List<Buffer> expectedOrderAfterRemoval = List.of(thirdBuffer, buffer);
-        index = 0;
-        for (final S3Group s3Group : sortedGroupsAfterRemoval) {
-            assertThat(s3Group.getBuffer(), equalTo(expectedOrderAfterRemoval.get(index)));
-            index++;
-        }
+        assertThat(sortedGroupsAfterRemoval, contains(thirdGroup, firstGroup));
     }
 }
