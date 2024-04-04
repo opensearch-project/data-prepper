@@ -304,7 +304,7 @@ class OTelLogsSourceTest {
     }
 
     @Test
-    public void testServerConnectionsMetric() throws InvalidProtocolBufferException {
+    void testServerConnectionsMetric() throws InvalidProtocolBufferException {
         // Prepare
         when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
         SOURCE.start(buffer);

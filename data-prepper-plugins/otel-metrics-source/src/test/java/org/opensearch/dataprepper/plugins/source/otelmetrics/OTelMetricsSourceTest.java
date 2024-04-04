@@ -30,6 +30,8 @@ import io.grpc.BindableService;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.micrometer.core.instrument.Measurement;
+import io.micrometer.core.instrument.Statistic;
 import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
@@ -61,6 +63,8 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -90,6 +94,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -194,6 +199,7 @@ class OTelMetricsSourceTest {
         lenient().when(grpcServiceBuilder.useBlockingTaskExecutor(anyBoolean())).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.exceptionMapping(any(GrpcStatusFunction.class))).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.build()).thenReturn(grpcService);
+        MetricsTestUtil.initMetrics();
         pluginMetrics = PluginMetrics.fromNames("otel_metrics", "pipeline");
 
         when(oTelMetricsSourceConfig.getPort()).thenReturn(DEFAULT_PORT);
@@ -1003,6 +1009,42 @@ class OTelMetricsSourceTest {
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.REQUEST_ENTITY_TOO_LARGE, throwable))
                 .join();
+    }
+
+    @Test
+    void testServerConnectionsMetric() throws InvalidProtocolBufferException {
+        // Prepare
+        when(oTelMetricsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        SOURCE.start(buffer);
+
+        final String metricNamePrefix = new StringJoiner(MetricNames.DELIMITER)
+                .add("pipeline").add("otel_metrics").toString();
+        List<Measurement> serverConnectionsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
+                        .add(OTelMetricsSource.SERVER_CONNECTIONS).toString());
+
+        // Verify connections metric value is 0
+        Measurement serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
+        assertEquals(0, serverConnectionsMeasurement.getValue());
+
+        final RequestHeaders testRequestHeaders = RequestHeaders.builder()
+                .scheme(SessionProtocol.HTTP)
+                .authority("127.0.0.1:21891")
+                .method(HttpMethod.POST)
+                .path("/opentelemetry.proto.collector.metrics.v1.MetricsService/Export")
+                .contentType(MediaType.JSON_UTF_8)
+                .build();
+        final HttpData testHttpData = HttpData.copyOf(JsonFormat.printer().print(METRICS_REQUEST).getBytes());
+
+        // Send request
+        WebClient.of().execute(testRequestHeaders, testHttpData)
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .join();
+
+        // Verify connections metric value is 1
+        serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
+        assertEquals(1.0, serverConnectionsMeasurement.getValue());
     }
 
     static class BufferExceptionToStatusArgumentsProvider implements ArgumentsProvider {
