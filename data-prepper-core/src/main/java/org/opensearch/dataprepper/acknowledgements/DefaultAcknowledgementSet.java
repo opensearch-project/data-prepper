@@ -161,8 +161,6 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         try {
             if (!pendingAcknowledgments.containsKey(eventHandle) ||
                 pendingAcknowledgments.get(eventHandle).get() == 0) {
-                LOG.warn("Unexpected event handle release");
-                metrics.increment(DefaultAcknowledgementSetMetrics.INVALID_RELEASES_METRIC_NAME);
                 return false;
             }
             if (pendingAcknowledgments.get(eventHandle).decrementAndGet() == 0) {
