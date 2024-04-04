@@ -52,6 +52,7 @@ import java.util.concurrent.Executors;
 public class OTelLogsSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelLogsSource.class);
     private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
+    static final String SERVER_CONNECTIONS = "serverConnections";
 
     private final OTelLogsSourceConfig oTelLogsSourceConfig;
     private final String pipelineName;
@@ -167,6 +168,8 @@ public class OTelLogsSource implements Source<Record<Object>> {
                     true);
 
             server = sb.build();
+
+            pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
         try {
             server.start().get();

@@ -28,6 +28,8 @@ import io.grpc.BindableService;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.micrometer.core.instrument.Measurement;
+import io.micrometer.core.instrument.Statistic;
 import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
@@ -40,6 +42,7 @@ import io.opentelemetry.proto.logs.v1.ScopeLogs;
 import io.opentelemetry.proto.resource.v1.Resource;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,6 +58,8 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
@@ -84,8 +89,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -195,6 +202,8 @@ class OTelLogsSourceTest {
         when(oTelLogsSourceConfig.getMaxConnectionCount()).thenReturn(10);
         when(oTelLogsSourceConfig.getThreadCount()).thenReturn(5);
         when(oTelLogsSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
+
+        MetricsTestUtil.initMetrics();
         pluginMetrics = PluginMetrics.fromNames("otel_logs", "pipeline");
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
@@ -292,6 +301,42 @@ class OTelLogsSourceTest {
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
                 .join();
+    }
+
+    @Test
+    public void testServerConnectionsMetric() throws InvalidProtocolBufferException {
+        // Prepare
+        when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        SOURCE.start(buffer);
+
+        final String metricNamePrefix = new StringJoiner(MetricNames.DELIMITER)
+                .add("pipeline").add("otel_logs").toString();
+        List<Measurement> serverConnectionsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
+                        .add(OTelLogsSource.SERVER_CONNECTIONS).toString());
+
+        // Verify connections metric value is 0
+        Measurement serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
+        assertEquals(0, serverConnectionsMeasurement.getValue());
+
+        final RequestHeaders testRequestHeaders = RequestHeaders.builder()
+                .scheme(SessionProtocol.HTTP)
+                .authority("127.0.0.1:21892")
+                .method(HttpMethod.POST)
+                .path("/opentelemetry.proto.collector.logs.v1.LogsService/Export")
+                .contentType(MediaType.JSON_UTF_8)
+                .build();
+        final HttpData testHttpData = HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes());
+
+        // Send request
+        WebClient.of().execute(testRequestHeaders, testHttpData)
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .join();
+
+        // Verify connections metric value is 1
+        serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
+        assertEquals(1.0, serverConnectionsMeasurement.getValue());
     }
 
     @Test
