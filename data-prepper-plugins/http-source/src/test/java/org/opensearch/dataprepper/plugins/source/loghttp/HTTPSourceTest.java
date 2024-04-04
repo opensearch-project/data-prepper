@@ -5,25 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
-import com.linecorp.armeria.common.HttpHeaderNames;
-import org.opensearch.dataprepper.HttpRequestExceptionHandler;
-import org.opensearch.dataprepper.metrics.MetricNames;
-import org.opensearch.dataprepper.metrics.MetricsTestUtil;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.CheckpointState;
-import org.opensearch.dataprepper.model.configuration.PipelineDescription;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.log.Log;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ResponseTimeoutException;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
+import com.linecorp.armeria.common.HttpHeaderNames;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
@@ -45,10 +32,23 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.log.Log;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -121,6 +121,7 @@ class HTTPSourceTest {
     private List<Measurement> rejectedRequestsMeasurements;
     private List<Measurement> requestProcessDurationMeasurements;
     private List<Measurement> payloadSizeSummaryMeasurements;
+    private List<Measurement> serverConnectionsMeasurements;
     private HTTPSourceConfig sourceConfig;
     private PluginMetrics pluginMetrics;
     private PluginFactory pluginFactory;
@@ -165,6 +166,9 @@ class HTTPSourceTest {
         payloadSizeSummaryMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
                         .add(LogHTTPService.PAYLOAD_SIZE).toString());
+        serverConnectionsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
+                        .add(HTTPSource.SERVER_CONNECTIONS).toString());
     }
 
     private byte[] createGZipCompressedPayload(final String payload) throws IOException {
@@ -540,6 +544,34 @@ class HTTPSourceTest {
         final Measurement rejectedRequestsCount = MetricsTestUtil.getMeasurementFromList(
                 rejectedRequestsMeasurements, Statistic.COUNT);
         Assertions.assertEquals(1.0, rejectedRequestsCount.getValue());
+    }
+
+    @Test
+    public void testServerConnectionsMetric() throws InterruptedException {
+        // Prepare
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        HTTPSourceUnderTest.start(testBuffer);
+        refreshMeasurements();
+
+        // Verify connections metric value is 0
+        Measurement serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
+        Assertions.assertEquals(0, serverConnectionsMeasurement.getValue());
+
+        final RequestHeaders testRequestHeaders = RequestHeaders.builder().scheme(SessionProtocol.HTTP)
+                .authority("127.0.0.1:2021")
+                .method(HttpMethod.POST)
+                .path("/log/ingest")
+                .contentType(MediaType.JSON_UTF_8)
+                .build();
+        final HttpData testHttpData = HttpData.ofUtf8("[{\"log\": \"somelog\"}]");
+
+        // Send request
+        WebClient.of().execute(testRequestHeaders, testHttpData).aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+
+        // Verify connections metric value is 1
+        serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
+        Assertions.assertEquals(1.0, serverConnectionsMeasurement.getValue());
     }
 
     @Test

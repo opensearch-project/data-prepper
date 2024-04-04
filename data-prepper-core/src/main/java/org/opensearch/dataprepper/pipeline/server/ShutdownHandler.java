@@ -36,7 +36,10 @@ public class ShutdownHandler implements HttpHandler {
         }
 
         try {
-            LOG.info("Received HTTP shutdown request to shutdown Data Prepper. Shutdown pipelines and server.");
+            if(LOG.isInfoEnabled()) {
+                LOG.info("Received HTTP shutdown request to shutdown Data Prepper. Shutdown pipelines and server. User-Agent='{}'",
+                        exchange.getRequestHeaders().getFirst("User-Agent"));
+            }
             dataPrepper.shutdownPipelines();
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
         } catch (final Exception e) {

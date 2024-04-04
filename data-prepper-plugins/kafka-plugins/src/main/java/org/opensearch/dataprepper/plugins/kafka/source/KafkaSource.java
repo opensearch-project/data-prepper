@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
@@ -85,13 +86,15 @@ public class KafkaSource implements Source<Record<Event>> {
     private StringDeserializer stringDeserializer;
     private final List<ExecutorService> allTopicExecutorServices;
     private final List<KafkaCustomConsumer> allTopicConsumers;
+    private final PluginConfigObservable pluginConfigObservable;
 
     @DataPrepperPluginConstructor
     public KafkaSource(final KafkaSourceConfig sourceConfig,
                        final PluginMetrics pluginMetrics,
                        final AcknowledgementSetManager acknowledgementSetManager,
                        final PipelineDescription pipelineDescription,
-                       final KafkaClusterConfigSupplier kafkaClusterConfigSupplier) {
+                       final KafkaClusterConfigSupplier kafkaClusterConfigSupplier,
+                       final PluginConfigObservable pluginConfigObservable) {
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -100,12 +103,14 @@ public class KafkaSource implements Source<Record<Event>> {
         this.shutdownInProgress = new AtomicBoolean(false);
         this.allTopicExecutorServices = new ArrayList<>();
         this.allTopicConsumers = new ArrayList<>();
+        this.pluginConfigObservable = pluginConfigObservable;
         this.updateConfig(kafkaClusterConfigSupplier);
     }
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         Properties authProperties = new Properties();
+        KafkaSecurityConfigurer.setDynamicSaslClientCallbackHandler(authProperties, sourceConfig, pluginConfigObservable);
         KafkaSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
         sourceConfig.getTopics().forEach(topic -> {
             consumerGroupID = topic.getGroupId();

@@ -263,7 +263,7 @@ and the type conversion processor will change it to the following output, where 
 ### Configuration
 * `key` - keys whose value needs to be converted to a different type. Required if `keys` option is not defined.
 * `keys` - list of keys whose value needs to be converted to a different type. Required if `key` option is not defined. 
-* `type` - target type for the value of the key. Possible values are `integer`, `double`, `string`, and `boolean`. Default is `integer`.
+* `type` - target type for the value of the key. Possible values are `integer`, `double`, `long`, `string`, and `boolean`. Default is `integer`.
 * `null_values` - treat any value in the null_values list as null.
   * Example: `null_values` is `["-"]` and `key` is `key1`. `{"key1": "-", "key2": "value2"}` will parse into `{"key2": "value2"}`
 * `tags_on_failure`(Optional)-  A `List` of `String`s that specifies the tags to be set in the event the processor fails to convert `key` or `keys` to configured `type`. These tags may be used in conditional expressions in other parts of the configuration
