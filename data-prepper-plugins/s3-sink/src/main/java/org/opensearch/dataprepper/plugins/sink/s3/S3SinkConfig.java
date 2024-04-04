@@ -38,6 +38,7 @@ public class S3SinkConfig {
     private String bucketName;
 
     @JsonProperty("object_key")
+    @Valid
     private ObjectKeyOptions objectKeyOptions = new ObjectKeyOptions();
 
     @JsonProperty("compression")
@@ -45,9 +46,11 @@ public class S3SinkConfig {
 
     @JsonProperty("threshold")
     @NotNull
+    @Valid
     private ThresholdOptions thresholdOptions;
 
     @JsonProperty("aggregate_threshold")
+    @Valid
     private AggregateThresholdOptions aggregateThresholdOptions;
 
     @JsonProperty("codec")
