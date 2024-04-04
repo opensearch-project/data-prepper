@@ -67,6 +67,7 @@ import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 
@@ -121,6 +122,7 @@ class HTTPSourceTest {
     private List<Measurement> rejectedRequestsMeasurements;
     private List<Measurement> requestProcessDurationMeasurements;
     private List<Measurement> payloadSizeSummaryMeasurements;
+    private List<Measurement> serverConnectionsMeasurements;
     private HTTPSourceConfig sourceConfig;
     private PluginMetrics pluginMetrics;
     private PluginFactory pluginFactory;
@@ -165,6 +167,9 @@ class HTTPSourceTest {
         payloadSizeSummaryMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
                         .add(LogHTTPService.PAYLOAD_SIZE).toString());
+        serverConnectionsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
+                        .add(HTTPSource.SERVER_CONNECTIONS).toString());
     }
 
     private byte[] createGZipCompressedPayload(final String payload) throws IOException {
@@ -540,6 +545,34 @@ class HTTPSourceTest {
         final Measurement rejectedRequestsCount = MetricsTestUtil.getMeasurementFromList(
                 rejectedRequestsMeasurements, Statistic.COUNT);
         Assertions.assertEquals(1.0, rejectedRequestsCount.getValue());
+    }
+
+    @Test
+    public void testServerConnectionsMetric() throws InterruptedException {
+        // Prepare
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        HTTPSourceUnderTest.start(testBuffer);
+        refreshMeasurements();
+
+        // Verify connections metric value is 0
+        Measurement serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
+        Assertions.assertEquals(0, serverConnectionsMeasurement.getValue());
+
+        final RequestHeaders testRequestHeaders = RequestHeaders.builder().scheme(SessionProtocol.HTTP)
+                .authority("127.0.0.1:2021")
+                .method(HttpMethod.POST)
+                .path("/log/ingest")
+                .contentType(MediaType.JSON_UTF_8)
+                .build();
+        final HttpData testHttpData = HttpData.ofUtf8("[{\"log\": \"somelog\"}]");
+
+        // Send request
+        WebClient.of().execute(testRequestHeaders, testHttpData).aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+
+        // Verify connections metric value is 1
+        serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
+        Assertions.assertEquals(1.0, serverConnectionsMeasurement.getValue());
     }
 
     @Test

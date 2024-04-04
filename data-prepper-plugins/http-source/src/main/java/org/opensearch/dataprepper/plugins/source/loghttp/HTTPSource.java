@@ -37,6 +37,7 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -47,6 +48,7 @@ public class HTTPSource implements Source<Record<Log>> {
     private static final Logger LOG = LoggerFactory.getLogger(HTTPSource.class);
     private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
     public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
+    static final String SERVER_CONNECTIONS = "serverConnections";
 
     private final HTTPSourceConfig sourceConfig;
     private final CertificateProviderFactory certificateProviderFactory;
@@ -151,6 +153,7 @@ public class HTTPSource implements Source<Record<Log>> {
             }
 
             server = sb.build();
+            pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
 
         try {
