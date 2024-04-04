@@ -56,6 +56,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
+    static final String SERVER_CONNECTIONS = "serverConnections";
     private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
 
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
@@ -189,6 +190,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
             sb.blockingTaskExecutor(blockingTaskExecutor, true);
 
             server = sb.build();
+
+            pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
         try {
             server.start().get();

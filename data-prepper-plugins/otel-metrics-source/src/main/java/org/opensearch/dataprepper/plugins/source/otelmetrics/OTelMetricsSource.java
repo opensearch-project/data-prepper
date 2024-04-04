@@ -58,6 +58,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     private static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
     private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
+    static final String SERVER_CONNECTIONS = "serverConnections";
 
     private final OTelMetricsSourceConfig oTelMetricsSourceConfig;
     private final String pipelineName;
@@ -187,6 +188,8 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
                     true);
 
             server = sb.build();
+
+            pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
         try {
             server.start().get();
