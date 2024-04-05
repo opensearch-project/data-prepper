@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.typeconverter;
 
+import java.math.BigDecimal;
+
 public class StringConverter implements TypeConverter<String> {
     public String convert(Object source) throws IllegalArgumentException {
         if (source instanceof Long) {
@@ -16,7 +18,7 @@ public class StringConverter implements TypeConverter<String> {
         if (source instanceof Float) {
             return Float.toString((Float)source);
         }
-        if (source instanceof Number) {
+        if ((source instanceof Number) && !(source instanceof BigDecimal))  {
             return Integer.toString(((Number)source).intValue());
         }
         if (source instanceof Boolean) {
@@ -24,6 +26,9 @@ public class StringConverter implements TypeConverter<String> {
         }
         if (source instanceof String) {
             return (String)source;
+        }
+        if (source instanceof BigDecimal) {
+            return ((BigDecimal)source).toPlainString();
         }
         throw new IllegalArgumentException("Unsupported type conversion. Source class: " + source.getClass());
     }

@@ -3,14 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
- package org.opensearch.dataprepper.typeconverter;
+package org.opensearch.dataprepper.typeconverter;
 
- import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.math.BigDecimal;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
  
  public class LongConverterTests {
@@ -53,6 +58,31 @@ import org.junit.jupiter.params.provider.ValueSource;
          LongConverter converter = new LongConverter();
          assertThat(converter.convert(longValue), equalTo(longValue));
      }
+    
+    @ParameterizedTest
+    @MethodSource("BigDecimalValueProvider")
+    void testBigDecimalToDoubleConversion(BigDecimal bigDecimalConstant, long expectedlongValue) {
+        LongConverter converter = new LongConverter();
+        assertThat(converter.convert(bigDecimalConstant), equalTo(expectedlongValue));
+    }
+    private static Stream<Arguments> BigDecimalValueProvider() {
+        return Stream.of(
+            Arguments.of(new BigDecimal ("0.00000000000000000000000"), (long)0),
+            Arguments.of(BigDecimal.ZERO, BigDecimal.ZERO.longValue()),
+            Arguments.of(new BigDecimal ("1"), (long)1),
+            Arguments.of(new BigDecimal ("1703908514.045833"), (long)1703908514),
+            Arguments.of(new BigDecimal ("1.00000000000000000000000"), (long)1),
+            Arguments.of(new BigDecimal ("-1234567891.12345"), (long)-1234567891),
+            Arguments.of(BigDecimal.ONE, BigDecimal.ONE.longValue()),
+            Arguments.of(new BigDecimal("1.7976931348623157E+308"), (long)0),
+            Arguments.of(new BigDecimal(Integer.MAX_VALUE), (long)Integer.MAX_VALUE),
+            Arguments.of(new BigDecimal(Integer.MIN_VALUE), (long)Integer.MIN_VALUE),   
+            Arguments.of(new BigDecimal(Long.MAX_VALUE), (long)Long.MAX_VALUE),
+            Arguments.of(new BigDecimal(Long.MIN_VALUE), (long)Long.MIN_VALUE),
+            Arguments.of(new BigDecimal("267694723"), (long)267694723)
+
+        );
+    }
      @Test
      void testInvalidStringConversion() {
          LongConverter converter = new LongConverter();

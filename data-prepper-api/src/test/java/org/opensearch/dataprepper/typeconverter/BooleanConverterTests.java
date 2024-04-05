@@ -6,6 +6,9 @@
 package org.opensearch.dataprepper.typeconverter;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.Collections;
 import java.util.Map;
@@ -13,6 +16,9 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.math.BigDecimal;
+import java.util.stream.Stream;
 
 public class BooleanConverterTests {
     @Test
@@ -77,6 +83,28 @@ public class BooleanConverterTests {
         final Boolean boolFalseConstant = false;
         assertThat(converter.convert(boolFalseConstant), equalTo(false));
     }
+    @ParameterizedTest
+    @MethodSource("BigDecimalValueProvider")
+    void testBigDecimalToBooleanConversion(BigDecimal input, boolean expected_boolean) {
+        BooleanConverter converter = new BooleanConverter();
+        assertThat(converter.convert(input), equalTo(expected_boolean));
+    }
+    private static Stream<Arguments> BigDecimalValueProvider() {
+        return Stream.of(
+            Arguments.of(new BigDecimal ("0"), false),
+            Arguments.of(new BigDecimal ("0.0"), false),
+            Arguments.of(new BigDecimal ("0.00000000000000000000000"), false),
+            Arguments.of(BigDecimal.ZERO, false),
+            Arguments.of(new BigDecimal ("1"), true),
+            Arguments.of(new BigDecimal ("1703908514.045833"), true),
+            Arguments.of(new BigDecimal ("1.00000000000000000000000"), true),
+            Arguments.of(new BigDecimal ("-12345678912.12345"), true),
+            Arguments.of(BigDecimal.ONE, true),
+            Arguments.of(BigDecimal.valueOf(Double.MAX_VALUE), true),
+            Arguments.of(BigDecimal.valueOf(Double.MIN_VALUE), true)
+        );
+    }
+
     @Test
     void testInvalidBooleanConversion() {
         BooleanConverter converter = new BooleanConverter();
