@@ -605,11 +605,11 @@ The default behavior is to process all indices.
 
 Start an instance of OpenSearch that listens to opens port 9200 with default user admin:admin.
 ```
-docker run -p 9200:9200 -e "discovery.type=single-node" opensearchproject/opensearch:1.0.0
+docker run -p 9200:9200 -e "discovery.type=single-node" -e "OPENSEARCH_INITIAL_ADMIN_PASSWORD=yourStrongPassword123!" opensearchproject/opensearch:latest
 ```
 
 #### Run tests
 
 ```
-./gradlew data-prepper-plugins:opensearch:integrationTest -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=admin
+./gradlew data-prepper-plugins:opensearch:integrationTest -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=yourStrongPassword123!
 ```
