@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.function.Supplier;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
@@ -115,5 +116,96 @@ public class S3GroupManagerTest {
         assertThat(groups.contains(result), equalTo(true));
         assertThat(groups.contains(secondResult), equalTo(true));
         assertThat(objectUnderTest.hasNoGroups(), equalTo(false));
+    }
+
+    @Test
+    void recalculateAndGetGroupSize_returns_expected_size() {
+        long bufferSizeBase = 100;
+        long bufferSizeTotal = 100 + 200 + 300;
+
+        final Event event = mock(Event.class);
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        when(s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(event)).thenReturn(s3GroupIdentifier);
+
+        final Buffer buffer = mock(Buffer.class);
+        when(buffer.getSize()).thenReturn(bufferSizeBase);
+
+        final Event secondEvent = mock(Event.class);
+        final S3GroupIdentifier secondS3GroupIdentifier = mock(S3GroupIdentifier.class);
+        when(s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(secondEvent)).thenReturn(secondS3GroupIdentifier);
+
+        final Buffer secondBuffer = mock(Buffer.class);
+        when(secondBuffer.getSize()).thenReturn(bufferSizeBase * 2);
+
+        final Event thirdEvent = mock(Event.class);
+        final S3GroupIdentifier thirdS3GroupIdentifier = mock(S3GroupIdentifier.class);
+        when(s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(thirdEvent)).thenReturn(thirdS3GroupIdentifier);
+
+        final Buffer thirdBuffer = mock(Buffer.class);
+        when(thirdBuffer.getSize()).thenReturn(bufferSizeBase * 3);
+
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class)))
+                .thenReturn(buffer).thenReturn(secondBuffer).thenReturn(thirdBuffer);
+
+        final S3GroupManager objectUnderTest = createObjectUnderTest();
+
+        objectUnderTest.getOrCreateGroupForEvent(event);
+        objectUnderTest.getOrCreateGroupForEvent(secondEvent);
+        objectUnderTest.getOrCreateGroupForEvent(thirdEvent);
+
+        final long totalGroupSize = objectUnderTest.recalculateAndGetGroupSize();
+
+        assertThat(totalGroupSize, equalTo(bufferSizeTotal));
+    }
+
+    @Test
+    void getGroupsOrderedBySize_returns_groups_in_expected_order() {
+
+        long bufferSizeBase = 100;
+
+        final Event event = mock(Event.class);
+        final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
+        when(s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(event)).thenReturn(s3GroupIdentifier);
+
+        final Buffer buffer = mock(Buffer.class);
+        when(buffer.getSize()).thenReturn(bufferSizeBase);
+
+        final Event secondEvent = mock(Event.class);
+        final S3GroupIdentifier secondS3GroupIdentifier = mock(S3GroupIdentifier.class);
+        when(s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(secondEvent)).thenReturn(secondS3GroupIdentifier);
+
+        final Buffer secondBuffer = mock(Buffer.class);
+        when(secondBuffer.getSize()).thenReturn(bufferSizeBase * 2);
+
+        final Event thirdEvent = mock(Event.class);
+        final S3GroupIdentifier thirdS3GroupIdentifier = mock(S3GroupIdentifier.class);
+        when(s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(thirdEvent)).thenReturn(thirdS3GroupIdentifier);
+
+        final Buffer thirdBuffer = mock(Buffer.class);
+        when(thirdBuffer.getSize()).thenReturn(bufferSizeBase * 3);
+
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class)))
+                .thenReturn(buffer).thenReturn(secondBuffer).thenReturn(thirdBuffer);
+
+        final S3GroupManager objectUnderTest = createObjectUnderTest();
+
+        final S3Group firstGroup = objectUnderTest.getOrCreateGroupForEvent(event);
+        final S3Group secondGroup = objectUnderTest.getOrCreateGroupForEvent(secondEvent);
+        final S3Group thirdGroup = objectUnderTest.getOrCreateGroupForEvent(thirdEvent);
+
+        assertThat(objectUnderTest.getNumberOfGroups(), equalTo(3));
+
+        final Collection<S3Group> sortedGroups = objectUnderTest.getS3GroupsSortedBySize();
+
+        assertThat(sortedGroups.size(), equalTo(3));
+        assertThat(sortedGroups, contains(thirdGroup, secondGroup, firstGroup));
+
+        objectUnderTest.removeGroup(secondGroup);
+
+        final Collection<S3Group> sortedGroupsAfterRemoval = objectUnderTest.getS3GroupsSortedBySize();
+
+        assertThat(sortedGroupsAfterRemoval.size(), equalTo(2));
+        assertThat(objectUnderTest.getNumberOfGroups(), equalTo(2));
+        assertThat(sortedGroupsAfterRemoval, contains(thirdGroup, firstGroup));
     }
 }

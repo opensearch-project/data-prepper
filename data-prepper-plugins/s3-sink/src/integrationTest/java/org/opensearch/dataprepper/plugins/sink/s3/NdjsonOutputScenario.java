@@ -68,11 +68,12 @@ public class NdjsonOutputScenario implements OutputScenario {
 
             final Map<String, Object> actualData = OBJECT_MAPPER.readValue(actualJsonString, Map.class);
             assertThat(actualData.get("sequence"), equalTo(partitionNumber));
-
             count++;
         }
 
-        assertThat(count, equalTo(expectedRecords));
+        if (expectedRecords != -1) {
+            assertThat(count, equalTo(expectedRecords));
+        }
     }
 
     @Override

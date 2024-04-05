@@ -25,6 +25,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -57,6 +58,42 @@ class BatchGeoIPDatabaseReaderTest {
 
         assertThat(objectUnderTestFromDecorate().getGeoData(inetAddress, fields, geoIPDatabases),
                 equalTo(geoData));
+    }
+
+    @Test
+    void getGeoData_returns_cached_value() {
+        final InetAddress inetAddress = mock(InetAddress.class);
+        final List<GeoIPField> fields = List.of(mock(GeoIPField.class));
+        final Set<GeoIPDatabase> geoIPDatabases = Set.of(mock(GeoIPDatabase.class));
+
+        final Map<String, Object> geoData = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        when(geoIPDatabaseReader.getGeoData(inetAddress, fields, geoIPDatabases))
+                .thenReturn(geoData);
+
+        final BatchGeoIPDatabaseReader objectUnderTest = objectUnderTestFromDecorate();
+        assertThat(objectUnderTest.getGeoData(inetAddress, fields, geoIPDatabases), equalTo(geoData));
+        assertThat(objectUnderTest.getGeoData(inetAddress, fields, geoIPDatabases), equalTo(geoData));
+
+        verify(geoIPDatabaseReader, times(1)).getGeoData(inetAddress, fields, geoIPDatabases);
+    }
+
+    @Test
+    void getGeoData_caches_for_IP_fields_and_database() {
+        final InetAddress inetAddress = mock(InetAddress.class);
+        final List<GeoIPField> fields = List.of(mock(GeoIPField.class));
+        final Set<GeoIPDatabase> geoIPDatabases = Set.of(mock(GeoIPDatabase.class));
+
+        final Map<String, Object> geoData = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        when(geoIPDatabaseReader.getGeoData(any(), any(), any()))
+                .thenReturn(geoData);
+
+        final BatchGeoIPDatabaseReader objectUnderTest = objectUnderTestFromDecorate();
+        assertThat(objectUnderTest.getGeoData(inetAddress, fields, geoIPDatabases), equalTo(geoData));
+        assertThat(objectUnderTest.getGeoData(mock(InetAddress.class), fields, geoIPDatabases), equalTo(geoData));
+        assertThat(objectUnderTest.getGeoData(inetAddress, fields, Set.of(mock(GeoIPDatabase.class))), equalTo(geoData));
+        assertThat(objectUnderTest.getGeoData(inetAddress, List.of(mock(GeoIPField.class)), geoIPDatabases), equalTo(geoData));
+
+        verify(geoIPDatabaseReader, times(4)).getGeoData(any(), any(), any());
     }
 
     @Test
