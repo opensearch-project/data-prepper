@@ -143,6 +143,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     private PipelinesDataFlowModel getTransformedPipelinesDataFlowModel(String pipelineNameThatNeedsTransformation, Map<String, PipelineModel> pipelines, JsonNode templateRootNode) throws JsonProcessingException {
         //update template json
         String transformedJson = objectMapper.writeValueAsString(templateRootNode);
+        LOG.debug("{} pipeline has been transformed to :{}",pipelineNameThatNeedsTransformation,transformedJson);
 
         //convert TransformedJson to PipelineModel with the data from preTransformedDataFlowModel.
         //transform transformedJson to Map
@@ -163,6 +164,9 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                 preTransformedPipelinesDataFlowModel.getPipelineExtensions(),
                 transformedPipelines
         );
+        String transformedPipelinesDataFlowModelJson = objectMapper.writeValueAsString(transformedPipelinesDataFlowModel);
+        LOG.debug("Transformed PipelinesDataFlowModel: {}",transformedPipelinesDataFlowModelJson);
+
         return transformedPipelinesDataFlowModel;
     }
 

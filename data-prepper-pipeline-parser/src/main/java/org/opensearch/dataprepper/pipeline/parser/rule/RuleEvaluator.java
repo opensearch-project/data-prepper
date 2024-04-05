@@ -60,9 +60,13 @@ public class RuleEvaluator {
             try {
                 String pipelineJson = OBJECT_MAPPER.writeValueAsString(entry);
                 if (evaluate(pipelineJson, pluginRulesPath)) {
+                    LOG.debug("Rule path {} is evaluated true for pipelineJson {}",pluginRulesPath, pipelineJson);
+
                     String templateFilePath = transformersFactory.getPluginTemplateFileLocation(PLUGIN_NAME);
                     PipelineTemplateModel templateModel = yamlMapper.readValue(new File(templateFilePath),
                             PipelineTemplateModel.class);
+                    LOG.debug("Chosen template file {}",templateFilePath);
+
                     return RuleEvaluatorResult.builder()
                             .withEvaluatedResult(true)
                             .withPipelineTemplateModel(templateModel)
