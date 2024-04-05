@@ -1,0 +1,26 @@
+dodb-pipeline:
+  source: {{ source }}
+  route:
+    - initial_load: "${getMetadata(\"ingestion_type\")} == EXPORT"
+    - stream_load: "${getMetadata(\"ingestion_type\")} == STREAM"
+  sink:
+    - s3: {{sink[0]}} ##sink.s3
+        routes:
+          - stream_load
+    - opensearch: {{sink.opensearch}}  ##{{other sinks}}
+
+dodb-stream-pipeline:
+  source:
+    s3:
+      codec:
+        newline:
+      compression: "none"
+      aws: {{ sink.s3 }}
+      acknowledgments: true
+      scan:
+        source_coordination: true
+        buckets:
+          - bucket:
+              name: {{sink.s3.bucket.name}}
+  sink:
+    - opensearch: {{sink.opensearch}}
