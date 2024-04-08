@@ -1,19 +1,25 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.mongo.model;
 
 import java.util.Map;
 
 public class ExportLoadStatus {
 
-    private static final String TOTAL_PARTITIONS = "totalPartitions";
-    private static final String LOADED_PARTITIONS = "loadedPartitions";
-    private static final String LOADED_RECORDS = "loadedRecords";
+    public static final String TOTAL_PARTITIONS = "totalPartitions";
+    public static final String LOADED_PARTITIONS = "loadedPartitions";
+    public static final String LOADED_RECORDS = "loadedRecords";
 
-    private static final String LAST_UPDATE_TIMESTAMP = "lastUpdateTimestamp";
+    public static final String LAST_UPDATE_TIMESTAMP = "lastUpdateTimestamp";
 
     private long totalPartitions;
     private long loadedPartitions;
     private long loadedRecords;
     private long lastUpdateTimestamp;
+    private boolean isTotalParitionsComplete;
 
     public ExportLoadStatus(long totalPartitions, long loadedPartitions, long loadedRecords, long lastUpdateTimestamp) {
         this.totalPartitions = totalPartitions;
@@ -48,6 +54,14 @@ public class ExportLoadStatus {
 
     public void setLastUpdateTimestamp(long lastUpdateTimestamp) {
         this.lastUpdateTimestamp = lastUpdateTimestamp;
+    }
+
+    public boolean isTotalParitionsComplete() {
+        return isTotalParitionsComplete;
+    }
+
+    public void setTotalParitionsComplete(boolean totalParitionsComplete) {
+        isTotalParitionsComplete = totalParitionsComplete;
     }
 
     public long getLastUpdateTimestamp() {

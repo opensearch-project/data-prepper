@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -14,9 +15,11 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
+import org.opensearch.dataprepper.plugins.mongo.model.PartitionIdentifierBatch;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,9 +47,15 @@ import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.EX
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.EXPORT_PARTITION_QUERY_TOTAL_COUNT;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.EXPORT_PREFIX;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.EXPORT_RECORDS_TOTAL_COUNT;
+import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.DEFAULT_GET_PARTITION_BACKOFF_MILLIS;
+import static org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus.LAST_UPDATE_TIMESTAMP;
+import static org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus.LOADED_PARTITIONS;
+import static org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus.LOADED_RECORDS;
+import static org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus.TOTAL_PARTITIONS;
 
 @ExtendWith(MockitoExtension.class)
 public class ExportSchedulerTest {
+    private static final Random RANDOM = new Random();
     @Mock
     private EnhancedSourceCoordinator coordinator;
 
@@ -70,6 +79,15 @@ public class ExportSchedulerTest {
 
     @Mock
     private Counter exportRecordsTotalCounter;
+
+    @Mock
+    private PartitionIdentifierBatch partitionIdentifierBatch;
+
+    @Mock
+    private GlobalState globalState;
+
+    @Captor
+    private ArgumentCaptor<Map<String, Object>> progressStateCaptor;
 
     private ExportScheduler exportScheduler;
     private ExportPartition exportPartition;
@@ -110,23 +128,37 @@ public class ExportSchedulerTest {
 
         exportPartition = new ExportPartition(collection, partitionSize, exportTime, null);
         given(partitionIdentifier.getPartitionKey()).willReturn(partitionKey);
-        given(mongoDBExportPartitionSupplier.apply(exportPartition)).willReturn(List.of(partitionIdentifier));
+        given(mongoDBExportPartitionSupplier.apply(exportPartition)).willReturn(partitionIdentifierBatch);
+        given(partitionIdentifierBatch.getPartitionIdentifiers()).willReturn(List.of(partitionIdentifier));
+        given(coordinator.getPartition(eq(EXPORT_PREFIX + collection))).willReturn(
+                Optional.empty(), Optional.of(globalState));
+        final long totalPartitions = Integer.valueOf(RANDOM.nextInt(10)).longValue();
+        final Instant lastUpdateTimestamp = Instant.now().minus(1, ChronoUnit.MINUTES);
+        final Map<String, Object> progressState = Map.of(
+                TOTAL_PARTITIONS, totalPartitions,
+                LOADED_PARTITIONS, 0L,
+                LOADED_RECORDS, 0L,
+                LAST_UPDATE_TIMESTAMP, lastUpdateTimestamp.toEpochMilli()
+        );
+        given(globalState.getProgressState()).willReturn(Optional.of(progressState));
         given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).willReturn(Optional.of(exportPartition));
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> exportScheduler.run());
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() -> verify(coordinator, times(2)).createPartition(any()));
+            .atMost(Duration.ofMillis(DEFAULT_GET_PARTITION_BACKOFF_MILLIS).plus(Duration.ofSeconds(2)))
+            .untilAsserted(() -> verify(coordinator, times(1)).createPartition(any()));
 
         future.cancel(true);
+
+        verify(coordinator, times(2)).getPartition(eq(EXPORT_PREFIX + collection));
 
         // Acquire the init partition
         verify(coordinator).acquireAvailablePartition(eq(ExportPartition.PARTITION_TYPE));
 
         final ArgumentCaptor<EnhancedSourcePartition> argumentCaptor = ArgumentCaptor.forClass(EnhancedSourcePartition.class);
-        // Should create 1 export partition + 1 stream partitions + 1 global table state
-        verify(coordinator, times(2)).createPartition(argumentCaptor.capture());
+        // Should create 1 data query partition
+        verify(coordinator, times(1)).createPartition(argumentCaptor.capture());
         final List<EnhancedSourcePartition> partitions = argumentCaptor.getAllValues();
         var dataQueryPartitions = partitions.stream()
             .filter(partition -> partition instanceof DataQueryPartition)
@@ -139,20 +171,14 @@ public class ExportSchedulerTest {
             assertThat(partitions.get(0).getPartitionType(), equalTo(DataQueryPartition.PARTITION_TYPE));
         });
 
-        var globalStates = partitions.stream()
-                .filter(partition -> partition instanceof GlobalState)
-                .map(partition -> (GlobalState)partition).collect(Collectors.toList());
-        assertThat(globalStates.size(), equalTo(1));
-        globalStates.forEach(globalState -> {
-            assertThat(globalState.getPartitionKey(), equalTo(EXPORT_PREFIX + collection));
-            final Map<String, Object> globalStateMap = globalState.getProgressState().get();
-            assertThat(globalStateMap.get("totalPartitions"), is(1L));
-            assertThat(globalStateMap.get("loadedPartitions"), is(0L));
-            assertThat(globalStateMap.get("loadedRecords"), is(0L));
-            assertThat((Long) globalStateMap.get("lastUpdateTimestamp"),
-                    is(greaterThanOrEqualTo(exportTime.toEpochMilli())));
-            assertThat(globalState.getPartitionType(), equalTo(null));
-        });
+        verify(globalState).setProgressState(progressStateCaptor.capture());
+        final Map<String, Object> updatedProgressState = progressStateCaptor.getValue();
+        assertThat(updatedProgressState.get(TOTAL_PARTITIONS), equalTo(totalPartitions + 1));
+        assertThat(updatedProgressState.get(LOADED_PARTITIONS), is(0L));
+        assertThat(updatedProgressState.get(LOADED_RECORDS), is(0L));
+        assertThat((Long) updatedProgressState.get(LAST_UPDATE_TIMESTAMP),
+                is(greaterThanOrEqualTo(lastUpdateTimestamp.toEpochMilli())));
+        verify(coordinator).saveProgressStateForPartition(eq(globalState), any());
         verify(exportPartitionTotalCounter).increment(1);
         executorService.shutdownNow();
     }
@@ -167,14 +193,25 @@ public class ExportSchedulerTest {
         
         exportPartition = new ExportPartition(collection, partitionSize, exportTime, null);
         given(partitionIdentifier.getPartitionKey()).willReturn(partitionKey);
-        given(mongoDBExportPartitionSupplier.apply(exportPartition)).willReturn(List.of(partitionIdentifier, partitionIdentifier, partitionIdentifier));
+        given(mongoDBExportPartitionSupplier.apply(exportPartition)).willReturn(partitionIdentifierBatch);
+        given(partitionIdentifierBatch.getPartitionIdentifiers()).willReturn(List.of(partitionIdentifier, partitionIdentifier, partitionIdentifier));
+        given(coordinator.getPartition(eq(EXPORT_PREFIX + collection))).willReturn(Optional.of(globalState));
+        final long totalPartitions = Integer.valueOf(RANDOM.nextInt(10)).longValue();
+        final Instant lastUpdateTimestamp = Instant.now().minus(1, ChronoUnit.MINUTES);
+        final Map<String, Object> progressState = Map.of(
+                TOTAL_PARTITIONS, totalPartitions,
+                LOADED_PARTITIONS, 0L,
+                LOADED_RECORDS, 0L,
+                LAST_UPDATE_TIMESTAMP, lastUpdateTimestamp.toEpochMilli()
+        );
+        given(globalState.getProgressState()).willReturn(Optional.of(progressState));
         given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).willReturn(Optional.of(exportPartition));
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> exportScheduler.run());
         await()
             .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() -> verify(coordinator, times(4)).createPartition(any()));
+            .untilAsserted(() -> verify(coordinator, times(3)).createPartition(any()));
 
         future.cancel(true);
 
@@ -182,8 +219,8 @@ public class ExportSchedulerTest {
         verify(coordinator).acquireAvailablePartition(eq(ExportPartition.PARTITION_TYPE));
 
         final ArgumentCaptor<EnhancedSourcePartition> argumentCaptor = ArgumentCaptor.forClass(EnhancedSourcePartition.class);
-        // Should create 1 export partition + 1 stream partitions + 1 global table state
-        verify(coordinator, times(4)).createPartition(argumentCaptor.capture());
+        // Should create 3 data query partitions
+        verify(coordinator, times(3)).createPartition(argumentCaptor.capture());
         final List<EnhancedSourcePartition> partitions = argumentCaptor.getAllValues();
         var dataQueryPartitions = partitions.stream()
                 .filter(partition -> partition instanceof DataQueryPartition)
@@ -196,20 +233,14 @@ public class ExportSchedulerTest {
             assertThat(partitions.get(0).getPartitionType(), equalTo(DataQueryPartition.PARTITION_TYPE));
         });
 
-        var globalStates = partitions.stream()
-                .filter(partition -> partition instanceof GlobalState)
-                .map(partition -> (GlobalState)partition).collect(Collectors.toList());
-        assertThat(globalStates.size(), equalTo(1));
-        globalStates.forEach(globalState -> {
-            assertThat(globalState.getPartitionKey(), equalTo(EXPORT_PREFIX + collection));
-            final Map<String, Object> globalStateMap = globalState.getProgressState().get();
-            assertThat(globalStateMap.get("totalPartitions"), is(3L));
-            assertThat(globalStateMap.get("loadedPartitions"), is(0L));
-            assertThat(globalStateMap.get("loadedRecords"), is(0L));
-            assertThat((Long) globalStateMap.get("lastUpdateTimestamp"),
-                    is(greaterThanOrEqualTo(exportTime.toEpochMilli())));
-            assertThat(globalState.getPartitionType(), equalTo(null));
-        });
+        verify(globalState).setProgressState(progressStateCaptor.capture());
+        final Map<String, Object> updatedProgressState = progressStateCaptor.getValue();
+        assertThat(updatedProgressState.get(TOTAL_PARTITIONS), equalTo(totalPartitions + 3));
+        assertThat(updatedProgressState.get(LOADED_PARTITIONS), is(0L));
+        assertThat(updatedProgressState.get(LOADED_RECORDS), is(0L));
+        assertThat((Long) updatedProgressState.get(LAST_UPDATE_TIMESTAMP),
+                is(greaterThanOrEqualTo(lastUpdateTimestamp.toEpochMilli())));
+        verify(coordinator).saveProgressStateForPartition(eq(globalState), any());
         verify(exportPartitionTotalCounter).increment(3);
         executorService.shutdownNow();
     }

@@ -1,0 +1,177 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.opensearch.dataprepper.plugins.mongo.documentdb;
+
+import io.micrometer.core.instrument.Counter;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
+import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
+
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.function.Function;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.mongo.documentdb.MongoTasksRefresher.CREDENTIALS_CHANGED;
+import static org.opensearch.dataprepper.plugins.mongo.documentdb.MongoTasksRefresher.EXECUTOR_REFRESH_ERRORS;
+
+@ExtendWith(MockitoExtension.class)
+class MongoTasksRefresherTest {
+    private static final String TEST_USERNAME = "test_user";
+    private static final String TEST_PASSWORD = "test_password";
+
+    @Mock
+    private EnhancedSourceCoordinator enhancedSourceCoordinator;
+
+    @Mock
+    private Buffer<Record<Event>> buffer;
+
+    @Mock
+    private Function<Integer, ExecutorService> executorServiceFunction;
+
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private MongoDBSourceConfig sourceConfig;
+
+    @Mock
+    private MongoDBSourceConfig.CredentialsConfig credentialsConfig;
+
+    @Mock
+    private ExecutorService executorService;
+
+    @Mock
+    private CollectionConfig collectionConfig;
+
+    @Mock
+    private Counter credentialsChangeCounter;
+
+    @Mock
+    private Counter executorRefreshErrorsCounter;
+
+    private MongoTasksRefresher createObjectUnderTest() {
+        return new MongoTasksRefresher(
+                buffer, enhancedSourceCoordinator, pluginMetrics, acknowledgementSetManager, executorServiceFunction);
+    }
+
+    @BeforeEach
+    void setUp() {
+        when(executorServiceFunction.apply(anyInt())).thenReturn(executorService);
+        when(sourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
+    }
+
+    @Test
+    void testUpdateWithBasicAuthUnchanged() {
+        final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(sourceConfig);
+        verify(executorServiceFunction).apply(eq(3));
+        when(sourceConfig.getCredentialsConfig()).thenReturn(credentialsConfig);
+        when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
+        final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
+        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.CredentialsConfig.class);
+        when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
+        when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
+        objectUnderTest.update(newSourceConfig);
+        verify(executorService, times(3)).submit(any(Runnable.class));
+        verifyNoMoreInteractions(executorServiceFunction);
+    }
+
+    @Test
+    void testUpdateWithUsernameChanged() {
+        when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
+        final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(sourceConfig);
+        verify(executorServiceFunction).apply(eq(3));
+        when(sourceConfig.getCredentialsConfig()).thenReturn(credentialsConfig);
+        when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
+        when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
+        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.CredentialsConfig.class);
+        when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
+        when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME + "_changed");
+        final ExecutorService newExecutorService = mock(ExecutorService.class);
+        when(executorServiceFunction.apply(anyInt())).thenReturn(newExecutorService);
+        objectUnderTest.update(newSourceConfig);
+        verify(credentialsChangeCounter).increment();
+        verify(executorService).shutdownNow();
+        verify(newExecutorService, times(3)).submit(any(Runnable.class));
+        verify(executorServiceFunction, times(2)).apply(eq(3));
+    }
+
+    @Test
+    void testGetAfterUpdateWithPasswordChanged() {
+        when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
+        final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(sourceConfig);
+        verify(executorServiceFunction).apply(eq(3));
+        when(sourceConfig.getCredentialsConfig()).thenReturn(credentialsConfig);
+        when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
+        final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
+        when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
+        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.CredentialsConfig.class);
+        when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
+        when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
+        final ExecutorService newExecutorService = mock(ExecutorService.class);
+        when(executorServiceFunction.apply(anyInt())).thenReturn(newExecutorService);
+        objectUnderTest.update(newSourceConfig);
+        verify(credentialsChangeCounter).increment();
+        verify(executorService).shutdownNow();
+        verify(newExecutorService, times(3)).submit(any(Runnable.class));
+        verify(executorServiceFunction, times(2)).apply(eq(3));
+    }
+
+    @Test
+    void testGetAfterUpdateClientFailure() {
+        when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
+        when(pluginMetrics.counter(EXECUTOR_REFRESH_ERRORS)).thenReturn(executorRefreshErrorsCounter);
+        final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(sourceConfig);
+        verify(executorServiceFunction).apply(eq(3));
+        when(sourceConfig.getCredentialsConfig()).thenReturn(credentialsConfig);
+        when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
+        final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
+        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.CredentialsConfig.class);
+        when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
+        when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
+        doThrow(RuntimeException.class).when(executorService).shutdownNow();
+        objectUnderTest.update(newSourceConfig);
+        verify(credentialsChangeCounter).increment();
+        verify(executorRefreshErrorsCounter).increment();
+        verifyNoMoreInteractions(executorServiceFunction);
+    }
+}

@@ -1,6 +1,12 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.mongo.export;
 
 import io.micrometer.core.instrument.Counter;
+import org.bson.Document;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -11,6 +17,7 @@ import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalSta
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.DataQueryProgressState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus;
+import org.opensearch.dataprepper.plugins.mongo.model.PartitionIdentifierBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +25,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ExportScheduler implements Runnable {
     public static final String EXPORT_PREFIX = "EXPORT-";
@@ -28,6 +35,7 @@ public class ExportScheduler implements Runnable {
     private static final int DEFAULT_MAX_CLOSE_COUNT = 36;
     private static final String COMPLETED_STATUS = "Completed";
     private static final String FAILED_STATUS = "Failed";
+    static final int DEFAULT_GET_PARTITION_BACKOFF_MILLIS = 3000;
     static final String EXPORT_JOB_SUCCESS_COUNT = "exportJobSuccess";
     static final String EXPORT_JOB_FAILURE_COUNT = "exportJobFailure";
     static final String EXPORT_PARTITION_QUERY_TOTAL_COUNT = "exportPartitionQueryTotal";
@@ -64,14 +72,25 @@ public class ExportScheduler implements Runnable {
                     final ExportPartition exportPartition = (ExportPartition) sourcePartition.get();
                     LOG.info("Acquired an export partition: {}", exportPartition.getPartitionKey());
 
-                    final List<PartitionIdentifier> partitionIdentifiers = mongoDBExportPartitionSupplier.apply(exportPartition);
+                    final String exportPartitionKey = EXPORT_PREFIX + exportPartition.getCollection();
+                    Optional<EnhancedSourcePartition> globalPartition = enhancedSourceCoordinator
+                            .getPartition(exportPartitionKey);
+                    while (globalPartition.isEmpty()) {
+                        LOG.warn("Wait for global partition to be created.");
+                        Thread.sleep(DEFAULT_GET_PARTITION_BACKOFF_MILLIS);
+                        globalPartition = enhancedSourceCoordinator.getPartition(exportPartitionKey);
+                    }
 
-                    final boolean createStatus = createDataQueryPartitions(exportPartition.getCollection(), Instant.now(), partitionIdentifiers);
+                    final PartitionIdentifierBatch partitionIdentifierBatch = mongoDBExportPartitionSupplier.apply(exportPartition);
 
-                    if (createStatus) {
+                    createDataQueryPartitions(
+                            exportPartition.getCollection(), Instant.now(), partitionIdentifierBatch.getPartitionIdentifiers(),
+                            (GlobalState) globalPartition.get());
+                    updateExportPartition(exportPartition, partitionIdentifierBatch);
+
+                    if (partitionIdentifierBatch.isLastBatch()) {
                         completeExportPartition(exportPartition);
-                    } else {
-                        closeExportPartitionWithError(exportPartition);
+                        markTotalPartitionsAsComplete(exportPartition.getCollection());
                     }
                 }
                 try {
@@ -95,8 +114,9 @@ public class ExportScheduler implements Runnable {
 
     private boolean createDataQueryPartitions(final String collection,
                                            final Instant exportTime,
-                                           final List<PartitionIdentifier> partitionIdentifiers) {
-        AtomicInteger totalQueries = new AtomicInteger();
+                                           final List<PartitionIdentifier> partitionIdentifiers,
+                                              final GlobalState globalState) {
+        AtomicLong totalQueries = new AtomicLong();
         partitionIdentifiers.forEach(partitionIdentifier -> {
             final DataQueryProgressState progressState = new DataQueryProgressState();
             progressState.setExecutedQueries(0);
@@ -110,14 +130,27 @@ public class ExportScheduler implements Runnable {
 
         if (totalQueries.get() > 0) {
             exportPartitionTotalCounter.increment(totalQueries.get());
+            final ExportLoadStatus exportLoadStatus = ExportLoadStatus.fromMap(globalState.getProgressState().get());
+            totalQueries.getAndAdd(exportLoadStatus.getTotalPartitions());
+            exportLoadStatus.setTotalPartitions(totalQueries.get());
+            exportLoadStatus.setLastUpdateTimestamp(Instant.now().toEpochMilli());
+            globalState.setProgressState(exportLoadStatus.toMap());
 
             // Currently, we need to maintain a global state to track the overall progress.
             // So that we can easily tell if all the export files are loaded
-            final ExportLoadStatus exportLoadStatus = new ExportLoadStatus(totalQueries.get(), 0, 0, Instant.now().toEpochMilli());
-            enhancedSourceCoordinator.createPartition(new GlobalState(EXPORT_PREFIX + collection, exportLoadStatus.toMap()));
+            enhancedSourceCoordinator.saveProgressStateForPartition(globalState, null);
             return true;
         } else {
             return false;
+        }
+    }
+
+    private void updateExportPartition(final ExportPartition exportPartition,
+                                       final PartitionIdentifierBatch partitionIdentifierBatch) {
+        final ExportProgressState state = exportPartition.getProgressState().get();
+        if (partitionIdentifierBatch.getEndDocId() != null) {
+            state.setLastEndIdDoc(new Document("_id", partitionIdentifierBatch.getEndDocId()));
+            enhancedSourceCoordinator.saveProgressStateForPartition(exportPartition, null);
         }
     }
 
@@ -126,6 +159,21 @@ public class ExportScheduler implements Runnable {
         final ExportProgressState state = exportPartition.getProgressState().get();
         state.setStatus(COMPLETED_STATUS);
         enhancedSourceCoordinator.completePartition(exportPartition);
+    }
+
+    private void markTotalPartitionsAsComplete(final String collection) {
+        final String exportPartitionKey = EXPORT_PREFIX + collection;
+        Optional<EnhancedSourcePartition> globalPartition = enhancedSourceCoordinator
+                .getPartition(exportPartitionKey);
+        if (globalPartition.isEmpty()) {
+            throw new RuntimeException("Wait for global partition to be created.");
+        }
+        final GlobalState globalState = (GlobalState) globalPartition.get();
+        final ExportLoadStatus exportLoadStatus = ExportLoadStatus.fromMap(globalState.getProgressState().get());
+        exportLoadStatus.setTotalParitionsComplete(true);
+        exportLoadStatus.setLastUpdateTimestamp(Instant.now().toEpochMilli());
+        globalState.setProgressState(exportLoadStatus.toMap());
+        enhancedSourceCoordinator.saveProgressStateForPartition(globalState, null);
     }
 
     private void closeExportPartitionWithError(final ExportPartition exportPartition) {
