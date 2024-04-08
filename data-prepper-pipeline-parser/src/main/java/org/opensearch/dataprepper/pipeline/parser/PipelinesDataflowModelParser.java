@@ -12,9 +12,13 @@ import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleConfig;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -35,14 +39,16 @@ public class PipelinesDataflowModelParser implements PipelineYamlTransformer{
         this.pipelineConfigurationReader = pipelineConfigurationReader;
     }
 
+
+    //TODO
+    // move transformation code after user pipeline validation in pipelineTransformer.java
     public PipelinesDataFlowModel parseConfiguration() {
         final List<PipelinesDataFlowModel> pipelinesDataFlowModels = parseStreamsToPipelinesDataFlowModel();
-        final List<PipelinesDataFlowModel> pipelineTemplateDataFlowModels = parseStreamsToTemplateDataFlowModel();
+        PipelinesDataFlowModel pipelinesDataFlowModel = mergePipelinesDataModels(pipelinesDataFlowModels);
 
-        //Transform pipeline configuration
-        final List<PipelinesDataFlowModel> transformedPipelinesDataFlowModels = transformConfiguration(pipelinesDataFlowModels, pipelineTemplateDataFlowModels);
+        performPipelineConfigurationTransformationIfNeeded(pipelinesDataFlowModel);
 
-        return mergePipelinesDataModels(transformedPipelinesDataFlowModels);
+        return pipelinesDataFlowModel;
     }
 
     private void validateDataPrepperVersion(final DataPrepperVersion version) {
@@ -59,12 +65,50 @@ public class PipelinesDataflowModelParser implements PipelineYamlTransformer{
                 .collect(Collectors.toList());
     }
 
-    private List<PipelinesDataFlowModel> parseStreamsToTemplateDataFlowModel() {
+    private void performPipelineConfigurationTransformationIfNeeded(PipelinesDataFlowModel pipelinesDataFlowModel){
 
-        return pipelineConfigurationReader.getTemplateInputStreams().stream()
-                .map(this::parseStreamToTemplateDataFlowModel)
-                .collect(Collectors.toList());
+        //check if transformation is required based on rules present in yaml file
+        RuleParser ruleParser = new RuleParser();
+        RuleEvaluator ruleEvaluator = new RuleEvaluator();
+
+//        RuleConfig rule = ruleParser.parseRule(templateFileLocation);
+        List<RuleConfig> rules = ruleParser.getRules();
+
+        //for all the rules in the rule folder, check if any one of it matches
+        // if so, then perform transformation based on template
+        for(RuleConfig rule:rules){
+            if (ruleEvaluator.isRuleValid(rule, pipelinesDataFlowModel)) {
+
+                String templateFileLocation = ruleEvaluator.getTemplateFileLocationForTransformation(rule);
+
+                //load template dataFlowModel from templateFileLocation.
+//                PipelinesDataFlowModel templatePipelineDataModels = getTemplateDataFlowModel(templateFileLocation);
+
+//                TODO
+//                validateTemplateModel()
+
+                //transform template dataFlowModel based on pipelineDataFlowModel
+
+
+                //TODO
+//                final List<PipelinesDataFlowModel> pipelineTemplateDataFlowModels = parseStreamsToTemplateDataFlowModel();
+
+                //Transform pipeline configuration
+//                final List<PipelinesDataFlowModel> transformedPipelinesDataFlowModels = transformConfiguration(pipelinesDataFlowModels, pipelineTemplateDataFlowModels);
+
+//                return mergePipelinesDataModels(transformedPipelinesDataFlowModels);
+            }
+        }
+
     }
+
+//
+//    private List<PipelinesDataFlowModel> parseStreamsToTemplateDataFlowModel() {
+//
+//        return pipelineConfigurationReader.getTemplateInputStreams().stream()
+//                .map(this::parseStreamToTemplateDataFlowModel)
+//                .collect(Collectors.toList());
+//    }
 
     private PipelinesDataFlowModel parseStreamToPipelineDataFlowModel(final InputStream configurationInputStream) {
         try (final InputStream pipelineConfigurationInputStream = configurationInputStream) {

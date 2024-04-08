@@ -5,6 +5,9 @@
 
 package org.opensearch.dataprepper.parser;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -27,12 +30,17 @@ import org.opensearch.dataprepper.pipeline.PipelineConnector;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationValidator;
 import org.opensearch.dataprepper.pipeline.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.pipeline.parser.model.SinkContextPluginSetting;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleConfig;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleParser;
 import org.opensearch.dataprepper.pipeline.router.Router;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -49,6 +57,8 @@ public class PipelineTransformer {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineTransformer.class);
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
+            .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
     private final PipelinesDataFlowModel pipelinesDataFlowModel;
     private final RouterFactory routerFactory;
     private final DataPrepperConfiguration dataPrepperConfiguration;
@@ -318,5 +328,15 @@ public class PipelineTransformer {
                 .map(circuitBreaker -> new CircuitBreakingBuffer<>(buffer, circuitBreaker))
                 .map(b -> (Buffer) b)
                 .orElseGet(() -> buffer);
+    }
+
+    private PipelinesDataFlowModel getTemplateDataFlowModel(String fileLocation) {
+
+        try {
+            PipelinesDataFlowModel templatePipelinesDataFlowModel = OBJECT_MAPPER.readValue(new File(fileLocation), PipelinesDataFlowModel.class);
+            return  templatePipelinesDataFlowModel;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

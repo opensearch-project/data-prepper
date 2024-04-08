@@ -4,7 +4,7 @@ dodb-pipeline:
     - initial_load: "${getMetadata(\"ingestion_type\")} == EXPORT"
     - stream_load: "${getMetadata(\"ingestion_type\")} == STREAM"
   sink:
-    - s3: {{sink[0]}} ##sink.s3
+    - s3: {{sink[0]}}
         routes:
           - stream_load
     - opensearch: {{sink.opensearch}}  ##{{other sinks}}
@@ -24,3 +24,6 @@ dodb-stream-pipeline:
               name: {{sink.s3.bucket.name}}
   sink:
     - opensearch: {{sink.opensearch}}
+
+
+  {{pipelines}}

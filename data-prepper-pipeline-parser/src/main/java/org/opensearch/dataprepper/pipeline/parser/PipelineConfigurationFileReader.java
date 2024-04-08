@@ -28,18 +28,10 @@ public class PipelineConfigurationFileReader implements PipelineConfigurationRea
         return getInputStreamsForConfigurationFiles();
     }
 
-    public List<InputStream> getTemplateInputStreams() {
-        return getInputStreamsForTemplateFile();
-    }
-
     private List<InputStream> getInputStreamsForConfigurationFiles() {
         final File configurationLocation = new File(pipelineConfigurationFileLocation);
 
         if (configurationLocation.isFile()) {
-            //introduce template changes here
-
-
-
             final List<InputStream> inputStreams = Stream.of(configurationLocation).map(this::getInputStreamForFile)
                     .filter(Objects::nonNull).collect(Collectors.toList());
 
@@ -49,8 +41,6 @@ public class PipelineConfigurationFileReader implements PipelineConfigurationRea
             return inputStreams;
         } else if (configurationLocation.isDirectory()) {
             FileFilter yamlFilter = pathname -> (pathname.getName().endsWith(".yaml") || pathname.getName().endsWith(".yml"));
-
-            //introduce template changes here
 
             List<InputStream> inputStreams = Stream.of(configurationLocation.listFiles(yamlFilter))
                     .map(this::getInputStreamForFile)

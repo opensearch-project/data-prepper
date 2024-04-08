@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
@@ -38,6 +40,11 @@ public class DynamicYamlTransformer implements PipelineYamlTransformer {
         } catch (IOException e) {
             throw new RuntimeException("Error processing YAML", e);
         }
+    }
+
+    @Override
+    public PipelinesDataFlowModel transformConfiguration(PipelinesDataFlowModel pipelinesDataFlowModel, PipelinesDataFlowModel templateDataFlowModel) {
+        return null;
     }
 
     private void printNodeTypes(JsonNode node, String path) {

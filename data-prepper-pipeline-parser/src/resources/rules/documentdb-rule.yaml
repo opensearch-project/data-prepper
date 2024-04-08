@@ -1,0 +1,1 @@
+apply_when: "exists(pipeline.source.documentdb) && pipeline.source.documentdb.collections.any{ c -> c.ingestion_mode == 'export_stream' }"
