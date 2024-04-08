@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.mongo.export;
 
 import io.micrometer.core.instrument.Counter;
-import org.bson.Document;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
