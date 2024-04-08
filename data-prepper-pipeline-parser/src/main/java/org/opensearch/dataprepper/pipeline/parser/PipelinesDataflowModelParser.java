@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 
-public class PipelinesDataflowModelParser {
+public class PipelinesDataflowModelParser implements PipelineYamlTransformer{
     private static final Logger LOG = LoggerFactory.getLogger(PipelinesDataflowModelParser.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
             .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
@@ -37,7 +37,12 @@ public class PipelinesDataflowModelParser {
 
     public PipelinesDataFlowModel parseConfiguration() {
         final List<PipelinesDataFlowModel> pipelinesDataFlowModels = parseStreamsToPipelinesDataFlowModel();
-        return mergePipelinesDataModels(pipelinesDataFlowModels);
+        final List<PipelinesDataFlowModel> pipelineTemplateDataFlowModels = parseStreamsToTemplateDataFlowModel();
+
+        //Transform pipeline configuration
+        final List<PipelinesDataFlowModel> transformedPipelinesDataFlowModels = transformConfiguration(pipelinesDataFlowModels, pipelineTemplateDataFlowModels);
+
+        return mergePipelinesDataModels(transformedPipelinesDataFlowModels);
     }
 
     private void validateDataPrepperVersion(final DataPrepperVersion version) {
@@ -54,6 +59,13 @@ public class PipelinesDataflowModelParser {
                 .collect(Collectors.toList());
     }
 
+    private List<PipelinesDataFlowModel> parseStreamsToTemplateDataFlowModel() {
+
+        return pipelineConfigurationReader.getTemplateInputStreams().stream()
+                .map(this::parseStreamToTemplateDataFlowModel)
+                .collect(Collectors.toList());
+    }
+
     private PipelinesDataFlowModel parseStreamToPipelineDataFlowModel(final InputStream configurationInputStream) {
         try (final InputStream pipelineConfigurationInputStream = configurationInputStream) {
             final PipelinesDataFlowModel pipelinesDataFlowModel = OBJECT_MAPPER.readValue(pipelineConfigurationInputStream,
@@ -61,6 +73,17 @@ public class PipelinesDataflowModelParser {
 
             final DataPrepperVersion version = pipelinesDataFlowModel.getDataPrepperVersion();
             validateDataPrepperVersion(version);
+
+            return pipelinesDataFlowModel;
+        } catch (IOException e) {
+            throw new ParseException("Failed to parse the configuration", e);
+        }
+    }
+
+    private PipelinesDataFlowModel parseStreamToTemplateDataFlowModel(final InputStream configurationInputStream) {
+        try (final InputStream pipelineConfigurationInputStream = configurationInputStream) {
+            final PipelinesDataFlowModel pipelinesDataFlowModel = OBJECT_MAPPER.readValue(pipelineConfigurationInputStream,
+                    PipelinesDataFlowModel.class);
 
             return pipelinesDataFlowModel;
         } catch (IOException e) {
@@ -88,5 +111,19 @@ public class PipelinesDataflowModelParser {
         }
         return pipelineExtensionsList.isEmpty() ? new PipelinesDataFlowModel(pipelinesDataFlowModelMap) :
                 new PipelinesDataFlowModel(pipelineExtensionsList.get(0), pipelinesDataFlowModelMap);
+    }
+
+    @Override
+    public String transformYaml(String originalYaml, String templateYaml) {
+        return null;
+    }
+
+    @Override
+    public PipelinesDataFlowModel transformConfiguration(PipelinesDataFlowModel pipelinesDataFlowModel,
+                                                         PipelinesDataFlowModel pipelineTemplateDataFlowModel) {
+
+        PipelinesDataFlowModel transformedPipelinesDataFlowModel=null;
+
+        return transformedPipelinesDataFlowModel;
     }
 }

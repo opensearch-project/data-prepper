@@ -1,5 +1,7 @@
 package org.opensearch.dataprepper.pipeline.parser;
 
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+
 public interface PipelineYamlTransformer {
     /**
      * Transforms the template YAML by substituting placeholders with values from the original YAML.
@@ -9,5 +11,8 @@ public interface PipelineYamlTransformer {
      * @return The transformed YAML configuration.
      */
     String transformYaml(String originalYaml, String templateYaml);
+
+    PipelinesDataFlowModel transformConfiguration(PipelinesDataFlowModel pipelinesDataFlowModel,
+                                                  PipelinesDataFlowModel templateDataFlowModel);
 
 }

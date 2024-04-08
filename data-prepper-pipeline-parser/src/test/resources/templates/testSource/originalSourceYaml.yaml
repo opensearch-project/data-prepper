@@ -1,0 +1,9 @@
+dodb-pipeline:
+  source:
+    documentdb:
+      hostname: "database.example.com"
+      port: 27017
+  sink:   
+    opensearch:
+      hosts: ["https://search-service.example.com"]
+      index: "my_index"

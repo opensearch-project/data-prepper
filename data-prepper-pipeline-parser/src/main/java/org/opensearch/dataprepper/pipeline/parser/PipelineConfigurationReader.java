@@ -11,4 +11,5 @@ public interface PipelineConfigurationReader {
      *         the caller of this method is responsible for closing these input streams after they are used
      */
     List<InputStream> getPipelineConfigurationInputStreams();
+
 }

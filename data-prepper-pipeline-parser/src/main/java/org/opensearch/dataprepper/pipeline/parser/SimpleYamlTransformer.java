@@ -11,9 +11,10 @@ import java.util.Iterator;
 import java.util.Map;
 
 
-public class SimpleYamlTransformer {
+public class SimpleYamlTransformer implements PipelineYamlTransformer{
 
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+    private final String delimiter = "{{";
 
     public void transformYaml(File originalFile, File templateFile, File outputFile) throws IOException {
         // Parse the original and template YAMLs
@@ -56,6 +57,11 @@ public class SimpleYamlTransformer {
     private String pathToJsonPointer(String path) {
         // Convert a path like "source.documentdb.hostname" to a JSON Pointer "/source/documentdb/hostname"
         return "/" + path.replace(".", "/");
+    }
+
+    @Override
+    public String transformYaml(String originalYaml, String templateYaml) {
+        return null;
     }
 
 // TODO
