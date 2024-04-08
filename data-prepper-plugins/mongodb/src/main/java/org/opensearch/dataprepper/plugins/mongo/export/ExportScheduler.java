@@ -149,7 +149,7 @@ public class ExportScheduler implements Runnable {
                                        final PartitionIdentifierBatch partitionIdentifierBatch) {
         final ExportProgressState state = exportPartition.getProgressState().get();
         if (partitionIdentifierBatch.getEndDocId() != null) {
-            state.setLastEndIdDoc(new Document("_id", partitionIdentifierBatch.getEndDocId()));
+            state.setLastEndDocId(partitionIdentifierBatch.getEndDocId());
             enhancedSourceCoordinator.saveProgressStateForPartition(exportPartition, null);
         }
     }

@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.mongo.coordination.state;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.bson.Document;
 
 public class ExportProgressState {
 
@@ -22,8 +21,8 @@ public class ExportProgressState {
     @JsonProperty("status")
     private String status;
 
-    @JsonProperty("endIdDoc")
-    private Document lastEndIdDoc;
+    @JsonProperty("lastEndDocId")
+    private Object lastEndDocId;
 
 
     public String getDatabaseName() {
@@ -58,11 +57,11 @@ public class ExportProgressState {
         this.status = status;
     }
 
-    public Document getLastEndIdDoc() {
-        return lastEndIdDoc;
+    public Object getLastEndDocId() {
+        return lastEndDocId;
     }
 
-    public void setLastEndIdDoc(Document lastEndIdDoc) {
-        this.lastEndIdDoc = lastEndIdDoc;
+    public void setLastEndDocId(Object lastEndDocId) {
+        this.lastEndDocId = lastEndDocId;
     }
 }

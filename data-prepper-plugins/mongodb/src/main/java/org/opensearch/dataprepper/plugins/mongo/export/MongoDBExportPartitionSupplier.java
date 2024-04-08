@@ -49,7 +49,7 @@ public class MongoDBExportPartitionSupplier implements Function<ExportPartition,
         final Optional<ExportProgressState> exportProgressStateOptional = exportPartition
                 .getProgressState();
         final Object lastEndDocId = exportProgressStateOptional.map(
-                exportProgressState -> exportProgressState.getLastEndIdDoc().get("_id")).orElse(null);
+                ExportProgressState::getLastEndDocId).orElse(null);
         boolean isLastBatch = false;
         Object endDocId = null;
         try (MongoClient mongoClient = MongoDBConnection.getMongoClient(sourceConfig)) {
