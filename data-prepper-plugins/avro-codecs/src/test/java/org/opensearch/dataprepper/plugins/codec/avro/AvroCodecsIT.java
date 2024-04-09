@@ -22,8 +22,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.event.LogEventBuilder;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
@@ -85,7 +86,7 @@ public class AvroCodecsIT {
             eventData.put(field.name(), record.get(field.name()));
 
         }
-        final Event event = JacksonLog.builder().withData(eventData).build();
+        final Event event = TestEventFactory.getTestEventFactory().eventBuilder(LogEventBuilder.class).withData(eventData).build();
         return event;
     }
 
@@ -155,7 +156,7 @@ public class AvroCodecsIT {
     }
 
     private AvroInputCodec createInputCodecObjectUnderTest() {
-        return new AvroInputCodec();
+        return new AvroInputCodec(TestEventFactory.getTestEventFactory());
     }
 
     private AvroOutputCodec createOutputCodecObjectUnderTest() {

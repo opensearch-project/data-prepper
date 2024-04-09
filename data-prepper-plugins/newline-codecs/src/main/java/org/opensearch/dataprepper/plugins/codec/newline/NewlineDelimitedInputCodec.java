@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 
@@ -28,7 +29,9 @@ public class NewlineDelimitedInputCodec implements InputCodec {
     private final String headerDestination;
 
     @DataPrepperPluginConstructor
-    public NewlineDelimitedInputCodec(final NewlineDelimitedInputConfig config) {
+    public NewlineDelimitedInputCodec(
+            final NewlineDelimitedInputConfig config,
+            final EventFactory eventFactory) {
         Objects.requireNonNull(config);
         skipLines = config.getSkipLines();
 

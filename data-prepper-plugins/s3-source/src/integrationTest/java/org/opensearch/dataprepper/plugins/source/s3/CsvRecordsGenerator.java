@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.s3;
 
+import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.codec.csv.CsvInputCodec;
@@ -42,7 +43,7 @@ class CsvRecordsGenerator implements RecordsGenerator {
     @Override
     public InputCodec getCodec() {
         CsvInputCodecConfig config = csvCodecConfigWithAutogenerateHeader();
-        return new CsvInputCodec(config);
+        return new CsvInputCodec(config, TestEventFactory.getTestEventFactory());
     }
 
     /**

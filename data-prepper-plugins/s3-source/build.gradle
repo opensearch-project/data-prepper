@@ -43,6 +43,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:in-memory-source-coordination-store')
     testImplementation project(':data-prepper-core')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
+    testImplementation project(':data-prepper-test-event')
     testImplementation libs.avro.core
     testImplementation testLibs.hadoop.common
     testImplementation 'org.apache.parquet:parquet-avro:1.13.1'
