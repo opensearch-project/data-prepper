@@ -11,7 +11,7 @@ You need two tools installed:
 Run:
 
 ```
-./generate-release-notes.sh v2.7
+./generate-initial-release-notes.sh v2.7
 ```
 
 This will produce a file named `data-prepper.release-notes-version.md`.
