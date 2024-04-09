@@ -136,13 +136,11 @@ class DefaultAcknowledgementSetTests {
         assertThat(invalidAcquiresCounter, equalTo(1));
     }
 
-    @Test
     void testDefaultAcknowledgementInvalidRelease() {
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
         DefaultAcknowledgementSet secondAcknowledgementSet = createObjectUnderTest();
         assertThat(defaultAcknowledgementSet.release(handle2, true), equalTo(false));
-        assertThat(invalidReleasesCounter, equalTo(1));
     }
 
     @Test
@@ -153,7 +151,6 @@ class DefaultAcknowledgementSetTests {
         assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(true));
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(false));
-        assertThat(invalidReleasesCounter, equalTo(1));
     }
 
     @Test

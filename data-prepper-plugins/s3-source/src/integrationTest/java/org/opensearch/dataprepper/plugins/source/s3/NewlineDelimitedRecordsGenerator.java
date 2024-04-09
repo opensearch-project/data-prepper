@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.s3;
 
+import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.codec.newline.NewlineDelimitedInputCodec;
@@ -42,7 +43,7 @@ class NewlineDelimitedRecordsGenerator implements RecordsGenerator {
 
     @Override
     public InputCodec getCodec() {
-        return new NewlineDelimitedInputCodec(new NewlineDelimitedInputConfig());
+        return new NewlineDelimitedInputCodec(new NewlineDelimitedInputConfig(), TestEventFactory.getTestEventFactory());
     }
 
     @Override

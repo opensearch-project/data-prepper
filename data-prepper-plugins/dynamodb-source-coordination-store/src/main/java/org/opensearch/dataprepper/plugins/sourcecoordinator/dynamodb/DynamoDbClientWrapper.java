@@ -145,7 +145,9 @@ public class DynamoDbClientWrapper {
             return false;
         } catch (final Exception e) {
             LOG.error("An exception occurred while attempting to create a DynamoDb partition item {}", dynamoDbSourcePartitionItem.getSourcePartitionKey());
-            return false;
+            throw new PartitionUpdateException(
+                    "Exception when trying to create partition item " + dynamoDbSourcePartitionItem.getSourcePartitionKey(),
+                    e);
         }
     }
 

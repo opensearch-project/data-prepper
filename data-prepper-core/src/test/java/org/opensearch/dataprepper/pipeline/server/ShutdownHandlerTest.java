@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.pipeline.server;
 
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ import java.net.HttpURLConnection;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,6 +47,8 @@ public class ShutdownHandlerTest {
     public void beforeEach() {
         when(exchange.getResponseBody())
                 .thenReturn(responseBody);
+        lenient().when(exchange.getRequestHeaders())
+                .thenReturn(new Headers());
     }
 
     @Test

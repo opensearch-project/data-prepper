@@ -11,6 +11,7 @@ dependencies {
     implementation 'software.amazon.awssdk:apache-client'
     testImplementation 'org.json:json:20240205'
     testImplementation project(':data-prepper-plugins:common')
+    testImplementation project(':data-prepper-test-event')
 }
 
 test {

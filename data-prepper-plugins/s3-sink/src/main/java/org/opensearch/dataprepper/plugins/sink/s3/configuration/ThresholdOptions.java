@@ -6,12 +6,14 @@
 package org.opensearch.dataprepper.plugins.sink.s3.configuration;
 
 import java.time.Duration;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
 /**
  * An implementation class of s3 index configuration Options
@@ -21,8 +23,8 @@ public class ThresholdOptions {
     private static final String DEFAULT_BYTE_CAPACITY = "50mb";
 
     @JsonProperty("event_count")
-    @Size(min = 0, max = 10000000, message = "event_count size should be between 0 and 10000000")
-    @NotNull
+    @Min(value = 0, message = "event_count size should be between 0 and 10000000")
+    @Max(value = 10000000, message = "event_count size should be between 0 and 10000000")
     private int eventCount;
 
     @JsonProperty("maximum_size")
