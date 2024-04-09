@@ -11,7 +11,9 @@ import com.linecorp.armeria.common.grpc.GrpcStatusFunction;
 import com.linecorp.armeria.server.RequestTimeoutException;
 import io.grpc.Metadata;
 import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.micrometer.core.instrument.Counter;
+
 import org.opensearch.dataprepper.exceptions.BadRequestException;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.exceptions.RequestCancelledException;
@@ -51,6 +53,7 @@ public class GrpcRequestExceptionHandler implements GrpcStatusFunction {
     }
 
     private Status handleExceptions(final Throwable e) {
+        String message = e.getMessage();
         if (e instanceof RequestTimeoutException || e instanceof TimeoutException) {
             requestTimeoutsCounter.increment();
             return createStatus(e, Status.RESOURCE_EXHAUSTED);
@@ -58,6 +61,9 @@ public class GrpcRequestExceptionHandler implements GrpcStatusFunction {
             requestsTooLargeCounter.increment();
             return createStatus(e, Status.RESOURCE_EXHAUSTED);
         } else if (e instanceof BadRequestException) {
+            badRequestsCounter.increment();
+            return createStatus(e, Status.INVALID_ARGUMENT);
+        } else if ((e instanceof StatusRuntimeException) && (message.contains("Invalid protobuf byte sequence") || message.contains("Can't decode compressed frame"))) {
             badRequestsCounter.increment();
             return createStatus(e, Status.INVALID_ARGUMENT);
         } else if (e instanceof RequestCancelledException) {
