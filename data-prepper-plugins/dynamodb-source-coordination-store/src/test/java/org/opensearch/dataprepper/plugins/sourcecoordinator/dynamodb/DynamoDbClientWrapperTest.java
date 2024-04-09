@@ -282,9 +282,26 @@ public class DynamoDbClientWrapperTest {
         assertThat(putItemEnhancedRequest.conditionExpression().expression(), equalTo(ITEM_DOES_NOT_EXIST_EXPRESSION));
     }
 
+    @Test
+    void tryCreatePartitionItem_catches_conditionalCheckFailedException_from_putItem_and_returns_false() throws NoSuchFieldException, IllegalAccessException {
+        final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = mock(DynamoDbSourcePartitionItem.class);
+
+        final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
+        doThrow(ConditionalCheckFailedException.class).when(table).putItem(any(PutItemEnhancedRequest.class));
+
+        final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
+
+        reflectivelySetField(objectUnderTest, "table", table);
+
+        final boolean result = objectUnderTest.tryCreatePartitionItem(dynamoDbSourcePartitionItem);
+
+        assertThat(result, equalTo(false));
+    }
+
     @ParameterizedTest
     @MethodSource("exceptionProvider")
-    void tryCreatePartitionItem_catches_exception_from_putItem_and_returns_false(final Class exception) throws NoSuchFieldException, IllegalAccessException {
+    void tryCreatePartitionItem_catches_exception_other_than_conditionalCheckFailedException_from_putItem_and_throws_partitionUpdateException(
+            final Class exception) throws NoSuchFieldException, IllegalAccessException {
         final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = mock(DynamoDbSourcePartitionItem.class);
 
         final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
@@ -294,9 +311,8 @@ public class DynamoDbClientWrapperTest {
 
         reflectivelySetField(objectUnderTest, "table", table);
 
-        final boolean result = objectUnderTest.tryCreatePartitionItem(dynamoDbSourcePartitionItem);
-
-        assertThat(result, equalTo(false));
+        assertThrows(PartitionUpdateException.class,
+                () -> objectUnderTest.tryCreatePartitionItem(dynamoDbSourcePartitionItem));
     }
 
     @Test
@@ -706,7 +722,7 @@ public class DynamoDbClientWrapperTest {
     }
 
     static Stream<Class> exceptionProvider() {
-        return Stream.of(ConditionalCheckFailedException.class, RuntimeException.class, PartitionUpdateException.class);
+        return Stream.of(RuntimeException.class, PartitionUpdateException.class);
     }
 
     private void reflectivelySetField(final DynamoDbClientWrapper dynamoDbClientWrapper, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
