@@ -27,6 +27,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.INGESTION_EVENT_TYPE_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.MONGODB_EVENT_COLLECTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
@@ -56,8 +57,9 @@ class RecordConverterTest {
                 "\"orderDate\":{\"date\":\"" + LocalDate.now() +"\"}}";
         final long exportStartTime = Instant.now().toEpochMilli();
         final long eventVersionNumber = random.nextLong();
+        final String collection = UUID.randomUUID().toString();
 
-        final RecordConverter recordConverter = new RecordConverter(collectionConfig, ExportPartition.PARTITION_TYPE);
+        final RecordConverter recordConverter = new RecordConverter(collection, ExportPartition.PARTITION_TYPE);
 
         final JacksonEvent event = (JacksonEvent) recordConverter.convert(record, exportStartTime, eventVersionNumber);
         assertThat(event.getMetadata(), notNullValue());
@@ -65,6 +67,7 @@ class RecordConverterTest {
         assertThat(event.getMetadata().getAttribute(PARTITION_KEY_METADATA_ATTRIBUTE), equalTo(id));
         assertThat(event.getMetadata().getAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE), equalTo(id));
         assertThat(event.getMetadata().getAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE), equalTo(OpenSearchBulkActions.INDEX.toString()));
+        assertThat(event.getMetadata().getAttribute(MONGODB_EVENT_COLLECTION_METADATA_ATTRIBUTE), equalTo(collection));
         assertThat(event.getMetadata().getAttribute(MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE), notNullValue());
         assertThat(event.getMetadata().getAttribute(MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), nullValue());
         assertThat(event.getMetadata().getAttribute(MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(exportStartTime));
@@ -86,14 +89,15 @@ class RecordConverterTest {
         final long exportStartTime = Instant.now().toEpochMilli();
         final long eventVersionNumber = random.nextLong();
         final String eventName = "insert";
-
-        final RecordConverter recordConverter = new RecordConverter(collectionConfig, StreamPartition.PARTITION_TYPE);
+        final String collection = UUID.randomUUID().toString();
+        final RecordConverter recordConverter = new RecordConverter(collection, StreamPartition.PARTITION_TYPE);
 
         final JacksonEvent event = (JacksonEvent) recordConverter.convert(record, exportStartTime, eventVersionNumber, eventName);
         assertThat(event.getMetadata(), notNullValue());
 
         assertThat(event.getMetadata().getAttribute(PARTITION_KEY_METADATA_ATTRIBUTE), equalTo(id));
         assertThat(event.getMetadata().getAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE), equalTo(id));
+        assertThat(event.getMetadata().getAttribute(MONGODB_EVENT_COLLECTION_METADATA_ATTRIBUTE), equalTo(collection));
         assertThat(event.getMetadata().getAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE), equalTo(OpenSearchBulkActions.INDEX.toString()));
         assertThat(event.getMetadata().getAttribute(MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE), notNullValue());
         assertThat(event.getMetadata().getAttribute(MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), equalTo(eventName));

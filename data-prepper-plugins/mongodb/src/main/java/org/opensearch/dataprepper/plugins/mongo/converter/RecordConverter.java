@@ -27,11 +27,11 @@ public class RecordConverter {
     private static final String DEFAULT_ACTION = OpenSearchBulkActions.INDEX.toString();
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final CollectionConfig collectionConfig;
+    private final String collection;
     private final String dataType;
 
-    public RecordConverter(final CollectionConfig collectionConfig, final String dataType) {
-        this.collectionConfig = collectionConfig;
+    public RecordConverter(final String collection, final String dataType) {
+        this.collection = collection;
         this.dataType = dataType;
     }
 
@@ -77,7 +77,7 @@ public class RecordConverter {
         final EventMetadata eventMetadata = event.getMetadata();
 
         eventMetadata.setAttribute(MetadataKeyAttributes.INGESTION_EVENT_TYPE_ATTRIBUTE, dataType);
-        eventMetadata.setAttribute(MetadataKeyAttributes.MONGODB_EVENT_COLLECTION_METADATA_ATTRIBUTE, collectionConfig.getCollection());
+        eventMetadata.setAttribute(MetadataKeyAttributes.MONGODB_EVENT_COLLECTION_METADATA_ATTRIBUTE, collection);
         eventMetadata.setAttribute(MetadataKeyAttributes.MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreationTimeMillis);
         eventMetadata.setAttribute(MetadataKeyAttributes.MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE, eventName);
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, mapStreamEventNameToBulkAction(eventName));

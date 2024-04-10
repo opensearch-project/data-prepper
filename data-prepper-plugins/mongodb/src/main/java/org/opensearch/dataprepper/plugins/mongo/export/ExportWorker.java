@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.mongo.buffer.ExportRecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
+import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.converter.RecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
@@ -85,9 +86,7 @@ public class ExportWorker implements Runnable {
         this.sourceCoordinator = sourceCoordinator;
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-        final RecordConverter recordConverter = new RecordConverter(sourceConfig.getCollections().get(0), ExportPartition.PARTITION_TYPE);
-        recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, sourceConfig.getCollections().get(0),
-                recordConverter, pluginMetrics, Instant.now().toEpochMilli());
+        recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, pluginMetrics);
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceConfig = sourceConfig;
         this.startLine = 0;// replace it with checkpoint line
@@ -111,8 +110,9 @@ public class ExportWorker implements Runnable {
                         dataQueryPartition = (DataQueryPartition) sourcePartition.get();
                         final AcknowledgementSet acknowledgementSet = createAcknowledgementSet(dataQueryPartition).orElse(null);
                         final DataQueryPartitionCheckpoint partitionCheckpoint =  new DataQueryPartitionCheckpoint(sourceCoordinator, dataQueryPartition);
-                        final ExportPartitionWorker exportPartitionWorker = new ExportPartitionWorker(recordBufferWriter, 
-                                dataQueryPartition, acknowledgementSet, sourceConfig, partitionCheckpoint, pluginMetrics);
+                        final PartitionKeyRecordConverter recordConverter = new PartitionKeyRecordConverter(dataQueryPartition.getCollection(), ExportPartition.PARTITION_TYPE);
+                        final ExportPartitionWorker exportPartitionWorker = new ExportPartitionWorker(recordBufferWriter, recordConverter,
+                                dataQueryPartition, acknowledgementSet, sourceConfig, partitionCheckpoint, Instant.now().toEpochMilli(), pluginMetrics);
                         final CompletableFuture<Void> runLoader = CompletableFuture.runAsync(exportPartitionWorker, executor);
                         runLoader.whenComplete(completePartitionLoader(dataQueryPartition));
                         numOfWorkers.incrementAndGet();
@@ -127,7 +127,10 @@ public class ExportWorker implements Runnable {
                 }
             } catch (final Exception e) {
                 LOG.error("Received an exception while processing an export data partition, backing off and retrying", e);
-                sourceCoordinator.giveUpPartition(dataQueryPartition);
+                if (dataQueryPartition != null) {
+                    sourceCoordinator.giveUpPartition(dataQueryPartition);
+                }
+
                 try {
                     Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
                 } catch (final InterruptedException ex) {
@@ -221,7 +224,8 @@ public class ExportWorker implements Runnable {
             Optional<EnhancedSourcePartition> globalPartition = sourceCoordinator.getPartition(exportPartitionKey);
             if (globalPartition.isEmpty()) {
                 LOG.error("Failed to get load status for " + exportPartitionKey);
-                return;
+                // TODO add wait time
+                continue;
             }
 
             final GlobalState globalState = (GlobalState) globalPartition.get();

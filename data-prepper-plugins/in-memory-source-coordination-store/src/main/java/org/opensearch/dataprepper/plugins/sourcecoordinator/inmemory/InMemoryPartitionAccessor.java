@@ -9,8 +9,11 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -60,6 +63,14 @@ public class InMemoryPartitionAccessor {
         final InMemorySourcePartitionStoreItem item = partitionLookup.get(sourceIdentifier).get(partitionKey);
 
         return Optional.ofNullable(item);
+    }
+
+    public List<SourcePartitionStoreItem> getAllItem(final String sourceIdentifier) {
+        if (!partitionLookup.containsKey(sourceIdentifier)) {
+            return Collections.emptyList();
+        }
+
+        return new ArrayList<>(partitionLookup.get(sourceIdentifier).values());
     }
 
     public void queuePartition(final InMemorySourcePartitionStoreItem inMemorySourcePartitionStoreItem) {

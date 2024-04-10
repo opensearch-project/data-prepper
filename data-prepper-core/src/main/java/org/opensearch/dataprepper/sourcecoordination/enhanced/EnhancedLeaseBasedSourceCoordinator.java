@@ -146,6 +146,23 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
     }
 
     @Override
+    public List<EnhancedSourcePartition> queryAllPartitions(final String partitionType) {
+        Objects.requireNonNull(partitionType);
+        LOG.debug("Try to query all {} partitions", partitionType);
+        long startTime = System.currentTimeMillis();
+        final List<SourcePartitionStoreItem> sourcePartitionStoreItems = coordinationStore.queryAllSourcePartitionItems(
+                this.sourceIdentifier + "|" + partitionType);
+
+        final List<EnhancedSourcePartition> sourcePartitions = sourcePartitionStoreItems.stream()
+                .map(partitionFactory)
+                .collect(Collectors.toList());
+
+        long endTime = System.currentTimeMillis();
+        LOG.info("Query of completed partitions took {} milliseconds with {} items found", endTime - startTime, sourcePartitions.size());
+        return sourcePartitions;
+    }
+
+    @Override
     public <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition, final Duration ownershipTimeoutRenewal) {
         String partitionType = partition.getPartitionType() == null ? DEFAULT_GLOBAL_STATE_PARTITION_TYPE : partition.getPartitionType();
         LOG.debug("Try to save progress for partition {} (Type {})", partition.getPartitionKey(), partitionType);

@@ -21,10 +21,12 @@ import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -305,5 +307,14 @@ public class DynamoDbSourceCoordinationStoreTest {
         assertThat(result.get(), equalTo(acquiredItem));
 
         verifyNoMoreInteractions(dynamoDbClientWrapper);
+    }
+
+    @Test
+    void queryAllSourcePartitionItems_success() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
+        final SourcePartitionStoreItem sourcePartitionStoreItem = mock(DynamoDbSourcePartitionItem.class);
+        given(dynamoDbClientWrapper.queryAllPartitions(sourceIdentifier)).willReturn(List.of(sourcePartitionStoreItem));
+        List<SourcePartitionStoreItem> sourcePartitionStoreItems = createObjectUnderTest().queryAllSourcePartitionItems(sourceIdentifier);
+        assertThat(sourcePartitionStoreItems, is(List.of(sourcePartitionStoreItem)));
     }
 }
