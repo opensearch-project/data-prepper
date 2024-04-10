@@ -48,7 +48,6 @@ public class S3SinkService {
     static final String S3_OBJECTS_SIZE = "s3SinkObjectSizeBytes";
     private final S3SinkConfig s3SinkConfig;
     private final Lock reentrantLock;
-    private final OutputCodec codec;
     private final S3Client s3Client;
     private final int maxEvents;
     private final ByteCount maxBytes;
@@ -70,15 +69,13 @@ public class S3SinkService {
 
     /**
      * @param s3SinkConfig  s3 sink related configuration.
-     * @param codec         parser.
      * @param s3Client
      * @param pluginMetrics metrics.
      */
-    public S3SinkService(final S3SinkConfig s3SinkConfig, final OutputCodec codec,
+    public S3SinkService(final S3SinkConfig s3SinkConfig,
                          final OutputCodecContext codecContext, final S3Client s3Client, final KeyGenerator keyGenerator,
                          final Duration retrySleepTime, final PluginMetrics pluginMetrics, final S3GroupManager s3GroupManager) {
         this.s3SinkConfig = s3SinkConfig;
-        this.codec = codec;
         this.s3Client = s3Client;
         this.codecContext = codecContext;
         this.keyGenerator = keyGenerator;
@@ -122,6 +119,7 @@ public class S3SinkService {
                 try {
                     final S3Group s3Group = s3GroupManager.getOrCreateGroupForEvent(event);
                     final Buffer currentBuffer = s3Group.getBuffer();
+                    final OutputCodec codec = s3Group.getOutputCodec();
 
                     if (currentBuffer.getEventCount() == 0) {
                         codec.start(currentBuffer.getOutputStream(), event, codecContext);
@@ -178,7 +176,7 @@ public class S3SinkService {
                 s3Group.getBuffer().getSize(), s3Group.getBuffer().getEventCount(), s3Group.getBuffer().getDuration());
         if (forceFlush || ThresholdCheck.checkThresholdExceed(s3Group.getBuffer(), maxEvents, maxBytes, maxCollectionDuration)) {
             try {
-                codec.complete(s3Group.getBuffer().getOutputStream());
+                s3Group.getOutputCodec().complete(s3Group.getBuffer().getOutputStream());
                 String s3Key = s3Group.getBuffer().getKey();
                 LOG.info("Writing {} to S3 with {} events and size of {} bytes.",
                         s3Key, s3Group.getBuffer().getEventCount(), s3Group.getBuffer().getSize());

@@ -6,10 +6,12 @@
 package org.opensearch.dataprepper.plugins.sink.s3.grouping;
 
 import com.google.common.collect.Maps;
+import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.sink.s3.S3SinkConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
+import org.opensearch.dataprepper.plugins.sink.s3.codec.CodecFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -25,6 +27,9 @@ public class S3GroupManager {
     private final S3SinkConfig s3SinkConfig;
     private final S3GroupIdentifierFactory s3GroupIdentifierFactory;
     private final BufferFactory bufferFactory;
+
+    private final CodecFactory codecFactory;
+
     private final S3Client s3Client;
 
     private long totalGroupSize;
@@ -33,10 +38,12 @@ public class S3GroupManager {
     public S3GroupManager(final S3SinkConfig s3SinkConfig,
                           final S3GroupIdentifierFactory s3GroupIdentifierFactory,
                           final BufferFactory bufferFactory,
+                          final CodecFactory codecFactory,
                           final S3Client s3Client) {
         this.s3SinkConfig = s3SinkConfig;
         this.s3GroupIdentifierFactory = s3GroupIdentifierFactory;
         this.bufferFactory = bufferFactory;
+        this.codecFactory = codecFactory;
         this.s3Client = s3Client;
         totalGroupSize = 0;
     }
@@ -67,7 +74,8 @@ public class S3GroupManager {
             return allGroups.get(s3GroupIdentifier);
         } else {
             final Buffer bufferForNewGroup =  bufferFactory.getBuffer(s3Client, s3SinkConfig::getBucketName, s3GroupIdentifier::getGroupIdentifierFullObjectKey);
-            final S3Group s3Group = new S3Group(s3GroupIdentifier, bufferForNewGroup);
+            final OutputCodec outputCodec = codecFactory.provideCodec();
+            final S3Group s3Group = new S3Group(s3GroupIdentifier, bufferForNewGroup, outputCodec);
             allGroups.put(s3GroupIdentifier, s3Group);
             LOG.debug("Created a new S3 group. Total number of groups: {}", allGroups.size());
             return s3Group;

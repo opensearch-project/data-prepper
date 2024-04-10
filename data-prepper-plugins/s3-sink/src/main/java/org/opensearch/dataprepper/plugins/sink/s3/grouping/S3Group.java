@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3.grouping;
 
+import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 
@@ -15,19 +16,27 @@ public class S3Group implements Comparable<S3Group> {
 
     private final Buffer buffer;
 
+    private OutputCodec outputCodec;
+
     private final S3GroupIdentifier s3GroupIdentifier;
 
     private final Collection<EventHandle> groupEventHandles;
 
     public S3Group(final S3GroupIdentifier s3GroupIdentifier,
-                   final Buffer buffer) {
+                   final Buffer buffer,
+                   final OutputCodec outputCodec) {
         this.buffer = buffer;
         this.s3GroupIdentifier = s3GroupIdentifier;
+        this.outputCodec = outputCodec;
         this.groupEventHandles = new LinkedList<>();
     }
 
     public Buffer getBuffer() {
         return buffer;
+    }
+
+    public OutputCodec getOutputCodec() {
+        return outputCodec;
     }
 
     S3GroupIdentifier getS3GroupIdentifier() { return s3GroupIdentifier; }
