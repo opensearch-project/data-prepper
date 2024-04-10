@@ -14,6 +14,7 @@ public class ExportLoadStatus {
     public static final String LOADED_RECORDS = "loadedRecords";
 
     public static final String LAST_UPDATE_TIMESTAMP = "lastUpdateTimestamp";
+    public static final String TOTAL_PARTITIONS_COMPLETE = "totalPartitionsComplete";
 
     private long totalPartitions;
     private long loadedPartitions;
@@ -21,11 +22,16 @@ public class ExportLoadStatus {
     private long lastUpdateTimestamp;
     private boolean isTotalParitionsComplete;
 
-    public ExportLoadStatus(long totalPartitions, long loadedPartitions, long loadedRecords, long lastUpdateTimestamp) {
+    public ExportLoadStatus(long totalPartitions,
+                            long loadedPartitions,
+                            long loadedRecords,
+                            long lastUpdateTimestamp,
+                            boolean isTotalParitionsComplete) {
         this.totalPartitions = totalPartitions;
         this.loadedPartitions = loadedPartitions;
         this.loadedRecords = loadedRecords;
         this.lastUpdateTimestamp = lastUpdateTimestamp;
+        this.isTotalParitionsComplete = isTotalParitionsComplete;
     }
 
     public long getTotalPartitions() {
@@ -73,7 +79,8 @@ public class ExportLoadStatus {
                 TOTAL_PARTITIONS, totalPartitions,
                 LOADED_PARTITIONS, loadedPartitions,
                 LOADED_RECORDS, loadedRecords,
-                LAST_UPDATE_TIMESTAMP, lastUpdateTimestamp
+                LAST_UPDATE_TIMESTAMP, lastUpdateTimestamp,
+                TOTAL_PARTITIONS_COMPLETE, isTotalParitionsComplete
         );
     }
 
@@ -82,7 +89,8 @@ public class ExportLoadStatus {
                 ((Number) map.get(TOTAL_PARTITIONS)).intValue(),
                 ((Number) map.get(LOADED_PARTITIONS)).intValue(),
                 ((Number) map.get(LOADED_RECORDS)).longValue(),
-                ((Number) map.get(LAST_UPDATE_TIMESTAMP)).longValue()
+                ((Number) map.get(LAST_UPDATE_TIMESTAMP)).longValue(),
+                (Boolean) map.get(TOTAL_PARTITIONS_COMPLETE)
         );
     }
 }

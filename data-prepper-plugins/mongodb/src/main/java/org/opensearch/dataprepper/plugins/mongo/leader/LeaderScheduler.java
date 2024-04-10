@@ -171,7 +171,8 @@ public class LeaderScheduler implements Runnable {
     }
 
     private void createExportGlobalState(final CollectionConfig collectionConfig) {
-        final ExportLoadStatus exportLoadStatus = new ExportLoadStatus(0, 0, 0, Instant.now().toEpochMilli());
+        final ExportLoadStatus exportLoadStatus = new ExportLoadStatus(
+                0, 0, 0, Instant.now().toEpochMilli(), false);
         coordinator.createPartition(
                 new GlobalState(EXPORT_PREFIX + collectionConfig.getCollection(), exportLoadStatus.toMap()));
     }
