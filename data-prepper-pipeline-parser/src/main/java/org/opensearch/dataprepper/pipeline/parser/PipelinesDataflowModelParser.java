@@ -12,13 +12,12 @@ import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
-import org.opensearch.dataprepper.pipeline.parser.rule.RuleConfig;
+//import org.opensearch.dataprepper.pipeline.parser.model.RuleConfig;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
-import org.opensearch.dataprepper.pipeline.parser.rule.RuleParser;
+//import org.opensearch.dataprepper.pipeline.parser.rule.RuleParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -28,7 +27,7 @@ import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 
-public class PipelinesDataflowModelParser implements PipelineYamlTransformer{
+public class PipelinesDataflowModelParser {
     private static final Logger LOG = LoggerFactory.getLogger(PipelinesDataflowModelParser.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
             .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
@@ -67,19 +66,39 @@ public class PipelinesDataflowModelParser implements PipelineYamlTransformer{
 
     private void performPipelineConfigurationTransformationIfNeeded(PipelinesDataFlowModel pipelinesDataFlowModel){
 
+        /**
+         * Step1:
+         * Check rules folder. get all files.
+         * Apply all rules in every file.
+         * Get pluginName of the rules that passed
+         *
+         * Step2:
+         * Based on the rule that passed, we will get the plugin name from that, that needs transformation
+         *
+         */
+
+
+
         //check if transformation is required based on rules present in yaml file
-        RuleParser ruleParser = new RuleParser();
-        RuleEvaluator ruleEvaluator = new RuleEvaluator();
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(pipelinesDataFlowModel);
 
-//        RuleConfig rule = ruleParser.parseRule(templateFileLocation);
-        List<RuleConfig> rules = ruleParser.getRules();
+        if(ruleEvaluator.isTransformationNeeded()){
 
-        //for all the rules in the rule folder, check if any one of it matches
-        // if so, then perform transformation based on template
-        for(RuleConfig rule:rules){
-            if (ruleEvaluator.isRuleValid(rule, pipelinesDataFlowModel)) {
+        }
 
-                String templateFileLocation = ruleEvaluator.getTemplateFileLocationForTransformation(rule);
+
+//        RuleParser ruleParser = new RuleParser();
+//        RuleEvaluator ruleEvaluator = new RuleEvaluator();
+//
+////        RuleConfig rule = ruleParser.parseRule(templateFileLocation);
+//        List<> rules = ruleParser.getRules();
+//
+//        //for all the rules in the rule folder, check if any one of it matches
+//        // if so, then perform transformation based on template
+//        for(RuleConfig rule:rules){
+//            if (ruleEvaluator.isRuleValid(rule, pipelinesDataFlowModel)) {
+//
+//                String templateFileLocation = ruleEvaluator.getTemplateFileLocationForTransformation(rule);
 
                 //load template dataFlowModel from templateFileLocation.
 //                PipelinesDataFlowModel templatePipelineDataModels = getTemplateDataFlowModel(templateFileLocation);
@@ -97,18 +116,23 @@ public class PipelinesDataflowModelParser implements PipelineYamlTransformer{
 //                final List<PipelinesDataFlowModel> transformedPipelinesDataFlowModels = transformConfiguration(pipelinesDataFlowModels, pipelineTemplateDataFlowModels);
 
 //                return mergePipelinesDataModels(transformedPipelinesDataFlowModels);
-            }
-        }
+//            }
+//        }
 
     }
 
-//
-//    private List<PipelinesDataFlowModel> parseStreamsToTemplateDataFlowModel() {
-//
-//        return pipelineConfigurationReader.getTemplateInputStreams().stream()
-//                .map(this::parseStreamToTemplateDataFlowModel)
-//                .collect(Collectors.toList());
-//    }
+    //To be detected dynamically
+    private boolean isDocDBSource(PipelinesDataFlowModel pipelinesDataFlowModel){
+
+        // convert to json using objectmapper
+
+        // apply all rules in files present in the src/resources/rules/*.jsonl
+
+        // identify pipeline that needs transformation, get pipeline name
+
+        //
+        return true;
+    }
 
     private PipelinesDataFlowModel parseStreamToPipelineDataFlowModel(final InputStream configurationInputStream) {
         try (final InputStream pipelineConfigurationInputStream = configurationInputStream) {
@@ -157,17 +181,4 @@ public class PipelinesDataflowModelParser implements PipelineYamlTransformer{
                 new PipelinesDataFlowModel(pipelineExtensionsList.get(0), pipelinesDataFlowModelMap);
     }
 
-    @Override
-    public String transformYaml(String originalYaml, String templateYaml) {
-        return null;
-    }
-
-    @Override
-    public PipelinesDataFlowModel transformConfiguration(PipelinesDataFlowModel pipelinesDataFlowModel,
-                                                         PipelinesDataFlowModel pipelineTemplateDataFlowModel) {
-
-        PipelinesDataFlowModel transformedPipelinesDataFlowModel=null;
-
-        return transformedPipelinesDataFlowModel;
-    }
 }

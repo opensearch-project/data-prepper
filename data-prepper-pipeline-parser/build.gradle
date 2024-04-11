@@ -16,4 +16,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'org.apache.commons:commons-collections4:4.4'
     implementation 'org.apache.commons:commons-jexl3:3.2.1'
+    implementation 'org.projectlombok:lombok:1.18.22'
+    implementation 'com.jayway.jsonpath:json-path:2.6.0'
+    implementation 'javax.inject:javax.inject:1'
 }

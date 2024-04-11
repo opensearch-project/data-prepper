@@ -1,15 +1,15 @@
 template-pipeline:
   source:
     documentdb:
-      hostname: "{{dodb-pipeline.source.documentdb.hostname}}"
-      port: "{{dodb-pipeline.source.documentdb.port}}"
+      hostname: "{{$..source.documentdb.hostname}}"
+      port: "{{$...source.documentdb.port}}"
   sink:
-    opensearch:
-      hosts: "{{dodb-pipeline.sink.opensearch.hosts}}"
-      index: "{{dodb-pipeline.sink.opensearch.index}}"
-      aws:
+    - opensearch:
+       hosts: "{{$..sink.opensearch.hosts}}"
+       index: "{{$..sink.opensearch.index}}"
+       aws:
         sts_role_arn: "arn123"
         region: "us-test-1"
-      dlq:
+       dlq:
           s3:
               bucket: "test-bucket"

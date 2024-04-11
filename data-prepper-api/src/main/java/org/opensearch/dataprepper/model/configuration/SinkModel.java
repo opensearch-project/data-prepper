@@ -29,7 +29,7 @@ import java.util.Map;
 @JsonDeserialize(using = SinkModel.SinkModelDeserializer.class)
 public class SinkModel extends PluginModel {
 
-    SinkModel(final String pluginName, final List<String> routes, final String tagsTargetKey, final List<String> includeKeys, final List<String> excludeKeys, final Map<String, Object> pluginSettings) {
+    public SinkModel(final String pluginName, final List<String> routes, final String tagsTargetKey, final List<String> includeKeys, final List<String> excludeKeys, final Map<String, Object> pluginSettings) {
         this(pluginName, new SinkInternalJsonModel(routes, tagsTargetKey, includeKeys, excludeKeys, pluginSettings));
     }
 

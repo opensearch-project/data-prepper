@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.pipeline.parser.rule;
+package org.opensearch.dataprepper.pipeline.parser.model;
 
 public class RuleConfig {
     private String applyWhen;

@@ -21,6 +21,8 @@ import org.springframework.context.annotation.Configuration;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
+import javax.inject.Qualifier;
+
 @Configuration
 public class PipelineParserConfiguration {
 
@@ -64,4 +66,17 @@ public class PipelineParserConfiguration {
             final PipelinesDataflowModelParser pipelinesDataflowModelParser) {
         return pipelinesDataflowModelParser.parseConfiguration();
     }
+
+    // TODO
+//    @Bean
+//    public PipelinesDataFlowModel pipelinesDataFlowModel(
+//            @Qualifier("preTransformedDataFlowModel") final PipelinesDataflowModelParser pipelinesDataflowModelParser) {
+//        return pipelineTransformer(pipelinesDataflowModelParser);
+//    }
+//
+//    @Bean(name = "preTransformedDataFlowModel")
+//    public PipelinesDataFlowModel preTransformedDataFlowModel(
+//            final PipelinesDataflowModelParser pipelinesDataflowModelParser) {
+//        return pipelinesDataflowModelParser.parseConfiguration();
+//    }
 }
