@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.CodecBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.CompressionBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.codec.BufferedCodec;
+import org.opensearch.dataprepper.plugins.sink.s3.codec.CodecFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifierFactory;
@@ -48,7 +49,6 @@ public class S3Sink extends AbstractSink<Record<Event>> {
 
     private static final Duration RETRY_FLUSH_BACKOFF = Duration.ofSeconds(5);
     private final S3SinkConfig s3SinkConfig;
-    private final OutputCodec codec;
     private volatile boolean sinkInitialized;
     private final S3SinkService s3SinkService;
     private final BufferFactory bufferFactory;
@@ -70,24 +70,26 @@ public class S3Sink extends AbstractSink<Record<Event>> {
         this.s3SinkConfig = s3SinkConfig;
         this.sinkContext = sinkContext;
         final PluginModel codecConfiguration = s3SinkConfig.getCodec();
+        final CodecFactory codecFactory = new CodecFactory(pluginFactory, codecConfiguration);
+
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
                 codecConfiguration.getPluginSettings());
-        codec = pluginFactory.loadPlugin(OutputCodec.class, codecPluginSettings);
+        final OutputCodec testCodec = pluginFactory.loadPlugin(OutputCodec.class, codecPluginSettings);
         sinkInitialized = Boolean.FALSE;
 
         final S3Client s3Client = ClientFactory.createS3Client(s3SinkConfig, awsCredentialsSupplier);
         BufferFactory innerBufferFactory = s3SinkConfig.getBufferType().getBufferFactory();
-        if(codec instanceof ParquetOutputCodec && s3SinkConfig.getBufferType() != BufferTypeOptions.INMEMORY) {
+        if(testCodec instanceof ParquetOutputCodec && s3SinkConfig.getBufferType() != BufferTypeOptions.INMEMORY) {
             throw new InvalidPluginConfigurationException("The Parquet sink codec is an in_memory buffer only.");
         }
-        if(codec instanceof BufferedCodec) {
-            innerBufferFactory = new CodecBufferFactory(innerBufferFactory, (BufferedCodec) codec);
+        if(testCodec instanceof BufferedCodec) {
+            innerBufferFactory = new CodecBufferFactory(innerBufferFactory, (BufferedCodec) testCodec);
         }
         CompressionOption compressionOption = s3SinkConfig.getCompression();
         final CompressionEngine compressionEngine = compressionOption.getCompressionEngine();
-        bufferFactory = new CompressionBufferFactory(innerBufferFactory, compressionEngine, codec);
+        bufferFactory = new CompressionBufferFactory(innerBufferFactory, compressionEngine, testCodec);
 
-        ExtensionProvider extensionProvider = StandardExtensionProvider.create(codec, compressionOption);
+        ExtensionProvider extensionProvider = StandardExtensionProvider.create(testCodec, compressionOption);
         KeyGenerator keyGenerator = new KeyGenerator(s3SinkConfig, extensionProvider, expressionEvaluator);
 
         if (s3SinkConfig.getObjectKeyOptions().getPathPrefix() != null &&
@@ -102,13 +104,13 @@ public class S3Sink extends AbstractSink<Record<Event>> {
 
         S3OutputCodecContext s3OutputCodecContext = new S3OutputCodecContext(OutputCodecContext.fromSinkContext(sinkContext), compressionOption);
 
-        codec.validateAgainstCodecContext(s3OutputCodecContext);
+        testCodec.validateAgainstCodecContext(s3OutputCodecContext);
 
         final S3GroupIdentifierFactory s3GroupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig);
-        final S3GroupManager s3GroupManager = new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, s3Client);
+        final S3GroupManager s3GroupManager = new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, codecFactory, s3Client);
 
 
-        s3SinkService = new S3SinkService(s3SinkConfig, codec, s3OutputCodecContext, s3Client, keyGenerator, RETRY_FLUSH_BACKOFF, pluginMetrics, s3GroupManager);
+        s3SinkService = new S3SinkService(s3SinkConfig, s3OutputCodecContext, s3Client, keyGenerator, RETRY_FLUSH_BACKOFF, pluginMetrics, s3GroupManager);
     }
 
     @Override
