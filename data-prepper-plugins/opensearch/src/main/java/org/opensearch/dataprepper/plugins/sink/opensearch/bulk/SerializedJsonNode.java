@@ -17,8 +17,8 @@ class SerializedJsonNode implements SerializedJson, Serializable {
 
     public SerializedJsonNode(final JsonNode jsonNode, SerializedJson doc) {
         this.jsonNode = jsonNode;
-        this.documentId = doc.getDocumentId().get();
-        this.routingField = doc.getRoutingField().get();
+        this.documentId = doc.getDocumentId().orElse(null);
+        this.routingField = doc.getRoutingField().orElse(null);
         this.document = jsonNode.toString().getBytes();
     }
 
