@@ -11,7 +11,6 @@ import org.opensearch.dataprepper.model.document.JacksonDocument;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
-import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
