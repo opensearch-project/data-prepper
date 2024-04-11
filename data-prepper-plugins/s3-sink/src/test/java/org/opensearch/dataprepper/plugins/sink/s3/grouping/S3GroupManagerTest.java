@@ -9,10 +9,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.sink.s3.S3SinkConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
+import org.opensearch.dataprepper.plugins.sink.s3.codec.CodecFactory;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.Collection;
@@ -42,10 +44,13 @@ public class S3GroupManagerTest {
     private BufferFactory bufferFactory;
 
     @Mock
+    private CodecFactory codecFactory;
+
+    @Mock
     private S3Client s3Client;
 
     private S3GroupManager createObjectUnderTest() {
-        return new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, s3Client);
+        return new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, codecFactory, s3Client);
     }
 
     @Test
@@ -64,6 +69,8 @@ public class S3GroupManagerTest {
         final Buffer buffer = mock(Buffer.class);
         when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class)))
                 .thenReturn(buffer);
+        final OutputCodec outputCodec = mock(OutputCodec.class);
+        when(codecFactory.provideCodec()).thenReturn(outputCodec);
 
         final S3GroupManager objectUnderTest = createObjectUnderTest();
 
@@ -72,6 +79,7 @@ public class S3GroupManagerTest {
         assertThat(result, notNullValue());
         assertThat(result.getS3GroupIdentifier(), equalTo(s3GroupIdentifier));
         assertThat(result.getBuffer(), equalTo(buffer));
+        assertThat(result.getOutputCodec(), equalTo(outputCodec));
 
         final Collection<S3Group> groups = objectUnderTest.getS3GroupEntries();
         assertThat(groups, notNullValue());
@@ -88,8 +96,10 @@ public class S3GroupManagerTest {
         when(s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(event)).thenReturn(s3GroupIdentifier);
 
         final Buffer buffer = mock(Buffer.class);
+        final OutputCodec outputCodec = mock(OutputCodec.class);
         when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class)))
                 .thenReturn(buffer);
+        when(codecFactory.provideCodec()).thenReturn(outputCodec);
 
         final S3GroupManager objectUnderTest = createObjectUnderTest();
 
@@ -98,6 +108,7 @@ public class S3GroupManagerTest {
         assertThat(result, notNullValue());
         assertThat(result.getS3GroupIdentifier(), equalTo(s3GroupIdentifier));
         assertThat(result.getBuffer(), equalTo(buffer));
+        assertThat(result.getOutputCodec(), equalTo(outputCodec));
 
         final Event secondEvent = mock(Event.class);
         when(s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(secondEvent)).thenReturn(s3GroupIdentifier);
@@ -147,6 +158,9 @@ public class S3GroupManagerTest {
         when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class)))
                 .thenReturn(buffer).thenReturn(secondBuffer).thenReturn(thirdBuffer);
 
+        final OutputCodec outputCodec = mock(OutputCodec.class);
+        when(codecFactory.provideCodec()).thenReturn(outputCodec);
+
         final S3GroupManager objectUnderTest = createObjectUnderTest();
 
         objectUnderTest.getOrCreateGroupForEvent(event);
@@ -187,6 +201,13 @@ public class S3GroupManagerTest {
         when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class)))
                 .thenReturn(buffer).thenReturn(secondBuffer).thenReturn(thirdBuffer);
 
+        final OutputCodec firstOutputCodec = mock(OutputCodec.class);
+        final OutputCodec secondOutputCodec = mock(OutputCodec.class);
+        final OutputCodec thirdOutputCodec = mock(OutputCodec.class);
+        when(codecFactory.provideCodec()).thenReturn(firstOutputCodec)
+                .thenReturn(secondOutputCodec)
+                .thenReturn(thirdOutputCodec);
+
         final S3GroupManager objectUnderTest = createObjectUnderTest();
 
         final S3Group firstGroup = objectUnderTest.getOrCreateGroupForEvent(event);
@@ -194,6 +215,9 @@ public class S3GroupManagerTest {
         final S3Group thirdGroup = objectUnderTest.getOrCreateGroupForEvent(thirdEvent);
 
         assertThat(objectUnderTest.getNumberOfGroups(), equalTo(3));
+        assertThat(firstGroup.getOutputCodec(), equalTo(firstOutputCodec));
+        assertThat(secondGroup.getOutputCodec(), equalTo(secondOutputCodec));
+        assertThat(thirdGroup.getOutputCodec(), equalTo(thirdOutputCodec));
 
         final Collection<S3Group> sortedGroups = objectUnderTest.getS3GroupsSortedBySize();
 

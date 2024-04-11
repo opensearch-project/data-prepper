@@ -156,7 +156,7 @@ class S3SinkServiceTest {
     }
 
     private S3SinkService createObjectUnderTest() {
-        return new S3SinkService(s3SinkConfig, codec, codecContext, s3Client, keyGenerator, Duration.ofMillis(100), pluginMetrics, s3GroupManager);
+        return new S3SinkService(s3SinkConfig, codecContext, s3Client, keyGenerator, Duration.ofMillis(100), pluginMetrics, s3GroupManager);
     }
 
     @Test
@@ -178,6 +178,7 @@ class S3SinkServiceTest {
 
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
         when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(s3Group));
@@ -204,6 +205,7 @@ class S3SinkServiceTest {
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
         when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(s3Group));
@@ -225,6 +227,7 @@ class S3SinkServiceTest {
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
         when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(s3Group));
@@ -249,6 +252,7 @@ class S3SinkServiceTest {
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
         when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(s3Group));
@@ -274,6 +278,7 @@ class S3SinkServiceTest {
 
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
         when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(s3Group));
@@ -301,6 +306,7 @@ class S3SinkServiceTest {
         doNothing().when(codec).writeEvent(event, outputStream);
 
         final S3Group s3Group = mock(S3Group.class);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
         Buffer buffer = mock(Buffer.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
 
@@ -328,6 +334,7 @@ class S3SinkServiceTest {
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
         when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(s3Group));
@@ -351,6 +358,7 @@ class S3SinkServiceTest {
 
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(event)).thenReturn(s3Group);
         when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(s3Group));
@@ -384,6 +392,7 @@ class S3SinkServiceTest {
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(event)).thenReturn(s3Group);
         when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(s3Group));
@@ -404,6 +413,7 @@ class S3SinkServiceTest {
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(event)).thenReturn(s3Group);
         when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(s3Group));
@@ -427,6 +437,7 @@ class S3SinkServiceTest {
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
         when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.singletonList(s3Group));
@@ -455,6 +466,7 @@ class S3SinkServiceTest {
         final Event event1 = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
 
@@ -495,6 +507,7 @@ class S3SinkServiceTest {
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
 
@@ -523,6 +536,7 @@ class S3SinkServiceTest {
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
 
@@ -562,6 +576,7 @@ class S3SinkServiceTest {
         Event event2 = records.get(1).getData();
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
         when(s3GroupManager.getS3GroupEntries()).thenReturn(List.of(s3Group));
@@ -600,6 +615,7 @@ class S3SinkServiceTest {
         final OutputStream outputStream = mock(OutputStream.class);
         final S3Group s3Group = mock(S3Group.class);
         when(s3Group.getBuffer()).thenReturn(buffer);
+        when(s3Group.getOutputCodec()).thenReturn(codec);
 
         when(s3GroupManager.getOrCreateGroupForEvent(any(Event.class))).thenReturn(s3Group);
 
@@ -644,6 +660,7 @@ class S3SinkServiceTest {
         final Event firstGroupEvent = mock(Event.class);
         final S3Group firstGroup = mock(S3Group.class);
         final Buffer firstGroupBuffer = mock(Buffer.class);
+        when(firstGroup.getOutputCodec()).thenReturn(codec);
         when(firstGroupBuffer.getOutputStream()).thenReturn(mock(OutputStream.class));
         when(firstGroupBuffer.getSize()).thenReturn(bufferOneSize);
         when(firstGroup.getBuffer()).thenReturn(firstGroupBuffer);
@@ -652,6 +669,7 @@ class S3SinkServiceTest {
         final Event secondGroupEvent = mock(Event.class);
         final S3Group secondGroup = mock(S3Group.class);
         final Buffer secondGroupBuffer = mock(Buffer.class);
+        when(secondGroup.getOutputCodec()).thenReturn(codec);
         when(secondGroupBuffer.getSize()).thenReturn(bufferTwoSize);
         when(secondGroupBuffer.getOutputStream()).thenReturn(mock(OutputStream.class));
         when(secondGroup.getBuffer()).thenReturn(secondGroupBuffer);
@@ -659,6 +677,8 @@ class S3SinkServiceTest {
 
         final Event thirdGroupEvent = mock(Event.class);
         final S3Group thirdGroup = mock(S3Group.class);
+        when(thirdGroup.getOutputCodec()).thenReturn(codec);
+
         final Buffer thirdGroupBuffer = mock(Buffer.class);
         when(thirdGroupBuffer.getSize()).thenReturn(bufferThreeSize);
         when(thirdGroupBuffer.getOutputStream()).thenReturn(mock(OutputStream.class));
