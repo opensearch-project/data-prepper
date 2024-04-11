@@ -11,6 +11,7 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import org.opensearch.dataprepper.aws.validator.AwsAccountId;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.AwsAuthenticationOptions;
@@ -73,9 +74,10 @@ public class S3SourceConfig {
     private boolean disableBucketOwnershipValidation = false;
 
     @JsonProperty("bucket_owners")
-    private Map<String, String> bucketOwners;
+    private Map<String, @AwsAccountId String> bucketOwners;
 
     @JsonProperty("default_bucket_owner")
+    @AwsAccountId
     private String defaultBucketOwner;
 
     @JsonProperty("metadata_root_key")
