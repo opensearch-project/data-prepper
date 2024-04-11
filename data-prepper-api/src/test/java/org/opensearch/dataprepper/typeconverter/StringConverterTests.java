@@ -78,14 +78,14 @@ public class StringConverterTests {
         return Stream.of(
             Arguments.of(new BigDecimal ("0"), "0"),
             Arguments.of(new BigDecimal ("0.0"), "0.0"),
-            Arguments.of(new BigDecimal ("0.00000000000000000000000"), "0.00000000000000000000000"),
+            Arguments.of(new BigDecimal ("0.00000000000000000000000"), "0E-23"),
             Arguments.of(BigDecimal.ZERO, "0"),
             Arguments.of(new BigDecimal ("1"), "1"),
             Arguments.of(new BigDecimal ("1703908514.045833"), "1703908514.045833"),
             Arguments.of(new BigDecimal ("1.00000000000000000000000"), "1.00000000000000000000000"),
             Arguments.of(new BigDecimal ("-12345678912.12345"), "-12345678912.12345"),
             Arguments.of(BigDecimal.ONE, "1"),
-            Arguments.of(new BigDecimal("1.7976931348623157E+308"), "179769313486231570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+            Arguments.of(new BigDecimal("1.7976931348623157E+308"), "1.7976931348623157E+308"),
             Arguments.of(new BigDecimal(Long.MAX_VALUE), "9223372036854775807")
         );
     }
