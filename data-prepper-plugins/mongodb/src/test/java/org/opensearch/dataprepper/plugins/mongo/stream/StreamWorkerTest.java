@@ -150,10 +150,9 @@ public class StreamWorkerTest {
         when(streamDoc1.getClusterTime()).thenReturn(bsonTimestamp1);
         when(streamDoc2.getClusterTime()).thenReturn(bsonTimestamp2);
         S3PartitionStatus s3PartitionStatus = mock(S3PartitionStatus.class);
-        when(s3PartitionStatus.getTotalPartitions()).thenReturn(2);
-        when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus()).thenReturn(Optional.of(s3PartitionStatus));
         final List<String> partitions = List.of("first", "second");
-        when(mockPartitionCheckpoint.getS3FolderPartitions(collection)).thenReturn(partitions);
+        when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
+        when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus()).thenReturn(Optional.of(s3PartitionStatus));
 
         try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
             mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
@@ -163,7 +162,6 @@ public class StreamWorkerTest {
         verify(mongoClient).close();
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus();
-        verify(mockPartitionCheckpoint).getS3FolderPartitions(collection);
         verify(mockRecordConverter).initializePartitions(partitions);
         verify(mockRecordConverter).convert(eq(doc1Json1), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(operationType1));
         verify(mockRecordConverter).convert(eq(doc1Json2), eq(timeSecond2 * 1000L), eq(timeSecond2 * 1000L), eq(operationType2));
@@ -250,11 +248,9 @@ public class StreamWorkerTest {
         when(bsonDoc2.toJson(any(JsonWriterSettings.class))).thenReturn(resumeToken2);
         when(bsonDoc3.toJson(any(JsonWriterSettings.class))).thenReturn(resumeToken3);
         S3PartitionStatus s3PartitionStatus = mock(S3PartitionStatus.class);
-        when(s3PartitionStatus.getTotalPartitions()).thenReturn(2);
-        when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus()).thenReturn(Optional.of(s3PartitionStatus));
         final List<String> partitions = List.of("first", "second");
-        when(mockPartitionCheckpoint.getS3FolderPartitions(collection)).thenReturn(partitions);
-
+        when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
+        when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus()).thenReturn(Optional.of(s3PartitionStatus));
         try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
 
             mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
@@ -267,7 +263,6 @@ public class StreamWorkerTest {
         verify(cursor).close();
         verify(cursor, times(4)).hasNext();
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus();
-        verify(mockPartitionCheckpoint).getS3FolderPartitions(collection);
         verify(mockPartitionCheckpoint).checkpoint(resumeToken3, 3);
         verify(successItemsCounter).increment(1);
         verify(mockPartitionCheckpoint).checkpoint(resumeToken2, 2);
@@ -296,7 +291,7 @@ public class StreamWorkerTest {
         S3PartitionStatus s3PartitionStatus = mock(S3PartitionStatus.class);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus()).thenReturn(Optional.of(s3PartitionStatus));
         final List<String> partitions = List.of("first", "second");
-        lenient().when(mockPartitionCheckpoint.getS3FolderPartitions(collection)).thenReturn(partitions);
+        when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> {
             try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {

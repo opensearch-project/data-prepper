@@ -8,11 +8,8 @@ package org.opensearch.dataprepper.plugins.mongo.s3partition;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
-import org.opensearch.dataprepper.plugins.mongo.coordination.partition.S3Folder;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * A helper class to query S3 Folder partition status using source coordinator APIs under the hood.
@@ -35,13 +32,5 @@ public class S3FolderPartitionCoordinator {
         } else {
             return Optional.empty();
         }
-    }
-
-    public List<String> getS3FolderPartitions(final String collection) {
-        final List<EnhancedSourcePartition> partitions = enhancedSourceCoordinator.queryAllPartitions(S3Folder.PARTITION_TYPE);
-        return partitions.stream()
-                .filter(enhancedSourcePartition -> ((S3Folder)enhancedSourcePartition).getCollection().equals(collection))
-                .map(enhancedSourcePartition -> ((S3Folder)enhancedSourcePartition).getPartitionFolder())
-                .collect(Collectors.toList());
     }
 }

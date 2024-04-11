@@ -158,20 +158,12 @@ public class StreamWorker {
                         break;
                     }
                 }
-                final int totalPartitions = s3PartitionStatus.get().getTotalPartitions();
-                if (totalPartitions == 0) {
+                final List<String> s3Partitions = s3PartitionStatus.get().getPartitions();
+                if (s3Partitions.isEmpty()) {
                     // This should not happen unless the S3 partition creator failed.
                     throw new IllegalStateException("S3 partitions are not created. Please check the S3 partition creator thread.");
                 }
-
-                List<String> partitionNames = partitionCheckpoint.getS3FolderPartitions(collectionDbName);
-                // Source Coordinator is eventually consistent. It may take some time for all partitions to be queried.
-                while (totalPartitions != partitionNames.size() && !Thread.currentThread().isInterrupted()) {
-                    Thread.sleep(15_000);
-                    partitionNames = partitionCheckpoint.getS3FolderPartitions(collectionDbName);
-                }
-
-                recordConverter.initializePartitions(partitionNames);
+                recordConverter.initializePartitions(s3Partitions);
                 long lastCheckpointTime = System.currentTimeMillis();
                 long lastBufferWriteTime = lastCheckpointTime;
                 while (cursor.hasNext() && !Thread.currentThread().isInterrupted() && !stopWorker) {

@@ -5,7 +5,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.LeaderPartition;
-import org.opensearch.dataprepper.plugins.mongo.coordination.partition.S3Partition;
+import org.opensearch.dataprepper.plugins.mongo.coordination.partition.S3FolderPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.LeaderProgressState;
@@ -139,7 +139,7 @@ public class LeaderScheduler implements Runnable {
      */
     private void createS3Partition(final CollectionConfig collectionConfig) {
         LOG.info("Creating s3 folder global partition: {}", collectionConfig.getCollection());
-        coordinator.createPartition(new S3Partition(collectionConfig.getS3Bucket(), collectionConfig.getS3PathPrefix(),
+        coordinator.createPartition(new S3FolderPartition(collectionConfig.getS3Bucket(), collectionConfig.getS3PathPrefix(),
                 collectionConfig.getS3Region(), collectionConfig.getCollection()));
     }
 

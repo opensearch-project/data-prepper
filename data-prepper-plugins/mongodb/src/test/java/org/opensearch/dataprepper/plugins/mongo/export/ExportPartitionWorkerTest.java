@@ -134,16 +134,13 @@ public class ExportPartitionWorkerTest {
         when(mockRecordConverter.convert(docJson1, exportStartTime, eventVersionNumber)).thenReturn(event1);
         when(mockRecordConverter.convert(docJson2, exportStartTime, eventVersionNumber)).thenReturn(event2);
         lenient().when(dataQueryPartition.getPartitionKey()).thenReturn(partitionKey);
-        final String collection = partitionKey.split("\\|")[0];
-        when(dataQueryPartition.getCollection()).thenReturn(collection);
         lenient().when(sourceCoordinator.acquireAvailablePartition(DataQueryPartition.PARTITION_TYPE))
                 .thenReturn(Optional.of(dataQueryPartition));
 
         S3PartitionStatus s3PartitionStatus = mock(S3PartitionStatus.class);
-        when(s3PartitionStatus.getTotalPartitions()).thenReturn(2);
-        when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus()).thenReturn(Optional.of(s3PartitionStatus));
         final List<String> partitions = List.of("first", "second");
-        lenient().when(mockPartitionCheckpoint.getS3FolderPartitions(collection)).thenReturn(partitions);
+        when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
+        when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus()).thenReturn(Optional.of(s3PartitionStatus));
 
         final Future<?> future = executorService.submit(() -> {
             try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {

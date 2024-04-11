@@ -23,7 +23,6 @@ import org.opensearch.dataprepper.plugins.mongo.client.BsonHelper;
 import org.opensearch.dataprepper.plugins.mongo.client.MongoDBConnection;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
-import org.opensearch.dataprepper.plugins.mongo.converter.RecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
 import org.opensearch.dataprepper.plugins.mongo.model.S3PartitionStatus;
 import org.slf4j.Logger;
@@ -131,24 +130,13 @@ public class ExportPartitionWorker implements Runnable {
                 break;
             }
         }
-        final int totalPartitions = s3PartitionStatus.get().getTotalPartitions();
-        if (totalPartitions == 0) {
+        final List<String> s3Partitions = s3PartitionStatus.get().getPartitions();
+        if (s3Partitions.isEmpty()) {
             // This should not happen unless the S3 partition creator failed.
             throw new IllegalStateException("S3 partitions are not created. Please check the S3 partition creator thread.");
         }
 
-        List<String> partitionNames = partitionCheckpoint.getS3FolderPartitions(dataQueryPartition.getCollection());
-        // Source Coordinator is eventually consistent. It may take some time for all partitions to be queried.
-        while (totalPartitions != partitionNames.size() && !Thread.currentThread().isInterrupted()) {
-            try {
-                Thread.sleep(15_000);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-            partitionNames = partitionCheckpoint.getS3FolderPartitions(dataQueryPartition.getCollection());
-        }
-
-        recordConverter.initializePartitions(partitionNames);
+        recordConverter.initializePartitions(s3Partitions);
         try (final MongoClient mongoClient = MongoDBConnection.getMongoClient(sourceConfig)) {
             final MongoDatabase db = mongoClient.getDatabase(collection.get(0));
             final MongoCollection<Document> col = db.getCollection(collection.get(1));
