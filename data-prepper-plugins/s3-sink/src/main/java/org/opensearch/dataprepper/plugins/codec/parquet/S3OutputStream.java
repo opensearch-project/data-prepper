@@ -39,14 +39,12 @@ public class S3OutputStream extends PositionOutputStream {
     /**
      * The bucket-name on Amazon S3
      */
-    private final String bucket;
+    private String bucket;
 
     /**
      * The key (path) name within the bucket
      */
     private final String key;
-
-    private String targetBucket;
 
     /**
      * The temporary buffer used for storing the chunks
@@ -74,7 +72,7 @@ public class S3OutputStream extends PositionOutputStream {
     /**
      * The default bucket to send to when upload fails with dynamic bucket
      */
-    private String defaultBucket;
+    private final String defaultBucket;
 
     /**
      * Creates a new S3 OutputStream
@@ -89,7 +87,6 @@ public class S3OutputStream extends PositionOutputStream {
                           final String defaultBucket) {
         this.s3Client = s3Client;
         this.bucket = bucketSupplier.get();
-        this.targetBucket = bucketSupplier.get();
         this.key = keySupplier.get();
         buf = new byte[BUFFER_SIZE];
         position = 0;
@@ -173,7 +170,7 @@ public class S3OutputStream extends PositionOutputStream {
                     .parts(completedParts)
                     .build();
             CompleteMultipartUploadRequest completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
-                    .bucket(targetBucket)
+                    .bucket(bucket)
                     .key(key)
                     .uploadId(uploadId)
                     .multipartUpload(completedMultipartUpload)
@@ -205,7 +202,7 @@ public class S3OutputStream extends PositionOutputStream {
                 createMultipartUpload();
             } catch (final S3Exception e) {
                 if (defaultBucket != null && (e instanceof NoSuchBucketException || e.getMessage().contains(ACCESS_DENIED))) {
-                    targetBucket = defaultBucket;
+                    bucket = defaultBucket;
                     LOG.warn("Bucket {} could not be accessed to create multi-part upload, attempting to create multi-part upload to default_bucket {}", bucket, defaultBucket);
                     createMultipartUpload();
                 } else {
@@ -213,14 +210,14 @@ public class S3OutputStream extends PositionOutputStream {
                 }
             }
 
-            LOG.debug("Created multipart upload {} bucket='{}',key='{}'.", uploadId, targetBucket, key);
+            LOG.debug("Created multipart upload {} bucket='{}',key='{}'.", uploadId, bucket, key);
         }
     }
 
     private void uploadPart() {
         int partNumber = etags.size() + 1;
         UploadPartRequest uploadRequest = UploadPartRequest.builder()
-                .bucket(targetBucket)
+                .bucket(bucket)
                 .key(key)
                 .uploadId(uploadId)
                 .partNumber(partNumber)
@@ -242,7 +239,7 @@ public class S3OutputStream extends PositionOutputStream {
 
     private void createMultipartUpload() {
         CreateMultipartUploadRequest uploadRequest = CreateMultipartUploadRequest.builder()
-                .bucket(targetBucket)
+                .bucket(bucket)
                 .key(key)
                 .build();
         CreateMultipartUploadResponse multipartUpload = s3Client.createMultipartUpload(uploadRequest);

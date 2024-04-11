@@ -143,12 +143,23 @@ public interface Event extends Serializable {
      * of a Data Prepper expression
      * @param format input format
      * @param expressionEvaluator - The expression evaluator that will support formatting from Data Prepper expressions
-     * @param replacementForFailures - The String to use as a replacement for when keys in Events can't be found
      * @return returns a string with no formatted parts, returns null if no value is found
      * @throws RuntimeException if the input string is not properly formatted
      * @since 2.1
      */
-    String formatString(final String format, final ExpressionEvaluator expressionEvaluator, final String replacementForFailures);
+    String formatString(final String format, final ExpressionEvaluator expressionEvaluator);
+
+    /**
+     * Returns formatted parts of the input string replaced by their values in the event or the values from the result
+     * of a Data Prepper expression
+     * @param format input format
+     * @param expressionEvaluator - The expression evaluator that will support formatting from Data Prepper expressions
+     * @param defaultValue - The String to use as a replacement for when keys in Events can't be found
+     * @return returns a string with no formatted parts, returns null if no value is found
+     * @throws RuntimeException if the input string is not properly formatted
+     * @since 2.1
+     */
+    String formatString(final String format, final ExpressionEvaluator expressionEvaluator, final String defaultValue);
 
     /**
      * Returns event handle

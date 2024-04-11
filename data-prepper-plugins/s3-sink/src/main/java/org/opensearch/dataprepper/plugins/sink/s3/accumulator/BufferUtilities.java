@@ -13,7 +13,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
-public class BufferUtilities {
+class BufferUtilities {
 
     private static final Logger LOG = LoggerFactory.getLogger(BufferUtilities.class);
 

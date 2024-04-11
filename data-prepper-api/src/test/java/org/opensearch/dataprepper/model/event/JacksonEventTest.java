@@ -603,7 +603,7 @@ public class JacksonEventTest {
         when(expressionEvaluator.evaluate(invalidKeyExpression, event)).thenReturn(invalidKeyExpressionResult);
         when(expressionEvaluator.evaluate(expressionStatement, event)).thenReturn(expressionEvaluationResult);
 
-        assertThat(event.formatString(formatString, expressionEvaluator, null), is(equalTo(finalString)));
+        assertThat(event.formatString(formatString, expressionEvaluator), is(equalTo(finalString)));
     }
 
     @Test
@@ -630,7 +630,7 @@ public class JacksonEventTest {
         verify(expressionEvaluator, never()).evaluate(eq("foo"), any(Event.class));
         when(expressionEvaluator.evaluate(expressionStatement, event)).thenReturn(expressionEvaluationResult);
 
-        assertThat(event.formatString(formatString, expressionEvaluator, null), is(equalTo(finalString)));
+        assertThat(event.formatString(formatString, expressionEvaluator), is(equalTo(finalString)));
     }
 
     @ParameterizedTest
@@ -663,9 +663,9 @@ public class JacksonEventTest {
     }
 
     @Test
-    public void testBuild_withFormatStringWithValueNotFound_and_replacement_failure() {
+    public void testBuild_withFormatStringWithValueNotFound_and_defaultValue_for_missing_keys() {
 
-        final String replacementForMissingKeys = "REPLACED";
+        final String defaultValueForMissingKey = UUID.randomUUID().toString();
         final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
         final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
         event = JacksonEvent.builder()
@@ -673,8 +673,8 @@ public class JacksonEventTest {
                 .withData(jsonString)
                 .getThis()
                 .build();
-        final String result = event.formatString("test-${boo}-string", expressionEvaluator, replacementForMissingKeys);
-        assertThat(result, equalTo("test-" + replacementForMissingKeys + "-string"));
+        final String result = event.formatString("test-${boo}-string", expressionEvaluator, defaultValueForMissingKey);
+        assertThat(result, equalTo("test-" + defaultValueForMissingKey + "-string"));
     }
 
     @Test

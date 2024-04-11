@@ -213,8 +213,8 @@ public class OpenSearchSinkTest {
         final EventHandle eventHandle = mock(EventHandle.class);
         when(event.getEventHandle()).thenReturn(eventHandle);
         final String index = UUID.randomUUID().toString();
-        when(event.formatString(versionExpression, expressionEvaluator, null)).thenReturn("not_a_number");
-        when(event.formatString(indexConfiguration.getIndexAlias(), expressionEvaluator, null)).thenReturn(index);
+        when(event.formatString(versionExpression, expressionEvaluator)).thenReturn("not_a_number");
+        when(event.formatString(indexConfiguration.getIndexAlias(), expressionEvaluator)).thenReturn(index);
         final Record<Event> eventRecord = new Record<>(event);
 
         final OpenSearchSink objectUnderTest = createObjectUnderTest();
@@ -301,8 +301,8 @@ public class OpenSearchSinkTest {
         final EventHandle eventHandle = mock(EventHandle.class);
         when(event.getEventHandle()).thenReturn(eventHandle);
         final String index = UUID.randomUUID().toString();
-        when(event.formatString(versionExpression, expressionEvaluator, null)).thenThrow(RuntimeException.class);
-        when(event.formatString(indexConfiguration.getIndexAlias(), expressionEvaluator, null)).thenReturn(index);
+        when(event.formatString(versionExpression, expressionEvaluator)).thenThrow(RuntimeException.class);
+        when(event.formatString(indexConfiguration.getIndexAlias(), expressionEvaluator)).thenReturn(index);
         final Record<Event> eventRecord = new Record<>(event);
 
         final OpenSearchSink objectUnderTest = createObjectUnderTest();
