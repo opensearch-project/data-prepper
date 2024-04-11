@@ -245,11 +245,11 @@ public class S3SinkIT {
         outputScenario.validate(expectedTotalSize, sampleEventData, actualContentFile, compressionScenario);
     }
 
-    @Test
-    void testWithDynamicGroups() throws IOException {
+    @ParameterizedTest
+    @ArgumentsSource(OutputScenarioArguments.class)
+    void testWithDynamicGroups(final OutputScenario outputScenario) throws IOException {
         final BufferScenario bufferScenario = new InMemoryBufferScenario();
         final CompressionScenario compressionScenario = new NoneCompressionScenario();
-        final NdjsonOutputScenario outputScenario = new NdjsonOutputScenario();
         final SizeCombination sizeCombination = SizeCombination.MEDIUM_SMALLER;
 
         BufferTypeOptions bufferTypeOptions = bufferScenario.getBufferType();
@@ -271,7 +271,7 @@ public class S3SinkIT {
         when(expressionEvaluator.extractDynamicExpressionsFromFormatExpression(objectKeyOptions.getNamePattern()))
                 .thenReturn(Collections.emptyList());
 
-        when(pluginFactory.loadPlugin(eq(OutputCodec.class), any())).thenReturn(outputScenario.getCodec());
+        when(pluginFactory.loadPlugin(eq(OutputCodec.class), any())).thenAnswer(invocation -> outputScenario.getCodec());
         when(s3SinkConfig.getBufferType()).thenReturn(bufferTypeOptions);
         when(s3SinkConfig.getCompression()).thenReturn(compressionScenario.getCompressionOption());
         int expectedTotalSize = sizeCombination.getTotalSize();
@@ -357,7 +357,7 @@ public class S3SinkIT {
         when(expressionEvaluator.extractDynamicExpressionsFromFormatExpression(objectKeyOptions.getNamePattern()))
                 .thenReturn(Collections.emptyList());
 
-        when(pluginFactory.loadPlugin(eq(OutputCodec.class), any())).thenReturn(outputScenario.getCodec());
+        when(pluginFactory.loadPlugin(eq(OutputCodec.class), any())).thenAnswer(invocation -> outputScenario.getCodec());
         when(s3SinkConfig.getBufferType()).thenReturn(bufferTypeOptions);
         when(s3SinkConfig.getCompression()).thenReturn(compressionScenario.getCompressionOption());
         int expectedTotalSize = sizeCombination.getTotalSize();
@@ -535,6 +535,16 @@ public class S3SinkIT {
             );
 
             return generateCombinedArguments(bufferScenarios, outputScenarios, compressionScenarios, sizeCombinations);
+        }
+    }
+
+    static class OutputScenarioArguments implements ArgumentsProvider {
+
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+            return Stream.of(
+                    arguments(new NdjsonOutputScenario()),
+                    arguments(new JsonOutputScenario()));
         }
     }
 

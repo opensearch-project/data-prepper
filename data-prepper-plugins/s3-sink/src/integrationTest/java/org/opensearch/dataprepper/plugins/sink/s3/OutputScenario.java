@@ -50,4 +50,6 @@ public interface OutputScenario {
      * @throws IOException Some IOException
      */
     void validate(int expectedRecords, List<Map<String, Object>> sampleEventData, File actualContentFile, CompressionScenario compressionScenario) throws IOException;
+
+    void validateDynamicPartition(int expectedRecords, int partitionNumber, File actualContentFile, CompressionScenario compressionScenario) throws IOException;
 }
