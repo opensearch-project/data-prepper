@@ -158,7 +158,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
                 .collect(Collectors.toList());
 
         long endTime = System.currentTimeMillis();
-        LOG.info("Query of completed partitions took {} milliseconds with {} items found", endTime - startTime, sourcePartitions.size());
+        LOG.info("Query of partitions took {} milliseconds with {} items found", endTime - startTime, sourcePartitions.size());
         return sourcePartitions;
     }
 
