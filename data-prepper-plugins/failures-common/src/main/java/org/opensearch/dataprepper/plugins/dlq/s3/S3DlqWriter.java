@@ -84,6 +84,10 @@ public class S3DlqWriter implements DlqWriter {
 
     @Override
     public void write(final List<DlqObject> dlqObjects, final String pipelineName, final String pluginId) throws IOException {
+        if(dlqObjects.isEmpty()) {
+            return;
+        }
+
         try {
             doWrite(dlqObjects, pipelineName, pluginId);
             dlqS3RequestSuccessCounter.increment();
