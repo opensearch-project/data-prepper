@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfi
 import org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.mongo.export.ExportWorker;
 import org.opensearch.dataprepper.plugins.mongo.leader.LeaderScheduler;
+import org.opensearch.dataprepper.plugins.mongo.s3partition.S3PartitionCreatorScheduler;
 import org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,14 +55,16 @@ public class DocumentDBService {
         final LeaderScheduler leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig.getCollections());
         runnableList.add(leaderScheduler);
 
-        if (sourceConfig.getCollections().stream().anyMatch(CollectionConfig::isExportRequired)) {
+        if (sourceConfig.getCollections().stream().anyMatch(CollectionConfig::isExportEnabled)) {
             final ExportScheduler exportScheduler = new ExportScheduler(sourceCoordinator, mongoDBExportPartitionSupplier, pluginMetrics);
             final ExportWorker exportWorker = new ExportWorker(sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, sourceConfig);
             runnableList.add(exportScheduler);
             runnableList.add(exportWorker);
         }
 
-        if (sourceConfig.getCollections().stream().anyMatch(CollectionConfig::isStreamRequired)) {
+        if (sourceConfig.getCollections().stream().anyMatch(CollectionConfig::isStreamEnabled)) {
+            final S3PartitionCreatorScheduler s3PartitionCreatorScheduler = new S3PartitionCreatorScheduler(sourceCoordinator);
+            runnableList.add(s3PartitionCreatorScheduler);
             final StreamScheduler streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, pluginMetrics);
             runnableList.add(streamScheduler);
         }

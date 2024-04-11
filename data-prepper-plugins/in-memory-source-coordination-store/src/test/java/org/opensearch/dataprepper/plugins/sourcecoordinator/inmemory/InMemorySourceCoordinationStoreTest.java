@@ -15,12 +15,15 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
@@ -139,5 +142,16 @@ public class InMemorySourceCoordinationStoreTest {
         assertThat(createdItem.getSourcePartitionStatus(), equalTo(status));
         assertThat(createdItem.getPartitionProgressState(), equalTo(partitionProgressState));
         assertThat(createdItem.getClosedCount(), equalTo(closedCount));
+    }
+
+    @Test
+    void queryAllSourcePartitionItems_success() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
+        SourcePartitionStoreItem item1 = mock(SourcePartitionStoreItem.class);
+        SourcePartitionStoreItem item2 = mock(SourcePartitionStoreItem.class);
+        given(inMemoryPartitionAccessor.getAllItem(sourceIdentifier)).willReturn(List.of(item1, item2));
+        final List<SourcePartitionStoreItem> items = createObjectUnderTest().queryAllSourcePartitionItems(sourceIdentifier);
+        assertThat(items, hasSize(2));
+        assertThat(items, hasItems(item1, item2));
     }
 }

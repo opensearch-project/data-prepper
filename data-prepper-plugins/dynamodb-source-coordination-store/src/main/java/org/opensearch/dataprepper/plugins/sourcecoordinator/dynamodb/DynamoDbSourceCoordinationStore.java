@@ -66,6 +66,9 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
         return dynamoDbClientWrapper.queryPartitionsByStatus(statusKey, startPartitionPriority);
     }
 
+    public List<SourcePartitionStoreItem> queryAllSourcePartitionItems(final String sourceIdentifier) {
+        return dynamoDbClientWrapper.queryAllPartitions(sourceIdentifier);
+    }
 
     @Override
     public boolean tryCreatePartitionItem(final String sourceIdentifier,

@@ -63,8 +63,8 @@ public class LeaderSchedulerTest {
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        given(collectionConfig.isExportRequired()).willReturn(true);
-        given(collectionConfig.isStreamRequired()).willReturn(true);
+        given(collectionConfig.isExportEnabled()).willReturn(true);
+        given(collectionConfig.isStreamEnabled()).willReturn(true);
         given(collectionConfig.getExportConfig()).willReturn(exportConfig);
         given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
         given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
@@ -84,7 +84,7 @@ public class LeaderSchedulerTest {
             .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
 
         // Should create 1 export partition + 1 stream partitions + 1 global table state
-        verify(coordinator, times(3)).createPartition(any(EnhancedSourcePartition.class));
+        verify(coordinator, times(4)).createPartition(any(EnhancedSourcePartition.class));
         verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
 
         assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));
@@ -97,7 +97,7 @@ public class LeaderSchedulerTest {
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        given(collectionConfig.isExportRequired()).willReturn(true);
+        given(collectionConfig.isExportEnabled()).willReturn(true);
         given(collectionConfig.getExportConfig()).willReturn(exportConfig);
         given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
         given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
@@ -116,8 +116,8 @@ public class LeaderSchedulerTest {
             .atMost(Duration.ofSeconds(2))
             .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
 
-        // Should create 1 export partition + 1 stream partitions + 1 global table state
-        verify(coordinator, times(2)).createPartition(any(EnhancedSourcePartition.class));
+        // Should create 1 export partition + 1 stream partitions + 1 S3 partition + 1 global table state
+        verify(coordinator, times(3)).createPartition(any(EnhancedSourcePartition.class));
         verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
 
         assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));
@@ -130,7 +130,7 @@ public class LeaderSchedulerTest {
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        given(collectionConfig.isStreamRequired()).willReturn(true);
+        given(collectionConfig.isStreamEnabled()).willReturn(true);
         given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -146,7 +146,7 @@ public class LeaderSchedulerTest {
             .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
 
         // Should create 1 export partition + 1 stream partitions + 1 global table state
-        verify(coordinator, times(2)).createPartition(any(EnhancedSourcePartition.class));
+        verify(coordinator, times(3)).createPartition(any(EnhancedSourcePartition.class));
         verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
 
         assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));

@@ -13,11 +13,16 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.opensearch.dataprepper.plugins.sourcecoordinator.inmemory.InMemoryPartitionAccessor.GLOBAL_STATE_ITEM_SUFFIX;
@@ -293,6 +298,37 @@ public class InMemoryPartitionAccessorTest {
         final Optional<SourcePartitionStoreItem> getUpdatedItem = objectUnderTest.getItem(sourceIdentifier, partitionKey);
         assertThat(getUpdatedItem.isPresent(), equalTo(true));
         assertThat(getUpdatedItem.get(), equalTo(updateItem));
+    }
+
+    @Test
+    public void getAllItem_success() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
+        final String partitionKey1 = UUID.randomUUID().toString();
+
+        final InMemorySourcePartitionStoreItem item1 = mock(InMemorySourcePartitionStoreItem.class);
+        given(item1.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(item1.getSourcePartitionKey()).willReturn(partitionKey1);
+        given(item1.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.UNASSIGNED);
+        objectUnderTest.queuePartition(item1);
+
+        final String partitionKey2 = UUID.randomUUID().toString();
+        final InMemorySourcePartitionStoreItem item2 = mock(InMemorySourcePartitionStoreItem.class);
+        given(item2.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(item2.getSourcePartitionKey()).willReturn(partitionKey2);
+        given(item2.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.ASSIGNED);
+        objectUnderTest.queuePartition(item2);
+
+        final List<SourcePartitionStoreItem> items = objectUnderTest.getAllItem(sourceIdentifier);
+        assertThat(items, hasSize(2));
+        assertThat(items, hasItems(item1, item2));
+    }
+
+    @Test
+    public void getAllItem_empty_result() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
+
+        final List<SourcePartitionStoreItem> items = objectUnderTest.getAllItem(sourceIdentifier);
+        assertThat(items, is(empty()));
     }
 
 }

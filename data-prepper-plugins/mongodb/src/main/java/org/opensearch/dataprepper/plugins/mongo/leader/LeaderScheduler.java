@@ -5,6 +5,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.mongo.coordination.partition.S3FolderPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.LeaderProgressState;
@@ -112,13 +113,15 @@ public class LeaderScheduler implements Runnable {
             coordinator.createPartition(new GlobalState(collectionConfig.getCollection(), null));
 
             final Instant startTime = Instant.now();
-            final boolean exportRequired = collectionConfig.isExportRequired();
-            LOG.info("Ingestion mode {} for Collection {}", collectionConfig.getIngestionMode(), collectionConfig.getCollection());
+            final boolean exportRequired = collectionConfig.isExportEnabled();
+            LOG.info("Ingestion mode export {} and stream {} for Collection {}", collectionConfig.isExportEnabled(), collectionConfig.isStreamEnabled(), collectionConfig.getCollection());
             if (exportRequired) {
                 createExportPartition(collectionConfig, startTime);
             }
 
-            if (collectionConfig.isStreamRequired()) {
+            createS3Partition(collectionConfig);
+
+            if (collectionConfig.isStreamEnabled()) {
                 createStreamPartition(collectionConfig, startTime, exportRequired);
             }
 
@@ -129,6 +132,16 @@ public class LeaderScheduler implements Runnable {
         leaderProgressState.setInitialized(true);
     }
 
+    /**
+     * Create a partition for a S3 partition creator job in the coordination table.
+     *
+     * @param collectionConfig  collection configuration object containing collection details
+     */
+    private void createS3Partition(final CollectionConfig collectionConfig) {
+        LOG.info("Creating s3 folder global partition: {}", collectionConfig.getCollection());
+        coordinator.createPartition(new S3FolderPartition(collectionConfig.getS3Bucket(), collectionConfig.getS3PathPrefix(),
+                collectionConfig.getS3Region(), collectionConfig.getCollection()));
+    }
 
     /**
      * Create a partition for a stream job in the coordination table.

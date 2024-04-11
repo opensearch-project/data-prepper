@@ -1,27 +1,43 @@
 package org.opensearch.dataprepper.plugins.mongo.configuration;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.Arrays;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 public class CollectionConfig {
     private static final String COLLECTION_SPLITTER = "\\.";
+    private static final int DEFAULT_STREAM_BATCH_SIZE = 1000;
     @JsonProperty("collection")
     private @NotNull String collection;
 
     @JsonProperty("export_config")
     private ExportConfig exportConfig;
 
-    @JsonProperty("ingestion_mode")
-    private IngestionMode ingestionMode;
+    @JsonProperty("export_enabled")
+    private boolean exportEnabled;
+
+    @JsonProperty("stream_enabled")
+    private boolean streamEnabled;
+
+    @JsonProperty("s3_bucket")
+    private String s3Bucket;
+
+    @JsonProperty("s3_path_prefix")
+    private String s3PathPrefix;
+
+    @JsonProperty("s3_region")
+    private String s3Region;
+
+    @JsonProperty("stream_batch_size")
+    private int streamBatchSize;
 
     public CollectionConfig() {
-        this.ingestionMode = IngestionMode.EXPORT_STREAM;
+        this.exportEnabled = true;
+        this.streamEnabled = true;
         this.exportConfig = new ExportConfig();
+        this.streamBatchSize = DEFAULT_STREAM_BATCH_SIZE;
     }
 
     public String getCollection() {
@@ -36,22 +52,31 @@ public class CollectionConfig {
         return Arrays.stream(collection.split(COLLECTION_SPLITTER)).collect(Collectors.toList()).get(1);
     }
 
-    public IngestionMode getIngestionMode() {
-        return this.ingestionMode;
+    public boolean isExportEnabled() {
+        return this.exportEnabled;
+    }
+
+    public boolean isStreamEnabled() {
+        return this.streamEnabled;
+    }
+
+    public String getS3Bucket() {
+        return this.s3Bucket;
+    }
+
+    public String getS3PathPrefix() {
+        return this.s3PathPrefix;
+    }
+
+    public int getStreamBatchSize() {
+        return this.streamBatchSize;
+    }
+    public String getS3Region() {
+        return this.s3Region;
     }
 
     public ExportConfig getExportConfig() {
         return this.exportConfig;
-    }
-
-    public boolean isExportRequired() {
-        return this.ingestionMode == CollectionConfig.IngestionMode.EXPORT_STREAM ||
-                this.ingestionMode == CollectionConfig.IngestionMode.EXPORT;
-    }
-
-    public boolean isStreamRequired() {
-        return this.ingestionMode == CollectionConfig.IngestionMode.EXPORT_STREAM ||
-                this.ingestionMode == CollectionConfig.IngestionMode.STREAM;
     }
 
     public static class ExportConfig {
@@ -65,24 +90,6 @@ public class CollectionConfig {
 
         public Integer getItemsPerPartition() {
             return this.itemsPerPartition;
-        }
-    }
-
-    public enum IngestionMode {
-        EXPORT_STREAM("export_stream"),
-        EXPORT("export"),
-        STREAM("stream");
-
-        private static final Map<String, IngestionMode> OPTIONS_MAP = Arrays.stream(values()).collect(Collectors.toMap((value) -> value.type, (value) -> value));
-        private final String type;
-
-        IngestionMode(String type) {
-            this.type = type;
-        }
-
-        @JsonCreator
-        public static IngestionMode fromTypeValue(String type) {
-            return OPTIONS_MAP.get(type.toLowerCase());
         }
     }
 }

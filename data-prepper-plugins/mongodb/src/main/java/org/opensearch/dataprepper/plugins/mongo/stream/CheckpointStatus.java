@@ -1,13 +1,13 @@
 package org.opensearch.dataprepper.plugins.mongo.stream;
 
-class CheckpointStatus {
+public class CheckpointStatus {
     private final String resumeToken;
     private final long recordCount;
     private boolean acknowledged;
     private final long createTimestamp;
     private Long acknowledgedTimestamp;
 
-    CheckpointStatus(final String resumeToken, final long recordCount, final long createTimestamp) {
+    public CheckpointStatus(final String resumeToken, final long recordCount, final long createTimestamp) {
         this.resumeToken = resumeToken;
         this.recordCount = recordCount;
         this.acknowledged = false;
@@ -40,4 +40,6 @@ class CheckpointStatus {
     public long getAcknowledgedTimestamp() {
         return acknowledgedTimestamp;
     }
+
+
 }
