@@ -47,10 +47,13 @@ class LocalFileBufferTest {
     private LocalFileBuffer localFileBuffer;
     private File tempFile;
 
+    private String defaultBucket;
+
     @BeforeEach
     void setUp() throws IOException {
+        defaultBucket = UUID.randomUUID().toString();
         tempFile = File.createTempFile(PREFIX, SUFFIX);
-        localFileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier);
+        localFileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier, defaultBucket);
     }
 
     @Test

@@ -10,7 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -40,8 +40,14 @@ public class LocalFileBuffer implements Buffer {
     private String bucket;
     private String key;
 
+    private String defaultBucket;
 
-    LocalFileBuffer(File tempFile, S3Client s3Client, Supplier<String> bucketSupplier, Supplier<String> keySupplier) throws FileNotFoundException {
+
+    LocalFileBuffer(final File tempFile,
+                    final S3Client s3Client,
+                    final Supplier<String> bucketSupplier,
+                    final Supplier<String> keySupplier,
+                    final String defaultBucket) throws FileNotFoundException {
         localFile = tempFile;
         outputStream = new BufferedOutputStream(new FileOutputStream(tempFile), 32 * 1024);
         this.s3Client = s3Client;
@@ -51,6 +57,7 @@ public class LocalFileBuffer implements Buffer {
         watch = new StopWatch();
         watch.start();
         isCodecStarted = false;
+        this.defaultBucket = defaultBucket;
     }
 
     @Override
@@ -79,9 +86,7 @@ public class LocalFileBuffer implements Buffer {
     @Override
     public void flushToS3() {
         flushAndCloseStream();
-        s3Client.putObject(
-                PutObjectRequest.builder().bucket(getBucket()).key(getKey()).build(),
-                RequestBody.fromFile(localFile));
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, RequestBody.fromFile(localFile), getKey(), getBucket(), defaultBucket);
         removeTemporaryFile();
     }
 

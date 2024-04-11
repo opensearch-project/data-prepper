@@ -102,6 +102,11 @@ public class S3Sink extends AbstractSink<Record<Event>> {
             throw new InvalidPluginConfigurationException("name_pattern is not a valid format expression");
         }
 
+        if (s3SinkConfig.getBucketName() != null &&
+                !expressionEvaluator.isValidFormatExpression(s3SinkConfig.getBucketName())) {
+            throw new InvalidPluginConfigurationException("bucket name is not a valid format expression");
+        }
+
         S3OutputCodecContext s3OutputCodecContext = new S3OutputCodecContext(OutputCodecContext.fromSinkContext(sinkContext), compressionOption);
 
         testCodec.validateAgainstCodecContext(s3OutputCodecContext);

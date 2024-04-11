@@ -10,5 +10,5 @@ import software.amazon.awssdk.services.s3.S3Client;
 import java.util.function.Supplier;
 
 public interface BufferFactory {
-    Buffer getBuffer(S3Client s3Client, Supplier<String> bucketSupplier, Supplier<String> keySupplier);
+    Buffer getBuffer(S3Client s3Client, Supplier<String> bucketSupplier, Supplier<String> keySupplier, String defaultBucket);
 }

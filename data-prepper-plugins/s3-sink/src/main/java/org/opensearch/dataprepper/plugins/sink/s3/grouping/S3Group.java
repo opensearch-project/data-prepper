@@ -55,6 +55,6 @@ public class S3Group implements Comparable<S3Group> {
 
     @Override
     public int compareTo(final S3Group o) {
-        return Long.compare(o.getBuffer().getSize(), buffer.getSize());
+        return Long.compare(buffer.getSize(), o.getBuffer().getSize());
     }
 }

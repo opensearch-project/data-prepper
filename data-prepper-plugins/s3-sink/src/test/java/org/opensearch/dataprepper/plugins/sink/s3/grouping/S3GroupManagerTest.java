@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.codec.CodecFactory;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.Collection;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -65,9 +66,11 @@ public class S3GroupManagerTest {
         final Event event = mock(Event.class);
         final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
         when(s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(event)).thenReturn(s3GroupIdentifier);
+        final String defaultBucket = UUID.randomUUID().toString();
+        when(s3SinkConfig.getDefaultBucket()).thenReturn(defaultBucket);
 
         final Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class)))
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket)))
                 .thenReturn(buffer);
         final OutputCodec outputCodec = mock(OutputCodec.class);
         when(codecFactory.provideCodec()).thenReturn(outputCodec);
@@ -95,9 +98,12 @@ public class S3GroupManagerTest {
         final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
         when(s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(event)).thenReturn(s3GroupIdentifier);
 
+        final String defaultBucket = UUID.randomUUID().toString();
+        when(s3SinkConfig.getDefaultBucket()).thenReturn(defaultBucket);
+
         final Buffer buffer = mock(Buffer.class);
         final OutputCodec outputCodec = mock(OutputCodec.class);
-        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class)))
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket)))
                 .thenReturn(buffer);
         when(codecFactory.provideCodec()).thenReturn(outputCodec);
 
@@ -118,7 +124,7 @@ public class S3GroupManagerTest {
         assertThat(secondResult.getS3GroupIdentifier(), equalTo(s3GroupIdentifier));
         assertThat(secondResult.getBuffer(), equalTo(buffer));
 
-        verify(bufferFactory, times(1)).getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class));
+        verify(bufferFactory, times(1)).getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket));
 
         final Collection<S3Group> groups = objectUnderTest.getS3GroupEntries();
         assertThat(groups, notNullValue());
@@ -133,6 +139,9 @@ public class S3GroupManagerTest {
     void recalculateAndGetGroupSize_returns_expected_size() {
         long bufferSizeBase = 100;
         long bufferSizeTotal = 100 + 200 + 300;
+
+        final String defaultBucket = UUID.randomUUID().toString();
+        when(s3SinkConfig.getDefaultBucket()).thenReturn(defaultBucket);
 
         final Event event = mock(Event.class);
         final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
@@ -155,7 +164,7 @@ public class S3GroupManagerTest {
         final Buffer thirdBuffer = mock(Buffer.class);
         when(thirdBuffer.getSize()).thenReturn(bufferSizeBase * 3);
 
-        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class)))
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket)))
                 .thenReturn(buffer).thenReturn(secondBuffer).thenReturn(thirdBuffer);
 
         final OutputCodec outputCodec = mock(OutputCodec.class);
@@ -177,6 +186,9 @@ public class S3GroupManagerTest {
 
         long bufferSizeBase = 100;
 
+        final String defaultBucket = UUID.randomUUID().toString();
+        when(s3SinkConfig.getDefaultBucket()).thenReturn(defaultBucket);
+
         final Event event = mock(Event.class);
         final S3GroupIdentifier s3GroupIdentifier = mock(S3GroupIdentifier.class);
         when(s3GroupIdentifierFactory.getS3GroupIdentifierForEvent(event)).thenReturn(s3GroupIdentifier);
@@ -198,7 +210,7 @@ public class S3GroupManagerTest {
         final Buffer thirdBuffer = mock(Buffer.class);
         when(thirdBuffer.getSize()).thenReturn(bufferSizeBase * 3);
 
-        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class)))
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket)))
                 .thenReturn(buffer).thenReturn(secondBuffer).thenReturn(thirdBuffer);
 
         final OutputCodec firstOutputCodec = mock(OutputCodec.class);

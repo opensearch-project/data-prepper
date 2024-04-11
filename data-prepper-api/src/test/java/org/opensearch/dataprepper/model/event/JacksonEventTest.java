@@ -663,6 +663,21 @@ public class JacksonEventTest {
     }
 
     @Test
+    public void testBuild_withFormatStringWithValueNotFound_and_defaultValue_for_missing_keys() {
+
+        final String defaultValueForMissingKey = UUID.randomUUID().toString();
+        final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+        final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+        final String result = event.formatString("test-${boo}-string", expressionEvaluator, defaultValueForMissingKey);
+        assertThat(result, equalTo("test-" + defaultValueForMissingKey + "-string"));
+    }
+
+    @Test
     public void testBuild_withFormatStringWithInvalidFormat() {
 
         final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
