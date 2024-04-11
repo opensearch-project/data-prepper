@@ -3,6 +3,12 @@ package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,17 +21,17 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
-
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.eq;
 import static org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferUtilities.ACCESS_DENIED;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,19 +78,26 @@ public class BufferUtilitiesTest {
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenThrow(NoSuchBucketException.class);
 
         assertThrows(NoSuchBucketException.class, () -> BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, objectKey, targetBucket, null));
+
+        verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), eq(requestBody));
     }
 
-    @Test
-    void putObjectOrSendToDefaultBucket_with_S3Exception_that_is_not_access_denied_or_no_such_bucket_throws_exception() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void putObjectOrSendToDefaultBucket_with_S3Exception_that_is_not_access_denied_or_no_such_bucket_throws_exception(final boolean defaultBucketEnabled) {
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenThrow(RuntimeException.class);
 
-        assertThrows(RuntimeException.class, () -> BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, objectKey, targetBucket, null));
+        assertThrows(RuntimeException.class, () -> BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, objectKey, targetBucket,
+                defaultBucketEnabled ? defaultBucket : null));
+
+        verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), eq(requestBody));
     }
 
-    @Test
-    void putObjectOrSendToDefaultBucket_with_NoSuchBucketException_sends_to_default_bucket() {
+    @ParameterizedTest
+    @ArgumentsSource(ExceptionsProvider.class)
+    void putObjectOrSendToDefaultBucket_with_NoSuchBucketException_or_access_denied_sends_to_default_bucket(final Exception exception) {
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody)))
-                .thenThrow(NoSuchBucketException.class)
+                .thenThrow(exception)
                 .thenReturn(mock(PutObjectResponse.class));
 
         BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, objectKey, targetBucket, defaultBucket);
@@ -104,29 +117,19 @@ public class BufferUtilitiesTest {
         assertThat(defaultBucketPutObjectRequest.key(), equalTo(objectKey));
     }
 
-    @Test
-    void putObjectOrSendToDefaultBucket_with_S3Exception_with_access_denied_sends_to_default_bucket() {
-        final S3Exception s3Exception = mock(S3Exception.class);
-        when(s3Exception.getMessage()).thenReturn(UUID.randomUUID() + ACCESS_DENIED + UUID.randomUUID());
+    private static class ExceptionsProvider implements ArgumentsProvider {
 
-        when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody)))
-                .thenThrow(s3Exception)
-                .thenReturn(mock(PutObjectResponse.class));
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+            final S3Exception s3Exception = mock(S3Exception.class);
+            when(s3Exception.getMessage()).thenReturn(UUID.randomUUID() + ACCESS_DENIED + UUID.randomUUID());
 
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, objectKey, targetBucket, defaultBucket);
+            final NoSuchBucketException noSuchBucketException = mock(NoSuchBucketException.class);
 
-        final ArgumentCaptor<PutObjectRequest> argumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
-        verify(s3Client, times(2)).putObject(argumentCaptor.capture(), eq(requestBody));
-
-        assertThat(argumentCaptor.getAllValues().size(), equalTo(2));
-
-        final List<PutObjectRequest> putObjectRequestList = argumentCaptor.getAllValues();
-        final PutObjectRequest putObjectRequest = putObjectRequestList.get(0);
-        assertThat(putObjectRequest.bucket(), equalTo(targetBucket));
-        assertThat(putObjectRequest.key(), equalTo(objectKey));
-
-        final PutObjectRequest defaultBucketPutObjectRequest = putObjectRequestList.get(1);
-        assertThat(defaultBucketPutObjectRequest.bucket(), equalTo(defaultBucket));
-        assertThat(defaultBucketPutObjectRequest.key(), equalTo(objectKey));
+            return Stream.of(
+                    Arguments.arguments(noSuchBucketException),
+                    Arguments.arguments(s3Exception)
+            );
+        }
     }
 }
