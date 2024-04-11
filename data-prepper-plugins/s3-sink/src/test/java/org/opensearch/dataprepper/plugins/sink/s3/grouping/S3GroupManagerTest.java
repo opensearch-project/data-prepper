@@ -71,7 +71,13 @@ public class S3GroupManagerTest {
 
         final Buffer buffer = mock(Buffer.class);
         when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket)))
-                .thenReturn(buffer);
+                .thenAnswer(invocation -> {
+                    Supplier<String> bucketSupplier = invocation.getArgument(1);
+                    Supplier<String> objectKeySupplier = invocation.getArgument(2);
+                    bucketSupplier.get();
+                    objectKeySupplier.get();
+                    return buffer;
+                });
         final OutputCodec outputCodec = mock(OutputCodec.class);
         when(codecFactory.provideCodec()).thenReturn(outputCodec);
 
@@ -90,6 +96,9 @@ public class S3GroupManagerTest {
 
         assertThat(groups.contains(result), equalTo(true));
         assertThat(objectUnderTest.hasNoGroups(), equalTo(false));
+
+        verify(s3GroupIdentifier).getFullBucketName();
+        verify(s3GroupIdentifier).getGroupIdentifierFullObjectKey();
     }
 
     @Test
