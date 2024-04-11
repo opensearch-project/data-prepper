@@ -18,6 +18,7 @@ class BufferUtilities {
     private static final Logger LOG = LoggerFactory.getLogger(BufferUtilities.class);
 
     static final String ACCESS_DENIED = "Access Denied";
+    static final String INVALID_BUCKET = "The specified bucket is not valid";
 
     static void putObjectOrSendToDefaultBucket(final S3Client s3Client,
                                                final RequestBody requestBody,
@@ -29,7 +30,8 @@ class BufferUtilities {
                     PutObjectRequest.builder().bucket(targetBucket).key(objectKey).build(),
                     requestBody);
         } catch (final S3Exception e) {
-            if (defaultBucket != null && (e instanceof NoSuchBucketException || e.getMessage().contains(ACCESS_DENIED))) {
+            if (defaultBucket != null &&
+                    (e instanceof NoSuchBucketException || e.getMessage().contains(ACCESS_DENIED) || e.getMessage().contains(INVALID_BUCKET))) {
                 LOG.warn("Bucket {} could not be accessed, attempting to send to default_bucket {}", targetBucket, defaultBucket);
                 s3Client.putObject(
                         PutObjectRequest.builder().bucket(defaultBucket).key(objectKey).build(),

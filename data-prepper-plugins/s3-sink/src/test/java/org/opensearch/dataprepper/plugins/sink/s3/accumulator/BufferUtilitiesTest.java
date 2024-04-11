@@ -33,6 +33,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferUtilities.ACCESS_DENIED;
+import static org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferUtilities.INVALID_BUCKET;
 
 @ExtendWith(MockitoExtension.class)
 public class BufferUtilitiesTest {
@@ -121,14 +122,18 @@ public class BufferUtilitiesTest {
 
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
-            final S3Exception s3Exception = mock(S3Exception.class);
-            when(s3Exception.getMessage()).thenReturn(UUID.randomUUID() + ACCESS_DENIED + UUID.randomUUID());
+            final S3Exception accessDeniedException = mock(S3Exception.class);
+            when(accessDeniedException.getMessage()).thenReturn(UUID.randomUUID() + ACCESS_DENIED + UUID.randomUUID());
+
+            final S3Exception invalidBucketException = mock(S3Exception.class);
+            when(invalidBucketException.getMessage()).thenReturn(UUID.randomUUID() + INVALID_BUCKET + UUID.randomUUID());
 
             final NoSuchBucketException noSuchBucketException = mock(NoSuchBucketException.class);
 
             return Stream.of(
                     Arguments.arguments(noSuchBucketException),
-                    Arguments.arguments(s3Exception)
+                    Arguments.arguments(accessDeniedException),
+                    Arguments.arguments(invalidBucketException)
             );
         }
     }
