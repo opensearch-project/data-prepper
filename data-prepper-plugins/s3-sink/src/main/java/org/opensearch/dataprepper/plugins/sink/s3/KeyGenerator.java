@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.ObjectKey;
 
+
 public class KeyGenerator {
     private final S3SinkConfig s3SinkConfig;
     private final ExtensionProvider extensionProvider;

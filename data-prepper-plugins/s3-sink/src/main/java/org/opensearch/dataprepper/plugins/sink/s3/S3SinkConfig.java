@@ -37,6 +37,15 @@ public class S3SinkConfig {
     @Size(min = 3, max = 500, message = "bucket length should be at least 3 characters")
     private String bucketName;
 
+    /**
+     * The default bucket to send to if using a dynamic bucket name and failures occur
+     * for any reason when sending to a dynamic bucket
+     */
+    @JsonProperty("default_bucket")
+    @Size(min = 3, max = 500, message = "default_bucket length should be at least 3 characters")
+    private String defaultBucket;
+
+
     @JsonProperty("object_key")
     @Valid
     private ObjectKeyOptions objectKeyOptions = new ObjectKeyOptions();
@@ -143,4 +152,6 @@ public class S3SinkConfig {
     public CompressionOption getCompression() {
         return compression;
     }
+
+    public String getDefaultBucket() { return defaultBucket; }
 }

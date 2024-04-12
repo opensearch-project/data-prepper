@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.sink.s3.accumulator.ObjectKey.REPLACEMENT_FOR_NON_EXISTENT_KEYS;
 
 @ExtendWith(MockitoExtension.class)
 class ObjectKeyTest {
@@ -44,7 +45,7 @@ class ObjectKeyTest {
         final String pathPrefix = "events/%{yyyy}/%{MM}/%{dd}/";
 
         when(objectKeyOptions.getPathPrefix()).thenReturn(pathPrefix);
-        when(event.formatString(pathPrefix, expressionEvaluator)).thenReturn(pathPrefix);
+        when(event.formatString(pathPrefix, expressionEvaluator, REPLACEMENT_FOR_NON_EXISTENT_KEYS)).thenReturn(pathPrefix);
         String pathPrefixResult = ObjectKey.buildingPathPrefix(s3SinkConfig, event, expressionEvaluator);
         Assertions.assertNotNull(pathPrefixResult);
         assertThat(pathPrefixResult, startsWith("events"));
@@ -55,7 +56,7 @@ class ObjectKeyTest {
         final String namePattern = "my-elb-%{yyyy-MM-dd'T'hh-mm-ss}";
 
         when(objectKeyOptions.getNamePattern()).thenReturn(namePattern);
-        when(event.formatString(namePattern, expressionEvaluator)).thenReturn(namePattern);
+        when(event.formatString(namePattern, expressionEvaluator, REPLACEMENT_FOR_NON_EXISTENT_KEYS)).thenReturn(namePattern);
         String objectFileName = ObjectKey.objectFileName(s3SinkConfig, null, event, expressionEvaluator);
         Assertions.assertNotNull(objectFileName);
         assertThat(objectFileName, startsWith("my-elb"));
@@ -67,7 +68,7 @@ class ObjectKeyTest {
 
         when(s3SinkConfig.getObjectKeyOptions().getNamePattern())
                 .thenReturn(namePattern);
-        when(event.formatString(namePattern, expressionEvaluator)).thenReturn(namePattern);
+        when(event.formatString(namePattern, expressionEvaluator, REPLACEMENT_FOR_NON_EXISTENT_KEYS)).thenReturn(namePattern);
         String objectFileName = ObjectKey.objectFileName(s3SinkConfig, null, event, expressionEvaluator);
         Assertions.assertNotNull(objectFileName);
         Assertions.assertTrue(objectFileName.contains(".pdf"));
@@ -79,7 +80,7 @@ class ObjectKeyTest {
 
         when(s3SinkConfig.getObjectKeyOptions().getNamePattern())
                 .thenReturn(namePattern);
-        when(event.formatString(namePattern, expressionEvaluator)).thenReturn(namePattern);
+        when(event.formatString(namePattern, expressionEvaluator, REPLACEMENT_FOR_NON_EXISTENT_KEYS)).thenReturn(namePattern);
         String objectFileName = ObjectKey.objectFileName(s3SinkConfig, null, event, expressionEvaluator);
         Assertions.assertNotNull(objectFileName);
         Assertions.assertTrue(objectFileName.contains(".json"));

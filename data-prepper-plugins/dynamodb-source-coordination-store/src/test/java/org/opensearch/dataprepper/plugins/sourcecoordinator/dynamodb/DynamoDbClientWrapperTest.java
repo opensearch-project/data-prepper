@@ -28,6 +28,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.BeanTableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.GetItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
+import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
 import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -56,7 +57,9 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -719,6 +722,50 @@ public class DynamoDbClientWrapperTest {
         verifyNoMoreInteractions(table);
         verifyNoInteractions(secondItem);
 
+    }
+
+    @Test
+    void queryAllPartitions_success() throws NoSuchFieldException, IllegalAccessException {
+        final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
+        final DynamoDbSourcePartitionItem firstItem = mock(DynamoDbSourcePartitionItem.class);
+        final DynamoDbSourcePartitionItem secondItem = mock(DynamoDbSourcePartitionItem.class);
+        final PageIterable<DynamoDbSourcePartitionItem> availableItems =  () -> {
+            final Page<DynamoDbSourcePartitionItem> page = mock(Page.class);
+            given(page.items()).willReturn(List.of(firstItem, secondItem));
+            return List.of(page).iterator();
+        };
+
+        given(table.query(any(QueryEnhancedRequest.class))).willReturn(availableItems);
+
+        final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
+        reflectivelySetField(objectUnderTest, "table", table);
+
+        final List<SourcePartitionStoreItem> result = objectUnderTest.queryAllPartitions(UUID.randomUUID().toString());
+
+        assertThat(result, is(List.of(firstItem, secondItem)));
+        verifyNoMoreInteractions(table);
+        verifyNoInteractions(secondItem);
+
+    }
+
+    @Test
+    void queryAllPartitions_empty_results() throws NoSuchFieldException, IllegalAccessException {
+        final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
+        final PageIterable<DynamoDbSourcePartitionItem> availableItems =  () -> {
+            final Page<DynamoDbSourcePartitionItem> page = mock(Page.class);
+            given(page.items()).willReturn(Collections.emptyList());
+            return List.of(page).iterator();
+        };
+
+        given(table.query(any(QueryEnhancedRequest.class))).willReturn(availableItems);
+
+        final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
+        reflectivelySetField(objectUnderTest, "table", table);
+
+        final List<SourcePartitionStoreItem> result = objectUnderTest.queryAllPartitions(UUID.randomUUID().toString());
+
+        assertThat(result, is(empty()));
+        verifyNoMoreInteractions(table);
     }
 
     static Stream<Class> exceptionProvider() {

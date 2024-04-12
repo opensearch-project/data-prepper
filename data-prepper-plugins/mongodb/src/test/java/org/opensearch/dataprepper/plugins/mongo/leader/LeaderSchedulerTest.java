@@ -12,7 +12,9 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.mongo.coordination.partition.S3FolderPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
+import software.amazon.awssdk.regions.Region;
 
 import java.time.Duration;
 import java.util.List;
@@ -41,6 +43,11 @@ import static org.opensearch.dataprepper.plugins.mongo.leader.LeaderScheduler.EX
 
 @ExtendWith(MockitoExtension.class)
 public class LeaderSchedulerTest {
+    private static final String TEST_COLLECTION = UUID.randomUUID().toString();
+    private static final String TEST_S3_BUCKET_NAME = UUID.randomUUID().toString();
+    private static final String TEST_S3_PATH_PREFIX = UUID.randomUUID().toString();
+    private static final String TEST_S3_REGION = Region.US_EAST_1.toString();
+
     @Mock
     private EnhancedSourceCoordinator coordinator;
 
@@ -75,11 +82,14 @@ public class LeaderSchedulerTest {
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        given(collectionConfig.isExportRequired()).willReturn(true);
-        given(collectionConfig.isStreamRequired()).willReturn(true);
+        given(collectionConfig.isExportEnabled()).willReturn(true);
+        given(collectionConfig.isStreamEnabled()).willReturn(true);
         given(collectionConfig.getExportConfig()).willReturn(exportConfig);
         given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
-        given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
+        given(collectionConfig.getCollection()).willReturn(TEST_COLLECTION);
+        given(collectionConfig.getS3PathPrefix()).willReturn(TEST_S3_PATH_PREFIX);
+        given(collectionConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
+        given(collectionConfig.getS3Region()).willReturn(TEST_S3_REGION);
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> leaderScheduler.run());
@@ -95,7 +105,62 @@ public class LeaderSchedulerTest {
             .atMost(Duration.ofSeconds(2))
             .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
 
-        // Should create 1 export partition + 1 stream partitions + 2 global table state
+        // Should create 1 export partition + 1 stream partitions + 1 S3 partition + 2 global table state
+        verify(coordinator, times(5)).createPartition(
+                enhancedSourcePartitionArgumentCaptor.capture());
+        verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
+
+        assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));
+        final List<EnhancedSourcePartition> allEnhancedSourcePartitions =
+                enhancedSourcePartitionArgumentCaptor.getAllValues();
+        assertThat(allEnhancedSourcePartitions.get(0), instanceOf(GlobalState.class));
+        assertThat(allEnhancedSourcePartitions.get(1), instanceOf(ExportPartition.class));
+        assertThat(allEnhancedSourcePartitions.get(2), instanceOf(GlobalState.class));
+        final GlobalState exportGlobalState = (GlobalState) allEnhancedSourcePartitions.get(2);
+        assertThat(exportGlobalState.getPartitionKey(), startsWith(EXPORT_PREFIX));
+        final Optional<Map<String, Object>> exportGlobalProgressStateOptional = exportGlobalState.getProgressState();
+        assertThat(exportGlobalProgressStateOptional.isPresent(), is(true));
+        final Map<String, Object> exportGlobalProgressState = exportGlobalProgressStateOptional.get();
+        assertThat(exportGlobalProgressState.get("totalPartitions"), equalTo(0L));
+        assertThat(exportGlobalProgressState.get("loadedPartitions"), equalTo(0L));
+        assertThat(exportGlobalProgressState.get("loadedRecords"), equalTo(0L));
+        assertThat(allEnhancedSourcePartitions.get(3), instanceOf(S3FolderPartition.class));
+        final S3FolderPartition s3FolderPartition = (S3FolderPartition) allEnhancedSourcePartitions.get(3);
+        assertThat(s3FolderPartition.getPartitionKey(), equalTo(String.format(
+                "%s|%s|%s|%s", TEST_COLLECTION, TEST_S3_BUCKET_NAME, TEST_S3_PATH_PREFIX, TEST_S3_REGION)));
+        assertThat(allEnhancedSourcePartitions.get(4), instanceOf(StreamPartition.class));
+        executorService.shutdownNow();
+    }
+
+    @Test
+    void test_should_init_export() {
+
+        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
+        leaderPartition = new LeaderPartition();
+        given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
+        given(collectionConfig.isExportEnabled()).willReturn(true);
+        given(collectionConfig.getExportConfig()).willReturn(exportConfig);
+        given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
+        given(collectionConfig.getCollection()).willReturn(TEST_COLLECTION);
+        given(collectionConfig.getS3PathPrefix()).willReturn(TEST_S3_PATH_PREFIX);
+        given(collectionConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
+        given(collectionConfig.getS3Region()).willReturn(TEST_S3_REGION);
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> leaderScheduler.run());
+
+        // Acquire the init partition
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() ->  verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+
+        future.cancel(true);
+
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
+
+        // Should create 1 export partition + 1 stream partitions + 1 S3 partition + 2 global table state
         verify(coordinator, times(4)).createPartition(
                 enhancedSourcePartitionArgumentCaptor.capture());
         verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
@@ -114,54 +179,10 @@ public class LeaderSchedulerTest {
         assertThat(exportGlobalProgressState.get("totalPartitions"), equalTo(0L));
         assertThat(exportGlobalProgressState.get("loadedPartitions"), equalTo(0L));
         assertThat(exportGlobalProgressState.get("loadedRecords"), equalTo(0L));
-        assertThat(allEnhancedSourcePartitions.get(3), instanceOf(StreamPartition.class));
-        executorService.shutdownNow();
-    }
-
-    @Test
-    void test_should_init_export() {
-
-        leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
-        leaderPartition = new LeaderPartition();
-        given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        given(collectionConfig.isExportRequired()).willReturn(true);
-        given(collectionConfig.getExportConfig()).willReturn(exportConfig);
-        given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
-        given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
-
-        final ExecutorService executorService = Executors.newSingleThreadExecutor();
-        final Future<?> future = executorService.submit(() -> leaderScheduler.run());
-
-        // Acquire the init partition
-        await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() ->  verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
-
-        future.cancel(true);
-
-        await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
-
-        // Should create 1 export partition + 1 stream partitions + 2 global table state
-        verify(coordinator, times(3)).createPartition(
-                enhancedSourcePartitionArgumentCaptor.capture());
-        verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
-
-        assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));
-        final List<EnhancedSourcePartition> allEnhancedSourcePartitions =
-                enhancedSourcePartitionArgumentCaptor.getAllValues();
-        assertThat(allEnhancedSourcePartitions.get(0), instanceOf(GlobalState.class));
-        assertThat(allEnhancedSourcePartitions.get(1), instanceOf(ExportPartition.class));
-        assertThat(allEnhancedSourcePartitions.get(2), instanceOf(GlobalState.class));
-        final GlobalState exportGlobalState = (GlobalState) allEnhancedSourcePartitions.get(2);
-        assertThat(exportGlobalState.getPartitionKey(), startsWith(EXPORT_PREFIX));
-        final Optional<Map<String, Object>> exportGlobalProgressStateOptional = exportGlobalState.getProgressState();
-        assertThat(exportGlobalProgressStateOptional.isPresent(), is(true));
-        final Map<String, Object> exportGlobalProgressState = exportGlobalProgressStateOptional.get();
-        assertThat(exportGlobalProgressState.get("totalPartitions"), equalTo(0L));
-        assertThat(exportGlobalProgressState.get("loadedPartitions"), equalTo(0L));
-        assertThat(exportGlobalProgressState.get("loadedRecords"), equalTo(0L));
+        assertThat(allEnhancedSourcePartitions.get(3), instanceOf(S3FolderPartition.class));
+        final S3FolderPartition s3FolderPartition = (S3FolderPartition) allEnhancedSourcePartitions.get(3);
+        assertThat(s3FolderPartition.getPartitionKey(), equalTo(String.format(
+                "%s|%s|%s|%s", TEST_COLLECTION, TEST_S3_BUCKET_NAME, TEST_S3_PATH_PREFIX, TEST_S3_REGION)));
         executorService.shutdownNow();
     }
 
@@ -171,8 +192,11 @@ public class LeaderSchedulerTest {
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        given(collectionConfig.isStreamRequired()).willReturn(true);
-        given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
+        given(collectionConfig.isStreamEnabled()).willReturn(true);
+        given(collectionConfig.getCollection()).willReturn(TEST_COLLECTION);
+        given(collectionConfig.getS3PathPrefix()).willReturn(TEST_S3_PATH_PREFIX);
+        given(collectionConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
+        given(collectionConfig.getS3Region()).willReturn(TEST_S3_REGION);
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> leaderScheduler.run());
@@ -186,8 +210,8 @@ public class LeaderSchedulerTest {
             .atMost(Duration.ofSeconds(2))
             .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
 
-        // Should create 1 stream partitions + 1 global table state
-        verify(coordinator, times(2)).createPartition(
+        // Should create 1 stream partitions + 1 S3 partition + 1 global table state
+        verify(coordinator, times(3)).createPartition(
                 enhancedSourcePartitionArgumentCaptor.capture());
         verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
 
@@ -195,7 +219,11 @@ public class LeaderSchedulerTest {
         final List<EnhancedSourcePartition> allEnhancedSourcePartitions =
                 enhancedSourcePartitionArgumentCaptor.getAllValues();
         assertThat(allEnhancedSourcePartitions.get(0), instanceOf(GlobalState.class));
-        assertThat(allEnhancedSourcePartitions.get(1), instanceOf(StreamPartition.class));
+        assertThat(allEnhancedSourcePartitions.get(1), instanceOf(S3FolderPartition.class));
+        final S3FolderPartition s3FolderPartition = (S3FolderPartition) allEnhancedSourcePartitions.get(1);
+        assertThat(s3FolderPartition.getPartitionKey(), equalTo(String.format(
+                "%s|%s|%s|%s", TEST_COLLECTION, TEST_S3_BUCKET_NAME, TEST_S3_PATH_PREFIX, TEST_S3_REGION)));
+        assertThat(allEnhancedSourcePartitions.get(2), instanceOf(StreamPartition.class));
         executorService.shutdownNow();
     }
 }

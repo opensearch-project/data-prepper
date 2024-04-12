@@ -83,6 +83,8 @@ class MongoTasksRefresherTest {
     void setUp() {
         when(executorServiceFunction.apply(anyInt())).thenReturn(executorService);
         when(sourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
+        when(collectionConfig.isExportEnabled()).thenReturn(true);
+        when(collectionConfig.isStreamEnabled()).thenReturn(true);
     }
 
     @Test
@@ -105,7 +107,7 @@ class MongoTasksRefresherTest {
     }
 
     @Test
-    void testUpdateWithUsernameChanged() {
+    void testUpdateWithUsernameChangedAndBothStreamAndExportEnabled() {
         when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
         final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(sourceConfig);
@@ -128,7 +130,7 @@ class MongoTasksRefresherTest {
     }
 
     @Test
-    void testGetAfterUpdateWithPasswordChanged() {
+    void testUpdateWithPasswordChangedAndBothStreamAndExportEnabled() {
         when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
         final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(sourceConfig);
@@ -150,6 +152,58 @@ class MongoTasksRefresherTest {
         verify(executorService).shutdownNow();
         verify(newExecutorService, times(3)).submit(any(Runnable.class));
         verify(executorServiceFunction, times(2)).apply(eq(3));
+    }
+
+    @Test
+    void testUpdateWithPasswordChangedAndOnlyExportEnabled() {
+        when(collectionConfig.isStreamEnabled()).thenReturn(false);
+        when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
+        final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(sourceConfig);
+        verify(executorServiceFunction).apply(eq(2));
+        when(sourceConfig.getCredentialsConfig()).thenReturn(credentialsConfig);
+        when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
+        final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
+        when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
+        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.CredentialsConfig.class);
+        when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
+        when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
+        final ExecutorService newExecutorService = mock(ExecutorService.class);
+        when(executorServiceFunction.apply(anyInt())).thenReturn(newExecutorService);
+        objectUnderTest.update(newSourceConfig);
+        verify(credentialsChangeCounter).increment();
+        verify(executorService).shutdownNow();
+        verify(newExecutorService, times(2)).submit(any(Runnable.class));
+        verify(executorServiceFunction, times(2)).apply(eq(2));
+    }
+
+    @Test
+    void testUpdateWithPasswordChangedAndOnlyStreamEnabled() {
+        when(collectionConfig.isExportEnabled()).thenReturn(false);
+        when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
+        final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(sourceConfig);
+        verify(executorServiceFunction).apply(eq(1));
+        when(sourceConfig.getCredentialsConfig()).thenReturn(credentialsConfig);
+        when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
+        final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
+        when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
+        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.CredentialsConfig.class);
+        when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
+        when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
+        final ExecutorService newExecutorService = mock(ExecutorService.class);
+        when(executorServiceFunction.apply(anyInt())).thenReturn(newExecutorService);
+        objectUnderTest.update(newSourceConfig);
+        verify(credentialsChangeCounter).increment();
+        verify(executorService).shutdownNow();
+        verify(newExecutorService, times(1)).submit(any(Runnable.class));
+        verify(executorServiceFunction, times(2)).apply(eq(1));
     }
 
     @Test

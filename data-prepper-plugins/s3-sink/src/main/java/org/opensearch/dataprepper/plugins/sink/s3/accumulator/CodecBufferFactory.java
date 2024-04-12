@@ -15,8 +15,11 @@ public class CodecBufferFactory implements BufferFactory {
     }
 
     @Override
-    public Buffer getBuffer(S3Client s3Client, Supplier<String> bucketSupplier, Supplier<String> keySupplier) {
-        Buffer innerBuffer = innerBufferFactory.getBuffer(s3Client, bucketSupplier, keySupplier);
+    public Buffer getBuffer(final S3Client s3Client,
+                            final Supplier<String> bucketSupplier,
+                            final Supplier<String> keySupplier,
+                            final String defaultBucket) {
+        Buffer innerBuffer = innerBufferFactory.getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket);
         return new CodecBuffer(innerBuffer, bufferedCodec);
     }
 }

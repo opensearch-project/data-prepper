@@ -53,6 +53,14 @@ public interface EnhancedSourceCoordinator {
     List<EnhancedSourcePartition> queryCompletedPartitions(final String partitionType, final Instant fromCompletionTime);
 
     /**
+     * This method is used to query all partitions of give partitionType from the coordination store.
+     *
+     * @param partitionType      Type of partition
+     * @return A list of all partitionType partitions
+     */
+    List<EnhancedSourcePartition> queryAllPartitions(String partitionType);
+
+    /**
      * This method is used to update progress state for a partition in the coordination store.
      * It will also extend the timeout for ownership.
      *

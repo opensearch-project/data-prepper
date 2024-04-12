@@ -64,6 +64,13 @@ public class InMemorySourceCoordinationStore implements SourceCoordinationStore 
     }
 
     @Override
+    public List<SourcePartitionStoreItem> queryAllSourcePartitionItems(String sourceIdentifier) {
+        synchronized (this) {
+            return inMemoryPartitionAccessor.getAllItem(sourceIdentifier);
+        }
+    }
+
+    @Override
     public boolean tryCreatePartitionItem(final String sourceIdentifier,
                                           final String partitionKey,
                                           final SourcePartitionStatus sourcePartitionStatus,

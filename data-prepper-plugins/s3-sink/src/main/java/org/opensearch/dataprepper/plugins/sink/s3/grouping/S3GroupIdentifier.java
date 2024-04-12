@@ -12,10 +12,14 @@ class S3GroupIdentifier {
     private final Map<String, Object> groupIdentifierHash;
     private final String groupIdentifierFullObjectKey;
 
+    private final String fullBucketName;
+
     public S3GroupIdentifier(final Map<String, Object> groupIdentifierHash,
-                             final String groupIdentifierFullObjectKey) {
+                             final String groupIdentifierFullObjectKey,
+                             final String fullBucketName) {
         this.groupIdentifierHash = groupIdentifierHash;
         this.groupIdentifierFullObjectKey = groupIdentifierFullObjectKey;
+        this.fullBucketName = fullBucketName;
     }
 
     @Override
@@ -34,4 +38,6 @@ class S3GroupIdentifier {
     public String getGroupIdentifierFullObjectKey() { return groupIdentifierFullObjectKey; }
 
     public Map<String, Object> getGroupIdentifierHash() { return groupIdentifierHash; }
+
+    public String getFullBucketName() { return fullBucketName; }
 }

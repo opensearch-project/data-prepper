@@ -20,12 +20,15 @@ public class LocalFileBufferFactory implements BufferFactory {
     public static final String SUFFIX = ".log";
 
     @Override
-    public Buffer getBuffer(S3Client s3Client, Supplier<String> bucketSupplier, Supplier<String> keySupplier) {
+    public Buffer getBuffer(final S3Client s3Client,
+                            final Supplier<String> bucketSupplier,
+                            final Supplier<String> keySupplier,
+                            final String defaultBucket) {
         File tempFile = null;
         Buffer localfileBuffer = null;
         try {
             tempFile = File.createTempFile(PREFIX, SUFFIX);
-            localfileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier);
+            localfileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier, defaultBucket);
         } catch (IOException e) {
             LOG.error("Unable to create temp file ", e);
         }

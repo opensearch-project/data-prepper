@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObserver;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.mongo.export.ExportWorker;
@@ -79,12 +80,16 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
 
     private void refreshJobs(MongoDBSourceConfig pluginConfig) {
         final List<Runnable> runnables = new ArrayList<>();
-        currentMongoDBExportPartitionSupplier = new MongoDBExportPartitionSupplier(pluginConfig);
-        runnables.add(new ExportScheduler(sourceCoordinator, currentMongoDBExportPartitionSupplier, pluginMetrics));
-        runnables.add(new ExportWorker(
-                sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, pluginConfig));
-        runnables.add(new StreamScheduler(
-                sourceCoordinator, buffer, acknowledgementSetManager, pluginConfig, pluginMetrics));
+        if (pluginConfig.getCollections().stream().anyMatch(CollectionConfig::isExportEnabled)) {
+            currentMongoDBExportPartitionSupplier = new MongoDBExportPartitionSupplier(pluginConfig);
+            runnables.add(new ExportScheduler(sourceCoordinator, currentMongoDBExportPartitionSupplier, pluginMetrics));
+            runnables.add(new ExportWorker(
+                    sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, pluginConfig));
+        }
+        if (pluginConfig.getCollections().stream().anyMatch(CollectionConfig::isStreamEnabled)) {
+            runnables.add(new StreamScheduler(
+                    sourceCoordinator, buffer, acknowledgementSetManager, pluginConfig, pluginMetrics));
+        }
         this.currentExecutor = executorServiceFunction.apply(runnables.size());
         runnables.forEach(currentExecutor::submit);
     }
