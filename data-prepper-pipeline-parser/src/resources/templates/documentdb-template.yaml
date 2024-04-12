@@ -60,6 +60,7 @@ s3-sub-pipeline:
                 include_prefix: ["local-test"]
         scheduling:
           interval: "1s"
+  processor: "{{$..processor}}"
   buffer:
     bounded_blocking:
       batch_size: 125000

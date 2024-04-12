@@ -187,4 +187,26 @@ class PipelinesDataflowModelParserTest {
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
     }
+
+    @Test
+    void parseConfiguration_check_successful_transformation() {
+        final File directoryLocation = new File(TestConfigurationProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY);
+        final List<InputStream> fileInputStreams = Stream.of(directoryLocation.listFiles())
+                .map(file -> {
+                    try {
+                        return new FileInputStream(file);
+                    } catch (FileNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.toList());
+
+        when(pipelineConfigurationReader.getPipelineConfigurationInputStreams()).thenReturn(fileInputStreams);
+
+        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+        final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
+        assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
+                equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
+    }
 }

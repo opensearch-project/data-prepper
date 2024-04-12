@@ -18,9 +18,11 @@ import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import static java.lang.String.format;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.opensearch.dataprepper.pipeline.parser.model.PipelineTemplateModel;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleTransformerModel;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -30,6 +32,7 @@ public class RuleEvaluator {
 //    private final JexlEngine jexlEngine;
     private final String templateFileNamePattern = "-template.yaml";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
     private final PipelinesDataFlowModel pipelineModel;
     ParseContext parseContext = JsonPath.using(Configuration.builder()
             .jsonProvider(new JacksonJsonProvider())
@@ -86,14 +89,19 @@ public class RuleEvaluator {
         return evaluatedResult;
     }
 
+    //TODO
+    //move to file provider class.
     public String getTemplateJsonString(){
-        String filePath = "src/resources/templates/documentdb-template.yml";
-        String templateJsonString = null;
+        String filePath = "src/resources/templates/documentdb-template.yaml";
 
         //read file as json string based on a mapper file
-
-
-        return templateJsonString;
+        try {
+            PipelineTemplateModel pipelineTemplateModel = yamlMapper.readValue(new File(filePath), PipelineTemplateModel.class);
+            String templateJsonString = OBJECT_MAPPER.writeValueAsString(pipelineTemplateModel);
+            return templateJsonString;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 

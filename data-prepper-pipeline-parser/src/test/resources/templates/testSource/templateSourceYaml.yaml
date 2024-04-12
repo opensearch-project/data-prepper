@@ -1,8 +1,5 @@
 template-pipeline:
-  source:
-    documentdb:
-      hostname: "{{$..source.documentdb.hostname}}"
-      port: "{{$...source.documentdb.port}}"
+  source: "{{$..source}}"
   sink:
     - opensearch:
        hosts: "{{$..sink.opensearch.hosts}}"

@@ -15,6 +15,8 @@ import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 //import org.opensearch.dataprepper.pipeline.parser.model.RuleConfig;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 //import org.opensearch.dataprepper.pipeline.parser.rule.RuleParser;
+import org.opensearch.dataprepper.pipeline.parser.transformer.DynamicYamlTransformer;
+import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineConfigurationTransformer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,9 +83,11 @@ public class PipelinesDataflowModelParser {
 
         //check if transformation is required based on rules present in yaml file
         RuleEvaluator ruleEvaluator = new RuleEvaluator(pipelinesDataFlowModel);
+        PipelineConfigurationTransformer configurationTransformer = new DynamicYamlTransformer();
 
         if(ruleEvaluator.isTransformationNeeded()){
-
+            String templateJson = ruleEvaluator.getTemplateJsonString();
+            configurationTransformer.transformConfiguration(pipelinesDataFlowModel,templateJson);
         }
 
 
@@ -119,19 +123,6 @@ public class PipelinesDataflowModelParser {
 //            }
 //        }
 
-    }
-
-    //To be detected dynamically
-    private boolean isDocDBSource(PipelinesDataFlowModel pipelinesDataFlowModel){
-
-        // convert to json using objectmapper
-
-        // apply all rules in files present in the src/resources/rules/*.jsonl
-
-        // identify pipeline that needs transformation, get pipeline name
-
-        //
-        return true;
     }
 
     private PipelinesDataFlowModel parseStreamToPipelineDataFlowModel(final InputStream configurationInputStream) {

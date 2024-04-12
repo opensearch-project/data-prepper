@@ -73,7 +73,7 @@ class RuleEvaluatorTest {
 
     @Test
     void testIsRuleValidThrowsExceptionForInvalidResultType() {
-        // Setup a rule that results in a non-boolean value and assert it throws IllegalArgumentException
+
     }
 
     @Test
@@ -87,6 +87,28 @@ class RuleEvaluatorTest {
     @Test
     void testGetPluginNameThatNeedsTransformationInvalidFormat() {
         // Test with an invalid expression format to ensure it throws a RuntimeException
+    }
+
+    @Test
+    void testgetTemplateJsonStringSuccess(){
+        // Set up
+        String pipelineName = "test-pipeline";
+        Map sourceOptions = new HashMap<String,Object>();
+        Map s3_bucket = new HashMap<>();
+        s3_bucket.put("s3_bucket", "bucket-name");
+        List collections = new ArrayList();
+        collections.add(s3_bucket);
+        sourceOptions.put("collections", collections);
+        final PluginModel source = new PluginModel("documentdb", sourceOptions );
+        final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", (Map<String, Object>) null));
+        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null));
+        final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
+
+        final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
+                (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
+
+        ruleEvaluator = new RuleEvaluator(pipelinesDataFlowModel);
+        String templateJsonString = ruleEvaluator.getTemplateJsonString();
     }
 
     // You can add more tests to cover edge cases and exceptional scenarios.

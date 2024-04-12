@@ -18,7 +18,9 @@ import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,53 +35,20 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class DynamicYamlTransformer implements PipelineConfigurationTransformer {
 
     //.disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private ReadContext readObjectContextPipeline = null;
-    private ReadContext readPathsContextPipeline = null;
 
-    private ReadContext readObjectContextTemplate = null;
-    private ReadContext readPathsContextTemplate = null;
-    private DocumentContext documentContextTemplate = null;  //write the transformed pipelineDataflowModel
-    String pipelinesDataFlowModelJsonString;
-    String templateDataFlowModelJsonString;
-
+    Pattern placeholderPattern = Pattern.compile("\\{\\{\\s*(.+?)\\s*}}");
     ParseContext mainParseContext = JsonPath.using(Configuration.builder()
             .jsonProvider(new JacksonJsonProvider())
             .mappingProvider(new JacksonMappingProvider())
             .options(Option.ALWAYS_RETURN_LIST)
             .build());
 
-    private final PipelinesDataFlowModel pipelinesDataFlowModel;
-    private final PipelinesDataFlowModel templateDataFlowModel;
-    //TODO
-    //change delimiter
-    private final Pattern placeholderPattern = Pattern.compile("\\{\\{(.+?)}}");
-
-    public DynamicYamlTransformer(PipelinesDataFlowModel pipelinesDataFlowModel,
-                                  PipelinesDataFlowModel templateDataFlowModel) {
-
-        this.pipelinesDataFlowModel = pipelinesDataFlowModel;
-        this.templateDataFlowModel = templateDataFlowModel;
-
-        try {
-            this.pipelinesDataFlowModelJsonString = objectMapper.writeValueAsString(pipelinesDataFlowModel);
-            this.templateDataFlowModelJsonString = objectMapper.writeValueAsString(templateDataFlowModel);
-
-            this.readPathsContextPipeline = mainParseContext.parse(pipelinesDataFlowModelJsonString);
-
-            this.readObjectContextTemplate = mainParseContext.parse(templateDataFlowModelJsonString);
-            this.documentContextTemplate = mainParseContext.parse(templateDataFlowModelJsonString);
-        } catch (final JsonPathException e) {
-            throw new IllegalArgumentException("Unable to parse json string PipelinesDataFlowModel from ParseContext", e);
-        } catch (final JsonProcessingException e) {
-            throw new IllegalArgumentException("PipelinesDataFlowModel cannot be parsed to json string", e);
-        }
-
-    }
 
 //TODO
 //    DynamicYamlTransformer(templateProvider(interface))
@@ -114,25 +83,90 @@ public class DynamicYamlTransformer implements PipelineConfigurationTransformer 
     @Override
     public PipelinesDataFlowModel transformConfiguration(PipelinesDataFlowModel pipelinesDataFlowModel,
                                                          String templateJsonString) {
-        //find all placeholderPattern
 
-        // Define a regex pattern to find all placeholders
-        Pattern pattern = Pattern.compile("\\{\\{(.+?)}}");
-        Matcher matcher = pattern.matcher(pipelinesDataFlowModelJsonString);
+        try {
+            String pipelinesDataFlowModelJsonString = objectMapper.writeValueAsString(pipelinesDataFlowModel);
+            ReadContext readPathsContextPipeline = mainParseContext.parse(pipelinesDataFlowModelJsonString);
 
-        while (matcher.find()) {
-            // Extracted placeholder value
-            String jsonPathPattern =  matcher.group(1);
-            System.out.println(jsonPathPattern);
-            String datafromOriginal = readPathsContextPipeline.read(jsonPathPattern);
+            ReadContext readObjectContextTemplate = mainParseContext.parse(templateJsonString);
+            DocumentContext documentContextTemplate = mainParseContext.parse(templateJsonString);
 
-            System.out.println(datafromOriginal);
+            // Define a regex pattern to find all placeholder
+            Matcher matcher = placeholderPattern.matcher(templateJsonString);
+
+//        List<?> allValues = JsonPath.read(templateJsonString, "$..*");
+//        // Filter values by checking if they are instances of String and match the regex pattern
+//        List<String> placeholders = allValues.stream()
+//                    .filter(String.class::isInstance) // Ensure only Strings are processed
+//                    .map(String.class::cast) // Cast to String safely
+//                    .filter(value -> placeholderPattern.matcher(value).find()) // Use find() to locate the pattern anywhere within the string
+//                    .collect(Collectors.toList());
+
+
+            //find all placeholderPattern in template json string
+            // K:placeholder , V:jsonPath
+            Map<String,String> placeholdersMap = findPlaceholdersWithPaths(templateJsonString);
+            System.out.println("sri");
+
+            //replace placeholder with actual value
+            placeholdersMap.forEach((placeholder,templateJsonPath) ->{
+
+            });
+
+//
+//
+//        while (matcher.find()) {
+//
+//            // Extracted placeholder value
+//            String jsonPathPattern =  matcher.group(1);
+//
+//            //replace the placeholder value
+//            String valueFromJsonPath = readPathsContextPipeline.read(jsonPathPattern);
+//
+//            //write to documentContext
+////            documentContextTemplate.
+////            documentContextTemplate.put(templateJsonPath, key, value);
+//        }
+//
+
+
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            //error when
+            throw new RuntimeException(e);
         }
-        //replace the placeholder value with original readcontext.read(value)
-
-        //write to documentContext
-
         return null;
+    }
+
+    private Map<String, String> findPlaceholdersWithPaths(String json) throws IOException {
+
+        JsonNode rootNode = objectMapper.readTree(json);
+        Map<String, String> placeholdersWithPaths = new HashMap<>();
+        walkJson(rootNode, "", placeholdersWithPaths);
+        return placeholdersWithPaths;
+    }
+
+    private void walkJson(JsonNode currentNode, String currentPath, Map<String, String> placeholdersWithPaths) {
+        if (currentNode.isObject()) {
+            Iterator<Map.Entry<String, JsonNode>> fields = currentNode.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> entry = fields.next();
+                String path = currentPath.isEmpty() ? entry.getKey() : currentPath + "." + entry.getKey();
+                walkJson(entry.getValue(), path, placeholdersWithPaths);
+            }
+        } else if (currentNode.isArray()) {
+            for (int i = 0; i < currentNode.size(); i++) {
+                String path = currentPath + "[" + i + "]";
+                walkJson(currentNode.get(i), path, placeholdersWithPaths);
+            }
+        } else if (currentNode.isValueNode()) {
+            String placeHolderValue = currentNode.asText();
+            Matcher matcher = placeholderPattern.matcher(placeHolderValue);
+            if (matcher.find()) {
+                placeholdersWithPaths.put(placeHolderValue, currentPath);
+            }
+        }
     }
 
     //TODO - old way; recursive
@@ -253,5 +287,6 @@ public class DynamicYamlTransformer implements PipelineConfigurationTransformer 
 //        // Convert a path like "source.documentdb.hostname" to a JSON Pointer "/source/documentdb/hostname"
 //        return "/" + path.replace(".", "/");
 //    }
+
 
 }
