@@ -110,8 +110,8 @@ public class S3DlqWriter implements DlqWriter {
         final PutObjectResponse response = timedPutObject(putObjectRequest, content);
 
         if (!response.sdkHttpResponse().isSuccessful()) {
-            LOG.error(SENSITIVE, "Failed to write to S3 dlq: [{}] to S3 due to status code: [{}]",
-                content, response.sdkHttpResponse().statusCode());
+            LOG.error(SENSITIVE, "Failed to write content [{}] to S3 dlq", content);
+            LOG.error("Failed to write to S3 dlq due to status code: [{}]", response.sdkHttpResponse().statusCode());
             throw new IOException(String.format(
                 "Failed to write to S3 dlq due to status code: %d", response.sdkHttpResponse().statusCode()));
         }
@@ -123,8 +123,7 @@ public class S3DlqWriter implements DlqWriter {
         } catch (final IOException ioException) {
             throw ioException;
         } catch (final Exception ex) {
-            LOG.error(SENSITIVE, "Failed timed write to S3 dlq: [{}] to S3 due to error: [{}]",
-                content, ex.getMessage());
+            LOG.error(SENSITIVE, "Failed timed write to S3 dlq: [{}]", content, ex);
             throw new IOException("Failed timed write to S3 dlq.", ex);
         }
     }
@@ -133,8 +132,7 @@ public class S3DlqWriter implements DlqWriter {
         try {
             return s3Client.putObject(request, RequestBody.fromString(content));
         } catch (Exception ex) {
-            LOG.error(SENSITIVE, "Failed to write to S3 dlq: [{}] to S3 due to error: [{}]",
-                content, ex.getMessage());
+            LOG.error(SENSITIVE, "Failed to write to S3 dlq: [{}] to S3", content, ex);
             throw new IOException("Failed to write to S3 dlq.", ex);
         }
     }
@@ -149,8 +147,7 @@ public class S3DlqWriter implements DlqWriter {
 
             return content;
         } catch (JsonProcessingException e) {
-            LOG.error(SENSITIVE, "Failed to build valid S3 request body with dlqObjects: [{}] due to error: [{}]",
-                dlqObjects, e.getMessage());
+            LOG.error(SENSITIVE, "Failed to build valid S3 request body with dlqObjects: [{}]", dlqObjects, e);
             throw new IOException("Failed to build valid S3 request body", e);
         }
     }
