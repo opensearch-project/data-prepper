@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.pipeline.parser.transformer;
 
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.opensearch.dataprepper.pipeline.parser.model.PipelineTemplateModel;
 
 public interface PipelineConfigurationTransformer {
 //    /**
@@ -13,6 +14,6 @@ public interface PipelineConfigurationTransformer {
 //    String transformYaml(String originalYaml, String templateYaml);
 
     PipelinesDataFlowModel transformConfiguration(PipelinesDataFlowModel pipelinesDataFlowModel,
-                                                  String template);
+                                                  PipelineTemplateModel templateModel);
 
 }

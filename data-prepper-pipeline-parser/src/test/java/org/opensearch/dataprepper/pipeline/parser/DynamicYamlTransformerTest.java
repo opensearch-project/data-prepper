@@ -56,11 +56,11 @@ class DynamicYamlTransformerTest {
          PipelineTemplateModel templateDataFlowModel = yamlMapper.readValue(new File(templateSourceYamlFilePath),
                     PipelineTemplateModel.class);
 
-         String templateJson = objectMapper.writeValueAsString(templateDataFlowModel);
+//         String templateJson = objectMapper.writeValueAsString(templateDataFlowModel);
 
         // Load the original and template YAML files from the test resources directory
         PipelineConfigurationTransformer transformer = new DynamicYamlTransformer();
-        transformer.transformConfiguration(pipelinesDataFlowModel,templateJson);
+        transformer.transformConfiguration(pipelinesDataFlowModel,templateDataFlowModel);
 
 //        String originalSourceYamlFilePath = "src/test/resources/templates/testSource/originalSourceYaml.yaml";
 //        String templateSourceYamlFilePath = "src/test/resources/templates/testSource/templateSourceYaml.yaml";

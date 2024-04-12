@@ -9,6 +9,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
+import static com.jayway.jsonpath.JsonPath.read;
 import com.jayway.jsonpath.JsonPathException;
 import com.jayway.jsonpath.Option;
 import com.jayway.jsonpath.ParseContext;
@@ -30,6 +31,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import org.opensearch.dataprepper.pipeline.parser.model.PipelineTemplateModel;
 
 import java.io.File;
 import java.io.IOException;
@@ -80,11 +82,16 @@ public class DynamicYamlTransformer implements PipelineConfigurationTransformer 
 //        }
 //    }
 
+    //TODO
+    // address pipeline_configurations and version
+    // address sub-piplines
     @Override
     public PipelinesDataFlowModel transformConfiguration(PipelinesDataFlowModel pipelinesDataFlowModel,
-                                                         String templateJsonString) {
+                                                         PipelineTemplateModel templateModel) {
 
         try {
+            String pipelineNameThatNeedsTransformation;
+            String templateJsonString = objectMapper.writeValueAsString(templateModel);
             String pipelinesDataFlowModelJsonString = objectMapper.writeValueAsString(pipelinesDataFlowModel);
             ReadContext readPathsContextPipeline = mainParseContext.parse(pipelinesDataFlowModelJsonString);
 
@@ -92,7 +99,8 @@ public class DynamicYamlTransformer implements PipelineConfigurationTransformer 
             DocumentContext documentContextTemplate = mainParseContext.parse(templateJsonString);
 
             // Define a regex pattern to find all placeholder
-            Matcher matcher = placeholderPattern.matcher(templateJsonString);
+            Matcher templateMatcher = placeholderPattern.matcher(templateJsonString);
+
 
 //        List<?> allValues = JsonPath.read(templateJsonString, "$..*");
 //        // Filter values by checking if they are instances of String and match the regex pattern
@@ -102,32 +110,29 @@ public class DynamicYamlTransformer implements PipelineConfigurationTransformer 
 //                    .filter(value -> placeholderPattern.matcher(value).find()) // Use find() to locate the pattern anywhere within the string
 //                    .collect(Collectors.toList());
 
-
             //find all placeholderPattern in template json string
             // K:placeholder , V:jsonPath
             Map<String,String> placeholdersMap = findPlaceholdersWithPaths(templateJsonString);
-            System.out.println("sri");
 
-            //replace placeholder with actual value
+            JsonNode templateRootNode = objectMapper.readTree(templateJsonString);
+            JsonNode pipelineRootNode = objectMapper.readTree(pipelinesDataFlowModelJsonString);
+
+            //replace placeholder with actual value in the template context
             placeholdersMap.forEach((placeholder,templateJsonPath) ->{
+                String pipelineJsonPath = getValueFromPlaceHolder(placeholder);
+
+                // get value from pipelineJsonPath
+                Map<String,Object> pipelineValue = readPathsContextPipeline.read(pipelineJsonPath);
+
+                // replace the placeholder data with the pipelineValue at templateJsonPath
+//                replaceTemplatePlaceholders();
+                //use JsonNode to replace.
+
+//                replaceNode(templateRootNode, pipelineJsonPath, newNode);
+//                JsonNode pipelineNode = JsonPath.read(pipelineJsonPath, pipelineJsonPath);
+//                templateJsonString.replace(placeholder,pipelineNode.toString());
 
             });
-
-//
-//
-//        while (matcher.find()) {
-//
-//            // Extracted placeholder value
-//            String jsonPathPattern =  matcher.group(1);
-//
-//            //replace the placeholder value
-//            String valueFromJsonPath = readPathsContextPipeline.read(jsonPathPattern);
-//
-//            //write to documentContext
-////            documentContextTemplate.
-////            documentContextTemplate.put(templateJsonPath, key, value);
-//        }
-//
 
 
         } catch (JsonProcessingException e) {
@@ -167,6 +172,17 @@ public class DynamicYamlTransformer implements PipelineConfigurationTransformer 
                 placeholdersWithPaths.put(placeHolderValue, currentPath);
             }
         }
+    }
+
+    private String getValueFromPlaceHolder(String placeholder){
+        if (placeholder.length()< 4){
+            //TODO
+            //invalid placeholder
+            throw new RuntimeException();
+        }
+
+        //remove the first 2 and last 2 characters.
+        return placeholder.substring(2,placeholder.length()-2);
     }
 
     //TODO - old way; recursive
