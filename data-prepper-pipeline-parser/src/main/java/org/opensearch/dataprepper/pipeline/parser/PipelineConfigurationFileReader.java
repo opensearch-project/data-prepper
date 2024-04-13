@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.pipeline.parser;
 
+import static java.lang.String.format;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,8 +13,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static java.lang.String.format;
 
 public class PipelineConfigurationFileReader implements PipelineConfigurationReader {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineConfigurationFileReader.class);

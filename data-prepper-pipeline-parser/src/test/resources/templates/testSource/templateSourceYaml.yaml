@@ -2,8 +2,8 @@ template-pipeline:
   source: "{{$..source}}"
   sink:
     - opensearch:
-       hosts: "{{$..sink.opensearch.hosts}}"
-       index: "{{$..sink.opensearch.index}}"
+       hosts: "hosts"
+       index: "index"
        aws:
         sts_role_arn: "arn123"
         region: "us-test-1"

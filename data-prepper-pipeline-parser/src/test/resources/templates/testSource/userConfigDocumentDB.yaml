@@ -1,0 +1,40 @@
+version: 2
+pipeline_configurations:
+  aws:
+    secrets:
+      docdb-secret:
+        secret_id: "<secretId/secretArn>"
+        region: "<region>"
+        sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+dodb-pipeline:
+  source:
+    documentdb:
+      hostname: "<host>"
+      acknowledgments: false
+      collections:
+        - collection: "<database>.<collectionName>"
+          export_config:
+            items_per_partition: 4000
+          ingestion_mode: export_stream
+          s3_bucket: "my-bucket"
+          # Specify the region of the S3 bucket
+          s3_region: "us-east-1"
+  sink:
+    - opensearch:
+        # REQUIRED: Provide an AWS OpenSearch endpoint
+        hosts: [ "<host>" ]
+        # Link to documentation and recommendations for naming index and document_id
+        index: "<index>"
+        index_type: custom
+        document_id: "${getMetadata(\"primary_key\")}"
+        action: "${getMetadata(\"opensearch_action\")}"
+        exclude_keys: [ "_id"]
+        aws:
+          # REQUIRED: Provide a Role ARN with access to the domain. This role should have a trust relationship with osis-pipelines.amazonaws.com
+          sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+          # Provide the region of the domain.
+          region: "<region>"
+          # Enable the 'serverless' flag if the sink is an Amazon OpenSearch Serverless collection
+          serverless: true
+            #serverless_options:
+          #network_policy_name: "<network_policy_name>"

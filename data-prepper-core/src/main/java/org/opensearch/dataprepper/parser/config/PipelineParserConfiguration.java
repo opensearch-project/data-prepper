@@ -6,7 +6,9 @@
 package org.opensearch.dataprepper.parser.config;
 
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.PipelineTransformer;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
@@ -14,12 +16,12 @@ import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
+import org.opensearch.dataprepper.pipeline.parser.transformer.DynamicConfigTransformer;
+import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactory;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import javax.inject.Qualifier;
 
@@ -37,7 +39,7 @@ public class PipelineParserConfiguration {
             final EventFactory eventFactory,
             final AcknowledgementSetManager acknowledgementSetManager,
             final SourceCoordinatorFactory sourceCoordinatorFactory
-            ) {
+    ) {
         return new PipelineTransformer(pipelinesDataFlowModel,
                 pluginFactory,
                 peerForwarderProvider,
@@ -63,20 +65,41 @@ public class PipelineParserConfiguration {
 
     @Bean
     public PipelinesDataFlowModel pipelinesDataFlowModel(
+            @Qualifier("preTransformedDataFlowModel") PipelinesDataFlowModel preTransformedDataFlowModel,
+            DynamicConfigTransformer pipelineConfigTransformer,
+            TransformersFactory transformersFactory) {
+        transformersFactory.getTemplateModel("documentdb");
+        return pipelineConfigTransformer.transformConfiguration(preTransformedDataFlowModel, templateModel);
+    }
+
+    @Bean(name = "preTransformedDataFlowModel")
+    public PipelinesDataFlowModel preTransformedDataFlowModel(
             final PipelinesDataflowModelParser pipelinesDataflowModelParser) {
         return pipelinesDataflowModelParser.parseConfiguration();
     }
 
-    // TODO
 //    @Bean
-//    public PipelinesDataFlowModel pipelinesDataFlowModel(
-//            @Qualifier("preTransformedDataFlowModel") final PipelinesDataflowModelParser pipelinesDataflowModelParser) {
-//        return pipelineTransformer(pipelinesDataflowModelParser);
+//    public PipelineTemplateModel pipelineTemplateModel(
+//            final PipelineTransformationPathProvider transformationResourcesPathProvider){
+//        return transformationResourcesPathProvider.get();
+//    }
+
+//    @Bean
+//    public PipelineTemplateModel pipelineTemplateModel(
+//            final PipelineTransformationPathProvider transformationResourcesPathProvider){
+//        return transformationResourcesPathProvider.getTemplateModel();
 //    }
 //
-//    @Bean(name = "preTransformedDataFlowModel")
-//    public PipelinesDataFlowModel preTransformedDataFlowModel(
-//            final PipelinesDataflowModelParser pipelinesDataflowModelParser) {
-//        return pipelinesDataflowModelParser.parseConfiguration();
+//    @Bean
+//    public PipelineTemplateModel pipelineTemplateModel(
+//            final PipelineTransformationPathProvider transformationResourcesPathProvider){
+//        return transformationResourcesPathProvider.getTemplateModel();
 //    }
+//
+//    @Bean
+//    public PipelineTransformationPathProvider transformationResourcesPathProvider(
+//            final PipelineTransformationPathProvider transformationResourcesPathProvider){
+//        return transformationResourcesPathProvider.getTemplateModel();
+//    }
+
 }

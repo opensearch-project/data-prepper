@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.pipeline.parser;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
@@ -16,9 +18,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class TestConfigurationProvider {
     public static final String TEST_PIPELINE_NAME = "test-pipeline-1";
@@ -37,6 +36,8 @@ public class TestConfigurationProvider {
     public static final String SINGLE_FILE_PIPELINE_DIRECTOTRY = "src/test/resources/single-pipeline";
     public static final String EMPTY_PIPELINE_DIRECTOTRY = "src/test/resources/no-pipelines";
     public static final String INCOMPATIBLE_VERSION_CONFIG_FILE = "src/test/resources/incompatible_version.yml";
+    public static final String TEMPLATE_TRANSFORMATION_CONFIG_FILE = "src/test/resources/templateDocumentDB.yaml";
+    public static final String USER_CONFIG_TRANSFORMATION_CONFIG_FILE = "src/test/resources/userConfigDocumentDB.yaml";
 
 
     public static Set<String> VALID_MULTIPLE_PIPELINE_NAMES = new HashSet<>(Arrays.asList("test-pipeline-1",

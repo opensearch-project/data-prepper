@@ -1,13 +1,16 @@
-package org.opensearch.dataprepper.pipeline.parser.model;
+package org.opensearch.dataprepper.pipeline.parser.transformer;
 
-import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
-import org.opensearch.dataprepper.model.configuration.PipelineModel;
 
-import java.util.List;
-        import java.util.Map;
-        import java.util.HashMap;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PipelineTemplateModel {
 
@@ -25,7 +28,8 @@ public class PipelineTemplateModel {
 
     @JsonCreator
     @SuppressWarnings("unused")
-    private PipelineTemplateModel() { }
+    private PipelineTemplateModel() {
+    }
 
     public PipelineTemplateModel(final Map<String, Object> pipelines) {
         this.pipelines = pipelines;

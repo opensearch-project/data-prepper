@@ -4,83 +4,39 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.jayway.jsonpath.Configuration;
-import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
-import static com.jayway.jsonpath.JsonPath.read;
-import com.jayway.jsonpath.JsonPathException;
-import com.jayway.jsonpath.Option;
 import com.jayway.jsonpath.ParseContext;
+import com.jayway.jsonpath.PathNotFoundException;
 import com.jayway.jsonpath.ReadContext;
 import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+public class DynamicConfigTransformer implements PipelineConfigurationTransformer {
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import org.opensearch.dataprepper.pipeline.parser.model.PipelineTemplateModel;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-public class DynamicYamlTransformer implements PipelineConfigurationTransformer {
-
-    //.disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RuleEvaluator ruleEvaluator;
 
     Pattern placeholderPattern = Pattern.compile("\\{\\{\\s*(.+?)\\s*}}");
+
+    // Configuration necessary for JsonPath to work with Jackson
     ParseContext mainParseContext = JsonPath.using(Configuration.builder()
             .jsonProvider(new JacksonJsonProvider())
             .mappingProvider(new JacksonMappingProvider())
-            .options(Option.ALWAYS_RETURN_LIST)
             .build());
 
-
-//TODO
-//    DynamicYamlTransformer(templateProvider(interface))
-//
-//    /**
-//     * Recursively look for text nodes that match a specific placeholder pattern (in this case, {{placeholder}}).
-//     * When it finds a match, attempt to replace the placeholder with the corresponding value
-//     * from another JSON tree (originalRoot).
-//     *
-//     * @param originalYaml The original YAML configuration.
-//     * @param templateYaml The template YAML with placeholders.
-//     * @return
-//     */
-//    @Override
-//    public String transformYaml(String originalYaml, String templateYaml) {
-////        pipedataflowmodel -> yaml
-//        //convert pipelinesDataFlowModel to yaml.
-//        try {
-//            JsonNode originalRoot = objectMapper.readTree(originalYaml);
-//            JsonNode templateRoot = objectMapper.readTree(templateYaml);
-//
-////            printNodeTypes(originalRoot, "");
-//
-////            replacePlaceholders(templateRoot, originalRoot);
-//
-//            return objectMapper.writeValueAsString(templateRoot);
-//        } catch (IOException e) {
-//            throw new RuntimeException("Error processing YAML", e);
-//        }
-//    }
+    public DynamicConfigTransformer(RuleEvaluator ruleEvaluator) {
+        this.ruleEvaluator = ruleEvaluator;
+    }
 
     //TODO
     // address pipeline_configurations and version
@@ -88,19 +44,19 @@ public class DynamicYamlTransformer implements PipelineConfigurationTransformer 
     @Override
     public PipelinesDataFlowModel transformConfiguration(PipelinesDataFlowModel pipelinesDataFlowModel,
                                                          PipelineTemplateModel templateModel) {
+        if (!ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel)) {
+            return pipelinesDataFlowModel;
+        }
 
         try {
             String pipelineNameThatNeedsTransformation;
             String templateJsonString = objectMapper.writeValueAsString(templateModel);
             String pipelinesDataFlowModelJsonString = objectMapper.writeValueAsString(pipelinesDataFlowModel);
-            ReadContext readPathsContextPipeline = mainParseContext.parse(pipelinesDataFlowModelJsonString);
+            ReadContext pipelineReadContext = mainParseContext.parse(pipelinesDataFlowModelJsonString);
 
-            ReadContext readObjectContextTemplate = mainParseContext.parse(templateJsonString);
-            DocumentContext documentContextTemplate = mainParseContext.parse(templateJsonString);
-
-            // Define a regex pattern to find all placeholder
-            Matcher templateMatcher = placeholderPattern.matcher(templateJsonString);
-
+            ReadContext templateReadContext = mainParseContext.parse(templateJsonString);
+            //TODO needed?
+//            DocumentContext documentContextTemplate = mainParseContext.parse(templateJsonString);
 
 //        List<?> allValues = JsonPath.read(templateJsonString, "$..*");
 //        // Filter values by checking if they are instances of String and match the regex pattern
@@ -112,33 +68,32 @@ public class DynamicYamlTransformer implements PipelineConfigurationTransformer 
 
             //find all placeholderPattern in template json string
             // K:placeholder , V:jsonPath
-            Map<String,String> placeholdersMap = findPlaceholdersWithPaths(templateJsonString);
+            Map<String, String> placeholdersMap = findPlaceholdersWithPaths(templateJsonString);
 
             JsonNode templateRootNode = objectMapper.readTree(templateJsonString);
-            JsonNode pipelineRootNode = objectMapper.readTree(pipelinesDataFlowModelJsonString);
+//            JsonNode pipelineRootNode = objectMapper.readTree(pipelinesDataFlowModelJsonString);
 
             //replace placeholder with actual value in the template context
-            placeholdersMap.forEach((placeholder,templateJsonPath) ->{
+            placeholdersMap.forEach((placeholder, templateJsonPath) -> {
                 String pipelineJsonPath = getValueFromPlaceHolder(placeholder);
-
-                // get value from pipelineJsonPath
-                Map<String,Object> pipelineValue = readPathsContextPipeline.read(pipelineJsonPath);
 
                 // replace the placeholder data with the pipelineValue at templateJsonPath
 //                replaceTemplatePlaceholders();
                 //use JsonNode to replace.
+                JsonNode pipelineNode = pipelineReadContext.read(pipelineJsonPath, JsonNode.class);
 
-//                replaceNode(templateRootNode, pipelineJsonPath, newNode);
-//                JsonNode pipelineNode = JsonPath.read(pipelineJsonPath, pipelineJsonPath);
-//                templateJsonString.replace(placeholder,pipelineNode.toString());
-
+                //replace pipelineNode in the template
+                replaceNode(templateRootNode, templateReadContext, templateJsonPath, pipelineNode);
             });
 
+            //update template json
+            String transformedJson = objectMapper.writeValueAsString(templateRootNode);
+
+            //transform transformedJson to pipelinesModels
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         } catch (IOException e) {
-            //error when
             throw new RuntimeException(e);
         }
         return null;
@@ -174,41 +129,38 @@ public class DynamicYamlTransformer implements PipelineConfigurationTransformer 
         }
     }
 
-    private String getValueFromPlaceHolder(String placeholder){
-        if (placeholder.length()< 4){
+    private String getValueFromPlaceHolder(String placeholder) {
+        if (placeholder.length() < 4) {
             //TODO
             //invalid placeholder
             throw new RuntimeException();
         }
 
         //remove the first 2 and last 2 characters.
-        return placeholder.substring(2,placeholder.length()-2);
+        return placeholder.substring(2, placeholder.length() - 2);
     }
 
-    //TODO - old way; recursive
-    //
-//    private void printNodeTypes(JsonNode node, String path) {
-//        if (node.isObject()) {
-//            System.out.println(path + " (Object)");
-//            node.fields().forEachRemaining(field -> printNodeTypes(field.getValue(), path + "." + field.getKey()));
-//        } else if (node.isArray()) {
-//            System.out.println(path + " (Array)");
-//            for (int i = 0; i < node.size(); i++) {
-//                printNodeTypes(node.get(i), path + "[" + i + "]");
-//            }
-//        } else if (node.isTextual()) {
-//            System.out.println(path + " (String)");
-//        } else if (node.isNumber()) {
-//            System.out.println(path + " (Number)");
-//        } else if (node.isBoolean()) {
-//            System.out.println(path + " (Boolean)");
-//        } else if (node.isNull()) {
-//            System.out.println(path + " (Null)");
-//        } else {
-//            System.out.println(path + " (Unknown Type)");
-//        }
-//    }
-//
+    public void replaceNode(JsonNode root, ReadContext rootContext, String jsonPath, JsonNode newNode) {
+        try {
+            // Read the parent path of the target node
+            String parentPath = jsonPath.substring(0, jsonPath.lastIndexOf('.'));
+            String fieldName = jsonPath.substring(jsonPath.lastIndexOf('.') + 1);
+
+            // Find the parent node
+            JsonNode parentNode = rootContext.read(parentPath, JsonNode.class);
+//            JsonNode parentNode = JsonPath.using(configuration).parse(root).read(parentPath);
+
+            // Replace the target field in the parent node
+            if (parentNode instanceof ObjectNode) {
+                ((ObjectNode) parentNode).set(fieldName, newNode);
+            } else {
+                throw new IllegalArgumentException("Path does not point to an object node");
+            }
+        } catch (PathNotFoundException e) {
+            throw new PathNotFoundException(e);
+        }
+    }
+
 //    private void replacePlaceholders(JsonNode node, JsonNode originalRoot) {
 //        //go to every node in template, look for placeholder.
 //        //get placeholder and read the path from the originalRoot.
