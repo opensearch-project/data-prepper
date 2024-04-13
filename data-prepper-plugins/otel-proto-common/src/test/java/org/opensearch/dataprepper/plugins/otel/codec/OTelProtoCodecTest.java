@@ -1318,4 +1318,61 @@ public class OTelProtoCodecTest {
         assertNotEquals(k1, k2);
     }
 
+    @Test
+    void testConvertKeysOfDataPointAttributesRemoveDuplicatedKey() {
+        final String keyName = "duplicate_key_name";
+        final String keyValue = "duplicate_value";
+        final KeyValue duplicateAttribute1 = KeyValue.newBuilder().setKey(keyName).setValue(AnyValue.newBuilder()
+                .setStringValue(keyValue).build()).build();
+        final KeyValue duplicateAttribute2 = KeyValue.newBuilder().setKey(keyName).setValue(AnyValue.newBuilder()
+                .setStringValue(keyValue).build()).build();
+        final NumberDataPoint actual = NumberDataPoint.newBuilder()
+                .addAllAttributes(Arrays.asList(duplicateAttribute1, duplicateAttribute2)).build();
+        
+        Map<String, Object> map = OTelProtoCodec.convertKeysOfDataPointAttributes(actual);
+        assertThat(map.size(), is(equalTo(1)));
+    }
+
+    @Test
+    void testUnpackKeyValueListRemoveDuplicatedKey() {
+        final String keyName = "duplicate_key_name";
+        final String keyValue = "duplicate_value";
+        final KeyValue duplicateAttribute1 = KeyValue.newBuilder().setKey(keyName).setValue(AnyValue.newBuilder()
+                .setStringValue(keyValue).build()).build();
+        final KeyValue duplicateAttribute2 = KeyValue.newBuilder().setKey(keyName).setValue(AnyValue.newBuilder()
+                .setStringValue(keyValue).build()).build();
+        final List<KeyValue> actual = Arrays.asList(duplicateAttribute1, duplicateAttribute2);
+        
+        Map<String, Object> map = OTelProtoCodec.unpackKeyValueList(actual);
+        assertThat(map.size(), is(equalTo(1)));
+    }
+
+    @Test
+    void testUnpackKeyValueListLogRemoveDuplicatedKey() {
+        final String keyName = "duplicate_key_name";
+        final String keyValue = "duplicate_value";
+        final KeyValue duplicateAttribute1 = KeyValue.newBuilder().setKey(keyName).setValue(AnyValue.newBuilder()
+                .setStringValue(keyValue).build()).build();
+        final KeyValue duplicateAttribute2 = KeyValue.newBuilder().setKey(keyName).setValue(AnyValue.newBuilder()
+                .setStringValue(keyValue).build()).build();
+        final List<KeyValue> actual = Arrays.asList(duplicateAttribute1, duplicateAttribute2);        
+        
+        Map<String, Object> map = OTelProtoCodec.unpackKeyValueListLog(actual);
+        assertThat(map.size(), is(equalTo(1)));
+    }
+
+    @Test
+    void testUnpackExemplarValueListRemoveDuplicatedKey() {
+        final String keyName = "duplicate_key_name";
+        final String keyValue = "duplicate_value";
+        final KeyValue duplicateAttribute1 = KeyValue.newBuilder().setKey(keyName).setValue(AnyValue.newBuilder()
+                .setStringValue(keyValue).build()).build();
+        final KeyValue duplicateAttribute2 = KeyValue.newBuilder().setKey(keyName).setValue(AnyValue.newBuilder()
+                .setStringValue(keyValue).build()).build();
+        final List<KeyValue> actual = Arrays.asList(duplicateAttribute1, duplicateAttribute2);        
+        
+        Map<String, Object> map = OTelProtoCodec.unpackExemplarValueList(actual);
+        assertThat(map.size(), is(equalTo(1)));
+    }
+
 }
