@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.transformer.DynamicConfigTransformer;
 import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactory;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
@@ -64,13 +65,21 @@ public class PipelineParserConfiguration {
     }
 
     @Bean
-    public PipelinesDataFlowModel pipelinesDataFlowModel(
-            @Qualifier("preTransformedDataFlowModel") PipelinesDataFlowModel preTransformedDataFlowModel,
-            DynamicConfigTransformer pipelineConfigTransformer,
-            TransformersFactory transformersFactory) {
-        transformersFactory.getTemplateModel("documentdb");
-        return pipelineConfigTransformer.transformConfiguration(preTransformedDataFlowModel, templateModel);
+    public DynamicConfigTransformer pipelineConfigTransformer(
+            PipelinesDataflowModelParser pipelinesDataflowModelParser,
+            RuleEvaluator ruleEvaluator) {
+        return new DynamicConfigTransformer(ruleEvaluator);
     }
+
+//
+//    @Bean
+//    public PipelinesDataFlowModel pipelinesDataFlowModel(
+//            @Qualifier("preTransformedDataFlowModel") PipelinesDataFlowModel preTransformedDataFlowModel,
+//            DynamicConfigTransformer pipelineConfigTransformer,
+//            TransformersFactory transformersFactory) {
+//        transformersFactory.getTemplateModel("documentdb");
+//        return pipelineConfigTransformer.transformConfiguration(preTransformedDataFlowModel, templateModel);
+//    }
 
     @Bean(name = "preTransformedDataFlowModel")
     public PipelinesDataFlowModel preTransformedDataFlowModel(

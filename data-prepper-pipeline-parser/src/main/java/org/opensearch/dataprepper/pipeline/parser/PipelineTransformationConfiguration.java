@@ -34,12 +34,6 @@ public class PipelineTransformationConfiguration {
     }
 
     @Bean
-    public DynamicConfigTransformer pipelineConfigTransformer(
-            RuleEvaluator ruleEvaluator) {
-        return new DynamicConfigTransformer(ruleEvaluator);
-    }
-
-    @Bean
     public RuleEvaluator ruleEvaluator(TransformersFactory transformersFactory) {
         return new RuleEvaluator(transformersFactory);
     }

@@ -1,11 +1,16 @@
 package org.opensearch.dataprepper.pipeline.parser.rule;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
+import org.opensearch.dataprepper.pipeline.parser.TestConfigurationProvider;
+import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactory;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,9 +20,18 @@ import java.util.Map;
 
 class RuleEvaluatorTest {
     private RuleEvaluator ruleEvaluator;
+    TransformersFactory transformersFactory;
+
+    @BeforeEach
+    void setUp() {
+        transformersFactory = new TransformersFactory(
+                TestConfigurationProvider.RULES_TRANSFORMATION_DIRECTORY,
+                TestConfigurationProvider.TEMPLATES_SOURCE_TRANSFORMATION_DIRECTORY
+        );
+    }
 
     @Test
-    void test_isTransformationNeeded_ForDocDBSource_ShouldReturn_False() {
+    void test_isTransformationNeeded_ForDocDBSource_ShouldReturn_True() {
 
         // Set up
         String pipelineName = "test-pipeline";
@@ -35,22 +49,20 @@ class RuleEvaluatorTest {
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
                 (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
 
-//        ruleEvaluator = new RuleEvaluator(pipelinesDataFlowModel);
-//         Execute
-//        boolean isValid = ruleEvaluator.isTransformationNeeded();
-//
-//         Assert
-//        assertTrue(isValid);
+        ruleEvaluator = new RuleEvaluator(transformersFactory);
+        boolean isValid = ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel);
+
+        // Assert
+        assertTrue(isValid);
     }
 
     @Test
     void test_isTransformationNeeded_ForOtherSource_ShouldReturn_False() {
-        // Similar setup to testIsRuleValidTrue but with conditions that result in false
-
         // Set up
         String pipelineName = "test-pipeline";
         Map sourceOptions = new HashMap<String, Object>();
         sourceOptions.put("option1", "1");
+        sourceOptions.put("option2", null);
         final PluginModel source = new PluginModel("http", sourceOptions);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", null));
         final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null));
@@ -59,12 +71,11 @@ class RuleEvaluatorTest {
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
                 (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
 
-//        ruleEvaluator = new RuleEvaluator(pipelinesDataFlowModel);
-        // Execute
-//        boolean isValid = ruleEvaluator.isTransformationNeeded();
-//
+        ruleEvaluator = new RuleEvaluator(transformersFactory);
+        boolean isValid = ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel);
+
         // Assert
-//        assertFalse(isValid);
+        assertEquals(isValid, false);
     }
 
     @Test

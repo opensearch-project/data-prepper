@@ -2,8 +2,9 @@ template-pipeline:
   source: "{{$..source}}"
   sink:
     - opensearch:
-       hosts: "hosts"
-       index: "index"
+       hosts: "{{$..source.documentdb.hostname}}"
+       port: "{{$..source.documentdb.port}}"
+       index: "{{$..sink[0].opensearch.index}}"
        aws:
         sts_role_arn: "arn123"
         region: "us-test-1"

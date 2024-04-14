@@ -36,8 +36,18 @@ public class TestConfigurationProvider {
     public static final String SINGLE_FILE_PIPELINE_DIRECTOTRY = "src/test/resources/single-pipeline";
     public static final String EMPTY_PIPELINE_DIRECTOTRY = "src/test/resources/no-pipelines";
     public static final String INCOMPATIBLE_VERSION_CONFIG_FILE = "src/test/resources/incompatible_version.yml";
-    public static final String TEMPLATE_TRANSFORMATION_CONFIG_FILE = "src/test/resources/templateDocumentDB.yaml";
-    public static final String USER_CONFIG_TRANSFORMATION_CONFIG_FILE = "src/test/resources/userConfigDocumentDB.yaml";
+    public static final String TEMPLATES_SOURCE_TRANSFORMATION_DIRECTORY = "src/test/resources/transformation/templates/testSource";
+    public static final String RULES_TRANSFORMATION_DIRECTORY = "src/test/resources/transformation/rules";
+
+    public static final String USER_CONFIG_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb1-userconfig.yaml";
+    public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-userconfig.yaml";
+
+    public static final String RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/rules/documentdb1-rule.yaml";
+    public static final String RULES_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/rules/documentdb-rule.yaml";
+
+    public static final String TEMPLATE_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb1-template.yaml";
+    public static final String TEMPLATE_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-template.yaml";
+    public static final String TEMPLATE_TRANSFORMATION_SIMPLE_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/simple-template.yaml";
 
 
     public static Set<String> VALID_MULTIPLE_PIPELINE_NAMES = new HashSet<>(Arrays.asList("test-pipeline-1",

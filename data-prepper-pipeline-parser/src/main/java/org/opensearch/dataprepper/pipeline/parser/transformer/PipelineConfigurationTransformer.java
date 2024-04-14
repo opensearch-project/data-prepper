@@ -4,7 +4,6 @@ import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 
 public interface PipelineConfigurationTransformer {
 
-    PipelinesDataFlowModel transformConfiguration(PipelinesDataFlowModel pipelinesDataFlowModel,
-                                                  PipelineTemplateModel templateModel);
+    PipelinesDataFlowModel transformConfiguration(PipelineTemplateModel pipelineTemplateModel);
 
 }

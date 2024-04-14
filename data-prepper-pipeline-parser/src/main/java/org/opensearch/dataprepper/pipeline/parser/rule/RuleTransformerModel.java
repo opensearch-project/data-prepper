@@ -16,33 +16,28 @@ import java.util.Set;
 @Data
 public class RuleTransformerModel {
 
-    @NonNull
-    private final String jsonPath;
+    @JsonProperty("apply_when")
+    private List<String> applyWhen;
 
-    @NonNull
-    private final String key;
+    public RuleTransformerModel() {
+    }
 
-    @NonNull
-    private final Object value;
+    public RuleTransformerModel(List<String> applyWhen) {
+        this.applyWhen = applyWhen;
+    }
 
-    @NonNull
-    private final Set<Integer> validVersions;
+    public List<String> getApplyWhen() {
+        return applyWhen;
+    }
 
-    private final List<Predicate> predicates;
+    public void setApplyWhen(List<String> applyWhen) {
+        this.applyWhen = applyWhen;
+    }
 
-    @JsonCreator
-    public RuleTransformerModel(@JsonProperty("json_path") final @NonNull String jsonPath,
-                                @JsonProperty("key") final @NonNull String key,
-                                @JsonProperty("value") @JsonDeserialize(using = TransformerValueDeserializer.class) final @NonNull Object value,
-                                @JsonProperty("valid_versions") final @NonNull Set<Integer> validVersions,
-                                @JsonProperty("predicates") final List<Predicate> predicates) {
-
-
-        this.jsonPath = jsonPath;
-        this.validVersions = validVersions;
-        this.key = key;
-        this.value = value;
-
-        this.predicates = Objects.isNull(predicates) ? Collections.emptyList() : predicates;
+    @Override
+    public String toString() {
+        return "RuleConfiguration{" +
+                "applyWhen=" + applyWhen +
+                '}';
     }
 }

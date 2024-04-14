@@ -1,4 +1,4 @@
-dodb-pipeline:
+pipeline:
   source:
     documentdb:
       hostname: "database.example.com"
