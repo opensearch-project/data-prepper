@@ -9,7 +9,6 @@ import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.Option;
 import com.jayway.jsonpath.ParseContext;
 import com.jayway.jsonpath.PathNotFoundException;
-import com.jayway.jsonpath.ReadContext;
 import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider;
 import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
@@ -22,6 +21,7 @@ import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluatorResult;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -48,7 +48,6 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
 
     ParseContext mainParseContext = JsonPath.using(parseConfig);
 
-
     public DynamicConfigTransformer(PipelinesDataflowModelParser pipelinesDataflowModelParser,
                                     RuleEvaluator ruleEvaluator) {
         this.ruleEvaluator = ruleEvaluator;
@@ -56,39 +55,53 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         this.preTransformedPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
     }
 
-    //TODO
-    // address pipeline_configurations and version
-    // address sub-piplines
+    /**
+     *
+     * @param templateModel
+     * @return
+     */
     @Override
     public PipelinesDataFlowModel transformConfiguration(PipelineTemplateModel templateModel) {
-        RuleEvaluatorResult ruleEvaluatorResult =  ruleEvaluator.isTransformationNeeded(preTransformedPipelinesDataFlowModel);
+        RuleEvaluatorResult ruleEvaluatorResult = ruleEvaluator.isTransformationNeeded(preTransformedPipelinesDataFlowModel);
 
         if (ruleEvaluatorResult.isEvaluatedResult() == false) {
             return preTransformedPipelinesDataFlowModel;
         }
 
+        //To differentiate between sub-pipelines.
         String pipelineNameThatNeedsTransformation = ruleEvaluatorResult.getPipelineName();
         try {
-//            String pipelineNameThatNeedsTransformation; //TODO
 
             String templateJsonString = objectMapper.writeValueAsString(templateModel);
             Map<String, PipelineModel> pipelines = preTransformedPipelinesDataFlowModel.getPipelines();
-            pipelines.get(pipelineNameThatNeedsTransformation);
-            String pipelinesDataFlowModelJsonString = objectMapper.writeValueAsString(preTransformedPipelinesDataFlowModel);
-            ReadContext pipelineReadContext = mainParseContext.parse(pipelinesDataFlowModelJsonString);
+            Map<String, PipelineModel> pipelineMap = new HashMap<>();
+            pipelineMap.put(pipelineNameThatNeedsTransformation,
+                    pipelines.get(pipelineNameThatNeedsTransformation));
+            String pipelineJson = objectMapper.writeValueAsString(pipelineMap);
 
             //find all placeholderPattern in template json string
-            // K:placeholder , V:jsonPath
+            // K:placeholder , V:jsonPath in templateJson
             Map<String, String> placeholdersMap = findPlaceholdersWithPaths(templateJsonString);
-
             JsonNode templateRootNode = objectMapper.readTree(templateJsonString);
+
+            // get exact path in pipelineJson - this is to avoid
+            // getting array values(even though it might not be an array) given
+            // a recursive expression like "$..<>"
+            // K:jsonPath expression V:exactPath(can be string or array)
+            Map<String, Object> pipelineExactPathMap = findExactPath(placeholdersMap,pipelineJson);
+
 
             //replace placeholder with actual value in the template context
             placeholdersMap.forEach((placeholder, templateJsonPath) -> {
-                String pipelineJsonPath = getValueFromPlaceHolder(placeholder);
+                /**
+                 * $..source for example always returns an array irrespective
+                 * of the values source contains.
+                 */
+//                String pipelineGenericJsonPath = getValueFromPlaceHolder(placeholder);
 //                JsonNode pipelineNode1 = pipelineReadContext.read(pipelineJsonPath, JsonNode.class);
+//                String pipelineExactJsonPath = getExactPath(pipelineGenericJsonPath);
 
-                JsonNode pipelineNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelinesDataFlowModelJsonString).read(pipelineJsonPath);
+//                JsonNode pipelineNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelinesDataFlowModelJsonString).read(pipelineExactJsonPath);
 
 //                //TODO --> had changed these 3 lines so that i dont get a ArrayNode on query every time; but this seems to lead to some RuntimeException.
 //                String parentPath = templateJsonPath.substring(0, templateJsonPath.lastIndexOf('.'));
@@ -96,16 +109,27 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
 //                JsonNode pipelineNode3 = JsonPath.using(parseConfigWithJsonNode).parse(templateRootNode).read(parentPath);
 
                 //replace pipelineNode in the template
-                replaceNode(templateRootNode, templateJsonPath, pipelineNode);
+//                replaceNode(templateRootNode, templateJsonPath, pipelineNode);
             });
 
             //update template json
             String transformedJson = objectMapper.writeValueAsString(templateRootNode);
 
             //transform transformedJson to pipelinesModels
-            PipelinesDataFlowModel transformedPipelinesDataFlowModel = objectMapper.readValue(transformedJson, PipelinesDataFlowModel.class);
+            // PipelineModel transformedPipelineMode = objectMapper.readValue(transformedJson, PipelineModel.class);
+            //
 
-            return transformedPipelinesDataFlowModel;
+
+            // Map<String, PipelineModel> transformedPipelines = new HashMap<>;
+            // put all except transformedPipelineName
+            // Copy version and pipelineConfiguration as is.
+            //
+//            PipelinesDataFlowModel transformedPipelinesDataFlowModel = createTransformedPipelineDataFlowModel(preTransformedPipelinesDataFlowModel,
+//                    transformedJson,pipelineNameThatNeedsTransformation);
+//                    objectMapper.readValue(transformedJson, PipelinesDataFlowModel.class);
+
+            //TODO
+            return null;
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -113,27 +137,72 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             throw new RuntimeException(e);
         }
     }
+//
+//    private String getExactPath(String pipelineJson, String pipelineGenericJsonPath) {
+//        try {
+//            JsonNode pipelineRootNode = objectMapper.readTree(pipelineJson);
+//            List<JsonNode> initialNodes = JsonPath.read(pipelineRootNode.toString(), pipelineGenericJsonPath);
+//
+//            Map<String, List<String>> pathsMap = new HashMap<>();
+//            initialNodes.forEach(node -> findPaths(pipelineRootNode, node.asText(), "", pathsMap));
+//        } catch (JsonProcessingException e) {
+//            throw new RuntimeException(e);
+//        }
+//
+//
+//        return null;
+//    }
 
     private Map<String, String> findPlaceholdersWithPaths(String json) throws IOException {
 
         JsonNode rootNode = objectMapper.readTree(json);
         Map<String, String> placeholdersWithPaths = new HashMap<>();
-        walkJson(rootNode, "", placeholdersWithPaths);
+        populateMapWithPlaceholderPaths(rootNode, "", placeholdersWithPaths);
         return placeholdersWithPaths;
     }
 
-    private void walkJson(JsonNode currentNode, String currentPath, Map<String, String> placeholdersWithPaths) {
+    private void populateMapWithPlaceholderPaths(JsonNode currentNode, String currentPath, Map<String, String> placeholdersWithPaths) {
         if (currentNode.isObject()) {
             Iterator<Map.Entry<String, JsonNode>> fields = currentNode.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> entry = fields.next();
                 String path = currentPath.isEmpty() ? entry.getKey() : currentPath + "." + entry.getKey();
-                walkJson(entry.getValue(), path, placeholdersWithPaths);
+                populateMapWithPlaceholderPaths(entry.getValue(), path, placeholdersWithPaths);
             }
         } else if (currentNode.isArray()) {
             for (int i = 0; i < currentNode.size(); i++) {
                 String path = currentPath + "[" + i + "]";
-                walkJson(currentNode.get(i), path, placeholdersWithPaths);
+                populateMapWithPlaceholderPaths(currentNode.get(i), path, placeholdersWithPaths);
+            }
+        } else if (currentNode.isValueNode()) {
+            String placeHolderValue = currentNode.asText();
+            Matcher matcher = placeholderPattern.matcher(placeHolderValue);
+            if (matcher.find()) {
+                placeholdersWithPaths.put(placeHolderValue, currentPath);
+            }
+        }
+    }
+
+    private Map<String, String> findExactPath(String json) throws IOException {
+
+        JsonNode rootNode = objectMapper.readTree(json);
+        Map<String, String> mapWithPaths = new HashMap<>();
+        populateMapWithPlaceholderPaths(rootNode, "", mapWithPaths);
+        return mapWithPaths;
+    }
+
+    private void populateMapWithExactPath(JsonNode currentNode, String currentPath, Map<String, String> placeholdersWithPaths) {
+        if (currentNode.isObject()) {
+            Iterator<Map.Entry<String, JsonNode>> fields = currentNode.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> entry = fields.next();
+                String path = currentPath.isEmpty() ? entry.getKey() : currentPath + "." + entry.getKey();
+                populateMapWithPlaceholderPaths(entry.getValue(), path, placeholdersWithPaths);
+            }
+        } else if (currentNode.isArray()) {
+            for (int i = 0; i < currentNode.size(); i++) {
+                String path = currentPath + "[" + i + "]";
+                populateMapWithPlaceholderPaths(currentNode.get(i), path, placeholdersWithPaths);
             }
         } else if (currentNode.isValueNode()) {
             String placeHolderValue = currentNode.asText();
