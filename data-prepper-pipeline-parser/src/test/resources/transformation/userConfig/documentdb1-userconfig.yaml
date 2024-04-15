@@ -1,4 +1,4 @@
-pipeline:
+simple-pipeline:
   source:
     documentdb:
       hostname: "database.example.com"

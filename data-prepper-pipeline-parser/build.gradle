@@ -12,7 +12,7 @@ group = 'org.opensearch.dataprepper.core'
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:blocking-buffer')
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.3'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'org.apache.commons:commons-collections4:4.4'
     implementation 'org.apache.commons:commons-jexl3:3.2.1'

@@ -49,6 +49,8 @@ public class TestConfigurationProvider {
     public static final String TEMPLATE_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-template.yaml";
     public static final String TEMPLATE_TRANSFORMATION_SIMPLE_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/simple-template.yaml";
 
+    public static final String EXPECTED_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb1-expected.yaml";
+
 
     public static Set<String> VALID_MULTIPLE_PIPELINE_NAMES = new HashSet<>(Arrays.asList("test-pipeline-1",
             "test-pipeline-2", "test-pipeline-3"));

@@ -1,0 +1,16 @@
+simple-pipeline-transformed:
+  source:
+    documentdb:
+      hostname: "database.example.com"
+      port: "27017"
+  sink:
+    - opensearch:
+        hosts: "database.example.com"
+        port: "27017"
+        index: "my_index"
+        aws:
+          sts_role_arn: "arn123"
+          region: "us-test-1"
+        dlq:
+          s3:
+            bucket: "test-bucket"

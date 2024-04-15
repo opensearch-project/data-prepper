@@ -1,10 +1,10 @@
-template-pipeline:
-  source: "{{$..source}}"
+"{{pipeline-name}}-transformed":
+  source: "{{$.*.source}}"
   sink:
     - opensearch:
-       hosts: "{{$..source.documentdb.hostname}}"
-       port: "{{$..source.documentdb.port}}"
-       index: "{{$..sink[0].opensearch.index}}"
+       hosts: "{{$.*.source.documentdb.hostname}}"
+       port: "{{$.*.source.documentdb.port}}"
+       index: "{{$.*.sink[0].opensearch.index}}"
        aws:
         sts_role_arn: "arn123"
         region: "us-test-1"
