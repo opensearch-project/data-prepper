@@ -216,10 +216,10 @@ public class DataFileLoader implements Runnable {
                 recordConverter.writeToBuffer(acknowledgementSet, lines);
                 checkpointer.checkpoint(lineCount);
             }
+            LOG.info("Completed loading {} lines from s3://{}/{} to buffer", lines.size(), bucketName, key);
 
             lines.clear();
 
-            LOG.info("Completed loading s3://{}/{} to buffer", bucketName, key);
 
             if (acknowledgementSet != null) {
                 checkpointer.updateDatafileForAcknowledgmentWait(dataFileAcknowledgmentTimeout);
