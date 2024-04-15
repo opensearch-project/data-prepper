@@ -2,6 +2,8 @@ package org.opensearch.dataprepper.pipeline.parser.rule;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import static org.mockito.Mockito.when;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
@@ -19,21 +21,17 @@ import java.util.List;
 import java.util.Map;
 
 class RuleEvaluatorTest {
-    private RuleEvaluator ruleEvaluator;
-    TransformersFactory transformersFactory;
 
     @BeforeEach
     void setUp() {
-        transformersFactory = new TransformersFactory(
-                TestConfigurationProvider.RULES_TRANSFORMATION_DIRECTORY,
-                TestConfigurationProvider.TEMPLATES_SOURCE_TRANSFORMATION_DIRECTORY
-        );
     }
 
     @Test
     void test_isTransformationNeeded_ForDocDBSource_ShouldReturn_True() {
 
         // Set up
+        String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE;
+        String pluginName = "documentdb";
         String pipelineName = "test-pipeline";
         Map sourceOptions = new HashMap<String, Object>();
         Map s3_bucket = new HashMap<>();
@@ -41,7 +39,7 @@ class RuleEvaluatorTest {
         List collections = new ArrayList();
         collections.add(s3_bucket);
         sourceOptions.put("collections", collections);
-        final PluginModel source = new PluginModel("documentdb", sourceOptions);
+        final PluginModel source = new PluginModel(pluginName, sourceOptions);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", null));
         final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null));
         final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
@@ -49,11 +47,17 @@ class RuleEvaluatorTest {
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
                 (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
 
-        ruleEvaluator = new RuleEvaluator(transformersFactory);
-        boolean isValid = ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel);
+        TransformersFactory transformersFactory = Mockito.spy(new TransformersFactory(
+                TestConfigurationProvider.RULES_TRANSFORMATION_DIRECTORY,
+                TestConfigurationProvider.TEMPLATES_SOURCE_TRANSFORMATION_DIRECTORY
+        ));
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
+        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
+        RuleEvaluatorResult result = ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel);
 
         // Assert
-        assertTrue(isValid);
+        assertTrue(result.isEvaluatedResult());
+        assertEquals(result.getPipelineName(),pipelineName);
     }
 
     @Test
@@ -71,11 +75,15 @@ class RuleEvaluatorTest {
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
                 (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
 
-        ruleEvaluator = new RuleEvaluator(transformersFactory);
-        boolean isValid = ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel);
+        TransformersFactory transformersFactory = Mockito.spy(new TransformersFactory(
+                TestConfigurationProvider.RULES_TRANSFORMATION_DIRECTORY,
+                TestConfigurationProvider.TEMPLATES_SOURCE_TRANSFORMATION_DIRECTORY
+        ));
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
+        RuleEvaluatorResult result = ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel);
 
         // Assert
-        assertEquals(isValid, false);
+        assertEquals(result.isEvaluatedResult(), false);
     }
 
     @Test

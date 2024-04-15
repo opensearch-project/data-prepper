@@ -6,15 +6,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.Option;
 import com.jayway.jsonpath.ParseContext;
 import com.jayway.jsonpath.PathNotFoundException;
 import com.jayway.jsonpath.ReadContext;
 import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider;
 import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
+import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluatorResult;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -40,7 +43,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     Configuration parseConfigWithJsonNode = Configuration.builder()
             .jsonProvider(new JacksonJsonNodeJsonProvider())
             .mappingProvider(new JacksonMappingProvider())
-//            .options(Option.AS_PATH_LIST)
+            .options(Option.SUPPRESS_EXCEPTIONS)
             .build();
 
     ParseContext mainParseContext = JsonPath.using(parseConfig);
@@ -58,14 +61,19 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     // address sub-piplines
     @Override
     public PipelinesDataFlowModel transformConfiguration(PipelineTemplateModel templateModel) {
-        if (!ruleEvaluator.isTransformationNeeded(preTransformedPipelinesDataFlowModel)) {
+        RuleEvaluatorResult ruleEvaluatorResult =  ruleEvaluator.isTransformationNeeded(preTransformedPipelinesDataFlowModel);
+
+        if (ruleEvaluatorResult.isEvaluatedResult() == false) {
             return preTransformedPipelinesDataFlowModel;
         }
 
+        String pipelineNameThatNeedsTransformation = ruleEvaluatorResult.getPipelineName();
         try {
 //            String pipelineNameThatNeedsTransformation; //TODO
 
             String templateJsonString = objectMapper.writeValueAsString(templateModel);
+            Map<String, PipelineModel> pipelines = preTransformedPipelinesDataFlowModel.getPipelines();
+            pipelines.get(pipelineNameThatNeedsTransformation);
             String pipelinesDataFlowModelJsonString = objectMapper.writeValueAsString(preTransformedPipelinesDataFlowModel);
             ReadContext pipelineReadContext = mainParseContext.parse(pipelinesDataFlowModelJsonString);
 
@@ -78,13 +86,14 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             //replace placeholder with actual value in the template context
             placeholdersMap.forEach((placeholder, templateJsonPath) -> {
                 String pipelineJsonPath = getValueFromPlaceHolder(placeholder);
-//                JsonNode pipelineNode = pipelineReadContext.read(pipelineJsonPath, JsonNode.class);
+//                JsonNode pipelineNode1 = pipelineReadContext.read(pipelineJsonPath, JsonNode.class);
 
-                //TODO --> had changed these 3 lines so that i dont get a ArrayNode on query every time; but this seems to lead to some RuntimeException.
-                String parentPath = templateJsonPath.substring(0, templateJsonPath.lastIndexOf('.'));
-                String fieldName = templateJsonPath.substring(templateJsonPath.lastIndexOf('.') + 1);
-                JsonNode pipelineNode = JsonPath.using(parseConfigWithJsonNode).parse(templateRootNode).read(parentPath);
-//                JsonNode pipelineNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelinesDataFlowModelJsonString).read(pipelineJsonPath);
+                JsonNode pipelineNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelinesDataFlowModelJsonString).read(pipelineJsonPath);
+
+//                //TODO --> had changed these 3 lines so that i dont get a ArrayNode on query every time; but this seems to lead to some RuntimeException.
+//                String parentPath = templateJsonPath.substring(0, templateJsonPath.lastIndexOf('.'));
+//                String fieldName = templateJsonPath.substring(templateJsonPath.lastIndexOf('.') + 1);
+//                JsonNode pipelineNode3 = JsonPath.using(parseConfigWithJsonNode).parse(templateRootNode).read(parentPath);
 
                 //replace pipelineNode in the template
                 replaceNode(templateRootNode, templateJsonPath, pipelineNode);

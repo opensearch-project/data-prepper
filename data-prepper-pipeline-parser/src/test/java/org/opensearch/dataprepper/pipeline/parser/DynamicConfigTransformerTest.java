@@ -1,7 +1,12 @@
 package org.opensearch.dataprepper.pipeline.parser;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.jayway.jsonpath.Configuration;
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.Option;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -84,6 +89,63 @@ class DynamicConfigTransformerTest {
 //        assertEquals(expectedYaml.trim(), transformedYaml.trim(), "The transformed YAML should match the expected YAML.");
     }
 
+
+    @Test
+    void testJsonNode(){
+        String json = "{\n" +
+                "  \"templatePipelines\": {\n" +
+                "    \"template-pipeline\": {\n" +
+                "      \"source\": \n" +
+                "        {\n" +
+                "          \"documentdb\": {\n" +
+                "            \"hostname\": \"database.example.com\",\n" +
+                "            \"port\": \"27017\"\n" +
+                "          }\n" +
+                "        },\n" +
+                "      \"sink\": [\n" +
+                "        {\n" +
+                "          \"opensearch\": {\n" +
+                "            \"hosts\": [\n" +
+                "              \"database.example.com\"\n" +
+                "            ],\n" +
+                "            \"port\": [\n" +
+                "              \"27017\"\n" +
+                "            ],\n" +
+                "            \"index\": [\n" +
+                "              \"my_index\"\n" +
+                "            ],\n" +
+                "            \"aws\": {\n" +
+                "              \"sts_role_arn\": \"arn123\",\n" +
+                "              \"region\": \"us-test-1\"\n" +
+                "            },\n" +
+                "            \"dlq\": {\n" +
+                "              \"s3\": {\n" +
+                "                \"bucket\": \"test-bucket\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  }\n" +
+                "}";
+
+        ObjectMapper mapper = new ObjectMapper();
+        Configuration config = Configuration.builder()
+                .jsonProvider(new com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider())
+                .mappingProvider(new com.jayway.jsonpath.spi.mapper.JacksonMappingProvider())
+                .options(Option.SUPPRESS_EXCEPTIONS)
+                .build();
+
+//        JsonNode rootNode = null;
+//        try {
+//            rootNode = mapper.readTree(json);
+//        } catch (JsonProcessingException e) {
+//            throw new RuntimeException(e);
+//        }
+//        JsonNode sourceNode = JsonPath.using(config).parse(rootNode).read("$.templatePipelines.template-pipeline.source");
+
+    }
     @Test
     void testPathNotFoundInTemplate() throws IOException {
 
