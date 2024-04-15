@@ -46,6 +46,7 @@ public class DynamoDBSource implements Source<Record<Event>>, UsesEnhancedSource
 
     private DynamoDBService dynamoDBService;
 
+    private final boolean acknowledgementsEnabled;
 
     @DataPrepperPluginConstructor
     public DynamoDBSource(final PluginMetrics pluginMetrics,
@@ -58,8 +59,14 @@ public class DynamoDBSource implements Source<Record<Event>>, UsesEnhancedSource
         this.sourceConfig = sourceConfig;
         this.pluginFactory = pluginFactory;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        this.acknowledgementsEnabled = sourceConfig.isAcknowledgmentsEnabled();
 
         clientFactory = new ClientFactory(awsCredentialsSupplier, sourceConfig.getAwsAuthenticationConfig(), sourceConfig.getTableConfigs().get(0).getExportConfig());
+    }
+
+    @Override
+    public boolean areAcknowledgementsEnabled() {
+        return acknowledgementsEnabled;
     }
 
     @Override
