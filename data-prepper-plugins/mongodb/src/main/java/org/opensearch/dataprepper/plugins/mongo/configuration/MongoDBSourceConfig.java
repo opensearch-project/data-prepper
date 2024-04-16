@@ -23,8 +23,8 @@ public class MongoDBSourceConfig {
     private String trustStoreFilePath;
     @JsonProperty("trust_store_password")
     private String trustStorePassword;
-    @JsonProperty("credentials")
-    private CredentialsConfig credentialsConfig;
+    @JsonProperty("authentication")
+    private AuthenticationConfig authenticationConfig;
 
     @JsonProperty("snapshot_fetch_size")
     private String snapshotFetchSize;
@@ -55,8 +55,8 @@ public class MongoDBSourceConfig {
         this.partitionAcknowledgmentTimeout = DEFAULT_ACKNOWLEDGEMENT_SET_TIMEOUT;
     }
 
-    public CredentialsConfig getCredentialsConfig() {
-        return this.credentialsConfig;
+    public AuthenticationConfig getCredentialsConfig() {
+        return this.authenticationConfig;
     }
 
     public String getHostname() {
@@ -103,7 +103,7 @@ public class MongoDBSourceConfig {
         return this.partitionAcknowledgmentTimeout;
     }
 
-    public static class CredentialsConfig {
+    public static class AuthenticationConfig {
         @JsonProperty("username")
         private String username;
 
