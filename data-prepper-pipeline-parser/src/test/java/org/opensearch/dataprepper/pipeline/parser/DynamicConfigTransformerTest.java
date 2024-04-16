@@ -56,7 +56,7 @@ class DynamicConfigTransformerTest {
     }
 
     @Test
-    void testSuccessfulTransformation() throws IOException {
+    void test_successful_transformation_with_only_source_and_sink() throws IOException {
 
         String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCDB1_CONFIG_FILE;
         String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCDB1_CONFIG_FILE;
@@ -85,6 +85,38 @@ class DynamicConfigTransformerTest {
         Map<String, Object> expectedYamlasMap = yamlMapper.readValue(new File(expectedDocDBFilePath), Map.class);
         assertTrue(expectedYamlasMap.equals(transformedYamlasMap), "The transformed YAML should match the expected YAML.");
     }
+
+    @Test
+    void test_successful_transformation_with_documentdb() throws IOException {
+
+        String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE;
+        String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE;
+        String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE;
+        String expectedDocDBFilePath = TestConfigurationProvider.EXPECTED_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE;
+        String pluginName = "documentdb";
+        PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
+        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+
+        PipelineTemplateModel templateDataFlowModel = yamlMapper.readValue(new File(templateDocDBFilePath),
+                PipelineTemplateModel.class);
+
+        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
+                TEMPLATES_DIRECTORY_PATH));
+        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
+        ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        // Load the original and template YAML files from the test resources directory
+        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(pipelinesDataflowModelParser,
+                ruleEvaluator);
+        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration(templateDataFlowModel);
+        String transformedYaml = yamlMapper.writeValueAsString(transformedModel);
+
+        Map<String, Object> transformedYamlasMap = yamlMapper.readValue(transformedYaml,Map.class);
+        Map<String, Object> expectedYamlasMap = yamlMapper.readValue(new File(expectedDocDBFilePath), Map.class);
+        assertTrue(expectedYamlasMap.equals(transformedYamlasMap), "The transformed YAML should match the expected YAML.");
+    }
+
 
     @Test
     void testPathNotFoundInTemplate() throws IOException {

@@ -1,4 +1,4 @@
-pipeline:
+"{{pipeline-name}}-transformed":
   workers: 2
   delay: 0
   source: "{{$.*.source}}"
@@ -14,7 +14,7 @@ pipeline:
         routes:
           - initial_load
         aws: "{{$.*.sink[?(@.opensearch)].opensearch.aws}}"
-        bucket: "{{$.*.source.collections[0].s3_bucket}}"
+        bucket: "{{$.*.source.documentdb.collections[0].s3_bucket}}"
         threshold:
           event_collect_timeout: "120s"
           maximum_size: "2mb"
@@ -29,7 +29,7 @@ pipeline:
         routes:
           - stream_load
         aws: "{{$.*.sink[?(@.opensearch)].opensearch.aws}}"
-        bucket: "{{$.*.source.collections[0].s3_bucket}}"
+        bucket: "{{$.*.source.documentdb.collections[0].s3_bucket}}"
         threshold:
           event_collect_timeout: "30s"
           maximum_size: "1mb"
@@ -41,7 +41,7 @@ pipeline:
         codec:
           json:
 
-s3-sub-pipeline:
+"{{pipeline-name}}-s3-sub-pipeline-transformed":
   workers: 2
   delay: 0
   source:
@@ -55,7 +55,7 @@ s3-sub-pipeline:
       scan:
         buckets:
           - bucket:
-              name: "{{$.*.source.collections[0].s3_bucket}}"
+              name: "{{$.*.source.documentdb.collections[0].s3_bucket}}"
               filter:
                 include_prefix: ["local-test"]
         scheduling:

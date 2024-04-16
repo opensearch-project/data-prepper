@@ -20,8 +20,10 @@ import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluatorResult;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,15 +36,14 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     private final PipelinesDataFlowModel preTransformedPipelinesDataFlowModel;
     Pattern placeholderPattern = Pattern.compile("\\{\\{\\s*(.+?)\\s*}}");
 
-//    Pattern pipelineNamePlaceholderPattern = Pattern.compile("\\{\\{\\s*(.+?)\\s*}}");
     String pipelineNamePlaceholderRegex = "\\{\\{\\s*" + Pattern.quote("pipeline-name") + "\\s*\\}\\}";
     String templatePipelineRootString = "templatePipelines";
 
-    // Configuration necessary for JsonPath to work with Jackson
-    Configuration parseConfig = Configuration.builder()
-            .jsonProvider(new JacksonJsonProvider())
-            .mappingProvider(new JacksonMappingProvider())
-            .build();
+//    // Configuration necessary for JsonPath to work with Jackson
+//    Configuration parseConfig = Configuration.builder()
+//            .jsonProvider(new JacksonJsonProvider())
+//            .mappingProvider(new JacksonMappingProvider())
+//            .build();
 
     Configuration parseConfigWithJsonNode = Configuration.builder()
             .jsonProvider(new JacksonJsonNodeJsonProvider())
@@ -50,7 +51,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             .options(Option.SUPPRESS_EXCEPTIONS)
             .build();
 
-    ParseContext mainParseContext = JsonPath.using(parseConfig);
+//    ParseContext mainParseContext = JsonPath.using(parseConfig);
 
     public DynamicConfigTransformer(PipelinesDataflowModelParser pipelinesDataflowModelParser,
                                     RuleEvaluator ruleEvaluator) {
@@ -88,10 +89,14 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             String templateJsonStringWithPipelinePlaceholder = objectMapper.writeValueAsString(templateModel);
             String templateJsonString = replaceTemplatePipelineName(templateJsonStringWithPipelinePlaceholder,
                     pipelineNameThatNeedsTransformation);
+
+
             //find all placeholderPattern in template json string
             // K:placeholder , V:jsonPath in templateJson
-            Map<String, String> placeholdersMap = findPlaceholdersWithPaths(templateJsonString);
-            validateAllPlaceHoldersFound(placeholdersMap, templateJsonString);
+            Map<String, List<String>> placeholdersMap = findPlaceholdersWithPaths(templateJsonString);
+
+//            TODO
+//            validateAllPlaceHoldersFound(placeholdersMap, templateJsonString);
             JsonNode templateRootNode = objectMapper.readTree(templateJsonString);
 
 
@@ -103,33 +108,15 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
 
 
             //replace placeholder with actual value in the template context
-            placeholdersMap.forEach((placeholder, templateJsonPath) -> {
-                String pipelineExactJsonPath = pipelineExactPathMap.get(placeholder);
-                JsonNode pipelineNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelineJson).read(pipelineExactJsonPath);
-                replaceNode(templateRootNode, templateJsonPath, pipelineNode);
-            });
-
-            //update template json
-            String transformedJson = objectMapper.writeValueAsString(templateRootNode);
-
-            //convert TransformedJson to PipelineModel with the data from preTransformedDataFlowModel.
-            //transform transformedJson to Map
-            Map<String,Object> transformedConfigMap = objectMapper.readValue(transformedJson, Map.class);
-
-
-            // get the root of the Transformed Pipeline Model, to get the actual pipelines.
-            // direct conversion to PipelineDataModel throws exception.
-            Map<String, PipelineModel> transformedPipelines = (Map<String, PipelineModel>) transformedConfigMap.get(templatePipelineRootString);
-            pipelines.forEach((pipelineName, pipeline)->{
-                if(!pipelineName.equals(pipelineNameThatNeedsTransformation)){
-                    transformedPipelines.put(pipelineName,pipeline);
+            placeholdersMap.forEach((placeholder, templateJsonPathList) -> {
+                for(String templateJsonPath: templateJsonPathList) {
+                    String pipelineExactJsonPath = pipelineExactPathMap.get(placeholder);
+                    JsonNode pipelineNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelineJson).read(pipelineExactJsonPath);
+                    replaceNode(templateRootNode, templateJsonPath, pipelineNode);
                 }
             });
-            PipelinesDataFlowModel transformedPipelinesDataFlowModel = new PipelinesDataFlowModel(
-                    preTransformedPipelinesDataFlowModel.getDataPrepperVersion(),
-                    preTransformedPipelinesDataFlowModel.getPipelineExtensions(),
-                    transformedPipelines
-            );
+
+            PipelinesDataFlowModel transformedPipelinesDataFlowModel = getTransformedPipelinesDataFlowModel(pipelineNameThatNeedsTransformation, pipelines, templateRootNode);
             return transformedPipelinesDataFlowModel;
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -138,38 +125,44 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         }
     }
 
+    private PipelinesDataFlowModel getTransformedPipelinesDataFlowModel(String pipelineNameThatNeedsTransformation, Map<String, PipelineModel> pipelines, JsonNode templateRootNode) throws JsonProcessingException {
+        //update template json
+        String transformedJson = objectMapper.writeValueAsString(templateRootNode);
+
+        //convert TransformedJson to PipelineModel with the data from preTransformedDataFlowModel.
+        //transform transformedJson to Map
+        Map<String,Object> transformedConfigMap = objectMapper.readValue(transformedJson, Map.class);
+
+
+        // get the root of the Transformed Pipeline Model, to get the actual pipelines.
+        // direct conversion to PipelineDataModel throws exception.
+        Map<String, PipelineModel> transformedPipelines = (Map<String, PipelineModel>) transformedConfigMap.get(templatePipelineRootString);
+        pipelines.forEach((pipelineName, pipeline)->{
+            if(!pipelineName.equals(pipelineNameThatNeedsTransformation)){
+                transformedPipelines.put(pipelineName,pipeline);
+            }
+        });
+        PipelinesDataFlowModel transformedPipelinesDataFlowModel = new PipelinesDataFlowModel(
+                preTransformedPipelinesDataFlowModel.getDataPrepperVersion(),
+                preTransformedPipelinesDataFlowModel.getPipelineExtensions(),
+                transformedPipelines
+        );
+        return transformedPipelinesDataFlowModel;
+    }
+
     private String replaceTemplatePipelineName(String templateJsonStringWithPipelinePlaceholder, String pipelineName) {
         return templateJsonStringWithPipelinePlaceholder.replaceAll(pipelineNamePlaceholderRegex, pipelineName);
     }
 
-    private void validateAllPlaceHoldersFound(Map<String, String> placeholdersMap, String templateJson) {
-        assert (placeholdersMap.size() == countMatches(templateJson));
-    }
-//
-//    private String getExactPath(String pipelineJson, String pipelineGenericJsonPath) {
-//        try {
-//            JsonNode pipelineRootNode = objectMapper.readTree(pipelineJson);
-//            List<JsonNode> initialNodes = JsonPath.read(pipelineRootNode.toString(), pipelineGenericJsonPath);
-//
-//            Map<String, List<String>> pathsMap = new HashMap<>();
-//            initialNodes.forEach(node -> findPaths(pipelineRootNode, node.asText(), "", pathsMap));
-//        } catch (JsonProcessingException e) {
-//            throw new RuntimeException(e);
-//        }
-//
-//
-//        return null;
-//    }
-
-    private Map<String, String> findPlaceholdersWithPaths(String json) throws IOException {
+    private Map<String, List<String>> findPlaceholdersWithPaths(String json) throws IOException {
 
         JsonNode rootNode = objectMapper.readTree(json);
-        Map<String, String> placeholdersWithPaths = new HashMap<>();
+        Map<String, List<String>> placeholdersWithPaths = new HashMap<>();
         populateMapWithPlaceholderPaths(rootNode, "", placeholdersWithPaths);
         return placeholdersWithPaths;
     }
 
-    private void populateMapWithPlaceholderPaths(JsonNode currentNode, String currentPath, Map<String, String> placeholdersWithPaths) {
+    private void populateMapWithPlaceholderPaths(JsonNode currentNode, String currentPath, Map<String, List<String>> placeholdersWithPaths) {
         if (currentNode.isObject()) {
             Iterator<Map.Entry<String, JsonNode>> fields = currentNode.fields();
             while (fields.hasNext()) {
@@ -186,7 +179,15 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             String placeHolderValue = currentNode.asText();
             Matcher matcher = placeholderPattern.matcher(placeHolderValue);
             if (matcher.find()) {
-                placeholdersWithPaths.put(placeHolderValue, currentPath);
+                if(!placeholdersWithPaths.containsKey(placeHolderValue)){
+                    List<String> paths = new ArrayList<>();
+                    paths.add(currentPath);
+                    placeholdersWithPaths.put(placeHolderValue, paths);
+                }else{
+                    List<String> existingPaths = placeholdersWithPaths.get(placeHolderValue);
+                    existingPaths.add(currentPath);
+                    placeholdersWithPaths.put(placeHolderValue, existingPaths);
+                }
             }
         }
     }
@@ -198,7 +199,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * @return
      * @throws IOException
      */
-    private Map<String, String> findExactPath(Map<String, String> placeholdersMap, String pipelineName) throws IOException {
+    private Map<String, String> findExactPath(Map<String, List<String>> placeholdersMap, String pipelineName) throws IOException {
         Map<String, String> mapWithPaths = new HashMap<>();
         for (String genericPathPlaceholder: placeholdersMap.keySet()){
             String genericPath = getValueFromPlaceHolder(genericPathPlaceholder);
@@ -209,31 +210,6 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         }
         return mapWithPaths;
     }
-//
-//    private void populateMapWithExactPath(JsonNode currentNode, String currentPath, Map<String, String> mapWithPaths) {
-//        if (currentNode.isObject()) {
-//            //Iterate all nodes in array
-//            Iterator<Map.Entry<String, JsonNode>> fields = currentNode.fields();
-//            while (fields.hasNext()) {
-//                Map.Entry<String, JsonNode> entry = fields.next();
-//                String path = currentPath.isEmpty() ? entry.getKey() : currentPath + "." + entry.getKey();
-//                populateMapWithPlaceholderPaths(entry.getValue(), path, mapWithPaths);
-//            }
-//        } else if (currentNode.isArray()) {
-//            //Iterate all nodes in array
-//            for (int i = 0; i < currentNode.size(); i++) {
-//                String path = currentPath + "[" + i + "]";
-//                populateMapWithPlaceholderPaths(currentNode.get(i), path, mapWithPaths);
-//            }
-//        } else if (currentNode.isValueNode()) {
-//            //Dont do anything if it is a Value Node.
-//            String placeHolderValue = currentNode.asText();
-//            Matcher matcher = placeholderPattern.matcher(placeHolderValue);
-//            if (matcher.find()) {
-//                mapWithPaths.put(placeHolderValue, currentPath);
-//            }
-//        }
-//    }
 
     private String getValueFromPlaceHolder(String placeholder) {
         if (placeholder.length() < 4) {
@@ -263,15 +239,5 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         } catch (PathNotFoundException e) {
             throw new PathNotFoundException(e);
         }
-    }
-
-    private int countMatches(String json) {
-        Matcher matcher = placeholderPattern.matcher(json);
-
-        int count = 0;
-        while (matcher.find()) {
-            count++;
-        }
-        return count;
     }
 }
