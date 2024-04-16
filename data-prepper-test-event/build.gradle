@@ -3,6 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+plugins {
+    id 'data-prepper.publish'
+}
+
 group = 'org.opensearch.dataprepper.test'
 
 dependencies {

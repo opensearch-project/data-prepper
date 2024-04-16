@@ -8,6 +8,8 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfi
 import org.opensearch.dataprepper.plugins.truststore.TrustStoreProvider;
 
 import java.io.File;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public class MongoDBConnection {
@@ -33,9 +35,23 @@ public class MongoDBConnection {
         return MongoClients.create(settingBuilder.build());
     }
 
+    private static String encodeString(final String input) {
+        return URLEncoder.encode(input, StandardCharsets.UTF_8);
+    }
+
     private static String getConnectionString(final MongoDBSourceConfig sourceConfig) {
-        final String username = sourceConfig.getCredentialsConfig().getUsername();
-        final String password = sourceConfig.getCredentialsConfig().getPassword();
+        final String username;
+        try {
+            username = encodeString(sourceConfig.getCredentialsConfig().getUsername());
+        } catch (final Exception e) {
+            throw new RuntimeException("Unsupported characters in username.");
+        }
+        final String password;
+        try {
+            password = encodeString(sourceConfig.getCredentialsConfig().getPassword());
+        } catch (final Exception e) {
+            throw new RuntimeException("Unsupported characters in password.");
+        }
         final String hostname = sourceConfig.getHostname();
         final int port = sourceConfig.getPort();
         final String tls = sourceConfig.getTls().toString();

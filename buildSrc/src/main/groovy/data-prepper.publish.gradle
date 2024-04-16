@@ -1,0 +1,52 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+plugins {
+    id 'maven-publish'
+}
+
+group = 'org.opensearch.dataprepper'
+
+afterEvaluate {
+    project.publishing {
+        repositories {
+            maven {
+                url "file://${mavenPublicationRootFile.absolutePath}"
+            }
+        }
+        publications {
+            mavenJava(MavenPublication) {
+                from project.components.findByName('java') ?: project.components.findByName('javaLibrary')
+
+                groupId = project.group
+                artifactId = project.name
+                version = project.version
+
+                pom {
+                    name = project.name
+                    description = "Data Prepper project: ${project.name}"
+                    url = 'https://github.com/opensearch-project/data-prepper'
+                    licenses {
+                        license {
+                            name = 'The Apache Software License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                            distribution = 'repo'
+                        }
+                    }
+                    developers {
+                        developer {
+                            name = 'OpenSearch'
+                            url = 'https://github.com/opensearch-project'
+                        }
+                    }
+                    scm {
+                        url = 'https://github.com/opensearch-project/data-prepper'
+                    }
+                }
+            }
+        }
+    }
+}
+
