@@ -7,7 +7,8 @@ plugins {
     id 'java-library'
 }
 
-allprojects {
+subprojects {
+    apply plugin: 'data-prepper.publish'
     group = 'org.opensearch.dataprepper.plugins'
 }
 

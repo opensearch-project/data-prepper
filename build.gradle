@@ -20,9 +20,6 @@ allprojects {
     apply plugin: 'checkstyle'
     apply plugin: 'com.diffplug.spotless'
     apply plugin: 'com.github.jk1.dependency-license-report'
-    apply plugin: 'maven-publish'
-
-    group = 'org.opensearch.dataprepper'
 
     ext {
         mavenPublicationRootFile = file("${rootProject.buildDir}/m2")
@@ -42,53 +39,10 @@ allprojects {
         }
     }
 
-    if(project.name.startsWith('data-prepper') || project.parent != null && project.parent.name.equals('data-prepper-plugins')) {
-        project.plugins.withType(JavaPlugin).configureEach {
-            java {
-                withJavadocJar()
-                withSourcesJar()
-            }
-
-            afterEvaluate {
-                project.publishing {
-                    repositories {
-                        maven {
-                            url "file://${mavenPublicationRootFile.absolutePath}"
-                        }
-                    }
-                    publications {
-                        mavenJava(MavenPublication) {
-                            from project.components.findByName("java") ?: project.components.findByName("javaLibrary")
-
-                            groupId = project.group
-                            artifactId = project.name
-                            version = project.version
-
-                            pom {
-                                name = project.name
-                                description = "Data Prepper project: ${project.name}"
-                                url = 'https://github.com/opensearch-project/data-prepper'
-                                licenses {
-                                    license {
-                                        name = 'The Apache Software License, Version 2.0'
-                                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                                        distribution = 'repo'
-                                    }
-                                }
-                                developers {
-                                    developer {
-                                        name = 'OpenSearch'
-                                        url = 'https://github.com/opensearch-project'
-                                    }
-                                }
-                                scm {
-                                    url = 'https://github.com/opensearch-project/data-prepper'
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    project.plugins.withType(JavaPlugin).configureEach {
+        java {
+            withJavadocJar()
+            withSourcesJar()
         }
     }
 
@@ -99,7 +53,6 @@ allprojects {
 
 subprojects {
     apply plugin: 'java'
-    apply plugin: 'maven-publish'
     apply plugin: 'jacoco'
 
     java {
