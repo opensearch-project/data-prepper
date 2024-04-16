@@ -25,7 +25,9 @@ public class ExtensionPluginConfigurationResolver {
         this.dataPrepperConfigExtensionMap = extensionsConfiguration.getPipelineExtensions() == null?
                 new HashMap<>() : new HashMap<>(extensionsConfiguration.getPipelineExtensions().getExtensionMap());
         combinedExtensionMap = new HashMap<>(dataPrepperConfigExtensionMap);
-        combinedExtensionMap.putAll(pipelinesDataFlowModel.getPipelineExtensions().getExtensionMap());
+        if (pipelinesDataFlowModel.getPipelineExtensions() != null) {
+            combinedExtensionMap.putAll(pipelinesDataFlowModel.getPipelineExtensions().getExtensionMap());
+        }
     }
 
     public Map<String, Object> getDataPrepperConfigExtensionMap() {
