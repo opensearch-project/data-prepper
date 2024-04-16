@@ -8,22 +8,29 @@ package org.opensearch.dataprepper.plugins.codec.parquet;
 import org.apache.parquet.io.PositionOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartResponse;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class S3OutputStream extends PositionOutputStream {
@@ -51,7 +58,7 @@ public class S3OutputStream extends PositionOutputStream {
      */
     private final byte[] buf;
 
-    private final S3Client s3Client;
+    private final S3AsyncClient s3Client;
     /**
      * Collection of the etags for the parts that have been uploaded
      */
@@ -74,6 +81,8 @@ public class S3OutputStream extends PositionOutputStream {
      */
     private final String defaultBucket;
 
+    private final ExecutorService executorService;
+
     /**
      * Creates a new S3 OutputStream
      *
@@ -81,7 +90,7 @@ public class S3OutputStream extends PositionOutputStream {
      * @param bucketSupplier  name of the bucket
      * @param keySupplier     path within the bucket
      */
-    public S3OutputStream(final S3Client s3Client,
+    public S3OutputStream(final S3AsyncClient s3Client,
                           final Supplier<String> bucketSupplier,
                           final Supplier<String> keySupplier,
                           final String defaultBucket) {
@@ -93,13 +102,18 @@ public class S3OutputStream extends PositionOutputStream {
         etags = new ArrayList<>();
         open = true;
         this.defaultBucket = defaultBucket;
+        this.executorService = Executors.newSingleThreadExecutor();
     }
 
     @Override
     public void write(int b) {
         assertOpen();
         if (position >= buf.length) {
-            flushBufferAndRewind();
+            try {
+                flushBufferAndRewind();
+            } catch (ExecutionException | InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
         buf[position++] = (byte) b;
     }
@@ -132,7 +146,12 @@ public class S3OutputStream extends PositionOutputStream {
         while (len > (size = buf.length - position)) {
             System.arraycopy(byteArray, ofs, buf, position, size);
             position += size;
-            flushBufferAndRewind();
+            try {
+                flushBufferAndRewind();
+            } catch (ExecutionException | InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
             ofs += size;
             len -= size;
         }
@@ -147,36 +166,48 @@ public class S3OutputStream extends PositionOutputStream {
     public void flush() {
     }
 
-    @Override
-    public void close() {
+    public CompletableFuture<?> close(final Consumer<Boolean> runOnCompletion, final Consumer<Throwable> runOnError) {
         if (open) {
             open = false;
-            possiblyStartMultipartUpload();
-            if (position > 0) {
-                uploadPart();
-            }
+            try {
+                possiblyStartMultipartUpload();
 
-            CompletedPart[] completedParts = new CompletedPart[etags.size()];
-            for (int i = 0; i < etags.size(); i++) {
-                completedParts[i] = CompletedPart.builder()
-                        .eTag(etags.get(i))
-                        .partNumber(i + 1)
+                if (position > 0) {
+                    uploadPart();
+                }
+
+                CompletedPart[] completedParts = new CompletedPart[etags.size()];
+                for (int i = 0; i < etags.size(); i++) {
+                    completedParts[i] = CompletedPart.builder()
+                            .eTag(etags.get(i))
+                            .partNumber(i + 1)
+                            .build();
+                }
+
+                LOG.debug("Completing S3 multipart upload with {} parts.", completedParts.length);
+
+                CompletedMultipartUpload completedMultipartUpload = CompletedMultipartUpload.builder()
+                        .parts(completedParts)
                         .build();
+                CompleteMultipartUploadRequest completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
+                        .bucket(bucket)
+                        .key(key)
+                        .uploadId(uploadId)
+                        .multipartUpload(completedMultipartUpload)
+                        .build();
+                CompletableFuture<CompleteMultipartUploadResponse> multipartUploadResponseCompletableFuture = s3Client.completeMultipartUpload(completeMultipartUploadRequest);
+
+                multipartUploadResponseCompletableFuture.join();
+
+                runOnCompletion.accept(true);
+                return multipartUploadResponseCompletableFuture;
+            } catch (final Exception e) {
+                runOnError.accept(e);
+                runOnCompletion.accept(false);
             }
-
-            LOG.debug("Completing S3 multipart upload with {} parts.", completedParts.length);
-
-            CompletedMultipartUpload completedMultipartUpload = CompletedMultipartUpload.builder()
-                    .parts(completedParts)
-                    .build();
-            CompleteMultipartUploadRequest completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
-                    .bucket(bucket)
-                    .key(key)
-                    .uploadId(uploadId)
-                    .multipartUpload(completedMultipartUpload)
-                    .build();
-            s3Client.completeMultipartUpload(completeMultipartUploadRequest);
         }
+
+        return null;
     }
 
     public String getKey() {
@@ -189,7 +220,7 @@ public class S3OutputStream extends PositionOutputStream {
         }
     }
 
-    private void flushBufferAndRewind() {
+    private void flushBufferAndRewind() throws ExecutionException, InterruptedException {
         possiblyStartMultipartUpload();
         uploadPart();
         position = 0;
@@ -200,10 +231,11 @@ public class S3OutputStream extends PositionOutputStream {
 
             try {
                 createMultipartUpload();
-            } catch (final S3Exception e) {
-                if (defaultBucket != null && (e instanceof NoSuchBucketException || e.getMessage().contains(ACCESS_DENIED))) {
+            } catch (final CompletionException e) {
+                if (defaultBucket != null && (e.getCause() != null &&
+                        (e.getCause() instanceof NoSuchBucketException || (e.getCause().getMessage() != null && e.getCause().getMessage().contains(ACCESS_DENIED))))) {
                     bucket = defaultBucket;
-                    LOG.warn("Bucket {} could not be accessed to create multi-part upload, attempting to create multi-part upload to default_bucket {}", bucket, defaultBucket);
+                    LOG.warn("Bucket {} could not be accessed to create multi-part upload, attempting to create multi-part upload to default_bucket {}. Error: {}", bucket, defaultBucket, e.getCause().getMessage());
                     createMultipartUpload();
                 } else {
                     throw e;
@@ -223,12 +255,17 @@ public class S3OutputStream extends PositionOutputStream {
                 .partNumber(partNumber)
                 .contentLength((long) position)
                 .build();
-        RequestBody requestBody = RequestBody.fromInputStream(new ByteArrayInputStream(buf, 0, position),
-                position);
+
+        final InputStream inputStream = new ByteArrayInputStream(buf, 0, position);
+
+        AsyncRequestBody asyncRequestBody = AsyncRequestBody.fromInputStream(inputStream, (long) position, executorService);
 
         LOG.debug("Writing {} bytes to S3 multipart part number {}.", buf.length, partNumber);
 
-        UploadPartResponse uploadPartResponse = s3Client.uploadPart(uploadRequest, requestBody);
+        CompletableFuture<UploadPartResponse> uploadPartResponseFuture = s3Client.uploadPart(uploadRequest, asyncRequestBody);
+
+        final UploadPartResponse uploadPartResponse = uploadPartResponseFuture.join();
+
         etags.add(uploadPartResponse.eTag());
     }
 
@@ -242,8 +279,11 @@ public class S3OutputStream extends PositionOutputStream {
                 .bucket(bucket)
                 .key(key)
                 .build();
-        CreateMultipartUploadResponse multipartUpload = s3Client.createMultipartUpload(uploadRequest);
-        uploadId = multipartUpload.uploadId();
+        CompletableFuture<CreateMultipartUploadResponse> multipartUpload = s3Client.createMultipartUpload(uploadRequest);
+
+        final CreateMultipartUploadResponse response = multipartUpload.join();
+
+        uploadId = response.uploadId();
     }
 }
 

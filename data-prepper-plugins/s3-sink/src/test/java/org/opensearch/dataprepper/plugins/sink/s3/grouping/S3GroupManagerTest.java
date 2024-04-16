@@ -15,7 +15,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.S3SinkConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.codec.CodecFactory;
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.util.Collection;
 import java.util.UUID;
@@ -48,7 +48,7 @@ public class S3GroupManagerTest {
     private CodecFactory codecFactory;
 
     @Mock
-    private S3Client s3Client;
+    private S3AsyncClient s3Client;
 
     private S3GroupManager createObjectUnderTest() {
         return new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, codecFactory, s3Client);

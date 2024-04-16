@@ -4,6 +4,9 @@ import org.opensearch.dataprepper.plugins.sink.s3.codec.BufferedCodec;
 
 import java.io.OutputStream;
 import java.time.Duration;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 public class CodecBuffer implements Buffer {
     private final Buffer innerBuffer;
@@ -31,8 +34,8 @@ public class CodecBuffer implements Buffer {
     }
 
     @Override
-    public void flushToS3() {
-        innerBuffer.flushToS3();
+    public Optional<CompletableFuture<?>> flushToS3(final Consumer<Boolean> runOnCompletion, final Consumer<Throwable> runOnException) {
+        return innerBuffer.flushToS3(runOnCompletion, runOnException);
     }
 
     @Override
