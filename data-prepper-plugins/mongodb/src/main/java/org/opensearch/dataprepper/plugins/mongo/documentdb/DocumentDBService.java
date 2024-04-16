@@ -55,14 +55,14 @@ public class DocumentDBService {
         final LeaderScheduler leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig.getCollections());
         runnableList.add(leaderScheduler);
 
-        if (sourceConfig.getCollections().stream().anyMatch(CollectionConfig::isExportEnabled)) {
+        if (sourceConfig.getCollections().stream().anyMatch(CollectionConfig::isExport)) {
             final ExportScheduler exportScheduler = new ExportScheduler(sourceCoordinator, mongoDBExportPartitionSupplier, pluginMetrics);
             final ExportWorker exportWorker = new ExportWorker(sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, sourceConfig);
             runnableList.add(exportScheduler);
             runnableList.add(exportWorker);
         }
 
-        if (sourceConfig.getCollections().stream().anyMatch(CollectionConfig::isStreamEnabled)) {
+        if (sourceConfig.getCollections().stream().anyMatch(CollectionConfig::isStream)) {
             final S3PartitionCreatorScheduler s3PartitionCreatorScheduler = new S3PartitionCreatorScheduler(sourceCoordinator);
             runnableList.add(s3PartitionCreatorScheduler);
             final StreamScheduler streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, pluginMetrics);

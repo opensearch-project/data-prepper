@@ -63,8 +63,8 @@ public class LeaderSchedulerTest {
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        given(collectionConfig.isExportEnabled()).willReturn(true);
-        given(collectionConfig.isStreamEnabled()).willReturn(true);
+        given(collectionConfig.isExport()).willReturn(true);
+        given(collectionConfig.isStream()).willReturn(true);
         given(collectionConfig.getExportConfig()).willReturn(exportConfig);
         given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
         given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
@@ -97,7 +97,7 @@ public class LeaderSchedulerTest {
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        given(collectionConfig.isExportEnabled()).willReturn(true);
+        given(collectionConfig.isExport()).willReturn(true);
         given(collectionConfig.getExportConfig()).willReturn(exportConfig);
         given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
         given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
@@ -130,7 +130,7 @@ public class LeaderSchedulerTest {
         leaderScheduler = new LeaderScheduler(coordinator, List.of(collectionConfig), Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        given(collectionConfig.isStreamEnabled()).willReturn(true);
+        given(collectionConfig.isStream()).willReturn(true);
         given(collectionConfig.getCollection()).willReturn(UUID.randomUUID().toString());
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();

@@ -113,15 +113,15 @@ public class LeaderScheduler implements Runnable {
             coordinator.createPartition(new GlobalState(collectionConfig.getCollection(), null));
 
             final Instant startTime = Instant.now();
-            final boolean exportRequired = collectionConfig.isExportEnabled();
-            LOG.info("Ingestion mode export {} and stream {} for Collection {}", collectionConfig.isExportEnabled(), collectionConfig.isStreamEnabled(), collectionConfig.getCollection());
+            final boolean exportRequired = collectionConfig.isExport();
+            LOG.info("Ingestion mode export {} and stream {} for Collection {}", collectionConfig.isExport(), collectionConfig.isStream(), collectionConfig.getCollection());
             if (exportRequired) {
                 createExportPartition(collectionConfig, startTime);
             }
 
             createS3Partition(collectionConfig);
 
-            if (collectionConfig.isStreamEnabled()) {
+            if (collectionConfig.isStream()) {
                 createStreamPartition(collectionConfig, startTime, exportRequired);
             }
 

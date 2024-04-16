@@ -52,7 +52,7 @@ public class MongoDBConnection {
         } catch (final Exception e) {
             throw new RuntimeException("Unsupported characters in password.");
         }
-        final String hostname = sourceConfig.getHostname();
+        final String hostname = sourceConfig.getHost();
         final int port = sourceConfig.getPort();
         final String tls = sourceConfig.getTls().toString();
         final String invalidHostAllowed = sourceConfig.getSslInsecureDisableVerification().toString();
