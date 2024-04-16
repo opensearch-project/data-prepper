@@ -37,7 +37,7 @@ public class MongoDBConnectionTest {
         when(mongoDBSourceConfig.getCredentialsConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getUsername()).thenReturn("\uD800\uD800" + UUID.randomUUID());
         when(authenticationConfig.getPassword()).thenReturn("aЯ ⾀sd?q=%%l€0£.lo" + UUID.randomUUID());
-        when(mongoDBSourceConfig.getHostname()).thenReturn(UUID.randomUUID().toString());
+        when(mongoDBSourceConfig.getHost()).thenReturn(UUID.randomUUID().toString());
         when(mongoDBSourceConfig.getPort()).thenReturn(getRandomInteger());
         when(mongoDBSourceConfig.getTls()).thenReturn(getRandomBoolean());
         when(mongoDBSourceConfig.getSslInsecureDisableVerification()).thenReturn(getRandomBoolean());

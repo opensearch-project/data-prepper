@@ -15,8 +15,8 @@ public class MongoDBSourceConfig {
     private static final String DEFAULT_READ_PREFERENCE = "primaryPreferred";
     private static final Boolean DEFAULT_DIRECT_CONNECT = true;
     private static final Duration DEFAULT_ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
-    @JsonProperty("hostname")
-    private @NotNull String hostname;
+    @JsonProperty("host")
+    private @NotNull String host;
     @JsonProperty("port")
     private int port = DEFAULT_PORT;
     @JsonProperty("trust_store_file_path")
@@ -59,8 +59,8 @@ public class MongoDBSourceConfig {
         return this.authenticationConfig;
     }
 
-    public String getHostname() {
-        return this.hostname;
+    public String getHost() {
+        return this.host;
     }
 
     public int getPort() {
