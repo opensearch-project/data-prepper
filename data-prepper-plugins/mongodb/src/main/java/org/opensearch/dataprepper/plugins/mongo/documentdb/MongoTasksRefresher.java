@@ -64,8 +64,8 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
 
     @Override
     public void update(MongoDBSourceConfig pluginConfig) {
-        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = pluginConfig.getCredentialsConfig();
-        if (basicAuthChanged(newCredentialsConfig)) {
+        final MongoDBSourceConfig.AuthenticationConfig newAuthConfig = pluginConfig.getCredentialsConfig();
+        if (basicAuthChanged(newAuthConfig)) {
             credentialsChangeCounter.increment();
             try {
                 currentExecutor.shutdownNow();
@@ -80,13 +80,13 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
 
     private void refreshJobs(MongoDBSourceConfig pluginConfig) {
         final List<Runnable> runnables = new ArrayList<>();
-        if (pluginConfig.getCollections().stream().anyMatch(CollectionConfig::isExportEnabled)) {
+        if (pluginConfig.getCollections().stream().anyMatch(CollectionConfig::isExport)) {
             currentMongoDBExportPartitionSupplier = new MongoDBExportPartitionSupplier(pluginConfig);
             runnables.add(new ExportScheduler(sourceCoordinator, currentMongoDBExportPartitionSupplier, pluginMetrics));
             runnables.add(new ExportWorker(
                     sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, pluginConfig));
         }
-        if (pluginConfig.getCollections().stream().anyMatch(CollectionConfig::isStreamEnabled)) {
+        if (pluginConfig.getCollections().stream().anyMatch(CollectionConfig::isStream)) {
             runnables.add(new StreamScheduler(
                     sourceCoordinator, buffer, acknowledgementSetManager, pluginConfig, pluginMetrics));
         }
@@ -94,10 +94,10 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
         runnables.forEach(currentExecutor::submit);
     }
 
-    private boolean basicAuthChanged(final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig) {
-        final MongoDBSourceConfig.CredentialsConfig currentCredentialsConfig = currentMongoDBSourceConfig
+    private boolean basicAuthChanged(final MongoDBSourceConfig.AuthenticationConfig newAuthConfig) {
+        final MongoDBSourceConfig.AuthenticationConfig currentAuthConfig = currentMongoDBSourceConfig
                 .getCredentialsConfig();
-        return !Objects.equals(currentCredentialsConfig.getUsername(), newCredentialsConfig.getUsername()) ||
-                !Objects.equals(currentCredentialsConfig.getPassword(), newCredentialsConfig.getPassword());
+        return !Objects.equals(currentAuthConfig.getUsername(), newAuthConfig.getUsername()) ||
+                !Objects.equals(currentAuthConfig.getPassword(), newAuthConfig.getPassword());
     }
 }

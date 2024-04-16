@@ -60,7 +60,7 @@ class MongoTasksRefresherTest {
     private MongoDBSourceConfig sourceConfig;
 
     @Mock
-    private MongoDBSourceConfig.CredentialsConfig credentialsConfig;
+    private MongoDBSourceConfig.AuthenticationConfig credentialsConfig;
 
     @Mock
     private ExecutorService executorService;
@@ -83,8 +83,8 @@ class MongoTasksRefresherTest {
     void setUp() {
         when(executorServiceFunction.apply(anyInt())).thenReturn(executorService);
         when(sourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
-        when(collectionConfig.isExportEnabled()).thenReturn(true);
-        when(collectionConfig.isStreamEnabled()).thenReturn(true);
+        when(collectionConfig.isExport()).thenReturn(true);
+        when(collectionConfig.isStream()).thenReturn(true);
     }
 
     @Test
@@ -96,8 +96,8 @@ class MongoTasksRefresherTest {
         when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
         final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
-        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = mock(
-                MongoDBSourceConfig.CredentialsConfig.class);
+        final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.AuthenticationConfig.class);
         when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
@@ -116,8 +116,8 @@ class MongoTasksRefresherTest {
         when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
         when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
-        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = mock(
-                MongoDBSourceConfig.CredentialsConfig.class);
+        final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.AuthenticationConfig.class);
         when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME + "_changed");
         final ExecutorService newExecutorService = mock(ExecutorService.class);
@@ -140,8 +140,8 @@ class MongoTasksRefresherTest {
         when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
         final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
         when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
-        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = mock(
-                MongoDBSourceConfig.CredentialsConfig.class);
+        final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.AuthenticationConfig.class);
         when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
@@ -156,7 +156,7 @@ class MongoTasksRefresherTest {
 
     @Test
     void testUpdateWithPasswordChangedAndOnlyExportEnabled() {
-        when(collectionConfig.isStreamEnabled()).thenReturn(false);
+        when(collectionConfig.isStream()).thenReturn(false);
         when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
         final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(sourceConfig);
@@ -166,8 +166,8 @@ class MongoTasksRefresherTest {
         when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
         final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
         when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
-        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = mock(
-                MongoDBSourceConfig.CredentialsConfig.class);
+        final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.AuthenticationConfig.class);
         when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
@@ -182,7 +182,7 @@ class MongoTasksRefresherTest {
 
     @Test
     void testUpdateWithPasswordChangedAndOnlyStreamEnabled() {
-        when(collectionConfig.isExportEnabled()).thenReturn(false);
+        when(collectionConfig.isExport()).thenReturn(false);
         when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
         final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(sourceConfig);
@@ -192,8 +192,8 @@ class MongoTasksRefresherTest {
         when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
         final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
         when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
-        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = mock(
-                MongoDBSourceConfig.CredentialsConfig.class);
+        final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.AuthenticationConfig.class);
         when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
@@ -217,8 +217,8 @@ class MongoTasksRefresherTest {
         when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
         final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
-        final MongoDBSourceConfig.CredentialsConfig newCredentialsConfig = mock(
-                MongoDBSourceConfig.CredentialsConfig.class);
+        final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.AuthenticationConfig.class);
         when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");

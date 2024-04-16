@@ -15,11 +15,11 @@ public class CollectionConfig {
     @JsonProperty("export_config")
     private ExportConfig exportConfig;
 
-    @JsonProperty("export_enabled")
-    private boolean exportEnabled;
+    @JsonProperty("export")
+    private boolean export;
 
-    @JsonProperty("stream_enabled")
-    private boolean streamEnabled;
+    @JsonProperty("stream")
+    private boolean stream;
 
     @JsonProperty("s3_bucket")
     private String s3Bucket;
@@ -34,8 +34,8 @@ public class CollectionConfig {
     private int streamBatchSize;
 
     public CollectionConfig() {
-        this.exportEnabled = true;
-        this.streamEnabled = true;
+        this.export = true;
+        this.stream = true;
         this.exportConfig = new ExportConfig();
         this.streamBatchSize = DEFAULT_STREAM_BATCH_SIZE;
     }
@@ -52,12 +52,12 @@ public class CollectionConfig {
         return Arrays.stream(collection.split(COLLECTION_SPLITTER)).collect(Collectors.toList()).get(1);
     }
 
-    public boolean isExportEnabled() {
-        return this.exportEnabled;
+    public boolean isExport() {
+        return this.export;
     }
 
-    public boolean isStreamEnabled() {
-        return this.streamEnabled;
+    public boolean isStream() {
+        return this.stream;
     }
 
     public String getS3Bucket() {
