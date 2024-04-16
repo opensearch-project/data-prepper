@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
@@ -31,10 +32,12 @@ public class SchemaConfig {
   @JsonProperty("version")
   private int version;
 
-  @JsonProperty("schema_registry_api_key")
+  @JsonAlias("schema_registry_api_key")
+  @JsonProperty("api_key")
   private String schemaRegistryApiKey;
 
-  @JsonProperty("schema_registry_api_secret")
+  @JsonAlias("schema_registry_api_secret")
+  @JsonProperty("api_secret")
   private String schemaRegistryApiSecret;
 
   @JsonProperty("session_timeout_ms")
