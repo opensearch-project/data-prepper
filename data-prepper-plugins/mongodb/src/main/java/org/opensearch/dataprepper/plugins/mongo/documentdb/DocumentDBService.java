@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 public class DocumentDBService {
     private static final Logger LOG = LoggerFactory.getLogger(DocumentDBService.class);
@@ -62,9 +63,13 @@ public class DocumentDBService {
             runnableList.add(exportWorker);
         }
 
-        if (sourceConfig.getCollections().stream().anyMatch(CollectionConfig::isStream)) {
-            final S3PartitionCreatorScheduler s3PartitionCreatorScheduler = new S3PartitionCreatorScheduler(sourceCoordinator);
+        final List<String> collections = sourceConfig.getCollections().stream().map(CollectionConfig::getCollection).collect(Collectors.toList());
+        if (!collections.isEmpty()) {
+            final S3PartitionCreatorScheduler s3PartitionCreatorScheduler = new S3PartitionCreatorScheduler(sourceCoordinator, collections);
             runnableList.add(s3PartitionCreatorScheduler);
+        }
+
+        if (sourceConfig.getCollections().stream().anyMatch(CollectionConfig::isStream)) {
             final StreamScheduler streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, pluginMetrics);
             runnableList.add(streamScheduler);
         }

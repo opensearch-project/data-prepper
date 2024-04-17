@@ -38,7 +38,7 @@ public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator 
 
     public DataStreamPartitionCheckpoint(final EnhancedSourceCoordinator enhancedSourceCoordinator,
                                          final StreamPartition streamPartition) {
-        super(enhancedSourceCoordinator, streamPartition.getCollection());
+        super(enhancedSourceCoordinator);
         this.enhancedSourceCoordinator = enhancedSourceCoordinator;
         this.streamPartition = streamPartition;
     }

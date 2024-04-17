@@ -101,8 +101,8 @@ public class ExportPartitionWorker implements Runnable {
         this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
     }
 
-    private boolean shouldWaitForS3Partition() {
-        s3PartitionStatus = partitionCheckpoint.getGlobalS3FolderCreationStatus();
+    private boolean shouldWaitForS3Partition(final String collection) {
+        s3PartitionStatus = partitionCheckpoint.getGlobalS3FolderCreationStatus(collection);
         return s3PartitionStatus.isEmpty();
     }
 
@@ -120,7 +120,7 @@ public class ExportPartitionWorker implements Runnable {
             throw new RuntimeException("Invalid Collection Name. Must as db.collection format");
         }
         long lastCheckpointTime = System.currentTimeMillis();
-        while (shouldWaitForS3Partition() && !Thread.currentThread().isInterrupted()) {
+        while (shouldWaitForS3Partition(dataQueryPartition.getCollection()) && !Thread.currentThread().isInterrupted()) {
             LOG.info("S3 partition was not complete for collection {}, waiting for partitions to be created before resuming export.", dataQueryPartition.getCollection());
             try {
                 Thread.sleep(DEFAULT_PARTITION_CREATE_WAIT_INTERVAL_MILLIS);

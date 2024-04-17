@@ -31,7 +31,7 @@ public class DataQueryPartitionCheckpoint extends S3FolderPartitionCoordinator {
 
 
     public DataQueryPartitionCheckpoint(EnhancedSourceCoordinator enhancedSourceCoordinator, DataQueryPartition dataQueryPartition) {
-        super(enhancedSourceCoordinator, dataQueryPartition.getCollection());
+        super(enhancedSourceCoordinator);
         this.enhancedSourceCoordinator = enhancedSourceCoordinator;
         this.dataQueryPartition = dataQueryPartition;
     }
