@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
@@ -18,6 +19,7 @@ import java.util.stream.Stream;
 public class AuthConfig {
 
     public static class SaslAuthConfig {
+        @JsonAlias("plain")
         @JsonProperty("plaintext")
         private PlainTextAuthConfig plainTextAuthConfig;
 
