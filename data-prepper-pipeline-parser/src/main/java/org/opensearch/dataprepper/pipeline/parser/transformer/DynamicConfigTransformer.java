@@ -12,7 +12,6 @@ import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
-import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluatorResult;
 
@@ -29,7 +28,6 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RuleEvaluator ruleEvaluator;
-    private final PipelinesDataflowModelParser pipelinesDataflowModelParser;
     private final PipelinesDataFlowModel preTransformedPipelinesDataFlowModel;
     Pattern placeholderPattern = Pattern.compile("\\{\\{\\s*(.+?)\\s*}}");
 
@@ -50,11 +48,10 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
 
 //    ParseContext mainParseContext = JsonPath.using(parseConfig);
 
-    public DynamicConfigTransformer(PipelinesDataflowModelParser pipelinesDataflowModelParser,
+    public DynamicConfigTransformer(PipelinesDataFlowModel preTransformedDataFlowModel,
                                     RuleEvaluator ruleEvaluator) {
         this.ruleEvaluator = ruleEvaluator;
-        this.pipelinesDataflowModelParser = pipelinesDataflowModelParser;
-        this.preTransformedPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
+        this.preTransformedPipelinesDataFlowModel = preTransformedDataFlowModel;
     }
 
     @Override

@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.pipeline.parser.transformer.DynamicConfigTrans
 import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineConfigurationTransformer;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -70,9 +71,9 @@ public class PipelineParserConfiguration {
 
     @Bean
     public PipelineConfigurationTransformer pipelineConfigTransformer(
-            PipelinesDataflowModelParser pipelinesDataflowModelParser,
+            @Qualifier("preTransformedDataFlowModel") PipelinesDataFlowModel preTransformedDataFlowModel,
             RuleEvaluator ruleEvaluator) {
-        return new DynamicConfigTransformer(pipelinesDataflowModelParser,ruleEvaluator);
+        return new DynamicConfigTransformer(preTransformedDataFlowModel,ruleEvaluator);
     }
 
 
