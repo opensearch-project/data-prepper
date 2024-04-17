@@ -1,5 +1,7 @@
 package org.opensearch.dataprepper.pipeline.parser.rule;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -11,8 +13,6 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
 import org.opensearch.dataprepper.pipeline.parser.TestConfigurationProvider;
 import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactory;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Collections;

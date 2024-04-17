@@ -7,6 +7,7 @@ import static org.opensearch.dataprepper.pipeline.parser.PipelineTransformationC
 
 import javax.inject.Named;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class TransformersFactory implements PipelineTransformationPathProvider {
@@ -52,10 +53,11 @@ public class TransformersFactory implements PipelineTransformationPathProvider {
     public PipelineTemplateModel getTemplateModel(String pluginName) {
         String templatePath = getPluginTemplateFileLocation(pluginName);
 
-        //read file as json string based on a mapper file
         try {
             PipelineTemplateModel pipelineTemplateModel = YAML_MAPPER.readValue(new File(templatePath), PipelineTemplateModel.class);
             return pipelineTemplateModel;
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

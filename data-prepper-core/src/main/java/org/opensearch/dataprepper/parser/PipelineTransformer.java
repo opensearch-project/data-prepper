@@ -48,6 +48,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 @SuppressWarnings("rawtypes")
 public class PipelineTransformer {
@@ -67,7 +68,7 @@ public class PipelineTransformer {
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final SourceCoordinatorFactory sourceCoordinatorFactory;
 
-    public PipelineTransformer(final PipelinesDataFlowModel pipelinesDataFlowModel,
+    public PipelineTransformer(@Qualifier("transformedDataFlowModel") final PipelinesDataFlowModel pipelinesDataFlowModel,
                                final PluginFactory pluginFactory,
                                final PeerForwarderProvider peerForwarderProvider,
                                final RouterFactory routerFactory,

@@ -28,7 +28,7 @@ public class PipelineTemplateModel {
 
     @JsonCreator
     @SuppressWarnings("unused")
-    private PipelineTemplateModel() {
+    public PipelineTemplateModel() {
     }
 
     public PipelineTemplateModel(final Map<String, Object> pipelines) {

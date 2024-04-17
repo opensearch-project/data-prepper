@@ -1,41 +1,25 @@
-package org.opensearch.dataprepper.pipeline.parser;
+package org.opensearch.dataprepper.pipeline.parser.transformer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import com.jayway.jsonpath.Configuration;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.Option;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.mockito.ArgumentMatchers.anyString;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import static org.mockito.Mockito.when;
-import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
-import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.model.configuration.SinkModel;
+import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
+import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationReader;
+import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
+import org.opensearch.dataprepper.pipeline.parser.TestConfigurationProvider;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.transformer.DynamicConfigTransformer;
 import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineConfigurationTransformer;
-import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineTemplateModel;
 import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactory;
-import com.fasterxml.jackson.databind.SerializationFeature;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 
@@ -67,23 +51,24 @@ class DynamicConfigTransformerTest {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
-        PipelineTemplateModel templateDataFlowModel = yamlMapper.readValue(new File(templateDocDBFilePath),
-                PipelineTemplateModel.class);
+//        PipelineTemplateModel templateDataFlowModel = yamlMapper.readValue(new File(templateDocDBFilePath),
+//                PipelineTemplateModel.class);
 
         transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
                 TEMPLATES_DIRECTORY_PATH));
         when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
+        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
         PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(pipelinesDataflowModelParser,
                 ruleEvaluator);
-        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration(templateDataFlowModel);
+        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration();
         String transformedYaml = yamlMapper.writeValueAsString(transformedModel);
 
-        Map<String, Object> transformedYamlasMap = yamlMapper.readValue(transformedYaml,Map.class);
+        Map<String, Object> transformedYamlasMap = yamlMapper.readValue(transformedYaml, Map.class);
         Map<String, Object> expectedYamlasMap = yamlMapper.readValue(new File(expectedDocDBFilePath), Map.class);
-        assertTrue(expectedYamlasMap.equals(transformedYamlasMap), "The transformed YAML should match the expected YAML.");
+        assertEquals(expectedYamlasMap, transformedYamlasMap, "The transformed YAML should match the expected YAML.");
     }
 
     @Test
@@ -98,23 +83,25 @@ class DynamicConfigTransformerTest {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
-        PipelineTemplateModel templateDataFlowModel = yamlMapper.readValue(new File(templateDocDBFilePath),
-                PipelineTemplateModel.class);
+//        PipelineTemplateModel templateDataFlowModel = yamlMapper.readValue(new File(templateDocDBFilePath),
+//                PipelineTemplateModel.class);
 
         transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
                 TEMPLATES_DIRECTORY_PATH));
         when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
+        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
         PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(pipelinesDataflowModelParser,
                 ruleEvaluator);
-        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration(templateDataFlowModel);
+        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration();
         String transformedYaml = yamlMapper.writeValueAsString(transformedModel);
 
-        Map<String, Object> transformedYamlasMap = yamlMapper.readValue(transformedYaml,Map.class);
+        Map<String, Object> transformedYamlasMap = yamlMapper.readValue(transformedYaml, Map.class);
         Map<String, Object> expectedYamlasMap = yamlMapper.readValue(new File(expectedDocDBFilePath), Map.class);
-        assertTrue(expectedYamlasMap.equals(transformedYamlasMap), "The transformed YAML should match the expected YAML.");
+        assertEquals(expectedYamlasMap, transformedYamlasMap, "The transformed YAML should match the expected YAML.");
     }
 
 

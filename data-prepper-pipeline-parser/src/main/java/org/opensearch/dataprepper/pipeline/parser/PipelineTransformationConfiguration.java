@@ -1,7 +1,6 @@
 package org.opensearch.dataprepper.pipeline.parser;
 
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
-import org.opensearch.dataprepper.pipeline.parser.transformer.DynamicConfigTransformer;
 import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

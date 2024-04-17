@@ -19,7 +19,7 @@ dependencies {
     implementation 'org.projectlombok:lombok:1.18.22'
     implementation 'com.jayway.jsonpath:json-path:2.6.0'
     implementation 'javax.inject:javax.inject:1'
-    implementation 'org.testng:testng:7.1.0'
+//    implementation 'org.testng:testng:7.1.0'
     implementation(libs.spring.core) {
         exclude group: 'commons-logging', module: 'commons-logging'
     }

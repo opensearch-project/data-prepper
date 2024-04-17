@@ -17,8 +17,10 @@ import com.jayway.jsonpath.PathNotFoundException;
 import com.jayway.jsonpath.ReadContext;
 import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
+import static java.lang.String.format;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineTemplateModel;
 import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactory;
 
 import java.io.File;
@@ -41,34 +43,43 @@ public class RuleEvaluator {
         return isDocDBSource(pipelineModel);
     }
 
+    /**
+     *  Evaluates based on rules if it is docDB and needs transformation.
+     *  Assumption: only one pipeline can have transformation.
+     * @param pipelinesModel
+     * @return
+     */
     private RuleEvaluatorResult isDocDBSource(PipelinesDataFlowModel pipelinesModel) {
         //TODO
         //dynamically find pluginName Needed for transformation based on rule that applies
         PLUGIN_NAME = "documentdb";
-        RuleEvaluatorResult result = new RuleEvaluatorResult();
-//            String pipelinesJson = OBJECT_MAPPER.writeValueAsString(pipelineModel);
         String pluginRulesPath = transformersFactory.getPluginRuleFileLocation(PLUGIN_NAME);
         Map<String, PipelineModel> pipelines = pipelinesModel.getPipelines();
 
         for (Map.Entry<String, PipelineModel> entry : pipelines.entrySet()) {
             try {
                 String pipelineJson = OBJECT_MAPPER.writeValueAsString(entry);
-                return RuleEvaluatorResult.builder()
-                        .withEvaluatedResult(evaluate(pipelineJson, pluginRulesPath))
-                        .withPipelineName(entry.getKey())
-                        .build();
+                if(evaluate(pipelineJson, pluginRulesPath)) {
+                    String templateFilePath = transformersFactory.getPluginTemplateFileLocation(PLUGIN_NAME);
+                    PipelineTemplateModel templateModel = yamlMapper.readValue(new File(templateFilePath),
+                            PipelineTemplateModel.class);
+                    return RuleEvaluatorResult.builder()
+                            .withEvaluatedResult(true)
+                            .withPipelineTemplateModel(templateModel)
+                            .withPipelineName(entry.getKey())
+                            .build();
+                }
             } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
         return RuleEvaluatorResult.builder()
                 .withEvaluatedResult(false)
                 .withPipelineName(null)
+                .withPipelineTemplateModel(null)
                 .build();
-    }
-
-    public String getTransformationTemplate() {
-        return transformersFactory.getPluginTemplateFileLocation(PLUGIN_NAME);
     }
 
     private Boolean evaluate(String pipelinesJson,
@@ -90,42 +101,15 @@ public class RuleEvaluator {
                 Object result = readPathContext.read(rule);
             }
         } catch (IOException e) {
-            throw new RuntimeException();
+            //TODO --> this is failing the integ tests in core
+            // reason - transformer
+//            throw new RuntimeException(format("error reading file %s.",rulePath));
+
+            return false;
         } catch (PathNotFoundException e) {
             return false;
         }
         return true;
     }
-
-//    private String formValidTemplefilePathFromValidRule(String validRuleFilename) {
-//        String[] splitRuleString = validRuleFilename.split("-");
-//        String pluginName = splitRuleString[0];
-//        return pluginName + TEMPLATE_FILE_PATTERN;
-//    }
-
-
-//
-//
-//    /**
-//     * Assumption: The rule is always of this format: "(pipeline.<source/processor>.PluginName)"
-//     *
-//     */
-//    private String getPluginNameThatNeedsTransformation(String expressionStr) {
-//
-//        //checking for rule pattern
-//        Pattern pattern = Pattern.compile("pipeline\\.(.*?)\\.(.*)\\)");
-//        Matcher matcher = pattern.matcher(expressionStr);
-//
-//        if (matcher.find()) {
-//            // Extract the 'PluginName' part
-//            String pluginName = matcher.group(2);
-//
-//            return pluginName;
-//        } else {
-//            throw new RuntimeException("Invalid rule expression format: " + expressionStr);
-//        }
-//
-//    }
-
 }
 

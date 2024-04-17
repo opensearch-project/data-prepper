@@ -25,6 +25,7 @@ public abstract class AbstractContextManager {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractContextManager.class);
     private static final String BASE_DATA_PREPPER_PACKAGE = "org.opensearch.dataprepper";
     private static final String EXPRESSION_PACKAGE = BASE_DATA_PREPPER_PACKAGE + ".expression";
+    private static final String PARSER_PACKAGE = BASE_DATA_PREPPER_PACKAGE + ".pipeline.expression";
 
     private final AnnotationConfigApplicationContext publicApplicationContext;
     private final AnnotationConfigApplicationContext coreApplicationContext;
@@ -49,6 +50,9 @@ public abstract class AbstractContextManager {
 
     private void start() {
         publicApplicationContext.scan(EXPRESSION_PACKAGE);
+        preRefreshPublicApplicationContext(publicApplicationContext);
+
+        publicApplicationContext.scan(PARSER_PACKAGE);
         preRefreshPublicApplicationContext(publicApplicationContext);
 
         publicApplicationContext.refresh();

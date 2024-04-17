@@ -18,20 +18,24 @@ import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.transformer.DynamicConfigTransformer;
-import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactory;
+import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineConfigurationTransformer;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-
-import javax.inject.Qualifier;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 @Configuration
+@ComponentScan(basePackages = {
+        "org.opensearch.dataprepper.pipeline.parser",
+        "org.opensearch.dataprepper.plugin"
+})
 public class PipelineParserConfiguration {
 
     @Bean
     public PipelineTransformer pipelineParser(
-            final PipelinesDataFlowModel pipelinesDataFlowModel,
+            @Qualifier("transformedDataFlowModel") final PipelinesDataFlowModel pipelinesDataFlowModel,
             final PluginFactory pluginFactory,
             final PeerForwarderProvider peerForwarderProvider,
             final RouterFactory routerFactory,
@@ -65,50 +69,22 @@ public class PipelineParserConfiguration {
     }
 
     @Bean
-    public DynamicConfigTransformer pipelineConfigTransformer(
+    public PipelineConfigurationTransformer pipelineConfigTransformer(
             PipelinesDataflowModelParser pipelinesDataflowModelParser,
             RuleEvaluator ruleEvaluator) {
-        return new DynamicConfigTransformer(ruleEvaluator);
+        return new DynamicConfigTransformer(pipelinesDataflowModelParser,ruleEvaluator);
     }
 
-//
-//    @Bean
-//    public PipelinesDataFlowModel pipelinesDataFlowModel(
-//            @Qualifier("preTransformedDataFlowModel") PipelinesDataFlowModel preTransformedDataFlowModel,
-//            DynamicConfigTransformer pipelineConfigTransformer,
-//            TransformersFactory transformersFactory) {
-//        transformersFactory.getTemplateModel("documentdb");
-//        return pipelineConfigTransformer.transformConfiguration(preTransformedDataFlowModel, templateModel);
-//    }
+
+    @Bean(name  = "transformedDataFlowModel")
+    public PipelinesDataFlowModel pipelinesDataFlowModel(
+            PipelineConfigurationTransformer pipelineConfigTransformer) {
+        return pipelineConfigTransformer.transformConfiguration();
+    }
 
     @Bean(name = "preTransformedDataFlowModel")
     public PipelinesDataFlowModel preTransformedDataFlowModel(
             final PipelinesDataflowModelParser pipelinesDataflowModelParser) {
         return pipelinesDataflowModelParser.parseConfiguration();
     }
-
-//    @Bean
-//    public PipelineTemplateModel pipelineTemplateModel(
-//            final PipelineTransformationPathProvider transformationResourcesPathProvider){
-//        return transformationResourcesPathProvider.get();
-//    }
-
-//    @Bean
-//    public PipelineTemplateModel pipelineTemplateModel(
-//            final PipelineTransformationPathProvider transformationResourcesPathProvider){
-//        return transformationResourcesPathProvider.getTemplateModel();
-//    }
-//
-//    @Bean
-//    public PipelineTemplateModel pipelineTemplateModel(
-//            final PipelineTransformationPathProvider transformationResourcesPathProvider){
-//        return transformationResourcesPathProvider.getTemplateModel();
-//    }
-//
-//    @Bean
-//    public PipelineTransformationPathProvider transformationResourcesPathProvider(
-//            final PipelineTransformationPathProvider transformationResourcesPathProvider){
-//        return transformationResourcesPathProvider.getTemplateModel();
-//    }
-
 }

@@ -3,7 +3,7 @@ package org.opensearch.dataprepper.pipeline.parser.rule;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.NonNull;
+import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineTemplateModel;
 
 @Builder(setterPrefix = "with")
 @Getter
@@ -13,6 +13,8 @@ public class RuleEvaluatorResult {
     private boolean evaluatedResult;
 
     private String pipelineName;
+
+    private PipelineTemplateModel pipelineTemplateModel;
 
     public RuleEvaluatorResult() {
 

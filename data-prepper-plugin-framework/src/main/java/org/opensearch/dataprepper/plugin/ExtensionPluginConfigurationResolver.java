@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -21,7 +22,7 @@ public class ExtensionPluginConfigurationResolver {
 
     @Inject
     public ExtensionPluginConfigurationResolver(final ExtensionsConfiguration extensionsConfiguration,
-                                                final PipelinesDataFlowModel pipelinesDataFlowModel) {
+                                                @Qualifier("transformedDataFlowModel")final PipelinesDataFlowModel pipelinesDataFlowModel) {
         this.dataPrepperConfigExtensionMap = extensionsConfiguration.getPipelineExtensions() == null?
                 new HashMap<>() : new HashMap<>(extensionsConfiguration.getPipelineExtensions().getExtensionMap());
         combinedExtensionMap = new HashMap<>(dataPrepperConfigExtensionMap);
