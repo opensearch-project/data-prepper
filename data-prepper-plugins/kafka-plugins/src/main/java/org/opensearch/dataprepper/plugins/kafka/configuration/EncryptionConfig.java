@@ -5,13 +5,15 @@
 
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class EncryptionConfig {
     @JsonProperty("type")
     private EncryptionType type = EncryptionType.SSL;
 
-    @JsonProperty("certificate_content")
+    @JsonAlias("certificate_content")
+    @JsonProperty("certificate_key")
     private String certificateContent;
 
     @JsonProperty("trust_store_file_path")

@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.configuration;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 
@@ -15,7 +16,8 @@ public class ConnectionConfiguration {
   @JsonProperty("cert")
   private Path certPath;
 
-  @JsonProperty("certificate_content")
+  @JsonAlias("certiciate_content")
+  @JsonProperty("certificate_key")
   private String certificateContent;
 
   @JsonProperty("socket_timeout")

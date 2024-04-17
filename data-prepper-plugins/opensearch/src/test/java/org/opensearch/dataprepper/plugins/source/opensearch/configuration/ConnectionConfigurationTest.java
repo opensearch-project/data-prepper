@@ -46,7 +46,7 @@ public class ConnectionConfigurationTest {
 
         final String connectionYaml =
                 "  cert: \"cert\"\n" +
-                "  certificate_content: \"certificate content\"\n" +
+                "  certificate_key: \"certificate content\"\n" +
                 "  insecure: true\n";
         final ConnectionConfiguration connectionConfig = objectMapper.readValue(connectionYaml, ConnectionConfiguration.class);
         assertThat(connectionConfig.getCertPath(),equalTo(Path.of("cert")));
