@@ -202,6 +202,45 @@ public class DynamoDbSourceCoordinationStoreTest {
     }
 
     @Test
+    void tryUpdateSourcePartitionItem_calls_dynamoClientWrapper_correctly_for_unassigned_status() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
+
+        final SourcePartitionStoreItem updateItem = mock(DynamoDbSourcePartitionItem.class);
+        given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.UNASSIGNED);
+
+        given(dynamoStoreSettings.getTtl()).willReturn(null);
+
+        doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
+
+        createObjectUnderTest().tryUpdateSourcePartitionItem(updateItem);
+
+        verify((DynamoDbSourcePartitionItem) updateItem, never()).setPartitionPriority(any(String.class));
+
+        verify((DynamoDbSourcePartitionItem) updateItem).setSourceStatusCombinationKey(sourceIdentifier + "|" + SourcePartitionStatus.UNASSIGNED);
+    }
+
+    @Test
+    void tryUpdateSourcePartitionItem_calls_dynamoClientWrapper_correctly_for_unassigned_status_with_priority_override() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
+        final Instant priorityOverride = Instant.now();
+
+        final SourcePartitionStoreItem updateItem = mock(DynamoDbSourcePartitionItem.class);
+        given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.UNASSIGNED);
+
+        given(dynamoStoreSettings.getTtl()).willReturn(null);
+
+        doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
+
+        createObjectUnderTest().tryUpdateSourcePartitionItem(updateItem, priorityOverride);
+
+        verify((DynamoDbSourcePartitionItem) updateItem).setPartitionPriority(priorityOverride.toString());
+
+        verify((DynamoDbSourcePartitionItem) updateItem).setSourceStatusCombinationKey(sourceIdentifier + "|" + SourcePartitionStatus.UNASSIGNED);
+    }
+
+    @Test
     void getAvailablePartition_with_no_item_acquired_returns_empty_optional() {
         final String ownerId = UUID.randomUUID().toString();
         final String sourceIdentifier = UUID.randomUUID().toString();
@@ -316,5 +355,16 @@ public class DynamoDbSourceCoordinationStoreTest {
         given(dynamoDbClientWrapper.queryAllPartitions(sourceIdentifier)).willReturn(List.of(sourcePartitionStoreItem));
         List<SourcePartitionStoreItem> sourcePartitionStoreItems = createObjectUnderTest().queryAllSourcePartitionItems(sourceIdentifier);
         assertThat(sourcePartitionStoreItems, is(List.of(sourcePartitionStoreItem)));
+    }
+
+    @Test
+    void tryDeletePartitionItem_calls_client_wrapper_to_delete_partition() {
+        final DynamoDbSourcePartitionItem sourcePartitionStoreItem = mock(DynamoDbSourcePartitionItem.class);
+        doNothing().when(dynamoDbClientWrapper).tryDeletePartitionItem(sourcePartitionStoreItem);
+
+
+        createObjectUnderTest().tryDeletePartitionItem(sourcePartitionStoreItem);
+
+        verify(dynamoDbClientWrapper).tryDeletePartitionItem(sourcePartitionStoreItem);
     }
 }

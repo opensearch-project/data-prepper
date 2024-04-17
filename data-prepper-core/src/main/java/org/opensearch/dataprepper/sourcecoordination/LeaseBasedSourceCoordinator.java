@@ -33,8 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 
 public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
@@ -91,6 +91,10 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     private final Counter completePartitionUpdateErrorCounter;
     private final ReentrantLock lock;
 
+    private Instant lastSupplierRunTime;
+
+    static final Duration FORCE_SUPPLIER_AFTER_DURATION = Duration.ofMinutes(15);
+
     static {
         try {
             hostName = InetAddress.getLocalHost().getHostName();
@@ -128,6 +132,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         this.closePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, CLOSE_ACTION);
         this.completePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, COMPLETE_ACTION);
         this.lock = new ReentrantLock();
+        this.lastSupplierRunTime = Instant.now();
     }
 
     @Override
@@ -139,11 +144,25 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     @Override
     public Optional<SourcePartition<T>> getNextPartition(final Function<Map<String, Object>, List<PartitionIdentifier>> partitionCreationSupplier) {
+        return getNextPartitionInternal(partitionCreationSupplier, false);
+    }
+
+    @Override
+    public Optional<SourcePartition<T>> getNextPartition(final Function<Map<String, Object>, List<PartitionIdentifier>> partitionCreationSupplier, final boolean forceSupplierEnabled) {
+        if (forceSupplierEnabled && Instant.now().isAfter(lastSupplierRunTime.plus(FORCE_SUPPLIER_AFTER_DURATION))) {
+            return getNextPartitionInternal(partitionCreationSupplier, true);
+        }
+
+        return getNextPartitionInternal(partitionCreationSupplier, false);
+    }
+
+    private Optional<SourcePartition<T>> getNextPartitionInternal(final Function<Map<String, Object>, List<PartitionIdentifier>> partitionCreationSupplier, final boolean forceSupplier) {
         validateIsInitialized();
 
         Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(sourceIdentifierWithPartitionType, ownerId, DEFAULT_LEASE_TIMEOUT);
         try {
-            if (ownedPartitions.isEmpty() && lock.tryLock()) {
+            if ((ownedPartitions.isEmpty() || forceSupplier) && lock.tryLock()) {
+                lastSupplierRunTime = Instant.now();
                 final Optional<SourcePartitionStoreItem> acquiredGlobalStateForPartitionCreation = acquireGlobalStateForPartitionCreation();
                 if (acquiredGlobalStateForPartitionCreation.isPresent()) {
                     final Map<String, Object> globalStateMap = convertStringToGlobalStateMap(acquiredGlobalStateForPartitionCreation.get().getPartitionProgressState());
@@ -302,8 +321,16 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     }
 
     @Override
-    public void giveUpPartition(String partitionKey) {
+    public void giveUpPartition(final String partitionKey) {
+        giveUpPartitionInternal(partitionKey, null);
+    }
 
+    @Override
+    public void giveUpPartition(final String partitionKey, final Instant priorityTimestamp) {
+        giveUpPartitionInternal(partitionKey, priorityTimestamp);
+    }
+
+    private void giveUpPartitionInternal(final String partitionKey, final Instant priorityTimestamp) {
         if (!initialized) {
             return;
         }
@@ -318,7 +345,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             updateItem.setPartitionOwnershipTimeout(null);
 
             try {
-                sourceCoordinationStore.tryUpdateSourcePartitionItem(updateItem);
+                sourceCoordinationStore.tryUpdateSourcePartitionItem(updateItem, priorityTimestamp);
             } catch (final PartitionUpdateException e) {
                 LOG.info("Unable to explicitly give up partition {}. Partition can be considered given up.", updateItem.getSourcePartitionKey());
             }
@@ -327,6 +354,25 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             LOG.info("Partition key {} was given up by owner {}", updateItem.getSourcePartitionKey(), ownerId);
         }
         partitionsGivenUpCounter.increment();
+    }
+
+    @Override
+    public void deletePartition(final String partitionKey) {
+        final Optional<SourcePartitionStoreItem> optionalItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifierWithPartitionType, partitionKey);
+        if (optionalItem.isPresent()) {
+            final SourcePartitionStoreItem deleteItem = optionalItem.get();
+            validatePartitionOwnership(deleteItem);
+
+            try {
+                sourceCoordinationStore.tryDeletePartitionItem(deleteItem);
+            } catch (final PartitionUpdateException e) {
+                LOG.info("Unable to delete partition {}: {}.", deleteItem.getSourcePartitionKey(), e.getMessage());
+                return;
+            }
+
+
+            LOG.info("Partition key {} was deleted by owner {}", deleteItem.getSourcePartitionKey(), ownerId);
+        }
     }
 
     private T convertStringToPartitionProgressStateClass(final String serializedPartitionProgressState) {

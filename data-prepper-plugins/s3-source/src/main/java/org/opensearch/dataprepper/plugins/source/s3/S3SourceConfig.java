@@ -104,6 +104,16 @@ public class S3SourceConfig {
         return true;
     }
 
+    @AssertTrue(message = "acknowledgments and delete_s3_objects_on_read must both be set to true when using PREFIX partition mode")
+    boolean isPrefixPartitionModeValid() {
+        if (s3ScanScanOptions != null &&
+                s3ScanScanOptions.getPartitioningOptions() != null) {
+            return acknowledgments && deleteS3ObjectsOnRead;
+        }
+
+        return true;
+    }
+
     public NotificationTypeOption getNotificationType() {
         return notificationType;
     }

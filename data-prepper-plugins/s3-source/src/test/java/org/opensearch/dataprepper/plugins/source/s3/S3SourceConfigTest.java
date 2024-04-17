@@ -10,6 +10,8 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.NotificationSourceOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.OnErrorOption;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.FolderPartitioningOptions;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanScanOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectOptions;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
@@ -59,6 +61,8 @@ class S3SourceConfigTest {
         final S3SourceConfig s3SourceConfig = new S3SourceConfig();
         ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"acknowledgments", true);
         assertTrue(s3SourceConfig.getAcknowledgements());
+
+        assertThat(s3SourceConfig.isPrefixPartitionModeValid(), equalTo(true));
     }
 
     @Test
@@ -84,5 +88,19 @@ class S3SourceConfigTest {
     void isCodecProvidedWhenNeeded_returns_false_when_s3SelectOptions_is_null_and_codec_is_null(){
         final S3SourceConfig s3SourceConfig = new S3SourceConfig();
         assertFalse(s3SourceConfig.isCodecProvidedWhenNeeded());
+    }
+
+    @Test
+    void isPartitionModeValid_returns_false_when_using_prefix_mode_without_acknowledgments_enabled() throws NoSuchFieldException, IllegalAccessException {
+        final S3SourceConfig s3SourceConfig = new S3SourceConfig();;
+        final S3ScanScanOptions s3ScanScanOptions = new S3ScanScanOptions();
+        assertThat(s3ScanScanOptions.getPartitioningOptions(), equalTo(null));
+        final FolderPartitioningOptions folderPartitioningOptions = new FolderPartitioningOptions();
+        ReflectivelySetField.setField(S3ScanScanOptions.class, s3ScanScanOptions, "folderPartitioningOptions", folderPartitioningOptions);
+
+        ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"deleteS3ObjectsOnRead", true);
+        ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"s3ScanScanOptions", s3ScanScanOptions);
+
+        assertFalse(s3SourceConfig.isPrefixPartitionModeValid());
     }
 }

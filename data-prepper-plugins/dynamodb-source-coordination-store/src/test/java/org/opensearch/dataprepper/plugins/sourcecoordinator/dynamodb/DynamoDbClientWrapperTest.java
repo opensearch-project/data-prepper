@@ -26,6 +26,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbIndex;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.BeanTableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.DeleteItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.GetItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
@@ -767,6 +768,61 @@ public class DynamoDbClientWrapperTest {
         assertThat(result, is(empty()));
         verifyNoMoreInteractions(table);
     }
+
+    @Test
+    void tryDeletePartition_item_success_calls_delete_on_correct_item() throws NoSuchFieldException, IllegalAccessException {
+
+        final String ddbPartitionKey = UUID.randomUUID().toString();
+        final String ddbSortKey = UUID.randomUUID().toString();
+
+        final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = mock(DynamoDbSourcePartitionItem.class);
+        when(dynamoDbSourcePartitionItem.getSourceIdentifier()).thenReturn(ddbPartitionKey);
+        when(dynamoDbSourcePartitionItem.getSourcePartitionKey()).thenReturn(ddbSortKey);
+
+        final Long version = (long) new Random().nextInt(10);
+        given(dynamoDbSourcePartitionItem.getVersion()).willReturn(version).willReturn(version + 1L);
+
+        final ArgumentCaptor<DeleteItemEnhancedRequest> deleteItemEnhancedRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteItemEnhancedRequest.class);
+
+        final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
+        when(table.deleteItem(deleteItemEnhancedRequestArgumentCaptor.capture())).thenReturn(mock(DynamoDbSourcePartitionItem.class));
+
+        final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
+
+        reflectivelySetField(objectUnderTest, "table", table);
+
+        objectUnderTest.tryDeletePartitionItem(dynamoDbSourcePartitionItem);
+
+        verify(dynamoDbSourcePartitionItem).setVersion(version + 1L);
+
+        final DeleteItemEnhancedRequest deleteItemEnhancedRequest = deleteItemEnhancedRequestArgumentCaptor.getValue();
+
+        assertThat(deleteItemEnhancedRequest.key(), notNullValue());
+        assertThat(deleteItemEnhancedRequest.key().partitionKeyValue(), notNullValue());
+        assertThat(deleteItemEnhancedRequest.key().partitionKeyValue().s(), equalTo(ddbPartitionKey));
+        assertThat(deleteItemEnhancedRequest.key().sortKeyValue(), notNullValue());
+        assertThat(deleteItemEnhancedRequest.key().sortKeyValue().isPresent(), equalTo(true));
+        assertThat(deleteItemEnhancedRequest.key().sortKeyValue().get().s(), equalTo(ddbSortKey));
+        assertThat(deleteItemEnhancedRequest.conditionExpression().expression(), equalTo(ITEM_EXISTS_AND_HAS_LATEST_VERSION));
+        assertThat(deleteItemEnhancedRequest.conditionExpression().expressionValues(), notNullValue());
+        assertThat(deleteItemEnhancedRequest.conditionExpression().expressionValues().containsKey(":v"), equalTo(true));
+        assertThat(deleteItemEnhancedRequest.conditionExpression().expressionValues().get(":v"), notNullValue());
+        assertThat(deleteItemEnhancedRequest.conditionExpression().expressionValues().get(":v").n(), equalTo(version.toString()));
+    }
+
+    @Test
+    void tryDeletePartition_with_exception_throws_PartitionUpdateException() throws NoSuchFieldException, IllegalAccessException {
+        final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
+        when(table.deleteItem(any(DeleteItemEnhancedRequest.class))).thenThrow(RuntimeException.class);
+
+        final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
+
+        reflectivelySetField(objectUnderTest, "table", table);
+
+        final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = mock(DynamoDbSourcePartitionItem.class);
+        assertThrows(PartitionUpdateException.class, () -> objectUnderTest.tryDeletePartitionItem(dynamoDbSourcePartitionItem));
+    }
+
 
     static Stream<Class> exceptionProvider() {
         return Stream.of(RuntimeException.class, PartitionUpdateException.class);

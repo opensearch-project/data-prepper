@@ -119,6 +119,15 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
 
     @Override
     public void tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem) {
+        tryUpdateSourcePartitionItemInternal(updateItem, null);
+    }
+
+    @Override
+    public void tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem, final Instant priorityOverride) {
+        tryUpdateSourcePartitionItemInternal(updateItem, priorityOverride);
+    }
+
+    private void tryUpdateSourcePartitionItemInternal(final SourcePartitionStoreItem updateItem, final Instant priorityOverride) {
         final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = (DynamoDbSourcePartitionItem) updateItem;
         dynamoDbSourcePartitionItem.setSourceStatusCombinationKey(
                 String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, updateItem.getSourceIdentifier(), updateItem.getSourcePartitionStatus()));
@@ -131,11 +140,20 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
             dynamoDbSourcePartitionItem.setPartitionPriority(updateItem.getPartitionOwnershipTimeout().toString());
         }
 
+        if (priorityOverride != null && SourcePartitionStatus.UNASSIGNED.equals(updateItem.getSourcePartitionStatus())) {
+            dynamoDbSourcePartitionItem.setPartitionPriority(priorityOverride.toString());
+        }
+
         if (Objects.nonNull(dynamoStoreSettings.getTtl())) {
             dynamoDbSourcePartitionItem.setExpirationTime(Instant.now().plus(dynamoStoreSettings.getTtl()).getEpochSecond());
         }
 
         dynamoDbClientWrapper.tryUpdatePartitionItem(dynamoDbSourcePartitionItem);
+    }
+
+    @Override
+    public void tryDeletePartitionItem(final SourcePartitionStoreItem deleteItem) {
+        dynamoDbClientWrapper.tryDeletePartitionItem((DynamoDbSourcePartitionItem) deleteItem);
     }
 
     private ProvisionedThroughput constructProvisionedThroughput(final Long readCapacityUnits,

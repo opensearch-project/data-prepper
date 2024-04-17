@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -64,4 +65,8 @@ public interface SourceCoordinationStore {
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
      */
     void tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem);
+
+    void tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem, final Instant priorityForUnassignedPartitions);
+
+    void tryDeletePartitionItem(final SourcePartitionStoreItem deleteItem);
 }

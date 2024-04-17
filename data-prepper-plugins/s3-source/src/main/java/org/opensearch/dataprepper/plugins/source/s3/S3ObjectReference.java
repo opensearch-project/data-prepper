@@ -50,7 +50,6 @@ class S3ObjectReference {
     }
 
     public static final class Builder {
-
         private final String bucketName;
         private final String key;
         private String owner;

@@ -22,6 +22,10 @@ import java.util.stream.Stream;
  */
 public class S3ScanScanOptions {
 
+    @JsonProperty("folder_partitions")
+    @Valid
+    private FolderPartitioningOptions folderPartitioningOptions;
+
     @JsonProperty("range")
     private Duration range;
 
@@ -73,4 +77,6 @@ public class S3ScanScanOptions {
     public S3ScanSchedulingOptions getSchedulingOptions() {
         return schedulingOptions;
     }
+
+    public FolderPartitioningOptions getPartitioningOptions() { return folderPartitioningOptions; }
 }
