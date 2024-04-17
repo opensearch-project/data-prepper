@@ -64,7 +64,27 @@ public class ClientRefresher<Client>
     }
 
     private boolean basicAuthChanged(final OpenSearchSourceConfiguration newConfig) {
-        return !Objects.equals(existingConfig.getUsername(), newConfig.getUsername()) ||
-                !Objects.equals(existingConfig.getPassword(), newConfig.getPassword());
+        final String existingUsername;
+        final String existingPassword;
+        if (existingConfig.getAuthConfig() != null) {
+            existingUsername = existingConfig.getAuthConfig().getUsername();
+            existingPassword = existingConfig.getAuthConfig().getPassword();
+        } else {
+            existingUsername = existingConfig.getUsername();
+            existingPassword = existingConfig.getPassword();
+        }
+
+        final String newUsername;
+        final String newPassword;
+        if (newConfig.getAuthConfig() != null) {
+            newUsername = newConfig.getAuthConfig().getUsername();
+            newPassword = newConfig.getAuthConfig().getPassword();
+        } else {
+            newUsername = newConfig.getUsername();
+            newPassword = newConfig.getPassword();
+        }
+
+        return !Objects.equals(existingUsername, newUsername) ||
+                !Objects.equals(existingPassword, newPassword);
     }
 }

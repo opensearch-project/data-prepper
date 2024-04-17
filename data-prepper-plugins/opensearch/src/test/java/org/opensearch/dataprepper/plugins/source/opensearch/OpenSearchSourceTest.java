@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -34,6 +35,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -87,6 +89,18 @@ public class OpenSearchSourceTest {
         return new OpenSearchSource(
                 openSearchSourceConfiguration, awsCredentialsSupplier, acknowledgementSetManager,
                 pluginMetrics, pluginConfigObservable);
+    }
+
+    @Test
+    void createOpenSearchSource_throws_InvalidPluginConfigurationException_when_validateAuthConfigConflictWithDeprecatedUsernameAndPassword_throws() {
+        doThrow(InvalidPluginConfigurationException.class).when(openSearchSourceConfiguration).validateAuthConfigConflictWithDeprecatedUsernameAndPassword();
+        assertThrows(InvalidPluginConfigurationException.class, () -> createObjectUnderTest());
+    }
+
+    @Test
+    void createOpenSearchSource_throws_InvalidPluginConfigurationException_when_validateAwsConfigWithUsernameAndPassword_throws() {
+        doThrow(InvalidPluginConfigurationException.class).when(openSearchSourceConfiguration).validateAwsConfigWithUsernameAndPassword();
+        assertThrows(InvalidPluginConfigurationException.class, () -> createObjectUnderTest());
     }
 
     @Test
