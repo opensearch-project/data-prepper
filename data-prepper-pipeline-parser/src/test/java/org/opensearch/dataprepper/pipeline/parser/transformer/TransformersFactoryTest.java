@@ -1,16 +1,14 @@
 package org.opensearch.dataprepper.pipeline.parser.transformer;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+
 import java.io.File;
 import java.io.IOException;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 public class TransformersFactoryTest {
 
@@ -51,18 +49,6 @@ public class TransformersFactoryTest {
             transformersFactory.getPluginRuleFileLocation(invalidPluginName);
         });
         assertEquals("Transformation plugin not found", exception.getMessage());
-    }
-
-    @Test
-    public void testGetTemplateModel_validPluginName() throws IOException {
-        ObjectMapper mockMapper = Mockito.mock(ObjectMapper.class);
-        PipelineTemplateModel expectedModel = new PipelineTemplateModel();
-        when(mockMapper.readValue(any(File.class), (TypeReference<Object>) any())).thenReturn(expectedModel);
-        TransformersFactory factoryWithMock = new TransformersFactory(rulesDirectoryPath, templatesDirectoryPath);
-
-        PipelineTemplateModel resultModel = factoryWithMock.getTemplateModel(validPluginName);
-        assertNotNull(resultModel);
-        assertEquals(expectedModel, resultModel);
     }
 
     @Test

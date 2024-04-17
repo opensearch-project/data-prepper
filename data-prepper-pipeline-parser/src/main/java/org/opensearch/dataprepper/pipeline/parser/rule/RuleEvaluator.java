@@ -1,11 +1,5 @@
 package org.opensearch.dataprepper.pipeline.parser.rule;
 
-//import org.apache.commons.jexl3.JexlBuilder;
-//import org.apache.commons.jexl3.JexlEngine;
-//import org.apache.commons.jexl3.JexlExpression;
-//import org.apache.commons.jexl3.JexlContext;
-//import org.apache.commons.jexl3.MapContext;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -17,7 +11,6 @@ import com.jayway.jsonpath.PathNotFoundException;
 import com.jayway.jsonpath.ReadContext;
 import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
-import static java.lang.String.format;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineTemplateModel;
@@ -66,7 +59,7 @@ public class RuleEvaluator {
                     return RuleEvaluatorResult.builder()
                             .withEvaluatedResult(true)
                             .withPipelineTemplateModel(templateModel)
-                            .withPipelineName(entry.getKey())
+                            .withPipelineName(entry.getKey()) // TODO naming
                             .build();
                 }
             } catch (JsonProcessingException e) {
@@ -102,7 +95,7 @@ public class RuleEvaluator {
             }
         } catch (IOException e) {
             //TODO --> this is failing the integ tests in core
-            // reason - transformer
+            // reason - transformer not injected correctly
 //            throw new RuntimeException(format("error reading file %s.",rulePath));
 
             return false;

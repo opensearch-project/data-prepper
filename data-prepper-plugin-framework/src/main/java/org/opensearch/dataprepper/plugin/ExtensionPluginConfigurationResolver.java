@@ -22,7 +22,7 @@ public class ExtensionPluginConfigurationResolver {
 
     @Inject
     public ExtensionPluginConfigurationResolver(final ExtensionsConfiguration extensionsConfiguration,
-                                                @Qualifier("transformedDataFlowModel")final PipelinesDataFlowModel pipelinesDataFlowModel) {
+                                                final PipelinesDataFlowModel pipelinesDataFlowModel) {
         this.dataPrepperConfigExtensionMap = extensionsConfiguration.getPipelineExtensions() == null?
                 new HashMap<>() : new HashMap<>(extensionsConfiguration.getPipelineExtensions().getExtensionMap());
         combinedExtensionMap = new HashMap<>(dataPrepperConfigExtensionMap);

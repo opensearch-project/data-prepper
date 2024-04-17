@@ -24,7 +24,7 @@ import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Primary;
 
 @Configuration
 @ComponentScan(basePackages = {
@@ -35,7 +35,7 @@ public class PipelineParserConfiguration {
 
     @Bean
     public PipelineTransformer pipelineParser(
-            @Qualifier("transformedDataFlowModel") final PipelinesDataFlowModel pipelinesDataFlowModel,
+            final PipelinesDataFlowModel pipelinesDataFlowModel,
             final PluginFactory pluginFactory,
             final PeerForwarderProvider peerForwarderProvider,
             final RouterFactory routerFactory,
@@ -76,7 +76,8 @@ public class PipelineParserConfiguration {
     }
 
 
-    @Bean(name  = "transformedDataFlowModel")
+    @Bean(name  = "pipelinesDataFlowModel")
+    @Primary
     public PipelinesDataFlowModel pipelinesDataFlowModel(
             PipelineConfigurationTransformer pipelineConfigTransformer) {
         return pipelineConfigTransformer.transformConfiguration();

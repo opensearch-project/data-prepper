@@ -14,9 +14,6 @@ import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.pipeline.parser.TestConfigurationProvider;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
-import org.opensearch.dataprepper.pipeline.parser.transformer.DynamicConfigTransformer;
-import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineConfigurationTransformer;
-import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactory;
 
 import java.io.File;
 import java.io.IOException;

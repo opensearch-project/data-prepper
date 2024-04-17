@@ -1,17 +1,14 @@
 package org.opensearch.dataprepper.pipeline.parser.transformer;
 
-        import com.fasterxml.jackson.databind.ObjectMapper;
-        import org.junit.jupiter.api.BeforeEach;
-        import org.junit.jupiter.api.Test;
-        import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
-        import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-        import java.util.HashMap;
-        import java.util.Map;
-
-        import static org.junit.jupiter.api.Assertions.assertEquals;
-        import static org.junit.jupiter.api.Assertions.assertNotNull;
-        import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PipelineTemplateModelTest {
 

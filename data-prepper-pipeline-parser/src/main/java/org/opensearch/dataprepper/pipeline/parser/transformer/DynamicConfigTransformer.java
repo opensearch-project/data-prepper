@@ -82,10 +82,9 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                     pipelineNameThatNeedsTransformation);
 
             //find all placeholderPattern in template json string
-            // K:placeholder , V:jsonPath in templateJson
+            // K:placeholder , V:list of jsonPath in templateJson
+            // {{$..source}}
             Map<String, List<String>> placeholdersMap = findPlaceholdersWithPaths(templateJsonString);
-//            TODO
-//            validateAllPlaceHoldersFound(placeholdersMap, templateJsonString);
             JsonNode templateRootNode = objectMapper.readTree(templateJsonString);
 
             // get exact path in pipelineJson - this is to avoid
