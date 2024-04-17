@@ -125,8 +125,8 @@ public class StreamWorker {
         return progressState.shouldWaitForExport() && loadStatus.isEmpty();
     }
 
-    private boolean shouldWaitForS3Partition() {
-        s3PartitionStatus = partitionCheckpoint.getGlobalS3FolderCreationStatus();
+    private boolean shouldWaitForS3Partition(final String collection) {
+        s3PartitionStatus = partitionCheckpoint.getGlobalS3FolderCreationStatus(collection);
         return s3PartitionStatus.isEmpty();
     }
 
@@ -148,7 +148,7 @@ public class StreamWorker {
             MongoCollection<Document> collection = database.getCollection(collectionDBNameList.get(1));
 
             try (MongoCursor<ChangeStreamDocument<Document>> cursor = getChangeStreamCursor(collection, resumeToken.orElse(null))) {
-                while ((shouldWaitForExport(streamPartition) || shouldWaitForS3Partition()) && !Thread.currentThread().isInterrupted()) {
+                while ((shouldWaitForExport(streamPartition) || shouldWaitForS3Partition(streamPartition.getCollection())) && !Thread.currentThread().isInterrupted()) {
                     LOG.info("Initial load not complete for collection {}, waiting for initial lo be complete before resuming streams.", collectionDbName);
                     try {
                         Thread.sleep(DEFAULT_EXPORT_COMPLETE_WAIT_INTERVAL_MILLIS);
