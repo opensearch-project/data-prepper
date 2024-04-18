@@ -74,6 +74,8 @@ public class EventJsonInputOutputCodecTest {
     public void extendedTest() throws Exception {
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
+        final String attrKey = UUID.randomUUID().toString();
+        final String attrValue = UUID.randomUUID().toString();
         Map<String, Object> data = Map.of(key, value);
 
         Set<String> tags = Set.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
@@ -83,6 +85,7 @@ public class EventJsonInputOutputCodecTest {
         Instant origTime = startTime.minusSeconds(5);
         event.getMetadata().setExternalOriginationTime(origTime);
         event.getMetadata().addTags(tagsList);
+        event.getMetadata().setAttribute(attrKey, attrValue);
         outputCodec = createOutputCodec();
         inputCodec = createInputCodec();
         outputCodec.start(outputStream, null, null);
@@ -93,6 +96,7 @@ public class EventJsonInputOutputCodecTest {
             assertThat(e.get(key, String.class), equalTo(value));
             assertThat(e.getMetadata().getTimeReceived(), equalTo(startTime));
             assertThat(e.getMetadata().getTags(), equalTo(tags));
+            assertThat(e.getMetadata().getAttributes(), equalTo(Map.of(attrKey, attrValue)));
             assertThat(e.getMetadata().getExternalOriginationTime(), equalTo(origTime));
         });
     }
