@@ -23,7 +23,7 @@ dependencies {
 jacocoTestCoverageVerification {
     dependsOn(jacocoTestReport)
     violationRules {
-        rule {q
+        rule {
             limit {
                 minimum = 0.9
             }

@@ -1,3 +1,7 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.opensearch.dataprepper.pipeline.parser.transformer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,9 +51,6 @@ class DynamicConfigTransformerTest {
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
-
-//        PipelineTemplateModel templateDataFlowModel = yamlMapper.readValue(new File(templateDocDBFilePath),
-//                PipelineTemplateModel.class);
 
         transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
                 TEMPLATES_DIRECTORY_PATH));

@@ -1,3 +1,7 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.opensearch.dataprepper.pipeline.parser.transformer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -205,7 +209,6 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     public void replaceNode(JsonNode root, String jsonPath, JsonNode newNode) {
         try {
             // Read the parent path of the target node
-            //TODO
             String parentPath = jsonPath.substring(0, jsonPath.lastIndexOf('.'));
             String fieldName = jsonPath.substring(jsonPath.lastIndexOf('.') + 1);
 

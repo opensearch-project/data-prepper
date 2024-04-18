@@ -1,4 +1,4 @@
-pipeline:
+"{{pipeline-name}}-writer":
   workers: 2
   delay: 0
   source: "{{$..source}}"
@@ -41,7 +41,7 @@ pipeline:
         codec:
           json:
 
-s3-sub-pipeline:
+"{{pipeline-name}}-reader":
   workers: 2
   delay: 0
   source:
@@ -67,5 +67,3 @@ s3-sub-pipeline:
       buffer_size: 1000000
   sink:
     - opensearch: "{{$.pipeline.sink[?(@.opensearch)].opensearch}}"
-
-"{{pipelines}}":
