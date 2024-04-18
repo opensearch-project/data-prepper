@@ -25,7 +25,7 @@ import java.util.Objects;
 @DataPrepperPlugin(name = "event_json", pluginType = OutputCodec.class, pluginConfigurationType = EventJsonOutputCodecConfig.class)
 public class EventJsonOutputCodec implements OutputCodec {
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private static final String EVENT_JSON = "event_json";
+    static final String EVENT_JSON = "event_json";
     private static final JsonFactory factory = new JsonFactory();
     private final EventJsonOutputCodecConfig config;
     private JsonGenerator generator;
@@ -59,14 +59,11 @@ public class EventJsonOutputCodec implements OutputCodec {
     @Override
     public synchronized void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
         Objects.requireNonNull(event);
-        try {
-            getDataMapToSerialize(event);
-        } catch (Exception e){
-        }
+        getDataMapToSerialize(event);
         generator.flush();
     }
 
-    private Map<String, Object> getDataMapToSerialize(Event event) throws Exception {
+    private Map<String, Object> getDataMapToSerialize(Event event) throws IOException {
         Map<String, Object> dataMap = event.toMap();
         generator.writeFieldName(EventJsonDefines.DATA);
         objectMapper.writeValue(generator, dataMap);

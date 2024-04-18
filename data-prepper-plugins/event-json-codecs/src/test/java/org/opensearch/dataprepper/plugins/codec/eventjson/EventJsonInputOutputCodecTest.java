@@ -91,6 +91,7 @@ public class EventJsonInputOutputCodecTest {
         outputCodec.start(outputStream, null, null);
         outputCodec.writeEvent(event, outputStream);
         outputCodec.complete(outputStream);
+        assertThat(outputCodec.getExtension(), equalTo(EventJsonOutputCodec.EVENT_JSON));
         inputCodec.parse(new ByteArrayInputStream(outputStream.toByteArray()), record -> {
             Event e = record.getData();
             assertThat(e.get(key, String.class), equalTo(value));
