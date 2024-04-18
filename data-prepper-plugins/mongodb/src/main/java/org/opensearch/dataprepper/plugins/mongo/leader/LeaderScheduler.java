@@ -171,7 +171,7 @@ public class LeaderScheduler implements Runnable {
         exportProgressState.setDatabaseName(collectionConfig.getDatabaseName());
         exportProgressState.setExportTime(exportTime.toString()); // information purpose
         final ExportPartition exportPartition = new ExportPartition(collectionConfig.getCollection(),
-                collectionConfig.getExportPartitionSize(), exportTime, exportProgressState);
+                collectionConfig.getExportBatchSize(), exportTime, exportProgressState);
         coordinator.createPartition(exportPartition);
     }
 

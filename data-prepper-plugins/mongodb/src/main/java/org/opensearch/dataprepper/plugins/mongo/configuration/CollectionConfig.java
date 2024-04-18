@@ -10,15 +10,12 @@ public class CollectionConfig {
     private static final String COLLECTION_SPLITTER = "\\.";
     private static final int DEFAULT_STREAM_BATCH_SIZE = 1000;
     private static final int DEFAULT_PARTITION_COUNT = 100;
-    private static final int DEFAULT_EXPORT_PARTITION_SIZE = 4000;
+    private static final int DEFAULT_EXPORT_BATCH_SIZE = 10_000;
     @JsonProperty("collection")
     private @NotNull String collection;
 
     @JsonProperty("export")
     private boolean export;
-
-    @JsonProperty("export_partition_size")
-    private int exportPartitionSize;
 
     @JsonProperty("stream")
     private boolean stream;
@@ -35,6 +32,8 @@ public class CollectionConfig {
     @JsonProperty("partition_count")
     private int partitionCount;
 
+    @JsonProperty("export_batch_size")
+    private int exportBatchSize;
     @JsonProperty("stream_batch_size")
     private int streamBatchSize;
 
@@ -43,7 +42,7 @@ public class CollectionConfig {
         this.stream = true;
         this.streamBatchSize = DEFAULT_STREAM_BATCH_SIZE;
         this.partitionCount = DEFAULT_PARTITION_COUNT;
-        this.exportPartitionSize = DEFAULT_EXPORT_PARTITION_SIZE;
+        this.exportBatchSize = DEFAULT_EXPORT_BATCH_SIZE;
     }
 
     public String getCollection() {
@@ -78,8 +77,8 @@ public class CollectionConfig {
         return this.partitionCount;
     }
 
-    public int getExportPartitionSize() {
-        return this.exportPartitionSize;
+    public int getExportBatchSize() {
+        return this.exportBatchSize;
     }
 
     public int getStreamBatchSize() {
