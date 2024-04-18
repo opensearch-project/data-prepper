@@ -212,10 +212,10 @@ subprojects {
         resolutionStrategy.eachDependency { def details ->
             if (details.requested.group == 'io.netty') {
                 if (details.requested.name == 'netty') {
-                    details.useTarget group: 'io.netty', name: 'netty-all', version: '4.1.100.Final'
+                    details.useTarget group: 'io.netty', name: 'netty-all', version: '4.1.108.Final'
                     details.because 'Fixes CVE-2022-41881, CVE-2021-21290 and CVE-2022-41915.'
                 } else if (!details.requested.name.startsWith('netty-tcnative')) {
-                    details.useVersion '4.1.100.Final'
+                    details.useVersion '4.1.108.Final'
                     details.because 'Fixes CVE-2022-41881, CVE-2021-21290 and CVE-2022-41915.'
                 }
             } else if (details.requested.group == 'log4j' && details.requested.name == 'log4j') {
