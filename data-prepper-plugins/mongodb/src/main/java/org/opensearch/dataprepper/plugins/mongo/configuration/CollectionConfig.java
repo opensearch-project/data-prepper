@@ -9,14 +9,16 @@ import java.util.stream.Collectors;
 public class CollectionConfig {
     private static final String COLLECTION_SPLITTER = "\\.";
     private static final int DEFAULT_STREAM_BATCH_SIZE = 1000;
+    private static final int DEFAULT_PARTITION_COUNT = 100;
+    private static final int DEFAULT_EXPORT_PARTITION_SIZE = 4000;
     @JsonProperty("collection")
     private @NotNull String collection;
 
-    @JsonProperty("export_config")
-    private ExportConfig exportConfig;
-
     @JsonProperty("export")
     private boolean export;
+
+    @JsonProperty("export_partition_size")
+    private int exportPartitionSize;
 
     @JsonProperty("stream")
     private boolean stream;
@@ -30,14 +32,18 @@ public class CollectionConfig {
     @JsonProperty("s3_region")
     private String s3Region;
 
+    @JsonProperty("partition_count")
+    private int partitionCount;
+
     @JsonProperty("stream_batch_size")
     private int streamBatchSize;
 
     public CollectionConfig() {
         this.export = true;
         this.stream = true;
-        this.exportConfig = new ExportConfig();
         this.streamBatchSize = DEFAULT_STREAM_BATCH_SIZE;
+        this.partitionCount = DEFAULT_PARTITION_COUNT;
+        this.exportPartitionSize = DEFAULT_EXPORT_PARTITION_SIZE;
     }
 
     public String getCollection() {
@@ -68,28 +74,18 @@ public class CollectionConfig {
         return this.s3PathPrefix;
     }
 
+    public int getPartitionCount() {
+        return this.partitionCount;
+    }
+
+    public int getExportPartitionSize() {
+        return this.exportPartitionSize;
+    }
+
     public int getStreamBatchSize() {
         return this.streamBatchSize;
     }
     public String getS3Region() {
         return this.s3Region;
-    }
-
-    public ExportConfig getExportConfig() {
-        return this.exportConfig;
-    }
-
-    public static class ExportConfig {
-        private static final int DEFAULT_ITEMS_PER_PARTITION = 4000;
-        @JsonProperty("items_per_partition")
-        private Integer itemsPerPartition;
-
-        public ExportConfig() {
-            this.itemsPerPartition = DEFAULT_ITEMS_PER_PARTITION;
-        }
-
-        public Integer getItemsPerPartition() {
-            return this.itemsPerPartition;
-        }
     }
 }

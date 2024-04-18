@@ -140,7 +140,7 @@ public class LeaderScheduler implements Runnable {
     private void createS3Partition(final CollectionConfig collectionConfig) {
         LOG.info("Creating s3 folder global partition: {}", collectionConfig.getCollection());
         coordinator.createPartition(new S3FolderPartition(collectionConfig.getS3Bucket(), collectionConfig.getS3PathPrefix(),
-                collectionConfig.getS3Region(), collectionConfig.getCollection()));
+                collectionConfig.getS3Region(), collectionConfig.getCollection(), collectionConfig.getPartitionCount()));
     }
 
     /**
@@ -171,7 +171,7 @@ public class LeaderScheduler implements Runnable {
         exportProgressState.setDatabaseName(collectionConfig.getDatabaseName());
         exportProgressState.setExportTime(exportTime.toString()); // information purpose
         final ExportPartition exportPartition = new ExportPartition(collectionConfig.getCollection(),
-                collectionConfig.getExportConfig().getItemsPerPartition(), exportTime, exportProgressState);
+                collectionConfig.getExportPartitionSize(), exportTime, exportProgressState);
         coordinator.createPartition(exportPartition);
     }
 

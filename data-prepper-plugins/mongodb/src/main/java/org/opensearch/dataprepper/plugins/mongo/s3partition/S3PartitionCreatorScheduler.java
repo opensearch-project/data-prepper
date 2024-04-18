@@ -16,7 +16,6 @@ public class S3PartitionCreatorScheduler extends S3FolderPartitionCoordinator im
     private static final Logger LOG = LoggerFactory.getLogger(S3PartitionCreatorScheduler.class);
     public static final String S3_FOLDER_PREFIX = "S3-FOLDER-";
     private static final int DEFAULT_TAKE_LEASE_INTERVAL_MILLIS = 60_000;
-    private static final int DEFAULT_S3_PARTITION_SIZE = 50;
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final List<String> collections;
     public S3PartitionCreatorScheduler(final EnhancedSourceCoordinator sourceCoordinator,
@@ -33,7 +32,7 @@ public class S3PartitionCreatorScheduler extends S3FolderPartitionCoordinator im
                 final Optional<EnhancedSourcePartition> sourcePartition = sourceCoordinator.acquireAvailablePartition(S3FolderPartition.PARTITION_TYPE);
                 if (sourcePartition.isPresent()) {
                     final S3FolderPartition s3FolderPartition = (S3FolderPartition) sourcePartition.get();
-                    final List<String> s3Folders = createS3BucketPartitions();
+                    final List<String> s3Folders = createS3BucketPartitions(s3FolderPartition.getPartitionCount());
                     sourceCoordinator.completePartition(s3FolderPartition);
                     final S3PartitionStatus s3PartitionStatus = new S3PartitionStatus(s3Folders);
                     sourceCoordinator.createPartition(new GlobalState(S3_FOLDER_PREFIX + s3FolderPartition.getCollection(), s3PartitionStatus.toMap()));
@@ -72,8 +71,8 @@ public class S3PartitionCreatorScheduler extends S3FolderPartitionCoordinator im
         LOG.warn("S3 partition creator scheduler interrupted, looks like shutdown has triggered");
     }
 
-    private List<String> createS3BucketPartitions() {
-        final S3PartitionCreator s3PartitionCreator = new S3PartitionCreator(DEFAULT_S3_PARTITION_SIZE);
+    private List<String> createS3BucketPartitions(int partitionCount) {
+        final S3PartitionCreator s3PartitionCreator = new S3PartitionCreator(partitionCount);
         return s3PartitionCreator.createPartition();
     }
 }

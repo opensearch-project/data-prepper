@@ -7,15 +7,15 @@ import java.util.List;
 
 public class S3PartitionCreator {
     private static final Logger LOG = LoggerFactory.getLogger(S3PartitionCreator.class);
-    private final int partitionSize;
+    private final int partitionCount;
 
-    S3PartitionCreator(final int partitionSize) {
-        this.partitionSize = partitionSize;
+    S3PartitionCreator(final int partitionCount) {
+        this.partitionCount = partitionCount;
     }
 
     List<String> createPartition() {
         final List<String> partitions = new ArrayList<>();
-        for (int i = 0; i < partitionSize; i++) {
+        for (int i = 0; i < partitionCount; i++) {
             String partitionName = String.format("%02x", i) + "/";
             partitions.add(partitionName);
         }
