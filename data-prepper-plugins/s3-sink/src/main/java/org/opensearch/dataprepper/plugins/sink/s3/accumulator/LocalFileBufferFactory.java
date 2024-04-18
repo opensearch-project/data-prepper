@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,7 +20,7 @@ public class LocalFileBufferFactory implements BufferFactory {
     public static final String SUFFIX = ".log";
 
     @Override
-    public Buffer getBuffer(final S3Client s3Client,
+    public Buffer getBuffer(final S3AsyncClient s3Client,
                             final Supplier<String> bucketSupplier,
                             final Supplier<String> keySupplier,
                             final String defaultBucket) {

@@ -18,6 +18,7 @@ import java.io.OutputStream;
 import java.time.Duration;
 import java.util.Random;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.sameInstance;
@@ -36,6 +37,12 @@ class CompressionBufferTest {
 
     @Mock
     private CompressionEngine compressionEngine;
+
+    @Mock
+    private Consumer<Boolean> mockRunOnCompletion;
+
+    @Mock
+    private Consumer<Throwable> mockRunOnFailure;
 
     private Random random;
 
@@ -96,9 +103,9 @@ class CompressionBufferTest {
         final String bucket = UUID.randomUUID().toString();
         final String key = UUID.randomUUID().toString();
 
-        createObjectUnderTest().flushToS3();
+        createObjectUnderTest().flushToS3(mockRunOnCompletion, mockRunOnFailure);
 
-        verify(innerBuffer).flushToS3();
+        verify(innerBuffer).flushToS3(mockRunOnCompletion, mockRunOnFailure);
     }
 
     @Test

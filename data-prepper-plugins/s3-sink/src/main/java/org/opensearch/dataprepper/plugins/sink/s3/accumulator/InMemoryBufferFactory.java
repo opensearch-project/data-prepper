@@ -5,13 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.util.function.Supplier;
 
 public class InMemoryBufferFactory implements BufferFactory {
     @Override
-    public Buffer getBuffer(final S3Client s3Client,
+    public Buffer getBuffer(final S3AsyncClient s3Client,
                             final Supplier<String> bucketSupplier,
                             final Supplier<String> keySupplier,
                             final String defaultBucket) {
