@@ -49,6 +49,20 @@ public class EventJsonInputOutputCodecTest {
     }
 
     @Test
+    public void emptyTest() throws Exception {
+        ByteArrayInputStream inputStream = new ByteArrayInputStream("".getBytes());
+        inputCodec = createInputCodec();
+        inputCodec.parse(inputStream, record -> { });
+        inputStream = new ByteArrayInputStream("[]".getBytes());
+        inputCodec.parse(inputStream, record -> { });
+        inputStream = new ByteArrayInputStream("[{}]".getBytes());
+        inputCodec.parse(inputStream, record -> { });
+        inputStream = new ByteArrayInputStream("{}".getBytes());
+        inputCodec.parse(inputStream, record -> { });
+        
+    }
+
+    @Test
     public void basicTest() throws Exception {
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
