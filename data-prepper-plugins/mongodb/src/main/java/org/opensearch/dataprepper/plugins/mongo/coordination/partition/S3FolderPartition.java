@@ -11,31 +11,34 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import java.util.Optional;
 
 /**
- * A S3 partition represents an S3 partition job to create S3 path prefix/sub folder that will
+ * A S3 Folder partition represents an S3 partition job to create S3 path prefix/sub folder that will
  * be used to group records based on record key.
  */
 public class S3FolderPartition extends EnhancedSourcePartition<String> {
 
     public static final String PARTITION_TYPE = "S3_FOLDER";
     private final String bucketName;
-    private final String subFolder;
+    private final String pathPrefix;
     private final String region;
     private final String collection;
+    private final int partitionCount;
 
     public S3FolderPartition(final SourcePartitionStoreItem sourcePartitionStoreItem) {
         setSourcePartitionStoreItem(sourcePartitionStoreItem);
         String[] keySplits = sourcePartitionStoreItem.getSourcePartitionKey().split("\\|");
         collection = keySplits[0];
         bucketName = keySplits[1];
-        subFolder = keySplits[2];
-        region = keySplits[3];
+        pathPrefix = keySplits[2];
+        partitionCount = Integer.parseInt(keySplits[3]);
+        region = keySplits[4];
     }
 
-    public S3FolderPartition(final String bucketName, final String subFolder, final String region, final String collection) {
+    public S3FolderPartition(final String bucketName, final String pathPrefix, final String region, final String collection, final int partitionCount) {
         this.bucketName = bucketName;
-        this.subFolder = subFolder;
+        this.pathPrefix = pathPrefix;
         this.region = region;
         this.collection = collection;
+        this.partitionCount = partitionCount;
     }
     
     @Override
@@ -45,7 +48,7 @@ public class S3FolderPartition extends EnhancedSourcePartition<String> {
 
     @Override
     public String getPartitionKey() {
-        return collection + "|" + bucketName + "|" + subFolder + "|" + region;
+        return collection + "|" + bucketName + "|" + pathPrefix + "|" + partitionCount + "|" + region;
     }
 
     @Override
@@ -58,8 +61,8 @@ public class S3FolderPartition extends EnhancedSourcePartition<String> {
         return bucketName;
     }
 
-    public String getSubFolder() {
-        return subFolder;
+    public String getPathPrefix() {
+        return pathPrefix;
     }
 
     public String getRegion() {
@@ -68,5 +71,9 @@ public class S3FolderPartition extends EnhancedSourcePartition<String> {
 
     public String getCollection() {
         return collection;
+    }
+
+    public int getPartitionCount() {
+        return partitionCount;
     }
 }
