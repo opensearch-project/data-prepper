@@ -101,6 +101,9 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchInteg
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.isOSBundle;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.waitForClusterStateUpdatesToFinish;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.wipeAllTemplates;
+import static org.opensearch.dataprepper.plugins.source.opensearch.configuration.AuthConfig.AUTHENTICATION;
+import static org.opensearch.dataprepper.plugins.source.opensearch.configuration.AuthConfig.PASSWORD;
+import static org.opensearch.dataprepper.plugins.source.opensearch.configuration.AuthConfig.USERNAME;
 
 public class OpenSearchSinkIT {
     private static final int LUCENE_CHAR_LENGTH_LIMIT = 32_766;
@@ -1516,8 +1519,7 @@ public class OpenSearchSinkIT {
 
         final Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, null);
         metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.MANAGEMENT_DISABLED.getValue());
-        metadata.put(ConnectionConfiguration.USERNAME, username);
-        metadata.put(ConnectionConfiguration.PASSWORD, password);
+        metadata.put(AUTHENTICATION, Map.of(USERNAME, username, PASSWORD, password));
         metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         final PluginSetting pluginSetting = generatePluginSettingByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
@@ -1553,8 +1555,7 @@ public class OpenSearchSinkIT {
         final String user = System.getProperty("tests.opensearch.user");
         final String password = System.getProperty("tests.opensearch.password");
         if (user != null) {
-            metadata.put(ConnectionConfiguration.USERNAME, user);
-            metadata.put(ConnectionConfiguration.PASSWORD, password);
+            metadata.put(AUTHENTICATION, Map.of(USERNAME, user, PASSWORD, password));
         }
         final String distributionVersion = DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(
                 OpenSearchIntegrationHelper.getVersion()) >= 0 ?
