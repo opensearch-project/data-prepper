@@ -54,9 +54,6 @@ public class LeaderSchedulerTest {
     @Mock
     private CollectionConfig collectionConfig;
 
-    @Mock
-    private CollectionConfig.ExportConfig exportConfig;
-
     @Captor
     private ArgumentCaptor<EnhancedSourcePartition> enhancedSourcePartitionArgumentCaptor;
 
@@ -84,12 +81,13 @@ public class LeaderSchedulerTest {
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         given(collectionConfig.isExport()).willReturn(true);
         given(collectionConfig.isStream()).willReturn(true);
-        given(collectionConfig.getExportConfig()).willReturn(exportConfig);
-        given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
+        given(collectionConfig.getExportBatchSize()).willReturn(Math.abs(new Random().nextInt()));
         given(collectionConfig.getCollection()).willReturn(TEST_COLLECTION);
         given(collectionConfig.getS3PathPrefix()).willReturn(TEST_S3_PATH_PREFIX);
         given(collectionConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
         given(collectionConfig.getS3Region()).willReturn(TEST_S3_REGION);
+        final int partitionCount = Math.abs(new Random().nextInt(10));
+        given(collectionConfig.getPartitionCount()).willReturn(partitionCount);
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> leaderScheduler.run());
@@ -127,7 +125,7 @@ public class LeaderSchedulerTest {
         assertThat(allEnhancedSourcePartitions.get(3), instanceOf(S3FolderPartition.class));
         final S3FolderPartition s3FolderPartition = (S3FolderPartition) allEnhancedSourcePartitions.get(3);
         assertThat(s3FolderPartition.getPartitionKey(), equalTo(String.format(
-                "%s|%s|%s|%s", TEST_COLLECTION, TEST_S3_BUCKET_NAME, TEST_S3_PATH_PREFIX, TEST_S3_REGION)));
+                "%s|%s|%s|%d|%s", TEST_COLLECTION, TEST_S3_BUCKET_NAME, TEST_S3_PATH_PREFIX, partitionCount, TEST_S3_REGION)));
         assertThat(allEnhancedSourcePartitions.get(4), instanceOf(StreamPartition.class));
         executorService.shutdownNow();
     }
@@ -139,12 +137,13 @@ public class LeaderSchedulerTest {
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         given(collectionConfig.isExport()).willReturn(true);
-        given(collectionConfig.getExportConfig()).willReturn(exportConfig);
-        given(exportConfig.getItemsPerPartition()).willReturn(new Random().nextInt());
+        given(collectionConfig.getExportBatchSize()).willReturn(Math.abs(new Random().nextInt()));
         given(collectionConfig.getCollection()).willReturn(TEST_COLLECTION);
         given(collectionConfig.getS3PathPrefix()).willReturn(TEST_S3_PATH_PREFIX);
         given(collectionConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
         given(collectionConfig.getS3Region()).willReturn(TEST_S3_REGION);
+        final int partitionCount = Math.abs(new Random().nextInt(10));
+        given(collectionConfig.getPartitionCount()).willReturn(partitionCount);
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> leaderScheduler.run());
@@ -182,7 +181,7 @@ public class LeaderSchedulerTest {
         assertThat(allEnhancedSourcePartitions.get(3), instanceOf(S3FolderPartition.class));
         final S3FolderPartition s3FolderPartition = (S3FolderPartition) allEnhancedSourcePartitions.get(3);
         assertThat(s3FolderPartition.getPartitionKey(), equalTo(String.format(
-                "%s|%s|%s|%s", TEST_COLLECTION, TEST_S3_BUCKET_NAME, TEST_S3_PATH_PREFIX, TEST_S3_REGION)));
+                "%s|%s|%s|%d|%s", TEST_COLLECTION, TEST_S3_BUCKET_NAME, TEST_S3_PATH_PREFIX, partitionCount, TEST_S3_REGION)));
         executorService.shutdownNow();
     }
 
@@ -197,6 +196,8 @@ public class LeaderSchedulerTest {
         given(collectionConfig.getS3PathPrefix()).willReturn(TEST_S3_PATH_PREFIX);
         given(collectionConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
         given(collectionConfig.getS3Region()).willReturn(TEST_S3_REGION);
+        final int partitionCount = Math.abs(new Random().nextInt(10));
+        given(collectionConfig.getPartitionCount()).willReturn(partitionCount);
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> leaderScheduler.run());
@@ -222,7 +223,7 @@ public class LeaderSchedulerTest {
         assertThat(allEnhancedSourcePartitions.get(1), instanceOf(S3FolderPartition.class));
         final S3FolderPartition s3FolderPartition = (S3FolderPartition) allEnhancedSourcePartitions.get(1);
         assertThat(s3FolderPartition.getPartitionKey(), equalTo(String.format(
-                "%s|%s|%s|%s", TEST_COLLECTION, TEST_S3_BUCKET_NAME, TEST_S3_PATH_PREFIX, TEST_S3_REGION)));
+                "%s|%s|%s|%d|%s", TEST_COLLECTION, TEST_S3_BUCKET_NAME, TEST_S3_PATH_PREFIX, partitionCount, TEST_S3_REGION)));
         assertThat(allEnhancedSourcePartitions.get(2), instanceOf(StreamPartition.class));
         executorService.shutdownNow();
     }

@@ -8,14 +8,18 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.leader.LeaderScheduler;
 import org.opensearch.dataprepper.plugins.mongo.s3partition.S3PartitionCreatorScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 public class DocumentDBService {
     private static final Logger LOG = LoggerFactory.getLogger(DocumentDBService.class);
@@ -23,8 +27,8 @@ public class DocumentDBService {
     private final PluginMetrics pluginMetrics;
     private final MongoDBSourceConfig sourceConfig;
     private final AcknowledgementSetManager acknowledgementSetManager;
-    private final ExecutorService leaderExecutor;
     private final PluginConfigObservable pluginConfigObservable;
+    private ExecutorService leaderExecutor;
     public DocumentDBService(final EnhancedSourceCoordinator sourceCoordinator,
                              final MongoDBSourceConfig sourceConfig,
                              final PluginMetrics pluginMetrics,
@@ -35,8 +39,6 @@ public class DocumentDBService {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceConfig = sourceConfig;
         this.pluginConfigObservable = pluginConfigObservable;
-        this.leaderExecutor = Executors.newSingleThreadExecutor(
-                BackgroundThreadFactory.defaultExecutorThreadFactory("documentdb-source"));
     }
 
     /**
@@ -47,10 +49,17 @@ public class DocumentDBService {
      * @param buffer Data Prepper Buffer
      */
     public void start(Buffer<Record<Event>> buffer) {
+        final List<Runnable> runnableList = new ArrayList<>();
         final LeaderScheduler leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig.getCollections());
-        leaderExecutor.submit(leaderScheduler);
-        final S3PartitionCreatorScheduler s3PartitionCreatorScheduler = new S3PartitionCreatorScheduler(sourceCoordinator);
-        leaderExecutor.submit(s3PartitionCreatorScheduler);
+        runnableList.add(leaderScheduler);
+        final List<String> collections = sourceConfig.getCollections().stream().map(CollectionConfig::getCollection).collect(Collectors.toList());
+        if (!collections.isEmpty()) {
+            final S3PartitionCreatorScheduler s3PartitionCreatorScheduler = new S3PartitionCreatorScheduler(sourceCoordinator, collections);
+            runnableList.add(s3PartitionCreatorScheduler);
+        }
+        leaderExecutor = Executors.newFixedThreadPool(runnableList.size(),
+                BackgroundThreadFactory.defaultExecutorThreadFactory("documentdb-source"));
+        runnableList.forEach(leaderExecutor::submit);
 
         final MongoTasksRefresher mongoTasksRefresher = new MongoTasksRefresher(
                 buffer, sourceCoordinator, pluginMetrics, acknowledgementSetManager,

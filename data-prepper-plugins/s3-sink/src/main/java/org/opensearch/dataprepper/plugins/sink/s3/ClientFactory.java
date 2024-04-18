@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticatio
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
 public final class ClientFactory {
@@ -26,8 +27,18 @@ public final class ClientFactory {
                 .overrideConfiguration(createOverrideConfiguration(s3SinkConfig)).build();
     }
 
+    static S3AsyncClient createS3AsyncClient(final S3SinkConfig s3SinkConfig, final AwsCredentialsSupplier awsCredentialsSupplier) {
+        final AwsCredentialsOptions awsCredentialsOptions = convertToCredentialsOptions(s3SinkConfig.getAwsAuthenticationOptions());
+        final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
+
+        return S3AsyncClient.builder()
+                .region(s3SinkConfig.getAwsAuthenticationOptions().getAwsRegion())
+                .credentialsProvider(awsCredentialsProvider)
+                .overrideConfiguration(createOverrideConfiguration(s3SinkConfig)).build();
+    }
+
     private static ClientOverrideConfiguration createOverrideConfiguration(final S3SinkConfig s3SinkConfig) {
-        final RetryPolicy retryPolicy = RetryPolicy.builder().numRetries(s3SinkConfig.getMaxConnectionRetries()).build();
+        final RetryPolicy retryPolicy = RetryPolicy.builder().numRetries(s3SinkConfig.getMaxConnectionRetries() * s3SinkConfig.getMaxUploadRetries()).build();
         return ClientOverrideConfiguration.builder()
                 .retryPolicy(retryPolicy)
                 .build();
