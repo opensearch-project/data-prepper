@@ -8,23 +8,22 @@ import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 @DataPrepperPlugin(name = "event_json", pluginType = OutputCodec.class, pluginConfigurationType = EventJsonOutputCodecConfig.class)
 public class EventJsonOutputCodec implements OutputCodec {
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
     static final String EVENT_JSON = "event_json";
     private static final JsonFactory factory = new JsonFactory();
     private final EventJsonOutputCodecConfig config;
@@ -67,14 +66,7 @@ public class EventJsonOutputCodec implements OutputCodec {
         Map<String, Object> dataMap = event.toMap();
         generator.writeFieldName(EventJsonDefines.DATA);
         objectMapper.writeValue(generator, dataMap);
-        Map<String, Object> metadataMap = new HashMap<>();
-        EventMetadata metadata = event.getMetadata();
-        metadataMap.put(EventJsonDefines.ATTRIBUTES, metadata.getAttributes());
-        metadataMap.put(EventJsonDefines.TAGS, metadata.getTags());
-        metadataMap.put(EventJsonDefines.TIME_RECEIVED, metadata.getTimeReceived().toString());
-        if (metadata.getExternalOriginationTime() != null) {
-            metadataMap.put(EventJsonDefines.EXTERNAL_ORIGINATION_TIME, metadata.getExternalOriginationTime().toString());
-        }
+        Map<String, Object> metadataMap = objectMapper.convertValue(event.getMetadata(), Map.class);
         generator.writeFieldName(EventJsonDefines.METADATA);
         objectMapper.writeValue(generator, metadataMap);
         return dataMap;

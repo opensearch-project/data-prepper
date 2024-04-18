@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.model.event;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -23,15 +25,22 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class DefaultEventMetadata implements EventMetadata {
 
-    private final String eventType;
+    @JsonProperty("event_type")
+    private String eventType;
 
-    private final Instant timeReceived;
+    @JsonProperty("time_received")
+    private Instant timeReceived;
 
+    @JsonProperty("external_origination_time")
     private Instant externalOriginationTime;
 
+    @JsonProperty("attributes")
     private Map<String, Object> attributes;
 
+    @JsonProperty("tags")
     private Set<String> tags;
+
+    private DefaultEventMetadata() {}
 
     private DefaultEventMetadata(final Builder builder) {
 
@@ -71,6 +80,16 @@ public class DefaultEventMetadata implements EventMetadata {
         return externalOriginationTime;
     }
 
+/*
+    public void setEventType(String eType) {
+        eventType = eType;
+    }
+
+    public void setTimeReceived(Instant receivedTime) {
+        timeReceived = receivedTime;
+    }
+*/
+
     @Override
     public void setExternalOriginationTime(Instant externalOriginationTime) {
         this.externalOriginationTime = externalOriginationTime;
@@ -84,6 +103,10 @@ public class DefaultEventMetadata implements EventMetadata {
     @Override
     public void setAttribute(final String key, final Object value) {
         attributes.put(key, value);
+    }
+
+    public void setAttributes(Map<String, Object> attrs) {
+        attributes = attrs;
     }
 
     @Override
@@ -114,6 +137,10 @@ public class DefaultEventMetadata implements EventMetadata {
         if (Objects.nonNull(newTags)) {
             tags.addAll(newTags);
         }
+    }
+
+    public void setTags(final Set<String> newTags) {
+        tags = newTags;
     }
 
     @Override
