@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.configuration;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -30,7 +31,8 @@ public class PipelinesDataFlowModel {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private DataPrepperVersion version;
 
-    @JsonProperty("pipeline_configurations")
+    @JsonAlias("pipeline_configurations")
+    @JsonProperty("extension")
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonSetter(nulls = Nulls.SKIP)
     private PipelineExtensions pipelineExtensions;

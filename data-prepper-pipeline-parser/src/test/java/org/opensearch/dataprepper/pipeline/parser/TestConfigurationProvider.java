@@ -29,7 +29,8 @@ public class TestConfigurationProvider {
     public static final Integer DEFAULT_READ_BATCH_DELAY = 3_000;
     public static final Integer TEST_DELAY = 3_000;
     public static final String VALID_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/valid_multiple_pipeline_configuration.yml";
-    public static final String VALID_PIPELINE_CONFIG_FILE_WITH_EXTENSIONS = "src/test/resources/valid_pipeline_configuration_with_extensions.yml";
+    public static final String VALID_PIPELINE_CONFIG_FILE_WITH_DEPRECATED_EXTENSIONS = "src/test/resources/valid_pipeline_configuration_with_deprecated_extensions.yml";
+    public static final String VALID_PIPELINE_CONFIG_FILE_WITH_EXTENSION = "src/test/resources/valid_pipeline_configuration_with_extension.yml";
     public static final String MULTI_FILE_PIPELINE_DIRECTOTRY = "src/test/resources/multi-pipelines";
     public static final String MULTI_FILE_PIPELINE_WITH_DISTRIBUTED_PIPELINE_CONFIGURATIONS_DIRECTOTRY = "src/test/resources/multi-pipelines-distributed-pipeline-configurations";
     public static final String MULTI_FILE_PIPELINE_WITH_SINGLE_PIPELINE_CONFIGURATIONS_DIRECTOTRY = "src/test/resources/multi-pipelines-single-pipeline-configurations";
