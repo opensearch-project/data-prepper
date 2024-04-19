@@ -5,10 +5,11 @@
 package org.opensearch.dataprepper.pipeline.parser.rule;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
@@ -25,10 +26,6 @@ import java.util.List;
 import java.util.Map;
 
 class RuleEvaluatorTest {
-
-    @BeforeEach
-    void setUp() {
-    }
 
     @Test
     void test_isTransformationNeeded_ForDocDBSource_ShouldReturn_True() {
@@ -61,7 +58,7 @@ class RuleEvaluatorTest {
 
         // Assert
         assertTrue(result.isEvaluatedResult());
-        assertEquals(result.getPipelineName(),pipelineName);
+        assertEquals(result.getPipelineName(), pipelineName);
     }
 
     @Test
@@ -91,34 +88,13 @@ class RuleEvaluatorTest {
     }
 
     @Test
-    void testIsRuleValidThrowsExceptionForInvalidResultType() {
-
-    }
-
-    @Test
-    void testGetPluginNameThatNeedsTransformation() {
-
-//        String pluginName = ruleEvaluator.getPluginNameThatNeedsTransformation(ruleConfig.getApplyWhen());
-
-//        assertEquals("PluginName", pluginName);
-    }
-
-    @Test
-    void testGetPluginNameThatNeedsTransformationInvalidFormat() {
-        // Test with an invalid expression format to ensure it throws a RuntimeException
-    }
-
-    @Test
-    void testgetTemplateJsonStringSuccess() {
-        // Set up
+    void testThrowsExceptionOnFileError() {
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
         String pipelineName = "test-pipeline";
         Map sourceOptions = new HashMap<String, Object>();
-        Map s3_bucket = new HashMap<>();
-        s3_bucket.put("s3_bucket", "bucket-name");
-        List collections = new ArrayList();
-        collections.add(s3_bucket);
-        sourceOptions.put("collections", collections);
-        final PluginModel source = new PluginModel("documentdb", sourceOptions);
+        sourceOptions.put("option1", "1");
+        sourceOptions.put("option2", null);
+        final PluginModel source = new PluginModel("http", sourceOptions);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", null));
         final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null));
         final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
@@ -126,9 +102,14 @@ class RuleEvaluatorTest {
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
                 (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
 
-//        ruleEvaluator = new RuleEvaluator(pipelinesDataFlowModel);
-//        PipelineTemplateModel templateModel = ruleEvaluator.getTemplateModel();
-    }
+        // Setup mock to throw an exception when file path is incorrect
+        when(transformersFactory.getPluginRuleFileLocation("documentdb")).thenThrow(new RuntimeException("File not found"));
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
 
-    // You can add more tests to cover edge cases and exceptional scenarios.
+        // Execute and Assert
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel);
+        });
+        assertEquals("File not found", exception.getMessage());
+    }
 }

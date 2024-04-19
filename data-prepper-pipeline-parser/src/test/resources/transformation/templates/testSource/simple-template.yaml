@@ -1,7 +1,0 @@
-pipeline:
-    source: "{{$..source}}"
-    sink:
-      - s3:
-          bucket_name: "test_bucket"
-          aws:
-            region: "us-test-1"

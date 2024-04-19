@@ -19,6 +19,8 @@ import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineTemplateModel;
 import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,6 +29,7 @@ import java.util.Map;
 
 public class RuleEvaluator {
 
+    private static final Logger LOG = LoggerFactory.getLogger(RuleEvaluator.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
     private final TransformersFactory transformersFactory;
@@ -41,14 +44,14 @@ public class RuleEvaluator {
     }
 
     /**
-     *  Evaluates based on rules if it is docDB and needs transformation.
-     *  Assumption: only one pipeline can have transformation.
+     * Evaluates model based on pre defined rules and
+     * result contains the name of the pipeline that will need transformation,
+     * evaluated boolean result and the corresponding template model
+     * Assumption: only one pipeline can have transformation.
      * @param pipelinesModel
-     * @return
+     * @return RuleEvaluatorResult
      */
     private RuleEvaluatorResult isDocDBSource(PipelinesDataFlowModel pipelinesModel) {
-        //TODO
-        //dynamically find pluginName Needed for transformation based on rule that applies
         PLUGIN_NAME = "documentdb";
         String pluginRulesPath = transformersFactory.getPluginRuleFileLocation(PLUGIN_NAME);
         Map<String, PipelineModel> pipelines = pipelinesModel.getPipelines();
@@ -56,19 +59,21 @@ public class RuleEvaluator {
         for (Map.Entry<String, PipelineModel> entry : pipelines.entrySet()) {
             try {
                 String pipelineJson = OBJECT_MAPPER.writeValueAsString(entry);
-                if(evaluate(pipelineJson, pluginRulesPath)) {
+                if (evaluate(pipelineJson, pluginRulesPath)) {
                     String templateFilePath = transformersFactory.getPluginTemplateFileLocation(PLUGIN_NAME);
                     PipelineTemplateModel templateModel = yamlMapper.readValue(new File(templateFilePath),
                             PipelineTemplateModel.class);
                     return RuleEvaluatorResult.builder()
                             .withEvaluatedResult(true)
                             .withPipelineTemplateModel(templateModel)
-                            .withPipelineName(entry.getKey()) // TODO naming
+                            .withPipelineName(entry.getKey())
                             .build();
                 }
             } catch (JsonProcessingException e) {
+                LOG.error("Error processing json");
                 throw new RuntimeException(e);
             } catch (IOException e) {
+                LOG.error("Error reading file");
                 throw new RuntimeException(e);
             }
         }
@@ -82,7 +87,6 @@ public class RuleEvaluator {
     private Boolean evaluate(String pipelinesJson,
                              String rulePath) {
 
-//        ReadContext readPathContext = null;
         Configuration parseConfig = Configuration.builder()
                 .jsonProvider(new JacksonJsonProvider())
                 .mappingProvider(new JacksonMappingProvider())
@@ -98,12 +102,10 @@ public class RuleEvaluator {
                 Object result = readPathContext.read(rule);
             }
         } catch (IOException e) {
-            //TODO --> this is failing the integ tests in core
-            // reason - transformer not injected correctly
-//            throw new RuntimeException(format("error reading file %s.",rulePath));
-
+            LOG.warn("Error reading file {}", rulePath);
             return false;
         } catch (PathNotFoundException e) {
+            LOG.warn("Path not found {}", rulePath);
             return false;
         }
         return true;

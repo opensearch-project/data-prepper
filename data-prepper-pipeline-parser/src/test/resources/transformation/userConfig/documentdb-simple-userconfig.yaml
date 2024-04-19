@@ -1,0 +1,9 @@
+dodb-pipeline:
+    source:
+        documentdb:
+            hostname: "database.example.com"
+    sink:
+      - s3:
+          bucket_name: "test_bucket"
+          aws:
+            region: "us-test-1"

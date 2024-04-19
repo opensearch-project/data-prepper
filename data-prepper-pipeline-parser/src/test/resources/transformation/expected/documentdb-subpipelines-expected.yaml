@@ -1,0 +1,39 @@
+pipeline_configurations:
+  aws:
+    secrets:
+      docdb-secret:
+        secret_id: "arn:aws:secretsmanager:us-west-2:420497401461:secret:prod/docdb-ip1Mqf"
+        region: "us-west-2"
+        sts_role_arn: "arn:aws:iam::420497401461:role/Admin"
+
+pipeline1-transformed:
+  source:
+    documentdb:
+      host: "host1"
+      collections:
+        - collection: "docdbdemo.streamdemo"
+          s3_bucket: "osiddbtest1"
+          s3_region: "us-west-2"
+  processor:
+    - string_converter:
+        upper_case: true
+  sink:
+    - s3:
+        aws:
+          sts_role_arn: "arn:aws:iam::420497401461:role/Admin"
+          region: "us-west-2"
+        bucket: "osiddbtest1"
+
+pipeline2:
+  source:
+    someSource:
+      host: "host2"
+  processor:
+    - string_mutate:
+        lower_case: true
+  sink:
+    - s3:
+        aws:
+          sts_role_arn: "arn:aws:iam::420497401461:role/Admin"
+          region: "us-west-2"
+        bucket: "someSourceBucket"

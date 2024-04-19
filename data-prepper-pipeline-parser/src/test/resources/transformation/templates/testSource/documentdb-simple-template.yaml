@@ -1,0 +1,5 @@
+pipeline:
+    source: "<<$.*.source>>"
+    sink:
+        - s3:
+            bucket_name: "<<$.*.source.hostname>>"

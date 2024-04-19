@@ -39,18 +39,23 @@ public class TestConfigurationProvider {
     public static final String TEMPLATES_SOURCE_TRANSFORMATION_DIRECTORY = "src/test/resources/transformation/templates/testSource";
     public static final String RULES_TRANSFORMATION_DIRECTORY = "src/test/resources/transformation/rules";
 
+    public static final String USER_CONFIG_TRANSFORMATION_DOCDB_SIMPLE_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-simple-userconfig.yaml";
     public static final String USER_CONFIG_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb1-userconfig.yaml";
     public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-userconfig.yaml";
+    public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-subpipelines-userconfig.yaml";
 
     public static final String RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/rules/documentdb1-rule.yaml";
     public static final String RULES_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/rules/documentdb-rule.yaml";
 
+
+    public static final String TEMPLATE_TRANSFORMATION_DOCDB_SIMPLE_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-simple-template.yaml";
     public static final String TEMPLATE_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb1-template.yaml";
     public static final String TEMPLATE_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-template.yaml";
-    public static final String TEMPLATE_TRANSFORMATION_SIMPLE_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/simple-template.yaml";
+    public static final String TEMPLATE_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-subpipelines-template.yaml";
 
     public static final String EXPECTED_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb1-expected.yaml";
     public static final String EXPECTED_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb-expected.yaml";
+    public static final String EXPECTED_TRANSFORMATION_DOCUMENTDB_SUBPIPLINES_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb-subpipelines-expected.yaml";
 
 
     public static Set<String> VALID_MULTIPLE_PIPELINE_NAMES = new HashSet<>(Arrays.asList("test-pipeline-1",

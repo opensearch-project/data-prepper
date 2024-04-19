@@ -5,48 +5,6 @@ pipeline_configurations:
         secret_id: "<secretId/secretArn>"
         region: "<region>"
         sts_role_arn: "arn:aws:iam::<account>:role/<role>"
-dodb-pipeline-s3-sub-pipeline-transformed:
-  workers: 2
-  delay: 0
-  source:
-    s3:
-      delete_s3_objects_on_read: true
-      codec:
-        json: null
-      compression: "none"
-      aws:
-        - sts_role_arn: "arn:aws:iam::<account>:role/<role>"
-          region: "<region>"
-          serverless: true
-      acknowledgments: false
-      scan:
-        buckets:
-          - bucket:
-              name: "my-bucket"
-              filter:
-                include_prefix:
-                  - "local-test"
-        scheduling:
-          interval: "1s"
-  processor: null
-  buffer:
-    bounded_blocking:
-      batch_size: 125000
-      buffer_size: 1000000
-  sink:
-    - opensearch:
-        - exclude_keys:
-            - "_id"
-          hosts:
-            - "<host>"
-          action: "${getMetadata(\"opensearch_action\")}"
-          index: "<index>"
-          aws:
-            sts_role_arn: "arn:aws:iam::<account>:role/<role>"
-            region: "<region>"
-            serverless: true
-          document_id: "${getMetadata(\"primary_key\")}"
-          index_type: "custom"
 dodb-pipeline-transformed:
   workers: 2
   delay: 0
@@ -73,9 +31,9 @@ dodb-pipeline-transformed:
         routes:
           - "initial_load"
         aws:
-          - sts_role_arn: "arn:aws:iam::<account>:role/<role>"
-            region: "<region>"
-            serverless: true
+          sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+          region: "<region>"
+          serverless: true
         bucket: "my-bucket"
         threshold:
           event_collect_timeout: "120s"
@@ -91,9 +49,9 @@ dodb-pipeline-transformed:
         routes:
           - "stream_load"
         aws:
-          - sts_role_arn: "arn:aws:iam::<account>:role/<role>"
-            region: "<region>"
-            serverless: true
+          sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+          region: "<region>"
+          serverless: true
         bucket: "my-bucket"
         threshold:
           event_collect_timeout: "30s"
@@ -105,3 +63,44 @@ dodb-pipeline-transformed:
           path_prefix: "local-test/${getMetadata(\"s3_partition_key\")}"
         codec:
           json: null
+dodb-pipeline-s3-sub-pipeline-transformed:
+  workers: 2
+  delay: 0
+  source:
+    s3:
+      delete_s3_objects_on_read: true
+      codec:
+        json: null
+      compression: "none"
+      aws:
+        sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+        region: "<region>"
+        serverless: true
+      acknowledgments: false
+      scan:
+        buckets:
+          - bucket:
+              name: "my-bucket"
+              filter:
+                include_prefix:
+                  - "local-test"
+        scheduling:
+          interval: "1s"
+  buffer:
+    bounded_blocking:
+      batch_size: 125000
+      buffer_size: 1000000
+  sink:
+    - opensearch:
+        exclude_keys:
+          - "_id"
+        hosts:
+          - "<host>"
+        action: "${getMetadata(\"opensearch_action\")}"
+        index: "<index>"
+        aws:
+          sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+          region: "<region>"
+          serverless: true
+        document_id: "${getMetadata(\"primary_key\")}"
+        index_type: "custom"

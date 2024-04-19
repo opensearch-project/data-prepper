@@ -14,10 +14,13 @@ import com.jayway.jsonpath.Option;
 import com.jayway.jsonpath.PathNotFoundException;
 import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
+import static java.lang.String.format;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluatorResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,19 +33,22 @@ import java.util.regex.Pattern;
 
 public class DynamicConfigTransformer implements PipelineConfigurationTransformer {
 
+    private static final Logger LOG = LoggerFactory.getLogger(DynamicConfigTransformer.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RuleEvaluator ruleEvaluator;
     private final PipelinesDataFlowModel preTransformedPipelinesDataFlowModel;
-    Pattern placeholderPattern = Pattern.compile("\\{\\{\\s*(.+?)\\s*}}");
 
-    String pipelineNamePlaceholderRegex = "\\{\\{\\s*" + Pattern.quote("pipeline-name") + "\\s*\\}\\}";
+    // Placeholder will look like "<<placeholderValue>>"
+    Pattern placeholderPattern = Pattern.compile("\\<\\<\\s*(.+?)\\s*>>");
+    String pipelineNamePlaceholderRegex = "\\<\\<\\s*" + Pattern.quote("pipeline-name") + "\\s*\\>\\>";
+
+    //This is the root node of the template json. This is got when converting template model to
+    // corresponding json and will always be a constant
     String templatePipelineRootString = "templatePipelines";
 
-//    // Configuration necessary for JsonPath to work with Jackson
-//    Configuration parseConfig = Configuration.builder()
-//            .jsonProvider(new JacksonJsonProvider())
-//            .mappingProvider(new JacksonMappingProvider())
-//            .build();
+    // Json Path expression like "?(@.<node>)" seem to always return arrayNode even if it is an ObjectNode.
+    // jsonPathArrayDisambiguatorPattern is a way used to detect and disambiguate the path.
+    String jsonPathArrayDisambiguatorPattern = "[?(@.";
 
     Configuration parseConfigWithJsonNode = Configuration.builder()
             .jsonProvider(new JacksonJsonNodeJsonProvider())
@@ -50,14 +56,25 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             .options(Option.SUPPRESS_EXCEPTIONS)
             .build();
 
-//    ParseContext mainParseContext = JsonPath.using(parseConfig);
-
     public DynamicConfigTransformer(PipelinesDataFlowModel preTransformedDataFlowModel,
                                     RuleEvaluator ruleEvaluator) {
         this.ruleEvaluator = ruleEvaluator;
         this.preTransformedPipelinesDataFlowModel = preTransformedDataFlowModel;
     }
 
+    /**
+     * High Level Explanation:
+     * Step1: Evaluate if transformation is needed
+     * Step2: Create a Map(placeholdersMap) with key as placeholder and value as List of JsonPath
+     * in templateJson. It is populated by recursively by tracking the placeholder and along the way,
+     * store the paths.
+     * Step3: Create a Map(pipelineExactPathMap) with exact path for the placeholder value in the
+     * original pipelineJson.
+     * Step4: For every placeholder, replace the template in the corresponding template json path with
+     * node from the original pipelineJson.
+     * Step5: Convert result to PipelinesDataFlowModel.
+     * @return PipelinesDataFlowModel - Transformed PipelinesDataFlowModel.
+     */
     @Override
     public PipelinesDataFlowModel transformConfiguration() {
         RuleEvaluatorResult ruleEvaluatorResult = ruleEvaluator.isTransformationNeeded(preTransformedPipelinesDataFlowModel);
@@ -83,15 +100,10 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                     pipelineNameThatNeedsTransformation);
 
             //find all placeholderPattern in template json string
-            // K:placeholder , V:list of jsonPath in templateJson
-            // {{$..source}}
-            Map<String, List<String>> placeholdersMap = findPlaceholdersWithPaths(templateJsonString);
+            Map<String, List<String>> placeholdersMap = findPlaceholdersWithPathsRecursively(templateJsonString);
             JsonNode templateRootNode = objectMapper.readTree(templateJsonString);
 
-            // get exact path in pipelineJson - this is to avoid
-            // getting array values(even though it might not be an array) given
-            // a recursive expression like "$..<>"
-            // K:jsonPath, V:exactPath
+            // get exact path in pipelineJson
             Map<String, String> pipelineExactPathMap = findExactPath(placeholdersMap, pipelineNameThatNeedsTransformation);
 
             //replace placeholder with actual value in the template context
@@ -99,6 +111,13 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                 for (String templateJsonPath : templateJsonPathList) {
                     String pipelineExactJsonPath = pipelineExactPathMap.get(placeholder);
                     JsonNode pipelineNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelineJson).read(pipelineExactJsonPath);
+
+                    // Json Path expression like "?(@.<node>)" seem to always return arrayNode even if it is an Object.
+                    // example: $.pipeline.sink[?(@.opensearch)].opensearch.aws expression will always return array
+                    if(pipelineExactJsonPath.contains(jsonPathArrayDisambiguatorPattern) &&
+                            pipelineNode.isArray() && pipelineNode.size()==1){
+                        pipelineNode = pipelineNode.get(0);
+                    }
                     replaceNode(templateRootNode, templateJsonPath, pipelineNode);
                 }
             });
@@ -112,6 +131,15 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         }
     }
 
+    /**
+     * Convert templateRootNode which contains the transformedJson to PipelinesDataFlowModel
+     *
+     * @param pipelineNameThatNeedsTransformation
+     * @param pipelines
+     * @param templateRootNode - transformedJson Node.
+     * @return PipelinesDataFlowModel - transformed model.
+     * @throws JsonProcessingException
+     */
     private PipelinesDataFlowModel getTransformedPipelinesDataFlowModel(String pipelineNameThatNeedsTransformation, Map<String, PipelineModel> pipelines, JsonNode templateRootNode) throws JsonProcessingException {
         //update template json
         String transformedJson = objectMapper.writeValueAsString(templateRootNode);
@@ -129,8 +157,9 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                 transformedPipelines.put(pipelineName, pipeline);
             }
         });
+
+        // version is not required here as it is already handled in parseStreamToPipelineDataFlowModel
         PipelinesDataFlowModel transformedPipelinesDataFlowModel = new PipelinesDataFlowModel(
-                preTransformedPipelinesDataFlowModel.getDataPrepperVersion(),
                 preTransformedPipelinesDataFlowModel.getPipelineExtensions(),
                 transformedPipelines
         );
@@ -141,7 +170,14 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         return templateJsonStringWithPipelinePlaceholder.replaceAll(pipelineNamePlaceholderRegex, pipelineName);
     }
 
-    private Map<String, List<String>> findPlaceholdersWithPaths(String json) throws IOException {
+    /**
+     *  Recursively walks through the json to find the placeholder with a certain regEx pattern,
+     *  along the way keeps track of the path.
+     * @param json
+     * @return Map<String, List<String>> , K:placeholder, V: list of jsonPath in templateJson
+     * @throws IOException
+     */
+    private Map<String, List<String>> findPlaceholdersWithPathsRecursively(String json) throws IOException {
 
         JsonNode rootNode = objectMapper.readTree(json);
         Map<String, List<String>> placeholdersWithPaths = new HashMap<>();
@@ -180,9 +216,12 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     }
 
     /**
+     * Gets exact path - this is to avoid
+     * getting array values(even though it might not be an array) given
+     * a recursive expression like "$..<>"
      * @param placeholdersMap
      * @param pipelineName
-     * @return
+     * @return Map<String,String> K:jsonPath, V:exactPath
      * @throws IOException
      */
     private Map<String, String> findExactPath(Map<String, List<String>> placeholdersMap, String pipelineName) throws IOException {
@@ -197,17 +236,29 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         return mapWithPaths;
     }
 
+    /**
+     *  Get value from the placeholder field.
+     *  Removes the brackets surrounding the value.
+     * @param placeholder
+     * @return String - placeholder value.
+     */
     private String getValueFromPlaceHolder(String placeholder) {
-        if (placeholder.length() < 4) {
-            throw new RuntimeException("Invalid placeholder value");
-        }
-
-        //remove the first 2 and last 2 characters.
+        // placeholder should be valid here as it is regEx matched in populateMapWithPlaceholderPaths
         return placeholder.substring(2, placeholder.length() - 2);
     }
 
+    /**
+     *  Replaces template node in the jsonPath with the node from
+     *  original json.
+     * @param root
+     * @param jsonPath
+     * @param newNode
+     */
     public void replaceNode(JsonNode root, String jsonPath, JsonNode newNode) {
         try {
+            if(newNode == null){
+                throw new PathNotFoundException(format("jsonPath {} not found",jsonPath));
+            }
             // Read the parent path of the target node
             String parentPath = jsonPath.substring(0, jsonPath.lastIndexOf('.'));
             String fieldName = jsonPath.substring(jsonPath.lastIndexOf('.') + 1);
@@ -219,10 +270,12 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             if (parentNode != null && parentNode instanceof ObjectNode) {
                 ((ObjectNode) parentNode).replace(fieldName, newNode);
             } else {
-                throw new IllegalArgumentException("Path does not point to an object node");
+                LOG.error("Path does not point to object node");
+                throw new IllegalArgumentException("Path does not point to object node");
             }
         } catch (PathNotFoundException e) {
-            throw new PathNotFoundException(e);
+            LOG.error("JsonPath {} not found", jsonPath);
+            throw new PathNotFoundException(format("JsonPath {} not found", jsonPath));
         }
     }
 }

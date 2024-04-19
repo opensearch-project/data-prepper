@@ -35,14 +35,9 @@ public class PipelinesDataflowModelParser {
     }
 
 
-    //TODO
-    // move transformation code after user pipeline validation in pipelineTransformer.java
     public PipelinesDataFlowModel parseConfiguration() {
         final List<PipelinesDataFlowModel> pipelinesDataFlowModels = parseStreamsToPipelinesDataFlowModel();
         PipelinesDataFlowModel pipelinesDataFlowModel = mergePipelinesDataModels(pipelinesDataFlowModels);
-
-//        performPipelineConfigurationTransformationIfNeeded(pipelinesDataFlowModel);
-
         return pipelinesDataFlowModel;
     }
 
@@ -59,21 +54,6 @@ public class PipelinesDataflowModelParser {
                 .map(this::parseStreamToPipelineDataFlowModel)
                 .collect(Collectors.toList());
     }
-
-    //TODO
-//    private PipelinesDataFlowModel performPipelineConfigurationTransformationIfNeeded(PipelinesDataFlowModel pipelinesDataFlowModel) {
-//
-//        //check if transformation is required based on rules present in yaml file
-//        RuleEvaluator ruleEvaluator = new RuleEvaluator(pipelinesDataFlowModel);
-//        PipelineConfigurationTransformer configurationTransformer = new DynamicYamlTransformer();
-//
-//        if (ruleEvaluator.isTransformationNeeded()) {
-//            PipelineTemplateModel templateModel = ruleEvaluator.getTemplateModel();
-//            PipelinesDataFlowModel transformedPipelineDataModel = configurationTransformer.transformConfiguration(pipelinesDataFlowModel, templateModel);
-//            return transformedPipelineDataModel;
-//        }
-//        return pipelinesDataFlowModel;
-//    }
 
     private PipelinesDataFlowModel parseStreamToPipelineDataFlowModel(final InputStream configurationInputStream) {
         try (final InputStream pipelineConfigurationInputStream = configurationInputStream) {
