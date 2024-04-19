@@ -14,15 +14,12 @@ import java.util.function.BiFunction;
 import static com.google.common.base.Preconditions.checkArgument;
 
 class AddBinaryOperator implements Operator<Object> {
-    private final int symbol;
+    private final OperatorParameters operatorParameters;
     private final String displayName;
-    private final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap;
-
-    public AddBinaryOperator(final int symbol,
-            final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap) {
-        this.symbol = symbol;
-        displayName = DataPrepperExpressionParser.VOCABULARY.getDisplayName(symbol);
-        this.operandsToOperationMap = operandsToOperationMap;
+    public AddBinaryOperator(final OperatorParameters operatorParameters) {
+        this.operatorParameters = operatorParameters;
+        displayName = DataPrepperExpressionParser.VOCABULARY.getDisplayName(operatorParameters.getSymbol());
+        // This line is removed
     }
 
     @Override
@@ -33,7 +30,7 @@ class AddBinaryOperator implements Operator<Object> {
 
     @Override
     public int getSymbol() {
-        return symbol;
+        return operatorParameters.getSymbol();
     }
 
     @Override
@@ -47,11 +44,11 @@ class AddBinaryOperator implements Operator<Object> {
             return (String)((String)leftValue + (String)rightValue);
         }
 
-        if (!operandsToOperationMap.containsKey(leftValueClass)) {
+        if (!operatorParameters.getOperandsToOperationMap().containsKey(leftValueClass)) {
             throw new IllegalArgumentException(displayName + " requires left operand to be either Float or Integer.");
         }
         Map<Class<? extends Number>, BiFunction<Object, Object, Number>> rightOperandToOperation =
-                operandsToOperationMap.get(leftValueClass);
+                operatorParameters.getOperandsToOperationMap().get(leftValueClass);
         if (!rightOperandToOperation.containsKey(rightValueClass)) {
             throw new IllegalArgumentException(displayName + " requires right operand to be either Float or Integer.");
         }

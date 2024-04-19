@@ -15,18 +15,14 @@ import java.util.function.Function;
 import static com.google.common.base.Preconditions.checkArgument;
 
 class ArithmeticSubtractOperator implements Operator<Number> {
-    private final int symbol;
+    private final OperatorParameters operatorParameters;
     private final String displayName;
-    private final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap;
-    private final Map<Class<? extends Number>, Function<Number, ? extends Number>> strategy;
 
-    public ArithmeticSubtractOperator(final int symbol,
-            final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap,
-            final Map<Class<? extends Number>, Function<Number, ? extends Number>> strategy) {
-        this.symbol = symbol;
-        displayName = DataPrepperExpressionParser.VOCABULARY.getDisplayName(symbol);
-        this.operandsToOperationMap = operandsToOperationMap;
-        this.strategy = strategy;
+    public ArithmeticSubtractOperator(final OperatorParameters operatorParameters) {
+        this.operatorParameters = operatorParameters;
+        displayName = DataPrepperExpressionParser.VOCABULARY.getDisplayName(operatorParameters.getSymbol());
+        // This line is removed
+        // This line is removed
     }
 
     @Override
@@ -44,14 +40,14 @@ class ArithmeticSubtractOperator implements Operator<Number> {
 
     @Override
     public int getSymbol() {
-        return symbol;
+        return operatorParameters.getSymbol();
     }
 
     @Override
     public Number evaluate(final Object ... args) {
         if (args.length == 1) {
             if (args[0] instanceof Number) {
-                return strategy.get(args[0].getClass()).apply((Number) args[0]);
+                return operatorParameters.getStrategy().get(args[0].getClass()).apply((Number) args[0]);
             } else {
                 throw new IllegalArgumentException(displayName + " requires operand to be either Float or Integer.");
             }
@@ -61,11 +57,11 @@ class ArithmeticSubtractOperator implements Operator<Number> {
         final Object rightValue = args[1];
         final Class<?> leftValueClass = leftValue.getClass();
         final Class<?> rightValueClass = rightValue.getClass();
-        if (!operandsToOperationMap.containsKey(leftValueClass)) {
+        if (!operatorParameters.getOperandsToOperationMap().containsKey(leftValueClass)) {
             throw new IllegalArgumentException(displayName + " requires left operand to be either Float or Integer.");
         }
         Map<Class<? extends Number>, BiFunction<Object, Object, Number>> rightOperandToOperation =
-                operandsToOperationMap.get(leftValueClass);
+                operatorParameters.getOperandsToOperationMap().get(leftValueClass);
         if (!rightOperandToOperation.containsKey(rightValueClass)) {
             throw new IllegalArgumentException(displayName + " requires right operand to be either Float or Integer.");
         }
