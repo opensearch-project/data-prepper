@@ -46,11 +46,11 @@ public class ConnectionConfigurationTest {
 
         final String connectionYaml =
                 "  cert: \"cert\"\n" +
-                "  certificate_key: \"certificate content\"\n" +
+                "  certificate: \"certificate content\"\n" +
                 "  insecure: true\n";
         final ConnectionConfiguration connectionConfig = objectMapper.readValue(connectionYaml, ConnectionConfiguration.class);
         assertThat(connectionConfig.getCertPath(),equalTo(Path.of("cert")));
-        assertThat(connectionConfig.getCertificateContent(),equalTo("certificate content"));
+        assertThat(connectionConfig.getCertificate(),equalTo("certificate content"));
         assertThat(connectionConfig.certificateFileAndContentAreMutuallyExclusive(), is(false));
         assertThat(connectionConfig.getSocketTimeout(),equalTo(null));
         assertThat(connectionConfig.getConnectTimeout(),equalTo(null));

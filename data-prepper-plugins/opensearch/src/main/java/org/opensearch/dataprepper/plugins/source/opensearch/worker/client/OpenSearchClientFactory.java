@@ -18,6 +18,7 @@ import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.message.BasicHeader;
+import org.bouncycastle.util.io.pem.PemReader;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
 import org.opensearch.client.json.jackson.JacksonJsonpMapper;
@@ -41,6 +42,8 @@ import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
+import java.io.IOException;
+import java.io.StringReader;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -277,8 +280,12 @@ public class OpenSearchClientFactory {
         final Path certPath = connectionConfiguration.getCertPath();
         if (Objects.nonNull(certPath)) {
             return TrustStoreProvider.createTrustManager(certPath);
-        } else if (Objects.nonNull(connectionConfiguration.getCertificateContent())) {
-            return TrustStoreProvider.createTrustManager(connectionConfiguration.getCertificateContent());
+        } else if (Objects.nonNull(connectionConfiguration.getCertificate())) {
+            if (isPemObject(connectionConfiguration.getCertificate())) {
+                return TrustStoreProvider.createTrustManager(connectionConfiguration.getCertificate());
+            } else {
+                return TrustStoreProvider.createTrustManager(Path.of(connectionConfiguration.getCertificate()));
+            }
         } else {
             return TrustStoreProvider.createTrustAllManager();
         }
@@ -288,10 +295,22 @@ public class OpenSearchClientFactory {
         final Path certPath = connectionConfiguration.getCertPath();
         if (Objects.nonNull(certPath)) {
             return TrustStoreProvider.createSSLContext(certPath);
-        } else if (Objects.nonNull(connectionConfiguration.getCertificateContent())) {
-            return TrustStoreProvider.createSSLContext(connectionConfiguration.getCertificateContent());
+        } else if (Objects.nonNull(connectionConfiguration.getCertificate())) {
+            if (isPemObject(connectionConfiguration.getCertificate())) {
+                return TrustStoreProvider.createSSLContext(connectionConfiguration.getCertificate());
+            } else {
+                return TrustStoreProvider.createSSLContext(Path.of(connectionConfiguration.getCertificate()));
+            }
         } else {
             return TrustStoreProvider.createSSLContextWithTrustAllStrategy();
+        }
+    }
+
+    private boolean isPemObject(final String certificate) {
+        try (PemReader reader = new PemReader(new StringReader(certificate))) {
+            return reader.readPemObject() != null;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read certificate.", e);
         }
     }
 }

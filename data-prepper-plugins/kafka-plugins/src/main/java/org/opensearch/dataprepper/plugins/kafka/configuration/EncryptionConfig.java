@@ -13,8 +13,8 @@ public class EncryptionConfig {
     private EncryptionType type = EncryptionType.SSL;
 
     @JsonAlias("certificate_content")
-    @JsonProperty("certificate_key")
-    private String certificateContent;
+    @JsonProperty("certificate")
+    private String certificate;
 
     @JsonProperty("trust_store_file_path")
     private String trustStoreFilePath;
@@ -29,8 +29,8 @@ public class EncryptionConfig {
         return type;
     }
 
-    public String getCertificateContent() {
-        return certificateContent;
+    public String getCertificate() {
+        return certificate;
     }
 
     public String getTrustStoreFilePath() {

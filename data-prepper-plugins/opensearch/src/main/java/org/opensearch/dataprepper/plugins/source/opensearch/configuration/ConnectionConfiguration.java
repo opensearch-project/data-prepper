@@ -13,12 +13,13 @@ import java.time.Duration;
 
 public class ConnectionConfiguration {
 
+  @Deprecated
   @JsonProperty("cert")
   private Path certPath;
 
   @JsonAlias("certiciate_content")
-  @JsonProperty("certificate_key")
-  private String certificateContent;
+  @JsonProperty("certificate")
+  private String certificate;
 
   @JsonProperty("socket_timeout")
   private Duration socketTimeout;
@@ -33,8 +34,8 @@ public class ConnectionConfiguration {
     return certPath;
   }
 
-  public String getCertificateContent() {
-    return certificateContent;
+  public String getCertificate() {
+    return certificate;
   }
 
   public Duration getSocketTimeout() {
@@ -49,11 +50,11 @@ public class ConnectionConfiguration {
     return insecure;
   }
 
-  @AssertTrue(message = "Certificate file path and certificate content both are configured. " +
+  @AssertTrue(message = "cert and certificate both are configured. " +
           "Please use only one configuration.")
   boolean certificateFileAndContentAreMutuallyExclusive() {
-    if(certPath == null && certificateContent == null)
+    if(certPath == null && certificate == null)
       return true;
-    return certPath != null ^ certificateContent != null;
+    return certPath != null ^ certificate != null;
   }
 }
