@@ -9,11 +9,12 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-//import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
 import org.mockito.Mock;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
 
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -39,16 +40,16 @@ public class EventJsonInputCodecTest {
 
     @BeforeEach
     public void setup() {
-        inputCodec = createInputCodec();
+        eventJsonInputCodecConfig = mock(EventJsonInputCodecConfig.class);
     }
 
     public EventJsonInputCodec createInputCodec() {
-        eventJsonInputCodecConfig = mock(EventJsonInputCodecConfig.class);
         return new EventJsonInputCodec(eventJsonInputCodecConfig);
     }
 
     @Test
     public void basicTest() throws Exception {
+        inputCodec = createInputCodec();
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
         Map<String, Object> data = Map.of(key, value);
@@ -76,6 +77,39 @@ public class EventJsonInputCodecTest {
             assertThat(e.getMetadata().getExternalOriginationTime(), equalTo(null));
         }
     }
+
+    @Test
+    public void test_with_timeReceivedOverridden() throws Exception {
+        when(eventJsonInputCodecConfig.getOverrideTimeReceived()).thenReturn(true);
+        inputCodec = createInputCodec();
+        final String key = UUID.randomUUID().toString();
+        final String value = UUID.randomUUID().toString();
+        Map<String, Object> data = Map.of(key, value);
+        Instant startTime = Instant.now().minusSeconds(5);
+        Event event = createEvent(data, startTime);
+
+        Map<String, Object> dataMap = event.toMap();
+        Map<String, Object> metadataMap = objectMapper.convertValue(event.getMetadata(), Map.class);
+        String input = "[";
+        String comma = "";
+        for (int i = 0; i < 2; i++) {
+            input += comma+"{\"data\":"+objectMapper.writeValueAsString(dataMap)+","+"\"metadata\":"+objectMapper.writeValueAsString(metadataMap)+"}";
+            comma = ",";
+        }
+        input += "]";
+        inputStream = new ByteArrayInputStream(input.getBytes());
+        List<Record<Event>> records = new LinkedList<>();
+        inputCodec.parse(inputStream, records::add);
+        assertThat(records.size(), equalTo(2));
+        for(Record record : records) {
+            Event e = (Event)record.getData();
+            assertThat(e.get(key, String.class), equalTo(value));
+            assertThat(e.getMetadata().getTimeReceived(), not(equalTo(startTime)));
+            assertThat(e.getMetadata().getTags().size(), equalTo(0));
+            assertThat(e.getMetadata().getExternalOriginationTime(), equalTo(null));
+        }
+    }
+
 
     private Event createEvent(final Map<String, Object> json, final Instant timeReceived) {
         final JacksonLog.Builder logBuilder = JacksonLog.builder()

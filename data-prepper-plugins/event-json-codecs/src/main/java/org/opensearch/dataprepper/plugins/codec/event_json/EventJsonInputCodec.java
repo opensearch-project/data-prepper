@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -75,6 +76,7 @@ public class EventJsonInputCodec implements InputCodec {
         }
         if (overrideTimeReceived) {
             eventMetadata = new DefaultEventMetadata.Builder()
+                .withEventType(EventType.LOG.toString())
                 .withAttributes(eventMetadata.getAttributes())
                 .withTimeReceived(Instant.now())
                 .withTags(eventMetadata.getTags())
