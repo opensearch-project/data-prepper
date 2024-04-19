@@ -52,6 +52,7 @@ import static org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus.LA
 import static org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus.LOADED_PARTITIONS;
 import static org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus.LOADED_RECORDS;
 import static org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus.TOTAL_PARTITIONS;
+import static org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus.TOTAL_PARTITIONS_COMPLETE;
 
 @ExtendWith(MockitoExtension.class)
 public class ExportSchedulerTest {
@@ -138,7 +139,8 @@ public class ExportSchedulerTest {
                 TOTAL_PARTITIONS, totalPartitions,
                 LOADED_PARTITIONS, 0L,
                 LOADED_RECORDS, 0L,
-                LAST_UPDATE_TIMESTAMP, lastUpdateTimestamp.toEpochMilli()
+                LAST_UPDATE_TIMESTAMP, lastUpdateTimestamp.toEpochMilli(),
+                TOTAL_PARTITIONS_COMPLETE, false
         );
         given(globalState.getProgressState()).willReturn(Optional.of(progressState));
         given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).willReturn(Optional.of(exportPartition));
@@ -202,7 +204,8 @@ public class ExportSchedulerTest {
                 TOTAL_PARTITIONS, totalPartitions,
                 LOADED_PARTITIONS, 0L,
                 LOADED_RECORDS, 0L,
-                LAST_UPDATE_TIMESTAMP, lastUpdateTimestamp.toEpochMilli()
+                LAST_UPDATE_TIMESTAMP, lastUpdateTimestamp.toEpochMilli(),
+                TOTAL_PARTITIONS_COMPLETE, false
         );
         given(globalState.getProgressState()).willReturn(Optional.of(progressState));
         given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).willReturn(Optional.of(exportPartition));
