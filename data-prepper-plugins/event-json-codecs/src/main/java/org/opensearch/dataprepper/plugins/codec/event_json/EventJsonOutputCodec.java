@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.codec.eventjson;
+package org.opensearch.dataprepper.plugins.codec.event_json;
 
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
@@ -44,12 +44,12 @@ public class EventJsonOutputCodec implements OutputCodec {
     public void start(OutputStream outputStream, Event event, OutputCodecContext context) throws IOException {
         Objects.requireNonNull(outputStream);
         generator = factory.createGenerator(outputStream, JsonEncoding.UTF8);
-        generator.writeStartObject();
+        generator.writeStartArray();
     }
 
     @Override
     public void complete(final OutputStream outputStream) throws IOException {
-        generator.writeEndObject();
+        generator.writeEndArray();
         generator.close();
         outputStream.flush();
         outputStream.close();
@@ -57,9 +57,11 @@ public class EventJsonOutputCodec implements OutputCodec {
 
     @Override
     public synchronized void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+        generator.writeStartObject();
         Objects.requireNonNull(event);
         getDataMapToSerialize(event);
         generator.flush();
+        generator.writeEndObject();
     }
 
     private Map<String, Object> getDataMapToSerialize(Event event) throws IOException {

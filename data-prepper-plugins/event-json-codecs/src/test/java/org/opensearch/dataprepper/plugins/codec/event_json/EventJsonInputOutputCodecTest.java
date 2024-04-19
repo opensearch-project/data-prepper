@@ -2,26 +2,35 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.codec.eventjson;
+package org.opensearch.dataprepper.plugins.codec.event_json;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 import org.mockito.Mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+
 
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class EventJsonInputOutputCodecTest {
@@ -32,12 +41,16 @@ public class EventJsonInputOutputCodecTest {
     @Mock
     private EventJsonOutputCodecConfig eventJsonOutputCodecConfig;
 
+    @Mock
+    private EventJsonInputCodecConfig eventJsonInputCodecConfig;
+
     private EventJsonOutputCodec outputCodec;
     private EventJsonInputCodec inputCodec;
 
     @BeforeEach
     public void setup() {
         outputStream = new ByteArrayOutputStream(BYTEBUFFER_SIZE);
+        eventJsonInputCodecConfig = mock(EventJsonInputCodecConfig.class);
     }
 
     public EventJsonOutputCodec createOutputCodec() {
@@ -45,20 +58,18 @@ public class EventJsonInputOutputCodecTest {
     }
 
     public EventJsonInputCodec createInputCodec() {
-        return new EventJsonInputCodec();
+        when(eventJsonInputCodecConfig.getOverrideTimeReceived()).thenReturn(false);
+        return new EventJsonInputCodec(eventJsonInputCodecConfig);
     }
 
-    @Test
-    public void emptyTest() throws Exception {
-        ByteArrayInputStream inputStream = new ByteArrayInputStream("".getBytes());
+    @ParameterizedTest
+    @ValueSource(strings = {"", "[]", "[{}]", "{}"})
+    public void emptyTest(String input) throws Exception {
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(input.getBytes());
         inputCodec = createInputCodec();
-        inputCodec.parse(inputStream, record -> { });
-        inputStream = new ByteArrayInputStream("[]".getBytes());
-        inputCodec.parse(inputStream, record -> { });
-        inputStream = new ByteArrayInputStream("[{}]".getBytes());
-        inputCodec.parse(inputStream, record -> { });
-        inputStream = new ByteArrayInputStream("{}".getBytes());
-        inputCodec.parse(inputStream, record -> { });
+        Consumer<Record<Event>> consumer = mock(Consumer.class);
+        inputCodec.parse(inputStream, consumer);
+        verifyNoInteractions(consumer);
         
     }
 
@@ -75,13 +86,45 @@ public class EventJsonInputOutputCodecTest {
         outputCodec.start(outputStream, null, null);
         outputCodec.writeEvent(event, outputStream);
         outputCodec.complete(outputStream);
-        inputCodec.parse(new ByteArrayInputStream(outputStream.toByteArray()), record -> {
-            Event e = record.getData();
+        List<Record<Event>> records = new LinkedList<>();
+        inputCodec.parse(new ByteArrayInputStream(outputStream.toByteArray()), records::add);
+
+        assertThat(records.size(), equalTo(1));
+        for(Record record : records) {
+            Event e = (Event)record.getData();
             assertThat(e.get(key, String.class), equalTo(value));
             assertThat(e.getMetadata().getTimeReceived(), equalTo(startTime));
             assertThat(e.getMetadata().getTags().size(), equalTo(0));
             assertThat(e.getMetadata().getExternalOriginationTime(), equalTo(null));
-        });
+        }
+    }
+
+    @Test
+    public void multipleEventsTest() throws Exception {
+        final String key = UUID.randomUUID().toString();
+        final String value = UUID.randomUUID().toString();
+        Map<String, Object> data = Map.of(key, value);
+
+        Instant startTime = Instant.now();
+        Event event = createEvent(data, startTime);
+        outputCodec = createOutputCodec();
+        inputCodec = createInputCodec();
+        outputCodec.start(outputStream, null, null);
+        outputCodec.writeEvent(event, outputStream);
+        outputCodec.writeEvent(event, outputStream);
+        outputCodec.writeEvent(event, outputStream);
+        outputCodec.complete(outputStream);
+        List<Record<Event>> records = new LinkedList<>();
+        inputCodec.parse(new ByteArrayInputStream(outputStream.toByteArray()), records::add);
+
+        assertThat(records.size(), equalTo(3));
+        for(Record record : records) {
+            Event e = (Event)record.getData();
+            assertThat(e.get(key, String.class), equalTo(value));
+            assertThat(e.getMetadata().getTimeReceived(), equalTo(startTime));
+            assertThat(e.getMetadata().getTags().size(), equalTo(0));
+            assertThat(e.getMetadata().getExternalOriginationTime(), equalTo(null));
+        }
     }
 
     @Test
@@ -106,14 +149,18 @@ public class EventJsonInputOutputCodecTest {
         outputCodec.writeEvent(event, outputStream);
         outputCodec.complete(outputStream);
         assertThat(outputCodec.getExtension(), equalTo(EventJsonOutputCodec.EVENT_JSON));
-        inputCodec.parse(new ByteArrayInputStream(outputStream.toByteArray()), record -> {
-            Event e = record.getData();
+        List<Record<Event>> records = new LinkedList<>();
+inputCodec.parse(new ByteArrayInputStream(outputStream.toByteArray()), records::add);
+
+        assertThat(records.size(), equalTo(1));
+        for(Record record : records) {
+            Event e = (Event)record.getData();
             assertThat(e.get(key, String.class), equalTo(value));
             assertThat(e.getMetadata().getTimeReceived(), equalTo(startTime));
             assertThat(e.getMetadata().getTags(), equalTo(tags));
             assertThat(e.getMetadata().getAttributes(), equalTo(Map.of(attrKey, attrValue)));
             assertThat(e.getMetadata().getExternalOriginationTime(), equalTo(origTime));
-        });
+        }
     }
 
 
