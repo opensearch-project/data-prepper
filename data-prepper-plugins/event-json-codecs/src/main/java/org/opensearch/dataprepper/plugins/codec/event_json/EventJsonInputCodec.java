@@ -73,17 +73,6 @@ public class EventJsonInputCodec implements InputCodec {
         }
     }
 
-    private void parseRecordsArray(final JsonParser jsonParser, final Consumer<Record<Event>> eventConsumer) throws IOException {
-        while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
-            final Map<String, Object> innerJson = objectMapper.readValue(jsonParser, Map.class);
-
-            final Record<Event> record = createRecord(innerJson);
-            if (record != null) {
-                eventConsumer.accept(record);
-            }
-        }
-    }
-
     private Record<Event> createRecord(final Map<String, Object> innerJson) {
         Map<String, Object> metadata = (Map<String, Object>)innerJson.get(EventJsonDefines.METADATA);
         EventMetadata eventMetadata = objectMapper.convertValue(metadata, DefaultEventMetadata.class);
