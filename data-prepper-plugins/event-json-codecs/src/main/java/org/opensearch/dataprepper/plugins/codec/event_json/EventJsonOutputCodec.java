@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
@@ -44,12 +45,17 @@ public class EventJsonOutputCodec implements OutputCodec {
     public void start(OutputStream outputStream, Event event, OutputCodecContext context) throws IOException {
         Objects.requireNonNull(outputStream);
         generator = factory.createGenerator(outputStream, JsonEncoding.UTF8);
+        generator.writeStartObject();
+        generator.writeFieldName(EventJsonDefines.VERSION);
+        objectMapper.writeValue(generator, DataPrepperVersion.getCurrentVersion().toString());
+        generator.writeFieldName(EventJsonDefines.EVENTS);
         generator.writeStartArray();
     }
 
     @Override
     public void complete(final OutputStream outputStream) throws IOException {
         generator.writeEndArray();
+        generator.writeEndObject();
         generator.close();
         outputStream.flush();
         outputStream.close();

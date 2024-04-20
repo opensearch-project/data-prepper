@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
@@ -21,12 +22,15 @@ import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.function.Consumer;
 import java.util.Map;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -34,6 +38,7 @@ import java.util.Objects;
  */
 @DataPrepperPlugin(name = "event_json", pluginType = InputCodec.class, pluginConfigurationType = EventJsonInputCodecConfig.class)
 public class EventJsonInputCodec implements InputCodec {
+    private static final Logger LOG = LoggerFactory.getLogger(JacksonEvent.class);
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
     private final JsonFactory jsonFactory = new JsonFactory();
     private final Boolean overrideTimeReceived;
@@ -50,8 +55,20 @@ public class EventJsonInputCodec implements InputCodec {
         final JsonParser jsonParser = jsonFactory.createParser(inputStream);
 
         while (!jsonParser.isClosed() && jsonParser.nextToken() != JsonToken.END_OBJECT) {
-            if (jsonParser.getCurrentToken() == JsonToken.START_ARRAY) {
-                parseRecordsArray(jsonParser, eventConsumer);
+            if (jsonParser.getCurrentToken() == JsonToken.START_OBJECT) {
+                final Map<String, Object> innerJson = objectMapper.readValue(jsonParser, Map.class);
+                final List<Map<String, Object>> maps = (List<Map<String, Object>>)innerJson.get(EventJsonDefines.EVENTS);
+                final String version = (String)innerJson.get(EventJsonDefines.VERSION);
+                if (!version.equals(DataPrepperVersion.getCurrentVersion().toString())) {
+                    LOG.error("Version mismatch! Current version {} Received data version {}", DataPrepperVersion.getCurrentVersion().toString(), version);
+                    return;
+                }
+                for (Map<String, Object> map: maps) {
+                    final Record<Event> record = createRecord(map);
+                    if (record != null) {
+                        eventConsumer.accept(record);
+                    }
+                }
             }
         }
     }
@@ -74,7 +91,7 @@ public class EventJsonInputCodec implements InputCodec {
         if (data == null) {
             return null;
         }
-        if (overrideTimeReceived) {
+        if (!overrideTimeReceived) {
             eventMetadata = new DefaultEventMetadata.Builder()
                 .withEventType(EventType.LOG.toString())
                 .withAttributes(eventMetadata.getAttributes())

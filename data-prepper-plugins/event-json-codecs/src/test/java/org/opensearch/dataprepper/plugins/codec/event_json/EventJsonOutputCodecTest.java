@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.codec.event_json;
 
+import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -57,13 +58,14 @@ public class EventJsonOutputCodecTest {
         outputCodec.complete(outputStream);
         Map<String, Object> dataMap = event.toMap();
         Map<String, Object> metadataMap = objectMapper.convertValue(event.getMetadata(), Map.class);
-        String expectedOutput = "[";
+        //String expectedOutput = "{\"version\":\""+DataPrepperVersion.getCurrentVersion().toString()+"\",\""+EventJsonDefines.EVENTS+"\":[";
+        String expectedOutput = "{\""+EventJsonDefines.VERSION+"\":\""+DataPrepperVersion.getCurrentVersion().toString()+"\",\""+EventJsonDefines.EVENTS+"\":[";
         String comma = "";
         for (int i = 0; i < 2; i++) {
-            expectedOutput += comma+"{\"data\":"+objectMapper.writeValueAsString(dataMap)+","+"\"metadata\":"+objectMapper.writeValueAsString(metadataMap)+"}";
+            expectedOutput += comma+"{\""+EventJsonDefines.DATA+"\":"+objectMapper.writeValueAsString(dataMap)+","+"\""+EventJsonDefines.METADATA+"\":"+objectMapper.writeValueAsString(metadataMap)+"}";
             comma = ",";
         }
-        expectedOutput += "]";
+        expectedOutput += "]}";
         String output = outputStream.toString();
         assertThat(output, equalTo(expectedOutput));
 

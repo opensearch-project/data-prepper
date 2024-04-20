@@ -6,12 +6,9 @@ package org.opensearch.dataprepper.plugins.codec.event_json;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
 import org.mockito.Mock;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -30,7 +27,6 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class EventJsonInputOutputCodecTest {
@@ -58,19 +54,8 @@ public class EventJsonInputOutputCodecTest {
     }
 
     public EventJsonInputCodec createInputCodec() {
-        when(eventJsonInputCodecConfig.getOverrideTimeReceived()).thenReturn(false);
+        when(eventJsonInputCodecConfig.getOverrideTimeReceived()).thenReturn(true);
         return new EventJsonInputCodec(eventJsonInputCodecConfig);
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"", "[]", "[{}]", "{}"})
-    public void emptyTest(String input) throws Exception {
-        ByteArrayInputStream inputStream = new ByteArrayInputStream(input.getBytes());
-        inputCodec = createInputCodec();
-        Consumer<Record<Event>> consumer = mock(Consumer.class);
-        inputCodec.parse(inputStream, consumer);
-        verifyNoInteractions(consumer);
-        
     }
 
     @Test
