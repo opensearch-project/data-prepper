@@ -75,7 +75,7 @@ public class EventJsonInputCodecTest {
 
         Map<String, Object> dataMap = event.toMap();
         Map<String, Object> metadataMap = objectMapper.convertValue(event.getMetadata(), Map.class);
-        String input = "{\""+EventJsonDefines.VERSION+"\":\"1.0\", \""+EventJsonDefines.EVENTS+"\":[";
+        String input = "{\""+EventJsonDefines.VERSION+"\":\"3.0\", \""+EventJsonDefines.EVENTS+"\":[";
         String comma = "";
         for (int i = 0; i < 2; i++) {
             input += comma+"{\"data\":"+objectMapper.writeValueAsString(dataMap)+","+"\"metadata\":"+objectMapper.writeValueAsString(metadataMap)+"}";
