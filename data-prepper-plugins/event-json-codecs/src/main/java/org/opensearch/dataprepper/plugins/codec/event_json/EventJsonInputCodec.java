@@ -48,6 +48,22 @@ public class EventJsonInputCodec implements InputCodec {
         this.overrideTimeReceived = config.getOverrideTimeReceived();
     }
 
+    private boolean isCompatibleVersion(Map<String, Object> json) {
+        final String versionStr = (String)json.get(EventJsonDefines.VERSION);
+        final String[] version = versionStr.split("[.]");
+        final String currentVersionStr = DataPrepperVersion.getCurrentVersion().toString();
+        final String[] currentVersion = currentVersionStr.split("[.]");
+        if (version.length < 2 || currentVersion.length < 2) {
+            LOG.error("Invalid Version! Current version {} Received data version {}", currentVersionStr, versionStr);
+            return false;
+        }
+        if (!version[0].equals(currentVersion[0])) {
+            LOG.error("Version mismatch! Current version {} Received data version {}", currentVersionStr, versionStr);
+            return false;
+        }
+        return true;
+    }
+
     public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
         Objects.requireNonNull(inputStream);
         Objects.requireNonNull(eventConsumer);
@@ -57,14 +73,12 @@ public class EventJsonInputCodec implements InputCodec {
         while (!jsonParser.isClosed() && jsonParser.nextToken() != JsonToken.END_OBJECT) {
             if (jsonParser.getCurrentToken() == JsonToken.START_OBJECT) {
                 final Map<String, Object> innerJson = objectMapper.readValue(jsonParser, Map.class);
-                final List<Map<String, Object>> maps = (List<Map<String, Object>>)innerJson.get(EventJsonDefines.EVENTS);
-                final String version = (String)innerJson.get(EventJsonDefines.VERSION);
-                if (!version.equals(DataPrepperVersion.getCurrentVersion().toString())) {
-                    LOG.error("Version mismatch! Current version {} Received data version {}", DataPrepperVersion.getCurrentVersion().toString(), version);
+                if (!isCompatibleVersion(innerJson)) {
                     return;
                 }
-                for (Map<String, Object> map: maps) {
-                    final Record<Event> record = createRecord(map);
+                final List<Map<String, Object>> events = (List<Map<String, Object>>)innerJson.get(EventJsonDefines.EVENTS);
+                for (Map<String, Object> eventMap: events) {
+                    final Record<Event> record = createRecord(eventMap);
                     if (record != null) {
                         eventConsumer.accept(record);
                     }

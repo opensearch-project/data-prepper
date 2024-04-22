@@ -75,7 +75,32 @@ public class EventJsonInputCodecTest {
 
         Map<String, Object> dataMap = event.toMap();
         Map<String, Object> metadataMap = objectMapper.convertValue(event.getMetadata(), Map.class);
-        String input = "{\""+EventJsonDefines.VERSION+"\":\"2.0\", \""+EventJsonDefines.EVENTS+"\":[";
+        String input = "{\""+EventJsonDefines.VERSION+"\":\"2\", \""+EventJsonDefines.EVENTS+"\":[";
+        String comma = "";
+        for (int i = 0; i < 2; i++) {
+            input += comma+"{\"data\":"+objectMapper.writeValueAsString(dataMap)+","+"\"metadata\":"+objectMapper.writeValueAsString(metadataMap)+"}";
+            comma = ",";
+        }
+        input += "]}";
+        inputStream = new ByteArrayInputStream(input.getBytes());
+        List<Record<Event>> records = new LinkedList<>();
+        inputCodec.parse(inputStream, records::add);
+        assertThat(records.size(), equalTo(0));
+    }
+
+
+    @Test
+    public void inCompatibleVersionTest() throws Exception {
+        inputCodec = createInputCodec();
+        final String key = UUID.randomUUID().toString();
+        final String value = UUID.randomUUID().toString();
+        Map<String, Object> data = Map.of(key, value);
+        Instant startTime = Instant.now();
+        Event event = createEvent(data, startTime);
+
+        Map<String, Object> dataMap = event.toMap();
+        Map<String, Object> metadataMap = objectMapper.convertValue(event.getMetadata(), Map.class);
+        String input = "{\""+EventJsonDefines.VERSION+"\":\"1.0\", \""+EventJsonDefines.EVENTS+"\":[";
         String comma = "";
         for (int i = 0; i < 2; i++) {
             input += comma+"{\"data\":"+objectMapper.writeValueAsString(dataMap)+","+"\"metadata\":"+objectMapper.writeValueAsString(metadataMap)+"}";
