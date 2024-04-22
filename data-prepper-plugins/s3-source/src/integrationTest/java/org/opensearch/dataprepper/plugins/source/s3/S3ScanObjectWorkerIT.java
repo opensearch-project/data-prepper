@@ -43,7 +43,6 @@ import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectSerial
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.sourcecoordinator.inmemory.InMemorySourceCoordinationStore;
 import org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator;
-import org.opensearch.dataprepper.sourcecoordination.PartitionManager;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
