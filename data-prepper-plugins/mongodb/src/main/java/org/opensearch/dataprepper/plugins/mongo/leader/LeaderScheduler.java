@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.mongo.leader;
 
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.LeaderPartition;
@@ -22,7 +23,6 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 
 public class LeaderScheduler implements Runnable {
@@ -40,7 +40,7 @@ public class LeaderScheduler implements Runnable {
      */
     private static final Duration DEFAULT_LEASE_INTERVAL = Duration.ofMinutes(1);
 
-    private final List<CollectionConfig> collectionConfigs;
+    private final MongoDBSourceConfig sourceConfig;
 
     private final EnhancedSourceCoordinator coordinator;
 
@@ -48,14 +48,14 @@ public class LeaderScheduler implements Runnable {
 
     private LeaderPartition leaderPartition;
 
-    public LeaderScheduler(EnhancedSourceCoordinator coordinator, List<CollectionConfig> collectionConfigs) {
-        this(coordinator, collectionConfigs, DEFAULT_LEASE_INTERVAL);
+    public LeaderScheduler(final EnhancedSourceCoordinator coordinator, final MongoDBSourceConfig sourceConfig) {
+        this(coordinator, sourceConfig, DEFAULT_LEASE_INTERVAL);
     }
 
     LeaderScheduler(EnhancedSourceCoordinator coordinator,
-                    List<CollectionConfig> collectionConfigs,
+                    MongoDBSourceConfig sourceConfig,
                     Duration leaseInterval) {
-        this.collectionConfigs = collectionConfigs;
+        this.sourceConfig = sourceConfig;
         this.coordinator = coordinator;
         this.leaseInterval = leaseInterval;
     }
@@ -113,7 +113,7 @@ public class LeaderScheduler implements Runnable {
     private void init() {
         LOG.info("Try to initialize DocumentDB Leader Partition");
 
-        collectionConfigs.forEach(collectionConfig -> {
+        sourceConfig.getCollections().forEach(collectionConfig -> {
             // Create a Global state in the coordination table for the configuration.
             // Global State here is designed to be able to read whenever needed
             // So that the jobs can refer to the configuration.
@@ -127,7 +127,8 @@ public class LeaderScheduler implements Runnable {
                 createExportGlobalState(collectionConfig);
             }
 
-            createS3Partition(collectionConfig);
+            final String s3PathPrefix = sourceConfig.getTransformedS3PathPrefix(collectionConfig.getCollection() + "-" + Instant.now().toEpochMilli());
+            createS3Partition(sourceConfig.getS3Bucket(), sourceConfig.getS3Region(), s3PathPrefix, collectionConfig);
 
             if (collectionConfig.isStream()) {
                 createStreamPartition(collectionConfig, startTime, exportRequired);
@@ -145,10 +146,10 @@ public class LeaderScheduler implements Runnable {
      *
      * @param collectionConfig  collection configuration object containing collection details
      */
-    private void createS3Partition(final CollectionConfig collectionConfig) {
+    private void createS3Partition(final String s3Bucket, final String s3Region, final String s3PathPrefix, final CollectionConfig collectionConfig) {
         LOG.info("Creating s3 folder global partition: {}", collectionConfig.getCollection());
-        coordinator.createPartition(new S3FolderPartition(collectionConfig.getS3Bucket(), collectionConfig.getS3PathPrefix(),
-                collectionConfig.getS3Region(), collectionConfig.getCollection(), collectionConfig.getPartitionCount()));
+        coordinator.createPartition(new S3FolderPartition(s3Bucket, s3PathPrefix,
+                s3Region, collectionConfig.getCollection(), collectionConfig.getPartitionCount()));
     }
 
     /**

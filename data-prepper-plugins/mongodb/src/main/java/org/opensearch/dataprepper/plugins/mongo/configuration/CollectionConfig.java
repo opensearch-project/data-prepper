@@ -20,15 +20,6 @@ public class CollectionConfig {
     @JsonProperty("stream")
     private boolean stream;
 
-    @JsonProperty("s3_bucket")
-    private String s3Bucket;
-
-    @JsonProperty("s3_path_prefix")
-    private String s3PathPrefix;
-
-    @JsonProperty("s3_region")
-    private String s3Region;
-
     @JsonProperty("partition_count")
     private int partitionCount;
 
@@ -65,14 +56,6 @@ public class CollectionConfig {
         return this.stream;
     }
 
-    public String getS3Bucket() {
-        return this.s3Bucket;
-    }
-
-    public String getS3PathPrefix() {
-        return this.s3PathPrefix;
-    }
-
     public int getPartitionCount() {
         return this.partitionCount;
     }
@@ -83,8 +66,5 @@ public class CollectionConfig {
 
     public int getStreamBatchSize() {
         return this.streamBatchSize;
-    }
-    public String getS3Region() {
-        return this.s3Region;
     }
 }

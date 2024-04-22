@@ -64,7 +64,7 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
 
     @Override
     public void update(MongoDBSourceConfig pluginConfig) {
-        final MongoDBSourceConfig.AuthenticationConfig newAuthConfig = pluginConfig.getCredentialsConfig();
+        final MongoDBSourceConfig.AuthenticationConfig newAuthConfig = pluginConfig.getAuthenticationConfig();
         if (basicAuthChanged(newAuthConfig)) {
             credentialsChangeCounter.increment();
             try {
@@ -96,7 +96,7 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
 
     private boolean basicAuthChanged(final MongoDBSourceConfig.AuthenticationConfig newAuthConfig) {
         final MongoDBSourceConfig.AuthenticationConfig currentAuthConfig = currentMongoDBSourceConfig
-                .getCredentialsConfig();
+                .getAuthenticationConfig();
         return !Objects.equals(currentAuthConfig.getUsername(), newAuthConfig.getUsername()) ||
                 !Objects.equals(currentAuthConfig.getPassword(), newAuthConfig.getPassword());
     }

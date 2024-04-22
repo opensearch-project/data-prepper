@@ -108,8 +108,10 @@ public class ExportWorker implements Runnable {
                     if (sourcePartition.isPresent()) {
                         dataQueryPartition = (DataQueryPartition) sourcePartition.get();
                         final AcknowledgementSet acknowledgementSet = createAcknowledgementSet(dataQueryPartition).orElse(null);
+                        final String s3PathPrefix = sourceConfig.getTransformedS3PathPrefix(dataQueryPartition.getCollection());
                         final DataQueryPartitionCheckpoint partitionCheckpoint =  new DataQueryPartitionCheckpoint(sourceCoordinator, dataQueryPartition);
-                        final PartitionKeyRecordConverter recordConverter = new PartitionKeyRecordConverter(dataQueryPartition.getCollection(), ExportPartition.PARTITION_TYPE);
+                        final PartitionKeyRecordConverter recordConverter = new PartitionKeyRecordConverter(dataQueryPartition.getCollection(),
+                                ExportPartition.PARTITION_TYPE, s3PathPrefix);
                         final ExportPartitionWorker exportPartitionWorker = new ExportPartitionWorker(recordBufferWriter, recordConverter,
                                 dataQueryPartition, acknowledgementSet, sourceConfig, partitionCheckpoint, Instant.now().toEpochMilli(), pluginMetrics);
                         final CompletableFuture<Void> runLoader = CompletableFuture.runAsync(exportPartitionWorker, executor);

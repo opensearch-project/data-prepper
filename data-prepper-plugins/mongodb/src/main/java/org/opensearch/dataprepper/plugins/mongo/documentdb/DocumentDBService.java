@@ -50,7 +50,8 @@ public class DocumentDBService {
      */
     public void start(Buffer<Record<Event>> buffer) {
         final List<Runnable> runnableList = new ArrayList<>();
-        final LeaderScheduler leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig.getCollections());
+
+        final LeaderScheduler leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig);
         runnableList.add(leaderScheduler);
         final List<String> collections = sourceConfig.getCollections().stream().map(CollectionConfig::getCollection).collect(Collectors.toList());
         if (!collections.isEmpty()) {

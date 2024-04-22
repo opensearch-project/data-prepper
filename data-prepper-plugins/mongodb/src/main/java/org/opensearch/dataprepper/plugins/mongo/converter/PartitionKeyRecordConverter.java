@@ -9,10 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PartitionKeyRecordConverter extends RecordConverter {
+    public static final String S3_PATH_DELIMITER = "/";
     private List<String> partitionNames = new ArrayList<>();
     private int partitionSize = 0;
-    public PartitionKeyRecordConverter(final String collection, final String partitionType) {
+    final String s3PathPrefix;
+    public PartitionKeyRecordConverter(final String collection, final String partitionType, final String s3PathPrefix) {
         super(collection, partitionType);
+        this.s3PathPrefix = s3PathPrefix;
     }
 
     public void initializePartitions(final List<String> partitionNames) {
@@ -28,7 +31,7 @@ public class PartitionKeyRecordConverter extends RecordConverter {
         final Event event =  super.convert(record, eventCreationTimeMillis, eventVersionNumber, eventName);
         final EventMetadata eventMetadata = event.getMetadata();
         final String partitionKey = String.valueOf(eventMetadata.getAttribute(MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE));
-        eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_S3_PARTITION_KEY, hashKeyToPartition(partitionKey));
+        eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_S3_PARTITION_KEY, s3PathPrefix + S3_PATH_DELIMITER + hashKeyToPartition(partitionKey));
         return event;
     }
 

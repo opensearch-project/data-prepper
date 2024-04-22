@@ -90,7 +90,9 @@ public class StreamScheduler implements Runnable {
         final DataStreamPartitionCheckpoint partitionCheckpoint = new DataStreamPartitionCheckpoint(sourceCoordinator, streamPartition);
         final StreamAcknowledgementManager streamAcknowledgementManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint,
                 sourceConfig.getPartitionAcknowledgmentTimeout(), DEFAULT_MONITOR_WAIT_TIME_MS, DEFAULT_CHECKPOINT_INTERVAL_MILLS);
-        final PartitionKeyRecordConverter recordConverter = new PartitionKeyRecordConverter(streamPartition.getCollection(),StreamPartition.PARTITION_TYPE);
+        final String s3PathPrefix = sourceConfig.getTransformedS3PathPrefix(streamPartition.getCollection());
+        final PartitionKeyRecordConverter recordConverter = new PartitionKeyRecordConverter(streamPartition.getCollection(),
+                StreamPartition.PARTITION_TYPE, s3PathPrefix);
         final CollectionConfig partitionCollectionConfig = sourceConfig.getCollections().stream()
                 .filter(collectionConfig -> collectionConfig.getCollection().equals(streamPartition.getCollection()))
                 .findFirst()

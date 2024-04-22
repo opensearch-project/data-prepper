@@ -95,13 +95,13 @@ class MongoTasksRefresherTest {
         final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(sourceConfig);
         verify(executorServiceFunction).apply(eq(3));
-        when(sourceConfig.getCredentialsConfig()).thenReturn(credentialsConfig);
+        when(sourceConfig.getAuthenticationConfig()).thenReturn(credentialsConfig);
         when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
         final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
         final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
                 MongoDBSourceConfig.AuthenticationConfig.class);
-        when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
+        when(newSourceConfig.getAuthenticationConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
         objectUnderTest.update(newSourceConfig);
@@ -117,13 +117,13 @@ class MongoTasksRefresherTest {
         final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(sourceConfig);
         verify(executorServiceFunction).apply(eq(3));
-        when(sourceConfig.getCredentialsConfig()).thenReturn(credentialsConfig);
+        when(sourceConfig.getAuthenticationConfig()).thenReturn(credentialsConfig);
         when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
         when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
         final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
                 MongoDBSourceConfig.AuthenticationConfig.class);
-        when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
+        when(newSourceConfig.getAuthenticationConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME + "_changed");
         final ExecutorService newExecutorService = mock(ExecutorService.class);
         when(executorServiceFunction.apply(anyInt())).thenReturn(newExecutorService);
@@ -142,14 +142,14 @@ class MongoTasksRefresherTest {
         final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(sourceConfig);
         verify(executorServiceFunction).apply(eq(3));
-        when(sourceConfig.getCredentialsConfig()).thenReturn(credentialsConfig);
+        when(sourceConfig.getAuthenticationConfig()).thenReturn(credentialsConfig);
         when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
         final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
         when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
         final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
                 MongoDBSourceConfig.AuthenticationConfig.class);
-        when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
+        when(newSourceConfig.getAuthenticationConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
         final ExecutorService newExecutorService = mock(ExecutorService.class);
@@ -170,14 +170,14 @@ class MongoTasksRefresherTest {
         final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(sourceConfig);
         verify(executorServiceFunction).apply(eq(2));
-        when(sourceConfig.getCredentialsConfig()).thenReturn(credentialsConfig);
+        when(sourceConfig.getAuthenticationConfig()).thenReturn(credentialsConfig);
         when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
         final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
         when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
         final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
                 MongoDBSourceConfig.AuthenticationConfig.class);
-        when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
+        when(newSourceConfig.getAuthenticationConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
         final ExecutorService newExecutorService = mock(ExecutorService.class);
@@ -197,14 +197,14 @@ class MongoTasksRefresherTest {
         final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(sourceConfig);
         verify(executorServiceFunction).apply(eq(1));
-        when(sourceConfig.getCredentialsConfig()).thenReturn(credentialsConfig);
+        when(sourceConfig.getAuthenticationConfig()).thenReturn(credentialsConfig);
         when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
         final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
         when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
         final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
                 MongoDBSourceConfig.AuthenticationConfig.class);
-        when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
+        when(newSourceConfig.getAuthenticationConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
         final ExecutorService newExecutorService = mock(ExecutorService.class);
@@ -223,13 +223,13 @@ class MongoTasksRefresherTest {
         final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(sourceConfig);
         verify(executorServiceFunction).apply(eq(3));
-        when(sourceConfig.getCredentialsConfig()).thenReturn(credentialsConfig);
+        when(sourceConfig.getAuthenticationConfig()).thenReturn(credentialsConfig);
         when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
         final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
         final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
                 MongoDBSourceConfig.AuthenticationConfig.class);
-        when(newSourceConfig.getCredentialsConfig()).thenReturn(newCredentialsConfig);
+        when(newSourceConfig.getAuthenticationConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
         doThrow(RuntimeException.class).when(executorService).shutdownNow();
