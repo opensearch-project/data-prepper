@@ -19,6 +19,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
+import org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler;
+import org.opensearch.dataprepper.plugins.mongo.export.ExportWorker;
+import org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -102,7 +105,9 @@ class MongoTasksRefresherTest {
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
         objectUnderTest.update(newSourceConfig);
-        verify(executorService, times(3)).submit(any(Runnable.class));
+        verify(executorService).submit(any(ExportScheduler.class));
+        verify(executorService).submit(any(ExportWorker.class));
+        verify(executorService).submit(any(StreamScheduler.class));
         verifyNoMoreInteractions(executorServiceFunction);
     }
 
@@ -125,7 +130,9 @@ class MongoTasksRefresherTest {
         objectUnderTest.update(newSourceConfig);
         verify(credentialsChangeCounter).increment();
         verify(executorService).shutdownNow();
-        verify(newExecutorService, times(3)).submit(any(Runnable.class));
+        verify(executorService).submit(any(ExportScheduler.class));
+        verify(executorService).submit(any(ExportWorker.class));
+        verify(executorService).submit(any(StreamScheduler.class));
         verify(executorServiceFunction, times(2)).apply(eq(3));
     }
 
@@ -150,7 +157,9 @@ class MongoTasksRefresherTest {
         objectUnderTest.update(newSourceConfig);
         verify(credentialsChangeCounter).increment();
         verify(executorService).shutdownNow();
-        verify(newExecutorService, times(3)).submit(any(Runnable.class));
+        verify(executorService).submit(any(ExportScheduler.class));
+        verify(executorService).submit(any(ExportWorker.class));
+        verify(executorService).submit(any(StreamScheduler.class));
         verify(executorServiceFunction, times(2)).apply(eq(3));
     }
 
@@ -176,7 +185,8 @@ class MongoTasksRefresherTest {
         objectUnderTest.update(newSourceConfig);
         verify(credentialsChangeCounter).increment();
         verify(executorService).shutdownNow();
-        verify(newExecutorService, times(2)).submit(any(Runnable.class));
+        verify(newExecutorService).submit(any(ExportScheduler.class));
+        verify(newExecutorService).submit(any(ExportWorker.class));
         verify(executorServiceFunction, times(2)).apply(eq(2));
     }
 
@@ -202,7 +212,7 @@ class MongoTasksRefresherTest {
         objectUnderTest.update(newSourceConfig);
         verify(credentialsChangeCounter).increment();
         verify(executorService).shutdownNow();
-        verify(newExecutorService, times(1)).submit(any(Runnable.class));
+        verify(executorService).submit(any(StreamScheduler.class));
         verify(executorServiceFunction, times(2)).apply(eq(1));
     }
 
