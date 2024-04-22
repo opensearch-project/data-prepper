@@ -51,16 +51,14 @@ public class EventJsonInputCodec implements InputCodec {
     private boolean isCompatibleVersion(Map<String, Object> json) {
         final String versionStr = (String)json.get(EventJsonDefines.VERSION);
         final String[] version = versionStr.split("[.]");
-        final String currentVersionStr = DataPrepperVersion.getCurrentVersion().toString();
-        final String[] currentVersion = currentVersionStr.split("[.]");
-        if (version.length < 2 || currentVersion.length < 2) {
-            LOG.error("Invalid Version! Current version {} Received data version {}", currentVersionStr, versionStr);
+        final DataPrepperVersion currentVersion = DataPrepperVersion.getCurrentVersion();
+
+        final DataPrepperVersion definedVersion = DataPrepperVersion.parse(versionStr);
+        if(definedVersion.getMajorVersion() != currentVersion.getMajorVersion()) {
+          LOG.error("Version mismatch! Current version {} Received data version {}", currentVersion, versionStr);
             return false;
         }
-        if (!version[0].equals(currentVersion[0])) {
-            LOG.error("Version mismatch! Current version {} Received data version {}", currentVersionStr, versionStr);
-            return false;
-        }
+
         return true;
     }
 
