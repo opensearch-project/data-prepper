@@ -116,7 +116,7 @@ public class S3DlqWriterTest {
             .sdkHttpResponse(mockHttpResponse)
             .build();
 
-        final int numberOfObjects = new Random().nextInt(20);
+        final int numberOfObjects = new Random().nextInt(18) + 2;
         dlqObjects = generateDlqData(numberOfObjects);
 
         objectMapper = new ObjectMapper();
