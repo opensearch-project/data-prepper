@@ -154,7 +154,7 @@ public class S3ScanObjectWorkerIT {
         final SourceCoordinationStore inMemoryStore = new InMemorySourceCoordinationStore(new PluginSetting("in_memory", Collections.emptyMap()));
         final SourceCoordinationConfig sourceCoordinationConfig = new SourceCoordinationConfig(new PluginModel("in_memory", Collections.emptyMap()), null);
         sourceCoordinator = new LeaseBasedSourceCoordinator<>(S3SourceProgressState.class,
-                inMemoryStore, sourceCoordinationConfig, new PartitionManager<>(), "s3-test-pipeline", PluginMetrics.fromNames("source-coordinator", "s3-test-pipeline"));
+                inMemoryStore, sourceCoordinationConfig, "s3-test-pipeline", PluginMetrics.fromNames("source-coordinator", "s3-test-pipeline"));
         sourceCoordinator.initialize();
     }
 
@@ -214,7 +214,7 @@ public class S3ScanObjectWorkerIT {
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
 
         return new ScanObjectWorker(s3Client,List.of(scanOptions),createObjectUnderTest(s3ObjectRequest)
-        ,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
+        ,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, 30000, pluginMetrics);
     }
 
     @ParameterizedTest
