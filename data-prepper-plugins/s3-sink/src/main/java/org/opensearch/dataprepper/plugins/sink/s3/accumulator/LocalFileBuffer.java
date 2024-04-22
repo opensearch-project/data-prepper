@@ -8,8 +8,9 @@ package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 import org.apache.commons.lang3.time.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -20,7 +21,10 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -30,7 +34,7 @@ public class LocalFileBuffer implements Buffer {
 
     private static final Logger LOG = LoggerFactory.getLogger(LocalFileBuffer.class);
     private final OutputStream outputStream;
-    private final S3Client s3Client;
+    private final S3AsyncClient s3Client;
     private final Supplier<String> bucketSupplier;
     private final Supplier<String> keySupplier;
     private int eventCount;
@@ -44,7 +48,7 @@ public class LocalFileBuffer implements Buffer {
 
 
     LocalFileBuffer(final File tempFile,
-                    final S3Client s3Client,
+                    final S3AsyncClient s3Client,
                     final Supplier<String> bucketSupplier,
                     final Supplier<String> keySupplier,
                     final String defaultBucket) throws FileNotFoundException {
@@ -84,10 +88,14 @@ public class LocalFileBuffer implements Buffer {
      * Upload accumulated data to amazon s3.
      */
     @Override
-    public void flushToS3() {
+    public Optional<CompletableFuture<?>> flushToS3(final Consumer<Boolean> consumeOnCompletion, final Consumer<Throwable> consumeOnException) {
         flushAndCloseStream();
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, RequestBody.fromFile(localFile), getKey(), getBucket(), defaultBucket);
-        removeTemporaryFile();
+        final CompletableFuture<PutObjectResponse> putObjectResponseCompletableFuture = BufferUtilities.putObjectOrSendToDefaultBucket(s3Client,
+                AsyncRequestBody.fromFile(localFile),
+                consumeOnCompletion, consumeOnException,
+                getKey(), getBucket(), defaultBucket)
+                .whenComplete(((response, throwable) -> removeTemporaryFile()));
+        return Optional.of(putObjectResponseCompletableFuture);
     }
 
     /**

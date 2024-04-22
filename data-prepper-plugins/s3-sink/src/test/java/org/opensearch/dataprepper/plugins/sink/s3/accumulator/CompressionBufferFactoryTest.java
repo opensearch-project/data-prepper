@@ -13,7 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -37,7 +37,7 @@ class CompressionBufferFactoryTest {
     private CompressionEngine compressionEngine;
 
     @Mock
-    private S3Client s3Client;
+    private S3AsyncClient s3Client;
 
     @Mock
     private Supplier<String> bucketSupplier;

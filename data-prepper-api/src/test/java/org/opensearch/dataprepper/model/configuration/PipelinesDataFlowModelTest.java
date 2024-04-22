@@ -34,6 +34,7 @@ class PipelinesDataFlowModelTest {
     private static final String RESOURCE_PATH_WITH_ROUTES = "/pipelines_data_flow_routes.yaml";
     private static final String RESOURCE_PATH_WITH_SHORT_HAND_VERSION = "/pipeline_with_short_hand_version.yaml";
     private static final String RESOURCE_PATH_WITH_VERSION = "/pipeline_with_version.yaml";
+    private static final String RESOURCE_PATH_WITH_DEPRECATED_EXTENSION = "/pipeline_with_depreciated_extension.yaml";
     private static final String RESOURCE_PATH_WITH_EXTENSION = "/pipeline_with_extension.yaml";
     private ObjectMapper objectMapper;
 
@@ -273,11 +274,20 @@ class PipelinesDataFlowModelTest {
     }
 
     @Test
+    void deserialize_PipelinesDataFlowModel_with_deprecated_pipeline_configurations() throws IOException {
+        final InputStream inputStream = this.getClass().getResourceAsStream(RESOURCE_PATH_WITH_DEPRECATED_EXTENSION);
+
+        final PipelinesDataFlowModel actualModel = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
+        assertThat(actualModel, notNullValue());
+        assertThat(actualModel.getPipelineExtensions(), notNullValue());
+        assertThat(actualModel.getPipelineExtensions().getExtensionMap().containsKey("test_extension"), is(true));
+    }
+
+    @Test
     void deserialize_PipelinesDataFlowModel_with_extension() throws IOException {
         final InputStream inputStream = this.getClass().getResourceAsStream(RESOURCE_PATH_WITH_EXTENSION);
 
         final PipelinesDataFlowModel actualModel = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
-
         assertThat(actualModel, notNullValue());
         assertThat(actualModel.getPipelineExtensions(), notNullValue());
         assertThat(actualModel.getPipelineExtensions().getExtensionMap().containsKey("test_extension"), is(true));

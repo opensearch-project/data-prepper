@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -27,6 +28,12 @@ class CodecBufferTest {
 
     @Mock
     private BufferedCodec bufferedCodec;
+
+    @Mock
+    private Consumer<Boolean> mockRunOnCompletion;
+
+    @Mock
+    private Consumer<Throwable> mockRunOnFailure;
     private Random random;
 
     @BeforeEach
@@ -100,8 +107,8 @@ class CodecBufferTest {
 
     @Test
     void flushToS3_calls_inner_flushToS3() {
-        createObjectUnderTest().flushToS3();
+        createObjectUnderTest().flushToS3(mockRunOnCompletion, mockRunOnFailure);
 
-        verify(innerBuffer).flushToS3();
+        verify(innerBuffer).flushToS3(mockRunOnCompletion, mockRunOnFailure);
     }
 }
