@@ -6,6 +6,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
@@ -29,6 +30,7 @@ public class DocumentDBSource implements Source<Record<Event>>, UsesEnhancedSour
 
     private final PluginMetrics pluginMetrics;
     private final MongoDBSourceConfig sourceConfig;
+    private final PluginConfigObservable pluginConfigObservable;
     private EnhancedSourceCoordinator sourceCoordinator;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private DocumentDBService documentDBService;
@@ -36,10 +38,12 @@ public class DocumentDBSource implements Source<Record<Event>>, UsesEnhancedSour
     @DataPrepperPluginConstructor
     public DocumentDBSource(final PluginMetrics pluginMetrics,
                             final MongoDBSourceConfig sourceConfig,
-                            final AcknowledgementSetManager acknowledgementSetManager) {
+                            final AcknowledgementSetManager acknowledgementSetManager,
+                            final PluginConfigObservable pluginConfigObservable) {
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        this.pluginConfigObservable = pluginConfigObservable;
     }
 
     @Override
@@ -48,7 +52,7 @@ public class DocumentDBSource implements Source<Record<Event>>, UsesEnhancedSour
         sourceCoordinator.createPartition(new LeaderPartition());
 
         documentDBService = new DocumentDBService(sourceCoordinator, sourceConfig, pluginMetrics,
-                acknowledgementSetManager);
+                acknowledgementSetManager, pluginConfigObservable);
 
         LOG.info("Start DocumentDB service");
         documentDBService.start(buffer);

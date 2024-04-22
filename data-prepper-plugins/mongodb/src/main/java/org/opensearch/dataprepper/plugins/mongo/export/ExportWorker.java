@@ -239,7 +239,8 @@ public class ExportWorker implements Runnable {
             try {
                 sourceCoordinator.saveProgressStateForPartition(globalState, null);
                 // if all load are completed.
-                if (exportLoadStatus.getLoadedPartitions() == exportLoadStatus.getTotalPartitions()) {
+                if (exportLoadStatus.isTotalParitionsComplete() &&
+                        exportLoadStatus.getLoadedPartitions() == exportLoadStatus.getTotalPartitions()) {
                     LOG.info("All Exports are done, streaming can continue...");
                     final StreamLoadStatus streamLoadStatus = new StreamLoadStatus(Instant.now().toEpochMilli());
                     sourceCoordinator.createPartition(new GlobalState(STREAM_PREFIX + collection, streamLoadStatus.toMap()));

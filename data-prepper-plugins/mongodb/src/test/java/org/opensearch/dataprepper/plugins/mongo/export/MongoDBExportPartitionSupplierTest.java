@@ -23,11 +23,13 @@ import org.opensearch.dataprepper.plugins.mongo.client.MongoDBConnection;
 import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
+import org.opensearch.dataprepper.plugins.mongo.model.PartitionIdentifierBatch;
 
 import java.util.Collections;
 import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -93,7 +95,10 @@ public class MongoDBExportPartitionSupplierTest {
                     .thenReturn(null)
                     .thenReturn(new Document("_id", "4999"));
             // When Apply Partition create logics
-            List<PartitionIdentifier> partitions = testSupplier.apply(exportPartition);
+            final PartitionIdentifierBatch partitionIdentifierBatch = testSupplier.apply(exportPartition);
+            assertThat(partitionIdentifierBatch.isLastBatch(), is(true));
+            assertThat(partitionIdentifierBatch.getEndDocId(), equalTo("4999"));
+            List<PartitionIdentifier> partitions = partitionIdentifierBatch.getPartitionIdentifiers();
             // Then dependencies are called
             verify(mongoClient).getDatabase(eq("test"));
             verify(mongoClient, times(1)).close();

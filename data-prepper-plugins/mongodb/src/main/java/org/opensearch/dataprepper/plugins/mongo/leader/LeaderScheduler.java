@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.mongo.leader;
 
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -11,6 +16,7 @@ import org.opensearch.dataprepper.plugins.mongo.coordination.state.ExportProgres
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
+import org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +28,7 @@ import java.util.Optional;
 public class LeaderScheduler implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(LeaderScheduler.class);
+    public static final String EXPORT_PREFIX = "EXPORT-";
 
     /**
      * Default duration to extend the timeout of lease
@@ -117,6 +124,7 @@ public class LeaderScheduler implements Runnable {
             LOG.info("Ingestion mode export {} and stream {} for Collection {}", collectionConfig.isExport(), collectionConfig.isStream(), collectionConfig.getCollection());
             if (exportRequired) {
                 createExportPartition(collectionConfig, startTime);
+                createExportGlobalState(collectionConfig);
             }
 
             createS3Partition(collectionConfig);
@@ -175,4 +183,10 @@ public class LeaderScheduler implements Runnable {
         coordinator.createPartition(exportPartition);
     }
 
+    private void createExportGlobalState(final CollectionConfig collectionConfig) {
+        final ExportLoadStatus exportLoadStatus = new ExportLoadStatus(
+                0, 0, 0, Instant.now().toEpochMilli(), false);
+        coordinator.createPartition(
+                new GlobalState(EXPORT_PREFIX + collectionConfig.getCollection(), exportLoadStatus.toMap()));
+    }
 }
