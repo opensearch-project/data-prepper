@@ -277,7 +277,7 @@ public class OpenSearchClientFactoryTest {
             final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
             trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createSSLContext(certificatePathCaptor.capture()));
             assertThat(openSearchClient, notNullValue());
-            assertThat(certificatePathCaptor.getValue(), equalTo(certificate));
+            assertThat(certificatePathCaptor.getValue(), equalTo(Path.of(certificate)));
         }
     }
 

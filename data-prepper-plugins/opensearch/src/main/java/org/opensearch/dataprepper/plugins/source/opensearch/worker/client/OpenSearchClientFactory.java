@@ -310,7 +310,7 @@ public class OpenSearchClientFactory {
         try (PemReader reader = new PemReader(new StringReader(certificate))) {
             return reader.readPemObject() != null;
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read certificate.", e);
+            return false;
         }
     }
 }
