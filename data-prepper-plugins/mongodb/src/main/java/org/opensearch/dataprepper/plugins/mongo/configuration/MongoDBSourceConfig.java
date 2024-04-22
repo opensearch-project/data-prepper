@@ -43,8 +43,8 @@ public class MongoDBSourceConfig {
     @JsonProperty("s3_bucket")
     private String s3Bucket;
 
-    @JsonProperty("s3_path_prefix")
-    private String s3PathPrefix;
+    @JsonProperty("s3_prefix")
+    private String s3Prefix;
 
     @JsonProperty("s3_region")
     private String s3Region;
@@ -126,17 +126,17 @@ public class MongoDBSourceConfig {
         return this.s3Bucket;
     }
 
-    public String getS3PathPrefix() {
-        return this.s3PathPrefix;
+    public String getS3Prefix() {
+        return this.s3Prefix;
     }
 
     public String getTransformedS3PathPrefix(final String collection) {
         final String serviceName = System.getenv(DATAPREPPER_SERVICE_NAME);
         final String suffixPath = serviceName +  "/" + collection + "/" + currentTimeInEpochMilli;
-        if (this.getS3PathPrefix() == null || this.getS3PathPrefix().trim().isBlank()) {
-            return this.s3PathPrefix + "/" + suffixPath;
-        } else {
+        if (this.getS3Prefix() == null || this.getS3Prefix().trim().isBlank()) {
             return suffixPath;
+        } else {
+            return this.s3Prefix + "/" + suffixPath;
         }
     }
 
