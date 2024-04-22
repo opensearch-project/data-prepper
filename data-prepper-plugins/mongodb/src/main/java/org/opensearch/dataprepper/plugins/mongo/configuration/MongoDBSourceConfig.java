@@ -20,6 +20,7 @@ public class MongoDBSourceConfig {
     private static final String DATAPREPPER_SERVICE_NAME = "DATAPREPPER_SERVICE_NAME";
 
     private static final long currentTimeInEpochMilli = Instant.now().toEpochMilli();
+    public static final String S3_PATH_DELIMITER = "/";
     @JsonProperty("hosts")
     private @NotNull String[] hosts;
     @JsonProperty("port")
@@ -132,11 +133,11 @@ public class MongoDBSourceConfig {
 
     public String getTransformedS3PathPrefix(final String collection) {
         final String serviceName = System.getenv(DATAPREPPER_SERVICE_NAME);
-        final String suffixPath = serviceName +  "/" + collection + "/" + currentTimeInEpochMilli;
+        final String suffixPath = serviceName + S3_PATH_DELIMITER + collection + S3_PATH_DELIMITER + currentTimeInEpochMilli;
         if (this.getS3Prefix() == null || this.getS3Prefix().trim().isBlank()) {
             return suffixPath;
         } else {
-            return this.s3Prefix + "/" + suffixPath;
+            return this.s3Prefix + S3_PATH_DELIMITER + suffixPath;
         }
     }
 
