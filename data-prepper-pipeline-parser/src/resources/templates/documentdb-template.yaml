@@ -13,7 +13,7 @@
     - s3:
         routes:
           - initial_load
-        aws: "{{$.pipeline.sink[?(@.opensearch)].opensearch.aws}}"
+        aws: "{{$.*.sink[?(@.opensearch)].opensearch.aws}}"
         bucket: "{{$..source.collections[0].s3_bucket}}"
         threshold:
           event_collect_timeout: "120s"

@@ -62,14 +62,6 @@ public class PipelinesDataFlowModel {
         this.pipelines = pipelines;
     }
 
-    public PipelinesDataFlowModel(final DataPrepperVersion version,
-                                  final PipelineExtensions pipelineExtensions,
-                                  final Map<String, PipelineModel> pipelines) {
-        this.version = version;
-        this.pipelineExtensions = pipelineExtensions;
-        this.pipelines = pipelines;
-    }
-
     @JsonAnyGetter
     public Map<String, PipelineModel> getPipelines() {
         return pipelines;

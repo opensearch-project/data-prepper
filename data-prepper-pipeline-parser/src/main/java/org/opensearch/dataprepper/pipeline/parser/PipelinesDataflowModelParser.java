@@ -69,17 +69,6 @@ public class PipelinesDataflowModelParser {
         }
     }
 
-    private PipelinesDataFlowModel parseStreamToTemplateDataFlowModel(final InputStream configurationInputStream) {
-        try (final InputStream pipelineConfigurationInputStream = configurationInputStream) {
-            final PipelinesDataFlowModel pipelinesDataFlowModel = OBJECT_MAPPER.readValue(pipelineConfigurationInputStream,
-                    PipelinesDataFlowModel.class);
-
-            return pipelinesDataFlowModel;
-        } catch (IOException e) {
-            throw new ParseException("Failed to parse the configuration", e);
-        }
-    }
-
     private PipelinesDataFlowModel mergePipelinesDataModels(
             final List<PipelinesDataFlowModel> pipelinesDataFlowModels) {
         final Map<String, PipelineModel> pipelinesDataFlowModelMap = pipelinesDataFlowModels.stream()

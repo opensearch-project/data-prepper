@@ -1,4 +1,4 @@
-pipeline_configurations:
+extension:
   aws:
     secrets:
       docdb-secret:

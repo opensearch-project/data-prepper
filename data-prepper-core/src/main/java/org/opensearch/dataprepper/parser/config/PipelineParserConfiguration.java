@@ -70,18 +70,17 @@ public class PipelineParserConfiguration {
     }
 
     @Bean
-    public PipelineConfigurationTransformer pipelineConfigTransformer(
-            @Qualifier("preTransformedDataFlowModel") PipelinesDataFlowModel preTransformedDataFlowModel,
-            RuleEvaluator ruleEvaluator) {
-        return new DynamicConfigTransformer(preTransformedDataFlowModel,ruleEvaluator);
+    public PipelineConfigurationTransformer pipelineConfigTransformer(RuleEvaluator ruleEvaluator) {
+        return new DynamicConfigTransformer(ruleEvaluator);
     }
 
 
     @Bean(name  = "pipelinesDataFlowModel")
     @Primary
     public PipelinesDataFlowModel pipelinesDataFlowModel(
-            PipelineConfigurationTransformer pipelineConfigTransformer) {
-        return pipelineConfigTransformer.transformConfiguration();
+            PipelineConfigurationTransformer pipelineConfigTransformer,
+            @Qualifier("preTransformedDataFlowModel") PipelinesDataFlowModel preTransformedDataFlowModel) {
+        return pipelineConfigTransformer.transformConfiguration(preTransformedDataFlowModel);
     }
 
     @Bean(name = "preTransformedDataFlowModel")

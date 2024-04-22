@@ -55,9 +55,8 @@ class DynamicConfigTransformerTest {
 
         // Load the original and template YAML files from the test resources directory
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
-        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(pipelinesDataFlowModel,
-                ruleEvaluator);
-        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration();
+        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration(pipelinesDataFlowModel);
         String transformedYaml = yamlMapper.writeValueAsString(transformedModel);
 
         Map<String, Object> transformedYamlasMap = yamlMapper.readValue(transformedYaml, Map.class);
@@ -85,9 +84,8 @@ class DynamicConfigTransformerTest {
 
         // Load the original and template YAML files from the test resources directory
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
-        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(pipelinesDataFlowModel,
-                ruleEvaluator);
-        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration();
+        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration(pipelinesDataFlowModel);
         String transformedYaml = yamlMapper.writeValueAsString(transformedModel);
 
         Map<String, Object> transformedYamlasMap = yamlMapper.readValue(transformedYaml, Map.class);
@@ -115,9 +113,8 @@ class DynamicConfigTransformerTest {
 
         // Load the original and template YAML files from the test resources directory
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
-        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(pipelinesDataFlowModel,
-                ruleEvaluator);
-        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration();
+        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration(pipelinesDataFlowModel);
         String transformedYaml = yamlMapper.writeValueAsString(transformedModel);
 
         Map<String, Object> transformedYamlasMap = yamlMapper.readValue(transformedYaml, Map.class);
@@ -143,8 +140,7 @@ class DynamicConfigTransformerTest {
 
         // Load the original and template YAML files from the test resources directory
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
-        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(pipelinesDataFlowModel,
-                ruleEvaluator);
-        assertThrows(PathNotFoundException.class, () -> transformer.transformConfiguration());
+        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        assertThrows(PathNotFoundException.class, () -> transformer.transformConfiguration(pipelinesDataFlowModel));
     }
 }
