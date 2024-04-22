@@ -18,7 +18,6 @@ import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.message.BasicHeader;
-import org.bouncycastle.util.io.pem.PemReader;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
 import org.opensearch.client.json.jackson.JacksonJsonpMapper;
@@ -30,6 +29,7 @@ import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.aws.api.AwsRequestSigningApache4Interceptor;
+import org.opensearch.dataprepper.plugins.certificate.validation.PemObjectValidator;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ConnectionConfiguration;
 import org.opensearch.dataprepper.plugins.truststore.TrustStoreProvider;
@@ -42,8 +42,6 @@ import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
-import java.io.IOException;
-import java.io.StringReader;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -281,7 +279,7 @@ public class OpenSearchClientFactory {
         if (Objects.nonNull(certPath)) {
             return TrustStoreProvider.createTrustManager(certPath);
         } else if (Objects.nonNull(connectionConfiguration.getCertificate())) {
-            if (isPemObject(connectionConfiguration.getCertificate())) {
+            if (PemObjectValidator.isPemObject(connectionConfiguration.getCertificate())) {
                 return TrustStoreProvider.createTrustManager(connectionConfiguration.getCertificate());
             } else {
                 return TrustStoreProvider.createTrustManager(Path.of(connectionConfiguration.getCertificate()));
@@ -296,21 +294,13 @@ public class OpenSearchClientFactory {
         if (Objects.nonNull(certPath)) {
             return TrustStoreProvider.createSSLContext(certPath);
         } else if (Objects.nonNull(connectionConfiguration.getCertificate())) {
-            if (isPemObject(connectionConfiguration.getCertificate())) {
+            if (PemObjectValidator.isPemObject(connectionConfiguration.getCertificate())) {
                 return TrustStoreProvider.createSSLContext(connectionConfiguration.getCertificate());
             } else {
                 return TrustStoreProvider.createSSLContext(Path.of(connectionConfiguration.getCertificate()));
             }
         } else {
             return TrustStoreProvider.createSSLContextWithTrustAllStrategy();
-        }
-    }
-
-    private boolean isPemObject(final String certificate) {
-        try (PemReader reader = new PemReader(new StringReader(certificate))) {
-            return reader.readPemObject() != null;
-        } catch (IOException e) {
-            return false;
         }
     }
 }
