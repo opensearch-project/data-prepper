@@ -135,6 +135,17 @@ public class DefaultEventMetadataTest {
     }
 
     @Test
+    public void test_with_ExternalOriginationTime() {
+        Instant now = Instant.now();
+        eventMetadata = DefaultEventMetadata.builder()
+                .withEventType(testEventType)
+                .withTimeReceived(testTimeReceived)
+                .withExternalOriginationTime(now)
+                .build();
+        assertThat(eventMetadata.getExternalOriginationTime(), equalTo(now));
+    }
+
+    @Test
     public void testAttributes_without_attributes_is_empty() {
         eventMetadata = DefaultEventMetadata.builder()
                 .withEventType(testEventType)

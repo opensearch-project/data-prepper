@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.model.event;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -23,15 +25,22 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class DefaultEventMetadata implements EventMetadata {
 
-    private final String eventType;
+    @JsonProperty("event_type")
+    private String eventType;
 
-    private final Instant timeReceived;
+    @JsonProperty("time_received")
+    private Instant timeReceived;
 
+    @JsonProperty("external_origination_time")
     private Instant externalOriginationTime;
 
+    @JsonProperty("attributes")
     private Map<String, Object> attributes;
 
+    @JsonProperty("tags")
     private Set<String> tags;
+
+    private DefaultEventMetadata() {}
 
     private DefaultEventMetadata(final Builder builder) {
 
@@ -45,7 +54,8 @@ public class DefaultEventMetadata implements EventMetadata {
         this.attributes = builder.attributes == null ? new HashMap<>() : new HashMap<>(builder.attributes);
 
         this.tags = builder.tags == null ? new HashSet<>() : new HashSet(builder.tags);
-        this.externalOriginationTime = null;
+
+        this.externalOriginationTime = builder.externalOriginationTime;
     }
 
     private DefaultEventMetadata(final EventMetadata eventMetadata) {
@@ -163,6 +173,7 @@ public class DefaultEventMetadata implements EventMetadata {
     public static class Builder {
         private String eventType;
         private Instant timeReceived;
+        private Instant externalOriginationTime;
         private Map<String, Object> attributes;
         private Set<String> tags;
 
@@ -185,6 +196,17 @@ public class DefaultEventMetadata implements EventMetadata {
          */
         public Builder withTimeReceived(final Instant timeReceived) {
             this.timeReceived = timeReceived;
+            return this;
+        }
+
+        /**
+         * Sets the external origination Time.
+         * @param externalOriginationTime the time an event was received
+         * @return returns the builder
+         * @since 2.8
+         */
+        public Builder withExternalOriginationTime(final Instant externalOriginationTime) {
+            this.externalOriginationTime = externalOriginationTime;
             return this;
         }
 
