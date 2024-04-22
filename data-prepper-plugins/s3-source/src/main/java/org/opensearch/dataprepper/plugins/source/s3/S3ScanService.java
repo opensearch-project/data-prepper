@@ -5,6 +5,7 @@
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOptions;
@@ -12,14 +13,19 @@ import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvide
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Class responsible for taking an {@link S3SourceConfig} and creating all the necessary {@link ScanOptions}
  * objects and spawn a thread {@link S3SelectObjectWorker}
  */
 public class S3ScanService {
+    static final long SHUTDOWN_TIMEOUT = 30L;
+
     private final S3SourceConfig s3SourceConfig;
     private final List<S3ScanBucketOptions> s3ScanBucketOptions;
     private final S3ClientBuilderFactory s3ClientBuilderFactory;
@@ -36,7 +42,8 @@ public class S3ScanService {
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final S3ObjectDeleteWorker s3ObjectDeleteWorker;
     private final PluginMetrics pluginMetrics;
-    private ScanObjectWorker scanObjectWorker;
+    private final ExecutorService executorService;
+    private final List<ScanObjectWorker> workers;
 
     public S3ScanService(final S3SourceConfig s3SourceConfig,
                          final S3ClientBuilderFactory s3ClientBuilderFactory,
@@ -58,17 +65,35 @@ public class S3ScanService {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.s3ObjectDeleteWorker = s3ObjectDeleteWorker;
         this.pluginMetrics = pluginMetrics;
+        this.workers = new ArrayList<>();
+        this.executorService = Executors.newFixedThreadPool(s3SourceConfig.getNumWorkers(), BackgroundThreadFactory.defaultExecutorThreadFactory("s3-source-scan"));
     }
 
     public void start() {
-        scanObjectWorker = new ScanObjectWorker(s3ClientBuilderFactory.getS3Client(),
-                getScanOptions(),s3ObjectHandler,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
-        scanObjectWorkerThread = new Thread(scanObjectWorker);
-        scanObjectWorkerThread.start();
+        long backOffMs = s3SourceConfig.getBackOff().toMillis();
+        for (int i = 0; i < s3SourceConfig.getNumWorkers(); i++) {
+            ScanObjectWorker scanObjectWorker = new ScanObjectWorker(s3ClientBuilderFactory.getS3Client(),
+                    getScanOptions(),s3ObjectHandler,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, backOffMs, pluginMetrics);
+            workers.add(scanObjectWorker);
+            executorService.submit(new Thread(scanObjectWorker));
+        }
     }
 
     public void stop() {
-        scanObjectWorker.stop();
+        for (int i = 0; i < s3SourceConfig.getNumWorkers(); i++) {
+            workers.get(i).stop();
+        }
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(SHUTDOWN_TIMEOUT, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            if (e.getCause() instanceof InterruptedException) {
+                executorService.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     /**
