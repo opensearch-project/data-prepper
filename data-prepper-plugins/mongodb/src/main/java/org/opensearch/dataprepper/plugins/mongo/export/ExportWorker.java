@@ -112,9 +112,9 @@ public class ExportWorker implements Runnable {
                         final AcknowledgementSet acknowledgementSet = createAcknowledgementSet(dataQueryPartition).orElse(null);
                         final String s3PathPrefix;
                         if (sourceCoordinator.getPartitionPrefix() != null ) {
-                            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix();
+                            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix() + S3_PATH_DELIMITER + dataQueryPartition.getCollection();
                         } else {
-                            s3PathPrefix = sourceConfig.getS3Prefix();
+                            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + dataQueryPartition.getCollection();
                         }
                         final DataQueryPartitionCheckpoint partitionCheckpoint =  new DataQueryPartitionCheckpoint(sourceCoordinator, dataQueryPartition);
                         final PartitionKeyRecordConverter recordConverter = new PartitionKeyRecordConverter(dataQueryPartition.getCollection(),

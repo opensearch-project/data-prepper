@@ -91,14 +91,7 @@ public class StreamScheduler implements Runnable {
         final DataStreamPartitionCheckpoint partitionCheckpoint = new DataStreamPartitionCheckpoint(sourceCoordinator, streamPartition);
         final StreamAcknowledgementManager streamAcknowledgementManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint,
                 sourceConfig.getPartitionAcknowledgmentTimeout(), DEFAULT_MONITOR_WAIT_TIME_MS, DEFAULT_CHECKPOINT_INTERVAL_MILLS);
-        final String s3PathPrefix;
-        if (sourceCoordinator.getPartitionPrefix() != null ) {
-            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix();
-        } else {
-            s3PathPrefix = sourceConfig.getS3Prefix();
-        }
-        final PartitionKeyRecordConverter recordConverter = new PartitionKeyRecordConverter(streamPartition.getCollection(),
-                StreamPartition.PARTITION_TYPE, s3PathPrefix);
+        final PartitionKeyRecordConverter recordConverter = getPartitionKeyRecordConverter(streamPartition);
         final CollectionConfig partitionCollectionConfig = sourceConfig.getCollections().stream()
                 .filter(collectionConfig -> collectionConfig.getCollection().equals(streamPartition.getCollection()))
                 .findFirst()
@@ -106,5 +99,16 @@ public class StreamScheduler implements Runnable {
         return StreamWorker.create(recordBufferWriter, recordConverter, sourceConfig,
                 streamAcknowledgementManager, partitionCheckpoint, pluginMetrics, DEFAULT_RECORD_FLUSH_BATCH_SIZE,
                 DEFAULT_CHECKPOINT_INTERVAL_MILLS, DEFAULT_BUFFER_WRITE_INTERVAL_MILLS, partitionCollectionConfig.getStreamBatchSize());
+    }
+
+    private PartitionKeyRecordConverter getPartitionKeyRecordConverter(final StreamPartition streamPartition) {
+        final String s3PathPrefix;
+        if (sourceCoordinator.getPartitionPrefix() != null ) {
+            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix() + S3_PATH_DELIMITER + streamPartition.getCollection();
+        } else {
+            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + streamPartition.getCollection();
+        }
+        return new PartitionKeyRecordConverter(streamPartition.getCollection(),
+                StreamPartition.PARTITION_TYPE, s3PathPrefix);
     }
 }

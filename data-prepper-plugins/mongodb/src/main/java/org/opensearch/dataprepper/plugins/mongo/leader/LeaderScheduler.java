@@ -130,9 +130,9 @@ public class LeaderScheduler implements Runnable {
 
             final String s3PathPrefix;
             if (coordinator.getPartitionPrefix() != null ) {
-                s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + coordinator.getPartitionPrefix();
+                s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + coordinator.getPartitionPrefix() + S3_PATH_DELIMITER + collectionConfig.getCollection();
             } else {
-                s3PathPrefix = sourceConfig.getS3Prefix();
+                s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + collectionConfig.getCollection();
             }
             createS3Partition(sourceConfig.getS3Bucket(), sourceConfig.getS3Region(), s3PathPrefix, collectionConfig);
 
