@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.mongo.configuration;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Size;
 import software.amazon.awssdk.arns.Arn;
-import software.amazon.awssdk.regions.Region;
 
 import java.util.Map;
 import java.util.Optional;
