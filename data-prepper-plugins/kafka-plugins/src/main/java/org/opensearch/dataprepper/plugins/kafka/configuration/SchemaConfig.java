@@ -30,7 +30,7 @@ public class SchemaConfig {
   private String registryURL;
 
   @JsonProperty("version")
-  private int version;
+  private Integer version;
 
   @JsonAlias("schema_registry_api_key")
   @JsonProperty("api_key")
@@ -103,7 +103,7 @@ public class SchemaConfig {
     return registryURL;
   }
 
-  public int getVersion() {
+  public Integer getVersion() {
     return version;
   }
 
