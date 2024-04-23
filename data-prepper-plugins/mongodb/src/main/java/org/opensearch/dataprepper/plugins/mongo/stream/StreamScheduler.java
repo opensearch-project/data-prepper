@@ -26,6 +26,7 @@ public class StreamScheduler implements Runnable {
     static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 120_000;
     static final int DEFAULT_BUFFER_WRITE_INTERVAL_MILLS = 15_000;
     private static final int DEFAULT_MONITOR_WAIT_TIME_MS = 15_000;
+    private static final String S3_PATH_DELIMITER = "/";
     /**
      * Number of records to accumulate before flushing to buffer
      */
@@ -90,7 +91,12 @@ public class StreamScheduler implements Runnable {
         final DataStreamPartitionCheckpoint partitionCheckpoint = new DataStreamPartitionCheckpoint(sourceCoordinator, streamPartition);
         final StreamAcknowledgementManager streamAcknowledgementManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint,
                 sourceConfig.getPartitionAcknowledgmentTimeout(), DEFAULT_MONITOR_WAIT_TIME_MS, DEFAULT_CHECKPOINT_INTERVAL_MILLS);
-        final String s3PathPrefix = sourceConfig.getTransformedS3PathPrefix(streamPartition.getCollection());
+        final String s3PathPrefix;
+        if (sourceCoordinator.getPartitionPrefix() != null ) {
+            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix();
+        } else {
+            s3PathPrefix = sourceConfig.getS3Prefix();
+        }
         final PartitionKeyRecordConverter recordConverter = new PartitionKeyRecordConverter(streamPartition.getCollection(),
                 StreamPartition.PARTITION_TYPE, s3PathPrefix);
         final CollectionConfig partitionCollectionConfig = sourceConfig.getCollections().stream()

@@ -5,7 +5,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,10 +16,6 @@ public class MongoDBSourceConfig {
     private static final String DEFAULT_READ_PREFERENCE = "primaryPreferred";
     private static final Boolean DEFAULT_DIRECT_CONNECT = true;
     private static final Duration DEFAULT_ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
-    private static final String DATAPREPPER_SERVICE_NAME = "DATAPREPPER_SERVICE_NAME";
-
-    private static final long currentTimeInEpochMilli = Instant.now().toEpochMilli();
-    public static final String S3_PATH_DELIMITER = "/";
     @JsonProperty("hosts")
     private @NotNull String[] hosts;
     @JsonProperty("port")
@@ -129,16 +124,6 @@ public class MongoDBSourceConfig {
 
     public String getS3Prefix() {
         return this.s3Prefix;
-    }
-
-    public String getTransformedS3PathPrefix(final String collection) {
-        final String serviceName = System.getenv(DATAPREPPER_SERVICE_NAME);
-        final String suffixPath = serviceName + S3_PATH_DELIMITER + collection + S3_PATH_DELIMITER + currentTimeInEpochMilli;
-        if (this.getS3Prefix() == null || this.getS3Prefix().trim().isBlank()) {
-            return suffixPath;
-        } else {
-            return this.s3Prefix + S3_PATH_DELIMITER + suffixPath;
-        }
     }
 
     public String getS3Region() {

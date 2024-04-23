@@ -34,6 +34,7 @@ public class LeaderScheduler implements Runnable {
      * Default duration to extend the timeout of lease
      */
     static final int DEFAULT_EXTEND_LEASE_MINUTES = 3;
+    private static final String S3_PATH_DELIMITER = "/";
 
     /**
      * Default interval to run lease check and shard discovery
@@ -127,7 +128,12 @@ public class LeaderScheduler implements Runnable {
                 createExportGlobalState(collectionConfig);
             }
 
-            final String s3PathPrefix = sourceConfig.getTransformedS3PathPrefix(collectionConfig.getCollection() + "-" + Instant.now().toEpochMilli());
+            final String s3PathPrefix;
+            if (coordinator.getPartitionPrefix() != null ) {
+                s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + coordinator.getPartitionPrefix();
+            } else {
+                s3PathPrefix = sourceConfig.getS3Prefix();
+            }
             createS3Partition(sourceConfig.getS3Bucket(), sourceConfig.getS3Region(), s3PathPrefix, collectionConfig);
 
             if (collectionConfig.isStream()) {
