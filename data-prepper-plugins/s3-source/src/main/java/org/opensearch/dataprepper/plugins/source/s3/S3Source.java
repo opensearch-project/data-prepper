@@ -138,7 +138,6 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
 
         if (Objects.nonNull(s3ScanService) && Objects.nonNull(sourceCoordinator)) {
             s3ScanService.stop();
-            sourceCoordinator.giveUpPartitions();
         }
     }
 
