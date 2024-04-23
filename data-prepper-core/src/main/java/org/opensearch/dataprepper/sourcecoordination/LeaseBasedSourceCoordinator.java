@@ -208,7 +208,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     public void completePartition(final String partitionKey, final Boolean fromAcknowledgmentsCallback) {
         validateIsInitialized();
 
-        final SourcePartitionStoreItem itemToUpdate = getItemWithAction(partitionKey, COMPLETE_ACTION, fromAcknowledgmentsCallback);
+        final SourcePartitionStoreItem itemToUpdate = getSourcePartitionStoreItem(partitionKey, COMPLETE_ACTION);
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwner(null);
@@ -231,7 +231,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     public void closePartition(final String partitionKey, final Duration reopenAfter, final int maxClosedCount, final Boolean fromAcknowledgmentsCallback) {
         validateIsInitialized();
 
-        final SourcePartitionStoreItem itemToUpdate = getItemWithAction(partitionKey, CLOSE_ACTION, fromAcknowledgmentsCallback);
+        final SourcePartitionStoreItem itemToUpdate = getSourcePartitionStoreItem(partitionKey, CLOSE_ACTION);
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwner(null);
@@ -436,9 +436,4 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         }
     }
 
-    private SourcePartitionStoreItem getItemWithAction(final String partitionKey, final String action, final Boolean fromAcknowledgmentsCallback) {
-        // The validation against activePartition in partition manager needs to be skipped when called from acknowledgments callback
-        // because otherwise it will fail the validation since it is actively working on a different partition when ack is received
-        return fromAcknowledgmentsCallback ? getSourcePartitionStoreItem(partitionKey, action) : getSourcePartitionStoreItem(partitionKey, action);
-    }
 }
