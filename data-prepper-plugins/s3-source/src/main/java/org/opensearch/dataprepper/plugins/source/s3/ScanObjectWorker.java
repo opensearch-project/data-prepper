@@ -67,7 +67,7 @@ public class ScanObjectWorker implements Runnable{
     private final PluginMetrics pluginMetrics;
     private final Counter acknowledgementSetCallbackCounter;
     private final long backOffMs;
-    private final List<SourcePartition<S3SourceProgressState>> partitions;
+    private final List<String> partitionKeys;
 
     public ScanObjectWorker(final S3Client s3Client,
                             final List<ScanOptions> scanOptionsBuilderList,
@@ -93,7 +93,7 @@ public class ScanObjectWorker implements Runnable{
         this.pluginMetrics = pluginMetrics;
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME);
         this.sourceCoordinator.initialize();
-        this.partitions = new ArrayList<>();
+        this.partitionKeys = new ArrayList<>();
 
         this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions);
     }
@@ -113,8 +113,8 @@ public class ScanObjectWorker implements Runnable{
             }
 
         }
-        for (SourcePartition<S3SourceProgressState> partition: partitions) {
-            sourceCoordinator.giveUpPartition(partition);
+        for (String partitionKey: partitionKeys) {
+            sourceCoordinator.giveUpPartition(partitionKey);
         }
     }
 
@@ -137,7 +137,7 @@ public class ScanObjectWorker implements Runnable{
             return;
         }
 
-        partitions.add(objectToProcess.get());
+        partitionKeys.add(objectToProcess.get().getPartitionKey());
 
         final String bucket = objectToProcess.get().getPartitionKey().split("\\|")[0];
         final String objectKey = objectToProcess.get().getPartitionKey().split("\\|")[1];
@@ -154,10 +154,10 @@ public class ScanObjectWorker implements Runnable{
                         sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey(), true);
                         waitingForAcknowledgements.forEach(s3ObjectDeleteWorker::deleteS3Object);
                     } else {
-                        sourceCoordinator.giveUpPartition(objectToProcess.get());
+                        sourceCoordinator.giveUpPartition(objectToProcess.get().getPartitionKey());
                     }
+                    partitionKeys.remove(objectToProcess.get().getPartitionKey());
                 }, ACKNOWLEDGEMENT_SET_TIMEOUT);
-                partitions.remove(objectToProcess.get());
             }
 
 
@@ -171,14 +171,14 @@ public class ScanObjectWorker implements Runnable{
             } else {
                 sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey(), false);
                 deleteObjectRequest.ifPresent(s3ObjectDeleteWorker::deleteS3Object);
-                partitions.remove(objectToProcess.get());
+                partitionKeys.remove(objectToProcess.get().getPartitionKey());
             }
         } catch (final NoSuchKeyException e) {
             LOG.warn("Object {} from bucket {} could not be found, marking this object as complete and continuing processing", objectKey, bucket);
             sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey(), false);
         } catch (final PartitionNotOwnedException | PartitionNotFoundException | PartitionUpdateException e) {
             LOG.warn("S3 scan object worker received an exception from the source coordinator. There is a potential for duplicate data from {}, giving up partition and getting next partition: {}", objectKey, e.getMessage());
-            sourceCoordinator.giveUpPartition(objectToProcess.get());
+            sourceCoordinator.giveUpPartition(objectToProcess.get().getPartitionKey());
         }
     }
 

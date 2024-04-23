@@ -51,7 +51,7 @@ public class WorkerCommonUtils {
 
                     LOG.info("Received acknowledgment of completion from sink for index {}", indexPartition.getPartitionKey());
                 } else {
-                    sourceCoordinator.giveUpPartition(indexPartition);
+                    sourceCoordinator.giveUpPartition(indexPartition.getPartitionKey());
                 }
             }, ACKNOWLEDGEMENT_SET_TIMEOUT);
         }

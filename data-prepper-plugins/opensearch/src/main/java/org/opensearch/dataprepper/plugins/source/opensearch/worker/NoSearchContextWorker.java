@@ -108,13 +108,13 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
                     LOG.info("Completed processing for index: '{}'", indexPartition.get().getPartitionKey());
                 } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
                     LOG.warn("The search_after worker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
-                    sourceCoordinator.giveUpPartition(indexPartition.get());
+                    sourceCoordinator.giveUpPartition(indexPartition.get().getPartitionKey());
                 } catch (final IndexNotFoundException e) {
                     LOG.warn("{}, marking index as complete and continuing processing", e.getMessage());
                     sourceCoordinator.completePartition(indexPartition.get().getPartitionKey(), false);
                 } catch (final Exception e) {
                     LOG.error("Unknown exception while processing index '{}', moving on to another index:", indexPartition.get().getPartitionKey(), e);
-                    sourceCoordinator.giveUpPartition(indexPartition.get());
+                    sourceCoordinator.giveUpPartition(indexPartition.get().getPartitionKey());
                     openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                 }
             } catch (final Exception e) {

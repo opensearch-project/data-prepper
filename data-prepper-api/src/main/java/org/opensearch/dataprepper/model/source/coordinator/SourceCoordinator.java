@@ -93,11 +93,11 @@ public interface SourceCoordinator<T> {
      * Should be called by the source when it is shutting down to indicate that it will no longer be able to perform work on partitions,
      * or can be called to give up ownership of a partition in order to pick up new ones with {@link #getNextPartition(Function)} ()}.
      * This is used when source coordinator is shared by multiple threads.
-     * @param sourcePartition source partition to giveup ownership
+     * @param partitionKey partition to giveup ownership
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException if the partition could not be given up due to some failure
      * @since 2.8
      */
-    void giveUpPartition(SourcePartition<T> sourcePartition);
+    void giveUpPartition(String partitionKey);
 
 
     /**

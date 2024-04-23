@@ -797,7 +797,7 @@ public class LeaseBasedSourceCoordinatorTest {
 
         given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifierForPartition, sourcePartition.getPartitionKey())).willReturn(Optional.empty());
 
-        createObjectUnderTest().giveUpPartition(sourcePartition);
+        createObjectUnderTest().giveUpPartition(sourcePartition.getPartitionKey());
 
         verifyNoInteractions(sourcePartitionStoreItem);
         verifyNoMoreInteractions(sourceCoordinationStore);
@@ -832,7 +832,7 @@ public class LeaseBasedSourceCoordinatorTest {
 
         if (updatedItemSuccessfully) {
             doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
-            createObjectUnderTest().giveUpPartition(sourcePartition);
+            createObjectUnderTest().giveUpPartition(sourcePartition.getPartitionKey());
 
             verify(sourcePartitionStoreItem).setSourcePartitionStatus(SourcePartitionStatus.UNASSIGNED);
             verify(sourcePartitionStoreItem).setPartitionOwner(null);
@@ -840,7 +840,7 @@ public class LeaseBasedSourceCoordinatorTest {
 
         } else {
             doThrow(PartitionUpdateException.class).when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
-            createObjectUnderTest().giveUpPartition(sourcePartition);
+            createObjectUnderTest().giveUpPartition(sourcePartition.getPartitionKey());
         }
 
         verify(partitionsGivenUpCounter).increment();

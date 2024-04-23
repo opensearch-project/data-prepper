@@ -409,7 +409,7 @@ public class ScrollWorkerTest {
         assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
 
         verifyNoMoreInteractions(searchAccessor);
-        verify(sourceCoordinator).giveUpPartition(sourcePartition);
+        verify(sourceCoordinator).giveUpPartition(sourcePartition.getPartitionKey());
         verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt(), eq(false));
 
         verifyNoInteractions(documentsProcessedCounter);

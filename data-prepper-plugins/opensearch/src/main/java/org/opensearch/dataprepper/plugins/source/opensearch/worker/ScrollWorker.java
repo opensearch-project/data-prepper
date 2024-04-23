@@ -115,11 +115,11 @@ public class ScrollWorker implements SearchWorker {
                     openSearchSourcePluginMetrics.getIndicesProcessedCounter().increment();
                 } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
                     LOG.warn("ScrollWorker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
-                    sourceCoordinator.giveUpPartition(indexPartition.get());
+                    sourceCoordinator.giveUpPartition(indexPartition.get().getPartitionKey());
                 } catch (final SearchContextLimitException e) {
                     LOG.warn("Received SearchContextLimitExceeded exception for index {}. Giving up index and waiting {} seconds before retrying: {}",
                             indexPartition.get().getPartitionKey(), BACKOFF_ON_SCROLL_LIMIT_REACHED.getSeconds(), e.getMessage());
-                    sourceCoordinator.giveUpPartition(indexPartition.get());
+                    sourceCoordinator.giveUpPartition(indexPartition.get().getPartitionKey());
                     openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                     try {
                         Thread.sleep(BACKOFF_ON_SCROLL_LIMIT_REACHED.toMillis());
@@ -131,7 +131,7 @@ public class ScrollWorker implements SearchWorker {
                     sourceCoordinator.completePartition(indexPartition.get().getPartitionKey(), false);
                 } catch (final RuntimeException e) {
                     LOG.error("Unknown exception while processing index '{}':", indexPartition.get().getPartitionKey(), e);
-                    sourceCoordinator.giveUpPartition(indexPartition.get());
+                    sourceCoordinator.giveUpPartition(indexPartition.get().getPartitionKey());
                     openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                 }
             } catch (final Exception e) {
