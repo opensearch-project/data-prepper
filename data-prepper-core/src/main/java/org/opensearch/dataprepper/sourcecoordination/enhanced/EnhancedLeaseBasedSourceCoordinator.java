@@ -61,6 +61,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
     private final Function<SourcePartitionStoreItem, EnhancedSourcePartition> partitionFactory;
 
     private final PluginMetrics pluginMetrics;
+    private final String partitionPrefix;
 
     /**
      * Use host name of the node as the default ownerId
@@ -88,6 +89,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
                 sourceIdentifier;
         this.pluginMetrics = pluginMetrics;
         this.partitionFactory = partitionFactory;
+        this.partitionPrefix = sourceCoordinationConfig.getPartitionPrefix();
     }
 
     @Override
@@ -142,6 +144,23 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
                 .collect(Collectors.toList());
         long endTime = System.currentTimeMillis();
         LOG.info("Query of completed partitions took {} milliseconds with {} items found", endTime - startTime, sourcePartitions.size());
+        return sourcePartitions;
+    }
+
+    @Override
+    public List<EnhancedSourcePartition> queryAllPartitions(final String partitionType) {
+        Objects.requireNonNull(partitionType);
+        LOG.debug("Try to query all {} partitions", partitionType);
+        long startTime = System.currentTimeMillis();
+        final List<SourcePartitionStoreItem> sourcePartitionStoreItems = coordinationStore.queryAllSourcePartitionItems(
+                this.sourceIdentifier + "|" + partitionType);
+
+        final List<EnhancedSourcePartition> sourcePartitions = sourcePartitionStoreItems.stream()
+                .map(partitionFactory)
+                .collect(Collectors.toList());
+
+        long endTime = System.currentTimeMillis();
+        LOG.info("Query of partitions took {} milliseconds with {} items found", endTime - startTime, sourcePartitions.size());
         return sourcePartitions;
     }
 
@@ -256,4 +275,8 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         return Optional.of(partitionFactory.apply(sourceItem.get()));
     }
 
+    @Override
+    public String getPartitionPrefix() {
+        return partitionPrefix;
+    }
 }

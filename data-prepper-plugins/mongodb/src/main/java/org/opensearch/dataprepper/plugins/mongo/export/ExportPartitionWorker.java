@@ -10,28 +10,36 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.client.BsonHelper;
 import org.opensearch.dataprepper.plugins.mongo.client.MongoDBConnection;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
+import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
+import org.opensearch.dataprepper.plugins.mongo.model.S3PartitionStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class ExportPartitionWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ExportPartitionWorker.class);
     private static final int PARTITION_KEY_PARTS = 4;
+    static final Duration VERSION_OVERLAP_TIME_FOR_EXPORT = Duration.ofMinutes(5);
     static final String SUCCESS_ITEM_COUNTER_NAME = "exportRecordsSuccessTotal";
     static final String FAILURE_ITEM_COUNTER_NAME = "exportRecordsFailedTotal";
+    static final String BYTES_RECEIVED = "bytesReceived";
     private static final String PARTITION_KEY_SPLITTER = "\\|";
     private static final String COLLECTION_SPLITTER = "\\.";
 
@@ -48,6 +56,7 @@ public class ExportPartitionWorker implements Runnable {
      * Default regular checkpoint interval
      */
     private static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 2 * 60_000;
+    private static final int DEFAULT_PARTITION_CREATE_WAIT_INTERVAL_MILLIS = 60_000;
 
     /**
      * A flag to interrupt the process
@@ -57,29 +66,44 @@ public class ExportPartitionWorker implements Runnable {
     private final MongoDBSourceConfig sourceConfig;
     private final Counter successItemsCounter;
     private final Counter failureItemsCounter;
+    private final DistributionSummary bytesReceivedSummary;
     private final RecordBufferWriter recordBufferWriter;
+    private final PartitionKeyRecordConverter recordConverter;
     private final DataQueryPartition dataQueryPartition;
     private final AcknowledgementSet acknowledgementSet;
+    private final long exportStartTime;
     private final DataQueryPartitionCheckpoint partitionCheckpoint;
     private final JsonWriterSettings writerSettings = JsonWriterSettings.builder()
             .outputMode(JsonMode.RELAXED)
             .objectIdConverter((value, writer) -> writer.writeString(value.toHexString()))
             .build();
 
+    Optional<S3PartitionStatus> s3PartitionStatus = Optional.empty();
+
     public ExportPartitionWorker(final RecordBufferWriter recordBufferWriter,
+                                 final PartitionKeyRecordConverter recordConverter,
                                  final DataQueryPartition dataQueryPartition,
                                  final AcknowledgementSet acknowledgementSet,
                                  final MongoDBSourceConfig sourceConfig,
                                  final DataQueryPartitionCheckpoint partitionCheckpoint,
+                                 final long exportStartTime,
                                  final PluginMetrics pluginMetrics) {
         this.recordBufferWriter = recordBufferWriter;
+        this.recordConverter = recordConverter;
         this.dataQueryPartition = dataQueryPartition;
         this.acknowledgementSet = acknowledgementSet;
         this.sourceConfig = sourceConfig;
         this.partitionCheckpoint = partitionCheckpoint;
         this.startLine = 0;// replace it with checkpoint line
+        this.exportStartTime = exportStartTime;
         this.successItemsCounter = pluginMetrics.counter(SUCCESS_ITEM_COUNTER_NAME);
         this.failureItemsCounter = pluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME);
+        this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
+    }
+
+    private boolean shouldWaitForS3Partition(final String collection) {
+        s3PartitionStatus = partitionCheckpoint.getGlobalS3FolderCreationStatus(collection);
+        return s3PartitionStatus.isEmpty();
     }
 
     @Override
@@ -96,6 +120,23 @@ public class ExportPartitionWorker implements Runnable {
             throw new RuntimeException("Invalid Collection Name. Must as db.collection format");
         }
         long lastCheckpointTime = System.currentTimeMillis();
+        while (shouldWaitForS3Partition(dataQueryPartition.getCollection()) && !Thread.currentThread().isInterrupted()) {
+            LOG.info("S3 partition was not complete for collection {}, waiting for partitions to be created before resuming export.", dataQueryPartition.getCollection());
+            try {
+                Thread.sleep(DEFAULT_PARTITION_CREATE_WAIT_INTERVAL_MILLIS);
+            } catch (final InterruptedException ex) {
+                LOG.info("The ExportPartitionWorker was interrupted while waiting to retry, stopping the worker");
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        final List<String> s3Partitions = s3PartitionStatus.get().getPartitions();
+        if (s3Partitions.isEmpty()) {
+            // This should not happen unless the S3 partition creator failed.
+            throw new IllegalStateException("S3 partitions are not created. Please check the S3 partition creator thread.");
+        }
+
+        recordConverter.initializePartitions(s3Partitions);
         try (final MongoClient mongoClient = MongoDBConnection.getMongoClient(sourceConfig)) {
             final MongoDatabase db = mongoClient.getDatabase(collection.get(0));
             final MongoCollection<Document> col = db.getCollection(collection.get(1));
@@ -107,7 +148,7 @@ public class ExportPartitionWorker implements Runnable {
             // line count regardless the start line number
             int recordCount = 0;
             int lastRecordNumberProcessed = 0;
-            final List<String> records = new ArrayList<>();
+            final List<Event> records = new ArrayList<>();
             try (MongoCursor<Document> cursor = col.find(query).iterator()) {
                 while (cursor.hasNext() && !Thread.currentThread().isInterrupted()) {
                     if (shouldStop) {
@@ -124,7 +165,13 @@ public class ExportPartitionWorker implements Runnable {
 
                     try {
                         final String record = cursor.next().toJson(writerSettings);
-                        records.add(record);
+                        final long bytes = record.getBytes().length;
+                        bytesReceivedSummary.record(bytes);
+                        // The version number is the export time minus some overlap to ensure new stream events still get priority
+                        final long eventVersionNumber = (exportStartTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis()) * 1_000;
+                        final Event event = recordConverter.convert(record, exportStartTime, eventVersionNumber);
+
+                        records.add(event);
 
                         if ((recordCount - startLine) % DEFAULT_BATCH_SIZE == 0) {
                             LOG.debug("Write to buffer for line " + (recordCount - DEFAULT_BATCH_SIZE) + " to " + recordCount);

@@ -17,7 +17,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.mongo.buffer.ExportRecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
-import org.opensearch.dataprepper.plugins.mongo.converter.RecordConverter;
+import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
@@ -57,6 +57,8 @@ public class ExportWorker implements Runnable {
      */
     private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 2_000;
 
+    private static final String S3_PATH_DELIMITER = "/";
+
     /**
      * Start Line is the checkpoint
      */
@@ -85,9 +87,7 @@ public class ExportWorker implements Runnable {
         this.sourceCoordinator = sourceCoordinator;
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-        final RecordConverter recordConverter = new RecordConverter(sourceConfig.getCollections().get(0), ExportPartition.PARTITION_TYPE);
-        recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, sourceConfig.getCollections().get(0),
-                recordConverter, pluginMetrics, Instant.now().toEpochMilli());
+        recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, pluginMetrics);
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceConfig = sourceConfig;
         this.startLine = 0;// replace it with checkpoint line
@@ -110,9 +110,17 @@ public class ExportWorker implements Runnable {
                     if (sourcePartition.isPresent()) {
                         dataQueryPartition = (DataQueryPartition) sourcePartition.get();
                         final AcknowledgementSet acknowledgementSet = createAcknowledgementSet(dataQueryPartition).orElse(null);
+                        final String s3PathPrefix;
+                        if (sourceCoordinator.getPartitionPrefix() != null ) {
+                            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix() + S3_PATH_DELIMITER + dataQueryPartition.getCollection();
+                        } else {
+                            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + dataQueryPartition.getCollection();
+                        }
                         final DataQueryPartitionCheckpoint partitionCheckpoint =  new DataQueryPartitionCheckpoint(sourceCoordinator, dataQueryPartition);
-                        final ExportPartitionWorker exportPartitionWorker = new ExportPartitionWorker(recordBufferWriter, 
-                                dataQueryPartition, acknowledgementSet, sourceConfig, partitionCheckpoint, pluginMetrics);
+                        final PartitionKeyRecordConverter recordConverter = new PartitionKeyRecordConverter(dataQueryPartition.getCollection(),
+                                ExportPartition.PARTITION_TYPE, s3PathPrefix);
+                        final ExportPartitionWorker exportPartitionWorker = new ExportPartitionWorker(recordBufferWriter, recordConverter,
+                                dataQueryPartition, acknowledgementSet, sourceConfig, partitionCheckpoint, Instant.now().toEpochMilli(), pluginMetrics);
                         final CompletableFuture<Void> runLoader = CompletableFuture.runAsync(exportPartitionWorker, executor);
                         runLoader.whenComplete(completePartitionLoader(dataQueryPartition));
                         numOfWorkers.incrementAndGet();
@@ -127,7 +135,10 @@ public class ExportWorker implements Runnable {
                 }
             } catch (final Exception e) {
                 LOG.error("Received an exception while processing an export data partition, backing off and retrying", e);
-                sourceCoordinator.giveUpPartition(dataQueryPartition);
+                if (dataQueryPartition != null) {
+                    sourceCoordinator.giveUpPartition(dataQueryPartition);
+                }
+
                 try {
                     Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
                 } catch (final InterruptedException ex) {
@@ -221,7 +232,8 @@ public class ExportWorker implements Runnable {
             Optional<EnhancedSourcePartition> globalPartition = sourceCoordinator.getPartition(exportPartitionKey);
             if (globalPartition.isEmpty()) {
                 LOG.error("Failed to get load status for " + exportPartitionKey);
-                return;
+                // TODO add wait time
+                continue;
             }
 
             final GlobalState globalState = (GlobalState) globalPartition.get();
@@ -236,7 +248,8 @@ public class ExportWorker implements Runnable {
             try {
                 sourceCoordinator.saveProgressStateForPartition(globalState, null);
                 // if all load are completed.
-                if (exportLoadStatus.getLoadedPartitions() == exportLoadStatus.getTotalPartitions()) {
+                if (exportLoadStatus.isTotalParitionsComplete() &&
+                        exportLoadStatus.getLoadedPartitions() == exportLoadStatus.getTotalPartitions()) {
                     LOG.info("All Exports are done, streaming can continue...");
                     final StreamLoadStatus streamLoadStatus = new StreamLoadStatus(Instant.now().toEpochMilli());
                     sourceCoordinator.createPartition(new GlobalState(STREAM_PREFIX + collection, streamLoadStatus.toMap()));

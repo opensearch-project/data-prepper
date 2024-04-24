@@ -8,8 +8,10 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.json.JsonWriterSettings;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,11 +24,15 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.client.MongoDBConnection;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
+import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.StreamProgressState;
+import org.opensearch.dataprepper.plugins.mongo.model.S3PartitionStatus;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -44,6 +50,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.BYTES_RECEIVED;
 import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.FAILURE_ITEM_COUNTER_NAME;
 import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.SUCCESS_ITEM_COUNTER_NAME;
 
@@ -51,6 +58,8 @@ import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.SUCCE
 public class StreamWorkerTest {
     @Mock
     private RecordBufferWriter mockRecordBufferWriter;
+    @Mock
+    private PartitionKeyRecordConverter mockRecordConverter;
     @Mock
     private StreamAcknowledgementManager mockStreamAcknowledgementManager;
     @Mock
@@ -64,6 +73,8 @@ public class StreamWorkerTest {
     @Mock
     private Counter successItemsCounter;
     @Mock
+    private DistributionSummary bytesReceivedSummary;
+    @Mock
     private Counter failureItemsCounter;
 
     @Mock
@@ -71,14 +82,17 @@ public class StreamWorkerTest {
 
     private StreamWorker streamWorker;
 
+    private final Random random = new Random();
+
     @BeforeEach
     public void setup() {
         when(mockPluginMetrics.counter(SUCCESS_ITEM_COUNTER_NAME)).thenReturn(successItemsCounter);
         when(mockPluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME)).thenReturn(failureItemsCounter);
+        when(mockPluginMetrics.summary(BYTES_RECEIVED)).thenReturn(bytesReceivedSummary);
         when(mockSourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
-        Thread.interrupted();
-        streamWorker = new StreamWorker(mockRecordBufferWriter, mockSourceConfig, mockStreamAcknowledgementManager,
-                mockPartitionCheckpoint, mockPluginMetrics, 2, 0);
+        //Thread.interrupted();
+        streamWorker = new StreamWorker(mockRecordBufferWriter, mockRecordConverter, mockSourceConfig, mockStreamAcknowledgementManager,
+                mockPartitionCheckpoint, mockPluginMetrics, 2, 0, 10_000, 1_000);
     }
 
     @Test
@@ -89,9 +103,10 @@ public class StreamWorkerTest {
 
     @Test
     void test_processStream_success() {
+        final String collection = "database.collection";
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
-        when(streamPartition.getCollection()).thenReturn("database.collection");
+        when(streamPartition.getCollection()).thenReturn(collection);
         MongoClient mongoClient = mock(MongoClient.class);
         MongoDatabase mongoDatabase = mock(MongoDatabase.class);
         MongoCollection col = mock(MongoCollection.class);
@@ -100,6 +115,7 @@ public class StreamWorkerTest {
         when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
         when(mongoDatabase.getCollection(anyString())).thenReturn(col);
         when(col.watch()).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.batchSize(1000)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.iterator()).thenReturn(cursor);
         when(cursor.hasNext()).thenReturn(true, true, false);
@@ -114,10 +130,28 @@ public class StreamWorkerTest {
         when(cursor.next())
             .thenReturn(streamDoc1)
             .thenReturn(streamDoc2);
-        when(doc1.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
-        when(doc2.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
+        final String doc1Json1 = UUID.randomUUID().toString();
+        final String doc1Json2 = UUID.randomUUID().toString();
+        when(doc1.toJson(any(JsonWriterSettings.class))).thenReturn(doc1Json1);
+        when(doc2.toJson(any(JsonWriterSettings.class))).thenReturn(doc1Json2);
         when(streamDoc1.getFullDocument()).thenReturn(doc1);
         when(streamDoc2.getFullDocument()).thenReturn(doc2);
+        final String operationType1 = UUID.randomUUID().toString();
+        final String operationType2 = UUID.randomUUID().toString();
+        when(streamDoc1.getOperationTypeString()).thenReturn(operationType1);
+        when(streamDoc2.getOperationTypeString()).thenReturn(operationType2);
+        final BsonTimestamp bsonTimestamp1 = mock(BsonTimestamp.class);
+        final BsonTimestamp bsonTimestamp2 = mock(BsonTimestamp.class);
+        final int timeSecond1 = random.nextInt();
+        final int timeSecond2 = random.nextInt();
+        when(bsonTimestamp1.getTime()).thenReturn(timeSecond1);
+        when(bsonTimestamp2.getTime()).thenReturn(timeSecond2);
+        when(streamDoc1.getClusterTime()).thenReturn(bsonTimestamp1);
+        when(streamDoc2.getClusterTime()).thenReturn(bsonTimestamp2);
+        S3PartitionStatus s3PartitionStatus = mock(S3PartitionStatus.class);
+        final List<String> partitions = List.of("first", "second");
+        when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
+        when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
 
         try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
             mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
@@ -126,6 +160,10 @@ public class StreamWorkerTest {
         }
         verify(mongoClient).close();
         verify(mongoDatabase).getCollection(eq("collection"));
+        verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
+        verify(mockRecordConverter).initializePartitions(partitions);
+        verify(mockRecordConverter).convert(eq(doc1Json1), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(operationType1));
+        verify(mockRecordConverter).convert(eq(doc1Json2), eq(timeSecond2 * 1000L), eq(timeSecond2 * 1000L), eq(operationType2));
         verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
         verify(successItemsCounter).increment(2);
         verify(failureItemsCounter, never()).increment();
@@ -151,9 +189,10 @@ public class StreamWorkerTest {
 
     @Test
     void test_processStream_checkPointIntervalSuccess() {
+        final String collection = "database.collection";
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
-        when(streamPartition.getCollection()).thenReturn("database.collection");
+        when(streamPartition.getCollection()).thenReturn(collection);
         MongoClient mongoClient = mock(MongoClient.class);
         MongoDatabase mongoDatabase = mock(MongoDatabase.class);
         MongoCollection col = mock(MongoCollection.class);
@@ -162,6 +201,7 @@ public class StreamWorkerTest {
         when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
         when(mongoDatabase.getCollection(anyString())).thenReturn(col);
         when(col.watch()).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.batchSize(1000)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.iterator()).thenReturn(cursor);
         when(cursor.hasNext()).thenReturn(true)
@@ -188,13 +228,28 @@ public class StreamWorkerTest {
         when(streamDoc1.getFullDocument()).thenReturn(doc1);
         when(streamDoc2.getFullDocument()).thenReturn(doc2);
         when(streamDoc3.getFullDocument()).thenReturn(doc3);
+        final BsonTimestamp bsonTimestamp1 = mock(BsonTimestamp.class);
+        final BsonTimestamp bsonTimestamp2 = mock(BsonTimestamp.class);
+        final BsonTimestamp bsonTimestamp3 = mock(BsonTimestamp.class);
+        final int timeSecond1 = random.nextInt();
+        final int timeSecond2 = random.nextInt();
+        final int timeSecond3 = random.nextInt();
+        when(bsonTimestamp1.getTime()).thenReturn(timeSecond1);
+        when(bsonTimestamp2.getTime()).thenReturn(timeSecond2);
+        when(bsonTimestamp3.getTime()).thenReturn(timeSecond3);
+        when(streamDoc1.getClusterTime()).thenReturn(bsonTimestamp1);
+        when(streamDoc2.getClusterTime()).thenReturn(bsonTimestamp2);
+        when(streamDoc3.getClusterTime()).thenReturn(bsonTimestamp3);
         final String resumeToken1 = UUID.randomUUID().toString();
         final String resumeToken2 = UUID.randomUUID().toString();
         final String resumeToken3 = UUID.randomUUID().toString();
         when(bsonDoc1.toJson(any(JsonWriterSettings.class))).thenReturn(resumeToken1);
         when(bsonDoc2.toJson(any(JsonWriterSettings.class))).thenReturn(resumeToken2);
         when(bsonDoc3.toJson(any(JsonWriterSettings.class))).thenReturn(resumeToken3);
-
+        S3PartitionStatus s3PartitionStatus = mock(S3PartitionStatus.class);
+        final List<String> partitions = List.of("first", "second");
+        when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
+        when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
         try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
 
             mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
@@ -206,6 +261,7 @@ public class StreamWorkerTest {
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(cursor).close();
         verify(cursor, times(4)).hasNext();
+        verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockPartitionCheckpoint).checkpoint(resumeToken3, 3);
         verify(successItemsCounter).increment(1);
         verify(mockPartitionCheckpoint).checkpoint(resumeToken2, 2);
@@ -216,9 +272,10 @@ public class StreamWorkerTest {
 
     @Test
     void test_processStream_stopWorker() {
+        final String collection = "database.collection";
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
-        when(streamPartition.getCollection()).thenReturn("database.collection");
+        when(streamPartition.getCollection()).thenReturn(collection);
         MongoClient mongoClient = mock(MongoClient.class);
         MongoDatabase mongoDatabase = mock(MongoDatabase.class);
         MongoCollection col = mock(MongoCollection.class);
@@ -227,8 +284,13 @@ public class StreamWorkerTest {
         when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
         when(mongoDatabase.getCollection(anyString())).thenReturn(col);
         when(col.watch()).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.batchSize(1000)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.iterator()).thenReturn(cursor);
+        S3PartitionStatus s3PartitionStatus = mock(S3PartitionStatus.class);
+        when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
+        final List<String> partitions = List.of("first", "second");
+        when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> {
             try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {

@@ -26,6 +26,8 @@ public class S3GroupIdentifierFactory {
 
     private final S3SinkConfig s3SinkConfig;
 
+    private static final String BUCKET_NAME_REPLACEMENT_FOR_NON_EXISTING_KEYS = "";
+
     public S3GroupIdentifierFactory(final KeyGenerator keyGenerator,
                                     final ExpressionEvaluator expressionEvaluator,
                                     final S3SinkConfig s3SinkConfig) {
@@ -35,15 +37,19 @@ public class S3GroupIdentifierFactory {
 
         dynamicExpressions = expressionEvaluator.extractDynamicExpressionsFromFormatExpression(s3SinkConfig.getObjectKeyOptions().getPathPrefix());
         dynamicExpressions.addAll(expressionEvaluator.extractDynamicExpressionsFromFormatExpression(s3SinkConfig.getObjectKeyOptions().getNamePattern()));
+        dynamicExpressions.addAll(expressionEvaluator.extractDynamicExpressionsFromFormatExpression(s3SinkConfig.getBucketName()));
 
         dynamicEventsKeys = expressionEvaluator.extractDynamicKeysFromFormatExpression(s3SinkConfig.getObjectKeyOptions().getPathPrefix());
         dynamicEventsKeys.addAll(expressionEvaluator.extractDynamicKeysFromFormatExpression(s3SinkConfig.getObjectKeyOptions().getNamePattern()));
+        dynamicEventsKeys.addAll(expressionEvaluator.extractDynamicKeysFromFormatExpression(s3SinkConfig.getBucketName()));
      }
 
 
     public S3GroupIdentifier getS3GroupIdentifierForEvent(final Event event) {
 
         final String fullObjectKey = keyGenerator.generateKeyForEvent(event);
+        final String fullBucketName = event.formatString(s3SinkConfig.getBucketName(), expressionEvaluator, BUCKET_NAME_REPLACEMENT_FOR_NON_EXISTING_KEYS);
+
         final Map<String, Object> groupIdentificationHash = new HashMap<>();
 
         for (final String key : dynamicEventsKeys) {
@@ -56,6 +62,6 @@ public class S3GroupIdentifierFactory {
             groupIdentificationHash.put(expression, value);
         }
 
-        return new S3GroupIdentifier(groupIdentificationHash, fullObjectKey);
+        return new S3GroupIdentifier(groupIdentificationHash, fullObjectKey, fullBucketName);
     }
 }

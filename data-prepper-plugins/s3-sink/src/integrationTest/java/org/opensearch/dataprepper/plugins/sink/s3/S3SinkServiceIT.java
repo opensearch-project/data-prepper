@@ -55,6 +55,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.CompressionBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.ObjectKey;
+import org.opensearch.dataprepper.plugins.sink.s3.codec.CodecFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
@@ -63,6 +64,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifierFact
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -103,6 +105,8 @@ class S3SinkServiceIT {
     private static final String PATH_PREFIX = UUID.randomUUID() + "/%{yyyy}/%{MM}/%{dd}/";
     private static final int numberOfRecords = 2;
     private S3Client s3Client;
+
+    private S3AsyncClient s3AsyncClient;
     private String bucketName;
     private String s3region;
     private ParquetOutputCodecConfig parquetOutputCodecConfig;
@@ -140,6 +144,9 @@ class S3SinkServiceIT {
     private KeyGenerator keyGenerator;
 
     @Mock
+    private CodecFactory codecFactory;
+
+    @Mock
     NdjsonOutputConfig ndjsonOutputConfig;
 
 
@@ -148,6 +155,7 @@ class S3SinkServiceIT {
         s3region = System.getProperty("tests.s3sink.region");
 
         s3Client = S3Client.builder().region(Region.of(s3region)).build();
+        s3AsyncClient = S3AsyncClient.builder().region(Region.of(s3region)).build();
         bucketName = System.getProperty("tests.s3sink.bucket");
         bufferFactory = new InMemoryBufferFactory();
 
@@ -177,6 +185,8 @@ class S3SinkServiceIT {
     @Test
     void verify_flushed_object_count_into_s3_bucket() {
         configureNewLineCodec();
+        when(codecFactory.provideCodec()).thenReturn(codec);
+
         int s3ObjectCountBeforeIngest = gets3ObjectCount();
         S3SinkService s3SinkService = createObjectUnderTest();
         s3SinkService.output(setEventQueue());
@@ -192,6 +202,8 @@ class S3SinkServiceIT {
     @Test
     void verify_flushed_records_into_s3_bucketNewLine() throws JsonProcessingException {
         configureNewLineCodec();
+
+        when(codecFactory.provideCodec()).thenReturn(codec);
         S3SinkService s3SinkService = createObjectUnderTest();
         Collection<Record<Event>> recordsData = setEventQueue();
 
@@ -221,6 +233,8 @@ class S3SinkServiceIT {
     @Test
     void verify_flushed_records_into_s3_bucketNewLine_with_compression() throws IOException {
         configureNewLineCodec();
+        when(codecFactory.provideCodec()).thenReturn(codec);
+
         bufferFactory = new CompressionBufferFactory(bufferFactory, CompressionOption.GZIP.getCompressionEngine(), codec);
         S3SinkService s3SinkService = createObjectUnderTest();
         Collection<Record<Event>> recordsData = setEventQueue();
@@ -256,9 +270,9 @@ class S3SinkServiceIT {
     private S3SinkService createObjectUnderTest() {
         OutputCodecContext codecContext = new OutputCodecContext("Tag", Collections.emptyList(), Collections.emptyList());
         final S3GroupIdentifierFactory groupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig);
-        s3GroupManager = new S3GroupManager(s3SinkConfig, groupIdentifierFactory, bufferFactory, s3Client);
+        s3GroupManager = new S3GroupManager(s3SinkConfig, groupIdentifierFactory, bufferFactory, codecFactory, s3AsyncClient);
 
-        return new S3SinkService(s3SinkConfig, codec, codecContext, s3Client, keyGenerator, Duration.ofSeconds(5), pluginMetrics, s3GroupManager);
+        return new S3SinkService(s3SinkConfig, codecContext, Duration.ofSeconds(5), pluginMetrics, s3GroupManager);
     }
 
     private int gets3ObjectCount() {
@@ -351,6 +365,8 @@ class S3SinkServiceIT {
     @Disabled
     void verify_flushed_records_into_s3_bucket_Parquet() throws IOException {
         configureParquetCodec();
+        when(codecFactory.provideCodec()).thenReturn(codec);
+
         S3SinkService s3SinkService = createObjectUnderTest();
         Collection<Record<Event>> recordsData = getRecordList();
 

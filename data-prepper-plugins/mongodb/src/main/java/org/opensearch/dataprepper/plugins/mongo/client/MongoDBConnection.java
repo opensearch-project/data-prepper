@@ -8,6 +8,8 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfi
 import org.opensearch.dataprepper.plugins.truststore.TrustStoreProvider;
 
 import java.io.File;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public class MongoDBConnection {
@@ -33,10 +35,31 @@ public class MongoDBConnection {
         return MongoClients.create(settingBuilder.build());
     }
 
+    private static String encodeString(final String input) {
+        return URLEncoder.encode(input, StandardCharsets.UTF_8);
+    }
+
     private static String getConnectionString(final MongoDBSourceConfig sourceConfig) {
-        final String username = sourceConfig.getCredentialsConfig().getUsername();
-        final String password = sourceConfig.getCredentialsConfig().getPassword();
-        final String hostname = sourceConfig.getHostname();
+        final String username;
+        try {
+            username = encodeString(sourceConfig.getAuthenticationConfig().getUsername());
+        } catch (final Exception e) {
+            throw new RuntimeException("Unsupported characters in username.");
+        }
+
+        final String password;
+        try {
+            password = encodeString(sourceConfig.getAuthenticationConfig().getPassword());
+        } catch (final Exception e) {
+            throw new RuntimeException("Unsupported characters in password.");
+        }
+
+        if (sourceConfig.getHost() == null || sourceConfig.getHost().isBlank()) {
+            throw new RuntimeException("The host should not be null or empty.");
+        }
+
+        // Support for only single host
+        final String hostname = sourceConfig.getHost();
         final int port = sourceConfig.getPort();
         final String tls = sourceConfig.getTls().toString();
         final String invalidHostAllowed = sourceConfig.getSslInsecureDisableVerification().toString();

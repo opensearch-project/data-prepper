@@ -84,7 +84,7 @@ public class PipelinesDataflowModelParser {
         if (pipelineExtensionsList.size() > 1 ||
                 (pipelineExtensionsList.size() == 1 && pipelinesDataFlowModels.size() > 1)) {
             throw new ParseException(
-                    "pipeline_configurations and definition must all be defined in a single YAML file if pipeline_configurations is configured.");
+                    "extension/pipeline_configurations and definition must all be defined in a single YAML file if extension/pipeline_configurations is configured.");
         }
         return pipelineExtensionsList.isEmpty() ? new PipelinesDataFlowModel(pipelinesDataFlowModelMap) :
                 new PipelinesDataFlowModel(pipelineExtensionsList.get(0), pipelinesDataFlowModelMap);

@@ -11,6 +11,7 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import org.opensearch.dataprepper.aws.validator.AwsAccountId;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.AwsAuthenticationOptions;
@@ -26,6 +27,7 @@ import java.util.Map;
 
 public class S3SourceConfig {
     static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(10);
+    static final Duration DEFAULT_BACKOFF_MILLIS = Duration.ofMillis(30000);
     static final int DEFAULT_NUMBER_OF_WORKERS = 1;
     static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 100;
     static final String DEFAULT_METADATA_ROOT_KEY = "s3/";
@@ -73,9 +75,13 @@ public class S3SourceConfig {
     private boolean disableBucketOwnershipValidation = false;
 
     @JsonProperty("bucket_owners")
-    private Map<String, String> bucketOwners;
+    private Map<String, @AwsAccountId String> bucketOwners;
+
+    @JsonProperty("backoff_time")
+    private Duration backOff = DEFAULT_BACKOFF_MILLIS;
 
     @JsonProperty("default_bucket_owner")
+    @AwsAccountId
     private String defaultBucketOwner;
 
     @JsonProperty("metadata_root_key")
@@ -100,6 +106,10 @@ public class S3SourceConfig {
 
     public NotificationTypeOption getNotificationType() {
         return notificationType;
+    }
+
+    public Duration getBackOff() {
+        return backOff;
     }
 
     public NotificationSourceOption getNotificationSource() {

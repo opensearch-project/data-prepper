@@ -11,6 +11,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.io.InputFile;
@@ -38,8 +39,8 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -49,7 +50,7 @@ class NewlineDelimitedCodecTest {
     private NewlineDelimitedInputConfig config;
 
     private NewlineDelimitedInputCodec createObjectUnderTest() {
-        return new NewlineDelimitedInputCodec(config);
+        return new NewlineDelimitedInputCodec(config, TestEventFactory.getTestEventFactory());
     }
 
     @Test

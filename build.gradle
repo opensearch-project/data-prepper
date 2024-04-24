@@ -20,9 +20,6 @@ allprojects {
     apply plugin: 'checkstyle'
     apply plugin: 'com.diffplug.spotless'
     apply plugin: 'com.github.jk1.dependency-license-report'
-    apply plugin: 'maven-publish'
-
-    group = 'org.opensearch.dataprepper'
 
     ext {
         mavenPublicationRootFile = file("${rootProject.buildDir}/m2")
@@ -42,53 +39,10 @@ allprojects {
         }
     }
 
-    if(project.name.startsWith('data-prepper') || project.parent != null && project.parent.name.equals('data-prepper-plugins')) {
-        project.plugins.withType(JavaPlugin).configureEach {
-            java {
-                withJavadocJar()
-                withSourcesJar()
-            }
-
-            afterEvaluate {
-                project.publishing {
-                    repositories {
-                        maven {
-                            url "file://${mavenPublicationRootFile.absolutePath}"
-                        }
-                    }
-                    publications {
-                        mavenJava(MavenPublication) {
-                            from project.components.findByName("java") ?: project.components.findByName("javaLibrary")
-
-                            groupId = project.group
-                            artifactId = project.name
-                            version = project.version
-
-                            pom {
-                                name = project.name
-                                description = "Data Prepper project: ${project.name}"
-                                url = 'https://github.com/opensearch-project/data-prepper'
-                                licenses {
-                                    license {
-                                        name = 'The Apache Software License, Version 2.0'
-                                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                                        distribution = 'repo'
-                                    }
-                                }
-                                developers {
-                                    developer {
-                                        name = 'OpenSearch'
-                                        url = 'https://github.com/opensearch-project'
-                                    }
-                                }
-                                scm {
-                                    url = 'https://github.com/opensearch-project/data-prepper'
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    project.plugins.withType(JavaPlugin).configureEach {
+        java {
+            withJavadocJar()
+            withSourcesJar()
         }
     }
 
@@ -99,7 +53,6 @@ allprojects {
 
 subprojects {
     apply plugin: 'java'
-    apply plugin: 'maven-publish'
     apply plugin: 'jacoco'
 
     java {
@@ -259,10 +212,10 @@ subprojects {
         resolutionStrategy.eachDependency { def details ->
             if (details.requested.group == 'io.netty') {
                 if (details.requested.name == 'netty') {
-                    details.useTarget group: 'io.netty', name: 'netty-all', version: '4.1.100.Final'
+                    details.useTarget group: 'io.netty', name: 'netty-all', version: '4.1.108.Final'
                     details.because 'Fixes CVE-2022-41881, CVE-2021-21290 and CVE-2022-41915.'
                 } else if (!details.requested.name.startsWith('netty-tcnative')) {
-                    details.useVersion '4.1.100.Final'
+                    details.useVersion '4.1.108.Final'
                     details.because 'Fixes CVE-2022-41881, CVE-2021-21290 and CVE-2022-41915.'
                 }
             } else if (details.requested.group == 'log4j' && details.requested.name == 'log4j') {
@@ -273,6 +226,10 @@ subprojects {
 
     test {
         useJUnitPlatform()
+        reports {
+            junitXml.required
+            html.required
+        }
     }
 
     build.dependsOn test
@@ -280,6 +237,7 @@ subprojects {
         dependsOn test // tests are required to run before generating the report
         reports {
             xml.required
+            html.required
         }
     }
 

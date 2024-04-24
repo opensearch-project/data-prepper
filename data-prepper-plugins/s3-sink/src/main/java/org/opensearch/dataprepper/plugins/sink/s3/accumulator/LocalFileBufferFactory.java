@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,12 +20,15 @@ public class LocalFileBufferFactory implements BufferFactory {
     public static final String SUFFIX = ".log";
 
     @Override
-    public Buffer getBuffer(S3Client s3Client, Supplier<String> bucketSupplier, Supplier<String> keySupplier) {
+    public Buffer getBuffer(final S3AsyncClient s3Client,
+                            final Supplier<String> bucketSupplier,
+                            final Supplier<String> keySupplier,
+                            final String defaultBucket) {
         File tempFile = null;
         Buffer localfileBuffer = null;
         try {
             tempFile = File.createTempFile(PREFIX, SUFFIX);
-            localfileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier);
+            localfileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier, defaultBucket);
         } catch (IOException e) {
             LOG.error("Unable to create temp file ", e);
         }

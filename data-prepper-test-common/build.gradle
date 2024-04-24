@@ -5,6 +5,7 @@
 
 plugins {
     id 'java'
+    id 'data-prepper.publish'
 }
 
 group = 'org.opensearch.dataprepper.test'

@@ -476,7 +476,7 @@ public class PitWorkerTest {
         assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
 
         verify(searchAccessor, never()).deletePit(any(DeletePointInTimeRequest.class));
-        verify(sourceCoordinator).giveUpPartitions();
+        verify(sourceCoordinator).giveUpPartition(sourcePartition.getPartitionKey());
         verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt(), anyBoolean());
 
         verifyNoInteractions(documentsProcessedCounter);

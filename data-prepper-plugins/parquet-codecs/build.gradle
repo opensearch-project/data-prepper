@@ -16,6 +16,7 @@ dependencies {
     implementation 'org.apache.parquet:parquet-common:1.13.1'
     implementation 'org.apache.parquet:parquet-hadoop:1.13.1'
     testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test-event')
 
     constraints {
         implementation('com.nimbusds:nimbus-jose-jwt') {

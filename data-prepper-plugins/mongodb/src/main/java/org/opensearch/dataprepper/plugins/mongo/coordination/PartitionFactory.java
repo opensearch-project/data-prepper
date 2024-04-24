@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQuery
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.mongo.coordination.partition.S3FolderPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
 
 import java.util.function.Function;
@@ -35,6 +36,8 @@ public class PartitionFactory implements Function<SourcePartitionStoreItem, Enha
                 return new StreamPartition(partitionStoreItem);
             case LeaderPartition.PARTITION_TYPE:
                 return new LeaderPartition(partitionStoreItem);
+            case S3FolderPartition.PARTITION_TYPE:
+                return new S3FolderPartition(partitionStoreItem);
             default:
                 // Unable to acquire other partitions.
                 return new GlobalState(partitionStoreItem);

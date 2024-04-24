@@ -21,6 +21,9 @@ public class ExportProgressState {
     @JsonProperty("status")
     private String status;
 
+    @JsonProperty("lastEndDocId")
+    private Object lastEndDocId;
+
 
     public String getDatabaseName() {
         return databaseName;
@@ -52,5 +55,13 @@ public class ExportProgressState {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Object getLastEndDocId() {
+        return lastEndDocId;
+    }
+
+    public void setLastEndDocId(Object lastEndDocId) {
+        this.lastEndDocId = lastEndDocId;
     }
 }

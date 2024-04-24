@@ -33,6 +33,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -48,6 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.dlq.s3.S3DlqWriter.S3_DLQ_RECORDS_FAILED;
@@ -114,7 +116,7 @@ public class S3DlqWriterTest {
             .sdkHttpResponse(mockHttpResponse)
             .build();
 
-        final int numberOfObjects = new Random().nextInt(20);
+        final int numberOfObjects = new Random().nextInt(18) + 2;
         dlqObjects = generateDlqData(numberOfObjects);
 
         objectMapper = new ObjectMapper();
@@ -161,6 +163,24 @@ public class S3DlqWriterTest {
         assertThat(putObjectRequest.key(), endsWith(".json"));
         verify(dlqS3RequestSuccessCounter).increment();
         verify(dlqS3RecordsSuccessCounter).increment(dlqObjects.size());
+    }
+
+    @Test
+    void write_with_empty_list_does_not_write_to_S3() throws Exception {
+        when(config.getKeyPathPrefix()).thenReturn(keyPathPrefix);
+        when(config.getS3Client()).thenReturn(s3Client);
+        when(config.getBucket()).thenReturn(bucket);
+        s3DlqWriter = new S3DlqWriter(config, objectMapper, pluginMetrics);
+
+        dlqObjects = Collections.emptyList();
+
+        s3DlqWriter.write(dlqObjects, pipelineName, pluginId);
+
+        verifyNoInteractions(s3Client);
+        verifyNoInteractions(dlqS3RequestSuccessCounter);
+        verifyNoInteractions(dlqS3RecordsSuccessCounter);
+        verifyNoInteractions(dlqS3RequestFailedCounter);
+        verifyNoInteractions(dlqS3RecordsFailedCounter);
     }
 
     private static Stream<Arguments> validKeyPathPrefixes() {

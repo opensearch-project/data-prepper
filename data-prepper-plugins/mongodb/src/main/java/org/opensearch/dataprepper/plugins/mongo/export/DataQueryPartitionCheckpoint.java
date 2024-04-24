@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.mongo.export;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.DataQueryProgressState;
+import org.opensearch.dataprepper.plugins.mongo.s3partition.S3FolderPartitionCoordinator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +19,7 @@ import java.util.Optional;
  * A helper class to handle the data query partition status and the progress state
  * It will use coordinator APIs under the hood.
  */
-public class DataQueryPartitionCheckpoint {
+public class DataQueryPartitionCheckpoint extends S3FolderPartitionCoordinator {
     private static final Logger LOG = LoggerFactory.getLogger(DataQueryPartitionCheckpoint.class);
 
     static final Duration CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE = Duration.ofMinutes(5);
@@ -30,6 +31,7 @@ public class DataQueryPartitionCheckpoint {
 
 
     public DataQueryPartitionCheckpoint(EnhancedSourceCoordinator enhancedSourceCoordinator, DataQueryPartition dataQueryPartition) {
+        super(enhancedSourceCoordinator);
         this.enhancedSourceCoordinator = enhancedSourceCoordinator;
         this.dataQueryPartition = dataQueryPartition;
     }

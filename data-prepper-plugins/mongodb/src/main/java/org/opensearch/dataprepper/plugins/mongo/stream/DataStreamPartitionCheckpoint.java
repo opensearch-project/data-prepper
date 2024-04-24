@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalSta
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.mongo.model.StreamLoadStatus;
+import org.opensearch.dataprepper.plugins.mongo.s3partition.S3FolderPartitionCoordinator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +25,7 @@ import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.STREA
  * A helper class to handle the data query partition status and the progress state
  * It will use coordinator APIs under the hood.
  */
-public class DataStreamPartitionCheckpoint {
+public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator {
     private static final Logger LOG = LoggerFactory.getLogger(DataStreamPartitionCheckpoint.class);
 
     static final Duration CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE = Duration.ofMinutes(5);
@@ -37,6 +38,7 @@ public class DataStreamPartitionCheckpoint {
 
     public DataStreamPartitionCheckpoint(final EnhancedSourceCoordinator enhancedSourceCoordinator,
                                          final StreamPartition streamPartition) {
+        super(enhancedSourceCoordinator);
         this.enhancedSourceCoordinator = enhancedSourceCoordinator;
         this.streamPartition = streamPartition;
     }

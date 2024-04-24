@@ -27,6 +27,11 @@ class DefaultLogEventBuilderFactory extends DefaultEventBuilderFactory {
             return LOG_EVENT_TYPE;
         }
 
+        @Override
+        String getDefaultEventType() {
+            return LOG_EVENT_TYPE;
+        }
+
         public Log build() {
             return (Log) JacksonLog.builder()
                     .withData(getData())

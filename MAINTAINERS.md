@@ -4,16 +4,17 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 
 ## Current Maintainers
 
-| Maintainer           | GitHub ID                                             | Affiliation |
-| -------------------- | ----------------------------------------------------- | ----------- |
-| Qi Chen              | [chenqi0805](https://github.com/chenqi0805)           | Amazon      |
-| Chase Engelbrecht    | [engechas](https://github.com/engechas)               | Amazon      |
-| Taylor Gray          | [graytaylor0](https://github.com/graytaylor0)         | Amazon      |
-| Dinu John            | [dinujoh](https://github.com/dinujoh)                 | Amazon      |
-| Krishna Kondaka      | [kkondaka](https://github.com/kkondaka)               | Amazon      |
-| Asif Sohail Mohammed | [asifsmohammed](https://github.com/asifsmohammed)     | Amazon      |
-| David Venable        | [dlvenable](https://github.com/dlvenable)             | Amazon      |
-| Hai Yan              | [oeyh](https://github.com/oeyh)                       | Amazon      |
+| Maintainer           | GitHub ID                                                 | Affiliation |
+| -------------------- | --------------------------------------------------------- | ----------- |
+| Qi Chen              | [chenqi0805](https://github.com/chenqi0805)               | Amazon      |
+| Chase Engelbrecht    | [engechas](https://github.com/engechas)                   | Amazon      |
+| Taylor Gray          | [graytaylor0](https://github.com/graytaylor0)             | Amazon      |
+| Dinu John            | [dinujoh](https://github.com/dinujoh)                     | Amazon      |
+| Krishna Kondaka      | [kkondaka](https://github.com/kkondaka)                   | Amazon      |
+| Asif Sohail Mohammed | [asifsmohammed](https://github.com/asifsmohammed)         | Amazon      |
+| Karsten Schnitter    | [KarstenSchnitter](https://github.com/KarstenSchnitter)   | SAP         |
+| David Venable        | [dlvenable](https://github.com/dlvenable)                 | Amazon      |
+| Hai Yan              | [oeyh](https://github.com/oeyh)                           | Amazon      |
 
 
 ## Emeritus

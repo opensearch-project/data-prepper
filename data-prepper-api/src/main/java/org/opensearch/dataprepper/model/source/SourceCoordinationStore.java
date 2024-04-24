@@ -35,6 +35,8 @@ public interface SourceCoordinationStore {
      */
     List<SourcePartitionStoreItem> querySourcePartitionItemsByStatus(final String sourceIdentifier, final SourcePartitionStatus sourcePartitionStatus, final String startPartitionPriority);
 
+    List<SourcePartitionStoreItem> queryAllSourcePartitionItems(final String sourceIdentifier);
+
     boolean tryCreatePartitionItem(final String sourceIdentifier,
                                    final String partitionKey,
                                    final SourcePartitionStatus sourcePartitionStatus,
