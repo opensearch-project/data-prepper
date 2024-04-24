@@ -154,6 +154,7 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
         jsonSourceConfig = mock(KafkaSourceConfig.class);
         avroSourceConfig = mock(KafkaSourceConfig.class);
         pluginMetrics = mock(PluginMetrics.class);
+        pluginConfigObservable = mock(PluginConfigObservable.class);
 	Random random = new Random();
 	testId = random.nextInt();
 	testValue = random.nextDouble();
@@ -251,12 +252,21 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
     }
 
     @Test
-    public void KafkaJsonProducerConsumerTest() {
+    public void KafkaJsonProducerConsumerTestWithSpecifiedSchemaVersion() {
         when(schemaConfig.getVersion()).thenReturn(2);
-	produceJsonRecords(bootstrapServers,  numRecordsProduced);
-	consumeRecords(bootstrapServers, jsonSourceConfig);
-	await().atMost(Duration.ofSeconds(20)).
-	  untilAsserted(() -> assertThat(numRecordsReceived.get(), equalTo(numRecordsProduced)));
+        produceJsonRecords(bootstrapServers,  numRecordsProduced);
+        consumeRecords(bootstrapServers, jsonSourceConfig);
+        await().atMost(Duration.ofSeconds(20)).
+                untilAsserted(() -> assertThat(numRecordsReceived.get(), equalTo(numRecordsProduced)));
+    }
+
+    @Test
+    public void KafkaJsonProducerConsumerTestWithLatestSchemaVersion() {
+        when(schemaConfig.getVersion()).thenReturn(null);
+        produceJsonRecords(bootstrapServers,  numRecordsProduced);
+        consumeRecords(bootstrapServers, jsonSourceConfig);
+        await().atMost(Duration.ofSeconds(20)).
+                untilAsserted(() -> assertThat(numRecordsReceived.get(), equalTo(numRecordsProduced)));
     }
 
     public void consumeRecords(String servers, KafkaSourceConfig sourceConfig) {
@@ -293,12 +303,21 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
 
 
     @Test
-    public void KafkaAvroProducerConsumerTest() {
+    public void KafkaAvroProducerConsumerTestWithSpecifiedSchemaVersion() {
         when(schemaConfig.getVersion()).thenReturn(1);
 	produceAvroRecords(bootstrapServers,  numRecordsProduced);
 	consumeRecords(bootstrapServers, avroSourceConfig);
 	await().atMost(Duration.ofSeconds(20)).
 	  untilAsserted(() -> assertThat(numRecordsReceived.get(), equalTo(numRecordsProduced)));
+    }
+
+    @Test
+    public void KafkaAvroProducerConsumerTestWithLatestSchemaVersion() {
+        when(schemaConfig.getVersion()).thenReturn(null);
+        produceAvroRecords(bootstrapServers,  numRecordsProduced);
+        consumeRecords(bootstrapServers, avroSourceConfig);
+        await().atMost(Duration.ofSeconds(20)).
+                untilAsserted(() -> assertThat(numRecordsReceived.get(), equalTo(numRecordsProduced)));
     }
 
     public void produceAvroRecords(String servers, int numRecords) throws SerializationException {

@@ -218,9 +218,15 @@ public class KafkaCustomConsumerFactory {
         properties.put(KafkaAvroDeserializerConfig.AUTO_REGISTER_SCHEMAS, false);
         final CachedSchemaRegistryClient schemaRegistryClient = new CachedSchemaRegistryClient(properties.getProperty(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG),
             100, propertyMap);
+        final SchemaConfig schemaConfig = kafkaConsumerConfig.getSchemaConfig();
         try {
-            schemaType = schemaRegistryClient.getSchemaMetadata(topic.getName() + "-value",
-                kafkaConsumerConfig.getSchemaConfig().getVersion()).getSchemaType();
+            final String subject = topic.getName() + "-value";
+            if (schemaConfig.getVersion() != null) {
+                schemaType = schemaRegistryClient.getSchemaMetadata(subject,
+                        kafkaConsumerConfig.getSchemaConfig().getVersion()).getSchemaType();
+            } else {
+                schemaType = schemaRegistryClient.getLatestSchemaMetadata(subject).getSchemaType();
+            }
         } catch (IOException | RestClientException e) {
             LOG.error("Failed to connect to the schema registry...");
             throw new RuntimeException(e);
