@@ -14,7 +14,7 @@ public class DoubleConverter implements TypeConverter<Double> {
             return (Double)source;
         }
         if (source instanceof Number) {
-            return (double)(((Number)source).intValue());
+            return (((Number)source).doubleValue());
         }
         if (source instanceof Boolean) {
             return (double)(((Boolean)source) ? 1.0 : 0.0);

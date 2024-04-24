@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.typeconverter;
 
+import java.math.BigDecimal;
 public class IntegerConverter implements TypeConverter<Integer> {
     public Integer convert(Object source) throws IllegalArgumentException {
         if (source instanceof String) {
@@ -18,6 +19,9 @@ public class IntegerConverter implements TypeConverter<Integer> {
         }
         if (source instanceof Integer) {
             return (Integer)source;
+        }
+        if (source instanceof BigDecimal) {
+            return ((BigDecimal)source).intValue();
         }
         throw new IllegalArgumentException("Unsupported type conversion. Source class: " + source.getClass());
     }
