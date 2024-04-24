@@ -18,8 +18,6 @@ import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3Group;
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
@@ -27,8 +25,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 /**
  * Class responsible for create {@link S3Client} object, check thresholds,
@@ -48,7 +49,6 @@ public class S3SinkService {
     static final String S3_OBJECTS_SIZE = "s3SinkObjectSizeBytes";
     private final S3SinkConfig s3SinkConfig;
     private final Lock reentrantLock;
-    private final S3Client s3Client;
     private final int maxEvents;
     private final ByteCount maxBytes;
     private final Duration maxCollectionDuration;
@@ -62,23 +62,21 @@ public class S3SinkService {
 
     private final Counter numberOfObjectsForceFlushed;
     private final OutputCodecContext codecContext;
-    private final KeyGenerator keyGenerator;
     private final Duration retrySleepTime;
 
     private final S3GroupManager s3GroupManager;
 
     /**
      * @param s3SinkConfig  s3 sink related configuration.
-     * @param s3Client
      * @param pluginMetrics metrics.
      */
     public S3SinkService(final S3SinkConfig s3SinkConfig,
-                         final OutputCodecContext codecContext, final S3Client s3Client, final KeyGenerator keyGenerator,
-                         final Duration retrySleepTime, final PluginMetrics pluginMetrics, final S3GroupManager s3GroupManager) {
+                         final OutputCodecContext codecContext,
+                         final Duration retrySleepTime,
+                         final PluginMetrics pluginMetrics,
+                         final S3GroupManager s3GroupManager) {
         this.s3SinkConfig = s3SinkConfig;
-        this.s3Client = s3Client;
         this.codecContext = codecContext;
-        this.keyGenerator = keyGenerator;
         this.retrySleepTime = retrySleepTime;
         reentrantLock = new ReentrantLock();
 
@@ -114,6 +112,7 @@ public class S3SinkService {
         Exception sampleException = null;
         reentrantLock.lock();
         try {
+            final List<CompletableFuture<?>> completableFutures = new ArrayList<>();
             for (Record<Event> record : records) {
                 final Event event = record.getData();
                 try {
@@ -130,11 +129,7 @@ public class S3SinkService {
                     currentBuffer.setEventCount(count);
                     s3Group.addEventHandle(event.getEventHandle());
 
-                    final boolean flushed = flushToS3IfNeeded(s3Group, false);
-
-                    if (flushed) {
-                        s3GroupManager.removeGroup(s3Group);
-                    }
+                    flushToS3IfNeeded(completableFutures, s3Group, false);
                 } catch (Exception ex) {
                     if(sampleException == null) {
                         sampleException = ex;
@@ -145,15 +140,22 @@ public class S3SinkService {
             }
 
             for (final S3Group s3Group : s3GroupManager.getS3GroupEntries()) {
-                final boolean flushed = flushToS3IfNeeded(s3Group, false);
-
-                if (flushed) {
-                    s3GroupManager.removeGroup(s3Group);
-                }
+                flushToS3IfNeeded(completableFutures, s3Group, false);
             }
 
             if (s3SinkConfig.getAggregateThresholdOptions() != null) {
-                checkAggregateThresholdsAndFlushIfNeeded();
+                checkAggregateThresholdsAndFlushIfNeeded(completableFutures);
+            }
+
+            if (!completableFutures.isEmpty()) {
+                try {
+                    CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[0]))
+                            .thenRun(() -> LOG.debug("All {} requests to S3 have completed", completableFutures.size()))
+                            .join();
+                } catch (final Exception e) {
+                    LOG.warn("There was an exception while waiting for all requests to complete", e);
+                }
+
             }
         } finally {
             reentrantLock.unlock();
@@ -171,28 +173,37 @@ public class S3SinkService {
     /**
      * @return whether the flush was attempted
      */
-    private boolean flushToS3IfNeeded(final S3Group s3Group, final boolean forceFlush) {
+    private boolean flushToS3IfNeeded(final List<CompletableFuture<?>> completableFutures, final S3Group s3Group, final boolean forceFlush) {
         LOG.trace("Flush to S3 check: currentBuffer.size={}, currentBuffer.events={}, currentBuffer.duration={}",
                 s3Group.getBuffer().getSize(), s3Group.getBuffer().getEventCount(), s3Group.getBuffer().getDuration());
         if (forceFlush || ThresholdCheck.checkThresholdExceed(s3Group.getBuffer(), maxEvents, maxBytes, maxCollectionDuration)) {
+
+            s3GroupManager.removeGroup(s3Group);
             try {
+
                 s3Group.getOutputCodec().complete(s3Group.getBuffer().getOutputStream());
                 String s3Key = s3Group.getBuffer().getKey();
                 LOG.info("Writing {} to S3 with {} events and size of {} bytes.",
                         s3Key, s3Group.getBuffer().getEventCount(), s3Group.getBuffer().getSize());
-                final boolean isFlushToS3 = retryFlushToS3(s3Group.getBuffer(), s3Key);
-                if (isFlushToS3) {
-                    LOG.info("Successfully saved {} to S3.", s3Key);
-                    numberOfRecordsSuccessCounter.increment(s3Group.getBuffer().getEventCount());
-                    objectsSucceededCounter.increment();
-                    s3ObjectSizeSummary.record(s3Group.getBuffer().getSize());
-                    s3Group.releaseEventHandles(true);
-                } else {
-                    LOG.error("Failed to save {} to S3.", s3Key);
-                    numberOfRecordsFailedCounter.increment(s3Group.getBuffer().getEventCount());
-                    objectsFailedCounter.increment();
-                    s3Group.releaseEventHandles(false);
-                }
+
+                final Consumer<Boolean> consumeOnGroupCompletion = (success) -> {
+                    if (success) {
+
+                        LOG.info("Successfully saved {} to S3.", s3Key);
+                        numberOfRecordsSuccessCounter.increment(s3Group.getBuffer().getEventCount());
+                        objectsSucceededCounter.increment();
+                        s3ObjectSizeSummary.record(s3Group.getBuffer().getSize());
+                        s3Group.releaseEventHandles(true);
+                    } else {
+                        LOG.error("Failed to save {} to S3.", s3Key);
+                        numberOfRecordsFailedCounter.increment(s3Group.getBuffer().getEventCount());
+                        objectsFailedCounter.increment();
+                        s3Group.releaseEventHandles(false);
+                    }
+                };
+
+                final Optional<CompletableFuture<?>> completableFuture = s3Group.getBuffer().flushToS3(consumeOnGroupCompletion, this::handleFailures);
+                completableFuture.ifPresent(completableFutures::add);
 
                 return true;
             } catch (final IOException e) {
@@ -203,40 +214,11 @@ public class S3SinkService {
         return false;
     }
 
-    /**
-     * perform retry in-case any issue occurred, based on max_upload_retries configuration.
-     *
-     * @param currentBuffer current buffer.
-     * @param s3Key
-     * @return boolean based on object upload status.
-     */
-    protected boolean retryFlushToS3(final Buffer currentBuffer, final String s3Key) {
-        boolean isUploadedToS3 = Boolean.FALSE;
-        int retryCount = maxRetries;
-        do {
-            try {
-                currentBuffer.flushToS3();
-                isUploadedToS3 = Boolean.TRUE;
-            } catch (AwsServiceException | SdkClientException e) {
-                LOG.error("Exception occurred while uploading records to s3 bucket. Retry countdown  : {} | exception:",
-                        retryCount, e);
-                LOG.info("Error Message {}", e.getMessage());
-                --retryCount;
-                if (retryCount == 0) {
-                    return isUploadedToS3;
-                }
-
-                try {
-                    Thread.sleep(retrySleepTime.toMillis());
-                } catch (final InterruptedException ex) {
-                    LOG.warn("Interrupted while backing off before retrying S3 upload", ex);
-                }
-            }
-        } while (!isUploadedToS3);
-        return isUploadedToS3;
+    private void handleFailures(final Throwable e) {
+        LOG.error("Exception occurred while uploading records to s3 bucket: {}", e.getMessage());
     }
 
-    private void checkAggregateThresholdsAndFlushIfNeeded() {
+    private void checkAggregateThresholdsAndFlushIfNeeded(final List<CompletableFuture<?>> completableFutures) {
         long currentTotalGroupSize = s3GroupManager.recalculateAndGetGroupSize();
         LOG.debug("Total groups size is {} bytes", currentTotalGroupSize);
 
@@ -249,12 +231,11 @@ public class S3SinkService {
             for (final S3Group s3Group : s3GroupManager.getS3GroupsSortedBySize()) {
                 LOG.info("Forcing a flush of object with key {} due to aggregate_threshold of {} bytes being reached", s3Group.getBuffer().getKey(), aggregateThresholdBytes);
 
-                boolean flushed = flushToS3IfNeeded(s3Group, true);
+                final boolean flushed = flushToS3IfNeeded(completableFutures, s3Group, true);
                 numberOfObjectsForceFlushed.increment();
 
                 if (flushed) {
                     currentTotalGroupSize -= s3Group.getBuffer().getSize();
-                    s3GroupManager.removeGroup(s3Group);
                 }
 
                 if (currentTotalGroupSize <= aggregateThresholdBytes * aggregateThresholdFlushRatio) {

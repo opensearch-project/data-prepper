@@ -110,7 +110,7 @@ class S3ScanObjectWorkerTest {
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
         when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME)).thenReturn(counter);
         final ScanObjectWorker objectUnderTest = new ScanObjectWorker(s3Client, scanOptionsList, s3ObjectHandler, bucketOwnerProvider,
-                sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
+                sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, 30000, pluginMetrics);
         verify(sourceCoordinator).initialize();
         return objectUnderTest;
     }
@@ -129,7 +129,7 @@ class S3ScanObjectWorkerTest {
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
         doThrow(exception).when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
-        doNothing().when(sourceCoordinator).giveUpPartitions();
+        doNothing().when(sourceCoordinator).giveUpPartition(any());
 
         createObjectUnderTest().runWithoutInfiniteLoop();
 

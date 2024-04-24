@@ -27,6 +27,7 @@ import java.util.Map;
 
 public class S3SourceConfig {
     static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(10);
+    static final Duration DEFAULT_BACKOFF_MILLIS = Duration.ofMillis(30000);
     static final int DEFAULT_NUMBER_OF_WORKERS = 1;
     static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 100;
     static final String DEFAULT_METADATA_ROOT_KEY = "s3/";
@@ -76,6 +77,9 @@ public class S3SourceConfig {
     @JsonProperty("bucket_owners")
     private Map<String, @AwsAccountId String> bucketOwners;
 
+    @JsonProperty("backoff_time")
+    private Duration backOff = DEFAULT_BACKOFF_MILLIS;
+
     @JsonProperty("default_bucket_owner")
     @AwsAccountId
     private String defaultBucketOwner;
@@ -102,6 +106,10 @@ public class S3SourceConfig {
 
     public NotificationTypeOption getNotificationType() {
         return notificationType;
+    }
+
+    public Duration getBackOff() {
+        return backOff;
     }
 
     public NotificationSourceOption getNotificationSource() {

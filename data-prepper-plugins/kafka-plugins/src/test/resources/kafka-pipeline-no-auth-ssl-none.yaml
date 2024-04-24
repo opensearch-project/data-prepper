@@ -5,7 +5,7 @@ log-pipeline :
           - "localhost:9092"
         encryption:
           type: "NONE"
-          certificate_content: "CERTIFICATE_DATA"
+          certificate: "CERTIFICATE_DATA"
         topics:
         - name: "quickstart-events"
           group_id: "groupdID1"

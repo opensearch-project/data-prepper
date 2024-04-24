@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.pipeline.parser;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
@@ -85,10 +87,12 @@ class PipelinesDataflowModelParserTest {
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
     }
 
-    @Test
-    void parseConfiguration_with_valid_pipelines_and_extensions() throws FileNotFoundException {
+    @ParameterizedTest
+    @ValueSource(strings = {TestConfigurationProvider.VALID_PIPELINE_CONFIG_FILE_WITH_DEPRECATED_EXTENSIONS,
+            TestConfigurationProvider.VALID_PIPELINE_CONFIG_FILE_WITH_EXTENSION})
+    void parseConfiguration_with_valid_pipelines_and_extension(final String filePath) throws FileNotFoundException {
         when(pipelineConfigurationReader.getPipelineConfigurationInputStreams())
-                .thenReturn(List.of(new FileInputStream(TestConfigurationProvider.VALID_PIPELINE_CONFIG_FILE_WITH_EXTENSIONS)));
+                .thenReturn(List.of(new FileInputStream(filePath)));
 
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
@@ -158,8 +162,8 @@ class PipelinesDataflowModelParserTest {
         final ParseException actualException = assertThrows(
                 ParseException.class, pipelinesDataflowModelParser::parseConfiguration);
         assertThat(actualException.getMessage(), equalTo(
-                "pipeline_configurations and definition must all be defined in a single YAML file " +
-                        "if pipeline_configurations is configured."));
+                "extension/pipeline_configurations and definition must all be defined in a single YAML file " +
+                        "if extension/pipeline_configurations is configured."));
     }
 
     @Test

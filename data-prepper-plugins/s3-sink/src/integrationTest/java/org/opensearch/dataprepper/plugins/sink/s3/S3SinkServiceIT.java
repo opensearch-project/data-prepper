@@ -64,6 +64,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifierFact
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -104,6 +105,8 @@ class S3SinkServiceIT {
     private static final String PATH_PREFIX = UUID.randomUUID() + "/%{yyyy}/%{MM}/%{dd}/";
     private static final int numberOfRecords = 2;
     private S3Client s3Client;
+
+    private S3AsyncClient s3AsyncClient;
     private String bucketName;
     private String s3region;
     private ParquetOutputCodecConfig parquetOutputCodecConfig;
@@ -152,6 +155,7 @@ class S3SinkServiceIT {
         s3region = System.getProperty("tests.s3sink.region");
 
         s3Client = S3Client.builder().region(Region.of(s3region)).build();
+        s3AsyncClient = S3AsyncClient.builder().region(Region.of(s3region)).build();
         bucketName = System.getProperty("tests.s3sink.bucket");
         bufferFactory = new InMemoryBufferFactory();
 
@@ -266,9 +270,9 @@ class S3SinkServiceIT {
     private S3SinkService createObjectUnderTest() {
         OutputCodecContext codecContext = new OutputCodecContext("Tag", Collections.emptyList(), Collections.emptyList());
         final S3GroupIdentifierFactory groupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig);
-        s3GroupManager = new S3GroupManager(s3SinkConfig, groupIdentifierFactory, bufferFactory, codecFactory, s3Client);
+        s3GroupManager = new S3GroupManager(s3SinkConfig, groupIdentifierFactory, bufferFactory, codecFactory, s3AsyncClient);
 
-        return new S3SinkService(s3SinkConfig, codecContext, s3Client, keyGenerator, Duration.ofSeconds(5), pluginMetrics, s3GroupManager);
+        return new S3SinkService(s3SinkConfig, codecContext, Duration.ofSeconds(5), pluginMetrics, s3GroupManager);
     }
 
     private int gets3ObjectCount() {

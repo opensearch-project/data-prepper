@@ -61,6 +61,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
     private final Function<SourcePartitionStoreItem, EnhancedSourcePartition> partitionFactory;
 
     private final PluginMetrics pluginMetrics;
+    private final String partitionPrefix;
 
     /**
      * Use host name of the node as the default ownerId
@@ -88,6 +89,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
                 sourceIdentifier;
         this.pluginMetrics = pluginMetrics;
         this.partitionFactory = partitionFactory;
+        this.partitionPrefix = sourceCoordinationConfig.getPartitionPrefix();
     }
 
     @Override
@@ -273,4 +275,8 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         return Optional.of(partitionFactory.apply(sourceItem.get()));
     }
 
+    @Override
+    public String getPartitionPrefix() {
+        return partitionPrefix;
+    }
 }

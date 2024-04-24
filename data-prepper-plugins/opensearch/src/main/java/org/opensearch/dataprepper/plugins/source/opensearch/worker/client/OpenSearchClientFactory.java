@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.aws.api.AwsRequestSigningApache4Interceptor;
 import org.opensearch.dataprepper.plugins.source.opensearch.AuthConfig;
+import org.opensearch.dataprepper.plugins.certificate.validation.PemObjectValidator;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ConnectionConfiguration;
 import org.opensearch.dataprepper.plugins.truststore.TrustStoreProvider;
@@ -288,8 +289,12 @@ public class OpenSearchClientFactory {
         final Path certPath = connectionConfiguration.getCertPath();
         if (Objects.nonNull(certPath)) {
             return TrustStoreProvider.createTrustManager(certPath);
-        } else if (Objects.nonNull(connectionConfiguration.getCertificateContent())) {
-            return TrustStoreProvider.createTrustManager(connectionConfiguration.getCertificateContent());
+        } else if (Objects.nonNull(connectionConfiguration.getCertificate())) {
+            if (PemObjectValidator.isPemObject(connectionConfiguration.getCertificate())) {
+                return TrustStoreProvider.createTrustManager(connectionConfiguration.getCertificate());
+            } else {
+                return TrustStoreProvider.createTrustManager(Path.of(connectionConfiguration.getCertificate()));
+            }
         } else {
             return TrustStoreProvider.createTrustAllManager();
         }
@@ -299,8 +304,12 @@ public class OpenSearchClientFactory {
         final Path certPath = connectionConfiguration.getCertPath();
         if (Objects.nonNull(certPath)) {
             return TrustStoreProvider.createSSLContext(certPath);
-        } else if (Objects.nonNull(connectionConfiguration.getCertificateContent())) {
-            return TrustStoreProvider.createSSLContext(connectionConfiguration.getCertificateContent());
+        } else if (Objects.nonNull(connectionConfiguration.getCertificate())) {
+            if (PemObjectValidator.isPemObject(connectionConfiguration.getCertificate())) {
+                return TrustStoreProvider.createSSLContext(connectionConfiguration.getCertificate());
+            } else {
+                return TrustStoreProvider.createSSLContext(Path.of(connectionConfiguration.getCertificate()));
+            }
         } else {
             return TrustStoreProvider.createSSLContextWithTrustAllStrategy();
         }

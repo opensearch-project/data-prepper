@@ -293,9 +293,15 @@ public class KafkaSource implements Source<Record<Event>> {
         properties.put("auto.register.schemas", false);
         schemaRegistryClient = new CachedSchemaRegistryClient(getSchemaRegistryUrl(),
                 100, propertyMap);
+        final SchemaConfig schemaConfig = sourceConfig.getSchemaConfig();
         try {
-            schemaType = schemaRegistryClient.getSchemaMetadata(topic.getName() + "-value",
-                    sourceConfig.getSchemaConfig().getVersion()).getSchemaType();
+            final String subject = topic.getName() + "-value";
+            if (schemaConfig.getVersion() != null) {
+                schemaType = schemaRegistryClient.getSchemaMetadata(subject,
+                        schemaConfig.getVersion()).getSchemaType();
+            } else {
+                schemaType = schemaRegistryClient.getLatestSchemaMetadata(subject).getSchemaType();
+            }
         } catch (IOException | RestClientException e) {
             LOG.error("Failed to connect to the schema registry...");
             throw new RuntimeException(e);

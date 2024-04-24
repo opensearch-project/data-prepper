@@ -53,7 +53,7 @@ public class SourceCoordinatorFactory {
 
         LOG.info("Creating LeaseBasedSourceCoordinator with coordination store {} for sub-pipeline {}",
                 sourceCoordinationConfig.getSourceCoordinationStoreConfig().getName(), subPipelineName);
-        return new LeaseBasedSourceCoordinator<T>(clazz, sourceCoordinationStore, sourceCoordinationConfig, new PartitionManager<>(), subPipelineName, sourceCoordinatorMetrics);
+        return new LeaseBasedSourceCoordinator<T>(clazz, sourceCoordinationStore, sourceCoordinationConfig, subPipelineName, sourceCoordinatorMetrics);
     }
 
     public EnhancedSourceCoordinator provideEnhancedSourceCoordinator(final Function<SourcePartitionStoreItem, EnhancedSourcePartition> partitionFactory,

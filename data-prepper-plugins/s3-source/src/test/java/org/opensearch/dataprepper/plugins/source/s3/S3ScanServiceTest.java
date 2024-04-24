@@ -5,6 +5,8 @@
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -55,13 +57,15 @@ class S3ScanServiceTest {
         verify(s3ScanService,times(1)).start();
     }
 
-    @Test
-    void scan_service_with_valid_s3_scan_configuration_test_and_verify() {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 5})
+    void scan_service_with_valid_s3_scan_configuration_test_and_verify(int numWorkers) {
         final String bucketName="my-bucket-5";
         final LocalDateTime startDateTime = LocalDateTime.parse("2023-03-07T10:00:00");
         final List<String> includeKeyPathList = List.of("file1.csv","file2.csv");
         final S3SourceConfig s3SourceConfig = mock(S3SourceConfig.class);
         final S3ScanScanOptions s3ScanScanOptions = mock(S3ScanScanOptions.class);
+        when(s3SourceConfig.getNumWorkers()).thenReturn(numWorkers);
         when(s3ScanScanOptions.getStartTime()).thenReturn(startDateTime);
         S3ScanBucketOptions bucket = mock(S3ScanBucketOptions.class);
         final S3ScanBucketOption s3ScanBucketOption = mock(S3ScanBucketOption.class);
@@ -81,13 +85,15 @@ class S3ScanServiceTest {
         assertThat(scanOptionsBuilder.get(0).getUseEndDateTime(),equalTo(null));
     }
 
-    @Test
-    void scan_service_with_valid_bucket_time_range_configuration_test_and_verify() {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 5})
+    void scan_service_with_valid_bucket_time_range_configuration_test_and_verify(int numWorkers) {
         final String bucketName="my-bucket-5";
         final Duration range = Duration.parse("P2DT1H");
         final List<String> includeKeyPathList = List.of("file1.csv","file2.csv");
         final S3SourceConfig s3SourceConfig = mock(S3SourceConfig.class);
         final S3ScanScanOptions s3ScanScanOptions = mock(S3ScanScanOptions.class);
+        when(s3SourceConfig.getNumWorkers()).thenReturn(numWorkers);
         S3ScanBucketOptions bucket = mock(S3ScanBucketOptions.class);
         final S3ScanBucketOption s3ScanBucketOption = mock(S3ScanBucketOption.class);
         when(s3ScanBucketOption.getName()).thenReturn(bucketName);
@@ -108,13 +114,15 @@ class S3ScanServiceTest {
         assertThat(scanOptionsBuilder.get(0).getUseEndDateTime(), greaterThanOrEqualTo(LocalDateTime.now().minus(Duration.parse("PT5S"))));
     }
 
-    @Test
-    void scan_service_with_no_time_range_configuration_test_and_verify() {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 5})
+    void scan_service_with_no_time_range_configuration_test_and_verify(int numWorkers) {
         final String bucketName="my-bucket-5";
         final List<String> includeKeyPathList = List.of("file1.csv","file2.csv");
         final S3SourceConfig s3SourceConfig = mock(S3SourceConfig.class);
         final S3ScanScanOptions s3ScanScanOptions = mock(S3ScanScanOptions.class);
         when(s3ScanScanOptions.getRange()).thenReturn(null);
+        when(s3SourceConfig.getNumWorkers()).thenReturn(numWorkers);
         S3ScanBucketOptions bucket = mock(S3ScanBucketOptions.class);
         final S3ScanBucketOption s3ScanBucketOption = mock(S3ScanBucketOption.class);
         when(s3ScanBucketOption.getName()).thenReturn(bucketName);

@@ -1,25 +1,37 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.mongo.model;
 
 import java.util.Map;
 
 public class ExportLoadStatus {
 
-    private static final String TOTAL_PARTITIONS = "totalPartitions";
-    private static final String LOADED_PARTITIONS = "loadedPartitions";
-    private static final String LOADED_RECORDS = "loadedRecords";
+    public static final String TOTAL_PARTITIONS = "totalPartitions";
+    public static final String LOADED_PARTITIONS = "loadedPartitions";
+    public static final String LOADED_RECORDS = "loadedRecords";
 
-    private static final String LAST_UPDATE_TIMESTAMP = "lastUpdateTimestamp";
+    public static final String LAST_UPDATE_TIMESTAMP = "lastUpdateTimestamp";
+    public static final String TOTAL_PARTITIONS_COMPLETE = "totalPartitionsComplete";
 
     private long totalPartitions;
     private long loadedPartitions;
     private long loadedRecords;
     private long lastUpdateTimestamp;
+    private boolean isTotalParitionsComplete;
 
-    public ExportLoadStatus(long totalPartitions, long loadedPartitions, long loadedRecords, long lastUpdateTimestamp) {
+    public ExportLoadStatus(long totalPartitions,
+                            long loadedPartitions,
+                            long loadedRecords,
+                            long lastUpdateTimestamp,
+                            boolean isTotalParitionsComplete) {
         this.totalPartitions = totalPartitions;
         this.loadedPartitions = loadedPartitions;
         this.loadedRecords = loadedRecords;
         this.lastUpdateTimestamp = lastUpdateTimestamp;
+        this.isTotalParitionsComplete = isTotalParitionsComplete;
     }
 
     public long getTotalPartitions() {
@@ -50,6 +62,14 @@ public class ExportLoadStatus {
         this.lastUpdateTimestamp = lastUpdateTimestamp;
     }
 
+    public boolean isTotalParitionsComplete() {
+        return isTotalParitionsComplete;
+    }
+
+    public void setTotalParitionsComplete(boolean totalParitionsComplete) {
+        isTotalParitionsComplete = totalParitionsComplete;
+    }
+
     public long getLastUpdateTimestamp() {
         return lastUpdateTimestamp;
     }
@@ -59,7 +79,8 @@ public class ExportLoadStatus {
                 TOTAL_PARTITIONS, totalPartitions,
                 LOADED_PARTITIONS, loadedPartitions,
                 LOADED_RECORDS, loadedRecords,
-                LAST_UPDATE_TIMESTAMP, lastUpdateTimestamp
+                LAST_UPDATE_TIMESTAMP, lastUpdateTimestamp,
+                TOTAL_PARTITIONS_COMPLETE, isTotalParitionsComplete
         );
     }
 
@@ -68,7 +89,8 @@ public class ExportLoadStatus {
                 ((Number) map.get(TOTAL_PARTITIONS)).intValue(),
                 ((Number) map.get(LOADED_PARTITIONS)).intValue(),
                 ((Number) map.get(LOADED_RECORDS)).longValue(),
-                ((Number) map.get(LAST_UPDATE_TIMESTAMP)).longValue()
+                ((Number) map.get(LAST_UPDATE_TIMESTAMP)).longValue(),
+                (Boolean) map.get(TOTAL_PARTITIONS_COMPLETE)
         );
     }
 }

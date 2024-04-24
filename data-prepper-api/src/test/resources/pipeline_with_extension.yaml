@@ -1,4 +1,4 @@
-pipeline_configurations:
+extension:
   test_extension:
 test-pipeline:
   source:

@@ -14,7 +14,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.codec.CodecFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -31,7 +31,7 @@ public class S3GroupManager {
 
     private final CodecFactory codecFactory;
 
-    private final S3Client s3Client;
+    private final S3AsyncClient s3Client;
 
     private long totalGroupSize;
 
@@ -40,7 +40,7 @@ public class S3GroupManager {
                           final S3GroupIdentifierFactory s3GroupIdentifierFactory,
                           final BufferFactory bufferFactory,
                           final CodecFactory codecFactory,
-                          final S3Client s3Client) {
+                          final S3AsyncClient s3Client) {
         this.s3SinkConfig = s3SinkConfig;
         this.s3GroupIdentifierFactory = s3GroupIdentifierFactory;
         this.bufferFactory = bufferFactory;

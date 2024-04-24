@@ -10,7 +10,10 @@ import org.opensearch.dataprepper.plugins.codec.parquet.S3OutputStream;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public class MultipartBuffer implements Buffer {
 
@@ -49,8 +52,8 @@ public class MultipartBuffer implements Buffer {
      * Upload accumulated data to s3 bucket.
      */
     @Override
-    public void flushToS3() {
-        s3OutputStream.close();
+    public Optional<CompletableFuture<?>> flushToS3(final Consumer<Boolean> runOnCompletion, final Consumer<Throwable> runOnFailure) {
+        return Optional.ofNullable(s3OutputStream.close(runOnCompletion, runOnFailure));
     }
 
     @Override

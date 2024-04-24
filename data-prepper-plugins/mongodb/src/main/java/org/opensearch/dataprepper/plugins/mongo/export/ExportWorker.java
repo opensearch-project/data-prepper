@@ -57,6 +57,8 @@ public class ExportWorker implements Runnable {
      */
     private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 2_000;
 
+    private static final String S3_PATH_DELIMITER = "/";
+
     /**
      * Start Line is the checkpoint
      */
@@ -108,8 +110,15 @@ public class ExportWorker implements Runnable {
                     if (sourcePartition.isPresent()) {
                         dataQueryPartition = (DataQueryPartition) sourcePartition.get();
                         final AcknowledgementSet acknowledgementSet = createAcknowledgementSet(dataQueryPartition).orElse(null);
+                        final String s3PathPrefix;
+                        if (sourceCoordinator.getPartitionPrefix() != null ) {
+                            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix() + S3_PATH_DELIMITER + dataQueryPartition.getCollection();
+                        } else {
+                            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + dataQueryPartition.getCollection();
+                        }
                         final DataQueryPartitionCheckpoint partitionCheckpoint =  new DataQueryPartitionCheckpoint(sourceCoordinator, dataQueryPartition);
-                        final PartitionKeyRecordConverter recordConverter = new PartitionKeyRecordConverter(dataQueryPartition.getCollection(), ExportPartition.PARTITION_TYPE);
+                        final PartitionKeyRecordConverter recordConverter = new PartitionKeyRecordConverter(dataQueryPartition.getCollection(),
+                                ExportPartition.PARTITION_TYPE, s3PathPrefix);
                         final ExportPartitionWorker exportPartitionWorker = new ExportPartitionWorker(recordBufferWriter, recordConverter,
                                 dataQueryPartition, acknowledgementSet, sourceConfig, partitionCheckpoint, Instant.now().toEpochMilli(), pluginMetrics);
                         final CompletableFuture<Void> runLoader = CompletableFuture.runAsync(exportPartitionWorker, executor);
@@ -239,7 +248,8 @@ public class ExportWorker implements Runnable {
             try {
                 sourceCoordinator.saveProgressStateForPartition(globalState, null);
                 // if all load are completed.
-                if (exportLoadStatus.getLoadedPartitions() == exportLoadStatus.getTotalPartitions()) {
+                if (exportLoadStatus.isTotalParitionsComplete() &&
+                        exportLoadStatus.getLoadedPartitions() == exportLoadStatus.getTotalPartitions()) {
                     LOG.info("All Exports are done, streaming can continue...");
                     final StreamLoadStatus streamLoadStatus = new StreamLoadStatus(Instant.now().toEpochMilli());
                     sourceCoordinator.createPartition(new GlobalState(STREAM_PREFIX + collection, streamLoadStatus.toMap()));

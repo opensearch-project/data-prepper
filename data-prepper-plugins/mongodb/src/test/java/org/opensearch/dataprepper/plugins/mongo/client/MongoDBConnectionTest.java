@@ -1,7 +1,6 @@
 package org.opensearch.dataprepper.plugins.mongo.client;
 
 import com.mongodb.client.MongoClient;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -18,6 +17,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -32,9 +32,8 @@ public class MongoDBConnectionTest {
 
     private final Random random = new Random();
 
-    @BeforeEach
     void setUp() {
-        when(mongoDBSourceConfig.getCredentialsConfig()).thenReturn(authenticationConfig);
+        when(mongoDBSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getUsername()).thenReturn("\uD800\uD800" + UUID.randomUUID());
         when(authenticationConfig.getPassword()).thenReturn("aЯ ⾀sd?q=%%l€0£.lo" + UUID.randomUUID());
         when(mongoDBSourceConfig.getHost()).thenReturn(UUID.randomUUID().toString());
@@ -46,12 +45,14 @@ public class MongoDBConnectionTest {
 
     @Test
     public void getMongoClient() {
+        setUp();
         final MongoClient mongoClient = MongoDBConnection.getMongoClient(mongoDBSourceConfig);
         assertThat(mongoClient, is(notNullValue()));
     }
 
     @Test
     public void getMongoClientWithTLS() {
+        setUp();
         when(mongoDBSourceConfig.getTrustStoreFilePath()).thenReturn(UUID.randomUUID().toString());
         when(mongoDBSourceConfig.getTrustStorePassword()).thenReturn(UUID.randomUUID().toString());
         final Path path = mock(Path.class);
@@ -63,6 +64,24 @@ public class MongoDBConnectionTest {
             final MongoClient mongoClient = MongoDBConnection.getMongoClient(mongoDBSourceConfig);
             assertThat(mongoClient, is(notNullValue()));
         }
+    }
+
+    @Test
+    public void getMongoClientNullHost() {
+        when(mongoDBSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getUsername()).thenReturn("\uD800\uD800" + UUID.randomUUID());
+        when(authenticationConfig.getPassword()).thenReturn("aЯ ⾀sd?q=%%l€0£.lo" + UUID.randomUUID());
+        when(mongoDBSourceConfig.getHost()).thenReturn(null);
+        assertThrows(RuntimeException.class, () -> MongoDBConnection.getMongoClient(mongoDBSourceConfig));
+    }
+
+    @Test
+    public void getMongoClientEmptyHost() {
+        when(mongoDBSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getUsername()).thenReturn("\uD800\uD800" + UUID.randomUUID());
+        when(authenticationConfig.getPassword()).thenReturn("aЯ ⾀sd?q=%%l€0£.lo" + UUID.randomUUID());
+        when(mongoDBSourceConfig.getHost()).thenReturn(" ");
+        assertThrows(RuntimeException.class, () -> MongoDBConnection.getMongoClient(mongoDBSourceConfig));
     }
 
     private Boolean getRandomBoolean() {

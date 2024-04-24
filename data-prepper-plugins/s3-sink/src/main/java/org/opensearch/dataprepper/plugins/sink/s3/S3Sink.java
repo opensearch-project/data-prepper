@@ -33,7 +33,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifierFact
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -77,7 +77,7 @@ public class S3Sink extends AbstractSink<Record<Event>> {
         final OutputCodec testCodec = pluginFactory.loadPlugin(OutputCodec.class, codecPluginSettings);
         sinkInitialized = Boolean.FALSE;
 
-        final S3Client s3Client = ClientFactory.createS3Client(s3SinkConfig, awsCredentialsSupplier);
+        final S3AsyncClient s3Client = ClientFactory.createS3AsyncClient(s3SinkConfig, awsCredentialsSupplier);
         BufferFactory innerBufferFactory = s3SinkConfig.getBufferType().getBufferFactory();
         if(testCodec instanceof ParquetOutputCodec && s3SinkConfig.getBufferType() != BufferTypeOptions.INMEMORY) {
             throw new InvalidPluginConfigurationException("The Parquet sink codec is an in_memory buffer only.");
@@ -115,7 +115,7 @@ public class S3Sink extends AbstractSink<Record<Event>> {
         final S3GroupManager s3GroupManager = new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, codecFactory, s3Client);
 
 
-        s3SinkService = new S3SinkService(s3SinkConfig, s3OutputCodecContext, s3Client, keyGenerator, RETRY_FLUSH_BACKOFF, pluginMetrics, s3GroupManager);
+        s3SinkService = new S3SinkService(s3SinkConfig, s3OutputCodecContext, RETRY_FLUSH_BACKOFF, pluginMetrics, s3GroupManager);
     }
 
     @Override

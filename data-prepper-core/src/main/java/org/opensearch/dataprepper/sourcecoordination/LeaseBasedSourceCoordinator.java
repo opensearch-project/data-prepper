@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
@@ -66,7 +67,6 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     private final SourceCoordinationConfig sourceCoordinationConfig;
     private final SourceCoordinationStore sourceCoordinationStore;
-    private final PartitionManager<T> partitionManager;
 
     private final Class<T> partitionProgressStateClass;
     private final String ownerId;
@@ -89,6 +89,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     private final Counter saveStatePartitionUpdateErrorCounter;
     private final Counter closePartitionUpdateErrorCounter;
     private final Counter completePartitionUpdateErrorCounter;
+    private final ReentrantLock lock;
 
     static {
         try {
@@ -101,13 +102,11 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     public LeaseBasedSourceCoordinator(final Class<T> partitionProgressStateClass,
                                        final SourceCoordinationStore sourceCoordinationStore,
                                        final SourceCoordinationConfig sourceCoordinationConfig,
-                                       final PartitionManager<T> partitionManager,
                                        final String sourceIdentifier,
                                        final PluginMetrics pluginMetrics) {
         this.sourceCoordinationConfig = sourceCoordinationConfig;
         this.sourceCoordinationStore = sourceCoordinationStore;
         this.partitionProgressStateClass = partitionProgressStateClass;
-        this.partitionManager = partitionManager;
         this.sourceIdentifier = Objects.nonNull(sourceCoordinationConfig.getPartitionPrefix()) ?
                 sourceCoordinationConfig.getPartitionPrefix() + "|" + sourceIdentifier :
                 sourceIdentifier;
@@ -128,6 +127,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         this.saveStatePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, SAVE_STATE_ACTION);
         this.closePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, CLOSE_ACTION);
         this.completePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, COMPLETE_ACTION);
+        this.lock = new ReentrantLock();
     }
 
     @Override
@@ -141,26 +141,25 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     public Optional<SourcePartition<T>> getNextPartition(final Function<Map<String, Object>, List<PartitionIdentifier>> partitionCreationSupplier) {
         validateIsInitialized();
 
-        if (partitionManager.getActivePartition().isPresent()) {
-            return partitionManager.getActivePartition();
-        }
-
         Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(sourceIdentifierWithPartitionType, ownerId, DEFAULT_LEASE_TIMEOUT);
-
-        if (ownedPartitions.isEmpty()) {
-
-            final Optional<SourcePartitionStoreItem> acquiredGlobalStateForPartitionCreation = acquireGlobalStateForPartitionCreation();
-
-            if (acquiredGlobalStateForPartitionCreation.isPresent()) {
-                final Map<String, Object> globalStateMap = convertStringToGlobalStateMap(acquiredGlobalStateForPartitionCreation.get().getPartitionProgressState());
-                LOG.info("Partition owner {} did not acquire any partitions. Running partition creation supplier to create more partitions", ownerId);
-                createPartitions(partitionCreationSupplier.apply(globalStateMap));
-                partitionCreationSupplierInvocationsCounter.increment();
-
-                giveUpAndSaveGlobalStateForPartitionCreation(acquiredGlobalStateForPartitionCreation.get(), globalStateMap);
+        try {
+            if (ownedPartitions.isEmpty() && lock.tryLock()) {
+                final Optional<SourcePartitionStoreItem> acquiredGlobalStateForPartitionCreation = acquireGlobalStateForPartitionCreation();
+                if (acquiredGlobalStateForPartitionCreation.isPresent()) {
+                    final Map<String, Object> globalStateMap = convertStringToGlobalStateMap(acquiredGlobalStateForPartitionCreation.get().getPartitionProgressState());
+                    LOG.info("Partition owner {} did not acquire any partitions. Running partition creation supplier to create more partitions", ownerId);
+                    createPartitions(partitionCreationSupplier.apply(globalStateMap));
+                    partitionCreationSupplierInvocationsCounter.increment();
+                    giveUpAndSaveGlobalStateForPartitionCreation(acquiredGlobalStateForPartitionCreation.get(), globalStateMap);
+                }
             }
-
-            ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(sourceIdentifierWithPartitionType, ownerId, DEFAULT_LEASE_TIMEOUT);
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+            if (ownedPartitions.isEmpty()) {
+                ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(sourceIdentifierWithPartitionType, ownerId, DEFAULT_LEASE_TIMEOUT);
+            }
         }
 
         if (ownedPartitions.isEmpty()) {
@@ -175,7 +174,6 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
                 .withPartitionClosedCount(ownedPartitions.get().getClosedCount())
                 .build();
 
-        partitionManager.setActivePartition(sourcePartition);
 
         LOG.debug("Partition key {} was acquired by owner {}", sourcePartition.getPartitionKey(), ownerId);
         partitionsAcquiredCounter.increment();
@@ -210,7 +208,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     public void completePartition(final String partitionKey, final Boolean fromAcknowledgmentsCallback) {
         validateIsInitialized();
 
-        final SourcePartitionStoreItem itemToUpdate = getItemWithAction(partitionKey, COMPLETE_ACTION, fromAcknowledgmentsCallback);
+        final SourcePartitionStoreItem itemToUpdate = getSourcePartitionStoreItem(partitionKey, COMPLETE_ACTION);
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwner(null);
@@ -225,10 +223,6 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             throw e;
         }
 
-        if (!fromAcknowledgmentsCallback) {
-            partitionManager.removeActivePartition();
-        }
-
         LOG.info("Partition key {} was completed by owner {}.", partitionKey, ownerId);
         partitionsCompletedCounter.increment();
     }
@@ -237,7 +231,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     public void closePartition(final String partitionKey, final Duration reopenAfter, final int maxClosedCount, final Boolean fromAcknowledgmentsCallback) {
         validateIsInitialized();
 
-        final SourcePartitionStoreItem itemToUpdate = getItemWithAction(partitionKey, CLOSE_ACTION, fromAcknowledgmentsCallback);
+        final SourcePartitionStoreItem itemToUpdate = getSourcePartitionStoreItem(partitionKey, CLOSE_ACTION);
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwner(null);
@@ -269,10 +263,6 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             partitionsClosedCounter.increment();
         }
 
-        if (!fromAcknowledgmentsCallback) {
-            partitionManager.removeActivePartition();
-        }
-
         LOG.info("Partition key {} was closed by owner {}. The resulting status of the partition is now {}", partitionKey, ownerId, itemToUpdate.getSourcePartitionStatus());
     }
 
@@ -280,7 +270,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     public <S extends T> void saveProgressStateForPartition(final String partitionKey, final S partitionProgressState) {
         validateIsInitialized();
 
-        final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, SAVE_STATE_ACTION);
+        final SourcePartitionStoreItem itemToUpdate = getSourcePartitionStoreItem(partitionKey, SAVE_STATE_ACTION);
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwnershipTimeout(Instant.now().plus(DEFAULT_LEASE_TIMEOUT));
@@ -303,46 +293,40 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     public void updatePartitionForAcknowledgmentWait(final String partitionKey, final Duration ackowledgmentTimeout) {
         validateIsInitialized();
 
-        final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, "update for ack wait");
+        final SourcePartitionStoreItem itemToUpdate = getSourcePartitionStoreItem(partitionKey, "update for ack wait");
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwnershipTimeout(Instant.now().plus(ackowledgmentTimeout));
 
         sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
-
-        partitionManager.removeActivePartition();
     }
 
     @Override
-    public void giveUpPartitions() {
+    public void giveUpPartition(String partitionKey) {
 
         if (!initialized) {
             return;
         }
 
-        final Optional<SourcePartition<T>> activePartition = partitionManager.getActivePartition();
-        if (activePartition.isPresent()) {
-            final Optional<SourcePartitionStoreItem> optionalItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifierWithPartitionType, activePartition.get().getPartitionKey());
-            if (optionalItem.isPresent()) {
-                final SourcePartitionStoreItem updateItem = optionalItem.get();
-                validatePartitionOwnership(updateItem);
+        final Optional<SourcePartitionStoreItem> optionalItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifierWithPartitionType, partitionKey);
+        if (optionalItem.isPresent()) {
+            final SourcePartitionStoreItem updateItem = optionalItem.get();
+            validatePartitionOwnership(updateItem);
 
-                updateItem.setSourcePartitionStatus(SourcePartitionStatus.UNASSIGNED);
-                updateItem.setPartitionOwner(null);
-                updateItem.setPartitionOwnershipTimeout(null);
+            updateItem.setSourcePartitionStatus(SourcePartitionStatus.UNASSIGNED);
+            updateItem.setPartitionOwner(null);
+            updateItem.setPartitionOwnershipTimeout(null);
 
-                try {
-                    sourceCoordinationStore.tryUpdateSourcePartitionItem(updateItem);
-                } catch (final PartitionUpdateException e) {
-                    LOG.info("Unable to explicitly give up partition {}. Partition can be considered given up.", updateItem.getSourcePartitionKey());
-                }
-
-
-                LOG.info("Partition key {} was given up by owner {}", updateItem.getSourcePartitionKey(), ownerId);
+            try {
+                sourceCoordinationStore.tryUpdateSourcePartitionItem(updateItem);
+            } catch (final PartitionUpdateException e) {
+                LOG.info("Unable to explicitly give up partition {}. Partition can be considered given up.", updateItem.getSourcePartitionKey());
             }
-            partitionManager.removeActivePartition();
-            partitionsGivenUpCounter.increment();
+
+
+            LOG.info("Partition key {} was given up by owner {}", updateItem.getSourcePartitionKey(), ownerId);
         }
+        partitionsGivenUpCounter.increment();
     }
 
     private T convertStringToPartitionProgressStateClass(final String serializedPartitionProgressState) {
@@ -380,30 +364,13 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         }
     }
 
-    private boolean isActivelyOwnedPartition(final String partitionKey) {
-        final Optional<SourcePartition<T>> activePartition = partitionManager.getActivePartition();
-        return activePartition.isPresent() && activePartition.get().getPartitionKey().equals(partitionKey);
-    }
-
     private void validatePartitionOwnership(final SourcePartitionStoreItem item) {
         if (Objects.isNull(item.getPartitionOwner()) || !ownerId.equals(item.getPartitionOwner())) {
-            partitionManager.removeActivePartition();
             partitionNotOwnedErrorCounter.increment();
             throw new PartitionNotOwnedException(String.format("The partition is no longer owned by this instance of Data Prepper. " +
                     "The partition ownership timeout most likely expired and was grabbed by another instance of Data Prepper for partition owner %s and partition key %s.",
                     ownerId, item.getSourcePartitionKey()));
         }
-    }
-
-    private SourcePartitionStoreItem validateAndGetSourcePartitionStoreItem(final String partitionKey, final String action) {
-        if (!isActivelyOwnedPartition(partitionKey)) {
-            partitionNotOwnedErrorCounter.increment();
-            throw new PartitionNotOwnedException(
-                    String.format("Unable to %s for the partition because partition key %s is not owned by this instance of Data Prepper for owner %s", action, partitionKey, ownerId)
-            );
-        }
-
-        return getSourcePartitionStoreItem(partitionKey, action);
     }
 
     private SourcePartitionStoreItem getSourcePartitionStoreItem(final String partitionKey, final String action) {
@@ -469,9 +436,4 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         }
     }
 
-    private SourcePartitionStoreItem getItemWithAction(final String partitionKey, final String action, final Boolean fromAcknowledgmentsCallback) {
-        // The validation against activePartition in partition manager needs to be skipped when called from acknowledgments callback
-        // because otherwise it will fail the validation since it is actively working on a different partition when ack is received
-        return fromAcknowledgmentsCallback ? getSourcePartitionStoreItem(partitionKey, action) : validateAndGetSourcePartitionStoreItem(partitionKey, action);
-    }
 }

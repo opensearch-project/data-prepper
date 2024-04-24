@@ -121,4 +121,6 @@ public interface EnhancedSourceCoordinator {
      */
     void initialize();
 
+    String getPartitionPrefix();
+
 }

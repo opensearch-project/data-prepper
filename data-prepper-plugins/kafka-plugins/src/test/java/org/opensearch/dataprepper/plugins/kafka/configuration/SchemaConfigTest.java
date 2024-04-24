@@ -54,6 +54,8 @@ class SchemaConfigTest {
 		assertThat(schemaConfig, notNullValue());
 		assertThat(schemaConfig.getVersion(), notNullValue());
 		assertThat(schemaConfig.getRegistryURL(), notNullValue());
+		assertThat(schemaConfig.getSchemaRegistryApiKey(), notNullValue());
+		assertThat(schemaConfig.getSchemaRegistryApiSecret(), notNullValue());
 	}
 
 	@Test

@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.mongo.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.Duration;
@@ -11,7 +12,6 @@ public class MongoDBSourceConfig {
     private static final int DEFAULT_PORT = 27017;
     private static final Boolean DEFAULT_INSECURE = false;
     private static final Boolean DEFAULT_INSECURE_DISABLE_VERIFICATION = false;
-    private static final String DEFAULT_SNAPSHOT_FETCH_SIZE = "1000";
     private static final String DEFAULT_READ_PREFERENCE = "primaryPreferred";
     private static final Boolean DEFAULT_DIRECT_CONNECT = true;
     private static final Duration DEFAULT_ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
@@ -26,14 +26,21 @@ public class MongoDBSourceConfig {
     @JsonProperty("authentication")
     private AuthenticationConfig authenticationConfig;
 
-    @JsonProperty("snapshot_fetch_size")
-    private String snapshotFetchSize;
     @JsonProperty("read_preference")
     private String readPreference;
     @JsonProperty("collections")
     private List<CollectionConfig> collections;
     @JsonProperty("acknowledgments")
     private Boolean acknowledgments = false;
+
+    @JsonProperty("s3_bucket")
+    private String s3Bucket;
+
+    @JsonProperty("s3_prefix")
+    private String s3Prefix;
+
+    @JsonProperty("s3_region")
+    private String s3Region;
 
     @JsonProperty
     private Duration partitionAcknowledgmentTimeout;
@@ -45,8 +52,12 @@ public class MongoDBSourceConfig {
     @JsonProperty("direct_connection")
     private Boolean directConnection;
 
+    @JsonProperty("aws")
+    @NotNull
+    @Valid
+    private AwsConfig awsConfig;
+
     public MongoDBSourceConfig() {
-        this.snapshotFetchSize = DEFAULT_SNAPSHOT_FETCH_SIZE;
         this.readPreference = DEFAULT_READ_PREFERENCE;
         this.collections = new ArrayList<>();
         this.insecure = DEFAULT_INSECURE;
@@ -55,7 +66,7 @@ public class MongoDBSourceConfig {
         this.partitionAcknowledgmentTimeout = DEFAULT_ACKNOWLEDGEMENT_SET_TIMEOUT;
     }
 
-    public AuthenticationConfig getCredentialsConfig() {
+    public AuthenticationConfig getAuthenticationConfig() {
         return this.authenticationConfig;
     }
 
@@ -101,6 +112,22 @@ public class MongoDBSourceConfig {
 
     public Duration getPartitionAcknowledgmentTimeout() {
         return this.partitionAcknowledgmentTimeout;
+    }
+
+    public String getS3Bucket() {
+        return this.s3Bucket;
+    }
+
+    public String getS3Prefix() {
+        return this.s3Prefix;
+    }
+
+    public String getS3Region() {
+        return this.s3Region;
+    }
+
+    public AwsConfig getAwsConfig() {
+        return this.awsConfig;
     }
 
     public static class AuthenticationConfig {
