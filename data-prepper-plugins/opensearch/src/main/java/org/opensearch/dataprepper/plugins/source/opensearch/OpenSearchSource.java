@@ -52,6 +52,7 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
         this.pluginMetrics = pluginMetrics;
         this.pluginConfigObservable = pluginConfigObservable;
 
+        openSearchSourceConfiguration.validateAuthConfigConflictWithDeprecatedUsernameAndPassword();
         openSearchSourceConfiguration.validateAwsConfigWithUsernameAndPassword();
     }
 

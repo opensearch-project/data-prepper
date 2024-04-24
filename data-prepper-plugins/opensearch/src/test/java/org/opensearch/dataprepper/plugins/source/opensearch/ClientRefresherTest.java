@@ -30,6 +30,9 @@ class ClientRefresherTest {
     private OpenSearchSourceConfiguration openSearchSourceConfiguration;
 
     @Mock
+    private AuthConfig authConfig;
+
+    @Mock
     private OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
 
     @Mock
@@ -58,7 +61,7 @@ class ClientRefresherTest {
     }
 
     @Test
-    void testGetAfterUpdateWithBasicAuthUnchanged() {
+    void testGetAfterUpdateWithDeprecatedBasicAuthUnchanged() {
         final ClientRefresher objectUnderTest = createObjectUnderTest();
         when(openSearchSourceConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(openSearchSourceConfiguration.getPassword()).thenReturn(TEST_PASSWORD);
@@ -70,7 +73,22 @@ class ClientRefresherTest {
     }
 
     @Test
-    void testGetAfterUpdateWithUsernameChanged() {
+    void testGetAfterUpdateWithBasicAuthUnchanged() {
+        final ClientRefresher objectUnderTest = createObjectUnderTest();
+        when(openSearchSourceConfiguration.getAuthConfig()).thenReturn(authConfig);
+        when(authConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(authConfig.getPassword()).thenReturn(TEST_PASSWORD);
+        final OpenSearchSourceConfiguration newConfig = mock(OpenSearchSourceConfiguration.class);
+        final AuthConfig newAuthConfig = mock(AuthConfig.class);
+        when(newConfig.getAuthConfig()).thenReturn(newAuthConfig);
+        when(newAuthConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(newAuthConfig.getPassword()).thenReturn(TEST_PASSWORD);
+        objectUnderTest.update(newConfig);
+        assertThat(objectUnderTest.get(), equalTo(client));
+    }
+
+    @Test
+    void testGetAfterUpdateWithDeprecatedUsernameChanged() {
         when(openSearchSourcePluginMetrics.getCredentialsChangeCounter()).thenReturn(basicAuthChangedCounter);
         final ClientRefresher objectUnderTest = createObjectUnderTest();
         when(openSearchSourceConfiguration.getUsername()).thenReturn(TEST_USERNAME);
@@ -84,7 +102,24 @@ class ClientRefresherTest {
     }
 
     @Test
-    void testGetAfterUpdateWithPasswordChanged() {
+    void testGetAfterUpdateWithUsernameChanged() {
+        when(openSearchSourcePluginMetrics.getCredentialsChangeCounter()).thenReturn(basicAuthChangedCounter);
+        final ClientRefresher objectUnderTest = createObjectUnderTest();
+        when(openSearchSourceConfiguration.getAuthConfig()).thenReturn(authConfig);
+        when(authConfig.getUsername()).thenReturn(TEST_USERNAME);
+        final OpenSearchSourceConfiguration newConfig = mock(OpenSearchSourceConfiguration.class);
+        final AuthConfig newAuthConfig = mock(AuthConfig.class);
+        when(newConfig.getAuthConfig()).thenReturn(newAuthConfig);
+        when(newAuthConfig.getUsername()).thenReturn(TEST_USERNAME + "_changed");
+        final OpenSearchClient newClient = mock(OpenSearchClient.class);
+        when(clientFunction.apply(eq(newConfig))).thenReturn(newClient);
+        objectUnderTest.update(newConfig);
+        assertThat(objectUnderTest.get(), equalTo(newClient));
+        verify(basicAuthChangedCounter).increment();
+    }
+
+    @Test
+    void testGetAfterUpdateWithDeprecatedPasswordChanged() {
         when(openSearchSourcePluginMetrics.getCredentialsChangeCounter()).thenReturn(basicAuthChangedCounter);
         final ClientRefresher objectUnderTest = createObjectUnderTest();
         when(openSearchSourceConfiguration.getUsername()).thenReturn(TEST_USERNAME);
@@ -92,6 +127,25 @@ class ClientRefresherTest {
         final OpenSearchSourceConfiguration newConfig = mock(OpenSearchSourceConfiguration.class);
         when(newConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(newConfig.getPassword()).thenReturn(TEST_PASSWORD + "_changed");
+        final OpenSearchClient newClient = mock(OpenSearchClient.class);
+        when(clientFunction.apply(eq(newConfig))).thenReturn(newClient);
+        objectUnderTest.update(newConfig);
+        assertThat(objectUnderTest.get(), equalTo(newClient));
+        verify(basicAuthChangedCounter).increment();
+    }
+
+    @Test
+    void testGetAfterUpdateWithPasswordChanged() {
+        when(openSearchSourcePluginMetrics.getCredentialsChangeCounter()).thenReturn(basicAuthChangedCounter);
+        final ClientRefresher objectUnderTest = createObjectUnderTest();
+        when(openSearchSourceConfiguration.getAuthConfig()).thenReturn(authConfig);
+        when(authConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(authConfig.getPassword()).thenReturn(TEST_PASSWORD);
+        final OpenSearchSourceConfiguration newConfig = mock(OpenSearchSourceConfiguration.class);
+        final AuthConfig newAuthConfig = mock(AuthConfig.class);
+        when(newConfig.getAuthConfig()).thenReturn(newAuthConfig);
+        when(newAuthConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(newAuthConfig.getPassword()).thenReturn(TEST_PASSWORD + "_changed");
         final OpenSearchClient newClient = mock(OpenSearchClient.class);
         when(clientFunction.apply(eq(newConfig))).thenReturn(newClient);
         objectUnderTest.update(newConfig);

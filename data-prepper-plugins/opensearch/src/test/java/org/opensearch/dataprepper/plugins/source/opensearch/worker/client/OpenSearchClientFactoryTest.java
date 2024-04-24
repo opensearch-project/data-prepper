@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.plugins.source.opensearch.AuthConfig;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ConnectionConfiguration;
@@ -75,6 +76,9 @@ public class OpenSearchClientFactoryTest {
     private OpenSearchSourceConfiguration openSearchSourceConfiguration;
 
     @Mock
+    private AuthConfig authConfig;
+
+    @Mock
     private ConnectionConfiguration connectionConfiguration;
 
     @Captor
@@ -91,7 +95,7 @@ public class OpenSearchClientFactoryTest {
     }
 
     @Test
-    void provideOpenSearchClient_with_username_and_password() {
+    void provideOpenSearchClient_with_deprecated_username_and_password() {
         final String username = UUID.randomUUID().toString();
         final String password = UUID.randomUUID().toString();
         when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
@@ -112,11 +116,52 @@ public class OpenSearchClientFactoryTest {
     }
 
     @Test
-    void provideElasticSearchClient_with_username_and_password() {
+    void provideOpenSearchClient_with_username_and_password() {
+        final String username = UUID.randomUUID().toString();
+        final String password = UUID.randomUUID().toString();
+        when(openSearchSourceConfiguration.getAuthConfig()).thenReturn(authConfig);
+        when(authConfig.getUsername()).thenReturn(username);
+        when(authConfig.getPassword()).thenReturn(password);
+
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+        when(connectionConfiguration.isInsecure()).thenReturn(true);
+
+        when(openSearchSourceConfiguration.getAwsAuthenticationOptions()).thenReturn(null);
+
+        final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
+        assertThat(openSearchClient, notNullValue());
+
+        verifyNoInteractions(awsCredentialsSupplier);
+
+    }
+
+    @Test
+    void provideElasticSearchClient_with_deprecated_username_and_password() {
         final String username = UUID.randomUUID().toString();
         final String password = UUID.randomUUID().toString();
         when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
         when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
+
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+        when(connectionConfiguration.isInsecure()).thenReturn(true);
+
+        final ElasticsearchClient elasticsearchClient = createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration);
+        assertThat(elasticsearchClient, notNullValue());
+
+        verifyNoInteractions(awsCredentialsSupplier);
+    }
+
+    @Test
+    void provideElasticSearchClient_with_username_and_password() {
+        final String username = UUID.randomUUID().toString();
+        final String password = UUID.randomUUID().toString();
+        when(openSearchSourceConfiguration.getAuthConfig()).thenReturn(authConfig);
+        when(authConfig.getUsername()).thenReturn(username);
+        when(authConfig.getPassword()).thenReturn(password);
 
         when(connectionConfiguration.getCertPath()).thenReturn(null);
         when(connectionConfiguration.getSocketTimeout()).thenReturn(null);

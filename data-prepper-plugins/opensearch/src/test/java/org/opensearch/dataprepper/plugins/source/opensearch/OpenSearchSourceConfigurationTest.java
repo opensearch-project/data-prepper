@@ -23,7 +23,7 @@ public class OpenSearchSourceConfigurationTest {
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
     @Test
-    void open_search_source_username_password_only() throws JsonProcessingException {
+    void open_search_source_deprecated_username_password_only() throws JsonProcessingException {
 
         final String sourceConfigurationYaml =
                 "hosts: [\"http://localhost:9200\"]\n" +
@@ -48,9 +48,46 @@ public class OpenSearchSourceConfigurationTest {
         assertThat(sourceConfiguration.getSchedulingParameterConfiguration(), notNullValue());
         assertThat(sourceConfiguration.getHosts(), notNullValue());
 
+        sourceConfiguration.validateAuthConfigConflictWithDeprecatedUsernameAndPassword();
         sourceConfiguration.validateAwsConfigWithUsernameAndPassword();
         assertThat(sourceConfiguration.getPassword(), equalTo("test"));
         assertThat(sourceConfiguration.getUsername(), equalTo("test"));
+        assertThat(sourceConfiguration.getAwsAuthenticationOptions(), equalTo(null));
+    }
+
+    @Test
+    void open_search_source_authentication_only() throws JsonProcessingException {
+
+        final String sourceConfigurationYaml =
+                "hosts: [\"http://localhost:9200\"]\n" +
+                        "authentication:\n" +
+                        "  username: test\n" +
+                        "  password: test\n" +
+                        "connection:\n" +
+                        "  insecure: true\n" +
+                        "  cert: \"cert\"\n" +
+                        "indices:\n" +
+                        "  include:\n" +
+                        "    - index_name_regex: \"regex\"\n" +
+                        "    - index_name_regex: \"regex-two\"\n" +
+                        "scheduling:\n" +
+                        "  index_read_count: 3\n" +
+                        "search_options:\n" +
+                        "  batch_size: 1000\n";
+        final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
+
+        assertThat(sourceConfiguration.getSearchConfiguration(), notNullValue());
+        assertThat(sourceConfiguration.getConnectionConfiguration(), notNullValue());
+        assertThat(sourceConfiguration.getIndexParametersConfiguration(), notNullValue());
+        assertThat(sourceConfiguration.getSchedulingParameterConfiguration(), notNullValue());
+        assertThat(sourceConfiguration.getHosts(), notNullValue());
+
+        sourceConfiguration.validateAuthConfigConflictWithDeprecatedUsernameAndPassword();
+        sourceConfiguration.validateAwsConfigWithUsernameAndPassword();
+        assertThat(sourceConfiguration.getAuthConfig().getPassword(), equalTo("test"));
+        assertThat(sourceConfiguration.getAuthConfig().getUsername(), equalTo("test"));
+        assertThat(sourceConfiguration.getPassword(), nullValue());
+        assertThat(sourceConfiguration.getUsername(), nullValue());
         assertThat(sourceConfiguration.getAwsAuthenticationOptions(), equalTo(null));
     }
 
@@ -79,6 +116,7 @@ public class OpenSearchSourceConfigurationTest {
         assertThat(sourceConfiguration.getSchedulingParameterConfiguration(), notNullValue());
         assertThat(sourceConfiguration.getHosts(), notNullValue());
 
+        sourceConfiguration.validateAuthConfigConflictWithDeprecatedUsernameAndPassword();
         sourceConfiguration.validateAwsConfigWithUsernameAndPassword();
         assertThat(sourceConfiguration.isAuthenticationDisabled(), equalTo(true));
         assertThat(sourceConfiguration.getPassword(), equalTo(null));
@@ -108,6 +146,7 @@ public class OpenSearchSourceConfigurationTest {
 
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
+        sourceConfiguration.validateAuthConfigConflictWithDeprecatedUsernameAndPassword();
         sourceConfiguration.validateAwsConfigWithUsernameAndPassword();
         assertThat(sourceConfiguration.getPassword(), equalTo(null));
         assertThat(sourceConfiguration.getUsername(), equalTo(null));
@@ -142,6 +181,7 @@ public class OpenSearchSourceConfigurationTest {
 
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
+        sourceConfiguration.validateAuthConfigConflictWithDeprecatedUsernameAndPassword();
         sourceConfiguration.validateAwsConfigWithUsernameAndPassword();
         assertThat(sourceConfiguration.getPassword(), equalTo(null));
         assertThat(sourceConfiguration.getUsername(), equalTo(null));
@@ -180,6 +220,7 @@ public class OpenSearchSourceConfigurationTest {
 
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
+        sourceConfiguration.validateAuthConfigConflictWithDeprecatedUsernameAndPassword();
         assertThrows(InvalidPluginConfigurationException.class, sourceConfiguration::validateAwsConfigWithUsernameAndPassword);
         assertThat(sourceConfiguration.isDistributionVersionValid(), equalTo(false));
     }
@@ -202,6 +243,35 @@ public class OpenSearchSourceConfigurationTest {
 
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
+        sourceConfiguration.validateAuthConfigConflictWithDeprecatedUsernameAndPassword();
         assertThrows(InvalidPluginConfigurationException.class, sourceConfiguration::validateAwsConfigWithUsernameAndPassword);
+    }
+
+    @Test
+    void using_both_deprecated_username_password_and_authentication_is_invalid() throws JsonProcessingException {
+        final String sourceConfigurationYaml =
+                "hosts: [\"http://localhost:9200\"]\n" +
+                        "username: test\n" +
+                        "password: test\n" +
+                        "connection:\n" +
+                        "  insecure: true\n" +
+                        "  cert: \"cert\"\n" +
+                        "distribution_version: \"invalid\"\n" +
+                        "indices:\n" +
+                        "  include:\n" +
+                        "    - index_name_regex: \"regex\"\n" +
+                        "    - index_name_regex: \"regex-two\"\n" +
+                        "authentication:\n" +
+                        "  username: \"test\"\n" +
+                        "  password: \"test\"\n" +
+                        "scheduling:\n" +
+                        "  index_read_count: 3\n" +
+                        "search_options:\n" +
+                        "  batch_size: 1000\n";
+
+        final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
+
+        assertThrows(InvalidPluginConfigurationException.class, sourceConfiguration::validateAuthConfigConflictWithDeprecatedUsernameAndPassword);
+        assertThat(sourceConfiguration.isDistributionVersionValid(), equalTo(false));
     }
 }

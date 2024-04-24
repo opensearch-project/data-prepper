@@ -29,6 +29,7 @@ import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.aws.api.AwsRequestSigningApache4Interceptor;
+import org.opensearch.dataprepper.plugins.source.opensearch.AuthConfig;
 import org.opensearch.dataprepper.plugins.certificate.validation.PemObjectValidator;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ConnectionConfiguration;
@@ -239,8 +240,18 @@ public class OpenSearchClientFactory {
         LOG.info("Using username and password for auth for the OpenSearch source");
 
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        final String username;
+        final String password;
+        final AuthConfig authConfig = openSearchSourceConfiguration.getAuthConfig();
+        if (authConfig != null) {
+            username = openSearchSourceConfiguration.getAuthConfig().getUsername();
+            password = openSearchSourceConfiguration.getAuthConfig().getPassword();
+        } else {
+            username = openSearchSourceConfiguration.getUsername();
+            password = openSearchSourceConfiguration.getPassword();
+        }
         credentialsProvider.setCredentials(AuthScope.ANY,
-                new UsernamePasswordCredentials(openSearchSourceConfiguration.getUsername(), openSearchSourceConfiguration.getPassword()));
+                new UsernamePasswordCredentials(username, password));
         httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
     }
 
