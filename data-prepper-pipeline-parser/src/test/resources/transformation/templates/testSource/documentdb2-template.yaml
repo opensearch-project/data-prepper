@@ -1,10 +1,4 @@
-"<<pipeline-name>>":
-  workers: "<<$.<<pipeline-name>>.workers>>"
-  delay: "<<$.<<pipeline-name>>.delay>>"
-  buffer:
-    bounded_blocking:
-      batch_size: 125000
-      buffer_size: 1000000
+"<<pipeline-name>>-reader":
   source:
     documentdb: "<<$.<<pipeline-name>>.source.documentdb>>"
   routes:
@@ -16,9 +10,9 @@
         - initial_load
       aws:
         region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
-        sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
-        sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
-        sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
+        sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_role_arn>>"
+        sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_external_id>>"
+        sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_header_overrides>>"
       bucket: "<<$.<<pipeline-name>>.source.documentdb.s3_bucket>>"
       threshold:
         event_collect_timeout: "120s"
@@ -35,9 +29,7 @@
           - stream_load
       aws:
         region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
-        sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
-        sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
-        sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
+        sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_role_arn>>"
         bucket: "<<$.<<pipeline-name>>.source.documentdb.s3_bucket>>"
         threshold:
           event_collect_timeout: "30s"
@@ -50,13 +42,7 @@
         codec:
           json:
 
-  "<<pipeline-name>>.s3":
-    workers: "<<$.<<pipeline-name>>.workers>>"
-    delay: "<<$.<<pipeline-name>>.delay>>"
-    buffer:
-      bounded_blocking:
-        batch_size: 125000
-        buffer_size: 1000000
+  "<<pipeline-name>>-writer":
     source:
       s3:
         codec:
@@ -64,9 +50,9 @@
         compression: "none"
       aws:
         region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
-        sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
-        sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
-        sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
+        sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_role_arn>>"
+        sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_external_id>>"
+        sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_header_overrides>>"
         acknowledgments: true
         delete_s3_objects_on_read: true
         scan:
@@ -79,4 +65,3 @@
           interval: "1s"
     processor: "<<$.<<pipeline-name>>.processor>>"
     sink: "<<$.<<pipeline-name>>.sink>>"
-    routes: "<<$.<<pipeline-name>>.routes>>"

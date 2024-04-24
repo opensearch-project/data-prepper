@@ -1,5 +1,5 @@
 pipeline:
-    source: "<<$.*.source>>"
+    source: "<<$..source>>"
     sink:
         - s3:
-            bucket_name: "<<$.*.source.hostname>>"
+            bucket_name: "<<$.<<pipeline-name>>.source.hostname>>"

@@ -1,0 +1,45 @@
+documentdb-pipeline:
+  source:
+    documentdb:
+      acknowledgments: true
+      hosts: ["docdb-2024-01-03-20-31-17.cluster-abcdef.us-east-1.docdb.amazonaws.com"]
+      authentication:
+        username: ${{aws_secrets:secret:password}}
+        password: ${{aws_secrets:secret:password}}
+      aws:
+        sts_role_arn: "docdb-role"
+      s3_bucket: "bucket-name1"
+      s3_region: "bucket-region"
+      s3_prefix: "folder1/folder2" # pipeline_name + collection + timestamp
+      collections:
+        - collection: "dbname.collection1"
+          export: "true" # full_load
+          stream: "true" # cdc
+          # OSI only configuration and not exposed to customer
+          partition_count: 256
+          export_batch_size: 10000
+          stream_batch_size: 1000
+  processor:
+    - string_converter:
+        upper_case: true
+  sink:
+    - opensearch:
+        hosts: [ "https://search-mydomain-1a2a3a4a5a6a7a8a9a0a9a8a7a.us-east-1.es.amazonaws.com" ]
+        index: "index_name"
+        index_type: custom
+        exclude_keys: [ "_id"]
+        document_id: "${getMetadata(\"primary_key\")}"
+        action: "${getMetadata(\"opensearch_action\")}"
+        document_version: "${getMetadata(\"document_version\")}"
+        document_version_type: "external"
+        aws:
+          sts_role_arn: "arn:aws:iam::123456789012:role/Example-Role"
+          region: "us-east-1"
+
+extension:
+  aws:
+    secrets:
+      secret:
+        secret_id: "my-docdb-secret"
+        region: "us-east-1"
+        refresh_interval: PT1H

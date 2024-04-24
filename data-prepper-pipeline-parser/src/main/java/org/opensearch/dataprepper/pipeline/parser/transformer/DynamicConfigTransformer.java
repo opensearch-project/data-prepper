@@ -22,7 +22,9 @@ import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluatorResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.xml.transform.TransformerException;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -39,12 +41,12 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
 
     /**
      * Placeholder will look like "<<placeholderValue>>"
-     * */
-    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\<\\<\\s*(.+?)\\s*>>");
+     */
+    private final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\<\\<\\s*(.+?)\\s*>>");
     /**
      * Placeholder used to find "<<pipeline-name>>"
-     * */
-    private static final  String PIPELINE_NAME_PLACEHOLDER_REGEX = "\\<\\<\\s*" + Pattern.quote("pipeline-name") + "\\s*\\>\\>";
+     */
+    private static final String PIPELINE_NAME_PLACEHOLDER_REGEX = "\\<\\<\\s*" + Pattern.quote("pipeline-name") + "\\s*\\>\\>";
 
     /**
      * This is the root node of the template json. This is got when converting template model to
@@ -53,10 +55,21 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     private static final String TEMPLATE_PIPELINE_ROOT_STRING = "templatePipelines";
 
     /**
+     * placeholder for executing functions runtime based on template parameter
+     * Example: <<FUNCTION_NAME:print, PARAMETER:helloWorld>>
+     */
+    private static final String FUNCTION_CALL_PLACEHOLDER_REGEX = "FUNCTION_NAME:(.*?),PARAMETER:(.*)";
+    private final Pattern FUNCTION_CALL_PLACEHOLDER_PATTERN = Pattern.compile(FUNCTION_CALL_PLACEHOLDER_REGEX);
+
+    /**
      * Json Path expression like "?(@.<node>)" seem to always return arrayNode even if it is an ObjectNode.
      * JSON_PATH_ARRAY_DISAMBIGUATOR_PATTERN is a way used to detect and disambiguate the path.
      */
     private static final String JSON_PATH_ARRAY_DISAMBIGUATOR_PATTERN = "[?(@.";
+    private static final String RECURSIVE_JSON_PATH_PATH = "$..";
+    private static final String JSON_PATH_IDENTIFIER = "$.";
+    private static final String SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE = "SOURCE_COORDINATION_PIPELINE_IDENTIFIER";
+
 
     Configuration parseConfigWithJsonNode = Configuration.builder()
             .jsonProvider(new JacksonJsonNodeJsonProvider())
@@ -79,6 +92,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * Step4: For every placeholder, replace the template in the corresponding template json path with
      * node from the original pipelineJson.
      * Step5: Convert result to PipelinesDataFlowModel.
+     *
      * @param preTransformedPipelinesDataFlowModel - represents the pre-transformed pipeline data flow model
      * @return PipelinesDataFlowModel - Transformed PipelinesDataFlowModel.
      */
@@ -103,35 +117,42 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             String pipelineJson = objectMapper.writeValueAsString(pipelineMap);
 
             String templateJsonStringWithPipelinePlaceholder = objectMapper.writeValueAsString(templateModel);
+
+            //Replace pipeline name placeholder with pipelineNameThatNeedsTransformation
             String templateJsonString = replaceTemplatePipelineName(templateJsonStringWithPipelinePlaceholder,
                     pipelineNameThatNeedsTransformation);
 
-            //find all PLACEHOLDER_PATTERN in template json string
+            // Find all PLACEHOLDER_PATTERN in template json string
             Map<String, List<String>> placeholdersMap = findPlaceholdersWithPathsRecursively(templateJsonString);
             JsonNode templateRootNode = objectMapper.readTree(templateJsonString);
 
             // get exact path in pipelineJson
-            Map<String, String> pipelineExactPathMap = findExactPath(placeholdersMap, pipelineNameThatNeedsTransformation);
+            Map<String, String> pipelineExactPathMap = findExactPath(placeholdersMap, pipelineJson);
 
             //replace placeholder with actual value in the template context
             placeholdersMap.forEach((placeholder, templateJsonPathList) -> {
                 for (String templateJsonPath : templateJsonPathList) {
                     String pipelineExactJsonPath = pipelineExactPathMap.get(placeholder);
-                    JsonNode pipelineNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelineJson).read(pipelineExactJsonPath);
 
-                    // Json Path expression like "?(@.<node>)" seem to always return arrayNode even if it is an Object.
-                    // example: $.pipeline.sink[?(@.opensearch)].opensearch.aws expression will always return array
-                    if(pipelineExactJsonPath.contains(JSON_PATH_ARRAY_DISAMBIGUATOR_PATTERN) &&
-                            pipelineNode.isArray() && pipelineNode.size()==1){
-                        pipelineNode = pipelineNode.get(0);
+                    if(isJsonPath(pipelineExactJsonPath)) {
+                        JsonNode pipelineNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelineJson).read(pipelineExactJsonPath);
+                        // Json Path expression like "?(@.<node>)" seem to always return arrayNode even if it is an Object.
+                        // example: $.pipeline.sink[?(@.opensearch)].opensearch.aws expression will always return array
+                        if (pipelineExactJsonPath.contains(JSON_PATH_ARRAY_DISAMBIGUATOR_PATTERN) &&
+                                pipelineNode.isArray() && pipelineNode.size() == 1) {
+                            pipelineNode = pipelineNode.get(0);
+                        }
+                        replaceNode(templateRootNode, templateJsonPath, pipelineNode);
+                    }else{ //in case it was a function call
+                        JsonNode pipelineNode = objectMapper.valueToTree(pipelineExactJsonPath);
+                        replaceNode(templateRootNode, templateJsonPath, pipelineNode);
                     }
-                    replaceNode(templateRootNode, templateJsonPath, pipelineNode);
                 }
             });
 
             PipelinesDataFlowModel transformedPipelinesDataFlowModel = getTransformedPipelinesDataFlowModel(pipelineNameThatNeedsTransformation, preTransformedPipelinesDataFlowModel, templateRootNode);
             return transformedPipelinesDataFlowModel;
-        } catch (JsonProcessingException e) {
+        } catch (JsonProcessingException | TransformerException e) {
             throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -142,15 +163,15 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * Convert templateRootNode which contains the transformedJson to PipelinesDataFlowModel
      *
      * @param pipelineNameThatNeedsTransformation
-     * @param pipelines
-     * @param templateRootNode - transformedJson Node.
+     * @param preTransformedPipelinesDataFlowModel
+     * @param templateRootNode                     - transformedJson Node.
      * @return PipelinesDataFlowModel - transformed model.
      * @throws JsonProcessingException
      */
     private PipelinesDataFlowModel getTransformedPipelinesDataFlowModel(String pipelineNameThatNeedsTransformation, PipelinesDataFlowModel preTransformedPipelinesDataFlowModel, JsonNode templateRootNode) throws JsonProcessingException {
         //update template json
         String transformedJson = objectMapper.writeValueAsString(templateRootNode);
-        LOG.debug("{} pipeline has been transformed to :{}",pipelineNameThatNeedsTransformation,transformedJson);
+        LOG.debug("{} pipeline has been transformed to :{}", pipelineNameThatNeedsTransformation, transformedJson);
 
         //convert TransformedJson to PipelineModel with the data from preTransformedDataFlowModel.
         //transform transformedJson to Map
@@ -173,7 +194,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                 transformedPipelines
         );
         String transformedPipelinesDataFlowModelJson = objectMapper.writeValueAsString(transformedPipelinesDataFlowModel);
-        LOG.debug("Transformed PipelinesDataFlowModel: {}",transformedPipelinesDataFlowModelJson);
+        LOG.debug("Transformed PipelinesDataFlowModel: {}", transformedPipelinesDataFlowModelJson);
 
         return transformedPipelinesDataFlowModel;
     }
@@ -183,10 +204,11 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     }
 
     /**
-     *  Recursively walks through the json to find the placeholder with a certain regEx pattern,
-     *  along the way keeps track of the path.
+     * Recursively walks through the json to find the placeholder with a certain regEx pattern,
+     * along the way keeps track of the path.
+     *
      * @param json
-     * @return Map<String, List<String>> , K:placeholder, V: list of jsonPath in templateJson
+     * @return Map<String, List < String>> , K:placeholder, V: list of jsonPath in templateJson
      * @throws IOException
      */
     private Map<String, List<String>> findPlaceholdersWithPathsRecursively(String json) throws IOException {
@@ -231,27 +253,31 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * Gets exact path - this is to avoid
      * getting array values(even though it might not be an array) given
      * a recursive expression like "$..<>"
+     *
      * @param placeholdersMap
-     * @param pipelineName
-     * @return Map<String,String> K:jsonPath, V:exactPath
+     * @return Map<String, String> K:jsonPath, V:exactPath
      * @throws IOException
      */
-    private Map<String, String> findExactPath(Map<String, List<String>> placeholdersMap, String pipelineName) throws IOException {
+    private Map<String, String> findExactPath(Map<String, List<String>> placeholdersMap, String pipelineJson) throws IOException, TransformerException {
         Map<String, String> mapWithPaths = new HashMap<>();
         for (String genericPathPlaceholder : placeholdersMap.keySet()) {
-            String genericPath = getValueFromPlaceHolder(genericPathPlaceholder);
-            //TODO
-            if (genericPath.contains("$.*.")) {
-                String exactPath = genericPath.replace("$.*.", "$." + pipelineName + ".");
-                mapWithPaths.put(genericPathPlaceholder, exactPath);
+            String placeHolderValue = getValueFromPlaceHolder(genericPathPlaceholder);
+
+            String value = executeFunctionPlaceholder(placeHolderValue, pipelineJson);
+
+        // Recursive pattern in json path is NOT allowed
+            if (value.contains(RECURSIVE_JSON_PATH_PATH)) {
+                throw new TransformerException(format("Json path {} is not supported", value));
             }
+            mapWithPaths.put(genericPathPlaceholder, value);
         }
         return mapWithPaths;
     }
 
     /**
-     *  Get value from the placeholder field.
-     *  Removes the brackets surrounding the value.
+     * Get value from the placeholder field.
+     * Removes the brackets surrounding the value.
+     *
      * @param placeholder
      * @return String - placeholder value.
      */
@@ -261,16 +287,104 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     }
 
     /**
-     *  Replaces template node in the jsonPath with the node from
-     *  original json.
+     *
+     * @param functionPlaceholderValue
+     * @return String - value of the function executed
+     */
+    private String executeFunctionPlaceholder(String functionPlaceholderValue, String pipelineJson){
+        Matcher functionMatcher = FUNCTION_CALL_PLACEHOLDER_PATTERN.matcher(functionPlaceholderValue);
+        if (functionMatcher.find()) {
+            String functionName = functionMatcher.group(1);
+            String parameter = functionMatcher.group(2);
+            try {
+                String parameterValue = (String)parseParameter(parameter, pipelineJson);
+                String value = (String) invokeMethod(functionName, String.class, parameterValue);
+                return value;
+            } catch (ReflectiveOperationException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            return functionPlaceholderValue;
+        }
+    }
+
+    private Object parseParameter(String parameter, String pipelineJson) {
+        if(isJsonPath(parameter)){
+            JsonNode pipelineNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelineJson).read(parameter);
+            if(!pipelineNode.isValueNode()){
+                throw new RuntimeException("parameter has to be a value node");
+            }
+            String nodeValue = pipelineNode.asText();
+            return nodeValue;
+        }
+        return parameter;
+    }
+
+    /**
+     * Check if the parameter passed is a json path or not.
+     * @param parameter
+     * @return boolean
+     */
+    private boolean isJsonPath(String parameter) {
+        try {
+            if(parameter.contains(JSON_PATH_IDENTIFIER)){
+                JsonPath.compile(parameter);
+                return true;
+            }
+            return false;
+        } catch (IllegalArgumentException | PathNotFoundException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Specific to DocDB depth field.
+     * @param s3Prefix
+     * @return
+     */
+    public String calculateDepth(String s3Prefix) {
+        return Integer.toString(s3Prefix.split("/").length + 3);
+    }
+
+    public String getSourceCoordinationIdentifierEnvVariable(String s3Prefix){
+        String envSourceCoordinationIdentifier = System.getenv(SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE);
+        return s3Prefix+"/"+envSourceCoordinationIdentifier;
+    }
+
+    /**
+     * Invokes a method dynamically on a given object.
+     *
+     * @param methodName    the name of the method to be invoked
+     * @param parameterType the Class object representing the parameter type
+     * @param arg           the parameter to be passed to the method
+     * @return the result of the method invocation
+     * @throws ReflectiveOperationException if the method cannot be invoked
+     */
+    public Object invokeMethod(String methodName, Class<?> parameterType, Object arg) throws ReflectiveOperationException {
+        // Get the Class object
+        Class<?> clazz = this.getClass();
+
+        // Get the Method object for the specified method and parameter type
+        Method method = clazz.getMethod(methodName, parameterType);
+
+        // Invoke the method on the object with the given argument
+        return method.invoke(this, arg);
+    }
+
+
+    /**
+     * Replaces template node in the jsonPath with the node from
+     * original json.
+     *
      * @param root
      * @param jsonPath
      * @param newNode
      */
     public void replaceNode(JsonNode root, String jsonPath, JsonNode newNode) {
         try {
-            if(newNode == null){
-                throw new PathNotFoundException(format("jsonPath {} not found",jsonPath));
+            if (newNode == null) {
+//                throw new PathNotFoundException(format("jsonPath {} not found", jsonPath));
+                LOG.debug("Did not find jsonPath {}",jsonPath);
             }
             // Read the parent path of the target node
             String parentPath = jsonPath.substring(0, jsonPath.lastIndexOf('.'));

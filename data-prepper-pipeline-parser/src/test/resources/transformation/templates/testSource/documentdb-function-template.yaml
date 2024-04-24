@@ -1,0 +1,6 @@
+"<<pipeline-name>>-transformed":
+  source: "<<$.<<pipeline-name>>.source>>"
+  sink:
+    - opensearch:
+        hosts: "<<$.<<pipeline-name>>.source.documentdb.hostname>>"
+        depth: "<<FUNCTION_NAME:calculateDepth,PARAMETER:$.<<pipeline-name>>.source.documentdb.s3_prefix>>"
