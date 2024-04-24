@@ -12,12 +12,11 @@ public class MongoDBSourceConfig {
     private static final int DEFAULT_PORT = 27017;
     private static final Boolean DEFAULT_INSECURE = false;
     private static final Boolean DEFAULT_INSECURE_DISABLE_VERIFICATION = false;
-    private static final String DEFAULT_SNAPSHOT_FETCH_SIZE = "1000";
     private static final String DEFAULT_READ_PREFERENCE = "primaryPreferred";
     private static final Boolean DEFAULT_DIRECT_CONNECT = true;
     private static final Duration DEFAULT_ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
-    @JsonProperty("hosts")
-    private @NotNull String[] hosts;
+    @JsonProperty("host")
+    private @NotNull String host;
     @JsonProperty("port")
     private int port = DEFAULT_PORT;
     @JsonProperty("trust_store_file_path")
@@ -27,8 +26,6 @@ public class MongoDBSourceConfig {
     @JsonProperty("authentication")
     private AuthenticationConfig authenticationConfig;
 
-    @JsonProperty("snapshot_fetch_size")
-    private String snapshotFetchSize;
     @JsonProperty("read_preference")
     private String readPreference;
     @JsonProperty("collections")
@@ -61,7 +58,6 @@ public class MongoDBSourceConfig {
     private AwsConfig awsConfig;
 
     public MongoDBSourceConfig() {
-        this.snapshotFetchSize = DEFAULT_SNAPSHOT_FETCH_SIZE;
         this.readPreference = DEFAULT_READ_PREFERENCE;
         this.collections = new ArrayList<>();
         this.insecure = DEFAULT_INSECURE;
@@ -74,8 +70,8 @@ public class MongoDBSourceConfig {
         return this.authenticationConfig;
     }
 
-    public String[] getHosts() {
-        return this.hosts;
+    public String getHost() {
+        return this.host;
     }
 
     public int getPort() {
