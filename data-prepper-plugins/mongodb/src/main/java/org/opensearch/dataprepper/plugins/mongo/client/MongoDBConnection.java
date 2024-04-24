@@ -42,17 +42,24 @@ public class MongoDBConnection {
     private static String getConnectionString(final MongoDBSourceConfig sourceConfig) {
         final String username;
         try {
-            username = encodeString(sourceConfig.getCredentialsConfig().getUsername());
+            username = encodeString(sourceConfig.getAuthenticationConfig().getUsername());
         } catch (final Exception e) {
             throw new RuntimeException("Unsupported characters in username.");
         }
+
         final String password;
         try {
-            password = encodeString(sourceConfig.getCredentialsConfig().getPassword());
+            password = encodeString(sourceConfig.getAuthenticationConfig().getPassword());
         } catch (final Exception e) {
             throw new RuntimeException("Unsupported characters in password.");
         }
-        final String hostname = sourceConfig.getHost();
+
+        if (sourceConfig.getHosts() == null || sourceConfig.getHosts().length == 0) {
+            throw new RuntimeException("The hosts array should at least have one host.");
+        }
+
+        // Support for only single host
+        final String hostname = sourceConfig.getHosts()[0];
         final int port = sourceConfig.getPort();
         final String tls = sourceConfig.getTls().toString();
         final String invalidHostAllowed = sourceConfig.getSslInsecureDisableVerification().toString();
