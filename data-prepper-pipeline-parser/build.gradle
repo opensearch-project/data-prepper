@@ -25,7 +25,11 @@ dependencies {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
     implementation 'software.amazon.cloudwatchlogs:aws-embedded-metrics:2.0.0-beta-1'
-    testImplementation 'org.apache.logging.log4j:log4j-jpl:2.23.0'
+    testImplementation testLibs.bundles.junit
+    testImplementation testLibs.bundles.mockito
+    testImplementation testLibs.hamcrest
+    testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
+    testImplementation 'org.powermock:powermock-api-mockito2:2.0.9'
     testImplementation 'org.assertj:assertj-core:3.20.2'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
