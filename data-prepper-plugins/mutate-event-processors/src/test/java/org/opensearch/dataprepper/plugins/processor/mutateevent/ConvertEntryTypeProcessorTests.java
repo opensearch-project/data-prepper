@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -95,11 +96,11 @@ public class ConvertEntryTypeProcessorTests {
 
     @Test
     void testBigDecimalToIntegerConvertEntryTypeProcessor() {
-        new BigDecimal testValue = BigDecimal(Integer.MAX_VALUE);
+        BigDecimal testValue = new BigDecimal(Integer.MAX_VALUE);
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue.toString());
-        assertThat(event.get(TEST_KEY, Integer.class), equalTo((int)testValue));
+        assertThat(event.get(TEST_KEY, Integer.class), equalTo(testValue.intValue()));
     }
 
     @Test
@@ -137,11 +138,11 @@ public class ConvertEntryTypeProcessorTests {
 
     @Test
     void testBigDecimalToDoubleConvertEntryTypeProcessor() {
-        new BigDecimal testValue = BigDecimal(Double.MAX_VALUE);
-        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+        BigDecimal testValue = new BigDecimal(Double.MAX_VALUE);
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("double"));
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
-        Event event = executeAndGetProcessedEvent(testValue.toString());
-        assertThat(event.get(TEST_KEY, Integer.class), equalTo((double)testValue));
+        Event event = executeAndGetProcessedEvent(testValue);
+        assertThat(event.get(TEST_KEY, Double.class), equalTo(testValue.doubleValue()));
     }
 
     @Test
@@ -155,11 +156,11 @@ public class ConvertEntryTypeProcessorTests {
 
     @Test
     void testBigDecimalToLongConvertEntryTypeProcessor() {
-        new BigDecimal testValue = BigDecimal(Long.MAX_VALUE);
-        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+        BigDecimal testValue = new BigDecimal(Long.MAX_VALUE);
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("long"));
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
-        Event event = executeAndGetProcessedEvent(testValue.toString());
-        assertThat(event.get(TEST_KEY, Integer.class), equalTo((long)testValue));
+        Event event = executeAndGetProcessedEvent(testValue);
+        assertThat(event.get(TEST_KEY, Long.class), equalTo(testValue.longValue()));
     }
 
     @Test
@@ -193,11 +194,11 @@ public class ConvertEntryTypeProcessorTests {
 
     @Test
     void testBigDecimalToStringConvertEntryTypeProcessor() {
-        new BigDecimal testValue = BigDecimal(Integer.MAX_VALUE);
-        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+        BigDecimal testValue = new BigDecimal(Integer.MAX_VALUE);
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("string"));
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue.toString());
-        assertThat(event.get(TEST_KEY, Integer.class), equalTo(testValue.toString()));
+        assertThat(event.get(TEST_KEY, String.class), equalTo(testValue.toString()));
     }
 
     @Test
