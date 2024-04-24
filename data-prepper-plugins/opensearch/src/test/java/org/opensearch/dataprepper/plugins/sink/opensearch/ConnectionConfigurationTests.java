@@ -165,7 +165,7 @@ class ConnectionConfigurationTests {
     }
 
     @Test
-    void testReadConnectionConfigurationNoCert() {
+    void testReadConnectionConfigurationWithDeprecatedBasicCredentialsAndNoCert() {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
         final ConnectionConfiguration connectionConfiguration =
@@ -180,9 +180,52 @@ class ConnectionConfigurationTests {
     }
 
     @Test
-    void testCreateClientNoCert() throws IOException {
+    void testReadConnectionConfigurationWithBasicCredentialsAndNoCert() {
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
+        configurationMetadata.put("authentication", Map.of("username", TEST_USERNAME, "password", TEST_PASSWORD));
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertEquals(TEST_HOSTS, connectionConfiguration.getHosts());
+        assertNull(connectionConfiguration.getUsername());
+        assertNull(connectionConfiguration.getPassword());
+        assertNotNull(connectionConfiguration.getAuthConfig());
+        assertEquals(TEST_USERNAME, connectionConfiguration.getAuthConfig().getUsername());
+        assertEquals(TEST_PASSWORD, connectionConfiguration.getAuthConfig().getPassword());
+        assertEquals(TEST_CONNECT_TIMEOUT, connectionConfiguration.getConnectTimeout());
+        assertEquals(TEST_SOCKET_TIMEOUT, connectionConfiguration.getSocketTimeout());
+        assertFalse(connectionConfiguration.isAwsSigv4());
+        assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
+    }
+
+    @Test
+    void testReadConnectionConfigurationWithBothDeprecatedBasicCredentialsAndAuthConfigShouldThrow() {
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(
+                TEST_HOSTS, TEST_USERNAME, null, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
+        configurationMetadata.put("authentication", Map.of("username", TEST_USERNAME, "password", TEST_PASSWORD));
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
+        assertThrows(IllegalStateException.class,
+                () -> ConnectionConfiguration.readConnectionConfiguration(pluginSetting));
+    }
+
+    @Test
+    void testCreateClientWithDeprecatedBasicCredentialsAndNoCert() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+        assertNotNull(client);
+        client.close();
+    }
+
+    @Test
+    void testCreateClientWithBasicCredentialsAndNoCert() throws IOException {
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
+        configurationMetadata.put("authentication", Map.of("username", TEST_USERNAME, "password", TEST_PASSWORD));
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
