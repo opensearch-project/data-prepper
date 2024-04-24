@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
-import org.springframework.beans.factory.annotation.Qualifier;
 
 import javax.inject.Inject;
 import javax.inject.Named;
