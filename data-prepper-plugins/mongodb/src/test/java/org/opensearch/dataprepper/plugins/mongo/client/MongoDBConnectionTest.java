@@ -36,7 +36,7 @@ public class MongoDBConnectionTest {
         when(mongoDBSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getUsername()).thenReturn("\uD800\uD800" + UUID.randomUUID());
         when(authenticationConfig.getPassword()).thenReturn("aЯ ⾀sd?q=%%l€0£.lo" + UUID.randomUUID());
-        when(mongoDBSourceConfig.getHosts()).thenReturn(new String[] { UUID.randomUUID().toString() });
+        when(mongoDBSourceConfig.getHost()).thenReturn(UUID.randomUUID().toString());
         when(mongoDBSourceConfig.getPort()).thenReturn(getRandomInteger());
         when(mongoDBSourceConfig.getTls()).thenReturn(getRandomBoolean());
         when(mongoDBSourceConfig.getSslInsecureDisableVerification()).thenReturn(getRandomBoolean());
@@ -71,7 +71,7 @@ public class MongoDBConnectionTest {
         when(mongoDBSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getUsername()).thenReturn("\uD800\uD800" + UUID.randomUUID());
         when(authenticationConfig.getPassword()).thenReturn("aЯ ⾀sd?q=%%l€0£.lo" + UUID.randomUUID());
-        when(mongoDBSourceConfig.getHosts()).thenReturn(null);
+        when(mongoDBSourceConfig.getHost()).thenReturn(null);
         assertThrows(RuntimeException.class, () -> MongoDBConnection.getMongoClient(mongoDBSourceConfig));
     }
 
@@ -80,7 +80,7 @@ public class MongoDBConnectionTest {
         when(mongoDBSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getUsername()).thenReturn("\uD800\uD800" + UUID.randomUUID());
         when(authenticationConfig.getPassword()).thenReturn("aЯ ⾀sd?q=%%l€0£.lo" + UUID.randomUUID());
-        when(mongoDBSourceConfig.getHosts()).thenReturn(new String[]{});
+        when(mongoDBSourceConfig.getHost()).thenReturn(" ");
         assertThrows(RuntimeException.class, () -> MongoDBConnection.getMongoClient(mongoDBSourceConfig));
     }
 

@@ -54,12 +54,12 @@ public class MongoDBConnection {
             throw new RuntimeException("Unsupported characters in password.");
         }
 
-        if (sourceConfig.getHosts() == null || sourceConfig.getHosts().length == 0) {
-            throw new RuntimeException("The hosts array should at least have one host.");
+        if (sourceConfig.getHost() == null || sourceConfig.getHost().isBlank()) {
+            throw new RuntimeException("The host should not be null or empty.");
         }
 
         // Support for only single host
-        final String hostname = sourceConfig.getHosts()[0];
+        final String hostname = sourceConfig.getHost();
         final int port = sourceConfig.getPort();
         final String tls = sourceConfig.getTls().toString();
         final String invalidHostAllowed = sourceConfig.getSslInsecureDisableVerification().toString();
