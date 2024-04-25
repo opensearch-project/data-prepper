@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.pipeline.parser;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
@@ -16,9 +18,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class TestConfigurationProvider {
     public static final String TEST_PIPELINE_NAME = "test-pipeline-1";
@@ -37,6 +36,32 @@ public class TestConfigurationProvider {
     public static final String SINGLE_FILE_PIPELINE_DIRECTOTRY = "src/test/resources/single-pipeline";
     public static final String EMPTY_PIPELINE_DIRECTOTRY = "src/test/resources/no-pipelines";
     public static final String INCOMPATIBLE_VERSION_CONFIG_FILE = "src/test/resources/incompatible_version.yml";
+    public static final String TEMPLATES_SOURCE_TRANSFORMATION_DIRECTORY = "src/test/resources/transformation/templates/testSource";
+    public static final String RULES_TRANSFORMATION_DIRECTORY = "src/test/resources/transformation/rules";
+
+    public static final String USER_CONFIG_TRANSFORMATION_DOCDB_SIMPLE_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-simple-userconfig.yaml";
+    public static final String USER_CONFIG_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb1-userconfig.yaml";
+    public static final String USER_CONFIG_TRANSFORMATION_DOCDB2_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb2-userconfig.yaml";
+    public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-userconfig.yaml";
+    public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-subpipelines-userconfig.yaml";
+    public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_FUNCTION_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-function-userconfig.yaml";
+
+    public static final String RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/rules/documentdb1-rule.yaml";
+    public static final String RULES_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/rules/documentdb-rule.yaml";
+
+
+    public static final String TEMPLATE_TRANSFORMATION_DOCDB_SIMPLE_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-simple-template.yaml";
+    public static final String TEMPLATE_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb1-template.yaml";
+    public static final String TEMPLATE_TRANSFORMATION_DOCDB2_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb2-template.yaml";
+    public static final String TEMPLATE_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-template.yaml";
+    public static final String TEMPLATE_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-subpipelines-template.yaml";
+    public static final String TEMPLATE_TRANSFORMATION_DOCUMENTDB_FUNCTION_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-function-template.yaml";
+
+    public static final String EXPECTED_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb1-expected.yaml";
+    public static final String EXPECTED_TRANSFORMATION_DOCDB2_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb2-expected.yaml";
+    public static final String EXPECTED_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb-expected.yaml";
+    public static final String EXPECTED_TRANSFORMATION_DOCUMENTDB_SUBPIPLINES_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb-subpipelines-expected.yaml";
+    public static final String EXPECTED_TRANSFORMATION_DOCUMENTDB_FUNCTION_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb-function-expected.yaml";
 
 
     public static Set<String> VALID_MULTIPLE_PIPELINE_NAMES = new HashSet<>(Arrays.asList("test-pipeline-1",

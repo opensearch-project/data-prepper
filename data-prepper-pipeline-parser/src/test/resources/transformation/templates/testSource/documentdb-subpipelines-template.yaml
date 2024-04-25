@@ -1,0 +1,7 @@
+"<<pipeline-name>>-transformed":
+  source: "<<$.<<pipeline-name>>.source>>"
+  processor: "<<$.<<pipeline-name>>.processor>>"
+  sink:
+    - s3:
+        aws: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.aws>>"
+        bucket: "<<$.<<pipeline-name>>.source.documentdb.collections[0].s3_bucket>>"

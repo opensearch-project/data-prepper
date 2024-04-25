@@ -1,0 +1,13 @@
+"<<pipeline-name>>-transformed":
+  source: "<<$.<<pipeline-name>>.source>>"
+  sink:
+    - opensearch:
+       hosts: "<<$.<<pipeline-name>>.source.documentdb.hostname>>"
+       port: "<<$.<<pipeline-name>>.source.documentdb.port>>"
+       index: "<<$.<<pipeline-name>>.sink[0].opensearch.index>>"
+       aws:
+        sts_role_arn: "arn123"
+        region: "us-test-1"
+       dlq:
+          s3:
+              bucket: "test-bucket"

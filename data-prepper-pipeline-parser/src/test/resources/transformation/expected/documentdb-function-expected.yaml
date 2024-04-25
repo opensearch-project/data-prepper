@@ -1,0 +1,19 @@
+extension:
+  aws:
+    secrets:
+      docdb-secret:
+        secret_id: "<secretId/secretArn>"
+        region: "<region>"
+        sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+docdb-pipeline-transformed:
+  source:
+    documentdb:
+      hostname: "host"
+      collections:
+        - collection: "database.collectionName"
+      acknowledgments: false
+      s3_prefix: "folder1/folder2"
+  sink:
+    - opensearch:
+        hosts: "host"
+        depth: "5"

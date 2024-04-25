@@ -1,0 +1,106 @@
+extension:
+  aws:
+    secrets:
+      docdb-secret:
+        secret_id: "<secretId/secretArn>"
+        region: "<region>"
+        sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+dodb-pipeline-transformed:
+  workers: 2
+  delay: 0
+  source:
+    documentdb:
+      hostname: "<host>"
+      collections:
+        - collection: "<database>.<collectionName>"
+          export_config:
+            items_per_partition: 4000
+          ingestion_mode: "export_stream"
+          s3_bucket: "my-bucket"
+          s3_region: "us-east-1"
+      acknowledgments: false
+  buffer:
+    bounded_blocking:
+      batch_size: 125000
+      buffer_size: 1000000
+  route:
+    - initial_load: "getMetadata(\"ingestion_type\") == \"EXPORT\""
+    - stream_load: "getMetadata(\"ingestion_type\") == \"STREAM\""
+  sink:
+    - s3:
+        routes:
+          - "initial_load"
+        aws:
+          sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+          region: "<region>"
+          serverless: true
+        bucket: "my-bucket"
+        threshold:
+          event_collect_timeout: "120s"
+          maximum_size: "2mb"
+        aggregate_threshold:
+          maximum_size: "256mb"
+          flush_capacity_ratio: "0"
+        object_key:
+          path_prefix: "local-test/${getMetadata(\"s3_partition_key\")}"
+        codec:
+          json: null
+    - s3:
+        routes:
+          - "stream_load"
+        aws:
+          sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+          region: "<region>"
+          serverless: true
+        bucket: "my-bucket"
+        threshold:
+          event_collect_timeout: "30s"
+          maximum_size: "1mb"
+        aggregate_threshold:
+          maximum_size: "128mb"
+          flush_capacity_ratio: 0
+        object_key:
+          path_prefix: "local-test/${getMetadata(\"s3_partition_key\")}"
+        codec:
+          json: null
+dodb-pipeline-s3-sub-pipeline-transformed:
+  workers: 2
+  delay: 0
+  source:
+    s3:
+      delete_s3_objects_on_read: true
+      codec:
+        json: null
+      compression: "none"
+      aws:
+        sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+        region: "<region>"
+        serverless: true
+      acknowledgments: false
+      scan:
+        buckets:
+          - bucket:
+              name: "my-bucket"
+              filter:
+                include_prefix:
+                  - "local-test"
+        scheduling:
+          interval: "1s"
+  buffer:
+    bounded_blocking:
+      batch_size: 125000
+      buffer_size: 1000000
+  sink:
+    - opensearch:
+        exclude_keys:
+          - "_id"
+        hosts:
+          - "<host>"
+        action: "${getMetadata(\"opensearch_action\")}"
+        index: "<index>"
+        aws:
+          sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+          region: "<region>"
+          serverless: true
+        document_id: "${getMetadata(\"primary_key\")}"
+        index_type: "custom"

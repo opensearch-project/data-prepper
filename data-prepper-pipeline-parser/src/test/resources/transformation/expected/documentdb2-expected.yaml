@@ -1,0 +1,107 @@
+extension:
+  aws:
+    secrets:
+      secret:
+        secret_id: "my-docdb-secret"
+        region: "us-east-1"
+        refresh_interval: "PT1H"
+documentdb-pipeline-reader:
+  source:
+    documentdb:
+      s3_region: "bucket-region"
+      collections:
+        - collection: "dbname.collection1"
+          export: "true"
+          stream: "true"
+          partition_count: 256
+          export_batch_size: 10000
+          stream_batch_size: 1000
+      hosts:
+        - "docdb-2024-01-03-20-31-17.cluster-abcdef.us-east-1.docdb.amazonaws.com"
+      acknowledgments: true
+      aws:
+        sts_role_arn: "docdb-role"
+      s3_bucket: "bucket-name1"
+      authentication:
+        username: "${{aws_secrets:secret:password}}"
+        password: "${{aws_secrets:secret:password}}"
+      s3_prefix: "folder1/folder2"
+  routes:
+    - initial_load: "getMetadata(\"ingestion_type\") == \"EXPORT\""
+    - stream_load: "getMetadata(\"ingestion_type\") == \"STREAM\""
+  sink:
+    - s3: null
+      routes:
+        - "initial_load"
+      aws:
+        region: "bucket-region"
+        sts_role_arn: "docdb-role"
+        sts_external_id: null
+        sts_header_overrides: null
+      bucket: "bucket-name1"
+      threshold:
+        event_collect_timeout: "120s"
+        maximum_size: "2mb"
+      aggregate_threshold:
+        maximum_size: "256kb"
+        flush_capacity_ratio: 0
+      object_key:
+        path_prefix: "${getMetadata(\"s3_partition_key\")}"
+      codec:
+        json: null
+    - s3:
+        routes:
+          - "stream_load"
+      aws:
+        region: "bucket-region"
+        sts_role_arn: "docdb-role"
+        bucket: "bucket-name1"
+        threshold:
+          event_collect_timeout: "30s"
+          maximum_size: "1mb"
+        aggregate_threshold:
+          maximum_size: "128mb"
+          flush_capacity_ratio: 0
+        object_key:
+          path_prefix: "${getMetadata(\"s3_partition_key\")}"
+        codec:
+          json: null
+  documentdb-pipeline-writer:
+    source:
+      s3:
+        codec:
+          json: null
+        compression: "none"
+      aws:
+        region: "bucket-region"
+        sts_role_arn: "docdb-role"
+        sts_external_id: null
+        sts_header_overrides: null
+        acknowledgments: true
+        delete_s3_objects_on_read: true
+        scan:
+          buckets:
+            - bucket:
+                name: "bucket-name1"
+                filter:
+                  depth: "5"
+        scheduling:
+          interval: "1s"
+    processor:
+      - string_converter:
+          upper_case: true
+    sink:
+      - opensearch:
+          exclude_keys:
+            - "_id"
+          document_version_type: "external"
+          hosts:
+            - "https://search-mydomain-1a2a3a4a5a6a7a8a9a0a9a8a7a.us-east-1.es.amazonaws.com"
+          action: "${getMetadata(\"opensearch_action\")}"
+          index: "index_name"
+          aws:
+            sts_role_arn: "arn:aws:iam::123456789012:role/Example-Role"
+            region: "us-east-1"
+          document_version: "${getMetadata(\"document_version\")}"
+          document_id: "${getMetadata(\"primary_key\")}"
+          index_type: "custom"

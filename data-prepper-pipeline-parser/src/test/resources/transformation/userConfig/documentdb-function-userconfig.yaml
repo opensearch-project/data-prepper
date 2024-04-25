@@ -1,0 +1,20 @@
+version: 2
+pipeline_configurations:
+  aws:
+    secrets:
+      docdb-secret:
+        secret_id: "<secretId/secretArn>"
+        region: "<region>"
+        sts_role_arn: "arn:aws:iam::<account>:role/<role>"
+docdb-pipeline:
+  source:
+    documentdb:
+      hostname: "host"
+      acknowledgments: false
+      s3_prefix: "folder1/folder2"
+      collections:
+        - collection: "database.collectionName"
+  sink:
+    - opensearch:
+        hosts: ["<host>"]
+        index: "<index>"

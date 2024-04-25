@@ -87,6 +87,7 @@ public class PipelineTransformer {
                         Map.Entry::getKey,
                         entry -> new PipelineConfiguration(entry.getValue())
                 ));
+
         final List<String> allPipelineNames = PipelineConfigurationValidator.validateAndGetPipelineNames(pipelineConfigurationMap);
 
         // LinkedHashMap to preserve insertion order

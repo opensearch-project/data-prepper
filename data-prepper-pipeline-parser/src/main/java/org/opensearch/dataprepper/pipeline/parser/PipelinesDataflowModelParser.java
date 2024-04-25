@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.pipeline.parser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import static java.lang.String.format;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
@@ -22,8 +23,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static java.lang.String.format;
-
 public class PipelinesDataflowModelParser {
     private static final Logger LOG = LoggerFactory.getLogger(PipelinesDataflowModelParser.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
@@ -35,9 +34,11 @@ public class PipelinesDataflowModelParser {
         this.pipelineConfigurationReader = pipelineConfigurationReader;
     }
 
+
     public PipelinesDataFlowModel parseConfiguration() {
         final List<PipelinesDataFlowModel> pipelinesDataFlowModels = parseStreamsToPipelinesDataFlowModel();
-        return mergePipelinesDataModels(pipelinesDataFlowModels);
+        PipelinesDataFlowModel pipelinesDataFlowModel = mergePipelinesDataModels(pipelinesDataFlowModels);
+        return pipelinesDataFlowModel;
     }
 
     private void validateDataPrepperVersion(final DataPrepperVersion version) {
@@ -89,4 +90,5 @@ public class PipelinesDataflowModelParser {
         return pipelineExtensionsList.isEmpty() ? new PipelinesDataFlowModel(pipelinesDataFlowModelMap) :
                 new PipelinesDataFlowModel(pipelineExtensionsList.get(0), pipelinesDataFlowModelMap);
     }
+
 }
