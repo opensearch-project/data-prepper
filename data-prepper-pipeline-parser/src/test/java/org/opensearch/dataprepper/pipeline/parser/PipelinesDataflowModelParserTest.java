@@ -208,37 +208,4 @@ class PipelinesDataflowModelParserTest {
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
     }
-
-    @Test
-    void parseConfiguration_check_successful_with_documentDB_transformation() throws FileNotFoundException {
-//        final File templateYaml = new File(TestConfigurationProvider.TEMPLATE_TRANSFORMATION_CONFIG_FILE);
-//        final File userConfigYaml = new File(TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_CONFIG_FILE);
-//
-//        when(pipelineConfigurationReader.getPipelineConfigurationInputStreams())
-//                .thenReturn(List.of(new FileInputStream(TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_CONFIG_FILE)));
-//        when(pipelineConfigurationReader.getTemplateConfigurationInputStreams())
-//                .thenReturn(List.of(new FileInputStream(TestConfigurationProvider.TEMPLATE_TRANSFORMATION_CONFIG_FILE)));
-//
-//        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-//                new PipelinesDataflowModelParser(pipelineConfigurationReader);
-
-//        final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
-//        final List<InputStream> fileInputStreams = Stream.of(directoryLocation.listFiles())
-//                .map(file -> {
-//                    try {
-//                        return new FileInputStream(file);
-//                    } catch (FileNotFoundException e) {
-//                        throw new RuntimeException(e);
-//                    }
-//                })
-//                .collect(Collectors.toList());
-
-//        when(pipelineConfigurationReader.getPipelineConfigurationInputStreams()).thenReturn(fileInputStreams);
-//
-//        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-//                new PipelinesDataflowModelParser(pipelineConfigurationReader);
-//        final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
-//        assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
-//                equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
-    }
 }
