@@ -50,7 +50,7 @@
         codec:
           json:
 
-  "<<pipeline-name>>.s3":
+"<<pipeline-name>>.s3":
     workers: "<<$.<<pipeline-name>>.workers>>"
     delay: "<<$.<<pipeline-name>>.delay>>"
     buffer:
