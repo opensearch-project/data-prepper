@@ -12,42 +12,42 @@
     - stream_load: 'getMetadata("ingestion_type") == "STREAM"'
   sink:
     - s3:
-      routes:
+       routes:
         - initial_load
-      aws:
-        region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
-        sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
-        sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
-        sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
-      bucket: "<<$.<<pipeline-name>>.source.documentdb.s3_bucket>>"
-      threshold:
-        event_collect_timeout: "120s"
-        maximum_size: "2mb"
-      aggregate_threshold:
-        maximum_size: "256kb"
-        flush_capacity_ratio: 0
-      object_key:
-        path_prefix: "${getMetadata(\"s3_partition_key\")}"
-      codec:
-        json:
+       aws:
+         region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
+         sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
+         sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
+         sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
+       bucket: "<<$.<<pipeline-name>>.source.documentdb.s3_bucket>>"
+       threshold:
+         event_collect_timeout: "120s"
+         maximum_size: "2mb"
+       aggregate_threshold:
+         maximum_size: "256kb"
+         flush_capacity_ratio: 0
+       object_key:
+         path_prefix: "${getMetadata(\"s3_partition_key\")}"
+       codec:
+         json:
     - s3:
         routes:
           - stream_load
-      aws:
-        region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
-        sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
-        sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
-        sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
-      bucket: "<<$.<<pipeline-name>>.source.documentdb.s3_bucket>>"
-      threshold:
+        aws:
+          region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
+          sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
+          sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
+          sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
+        bucket: "<<$.<<pipeline-name>>.source.documentdb.s3_bucket>>"
+        threshold:
           event_collect_timeout: "30s"
           maximum_size: "1mb"
-      aggregate_threshold:
+        aggregate_threshold:
           maximum_size: "128mb"
           flush_capacity_ratio: 0
-      object_key:
-          path_prefix: "local-test/${getMetadata(\"s3_partition_key\")}"
-      codec:
+        object_key:
+          path_prefix: "${getMetadata(\"s3_partition_key\")}"
+        codec:
           json:
 
   "<<pipeline-name>>.s3":
