@@ -70,6 +70,6 @@ In the event specific variables in a path are not known, use wildcards.
 2. User could provide multiple pipelines in their user config but 
 there can be only one pipeline that can support transformation.
 3. There cannot be multiple transformations in a single pipeline.
-4. `<<$ .. >>` is the placeholder in the template. //TODO
+4. `<<$ .. >>` is the placeholder in the template.
 `<< pipeline-name >>` is handled differently as compared to other placeholders
 as other placeholders are jsonPaths.
