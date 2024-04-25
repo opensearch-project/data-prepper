@@ -29,7 +29,7 @@
        object_key:
          path_prefix: "${getMetadata(\"s3_partition_key\")}"
        codec:
-         json:
+         event_json:
     - s3:
         routes:
           - stream_load
@@ -48,7 +48,7 @@
         object_key:
           path_prefix: "${getMetadata(\"s3_partition_key\")}"
         codec:
-          json:
+          event_json:
 
 "<<pipeline-name>>.s3":
     workers: "<<$.<<pipeline-name>>.workers>>"
@@ -60,7 +60,7 @@
     source:
       s3:
         codec:
-          json:
+          event_json:
         compression: "none"
         aws:
           region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
