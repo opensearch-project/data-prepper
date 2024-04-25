@@ -22,7 +22,6 @@ public class TransformersFactory implements PipelineTransformationPathProvider {
     private final String RULE_FILE_NAME_PATTERN = "-rule.yaml";
     private final String templatesDirectoryPath;
     private final String rulesDirectoryPath;
-    String PLUGIN_NAME = null;
 
     public TransformersFactory(@Named(RULES_DIRECTORY_PATH) final String rulesDirectoryPath,
                                @Named(TEMPLATES_DIRECTORY_PATH) final String templatesDirectoryPath) {

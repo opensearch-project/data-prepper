@@ -102,12 +102,14 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
 
         if (!ruleEvaluatorResult.isEvaluatedResult() ||
                 ruleEvaluatorResult.getPipelineName() == null) {
+            LOG.info("No transformation needed");
             return preTransformedPipelinesDataFlowModel;
         }
 
         //To differentiate between sub-pipelines that dont need transformation.
         String pipelineNameThatNeedsTransformation = ruleEvaluatorResult.getPipelineName();
         PipelineTemplateModel templateModel = ruleEvaluatorResult.getPipelineTemplateModel();
+        LOG.info("Transforming pipeline config for pipeline {}",pipelineNameThatNeedsTransformation);
         try {
 
             Map<String, PipelineModel> pipelines = preTransformedPipelinesDataFlowModel.getPipelines();
@@ -121,6 +123,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             //Replace pipeline name placeholder with pipelineNameThatNeedsTransformation
             String templateJsonString = replaceTemplatePipelineName(templateJsonStringWithPipelinePlaceholder,
                     pipelineNameThatNeedsTransformation);
+            LOG.info("Template - {}",templateJsonString);
 
             // Find all PLACEHOLDER_PATTERN in template json string
             Map<String, List<String>> placeholdersMap = findPlaceholdersWithPathsRecursively(templateJsonString);
@@ -171,7 +174,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     private PipelinesDataFlowModel getTransformedPipelinesDataFlowModel(String pipelineNameThatNeedsTransformation, PipelinesDataFlowModel preTransformedPipelinesDataFlowModel, JsonNode templateRootNode) throws JsonProcessingException {
         //update template json
         String transformedJson = objectMapper.writeValueAsString(templateRootNode);
-        LOG.debug("{} pipeline has been transformed to :{}", pipelineNameThatNeedsTransformation, transformedJson);
+        LOG.info("{} pipeline has been transformed to :{}", pipelineNameThatNeedsTransformation, transformedJson);
 
         //convert TransformedJson to PipelineModel with the data from preTransformedDataFlowModel.
         //transform transformedJson to Map
@@ -194,7 +197,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                 transformedPipelines
         );
         String transformedPipelinesDataFlowModelJson = objectMapper.writeValueAsString(transformedPipelinesDataFlowModel);
-        LOG.debug("Transformed PipelinesDataFlowModel: {}", transformedPipelinesDataFlowModelJson);
+        LOG.info("Transformed PipelinesDataFlowModel: {}", transformedPipelinesDataFlowModelJson);
 
         return transformedPipelinesDataFlowModel;
     }
@@ -384,7 +387,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         try {
             if (newNode == null) {
 //                throw new PathNotFoundException(format("jsonPath {} not found", jsonPath));
-                LOG.debug("Did not find jsonPath {}",jsonPath);
+                LOG.info("Did not find jsonPath {}",jsonPath);
             }
             // Read the parent path of the target node
             String parentPath = jsonPath.substring(0, jsonPath.lastIndexOf('.'));

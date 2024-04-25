@@ -38,16 +38,16 @@
         sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
         sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
         sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
-        bucket: "<<$.<<pipeline-name>>.source.documentdb.s3_bucket>>"
-        threshold:
+      bucket: "<<$.<<pipeline-name>>.source.documentdb.s3_bucket>>"
+      threshold:
           event_collect_timeout: "30s"
           maximum_size: "1mb"
-        aggregate_threshold:
+      aggregate_threshold:
           maximum_size: "128mb"
           flush_capacity_ratio: 0
-        object_key:
-          path_prefix: "${getMetadata(\"s3_partition_key\")}"
-        codec:
+      object_key:
+          path_prefix: "local-test/${getMetadata(\"s3_partition_key\")}"
+      codec:
           json:
 
   "<<pipeline-name>>.s3":
@@ -62,11 +62,11 @@
         codec:
           json:
         compression: "none"
-      aws:
-        region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
-        sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
-        sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
-        sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
+        aws:
+          region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
+          sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
+          sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
+          sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
         acknowledgments: true
         delete_s3_objects_on_read: true
         scan:
@@ -76,8 +76,8 @@
                 filter:
                   include_prefix: ["<<FUNCTION_NAME:getSourceCoordinationIdentifierEnvVariable,PARAMETER:$.<<pipeline-name>>.source.documentdb.s3_prefix>>"]
                   depth: "<<FUNCTION_NAME:calculateDepth,PARAMETER:$.<<pipeline-name>>.source.documentdb.s3_prefix>>"
-        scheduling:
-          interval: "1s"
+          scheduling:
+            interval: "60s"
     processor: "<<$.<<pipeline-name>>.processor>>"
     sink: "<<$.<<pipeline-name>>.sink>>"
     routes: "<<$.<<pipeline-name>>.routes>>"

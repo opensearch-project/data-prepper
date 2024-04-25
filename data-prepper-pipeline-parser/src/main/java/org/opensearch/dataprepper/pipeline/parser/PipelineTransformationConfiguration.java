@@ -14,7 +14,7 @@ import javax.inject.Named;
 @Configuration
 public class PipelineTransformationConfiguration {
     public static final String TEMPLATES_DIRECTORY_PATH = "TEMPLATES_DIRECTORY_PATH";
-    public static final String RULES_DIRECTORY_PATH = "VALIDATORS_DIRECTORY_PATH";
+    public static final String RULES_DIRECTORY_PATH = "RULES_DIRECTORY_PATH";
 
     @Bean
     @Named(RULES_DIRECTORY_PATH)
@@ -30,10 +30,10 @@ public class PipelineTransformationConfiguration {
 
     @Bean
     TransformersFactory transformersFactory(
-            @Named(TEMPLATES_DIRECTORY_PATH) String provideTransformerDirectoryPath,
-            @Named(RULES_DIRECTORY_PATH) String provideTemplateDirectoryPath
+            @Named(RULES_DIRECTORY_PATH) String rulesDirectoryPath,
+            @Named(TEMPLATES_DIRECTORY_PATH) String templatesDirectoryPath
     ) {
-        return new TransformersFactory(RULES_DIRECTORY_PATH, TEMPLATES_DIRECTORY_PATH);
+        return new TransformersFactory(rulesDirectoryPath, templatesDirectoryPath);
     }
 
     @Bean

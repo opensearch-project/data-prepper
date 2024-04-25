@@ -54,18 +54,21 @@ public class RuleEvaluator {
     private RuleEvaluatorResult isDocDBSource(PipelinesDataFlowModel pipelinesModel) {
         PLUGIN_NAME = "documentdb";
         String pluginRulesPath = transformersFactory.getPluginRuleFileLocation(PLUGIN_NAME);
+        LOG.info("Checking rule path {}",pluginRulesPath);
         Map<String, PipelineModel> pipelines = pipelinesModel.getPipelines();
 
         for (Map.Entry<String, PipelineModel> entry : pipelines.entrySet()) {
             try {
                 String pipelineJson = OBJECT_MAPPER.writeValueAsString(entry);
                 if (evaluate(pipelineJson, pluginRulesPath)) {
-                    LOG.debug("Rule path {} is evaluated true for pipelineJson {}",pluginRulesPath, pipelineJson);
+                    LOG.info("Rule path {} is evaluated true for pipelineJson {}",pluginRulesPath, pipelineJson);
 
-                    String templateFilePath = transformersFactory.getPluginTemplateFileLocation(PLUGIN_NAME);
-                    PipelineTemplateModel templateModel = yamlMapper.readValue(new File(templateFilePath),
+                    String templateFilePathString = transformersFactory.getPluginTemplateFileLocation(PLUGIN_NAME);
+                    File templateFile = new File(templateFilePathString);
+                    LOG.info("Absolute path of template file: {}",templateFile.getAbsolutePath());
+                    PipelineTemplateModel templateModel = yamlMapper.readValue(templateFile,
                             PipelineTemplateModel.class);
-                    LOG.debug("Chosen template file {}",templateFilePath);
+                    LOG.info("Chosen template file {}",templateFilePathString);
 
                     return RuleEvaluatorResult.builder()
                             .withEvaluatedResult(true)
@@ -89,7 +92,7 @@ public class RuleEvaluator {
     }
 
     private Boolean evaluate(String pipelinesJson,
-                             String rulePath) {
+                             String rulePathString) {
 
         Configuration parseConfig = Configuration.builder()
                 .jsonProvider(new JacksonJsonProvider())
@@ -100,16 +103,18 @@ public class RuleEvaluator {
         ReadContext readPathContext = parseContext.parse(pipelinesJson);
 
         try {
-            RuleTransformerModel rulesModel = yamlMapper.readValue(new File(rulePath), RuleTransformerModel.class);
+            File ruleFile = new File(rulePathString);
+            LOG.info("Absolute Path of rule file: {}",ruleFile.getAbsolutePath());
+            RuleTransformerModel rulesModel = yamlMapper.readValue(ruleFile, RuleTransformerModel.class);
             List<String> rules = rulesModel.getApplyWhen();
             for (String rule : rules) {
                 Object result = readPathContext.read(rule);
             }
         } catch (IOException e) {
-            LOG.warn("Error reading file {}", rulePath);
+            LOG.warn("Error reading file {}", rulePathString);
             return false;
         } catch (PathNotFoundException e) {
-            LOG.warn("Path not found {}", rulePath);
+            LOG.warn("Path not found {}", rulePathString);
             return false;
         }
         return true;
