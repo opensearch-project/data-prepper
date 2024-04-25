@@ -54,7 +54,8 @@ public class RuleEvaluator {
     private RuleEvaluatorResult isDocDBSource(PipelinesDataFlowModel pipelinesModel) {
         PLUGIN_NAME = "documentdb";
         String pluginRulesPath = transformersFactory.getPluginRuleFileLocation(PLUGIN_NAME);
-        LOG.info("Checking rule path {}",pluginRulesPath);
+        File ruleFile = new File(pluginRulesPath);
+        LOG.info("Checking rule path {}",ruleFile.getAbsolutePath());
         Map<String, PipelineModel> pipelines = pipelinesModel.getPipelines();
 
         for (Map.Entry<String, PipelineModel> entry : pipelines.entrySet()) {
@@ -104,7 +105,6 @@ public class RuleEvaluator {
 
         try {
             File ruleFile = new File(rulePathString);
-            LOG.info("Absolute Path of rule file: {}",ruleFile.getAbsolutePath());
             RuleTransformerModel rulesModel = yamlMapper.readValue(ruleFile, RuleTransformerModel.class);
             List<String> rules = rulesModel.getApplyWhen();
             for (String rule : rules) {
@@ -114,7 +114,7 @@ public class RuleEvaluator {
             LOG.warn("Error reading file {}", rulePathString);
             return false;
         } catch (PathNotFoundException e) {
-            LOG.warn("Path not found {}", rulePathString);
+            LOG.warn("Json Path not found {}", rulePathString);
             return false;
         }
         return true;

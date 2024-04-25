@@ -10,22 +10,26 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import javax.inject.Named;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Configuration
 public class PipelineTransformationConfiguration {
     public static final String TEMPLATES_DIRECTORY_PATH = "TEMPLATES_DIRECTORY_PATH";
     public static final String RULES_DIRECTORY_PATH = "RULES_DIRECTORY_PATH";
+    private static final Path currentDir = Paths.get(System.getProperty("user.dir"));
+    private static final String parserRelativePath = "/data-prepper-pipeline-parser/src";
 
     @Bean
     @Named(RULES_DIRECTORY_PATH)
     static String provideRulesDirectoryPath() {
-        return "resources/rules";
+        return currentDir.toString()+ parserRelativePath + "/resources/rules";
     }
 
     @Bean
     @Named(TEMPLATES_DIRECTORY_PATH)
     static String provideTemplateDirectoryPath() {
-        return "resources/templates";
+        return currentDir.toString() + parserRelativePath + "/resources/templates";
     }
 
     @Bean
