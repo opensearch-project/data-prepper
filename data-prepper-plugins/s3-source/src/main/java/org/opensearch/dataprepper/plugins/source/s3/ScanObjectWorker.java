@@ -45,16 +45,18 @@ import java.util.stream.Collectors;
  * Class responsible for processing the s3 scan objects with the help of <code>S3ObjectWorker</code>
  * or <code>S3SelectWorker</code>.
  */
-public class ScanObjectWorker implements Runnable{
+public class ScanObjectWorker implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ScanObjectWorker.class);
     private static final Integer MAX_OBJECTS_PER_ACKNOWLEDGMENT_SET = 1;
 
-    static final Duration NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION = Duration.ofMinutes(3);
+    static final Duration NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION = Duration.ofHours(1);
     private static final int RETRY_BACKOFF_ON_EXCEPTION_MILLIS = 5_000;
 
     static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
     static final String ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
+
+    static final String NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION = "folderPartitionNoObjectsFound";
 
     private final S3Client s3Client;
 
@@ -79,6 +81,8 @@ public class ScanObjectWorker implements Runnable{
     private final S3ObjectDeleteWorker s3ObjectDeleteWorker;
     private final PluginMetrics pluginMetrics;
     private final Counter acknowledgementSetCallbackCounter;
+
+    private final Counter folderPartitionNoObjectsFound;
     private final long backOffMs;
     private final List<String> partitionKeys;
 
@@ -111,6 +115,7 @@ public class ScanObjectWorker implements Runnable{
         this.s3ObjectDeleteWorker = s3ObjectDeleteWorker;
         this.pluginMetrics = pluginMetrics;
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME);
+        this.folderPartitionNoObjectsFound = pluginMetrics.counter(NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION);
         this.sourceCoordinator.initialize();
         this.partitionKeys = new ArrayList<>();
         this.folderPartitioningOptions = s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions();
@@ -237,7 +242,15 @@ public class ScanObjectWorker implements Runnable{
 
         final List<S3ObjectReference> objectsToProcess = getObjectsForPrefix(bucket, s3Prefix);
 
+        Optional<S3SourceProgressState> folderPartitionState = folderPartition.getPartitionState();
+
+        if (folderPartitionState.isEmpty()) {
+            folderPartitionState = Optional.of(new S3SourceProgressState(Instant.now().toEpochMilli()));
+            sourceCoordinator.saveProgressStateForPartition(folderPartition.getPartitionKey(), folderPartitionState.get());
+        }
+
         if (objectsToProcess.isEmpty()) {
+            folderPartitionNoObjectsFound.increment();
             partitionKeys.remove(folderPartition.getPartitionKey());
             if (shouldDeleteFolderPartition(folderPartition)) {
                 LOG.info("Deleting folder partition {} as no objects have been found from this folder for {} minutes", folderPartition.getPartitionKey(), NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION.toMinutes());
@@ -245,87 +258,15 @@ public class ScanObjectWorker implements Runnable{
                 return;
             }
 
-            if (folderPartition.getPartitionState().isEmpty()) {
-                final S3SourceProgressState s3SourceProgressState = new S3SourceProgressState(Instant.now().toEpochMilli());
-                sourceCoordinator.saveProgressStateForPartition(folderPartition.getPartitionKey(), s3SourceProgressState);
-            }
-
             sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now());
             return;
         }
 
-        Optional<S3SourceProgressState> folderPartitionProgressState = folderPartition.getPartitionState();
-        if (folderPartitionProgressState.isEmpty()) {
-            folderPartitionProgressState = Optional.of(new S3SourceProgressState(Instant.now().toEpochMilli()));
-        } else {
-            folderPartitionProgressState.get().setLastTimeObjectsFound(Instant.now().toEpochMilli());
-        }
-
         // Update the last time objects were found to support deletion of the partition after no objects found for some time
-        sourceCoordinator.saveProgressStateForPartition(folderPartition.getPartitionKey(), folderPartitionProgressState.get());
+        folderPartitionState.ifPresent(state -> state.setLastTimeObjectsFound(Instant.now().toEpochMilli()));
+        sourceCoordinator.saveProgressStateForPartition(folderPartition.getPartitionKey(), folderPartitionState.get());
 
-
-        int objectsProcessed = 0;
-        int objectIndex = 0;
-
-        AcknowledgementSet acknowledgementSet = null;
-        String activeAcknowledgmentSetId = null;
-        while (objectIndex < objectsToProcess.size() && objectsProcessed < folderPartitioningOptions.getMaxObjectsPerOwnership()) {
-            final S3ObjectReference s3ObjectReference = objectsToProcess.get(objectIndex);
-            if (objectsProcessed % MAX_OBJECTS_PER_ACKNOWLEDGMENT_SET == 0) {
-                if (acknowledgementSet != null) {
-                    acknowledgementSet.complete();
-                }
-
-                final String acknowledgmentSetId = UUID.randomUUID().toString();
-                activeAcknowledgmentSetId = acknowledgmentSetId;
-
-                acknowledgementSet = acknowledgementSetManager.create((result) -> {
-                    acknowledgementSetCallbackCounter.increment();
-
-                    // Delete only if this is positive acknowledgement
-                    if (result) {
-                        final Set<DeleteObjectRequest> deleteObjectsForPartition = objectsToDeleteForAcknowledgmentSets.get(acknowledgmentSetId);
-                        deleteObjectsForPartition.forEach(s3ObjectDeleteWorker::deleteS3Object);
-                    }
-
-                    acknowledgmentsRemainingForPartitions.get(folderPartition.getPartitionKey()).decrementAndGet();
-
-                    if (acknowledgmentsRemainingForPartitions.get(folderPartition.getPartitionKey()).intValue() == 0) {
-                        acknowledgmentsRemainingForPartitions.remove(folderPartition.getPartitionKey());
-                        objectsToDeleteForAcknowledgmentSets.remove(acknowledgmentSetId);
-                        partitionKeys.remove(folderPartition.getPartitionKey());
-                        LOG.info("Received all acknowledgments for folder partition {}, giving up this partition", folderPartition.getPartitionKey());
-                        sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now());
-                    }
-                }, ACKNOWLEDGEMENT_SET_TIMEOUT);
-
-                objectsToDeleteForAcknowledgmentSets.put(acknowledgmentSetId, new HashSet<>());
-
-                final AtomicInteger acknowledgmentsRemainingForPartition = acknowledgmentsRemainingForPartitions.containsKey(folderPartition.getPartitionKey()) ?
-                        acknowledgmentsRemainingForPartitions.get(folderPartition.getPartitionKey()) :
-                        new AtomicInteger();
-
-                acknowledgmentsRemainingForPartition.incrementAndGet();
-
-                acknowledgmentsRemainingForPartitions.put(folderPartition.getPartitionKey(), acknowledgmentsRemainingForPartition);
-            }
-
-            final Optional<DeleteObjectRequest> deleteObjectRequest = processS3Object(s3ObjectReference,
-                    acknowledgementSet, sourceCoordinator, folderPartition);
-
-            if (deleteObjectRequest.isPresent()) {
-                objectsToDeleteForAcknowledgmentSets.get(activeAcknowledgmentSetId).add(deleteObjectRequest.get());
-            }
-
-            objectsProcessed++;
-            objectIndex++;
-        }
-
-        // Complete the final acknowledgment set
-        if (acknowledgementSet != null) {
-            acknowledgementSet.complete();
-        }
+        processObjectsForFolderPartition(objectsToProcess, folderPartition);
 
         sourceCoordinator.updatePartitionForAcknowledgmentWait(folderPartition.getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
     }
@@ -367,5 +308,75 @@ public class ScanObjectWorker implements Runnable{
         }
 
         return false;
+    }
+
+    private void processObjectsForFolderPartition(final List<S3ObjectReference> objectsToProcess,
+                                                  final SourcePartition<S3SourceProgressState> folderPartition) {
+        int objectsProcessed = 0;
+        int objectIndex = 0;
+        String activeAcknowledgmentSetId = null;
+        AcknowledgementSet acknowledgementSet = null;
+
+        while (objectIndex < objectsToProcess.size() && objectsProcessed < folderPartitioningOptions.getMaxObjectsPerOwnership()) {
+            final S3ObjectReference s3ObjectReference = objectsToProcess.get(objectIndex);
+            if (objectsProcessed % MAX_OBJECTS_PER_ACKNOWLEDGMENT_SET == 0) {
+                if (acknowledgementSet != null) {
+                    acknowledgementSet.complete();
+                }
+
+                final String acknowledgmentSetId = UUID.randomUUID().toString();
+                activeAcknowledgmentSetId = acknowledgmentSetId;
+
+                acknowledgementSet = createAcknowledgmentSetForFolderPartition(folderPartition, acknowledgmentSetId);
+
+                objectsToDeleteForAcknowledgmentSets.put(acknowledgmentSetId, new HashSet<>());
+
+                final AtomicInteger acknowledgmentsRemainingForPartition = acknowledgmentsRemainingForPartitions.containsKey(folderPartition.getPartitionKey()) ?
+                        acknowledgmentsRemainingForPartitions.get(folderPartition.getPartitionKey()) :
+                        new AtomicInteger();
+
+                acknowledgmentsRemainingForPartition.incrementAndGet();
+
+                acknowledgmentsRemainingForPartitions.put(folderPartition.getPartitionKey(), acknowledgmentsRemainingForPartition);
+            }
+
+            final Optional<DeleteObjectRequest> deleteObjectRequest = processS3Object(s3ObjectReference,
+                    acknowledgementSet, sourceCoordinator, folderPartition);
+
+            if (deleteObjectRequest.isPresent()) {
+                objectsToDeleteForAcknowledgmentSets.get(activeAcknowledgmentSetId).add(deleteObjectRequest.get());
+            }
+
+            objectsProcessed++;
+            objectIndex++;
+        }
+
+        // Complete the final acknowledgment set
+        if (acknowledgementSet != null) {
+            acknowledgementSet.complete();
+        }
+    }
+
+    private AcknowledgementSet createAcknowledgmentSetForFolderPartition(final SourcePartition<S3SourceProgressState> folderPartition,
+                                                                         final String acknowledgmentSetId) {
+        return acknowledgementSetManager.create((result) -> {
+            acknowledgementSetCallbackCounter.increment();
+
+            // Delete only if this is positive acknowledgement
+            if (result) {
+                final Set<DeleteObjectRequest> deleteObjectsForPartition = objectsToDeleteForAcknowledgmentSets.get(acknowledgmentSetId);
+                deleteObjectsForPartition.forEach(s3ObjectDeleteWorker::deleteS3Object);
+            }
+
+            acknowledgmentsRemainingForPartitions.get(folderPartition.getPartitionKey()).decrementAndGet();
+
+            if (acknowledgmentsRemainingForPartitions.get(folderPartition.getPartitionKey()).intValue() == 0) {
+                acknowledgmentsRemainingForPartitions.remove(folderPartition.getPartitionKey());
+                objectsToDeleteForAcknowledgmentSets.remove(acknowledgmentSetId);
+                partitionKeys.remove(folderPartition.getPartitionKey());
+                LOG.info("Received all acknowledgments for folder partition {}, giving up this partition", folderPartition.getPartitionKey());
+                sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now());
+            }
+        }, ACKNOWLEDGEMENT_SET_TIMEOUT);
     }
 }

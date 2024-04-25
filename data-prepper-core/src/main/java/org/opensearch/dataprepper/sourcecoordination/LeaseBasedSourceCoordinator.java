@@ -51,6 +51,8 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     static final String PARTITIONS_ACQUIRED_COUNT = "partitionsAcquired";
     static final String PARTITIONS_COMPLETED_COUNT = "partitionsCompleted";
     static final String PARTITIONS_CLOSED_COUNT = "partitionsClosed";
+
+    static final String PARTITIONS_DELETED = "partitionsDeleted";
     static final String SAVE_PROGRESS_STATE_INVOCATION_SUCCESS_COUNT = "savePartitionProgressStateInvocationsSuccess";
     static final String PARTITION_OWNERSHIP_GIVEN_UP_COUNT = "partitionsGivenUp";
 
@@ -89,11 +91,13 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     private final Counter saveStatePartitionUpdateErrorCounter;
     private final Counter closePartitionUpdateErrorCounter;
     private final Counter completePartitionUpdateErrorCounter;
+
+    private final Counter partitionsDeleted;
     private final ReentrantLock lock;
 
     private Instant lastSupplierRunTime;
 
-    static final Duration FORCE_SUPPLIER_AFTER_DURATION = Duration.ofMinutes(15);
+    static final Duration FORCE_SUPPLIER_AFTER_DURATION = Duration.ofMinutes(5);
 
     static {
         try {
@@ -131,6 +135,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         this.saveStatePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, SAVE_STATE_ACTION);
         this.closePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, CLOSE_ACTION);
         this.completePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, COMPLETE_ACTION);
+        this.partitionsDeleted = pluginMetrics.counter(PARTITIONS_DELETED);
         this.lock = new ReentrantLock();
         this.lastSupplierRunTime = Instant.now();
     }
@@ -370,7 +375,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
                 return;
             }
 
-
+            partitionsDeleted.increment();
             LOG.info("Partition key {} was deleted by owner {}", deleteItem.getSourcePartitionKey(), ownerId);
         }
     }

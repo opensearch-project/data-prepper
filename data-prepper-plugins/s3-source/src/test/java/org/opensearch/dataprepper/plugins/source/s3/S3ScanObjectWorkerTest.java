@@ -65,6 +65,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.ACKNOWLEDGEMENT_SET_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION;
+import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION;
 
 @ExtendWith(MockitoExtension.class)
 class S3ScanObjectWorkerTest {
@@ -108,6 +109,9 @@ class S3ScanObjectWorkerTest {
     @Mock
     private Counter counter;
 
+    @Mock
+    private Counter noObjectsFoundForFolderPartitionCounter;
+
     private List<ScanOptions> scanOptionsList;
 
     @BeforeEach
@@ -120,6 +124,7 @@ class S3ScanObjectWorkerTest {
         when(s3ScanScanOptions.getSchedulingOptions()).thenReturn(s3ScanSchedulingOptions);
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
         when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME)).thenReturn(counter);
+        when(pluginMetrics.counter(NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION)).thenReturn(noObjectsFoundForFolderPartitionCounter);
         final ScanObjectWorker objectUnderTest = new ScanObjectWorker(s3Client, scanOptionsList, s3ObjectHandler, bucketOwnerProvider,
                 sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, 30000, pluginMetrics);
         verify(sourceCoordinator).initialize();
@@ -382,6 +387,7 @@ class S3ScanObjectWorkerTest {
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
         scanObjectWorker.runWithoutInfiniteLoop();
         verify(sourceCoordinator).deletePartition(partitionKey);
+        verify(noObjectsFoundForFolderPartitionCounter).increment();
     }
 
     @Test

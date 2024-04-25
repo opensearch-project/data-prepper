@@ -64,6 +64,7 @@ import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoor
 import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITIONS_ACQUIRED_COUNT;
 import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITIONS_CLOSED_COUNT;
 import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITIONS_COMPLETED_COUNT;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITIONS_DELETED;
 import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITION_CREATED_COUNT;
 import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITION_CREATION_SUPPLIER_INVOCATION_COUNT;
 import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITION_NOT_FOUND_ERROR_COUNT;
@@ -128,6 +129,9 @@ public class LeaseBasedSourceCoordinatorTest {
     private Counter completePartitionUpdateErrorCounter;
 
     @Mock
+    private Counter partitionsDeletedCounter;
+
+    @Mock
     private SourcePartitionStoreItem globalStateForPartitionCreationItem;
 
     private String sourceIdentifier;
@@ -157,6 +161,7 @@ public class LeaseBasedSourceCoordinatorTest {
         given(pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, "saveState")).willReturn(saveStatePartitionUpdateErrorCounter);
         given(pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, "close")).willReturn(closePartitionUpdateErrorCounter);
         given(pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, "complete")).willReturn(completePartitionUpdateErrorCounter);
+        given(pluginMetrics.counter(PARTITIONS_DELETED)).willReturn(partitionsDeletedCounter);
     }
 
     private SourceCoordinator<String> createObjectUnderTest() {
@@ -1016,6 +1021,7 @@ public class LeaseBasedSourceCoordinatorTest {
         objectUnderTest.deletePartition(partitionKey);
 
         verify(sourceCoordinationStore).tryDeletePartitionItem(sourcePartitionStoreItem);
+        verify(partitionsDeletedCounter).increment();
     }
 
     static Stream<Object[]> getClosedCountArgs() {
