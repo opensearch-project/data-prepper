@@ -104,7 +104,7 @@ public class S3SourceConfig {
         return true;
     }
 
-    @AssertTrue(message = "acknowledgments and delete_s3_objects_on_read must both be set to true when using PREFIX partition mode")
+    @AssertTrue(message = "acknowledgments and delete_s3_objects_on_read must both be set to true when using folder_partitions mode")
     boolean isPrefixPartitionModeValid() {
         if (s3ScanScanOptions != null &&
                 s3ScanScanOptions.getPartitioningOptions() != null) {
