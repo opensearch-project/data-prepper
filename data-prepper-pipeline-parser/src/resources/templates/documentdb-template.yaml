@@ -1,10 +1,7 @@
 "<<pipeline-name>>":
   workers: "<<$.<<pipeline-name>>.workers>>"
   delay: "<<$.<<pipeline-name>>.delay>>"
-  buffer:
-    bounded_blocking:
-      batch_size: 125000
-      buffer_size: 1000000
+  buffer: "<<$.<<pipeline-name>>.buffer>>"
   source:
     documentdb: "<<$.<<pipeline-name>>.source.documentdb>>"
   routes:
@@ -50,13 +47,10 @@
         codec:
           event_json:
 
-"<<pipeline-name>>.s3":
+"<<pipeline-name>>-s3":
     workers: "<<$.<<pipeline-name>>.workers>>"
     delay: "<<$.<<pipeline-name>>.delay>>"
-    buffer:
-      bounded_blocking:
-        batch_size: 125000
-        buffer_size: 1000000
+    buffer: "<<$.<<pipeline-name>>.buffer>>"
     source:
       s3:
         codec:
@@ -75,7 +69,6 @@
                 name: "<<$.<<pipeline-name>>.source.documentdb.s3_bucket>>"
                 filter:
                   include_prefix: ["<<FUNCTION_NAME:getSourceCoordinationIdentifierEnvVariable,PARAMETER:$.<<pipeline-name>>.source.documentdb.s3_prefix>>"]
-                  depth: "<<FUNCTION_NAME:calculateDepth,PARAMETER:$.<<pipeline-name>>.source.documentdb.s3_prefix>>"
           scheduling:
             interval: "60s"
     processor: "<<$.<<pipeline-name>>.processor>>"
