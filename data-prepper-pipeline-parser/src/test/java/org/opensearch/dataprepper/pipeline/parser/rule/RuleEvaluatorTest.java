@@ -19,6 +19,9 @@ import org.opensearch.dataprepper.model.configuration.SinkModel;
 import org.opensearch.dataprepper.pipeline.parser.TestConfigurationProvider;
 import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactory;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,7 +31,7 @@ import java.util.Map;
 class RuleEvaluatorTest {
 
     @Test
-    void test_isTransformationNeeded_ForDocDBSource_ShouldReturn_True() {
+    void test_isTransformationNeeded_ForDocDBSource_ShouldReturn_True() throws FileNotFoundException {
 
         // Set up
         String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE;
@@ -54,6 +57,10 @@ class RuleEvaluatorTest {
         ));
         RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
         when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
+
+        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+
         RuleEvaluatorResult result = ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel);
 
         // Assert
@@ -104,6 +111,8 @@ class RuleEvaluatorTest {
 
         // Setup mock to throw an exception when file path is incorrect
         when(transformersFactory.getPluginRuleFileLocation("documentdb")).thenThrow(new RuntimeException("File not found"));
+        when(transformersFactory.getPluginRuleFileStream("documentdb")).thenThrow(new RuntimeException("File not found"));
+
         RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Execute and Assert

@@ -23,7 +23,9 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
 
 @RunWith(PowerMockRunner.class)
@@ -54,6 +56,10 @@ class DynamicConfigTransformerTest {
                 TEMPLATES_DIRECTORY_PATH));
         when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
         when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+        InputStream templateStream = new FileInputStream(templateDocDBFilePath);
+        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
@@ -83,6 +89,10 @@ class DynamicConfigTransformerTest {
                 TEMPLATES_DIRECTORY_PATH));
         when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
         when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+        InputStream templateStream = new FileInputStream(templateDocDBFilePath);
+        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
@@ -112,6 +122,10 @@ class DynamicConfigTransformerTest {
                 TEMPLATES_DIRECTORY_PATH));
         when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
         when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+        InputStream templateStream = new FileInputStream(templateDocDBFilePath);
+        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
@@ -141,6 +155,10 @@ class DynamicConfigTransformerTest {
                 TEMPLATES_DIRECTORY_PATH));
         when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
         when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+        InputStream templateStream = new FileInputStream(templateDocDBFilePath);
+        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
@@ -171,6 +189,10 @@ class DynamicConfigTransformerTest {
                 TEMPLATES_DIRECTORY_PATH));
         when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
         when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+        InputStream templateStream = new FileInputStream(templateDocDBFilePath);
+        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
@@ -199,6 +221,10 @@ class DynamicConfigTransformerTest {
                 TEMPLATES_DIRECTORY_PATH));
         when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
         when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+        InputStream templateStream = new FileInputStream(templateDocDBFilePath);
+        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory

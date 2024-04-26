@@ -10,30 +10,38 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import javax.inject.Named;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Configuration
 public class PipelineTransformationConfiguration {
     public static final String TEMPLATES_DIRECTORY_PATH = "TEMPLATES_DIRECTORY_PATH";
-    public static final String RULES_DIRECTORY_PATH = "VALIDATORS_DIRECTORY_PATH";
+    public static final String RULES_DIRECTORY_PATH = "RULES_DIRECTORY_PATH";
+    private static final Path currentDir = Paths.get(System.getProperty("user.dir"));
+//    private static final String parserRelativePath = "/data-prepper-pipeline-parser/src";
 
     @Bean
     @Named(RULES_DIRECTORY_PATH)
     static String provideRulesDirectoryPath() {
-        return "resources/rules";
+        ClassLoader classLoader = PipelineTransformationConfiguration.class.getClassLoader();
+        String filePath = classLoader.getResource("rules").getFile();
+        return filePath;
     }
 
     @Bean
     @Named(TEMPLATES_DIRECTORY_PATH)
     static String provideTemplateDirectoryPath() {
-        return "resources/templates";
+        ClassLoader classLoader = PipelineTransformationConfiguration.class.getClassLoader();
+        String filePath = classLoader.getResource("templates").getFile();
+        return filePath;
     }
 
     @Bean
     TransformersFactory transformersFactory(
-            @Named(TEMPLATES_DIRECTORY_PATH) String provideTransformerDirectoryPath,
-            @Named(RULES_DIRECTORY_PATH) String provideTemplateDirectoryPath
+            @Named(RULES_DIRECTORY_PATH) String rulesDirectoryPath,
+            @Named(TEMPLATES_DIRECTORY_PATH) String templatesDirectoryPath
     ) {
-        return new TransformersFactory(RULES_DIRECTORY_PATH, TEMPLATES_DIRECTORY_PATH);
+        return new TransformersFactory(rulesDirectoryPath, templatesDirectoryPath);
     }
 
     @Bean

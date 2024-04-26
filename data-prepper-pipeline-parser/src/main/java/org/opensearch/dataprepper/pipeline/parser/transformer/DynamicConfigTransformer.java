@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.pipeline.parser.transformer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
@@ -68,6 +69,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     private static final String JSON_PATH_ARRAY_DISAMBIGUATOR_PATTERN = "[?(@.";
     private static final String RECURSIVE_JSON_PATH_PATH = "$..";
     private static final String JSON_PATH_IDENTIFIER = "$.";
+    private static final String ARRAY_NODE_PATTERN = "([^\\[]+)\\[(\\d+)\\]$";
     private static final String SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE = "SOURCE_COORDINATION_PIPELINE_IDENTIFIER";
 
 
@@ -102,12 +104,14 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
 
         if (!ruleEvaluatorResult.isEvaluatedResult() ||
                 ruleEvaluatorResult.getPipelineName() == null) {
+            LOG.info("No transformation needed");
             return preTransformedPipelinesDataFlowModel;
         }
 
         //To differentiate between sub-pipelines that dont need transformation.
         String pipelineNameThatNeedsTransformation = ruleEvaluatorResult.getPipelineName();
         PipelineTemplateModel templateModel = ruleEvaluatorResult.getPipelineTemplateModel();
+        LOG.info("Transforming pipeline config for pipeline {}",pipelineNameThatNeedsTransformation);
         try {
 
             Map<String, PipelineModel> pipelines = preTransformedPipelinesDataFlowModel.getPipelines();
@@ -121,6 +125,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             //Replace pipeline name placeholder with pipelineNameThatNeedsTransformation
             String templateJsonString = replaceTemplatePipelineName(templateJsonStringWithPipelinePlaceholder,
                     pipelineNameThatNeedsTransformation);
+            LOG.info("Template - {}",templateJsonString);
 
             // Find all PLACEHOLDER_PATTERN in template json string
             Map<String, List<String>> placeholdersMap = findPlaceholdersWithPathsRecursively(templateJsonString);
@@ -169,19 +174,18 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * @throws JsonProcessingException
      */
     private PipelinesDataFlowModel getTransformedPipelinesDataFlowModel(String pipelineNameThatNeedsTransformation, PipelinesDataFlowModel preTransformedPipelinesDataFlowModel, JsonNode templateRootNode) throws JsonProcessingException {
+
         //update template json
-        String transformedJson = objectMapper.writeValueAsString(templateRootNode);
-        LOG.debug("{} pipeline has been transformed to :{}", pipelineNameThatNeedsTransformation, transformedJson);
+        JsonNode transformedJsonNode = templateRootNode.get(TEMPLATE_PIPELINE_ROOT_STRING);
+        String transformedJson = objectMapper.writeValueAsString(transformedJsonNode);
+        LOG.info("{} pipeline has been transformed to :{}", pipelineNameThatNeedsTransformation, transformedJson);
 
         //convert TransformedJson to PipelineModel with the data from preTransformedDataFlowModel.
         //transform transformedJson to Map
-        Map<String, Object> transformedConfigMap = objectMapper.readValue(transformedJson, Map.class);
+        PipelinesDataFlowModel transformedSinglePipelineDataFlowModel = objectMapper.readValue(transformedJson, PipelinesDataFlowModel.class);
+        Map<String, PipelineModel> transformedPipelines = transformedSinglePipelineDataFlowModel.getPipelines();
 
         Map<String, PipelineModel> pipelines = preTransformedPipelinesDataFlowModel.getPipelines();
-
-        // get the root of the Transformed Pipeline Model, to get the actual pipelines.
-        // direct conversion to PipelineDataModel throws exception.
-        Map<String, PipelineModel> transformedPipelines = (Map<String, PipelineModel>) transformedConfigMap.get(TEMPLATE_PIPELINE_ROOT_STRING);
         pipelines.forEach((pipelineName, pipeline) -> {
             if (!pipelineName.equals(pipelineNameThatNeedsTransformation)) {
                 transformedPipelines.put(pipelineName, pipeline);
@@ -194,7 +198,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                 transformedPipelines
         );
         String transformedPipelinesDataFlowModelJson = objectMapper.writeValueAsString(transformedPipelinesDataFlowModel);
-        LOG.debug("Transformed PipelinesDataFlowModel: {}", transformedPipelinesDataFlowModelJson);
+        LOG.info("Transformed PipelinesDataFlowModel: {}", transformedPipelinesDataFlowModelJson);
 
         return transformedPipelinesDataFlowModel;
     }
@@ -311,6 +315,9 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     private Object parseParameter(String parameter, String pipelineJson) {
         if(isJsonPath(parameter)){
             JsonNode pipelineNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelineJson).read(parameter);
+            if(pipelineNode==null){
+                return null;
+            }
             if(!pipelineNode.isValueNode()){
                 throw new RuntimeException("parameter has to be a value node");
             }
@@ -343,11 +350,17 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * @return
      */
     public String calculateDepth(String s3Prefix) {
+        if(s3Prefix == null){
+            return Integer.toString(3);
+        }
         return Integer.toString(s3Prefix.split("/").length + 3);
     }
 
     public String getSourceCoordinationIdentifierEnvVariable(String s3Prefix){
         String envSourceCoordinationIdentifier = System.getenv(SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE);
+        if(s3Prefix == null){
+            return envSourceCoordinationIdentifier;
+        }
         return s3Prefix+"/"+envSourceCoordinationIdentifier;
     }
 
@@ -383,18 +396,32 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     public void replaceNode(JsonNode root, String jsonPath, JsonNode newNode) {
         try {
             if (newNode == null) {
-//                throw new PathNotFoundException(format("jsonPath {} not found", jsonPath));
-                LOG.debug("Did not find jsonPath {}",jsonPath);
+                LOG.info("Did not find jsonPath {}",jsonPath);
             }
             // Read the parent path of the target node
             String parentPath = jsonPath.substring(0, jsonPath.lastIndexOf('.'));
             String fieldName = jsonPath.substring(jsonPath.lastIndexOf('.') + 1);
 
+            //Handle if fieldName is an array
+            Pattern pattern = Pattern.compile(ARRAY_NODE_PATTERN);
+            Matcher matcher = pattern.matcher(fieldName);
+
             // Find the parent node
             JsonNode parentNode = JsonPath.using(parseConfigWithJsonNode).parse(root).read(parentPath);
 
             // Replace the target field in the parent node
-            if (parentNode != null && parentNode instanceof ObjectNode) {
+            if(matcher.find()){
+                //Handle array
+                String field = matcher.group(1);
+                int index = Integer.parseInt(matcher.group(2));
+                JsonNode arrayNodeResult = JsonPath.using(parseConfigWithJsonNode).parse(root).read(parentPath+"."+field);
+                if (!(arrayNodeResult instanceof ArrayNode)){
+                    throw new RuntimeException("Json path is of array type, but parsed result is not arrayNode");
+                }
+                ArrayNode arrayNode = (ArrayNode) arrayNodeResult;
+                // Replace the element in the array
+                arrayNode.set(index, newNode);
+            } else if (parentNode != null && parentNode instanceof ObjectNode) {
                 ((ObjectNode) parentNode).replace(fieldName, newNode);
             } else {
                 LOG.error("Path does not point to object node");
