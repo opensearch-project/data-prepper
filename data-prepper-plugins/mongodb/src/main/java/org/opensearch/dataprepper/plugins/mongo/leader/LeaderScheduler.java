@@ -128,12 +128,7 @@ public class LeaderScheduler implements Runnable {
                 createExportGlobalState(collectionConfig);
             }
 
-            final String s3PathPrefix;
-            if (coordinator.getPartitionPrefix() != null ) {
-                s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + coordinator.getPartitionPrefix() + S3_PATH_DELIMITER + collectionConfig.getCollection();
-            } else {
-                s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + collectionConfig.getCollection();
-            }
+            final String s3PathPrefix = getS3PathPrefix(collectionConfig);
             createS3Partition(sourceConfig.getS3Bucket(), sourceConfig.getS3Region(), s3PathPrefix, collectionConfig);
 
             if (collectionConfig.isStream()) {
@@ -145,6 +140,23 @@ public class LeaderScheduler implements Runnable {
         LOG.debug("Update initialization state");
         LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
         leaderProgressState.setInitialized(true);
+    }
+
+    private String getS3PathPrefix(final CollectionConfig collectionConfig) {
+        final String s3UserPathPrefix;
+        if (sourceConfig.getS3Prefix() != null && !sourceConfig.getS3Prefix().isBlank()) {
+            s3UserPathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER;
+        } else {
+            s3UserPathPrefix = "";
+        }
+
+        final String s3PathPrefix;
+        if (coordinator.getPartitionPrefix() != null ) {
+            s3PathPrefix = s3UserPathPrefix + coordinator.getPartitionPrefix() + S3_PATH_DELIMITER + collectionConfig.getCollection();
+        } else {
+            s3PathPrefix = s3UserPathPrefix + collectionConfig.getCollection();
+        }
+        return s3PathPrefix;
     }
 
     /**

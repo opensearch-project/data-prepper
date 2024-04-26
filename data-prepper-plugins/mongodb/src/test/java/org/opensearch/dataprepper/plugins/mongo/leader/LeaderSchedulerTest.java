@@ -241,4 +241,100 @@ public class LeaderSchedulerTest {
         assertThat(allEnhancedSourcePartitions.get(2), instanceOf(StreamPartition.class));
         executorService.shutdownNow();
     }
+
+    @Test
+    void test_shouldInitStream_withEmptyS3PathPrefix() {
+        given(mongoDBSourceConfig.getCollections()).willReturn(List.of(collectionConfig));
+        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, Duration.ofMillis(100));
+        leaderPartition = new LeaderPartition();
+        given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
+        given(collectionConfig.isStream()).willReturn(true);
+        given(collectionConfig.getCollection()).willReturn(TEST_COLLECTION);
+        given(mongoDBSourceConfig.getS3Prefix()).willReturn(null);
+        given(mongoDBSourceConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
+        given(mongoDBSourceConfig.getS3Region()).willReturn(TEST_S3_REGION);
+        final int partitionCount = Math.abs(new Random().nextInt(10));
+        given(collectionConfig.getPartitionCount()).willReturn(partitionCount);
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> leaderScheduler.run());
+        await()
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+
+        future.cancel(true);
+
+        await()
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
+
+        // Should create 1 stream partitions + 1 S3 partition + 1 global table state
+        verify(coordinator, times(3)).createPartition(
+                enhancedSourcePartitionArgumentCaptor.capture());
+        verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
+
+        assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));
+        final List<EnhancedSourcePartition> allEnhancedSourcePartitions =
+                enhancedSourcePartitionArgumentCaptor.getAllValues();
+        assertThat(allEnhancedSourcePartitions.get(0), instanceOf(GlobalState.class));
+        assertThat(allEnhancedSourcePartitions.get(1), instanceOf(S3FolderPartition.class));
+        final S3FolderPartition s3FolderPartition = (S3FolderPartition) allEnhancedSourcePartitions.get(1);
+        final String[] partitionKeys = s3FolderPartition.getPartitionKey().split("\\|");
+        assertThat(partitionKeys[0], is(TEST_COLLECTION));
+        assertThat(partitionKeys[1], is(TEST_S3_BUCKET_NAME));
+        assertThat(partitionKeys[2], startsWith(TEST_COLLECTION));
+        assertThat(partitionKeys[3], is(String.valueOf(partitionCount)));
+        assertThat(partitionKeys[4], is(TEST_S3_REGION));
+        assertThat(allEnhancedSourcePartitions.get(2), instanceOf(StreamPartition.class));
+        executorService.shutdownNow();
+    }
+
+    @Test
+    void test_shouldInitStream_withEmptyS3PathPrefixWithCoordinatorPartitionPrefix() {
+        given(mongoDBSourceConfig.getCollections()).willReturn(List.of(collectionConfig));
+        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, Duration.ofMillis(100));
+        leaderPartition = new LeaderPartition();
+        given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
+        final String coordinatorPartitionPrefix = UUID.randomUUID().toString();
+        given(coordinator.getPartitionPrefix()).willReturn(coordinatorPartitionPrefix);
+        given(collectionConfig.isStream()).willReturn(true);
+        given(collectionConfig.getCollection()).willReturn(TEST_COLLECTION);
+        given(mongoDBSourceConfig.getS3Prefix()).willReturn(null);
+        given(mongoDBSourceConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
+        given(mongoDBSourceConfig.getS3Region()).willReturn(TEST_S3_REGION);
+        final int partitionCount = Math.abs(new Random().nextInt(10));
+        given(collectionConfig.getPartitionCount()).willReturn(partitionCount);
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> leaderScheduler.run());
+        await()
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+
+        future.cancel(true);
+
+        await()
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
+
+        // Should create 1 stream partitions + 1 S3 partition + 1 global table state
+        verify(coordinator, times(3)).createPartition(
+                enhancedSourcePartitionArgumentCaptor.capture());
+        verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
+
+        assertThat(leaderPartition.getProgressState().get().isInitialized(), equalTo(true));
+        final List<EnhancedSourcePartition> allEnhancedSourcePartitions =
+                enhancedSourcePartitionArgumentCaptor.getAllValues();
+        assertThat(allEnhancedSourcePartitions.get(0), instanceOf(GlobalState.class));
+        assertThat(allEnhancedSourcePartitions.get(1), instanceOf(S3FolderPartition.class));
+        final S3FolderPartition s3FolderPartition = (S3FolderPartition) allEnhancedSourcePartitions.get(1);
+        final String[] partitionKeys = s3FolderPartition.getPartitionKey().split("\\|");
+        assertThat(partitionKeys[0], is(TEST_COLLECTION));
+        assertThat(partitionKeys[1], is(TEST_S3_BUCKET_NAME));
+        assertThat(partitionKeys[2], startsWith(coordinatorPartitionPrefix));
+        assertThat(partitionKeys[3], is(String.valueOf(partitionCount)));
+        assertThat(partitionKeys[4], is(TEST_S3_REGION));
+        assertThat(allEnhancedSourcePartitions.get(2), instanceOf(StreamPartition.class));
+        executorService.shutdownNow();
+    }
 }
