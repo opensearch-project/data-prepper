@@ -357,10 +357,10 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     }
 
     public String getSourceCoordinationIdentifierEnvVariable(String s3Prefix){
-        if(s3Prefix == null){
-            return "";
-        }
         String envSourceCoordinationIdentifier = System.getenv(SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE);
+        if(s3Prefix == null){
+            return envSourceCoordinationIdentifier;
+        }
         return s3Prefix+"/"+envSourceCoordinationIdentifier;
     }
 
