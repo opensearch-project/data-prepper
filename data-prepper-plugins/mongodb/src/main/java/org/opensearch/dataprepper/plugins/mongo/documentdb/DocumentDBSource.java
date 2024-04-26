@@ -35,6 +35,8 @@ public class DocumentDBSource implements Source<Record<Event>>, UsesEnhancedSour
     private final AcknowledgementSetManager acknowledgementSetManager;
     private DocumentDBService documentDBService;
 
+    private final boolean acknowledgementsEnabled;
+
     @DataPrepperPluginConstructor
     public DocumentDBSource(final PluginMetrics pluginMetrics,
                             final MongoDBSourceConfig sourceConfig,
@@ -44,6 +46,7 @@ public class DocumentDBSource implements Source<Record<Event>>, UsesEnhancedSour
         this.sourceConfig = sourceConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginConfigObservable = pluginConfigObservable;
+        this.acknowledgementsEnabled = sourceConfig.isAcknowledgmentsEnabled();
     }
 
     @Override
@@ -76,5 +79,10 @@ public class DocumentDBSource implements Source<Record<Event>>, UsesEnhancedSour
     @Override
     public Function<SourcePartitionStoreItem, EnhancedSourcePartition> getPartitionFactory() {
         return new PartitionFactory();
+    }
+
+    @Override
+    public boolean areAcknowledgementsEnabled() {
+        return acknowledgementsEnabled;
     }
 }
