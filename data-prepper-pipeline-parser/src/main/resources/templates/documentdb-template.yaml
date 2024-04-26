@@ -13,9 +13,9 @@
         - initial_load
        aws:
          region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
-         sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
-         sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
-         sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
+         sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_role_arn>>"
+         sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_external_id>>"
+         sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_header_overrides>>"
        bucket: "<<$.<<pipeline-name>>.source.documentdb.s3_bucket>>"
        threshold:
          event_collect_timeout: "120s"
@@ -32,9 +32,9 @@
           - stream_load
         aws:
           region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
-          sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
-          sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
-          sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
+          sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_role_arn>>"
+          sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_external_id>>"
+          sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_header_overrides>>"
         bucket: "<<$.<<pipeline-name>>.source.documentdb.s3_bucket>>"
         threshold:
           event_collect_timeout: "30s"
@@ -58,9 +58,9 @@
         compression: "none"
         aws:
           region:  "<<$.<<pipeline-name>>.source.documentdb.s3_region>>"
-          sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_role_arn>>"
-          sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_external_id>>"
-          sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.opensearch.aws.sts_header_overrides>>"
+          sts_role_arn: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_role_arn>>"
+          sts_external_id: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_external_id>>"
+          sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_header_overrides>>"
         acknowledgments: true
         delete_s3_objects_on_read: true
         scan:
