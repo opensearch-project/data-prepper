@@ -13,6 +13,7 @@ import javax.inject.Named;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 
 public class TransformersFactory implements PipelineTransformationPathProvider {
 
@@ -51,6 +52,24 @@ public class TransformersFactory implements PipelineTransformationPathProvider {
             throw  new RuntimeException("Transformation plugin not found");
         }
         return rulesDirectoryPath + "/" + pluginName + RULE_FILE_NAME_PATTERN;
+    }
+
+    public InputStream getPluginRuleFileStream(String pluginName) {
+        if(pluginName.isEmpty()){
+            throw  new RuntimeException("Transformation plugin not found");
+        }
+        ClassLoader classLoader = TransformersFactory.class.getClassLoader();
+        InputStream filestream = classLoader.getResourceAsStream("rules" + "/" + pluginName + RULE_FILE_NAME_PATTERN);
+        return filestream;
+    }
+
+    public InputStream getPluginTemplateFileStream(String pluginName) {
+        if(pluginName.isEmpty()){
+            throw  new RuntimeException("Transformation plugin not found");
+        }
+        ClassLoader classLoader = TransformersFactory.class.getClassLoader();
+        InputStream filestream = classLoader.getResourceAsStream("templates" + "/" + pluginName + TEMPLATE_FILE_NAME_PATTERN);
+        return filestream;
     }
 
     public PipelineTemplateModel getTemplateModel(String pluginName) {

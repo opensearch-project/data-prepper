@@ -396,7 +396,6 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     public void replaceNode(JsonNode root, String jsonPath, JsonNode newNode) {
         try {
             if (newNode == null) {
-//                throw new PathNotFoundException(format("jsonPath {} not found", jsonPath));
                 LOG.info("Did not find jsonPath {}",jsonPath);
             }
             // Read the parent path of the target node

@@ -22,8 +22,8 @@ import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactor
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
@@ -53,23 +53,25 @@ public class RuleEvaluator {
      */
     private RuleEvaluatorResult isDocDBSource(PipelinesDataFlowModel pipelinesModel) {
         PLUGIN_NAME = "documentdb";
-        String pluginRulesPath = transformersFactory.getPluginRuleFileLocation(PLUGIN_NAME);
-        File ruleFile = new File(pluginRulesPath);
-        LOG.info("Checking rule path {}",ruleFile.getAbsolutePath());
+//        String pluginRulesPath = transformersFactory.getPluginRuleFileLocation(PLUGIN_NAME);
+//        File ruleFile = new File(pluginRulesPath);
+//        LOG.info("Checking rule path {}",ruleFile.getAbsolutePath());
+
         Map<String, PipelineModel> pipelines = pipelinesModel.getPipelines();
 
         for (Map.Entry<String, PipelineModel> entry : pipelines.entrySet()) {
             try {
                 String pipelineJson = OBJECT_MAPPER.writeValueAsString(entry);
-                if (evaluate(pipelineJson, pluginRulesPath)) {
-                    LOG.info("Rule path {} is evaluated true for pipelineJson {}",pluginRulesPath, pipelineJson);
+                if (evaluate(pipelineJson, PLUGIN_NAME)) {
+                    LOG.info("Rule for {} is evaluated true for pipelineJson {}", PLUGIN_NAME, pipelineJson);
 
-                    String templateFilePathString = transformersFactory.getPluginTemplateFileLocation(PLUGIN_NAME);
-                    File templateFile = new File(templateFilePathString);
-                    LOG.info("Absolute path of template file: {}",templateFile.getAbsolutePath());
-                    PipelineTemplateModel templateModel = yamlMapper.readValue(templateFile,
+//                    String templateFilePathString = transformersFactory.getPluginTemplateFileLocation(PLUGIN_NAME);
+//                    File templateFile = new File(templateFilePathString);
+//                    LOG.info("Absolute path of template file: {}",templateFile.getAbsolutePath());
+                    InputStream templateStream = transformersFactory.getPluginTemplateFileStream(PLUGIN_NAME);
+                    PipelineTemplateModel templateModel = yamlMapper.readValue(templateStream,
                             PipelineTemplateModel.class);
-                    LOG.info("Chosen template file {}",templateFilePathString);
+                    LOG.info("Template is chosen for {}", PLUGIN_NAME);
 
                     return RuleEvaluatorResult.builder()
                             .withEvaluatedResult(true)
@@ -93,7 +95,7 @@ public class RuleEvaluator {
     }
 
     private Boolean evaluate(String pipelinesJson,
-                             String rulePathString) {
+                             String pluginName) {
 
         Configuration parseConfig = Configuration.builder()
                 .jsonProvider(new JacksonJsonProvider())
@@ -104,17 +106,20 @@ public class RuleEvaluator {
         ReadContext readPathContext = parseContext.parse(pipelinesJson);
 
         try {
-            File ruleFile = new File(rulePathString);
-            RuleTransformerModel rulesModel = yamlMapper.readValue(ruleFile, RuleTransformerModel.class);
+            //TODO
+//            ClassLoader classLoader = RuleEvaluator.class.getClassLoader();
+//            InputStream filestream = classLoader.getResourceAsStream("rules/documentdb-rule.yaml");
+            InputStream ruleStream = transformersFactory.getPluginRuleFileStream(pluginName);
+            RuleTransformerModel rulesModel = yamlMapper.readValue(ruleStream, RuleTransformerModel.class);
             List<String> rules = rulesModel.getApplyWhen();
             for (String rule : rules) {
                 Object result = readPathContext.read(rule);
             }
         } catch (IOException e) {
-            LOG.warn("Error reading file {}", rulePathString);
+            LOG.warn("Error reading {} rule",pluginName);
             return false;
         } catch (PathNotFoundException e) {
-            LOG.warn("Json Path not found {}", rulePathString);
+            LOG.warn("Json Path not found for {}", pluginName);
             return false;
         }
         return true;
