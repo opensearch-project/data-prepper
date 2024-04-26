@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.FolderPartitioningOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanKeyPathOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanSchedulingOptions;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
@@ -22,12 +23,16 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static org.apache.commons.lang3.math.NumberUtils.min;
 
 public class S3ScanPartitionCreationSupplier implements Function<Map<String, Object>, List<PartitionIdentifier>> {
 
@@ -42,15 +47,20 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
     private final BucketOwnerProvider bucketOwnerProvider;
     private final List<ScanOptions> scanOptionsList;
     private final S3ScanSchedulingOptions schedulingOptions;
+
+    private final FolderPartitioningOptions folderPartitioningOptions;
+
     public S3ScanPartitionCreationSupplier(final S3Client s3Client,
                                            final BucketOwnerProvider bucketOwnerProvider,
                                            final List<ScanOptions> scanOptionsList,
-                                           final S3ScanSchedulingOptions schedulingOptions) {
+                                           final S3ScanSchedulingOptions schedulingOptions,
+                                           final FolderPartitioningOptions folderPartitioningOptions) {
 
         this.s3Client = s3Client;
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.scanOptionsList = scanOptionsList;
         this.schedulingOptions = schedulingOptions;
+        this.folderPartitioningOptions = folderPartitioningOptions;
     }
 
     @Override
@@ -123,7 +133,26 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
 
         globalStateMap.put(bucket, Objects.nonNull(mostRecentLastModifiedTimestamp) ? mostRecentLastModifiedTimestamp.toString() : null);
 
-        LOG.info("Returning partitions for {} S3 objects from bucket {}", allPartitionIdentifiers.size(), bucket);
+        if (folderPartitioningOptions != null) {
+            final Set<PartitionIdentifier> folderPartitions = allPartitionIdentifiers.stream()
+                    .map(partitionIdentifier -> {
+                        final String fullObjectKey = partitionIdentifier.getPartitionKey();
+                        final String prefix = getPrefixWithDepth(fullObjectKey);
+                        if (prefix == null) {
+                            return null;
+                        }
+                        return PartitionIdentifier.builder().withPartitionKey(prefix).build();
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            LOG.info("Running in folder_partitions mode at depth {}, found {} unique prefixes from {} objects", folderPartitioningOptions.getFolderDepth(), folderPartitions.size(), allPartitionIdentifiers.size());
+
+            return new ArrayList<>(folderPartitions);
+        } else {
+            LOG.info("Returning partitions for {} S3 objects from bucket {}", allPartitionIdentifiers.size(), bucket);
+        }
+
         return allPartitionIdentifiers;
     }
 
@@ -227,5 +256,14 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
         }
 
         return Instant.now().minus(schedulingOptions.getInterval()).isAfter(Instant.ofEpochMilli((Long) globalStateMap.get(LAST_SCAN_TIME)));
+    }
+
+    private String getPrefixWithDepth(final String fullObjectKey) {
+        final String[] folders = fullObjectKey.split("/");
+        if (folders.length < folderPartitioningOptions.getFolderDepth() + 1) {
+            return null;
+        }
+        int actualDepth = min(folderPartitioningOptions.getFolderDepth(), folders.length - 1);
+        return String.join("/", Arrays.copyOfRange(folders, 0, actualDepth)) + "/";
     }
 }

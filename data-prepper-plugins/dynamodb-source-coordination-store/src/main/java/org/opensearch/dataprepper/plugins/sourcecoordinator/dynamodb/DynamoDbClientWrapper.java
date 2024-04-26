@@ -18,6 +18,7 @@ import software.amazon.awssdk.enhanced.dynamodb.Expression;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.DeleteItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.EnhancedGlobalSecondaryIndex;
 import software.amazon.awssdk.enhanced.dynamodb.model.GetItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
@@ -188,6 +189,26 @@ public class DynamoDbClientWrapper {
         } catch (final Exception e) {
             final String errorMessage = String.format("An exception occurred while attempting to update a DynamoDb partition item %s",
                     dynamoDbSourcePartitionItem.getSourcePartitionKey());
+            LOG.error(errorMessage, e);
+            throw new PartitionUpdateException(errorMessage, e);
+        }
+    }
+
+    public void tryDeletePartitionItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
+        dynamoDbSourcePartitionItem.setVersion(dynamoDbSourcePartitionItem.getVersion() + 1L);
+
+        try {
+            table.deleteItem(DeleteItemEnhancedRequest.builder()
+                    .key(Key.builder().partitionValue(dynamoDbSourcePartitionItem.getSourceIdentifier()).sortValue(dynamoDbSourcePartitionItem.getSourcePartitionKey()).build())
+                    .conditionExpression(Expression.builder()
+                            .expression(ITEM_EXISTS_AND_HAS_LATEST_VERSION)
+                            .expressionValues(Map.of(":v", AttributeValue.builder().n(String.valueOf(dynamoDbSourcePartitionItem.getVersion() - 1L)).build()))
+                            .build())
+                    .build());
+        } catch (final Exception e) {
+            final String errorMessage = String.format("An exception occurred while attempting to delete a DynamoDb partition item %s",
+                    dynamoDbSourcePartitionItem.getSourcePartitionKey());
+
             LOG.error(errorMessage, e);
             throw new PartitionUpdateException(errorMessage, e);
         }

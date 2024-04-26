@@ -14,34 +14,49 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.FolderPartitioningOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanSchedulingOptions;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Class responsible for processing the s3 scan objects with the help of <code>S3ObjectWorker</code>
  * or <code>S3SelectWorker</code>.
  */
-public class ScanObjectWorker implements Runnable{
+public class ScanObjectWorker implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ScanObjectWorker.class);
+    private static final Integer MAX_OBJECTS_PER_ACKNOWLEDGMENT_SET = 1;
 
+    static final Duration NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION = Duration.ofHours(1);
     private static final int RETRY_BACKOFF_ON_EXCEPTION_MILLIS = 5_000;
 
     static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
     static final String ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
+
+    static final String NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION = "folderPartitionNoObjectsFound";
 
     private final S3Client s3Client;
 
@@ -66,8 +81,16 @@ public class ScanObjectWorker implements Runnable{
     private final S3ObjectDeleteWorker s3ObjectDeleteWorker;
     private final PluginMetrics pluginMetrics;
     private final Counter acknowledgementSetCallbackCounter;
+
+    private final Counter folderPartitionNoObjectsFound;
     private final long backOffMs;
     private final List<String> partitionKeys;
+
+    private final FolderPartitioningOptions folderPartitioningOptions;
+
+    private final Map<String, Set<DeleteObjectRequest>> objectsToDeleteForAcknowledgmentSets;
+
+    private final Map<String, AtomicInteger> acknowledgmentsRemainingForPartitions;
 
     public ScanObjectWorker(final S3Client s3Client,
                             final List<ScanOptions> scanOptionsBuilderList,
@@ -92,10 +115,14 @@ public class ScanObjectWorker implements Runnable{
         this.s3ObjectDeleteWorker = s3ObjectDeleteWorker;
         this.pluginMetrics = pluginMetrics;
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME);
+        this.folderPartitionNoObjectsFound = pluginMetrics.counter(NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION);
         this.sourceCoordinator.initialize();
         this.partitionKeys = new ArrayList<>();
+        this.folderPartitioningOptions = s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions();
 
-        this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions);
+        this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions, s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions());
+        this.acknowledgmentsRemainingForPartitions = new ConcurrentHashMap<>();
+        this.objectsToDeleteForAcknowledgmentSets = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -126,7 +153,7 @@ public class ScanObjectWorker implements Runnable{
     }
 
     private void startProcessingObject(final long waitTimeMillis) {
-        final Optional<SourcePartition<S3SourceProgressState>> objectToProcess = sourceCoordinator.getNextPartition(partitionCreationSupplier);
+        final Optional<SourcePartition<S3SourceProgressState>> objectToProcess = sourceCoordinator.getNextPartition(partitionCreationSupplier, folderPartitioningOptions != null);
 
         if (objectToProcess.isEmpty()) {
             try {
@@ -138,12 +165,21 @@ public class ScanObjectWorker implements Runnable{
         }
 
         partitionKeys.add(objectToProcess.get().getPartitionKey());
+        if (folderPartitioningOptions != null) {
+            try {
+                processFolderPartition(objectToProcess.get());
+            } catch (final Exception e) {
+                LOG.error("An exception occurred while processing folder partition {}, giving up this partition", objectToProcess.get().getPartitionKey(), e);
+                sourceCoordinator.giveUpPartition(objectToProcess.get().getPartitionKey(), Instant.now());
+                partitionKeys.remove(objectToProcess.get().getPartitionKey());
+            }
+            return;
+        }
 
         final String bucket = objectToProcess.get().getPartitionKey().split("\\|")[0];
         final String objectKey = objectToProcess.get().getPartitionKey().split("\\|")[1];
 
         try {
-            List<DeleteObjectRequest> waitingForAcknowledgements = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
 
             if (endToEndAcknowledgementsEnabled) {
@@ -152,7 +188,9 @@ public class ScanObjectWorker implements Runnable{
                     // Delete only if this is positive acknowledgement
                     if (result == true) {
                         sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey(), true);
-                        waitingForAcknowledgements.forEach(s3ObjectDeleteWorker::deleteS3Object);
+                        final Set<DeleteObjectRequest> deleteObjectsForPartition = objectsToDeleteForAcknowledgmentSets.get(objectToProcess.get().getPartitionKey());
+                        deleteObjectsForPartition.forEach(s3ObjectDeleteWorker::deleteS3Object);
+                        objectsToDeleteForAcknowledgmentSets.remove(objectToProcess.get().getPartitionKey());
                     } else {
                         sourceCoordinator.giveUpPartition(objectToProcess.get().getPartitionKey());
                     }
@@ -165,7 +203,7 @@ public class ScanObjectWorker implements Runnable{
                     acknowledgementSet, sourceCoordinator, objectToProcess.get());
 
             if (endToEndAcknowledgementsEnabled) {
-                deleteObjectRequest.ifPresent(waitingForAcknowledgements::add);
+                deleteObjectRequest.ifPresent(deleteRequest -> objectsToDeleteForAcknowledgmentSets.put(objectToProcess.get().getPartitionKey(), Set.of(deleteRequest)));
                 sourceCoordinator.updatePartitionForAcknowledgmentWait(objectToProcess.get().getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
                 acknowledgementSet.complete();
             } else {
@@ -198,8 +236,147 @@ public class ScanObjectWorker implements Runnable{
         return Optional.empty();
     }
 
+    private void processFolderPartition(final SourcePartition<S3SourceProgressState> folderPartition) {
+        final String bucket = folderPartition.getPartitionKey().split("\\|")[0];
+        final String s3Prefix = folderPartition.getPartitionKey().split("\\|")[1];
+
+        final List<S3ObjectReference> objectsToProcess = getObjectsForPrefix(bucket, s3Prefix);
+
+        Optional<S3SourceProgressState> folderPartitionState = folderPartition.getPartitionState();
+
+        if (folderPartitionState.isEmpty()) {
+            folderPartitionState = Optional.of(new S3SourceProgressState(Instant.now().toEpochMilli()));
+            sourceCoordinator.saveProgressStateForPartition(folderPartition.getPartitionKey(), folderPartitionState.get());
+        }
+
+        if (objectsToProcess.isEmpty()) {
+            folderPartitionNoObjectsFound.increment();
+            partitionKeys.remove(folderPartition.getPartitionKey());
+            if (shouldDeleteFolderPartition(folderPartition)) {
+                LOG.info("Deleting folder partition {} as no objects have been found from this folder for {} minutes", folderPartition.getPartitionKey(), NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION.toMinutes());
+                sourceCoordinator.deletePartition(folderPartition.getPartitionKey());
+                return;
+            }
+
+            sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now());
+            return;
+        }
+
+        // Update the last time objects were found to support deletion of the partition after no objects found for some time
+        folderPartitionState.ifPresent(state -> state.setLastTimeObjectsFound(Instant.now().toEpochMilli()));
+        sourceCoordinator.saveProgressStateForPartition(folderPartition.getPartitionKey(), folderPartitionState.get());
+
+        processObjectsForFolderPartition(objectsToProcess, folderPartition);
+
+        sourceCoordinator.updatePartitionForAcknowledgmentWait(folderPartition.getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
+    }
+
+    private List<S3ObjectReference> getObjectsForPrefix(final String bucket, final String s3Prefix) {
+        ListObjectsV2Response listObjectsV2Response = null;
+        final List<S3ObjectReference> objectsToProcess = new ArrayList<>();
+
+        final ListObjectsV2Request.Builder listObjectsV2Request = ListObjectsV2Request.builder()
+                .bucket(bucket)
+                .prefix(s3Prefix);
+
+        do {
+            listObjectsV2Response = s3Client.listObjectsV2(listObjectsV2Request
+                    .fetchOwner(true)
+                    .continuationToken(Objects.nonNull(listObjectsV2Response) ? listObjectsV2Response.nextContinuationToken() : null)
+                    .build());
+            LOG.info("Found page of {} objects from bucket {} and prefix {}", listObjectsV2Response.keyCount(), bucket, s3Prefix);
+
+            objectsToProcess.addAll(listObjectsV2Response.contents().stream()
+                    .map(s3Object -> S3ObjectReference.bucketAndKey(bucket, s3Object.key()).build())
+                    .collect(Collectors.toList()));
+
+        } while (listObjectsV2Response.isTruncated());
+
+        return objectsToProcess;
+    }
+
     void stop() {
         isStopped = true;
         Thread.currentThread().interrupt();
+    }
+
+    private boolean shouldDeleteFolderPartition(final SourcePartition<S3SourceProgressState> folderPartition) {
+        if (folderPartition.getPartitionState().isPresent() &&
+                Instant.now().toEpochMilli() - folderPartition.getPartitionState().get().getLastTimeObjectsFound()
+                        > NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION.toMillis()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private void processObjectsForFolderPartition(final List<S3ObjectReference> objectsToProcess,
+                                                  final SourcePartition<S3SourceProgressState> folderPartition) {
+        int objectsProcessed = 0;
+        int objectIndex = 0;
+        String activeAcknowledgmentSetId = null;
+        AcknowledgementSet acknowledgementSet = null;
+
+        while (objectIndex < objectsToProcess.size() && objectsProcessed < folderPartitioningOptions.getMaxObjectsPerOwnership()) {
+            final S3ObjectReference s3ObjectReference = objectsToProcess.get(objectIndex);
+            if (objectsProcessed % MAX_OBJECTS_PER_ACKNOWLEDGMENT_SET == 0) {
+                if (acknowledgementSet != null) {
+                    acknowledgementSet.complete();
+                }
+
+                final String acknowledgmentSetId = UUID.randomUUID().toString();
+                activeAcknowledgmentSetId = acknowledgmentSetId;
+
+                acknowledgementSet = createAcknowledgmentSetForFolderPartition(folderPartition, acknowledgmentSetId);
+
+                objectsToDeleteForAcknowledgmentSets.put(acknowledgmentSetId, new HashSet<>());
+
+                final AtomicInteger acknowledgmentsRemainingForPartition = acknowledgmentsRemainingForPartitions.containsKey(folderPartition.getPartitionKey()) ?
+                        acknowledgmentsRemainingForPartitions.get(folderPartition.getPartitionKey()) :
+                        new AtomicInteger();
+
+                acknowledgmentsRemainingForPartition.incrementAndGet();
+
+                acknowledgmentsRemainingForPartitions.put(folderPartition.getPartitionKey(), acknowledgmentsRemainingForPartition);
+            }
+
+            final Optional<DeleteObjectRequest> deleteObjectRequest = processS3Object(s3ObjectReference,
+                    acknowledgementSet, sourceCoordinator, folderPartition);
+
+            if (deleteObjectRequest.isPresent()) {
+                objectsToDeleteForAcknowledgmentSets.get(activeAcknowledgmentSetId).add(deleteObjectRequest.get());
+            }
+
+            objectsProcessed++;
+            objectIndex++;
+        }
+
+        // Complete the final acknowledgment set
+        if (acknowledgementSet != null) {
+            acknowledgementSet.complete();
+        }
+    }
+
+    private AcknowledgementSet createAcknowledgmentSetForFolderPartition(final SourcePartition<S3SourceProgressState> folderPartition,
+                                                                         final String acknowledgmentSetId) {
+        return acknowledgementSetManager.create((result) -> {
+            acknowledgementSetCallbackCounter.increment();
+
+            // Delete only if this is positive acknowledgement
+            if (result) {
+                final Set<DeleteObjectRequest> deleteObjectsForPartition = objectsToDeleteForAcknowledgmentSets.get(acknowledgmentSetId);
+                deleteObjectsForPartition.forEach(s3ObjectDeleteWorker::deleteS3Object);
+            }
+
+            acknowledgmentsRemainingForPartitions.get(folderPartition.getPartitionKey()).decrementAndGet();
+
+            if (acknowledgmentsRemainingForPartitions.get(folderPartition.getPartitionKey()).intValue() == 0) {
+                acknowledgmentsRemainingForPartitions.remove(folderPartition.getPartitionKey());
+                objectsToDeleteForAcknowledgmentSets.remove(acknowledgmentSetId);
+                partitionKeys.remove(folderPartition.getPartitionKey());
+                LOG.info("Received all acknowledgments for folder partition {}, giving up this partition", folderPartition.getPartitionKey());
+                sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now());
+            }
+        }, ACKNOWLEDGEMENT_SET_TIMEOUT);
     }
 }

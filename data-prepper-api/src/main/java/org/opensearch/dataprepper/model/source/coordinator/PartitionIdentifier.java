@@ -42,4 +42,17 @@ public class PartitionIdentifier {
             return new PartitionIdentifier(this);
         }
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        PartitionIdentifier that = (PartitionIdentifier) o;
+        return Objects.equals(partitionKey, that.partitionKey);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(partitionKey);
+    }
 }

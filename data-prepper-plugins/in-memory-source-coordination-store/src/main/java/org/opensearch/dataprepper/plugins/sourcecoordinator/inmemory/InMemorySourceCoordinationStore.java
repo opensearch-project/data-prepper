@@ -116,4 +116,14 @@ public class InMemorySourceCoordinationStore implements SourceCoordinationStore 
             inMemoryPartitionAccessor.updateItem((InMemorySourcePartitionStoreItem) updateItem);
         }
     }
+
+    @Override
+    public void tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem, final Instant priorityForUnassignedPartitions) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void tryDeletePartitionItem(SourcePartitionStoreItem deleteItem) {
+        throw new UnsupportedOperationException("deleting partitions is not currently supported by the in memory source coordination store");
+    }
 }
