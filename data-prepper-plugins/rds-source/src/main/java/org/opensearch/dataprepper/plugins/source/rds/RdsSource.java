@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
@@ -33,15 +34,18 @@ public class RdsSource implements Source<Record<Event>>, UsesEnhancedSourceCoord
     private final ClientFactory clientFactory;
     private final PluginMetrics pluginMetrics;
     private final RdsSourceConfig sourceConfig;
+    private final EventFactory eventFactory;
     private EnhancedSourceCoordinator sourceCoordinator;
     private RdsService rdsService;
 
     @DataPrepperPluginConstructor
     public RdsSource(final PluginMetrics pluginMetrics,
                      final RdsSourceConfig sourceConfig,
+                     final EventFactory eventFactory,
                      final AwsCredentialsSupplier awsCredentialsSupplier) {
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
+        this.eventFactory = eventFactory;
 
         clientFactory = new ClientFactory(awsCredentialsSupplier, sourceConfig.getAwsAuthenticationConfig());
     }
@@ -51,7 +55,7 @@ public class RdsSource implements Source<Record<Event>>, UsesEnhancedSourceCoord
         Objects.requireNonNull(sourceCoordinator);
         sourceCoordinator.createPartition(new LeaderPartition());
 
-        rdsService = new RdsService(sourceCoordinator, sourceConfig, clientFactory, pluginMetrics);
+        rdsService = new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics);
 
         LOG.info("Start RDS service");
         rdsService.start(buffer);

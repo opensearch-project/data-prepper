@@ -8,6 +8,7 @@ dependencies {
     implementation project(path: ':data-prepper-plugins:buffer-common')
     implementation project(path: ':data-prepper-plugins:http-common')
     implementation project(path: ':data-prepper-plugins:common')
+    implementation project(path: ':data-prepper-plugins:parquet-codecs')
 
     implementation 'io.micrometer:micrometer-core'
 
