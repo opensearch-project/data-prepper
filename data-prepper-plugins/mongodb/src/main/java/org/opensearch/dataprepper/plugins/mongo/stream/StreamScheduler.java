@@ -18,7 +18,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Optional;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class StreamScheduler implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(StreamScheduler.class);
@@ -26,7 +29,6 @@ public class StreamScheduler implements Runnable {
     static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 120_000;
     static final int DEFAULT_BUFFER_WRITE_INTERVAL_MILLS = 15_000;
     private static final int DEFAULT_MONITOR_WAIT_TIME_MS = 15_000;
-    private static final String S3_PATH_DELIMITER = "/";
     /**
      * Number of records to accumulate before flushing to buffer
      */
@@ -40,17 +42,21 @@ public class StreamScheduler implements Runnable {
     private final RecordBufferWriter recordBufferWriter;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final MongoDBSourceConfig sourceConfig;
+    private final String s3PathPrefix;
     private final PluginMetrics pluginMetrics;
     public StreamScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final Buffer<Record<Event>> buffer,
                            final AcknowledgementSetManager acknowledgementSetManager,
                            final MongoDBSourceConfig sourceConfig,
+                           final String s3PathPrefix,
                            final PluginMetrics pluginMetrics) {
         this.sourceCoordinator = sourceCoordinator;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
         recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, pluginMetrics);
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceConfig = sourceConfig;
+        checkArgument(Objects.nonNull(s3PathPrefix), "S3 path prefix must not be null");
+        this.s3PathPrefix = s3PathPrefix;
         this.pluginMetrics = pluginMetrics;
     }
 
@@ -102,13 +108,8 @@ public class StreamScheduler implements Runnable {
     }
 
     private PartitionKeyRecordConverter getPartitionKeyRecordConverter(final StreamPartition streamPartition) {
-        final String s3PathPrefix;
-        if (sourceCoordinator.getPartitionPrefix() != null ) {
-            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix() + S3_PATH_DELIMITER + streamPartition.getCollection();
-        } else {
-            s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + streamPartition.getCollection();
-        }
+        final String s3Prefix = s3PathPrefix + streamPartition.getCollection();
         return new PartitionKeyRecordConverter(streamPartition.getCollection(),
-                StreamPartition.PARTITION_TYPE, s3PathPrefix);
+                StreamPartition.PARTITION_TYPE, s3Prefix);
     }
 }

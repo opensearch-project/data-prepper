@@ -90,7 +90,6 @@ public class StreamWorkerTest {
         when(mockPluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME)).thenReturn(failureItemsCounter);
         when(mockPluginMetrics.summary(BYTES_RECEIVED)).thenReturn(bytesReceivedSummary);
         when(mockSourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
-        //Thread.interrupted();
         streamWorker = new StreamWorker(mockRecordBufferWriter, mockRecordConverter, mockSourceConfig, mockStreamAcknowledgementManager,
                 mockPartitionCheckpoint, mockPluginMetrics, 2, 0, 10_000, 1_000);
     }

@@ -24,13 +24,16 @@ import org.opensearch.dataprepper.plugins.mongo.export.ExportWorker;
 import org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -43,6 +46,7 @@ import static org.opensearch.dataprepper.plugins.mongo.documentdb.MongoTasksRefr
 class MongoTasksRefresherTest {
     private static final String TEST_USERNAME = "test_user";
     private static final String TEST_PASSWORD = "test_password";
+    private final String S3_PATH_PREFIX = UUID.randomUUID().toString();
 
     @Mock
     private EnhancedSourceCoordinator enhancedSourceCoordinator;
@@ -79,15 +83,16 @@ class MongoTasksRefresherTest {
 
     private MongoTasksRefresher createObjectUnderTest() {
         return new MongoTasksRefresher(
-                buffer, enhancedSourceCoordinator, pluginMetrics, acknowledgementSetManager, executorServiceFunction);
+                buffer, enhancedSourceCoordinator, pluginMetrics, acknowledgementSetManager,
+                executorServiceFunction, S3_PATH_PREFIX);
     }
 
     @BeforeEach
     void setUp() {
-        when(executorServiceFunction.apply(anyInt())).thenReturn(executorService);
-        when(sourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
-        when(collectionConfig.isExport()).thenReturn(true);
-        when(collectionConfig.isStream()).thenReturn(true);
+        lenient().when(executorServiceFunction.apply(anyInt())).thenReturn(executorService);
+        lenient().when(sourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
+        lenient().when(collectionConfig.isExport()).thenReturn(true);
+        lenient().when(collectionConfig.isStream()).thenReturn(true);
     }
 
     @Test
@@ -237,5 +242,12 @@ class MongoTasksRefresherTest {
         verify(credentialsChangeCounter).increment();
         verify(executorRefreshErrorsCounter).increment();
         verifyNoMoreInteractions(executorServiceFunction);
+    }
+
+    @Test
+    void testTaskRefreshWithNullS3PathPrefix() {
+        assertThrows(IllegalArgumentException.class, () -> new MongoTasksRefresher(
+                buffer, enhancedSourceCoordinator, pluginMetrics, acknowledgementSetManager,
+                executorServiceFunction, null));
     }
 }

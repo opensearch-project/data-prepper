@@ -27,6 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -42,6 +43,7 @@ import static org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler.DE
 
 @ExtendWith(MockitoExtension.class)
 public class StreamSchedulerTest {
+    private final String S3_PATH_PREFIX = UUID.randomUUID().toString();
     @Mock
     private EnhancedSourceCoordinator sourceCoordinator;
 
@@ -69,8 +71,7 @@ public class StreamSchedulerTest {
     @BeforeEach
     void setup() {
         lenient().when(sourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
-        //given(sourceConfig.getCollections()).willReturn(List.of(collectionConfig));
-        streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, pluginMetrics);
+        streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, S3_PATH_PREFIX, pluginMetrics);
     }
 
 
@@ -160,5 +161,10 @@ public class StreamSchedulerTest {
         future.cancel(true);
         executorService.shutdownNow();
 
+    }
+
+    @Test
+    void test_stream_withNullS3PathPrefix() {
+        assertThrows(IllegalArgumentException.class, () -> new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, null, pluginMetrics));
     }
 }

@@ -23,7 +23,10 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class LeaderScheduler implements Runnable {
 
@@ -34,7 +37,6 @@ public class LeaderScheduler implements Runnable {
      * Default duration to extend the timeout of lease
      */
     static final int DEFAULT_EXTEND_LEASE_MINUTES = 3;
-    private static final String S3_PATH_DELIMITER = "/";
 
     /**
      * Default interval to run lease check and shard discovery
@@ -44,20 +46,24 @@ public class LeaderScheduler implements Runnable {
     private final MongoDBSourceConfig sourceConfig;
 
     private final EnhancedSourceCoordinator coordinator;
+    private final String s3PathPrefix;
 
     private final Duration leaseInterval;
 
     private LeaderPartition leaderPartition;
 
-    public LeaderScheduler(final EnhancedSourceCoordinator coordinator, final MongoDBSourceConfig sourceConfig) {
-        this(coordinator, sourceConfig, DEFAULT_LEASE_INTERVAL);
+    public LeaderScheduler(final EnhancedSourceCoordinator coordinator, final MongoDBSourceConfig sourceConfig, final String s3PathPrefix) {
+        this(coordinator, sourceConfig, s3PathPrefix, DEFAULT_LEASE_INTERVAL);
     }
 
-    LeaderScheduler(EnhancedSourceCoordinator coordinator,
-                    MongoDBSourceConfig sourceConfig,
-                    Duration leaseInterval) {
+    LeaderScheduler(final EnhancedSourceCoordinator coordinator,
+                    final MongoDBSourceConfig sourceConfig,
+                    final String s3PathPrefix,
+                    final Duration leaseInterval) {
         this.sourceConfig = sourceConfig;
         this.coordinator = coordinator;
+        checkArgument(Objects.nonNull(s3PathPrefix), "S3 path prefix must not be null");
+        this.s3PathPrefix = s3PathPrefix;
         this.leaseInterval = leaseInterval;
     }
 
@@ -128,13 +134,8 @@ public class LeaderScheduler implements Runnable {
                 createExportGlobalState(collectionConfig);
             }
 
-            final String s3PathPrefix;
-            if (coordinator.getPartitionPrefix() != null ) {
-                s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + coordinator.getPartitionPrefix() + S3_PATH_DELIMITER + collectionConfig.getCollection();
-            } else {
-                s3PathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER + collectionConfig.getCollection();
-            }
-            createS3Partition(sourceConfig.getS3Bucket(), sourceConfig.getS3Region(), s3PathPrefix, collectionConfig);
+            final String s3Prefix = s3PathPrefix + collectionConfig.getCollection();
+            createS3Partition(sourceConfig.getS3Bucket(), sourceConfig.getS3Region(), s3Prefix, collectionConfig);
 
             if (collectionConfig.isStream()) {
                 createStreamPartition(collectionConfig, startTime, exportRequired);
