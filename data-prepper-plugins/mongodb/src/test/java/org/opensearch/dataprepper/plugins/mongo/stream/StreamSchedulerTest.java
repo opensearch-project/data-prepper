@@ -42,6 +42,7 @@ import static org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler.DE
 
 @ExtendWith(MockitoExtension.class)
 public class StreamSchedulerTest {
+    private final String S3_PATH_PREFIX = UUID.randomUUID().toString();
     @Mock
     private EnhancedSourceCoordinator sourceCoordinator;
 
@@ -69,8 +70,7 @@ public class StreamSchedulerTest {
     @BeforeEach
     void setup() {
         lenient().when(sourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
-        //given(sourceConfig.getCollections()).willReturn(List.of(collectionConfig));
-        streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, pluginMetrics);
+        streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, S3_PATH_PREFIX, pluginMetrics);
     }
 
 

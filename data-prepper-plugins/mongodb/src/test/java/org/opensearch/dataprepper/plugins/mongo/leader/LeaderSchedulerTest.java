@@ -65,7 +65,7 @@ public class LeaderSchedulerTest {
 
     @Test
     void test_non_leader_run() {
-        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, Duration.ofMillis(100));
+        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, TEST_S3_PATH_PREFIX, Duration.ofMillis(100));
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.empty());
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> leaderScheduler.run());
@@ -78,7 +78,7 @@ public class LeaderSchedulerTest {
     @Test
     void test_should_init() {
         given(mongoDBSourceConfig.getCollections()).willReturn(List.of(collectionConfig));
-        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, Duration.ofMillis(100));
+        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, TEST_S3_PATH_PREFIX, Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         given(collectionConfig.isExport()).willReturn(true);
@@ -86,7 +86,6 @@ public class LeaderSchedulerTest {
         given(collectionConfig.getExportBatchSize()).willReturn(Math.abs(new Random().nextInt()));
         given(collectionConfig.getCollection()).willReturn(TEST_COLLECTION);
         given(mongoDBSourceConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
-        given(mongoDBSourceConfig.getS3Prefix()).willReturn(TEST_S3_PATH_PREFIX);
         given(mongoDBSourceConfig.getS3Region()).willReturn(TEST_S3_REGION);
         final int partitionCount = Math.abs(new Random().nextInt(10));
         given(collectionConfig.getPartitionCount()).willReturn(partitionCount);
@@ -139,13 +138,12 @@ public class LeaderSchedulerTest {
     @Test
     void test_should_init_export() {
         given(mongoDBSourceConfig.getCollections()).willReturn(List.of(collectionConfig));
-        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, Duration.ofMillis(100));
+        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, TEST_S3_PATH_PREFIX, Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         given(collectionConfig.isExport()).willReturn(true);
         given(collectionConfig.getExportBatchSize()).willReturn(Math.abs(new Random().nextInt()));
         given(collectionConfig.getCollection()).willReturn(TEST_COLLECTION);
-        given(mongoDBSourceConfig.getS3Prefix()).willReturn(TEST_S3_PATH_PREFIX);
         given(mongoDBSourceConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
         given(mongoDBSourceConfig.getS3Region()).willReturn(TEST_S3_REGION);
         final int partitionCount = Math.abs(new Random().nextInt(10));
@@ -198,12 +196,11 @@ public class LeaderSchedulerTest {
     @Test
     void test_should_init_stream() {
         given(mongoDBSourceConfig.getCollections()).willReturn(List.of(collectionConfig));
-        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, Duration.ofMillis(100));
+        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, TEST_S3_PATH_PREFIX, Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         given(collectionConfig.isStream()).willReturn(true);
         given(collectionConfig.getCollection()).willReturn(TEST_COLLECTION);
-        given(mongoDBSourceConfig.getS3Prefix()).willReturn(TEST_S3_PATH_PREFIX);
         given(mongoDBSourceConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
         given(mongoDBSourceConfig.getS3Region()).willReturn(TEST_S3_REGION);
         final int partitionCount = Math.abs(new Random().nextInt(10));
@@ -245,12 +242,11 @@ public class LeaderSchedulerTest {
     @Test
     void test_shouldInitStream_withEmptyS3PathPrefix() {
         given(mongoDBSourceConfig.getCollections()).willReturn(List.of(collectionConfig));
-        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, Duration.ofMillis(100));
+        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, "", Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         given(collectionConfig.isStream()).willReturn(true);
         given(collectionConfig.getCollection()).willReturn(TEST_COLLECTION);
-        given(mongoDBSourceConfig.getS3Prefix()).willReturn(null);
         given(mongoDBSourceConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
         given(mongoDBSourceConfig.getS3Region()).willReturn(TEST_S3_REGION);
         final int partitionCount = Math.abs(new Random().nextInt(10));
@@ -290,16 +286,13 @@ public class LeaderSchedulerTest {
     }
 
     @Test
-    void test_shouldInitStream_withEmptyS3PathPrefixWithCoordinatorPartitionPrefix() {
+    void test_shouldInitStream_withNullS3PathPrefix() {
         given(mongoDBSourceConfig.getCollections()).willReturn(List.of(collectionConfig));
-        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, Duration.ofMillis(100));
+        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, null, Duration.ofMillis(100));
         leaderPartition = new LeaderPartition();
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
-        final String coordinatorPartitionPrefix = UUID.randomUUID().toString();
-        given(coordinator.getPartitionPrefix()).willReturn(coordinatorPartitionPrefix);
         given(collectionConfig.isStream()).willReturn(true);
         given(collectionConfig.getCollection()).willReturn(TEST_COLLECTION);
-        given(mongoDBSourceConfig.getS3Prefix()).willReturn(null);
         given(mongoDBSourceConfig.getS3Bucket()).willReturn(TEST_S3_BUCKET_NAME);
         given(mongoDBSourceConfig.getS3Region()).willReturn(TEST_S3_REGION);
         final int partitionCount = Math.abs(new Random().nextInt(10));
@@ -331,7 +324,7 @@ public class LeaderSchedulerTest {
         final String[] partitionKeys = s3FolderPartition.getPartitionKey().split("\\|");
         assertThat(partitionKeys[0], is(TEST_COLLECTION));
         assertThat(partitionKeys[1], is(TEST_S3_BUCKET_NAME));
-        assertThat(partitionKeys[2], startsWith(coordinatorPartitionPrefix));
+        assertThat(partitionKeys[2], startsWith(TEST_COLLECTION));
         assertThat(partitionKeys[3], is(String.valueOf(partitionCount)));
         assertThat(partitionKeys[4], is(TEST_S3_REGION));
         assertThat(allEnhancedSourcePartitions.get(2), instanceOf(StreamPartition.class));

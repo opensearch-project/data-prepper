@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.plugins.mongo.export.ExportWorker;
 import org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 
@@ -43,6 +44,7 @@ import static org.opensearch.dataprepper.plugins.mongo.documentdb.MongoTasksRefr
 class MongoTasksRefresherTest {
     private static final String TEST_USERNAME = "test_user";
     private static final String TEST_PASSWORD = "test_password";
+    private final String S3_PATH_PREFIX = UUID.randomUUID().toString();
 
     @Mock
     private EnhancedSourceCoordinator enhancedSourceCoordinator;
@@ -79,7 +81,8 @@ class MongoTasksRefresherTest {
 
     private MongoTasksRefresher createObjectUnderTest() {
         return new MongoTasksRefresher(
-                buffer, enhancedSourceCoordinator, pluginMetrics, acknowledgementSetManager, executorServiceFunction);
+                buffer, enhancedSourceCoordinator, pluginMetrics, acknowledgementSetManager,
+                executorServiceFunction, S3_PATH_PREFIX);
     }
 
     @BeforeEach

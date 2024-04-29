@@ -34,7 +34,6 @@ public class LeaderScheduler implements Runnable {
      * Default duration to extend the timeout of lease
      */
     static final int DEFAULT_EXTEND_LEASE_MINUTES = 3;
-    private static final String S3_PATH_DELIMITER = "/";
 
     /**
      * Default interval to run lease check and shard discovery
@@ -44,20 +43,23 @@ public class LeaderScheduler implements Runnable {
     private final MongoDBSourceConfig sourceConfig;
 
     private final EnhancedSourceCoordinator coordinator;
+    private final String s3PathPrefix;
 
     private final Duration leaseInterval;
 
     private LeaderPartition leaderPartition;
 
-    public LeaderScheduler(final EnhancedSourceCoordinator coordinator, final MongoDBSourceConfig sourceConfig) {
-        this(coordinator, sourceConfig, DEFAULT_LEASE_INTERVAL);
+    public LeaderScheduler(final EnhancedSourceCoordinator coordinator, final MongoDBSourceConfig sourceConfig, final String s3PathPrefix) {
+        this(coordinator, sourceConfig, s3PathPrefix, DEFAULT_LEASE_INTERVAL);
     }
 
-    LeaderScheduler(EnhancedSourceCoordinator coordinator,
-                    MongoDBSourceConfig sourceConfig,
-                    Duration leaseInterval) {
+    LeaderScheduler(final EnhancedSourceCoordinator coordinator,
+                    final MongoDBSourceConfig sourceConfig,
+                    final String s3PathPrefix,
+                    final Duration leaseInterval) {
         this.sourceConfig = sourceConfig;
         this.coordinator = coordinator;
+        this.s3PathPrefix = s3PathPrefix;
         this.leaseInterval = leaseInterval;
     }
 
@@ -128,8 +130,8 @@ public class LeaderScheduler implements Runnable {
                 createExportGlobalState(collectionConfig);
             }
 
-            final String s3PathPrefix = getS3PathPrefix(collectionConfig);
-            createS3Partition(sourceConfig.getS3Bucket(), sourceConfig.getS3Region(), s3PathPrefix, collectionConfig);
+            final String s3Prefix = getS3PathPrefix(collectionConfig);
+            createS3Partition(sourceConfig.getS3Bucket(), sourceConfig.getS3Region(), s3Prefix, collectionConfig);
 
             if (collectionConfig.isStream()) {
                 createStreamPartition(collectionConfig, startTime, exportRequired);
@@ -143,20 +145,11 @@ public class LeaderScheduler implements Runnable {
     }
 
     private String getS3PathPrefix(final CollectionConfig collectionConfig) {
-        final String s3UserPathPrefix;
-        if (sourceConfig.getS3Prefix() != null && !sourceConfig.getS3Prefix().isBlank()) {
-            s3UserPathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER;
+        if (s3PathPrefix == null || s3PathPrefix.isBlank()) {
+            return collectionConfig.getCollection();
         } else {
-            s3UserPathPrefix = "";
+           return s3PathPrefix + collectionConfig.getCollection();
         }
-
-        final String s3PathPrefix;
-        if (coordinator.getPartitionPrefix() != null ) {
-            s3PathPrefix = s3UserPathPrefix + coordinator.getPartitionPrefix() + S3_PATH_DELIMITER + collectionConfig.getCollection();
-        } else {
-            s3PathPrefix = s3UserPathPrefix + collectionConfig.getCollection();
-        }
-        return s3PathPrefix;
     }
 
     /**

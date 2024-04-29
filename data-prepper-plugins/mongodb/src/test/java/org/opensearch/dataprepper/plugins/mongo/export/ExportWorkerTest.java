@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfi
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
 
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -24,6 +25,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class ExportWorkerTest {
+    private final String S3_PATH_PREFIX = UUID.randomUUID().toString();
+
     @Mock
     private EnhancedSourceCoordinator sourceCoordinator;
 
@@ -46,7 +49,7 @@ public class ExportWorkerTest {
 
     @BeforeEach
     public void setup() throws Exception {
-        exportWorker = new ExportWorker(sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, sourceConfig);
+        exportWorker = new ExportWorker(sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, sourceConfig, S3_PATH_PREFIX);
     }
 
     @Test

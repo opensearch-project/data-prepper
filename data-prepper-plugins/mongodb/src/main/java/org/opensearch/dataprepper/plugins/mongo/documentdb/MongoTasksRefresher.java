@@ -39,6 +39,7 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
     private final Function<Integer, ExecutorService> executorServiceFunction;
     private final Counter credentialsChangeCounter;
     private final Counter executorRefreshErrorsCounter;
+    private final String s3PathPrefix;
     private MongoDBExportPartitionSupplier currentMongoDBExportPartitionSupplier;
     private MongoDBSourceConfig currentMongoDBSourceConfig;
     private ExecutorService currentExecutor;
@@ -47,14 +48,16 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
                                final EnhancedSourceCoordinator sourceCoordinator,
                                final PluginMetrics pluginMetrics,
                                final AcknowledgementSetManager acknowledgementSetManager,
-                               final Function<Integer, ExecutorService> executorServiceFunction) {
+                               final Function<Integer, ExecutorService> executorServiceFunction,
+                               final String s3PathPrefix) {
         this.sourceCoordinator = sourceCoordinator;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.buffer = buffer;
         this.executorServiceFunction = executorServiceFunction;
-        credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
-        executorRefreshErrorsCounter = pluginMetrics.counter(EXECUTOR_REFRESH_ERRORS);
+        this.credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
+        this.executorRefreshErrorsCounter = pluginMetrics.counter(EXECUTOR_REFRESH_ERRORS);
+        this.s3PathPrefix = s3PathPrefix;
     }
 
     public void initialize(final MongoDBSourceConfig sourceConfig) {
@@ -84,11 +87,11 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
             currentMongoDBExportPartitionSupplier = new MongoDBExportPartitionSupplier(pluginConfig);
             runnables.add(new ExportScheduler(sourceCoordinator, currentMongoDBExportPartitionSupplier, pluginMetrics));
             runnables.add(new ExportWorker(
-                    sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, pluginConfig));
+                    sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, pluginConfig, s3PathPrefix));
         }
         if (pluginConfig.getCollections().stream().anyMatch(CollectionConfig::isStream)) {
             runnables.add(new StreamScheduler(
-                    sourceCoordinator, buffer, acknowledgementSetManager, pluginConfig, pluginMetrics));
+                    sourceCoordinator, buffer, acknowledgementSetManager, pluginConfig, s3PathPrefix, pluginMetrics));
         }
         this.currentExecutor = executorServiceFunction.apply(runnables.size());
         runnables.forEach(currentExecutor::submit);

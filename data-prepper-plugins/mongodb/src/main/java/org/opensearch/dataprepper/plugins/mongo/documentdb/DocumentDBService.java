@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 
 public class DocumentDBService {
     private static final Logger LOG = LoggerFactory.getLogger(DocumentDBService.class);
+    private static final String S3_PATH_DELIMITER = "/";
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final PluginMetrics pluginMetrics;
     private final MongoDBSourceConfig sourceConfig;
@@ -51,7 +52,8 @@ public class DocumentDBService {
     public void start(Buffer<Record<Event>> buffer) {
         final List<Runnable> runnableList = new ArrayList<>();
 
-        final LeaderScheduler leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig);
+        final String s3PathPrefix = getS3PathPrefix();
+        final LeaderScheduler leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig, s3PathPrefix);
         runnableList.add(leaderScheduler);
         final List<String> collections = sourceConfig.getCollections().stream().map(CollectionConfig::getCollection).collect(Collectors.toList());
         if (!collections.isEmpty()) {
@@ -65,10 +67,28 @@ public class DocumentDBService {
         final MongoTasksRefresher mongoTasksRefresher = new MongoTasksRefresher(
                 buffer, sourceCoordinator, pluginMetrics, acknowledgementSetManager,
                 numThread -> Executors.newFixedThreadPool(
-                        numThread, BackgroundThreadFactory.defaultExecutorThreadFactory("documentdb-source")));
+                        numThread, BackgroundThreadFactory.defaultExecutorThreadFactory("documentdb-source")),
+                s3PathPrefix);
         mongoTasksRefresher.initialize(sourceConfig);
         pluginConfigObservable.addPluginConfigObserver(
                 pluginConfig -> mongoTasksRefresher.update((MongoDBSourceConfig) pluginConfig));
+    }
+
+    private String getS3PathPrefix() {
+        final String s3UserPathPrefix;
+        if (sourceConfig.getS3Prefix() != null && !sourceConfig.getS3Prefix().isBlank()) {
+            s3UserPathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER;
+        } else {
+            s3UserPathPrefix = "";
+        }
+
+        final String s3PathPrefix;
+        if (sourceCoordinator.getPartitionPrefix() != null ) {
+            s3PathPrefix = s3UserPathPrefix + sourceCoordinator.getPartitionPrefix() + S3_PATH_DELIMITER;
+        } else {
+            s3PathPrefix = s3UserPathPrefix;
+        }
+        return s3PathPrefix;
     }
 
     /**
