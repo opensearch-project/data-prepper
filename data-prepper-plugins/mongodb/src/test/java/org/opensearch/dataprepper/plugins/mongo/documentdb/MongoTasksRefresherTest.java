@@ -28,10 +28,12 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -87,10 +89,10 @@ class MongoTasksRefresherTest {
 
     @BeforeEach
     void setUp() {
-        when(executorServiceFunction.apply(anyInt())).thenReturn(executorService);
-        when(sourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
-        when(collectionConfig.isExport()).thenReturn(true);
-        when(collectionConfig.isStream()).thenReturn(true);
+        lenient().when(executorServiceFunction.apply(anyInt())).thenReturn(executorService);
+        lenient().when(sourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
+        lenient().when(collectionConfig.isExport()).thenReturn(true);
+        lenient().when(collectionConfig.isStream()).thenReturn(true);
     }
 
     @Test
@@ -240,5 +242,12 @@ class MongoTasksRefresherTest {
         verify(credentialsChangeCounter).increment();
         verify(executorRefreshErrorsCounter).increment();
         verifyNoMoreInteractions(executorServiceFunction);
+    }
+
+    @Test
+    void testTaskRefreshWithNullS3PathPrefix() {
+        assertThrows(IllegalArgumentException.class, () -> new MongoTasksRefresher(
+                buffer, enhancedSourceCoordinator, pluginMetrics, acknowledgementSetManager,
+                executorServiceFunction, null));
     }
 }

@@ -23,7 +23,10 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class LeaderScheduler implements Runnable {
 
@@ -59,6 +62,7 @@ public class LeaderScheduler implements Runnable {
                     final Duration leaseInterval) {
         this.sourceConfig = sourceConfig;
         this.coordinator = coordinator;
+        checkArgument(Objects.nonNull(s3PathPrefix), "S3 path prefix must not be null");
         this.s3PathPrefix = s3PathPrefix;
         this.leaseInterval = leaseInterval;
     }
@@ -130,7 +134,7 @@ public class LeaderScheduler implements Runnable {
                 createExportGlobalState(collectionConfig);
             }
 
-            final String s3Prefix = getS3PathPrefix(collectionConfig);
+            final String s3Prefix = s3PathPrefix + collectionConfig.getCollection();
             createS3Partition(sourceConfig.getS3Bucket(), sourceConfig.getS3Region(), s3Prefix, collectionConfig);
 
             if (collectionConfig.isStream()) {
@@ -142,14 +146,6 @@ public class LeaderScheduler implements Runnable {
         LOG.debug("Update initialization state");
         LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
         leaderProgressState.setInitialized(true);
-    }
-
-    private String getS3PathPrefix(final CollectionConfig collectionConfig) {
-        if (s3PathPrefix == null || s3PathPrefix.isBlank()) {
-            return collectionConfig.getCollection();
-        } else {
-           return s3PathPrefix + collectionConfig.getCollection();
-        }
     }
 
     /**

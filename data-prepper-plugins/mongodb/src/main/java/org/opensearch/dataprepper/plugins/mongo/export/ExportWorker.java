@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -36,6 +37,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.EXPORT_PREFIX;
 import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.STREAM_PREFIX;
 
@@ -92,6 +94,7 @@ public class ExportWorker implements Runnable {
         this.sourceConfig = sourceConfig;
         this.startLine = 0;// replace it with checkpoint line
         this.pluginMetrics = pluginMetrics;
+        checkArgument(Objects.nonNull(s3PathPrefix), "S3 path prefix must not be null");
         this.s3PathPrefix = s3PathPrefix;
         this.successPartitionCounter = pluginMetrics.counter(SUCCESS_PARTITION_COUNTER_NAME);
         this.failureParitionCounter = pluginMetrics.counter(FAILURE_PARTITION_COUNTER_NAME);

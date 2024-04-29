@@ -18,7 +18,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Optional;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class StreamScheduler implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(StreamScheduler.class);
@@ -52,6 +55,7 @@ public class StreamScheduler implements Runnable {
         recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, pluginMetrics);
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceConfig = sourceConfig;
+        checkArgument(Objects.nonNull(s3PathPrefix), "S3 path prefix must not be null");
         this.s3PathPrefix = s3PathPrefix;
         this.pluginMetrics = pluginMetrics;
     }

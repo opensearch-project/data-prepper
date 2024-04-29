@@ -20,6 +20,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -62,6 +63,11 @@ public class ExportWorkerTest {
         executorService.shutdownNow();
 
         verifyNoInteractions(recordBufferWriter);
+    }
+
+    @Test
+    void test_export_withNullS3PathPrefix() {
+        assertThrows(IllegalArgumentException.class, () -> new ExportWorker(sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, sourceConfig, null));
     }
 
 }

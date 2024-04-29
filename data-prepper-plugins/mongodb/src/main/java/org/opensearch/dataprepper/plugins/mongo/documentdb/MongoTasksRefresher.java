@@ -28,6 +28,8 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceConfig> {
     private static final Logger LOG = LoggerFactory.getLogger(MongoTasksRefresher.class);
     static final String CREDENTIALS_CHANGED = "credentialsChanged";
@@ -57,6 +59,7 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
         this.executorServiceFunction = executorServiceFunction;
         this.credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
         this.executorRefreshErrorsCounter = pluginMetrics.counter(EXECUTOR_REFRESH_ERRORS);
+        checkArgument(Objects.nonNull(s3PathPrefix), "S3 path prefix must not be null");
         this.s3PathPrefix = s3PathPrefix;
     }
 
