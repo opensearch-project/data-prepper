@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,12 +47,14 @@ public class S3PartitionCreatorScheduler extends S3FolderPartitionCoordinator im
                     break;
                 }
 
-                collections.forEach(collection -> {
+                final Iterator<String> iterator = collections.iterator();
+                while(iterator.hasNext()) {
+                    final String collection = iterator.next();
                     final Optional<S3PartitionStatus> s3PartitionStatus = getGlobalS3FolderCreationStatus(collection);
                     if (s3PartitionStatus.isPresent()) {
-                        collections.remove(collection);
+                        iterator.remove();
                     }
-                });
+                }
 
                 if (collections.isEmpty()) {
                     LOG.info("The S3 folder partition global state created for all collections.");
@@ -68,7 +71,6 @@ public class S3PartitionCreatorScheduler extends S3FolderPartitionCoordinator im
                 }
             }
         }
-        LOG.warn("S3 partition creator scheduler interrupted, looks like shutdown has triggered");
     }
 
     private List<String> createS3BucketPartitions(int partitionCount) {
