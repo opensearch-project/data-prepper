@@ -71,7 +71,6 @@ public class S3PartitionCreatorScheduler extends S3FolderPartitionCoordinator im
                 }
             }
         }
-        LOG.warn("S3 partition creator scheduler interrupted, looks like all S3 Global partition was created or shutdown has triggered");
     }
 
     private List<String> createS3BucketPartitions(int partitionCount) {
