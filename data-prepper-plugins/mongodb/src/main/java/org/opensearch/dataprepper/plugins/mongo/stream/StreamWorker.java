@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -235,14 +234,12 @@ public class StreamWorker {
     }
 
     private void checkpointStream() {
-        String globalCheckpoint = null;
         long lastCheckpointTime = System.currentTimeMillis();
         while (!Thread.currentThread().isInterrupted()) {
-            if (!Objects.equals(globalCheckpoint,lastLocalCheckpoint) && lastLocalRecordCount != null && !sourceConfig.isAcknowledgmentsEnabled() && (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs)) {
+            if (lastLocalRecordCount != null && (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs)) {
                 LOG.debug("Perform regular checkpoint for resume token {} at record count {}", lastLocalCheckpoint, lastLocalRecordCount);
                 partitionCheckpoint.checkpoint(lastLocalCheckpoint, lastLocalRecordCount);
                 lastCheckpointTime = System.currentTimeMillis();
-                globalCheckpoint = lastLocalCheckpoint;
             }
 
             try {
