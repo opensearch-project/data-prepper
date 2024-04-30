@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
 /*
 * A HTTP service for log ingestion to be executed by BlockingTaskExecutor.
 */
@@ -75,6 +76,32 @@ public class LogHTTPService {
         return requestProcessDuration.recordCallable(() -> processRequest(aggregatedHttpRequest));
     }
 
+    private void sendChunks(List<String> jsonList, int maxRequestLength) throws Exception {
+        StringBuilder sb = new StringBuilder(maxRequestLength);
+        sb.append("[");
+        int sbLength = 1;
+        String comma = "";
+        for (final String json: jsonList) {
+            int jsonLength = json.getBytes().length;
+            // leave some overhead(1K bytes) for serialization. Exact maxRequestLength seem to fail some times
+            if (sbLength + jsonLength + 1 > maxRequestLength-1024) {
+                sb.append("]");
+                buffer.writeBytes(sb.toString().getBytes(), null, bufferWriteTimeoutInMillis);
+                sb.setLength(1);
+                sbLength = 1;
+            } else {
+                sb.append(comma);
+            }
+            sb.append(json);
+            sbLength += jsonLength+comma.length();
+            comma = ",";
+        }
+        if (sbLength > 1) {
+            sb.append("]");
+            buffer.writeBytes(sb.toString().getBytes(), null, bufferWriteTimeoutInMillis);
+        }
+    }
+
     private HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) throws Exception {
         final HttpData content = aggregatedHttpRequest.content();
         List<String> jsonList;
@@ -87,9 +114,14 @@ public class LogHTTPService {
         }
         try {
             if (buffer.isByteBuffer()) {
-                // jsonList is ignored in this path but parse() was done to make 
-                // sure that the data is in the expected json format
-                buffer.writeBytes(content.array(), null, bufferWriteTimeoutInMillis);
+                int maxRequestLength = 1024*1024; // hard-coded for now
+                if (content.array().length > maxRequestLength) {
+                    sendChunks(jsonList, maxRequestLength);
+                } else {
+                    // jsonList is ignored in this path but parse() was done to make
+                    // sure that the data is in the expected json format
+                    buffer.writeBytes(content.array(), null, bufferWriteTimeoutInMillis);
+                }
             } else {
                 final List<Record<Log>> records = jsonList.stream()
                         .map(this::buildRecordLog)
