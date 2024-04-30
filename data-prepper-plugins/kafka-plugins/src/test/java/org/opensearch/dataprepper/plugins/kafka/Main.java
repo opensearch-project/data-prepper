@@ -38,7 +38,7 @@ public class Main {
         }
     };
 
-    public static void createTopic(String servers) throws Throwable {
+    public static void createTopic(String servers, String username, String password) throws Throwable {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
 //        props.put("security.protocol", "SASL_PLAINTEXT");
@@ -54,11 +54,11 @@ public class Main {
         props.put("basic.auth.credentials.source", "USER_INFO");
         props.put("schema.registry.url", "https://psrc-m5k9x.us-west-2.aws.confluent.cloud");
         props.put("basic.auth.user.info", "6PB6XRBLRWMMJJRT:sJ/MUyz0dnWyKqiqGhLhBB5KkP94CKYRyplya3HpgUjF1tbEzgKvsS8xCUouqQbW");
-        props.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\""+"Q34YG5COE7EC6QUB"+"\" password=\""+"oXQaTRez85vfmt1beUW5cTGu+uCMprLxuswEC30cVEvm2mlLIFZ/xhtUBA8fhhXJ"+"\";");
+        props.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\""+ username +"\" password=\""+ password +"\";");
         Throwable[] createThrowable = new Throwable[1];
         try (AdminClient adminClient = AdminClient.create(props)) {
             // Create a new topic
-            NewTopic newTopic = new NewTopic("topic_5", 1, (short) 3); // Topic name, numPartitions, replicationFactor
+            NewTopic newTopic = new NewTopic("topic_4", 1, (short) 3); // Topic name, numPartitions, replicationFactor
             adminClient.createTopics(Collections.singleton(newTopic)).all().get();
             System.out.println("Topic created successfully.");
         } catch (InterruptedException | ExecutionException e) {
@@ -128,11 +128,19 @@ public class Main {
 
     @Test
     void generate() throws Throwable {
-//        createTopic("pkc-12576z.us-west2.gcp.confluent.cloud:9092");
+//        createTopic("pkc-rgm37.us-west-2.aws.confluent.cloud:9092", "Q5OE24C6PM4UQC5Q", "NqxLY3IB4or56QPxH5VIW0zTRRm6oBUzEpDFfJ0HEmXKmu7HT8toT/3ahhFFSDsJ");
         String bootstrapServers = System.getenv("BOOTSTRAP_SERVERS");
         String username = System.getenv("USERNAME");
         String password = System.getenv("PASSWORD");
         produceJsonRecords("topic_4", bootstrapServers, 10,
                 username, password);
+    }
+
+    @Test
+    void createTopic() throws Throwable {
+        String bootstrapServers = System.getenv("BOOTSTRAP_SERVERS");
+        String username = System.getenv("USERNAME");
+        String password = System.getenv("PASSWORD");
+        createTopic(bootstrapServers, username, password);
     }
 }
