@@ -151,13 +151,17 @@ public class StreamWorkerTest {
         final List<String> partitions = List.of("first", "second");
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
-
-        try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
-            mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
-                    .thenReturn(mongoClient);
-            streamWorker.processStream(streamPartition);
-        }
-        verify(mongoClient).close();
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> {
+            try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
+                mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
+                        .thenReturn(mongoClient);
+                streamWorker.processStream(streamPartition);
+            }
+        });
+        await()
+            .atMost(Duration.ofSeconds(10))
+            .untilAsserted(() ->  verify(mongoClient).close());
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockRecordConverter).initializePartitions(partitions);

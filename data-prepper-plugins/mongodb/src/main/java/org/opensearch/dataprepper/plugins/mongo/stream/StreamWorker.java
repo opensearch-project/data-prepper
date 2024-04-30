@@ -13,6 +13,7 @@ import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
@@ -29,7 +30,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class StreamWorker {
@@ -54,6 +58,9 @@ public class StreamWorker {
     private final int bufferWriteIntervalInMs;
     private final int streamBatchSize;
     private boolean stopWorker = false;
+    private final ExecutorService executorService;
+    private String lastLocalCheckpoint;
+    private Long lastLocalRecordCount = null;
     Optional<S3PartitionStatus> s3PartitionStatus = Optional.empty();
 
 
@@ -100,9 +107,13 @@ public class StreamWorker {
         this.successItemsCounter = pluginMetrics.counter(SUCCESS_ITEM_COUNTER_NAME);
         this.failureItemsCounter = pluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME);
         this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
+        this.executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("mongodb-stream-checkpoint"));
         if (sourceConfig.isAcknowledgmentsEnabled()) {
             // starts acknowledgement monitoring thread
             streamAcknowledgementManager.init((Void) -> stop());
+        } else {
+            // checkpoint in separate thread
+            this.executorService.submit(this::checkpointStream);
         }
     }
 
@@ -164,8 +175,7 @@ public class StreamWorker {
                     throw new IllegalStateException("S3 partitions are not created. Please check the S3 partition creator thread.");
                 }
                 recordConverter.initializePartitions(s3Partitions);
-                long lastCheckpointTime = System.currentTimeMillis();
-                long lastBufferWriteTime = lastCheckpointTime;
+                long lastBufferWriteTime = System.currentTimeMillis();
                 while (cursor.hasNext() && !Thread.currentThread().isInterrupted() && !stopWorker) {
                     try {
                         final ChangeStreamDocument<Document> document = cursor.next();
@@ -184,13 +194,10 @@ public class StreamWorker {
                         if ((recordCount % recordFlushBatchSize == 0) || (System.currentTimeMillis() - lastBufferWriteTime >= bufferWriteIntervalInMs)) {
                             LOG.debug("Write to buffer for line {} to {}", (recordCount - recordFlushBatchSize), recordCount);
                             writeToBuffer(records, checkPointToken, recordCount);
+                            lastLocalCheckpoint = checkPointToken;
+                            lastLocalRecordCount = recordCount;
                             lastBufferWriteTime = System.currentTimeMillis();
                             records.clear();
-                            if (!sourceConfig.isAcknowledgmentsEnabled() && (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs)) {
-                                LOG.debug("Perform regular checkpointing for resume token {} at record count {}", checkPointToken, recordCount);
-                                partitionCheckpoint.checkpoint(checkPointToken, recordCount);
-                                lastCheckpointTime = System.currentTimeMillis();
-                            }
                         }
                     } catch (Exception e) {
                         // TODO handle documents with size > 10 MB.
@@ -225,6 +232,25 @@ public class StreamWorker {
         final AcknowledgementSet acknowledgementSet = streamAcknowledgementManager.createAcknowledgementSet(checkPointToken, recordCount).orElse(null);
         recordBufferWriter.writeToBuffer(acknowledgementSet, records);
         successItemsCounter.increment(records.size());
+    }
+
+    private void checkpointStream() {
+        String globalCheckpoint = null;
+        long lastCheckpointTime = System.currentTimeMillis();
+        while (!Thread.currentThread().isInterrupted()) {
+            if (!Objects.equals(globalCheckpoint,lastLocalCheckpoint) && lastLocalRecordCount != null && !sourceConfig.isAcknowledgmentsEnabled() && (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs)) {
+                LOG.debug("Perform regular checkpoint for resume token {} at record count {}", lastLocalCheckpoint, lastLocalRecordCount);
+                partitionCheckpoint.checkpoint(lastLocalCheckpoint, lastLocalRecordCount);
+                lastCheckpointTime = System.currentTimeMillis();
+                globalCheckpoint = lastLocalCheckpoint;
+            }
+
+            try {
+                Thread.sleep(checkPointIntervalInMs);
+            } catch (InterruptedException ex) {
+                break;
+            }
+        }
     }
 
     void stop() {
