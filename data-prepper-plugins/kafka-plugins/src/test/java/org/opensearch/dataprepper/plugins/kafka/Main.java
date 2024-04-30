@@ -11,14 +11,12 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.errors.SerializationException;
+import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.awaitility.Awaitility.await;
 
 public class Main {
     public static class UserRecord {
@@ -128,11 +126,12 @@ public class Main {
 
     }
 
-    public static void main(String[] args) throws Throwable {
+    @Test
+    void generate() throws Throwable {
 //        createTopic("pkc-12576z.us-west2.gcp.confluent.cloud:9092");
-        String bootstrapServers = System.getProperty("bootstrap.servers");
-        String username = System.getProperty("username");
-        String password = System.getProperty("password");
+        String bootstrapServers = System.getenv("BOOTSTRAP_SERVERS");
+        String username = System.getenv("USERNAME");
+        String password = System.getenv("PASSWORD");
         produceJsonRecords("topic_4", bootstrapServers, 10,
                 username, password);
     }

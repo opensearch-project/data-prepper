@@ -8,6 +8,17 @@ plugins {
     id 'com.google.protobuf' version '0.9.4'
 }
 
+ext {
+    javaMainClass = "org.opensearch.dataprepper.plugins.kafka.Main"
+}
+
+task runWithJavaExec(type: JavaExec) {
+    group = "Execution"
+    description = "Run the main class with JavaExecTask"
+    classpath = sourceSets.main.runtimeClasspath
+    main = javaMainClass
+}
+
 sourceSets {
     integrationTest {
         java {
