@@ -42,7 +42,7 @@ public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Recor
 
     private final String source;
     private final String target;
-    private final boolean SingleWordOnly;
+    private final boolean singleWordOnly;
 
     private final List<Pattern> patterns;
     private final ObfuscationAction action;
@@ -61,7 +61,7 @@ public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Recor
         this.patterns = new ArrayList<>();
         this.expressionEvaluator = expressionEvaluator;
         this.obfuscationProcessorConfig = config;
-        this.SingleWordOnly = config.getSingleWordOnly();
+        this.singleWordOnly = config.getSingleWordOnly();
 
         config.validateObfuscateWhen(expressionEvaluator);
 
@@ -92,7 +92,7 @@ public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Recor
                         throw new InvalidPluginConfigurationException("Unable to find a predefined pattern for \"" + rawPattern + "\".");
                     }
                 }
-                if (SingleWordOnly) {
+                if (singleWordOnly) {
                     rawPattern = "\\b" + rawPattern + "\\b";
                 }
                 try {
