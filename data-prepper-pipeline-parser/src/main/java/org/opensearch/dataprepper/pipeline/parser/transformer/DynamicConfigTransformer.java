@@ -270,7 +270,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             String value = executeFunctionPlaceholder(placeHolderValue, pipelineJson);
 
         // Recursive pattern in json path is NOT allowed
-            if (value.contains(RECURSIVE_JSON_PATH_PATH)) {
+            if (value!=null && value.contains(RECURSIVE_JSON_PATH_PATH)) {
                 throw new TransformerException(format("Json path {} is not supported", value));
             }
             mapWithPaths.put(genericPathPlaceholder, value);
@@ -334,6 +334,9 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      */
     private boolean isJsonPath(String parameter) {
         try {
+            if (parameter == null){
+                return false;
+            }
             if(parameter.contains(JSON_PATH_IDENTIFIER)){
                 JsonPath.compile(parameter);
                 return true;

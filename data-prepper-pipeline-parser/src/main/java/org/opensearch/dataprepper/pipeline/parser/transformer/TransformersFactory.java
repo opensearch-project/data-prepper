@@ -48,14 +48,14 @@ public class TransformersFactory implements PipelineTransformationPathProvider {
     }
 
     public String getPluginRuleFileLocation(String pluginName) {
-        if(pluginName.isEmpty()){
+        if(pluginName == null || pluginName.isEmpty()){
             throw  new RuntimeException("Transformation plugin not found");
         }
         return rulesDirectoryPath + "/" + pluginName + RULE_FILE_NAME_PATTERN;
     }
 
     public InputStream getPluginRuleFileStream(String pluginName) {
-        if(pluginName.isEmpty()){
+        if(pluginName == null || pluginName.isEmpty()){
             throw  new RuntimeException("Transformation plugin not found");
         }
         ClassLoader classLoader = TransformersFactory.class.getClassLoader();
@@ -64,7 +64,7 @@ public class TransformersFactory implements PipelineTransformationPathProvider {
     }
 
     public InputStream getPluginTemplateFileStream(String pluginName) {
-        if(pluginName.isEmpty()){
+        if(pluginName == null || pluginName.isEmpty()){
             throw  new RuntimeException("Transformation plugin not found");
         }
         ClassLoader classLoader = TransformersFactory.class.getClassLoader();
