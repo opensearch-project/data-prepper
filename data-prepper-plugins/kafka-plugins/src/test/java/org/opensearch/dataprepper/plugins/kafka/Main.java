@@ -93,7 +93,7 @@ public class Main {
         }
     }
 
-    public static void produceJsonRecords(String topic, String servers, int numRecords) throws SerializationException, JsonProcessingException {
+    public static void produceJsonRecords(String topic, String servers, int numRecords, String username, String password) throws SerializationException, JsonProcessingException {
         final ObjectMapper objectMapper = new ObjectMapper();
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
@@ -110,7 +110,8 @@ public class Main {
         props.put("basic.auth.credentials.source", "USER_INFO");
         props.put("schema.registry.url", "https://psrc-m5k9x.us-west-2.aws.confluent.cloud");
         props.put("basic.auth.user.info", "6PB6XRBLRWMMJJRT:sJ/MUyz0dnWyKqiqGhLhBB5KkP94CKYRyplya3HpgUjF1tbEzgKvsS8xCUouqQbW");
-        props.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\""+"QFLO4GCWM3B2CAVA"+"\" password=\""+"A9ZcGkESvI8p8THpFEE75CAnFJmElZQoaesIes90YoT1fIXntsDOh25I5vXqzkkC"+"\";");
+        props.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\""
+                + username +"\" password=\""+ password +"\";");
         KafkaProducer producer = new KafkaProducer(props);
         for (int i = 0; i < numRecords; i++) {
             String key = "key"+String.valueOf(i);
@@ -129,6 +130,10 @@ public class Main {
 
     public static void main(String[] args) throws Throwable {
 //        createTopic("pkc-12576z.us-west2.gcp.confluent.cloud:9092");
-        produceJsonRecords("topic_4", "localhost:9092", 10);
+        String bootstrapServers = System.getProperty("bootstrap.servers");
+        String username = System.getProperty("username");
+        String password = System.getProperty("password");
+        produceJsonRecords("topic_4", bootstrapServers, 10,
+                username, password);
     }
 }
