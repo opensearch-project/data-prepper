@@ -76,13 +76,14 @@ class ObfuscationProcessorTest {
 
     @BeforeEach
     void setup() {
-        final ObfuscationProcessorConfig defaultConfig = new ObfuscationProcessorConfig("message", null, null, null, null);
+        final ObfuscationProcessorConfig defaultConfig = new ObfuscationProcessorConfig("message", null, null, null, null, false);
         lenient().when(mockConfig.getSource()).thenReturn(defaultConfig.getSource());
         lenient().when(mockConfig.getAction()).thenReturn(defaultConfig.getAction());
         lenient().when(mockConfig.getPatterns()).thenReturn(defaultConfig.getPatterns());
         lenient().when(mockConfig.getTarget()).thenReturn(defaultConfig.getTarget());
         lenient().when(mockConfig.getObfuscateWhen()).thenReturn(null);
         lenient().when(mockConfig.getTagsOnMatchFailure()).thenReturn(List.of(UUID.randomUUID().toString()));
+        lenient().when(mockConfig.getSingleWordOnly()).thenReturn(defaultConfig.getSingleWordOnly());
         obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
     }
 
@@ -368,7 +369,7 @@ class ObfuscationProcessorTest {
         Event data = editedRecords.get(0).getData();
         assertThat(data.get("message", String.class), equalTo(expected));
     }
-
+    
     @ParameterizedTest
     @CsvSource({
             "My email is abc@test.com,My email is ***",
@@ -388,6 +389,28 @@ class ObfuscationProcessorTest {
         assertThat(data.get("message", String.class), equalTo(expected));
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "My email is abc@test.com,%{EMAIL_ADDRESS},My email is ***",
+            "testing this functionality, test, testing this functionality",
+            "test this functionality, test, *** this functionality",
+            "My IP is 1.1.1.1,%{IP_ADDRESS_V4},My IP is ***",
+            "fd55555069-e7a9-11ee4111111111111111,%{CREDIT_CARD_NUMBER},fd55555069-e7a9-11ee4111111111111111",
+            "4111111111111111,%{CREDIT_CARD_NUMBER},***",
+            "visa4111111111111111,%{CREDIT_CARD_NUMBER},visa4111111111111111"
+    })
+    void testProcessorWithSingleWordOnly(String message, String pattern, String expected) {
+        when(mockConfig.getSingleWordOnly()).thenReturn(true);
+        when(mockConfig.getPatterns()).thenReturn(List.of(pattern));
+        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
+
+        final Record<Event> record = createRecord(message);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) obfuscationProcessor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.size(), equalTo(1));
+        Event data = editedRecords.get(0).getData();
+        assertThat(data.get("message", String.class), equalTo(expected));
+    }
 
     @Test
     void testIsReadyForShutdown() {

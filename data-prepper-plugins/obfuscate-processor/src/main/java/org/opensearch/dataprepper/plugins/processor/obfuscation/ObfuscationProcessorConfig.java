@@ -36,15 +36,19 @@ public class ObfuscationProcessorConfig {
     @JsonProperty("tags_on_match_failure")
     private List<String> tagsOnMatchFailure;
 
+    @JsonProperty("single_word_only")
+    private boolean singleWordOnly = false;
+
     public ObfuscationProcessorConfig() {
     }
 
-    public ObfuscationProcessorConfig(String source, List<String> patterns, String target, PluginModel action, List<String> tagsOnMatchFailure) {
+    public ObfuscationProcessorConfig(String source, List<String> patterns, String target, PluginModel action, List<String> tagsOnMatchFailure, boolean singleWordOnly) {
         this.source = source;
         this.patterns = patterns;
         this.target = target;
         this.action = action;
         this.tagsOnMatchFailure = tagsOnMatchFailure;
+        this.singleWordOnly = singleWordOnly;
     }
 
     public String getSource() {
@@ -69,6 +73,10 @@ public class ObfuscationProcessorConfig {
 
     public List<String> getTagsOnMatchFailure() {
         return tagsOnMatchFailure;
+    }
+
+    public boolean getSingleWordOnly() {
+        return singleWordOnly;
     }
 
     void validateObfuscateWhen(final ExpressionEvaluator expressionEvaluator) {
