@@ -9,8 +9,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import static org.mockito.Mockito.when;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
@@ -19,8 +19,6 @@ import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.pipeline.parser.TestConfigurationProvider;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,8 +26,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({System.class})
 class DynamicConfigTransformerTest {
 
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory()
@@ -106,6 +102,7 @@ class DynamicConfigTransformerTest {
         assertThat(expectedYamlasMap).usingRecursiveComparison().isEqualTo(transformedYamlasMap);
     }
 
+    @RepeatedTest(5)
     @Test
     void test_successful_transformation_with_subpipelines() throws IOException {
 
@@ -122,9 +119,10 @@ class DynamicConfigTransformerTest {
                 TEMPLATES_DIRECTORY_PATH));
         when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
         when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
-        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+        InputStream ruleStream1 = new FileInputStream(ruleDocDBFilePath);
+        InputStream ruleStream2 = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream1).thenReturn(ruleStream2);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
