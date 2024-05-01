@@ -37,6 +37,7 @@ import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -167,7 +168,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private KafkaCustomProducer createProducer() {
         final DLQSink dlqSink = new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting);
-        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, true);
+        AtomicInteger maxRequestSize = new AtomicInteger(0);
+        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, maxRequestSize, true);
     }
 
 

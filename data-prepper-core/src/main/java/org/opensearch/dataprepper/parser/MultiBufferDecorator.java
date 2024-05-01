@@ -43,6 +43,19 @@ class MultiBufferDecorator<T extends Record<?>> extends DelegatingBuffer<T> impl
     }
 
     @Override
+    public Integer getMaxRequestSize() {
+        Integer result = null;
+        for (final Buffer buffer : allBuffers) {
+            Integer maxRequestSize = buffer.getMaxRequestSize();
+            if (maxRequestSize != null) {
+                if (result == null || result > maxRequestSize)
+                    result = maxRequestSize;
+            }
+        }
+        return result;
+    }
+
+    @Override
     public void shutdown() {
         allBuffers.forEach(Buffer::shutdown);
     }

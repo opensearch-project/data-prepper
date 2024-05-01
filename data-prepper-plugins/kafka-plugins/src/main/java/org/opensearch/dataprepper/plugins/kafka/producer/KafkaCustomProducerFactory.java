@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class KafkaCustomProducerFactory {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumerFactory.class);
@@ -56,21 +57,23 @@ public class KafkaCustomProducerFactory {
     public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaProducerConfig,
                                               final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext, final PluginMetrics pluginMetrics,
                                               final DLQSink dlqSink,
+                                              AtomicInteger maxRequestSize,
                                               final boolean topicNameInMetrics) {
         AwsContext awsContext = new AwsContext(kafkaProducerConfig, awsCredentialsSupplier);
         KeyFactory keyFactory = new KeyFactory(awsContext);
         // If either or both of Producer's max_request_size or
         // Topic's max_message_bytes is set, then maximum of the
         // two is set for both. If neither is set, then defaults are used.
-        Integer maxRequestSize = null;
         KafkaProducerProperties producerProperties = kafkaProducerConfig.getKafkaProducerProperties();
+
         if (producerProperties != null) {
-            int producerMaxRequestSize = producerProperties.getMaxRequestSize();
-            if (producerMaxRequestSize > KafkaProducerProperties.DEFAULT_MAX_REQUEST_SIZE) {
-                maxRequestSize = Integer.valueOf(producerMaxRequestSize);
-            }
+            maxRequestSize.set(Integer.valueOf(producerProperties.getMaxRequestSize()));
+        } else {
+            maxRequestSize.set(KafkaProducerProperties.DEFAULT_MAX_REQUEST_SIZE);
         }
-        prepareTopicAndSchema(kafkaProducerConfig, maxRequestSize);
+        prepareTopicAndSchema(kafkaProducerConfig,
+                (maxRequestSize.get() == KafkaProducerProperties.DEFAULT_MAX_REQUEST_SIZE) ?
+                               null : maxRequestSize.get());
         Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaProducerConfig);
         properties = Objects.requireNonNull(properties);
         KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, LOG);

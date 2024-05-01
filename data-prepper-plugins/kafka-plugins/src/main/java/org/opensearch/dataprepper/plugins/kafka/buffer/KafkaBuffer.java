@@ -46,6 +46,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @DataPrepperPlugin(name = "kafka", pluginType = Buffer.class, pluginConfigurationType = KafkaBufferConfig.class)
 public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
@@ -64,6 +65,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     private final Duration drainTimeout;
     private AtomicBoolean shutdownInProgress;
     private ByteDecoder byteDecoder;
+    private AtomicInteger maxRequestSize;
 
     @DataPrepperPluginConstructor
     public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig,
@@ -74,9 +76,10 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         final SerializationFactory serializationFactory = new BufferSerializationFactory(new CommonSerializationFactory());
         final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier, new TopicServiceFactory());
         this.byteDecoder = byteDecoder;
+        this.maxRequestSize = new AtomicInteger(0);
         final String metricPrefixName = kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName());
         final PluginMetrics producerMetrics = PluginMetrics.fromNames(metricPrefixName + WRITE, pluginSetting.getPipelineName());
-        producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, null, null, producerMetrics, null, false);
+        producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, null, null, producerMetrics, null, maxRequestSize, false);
         final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory, awsCredentialsSupplier);
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         this.shutdownInProgress = new AtomicBoolean(false);
@@ -88,6 +91,11 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         consumers.forEach(this.executorService::submit);
 
         this.drainTimeout = kafkaBufferConfig.getDrainTimeout();
+    }
+
+    @Override
+    public Integer getMaxRequestSize() {
+        return maxRequestSize.get();
     }
 
     @Override

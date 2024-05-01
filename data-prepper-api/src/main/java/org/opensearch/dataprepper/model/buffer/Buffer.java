@@ -83,6 +83,10 @@ public interface Buffer<T extends Record<?>> {
         return false;
     }
 
+    default Integer getMaxRequestSize() {
+        return null;
+    }
+
     /**
      * Checks if the buffer enables acknowledgements for the pipeline
      *
