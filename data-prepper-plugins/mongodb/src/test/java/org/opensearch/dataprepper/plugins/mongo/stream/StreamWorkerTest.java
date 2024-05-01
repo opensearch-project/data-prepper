@@ -43,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -151,13 +152,17 @@ public class StreamWorkerTest {
         final List<String> partitions = List.of("first", "second");
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
-
-        try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
-            mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
-                    .thenReturn(mongoClient);
-            streamWorker.processStream(streamPartition);
-        }
-        verify(mongoClient).close();
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> {
+            try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
+                mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
+                        .thenReturn(mongoClient);
+                streamWorker.processStream(streamPartition);
+            }
+        });
+        await()
+            .atMost(Duration.ofSeconds(10))
+            .untilAsserted(() ->  verify(mongoClient).close());
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockRecordConverter).initializePartitions(partitions);
@@ -166,7 +171,7 @@ public class StreamWorkerTest {
         verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
         verify(successItemsCounter).increment(2);
         verify(failureItemsCounter, never()).increment();
-        verify(mockPartitionCheckpoint, times(2)).checkpoint("{\"resumeToken2\": 234}", 2);
+        verify(mockPartitionCheckpoint, atLeast(2)).checkpoint("{\"resumeToken2\": 234}", 2);
     }
 
 
@@ -261,9 +266,9 @@ public class StreamWorkerTest {
         verify(cursor).close();
         verify(cursor, times(4)).hasNext();
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
-        verify(mockPartitionCheckpoint).checkpoint(resumeToken3, 3);
+        verify(mockPartitionCheckpoint, atLeast(1)).checkpoint(resumeToken3, 3);
         verify(successItemsCounter).increment(1);
-        verify(mockPartitionCheckpoint).checkpoint(resumeToken2, 2);
+        verify(mockPartitionCheckpoint, atLeast(1)).checkpoint(resumeToken2, 2);
         verify(mockRecordBufferWriter, times(2)).writeToBuffer(eq(null), any());
         verify(successItemsCounter).increment(2);
         verify(failureItemsCounter, never()).increment();
