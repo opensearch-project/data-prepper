@@ -145,6 +145,7 @@ inputCodec.parse(new ByteArrayInputStream(outputStream.toByteArray()), records::
             assertThat(e.getMetadata().getTags(), equalTo(tags));
             assertThat(e.getMetadata().getAttributes(), equalTo(Map.of(attrKey, attrValue)));
             assertThat(e.getMetadata().getExternalOriginationTime(), equalTo(origTime));
+            assertThat(e.getEventHandle().getExternalOriginationTime(), equalTo(origTime));
         }
     }
 
