@@ -31,7 +31,7 @@ dependencies {
     implementation 'dev.failsafe:failsafe:3.3.2'
     implementation 'org.apache.httpcomponents:httpcore:4.4.16'
     testImplementation libs.commons.lang3
-    testImplementation 'org.wiremock:wiremock:3.4.2'
+    testImplementation 'org.wiremock:wiremock:3.5.4'
     testImplementation 'org.eclipse.jetty:jetty-bom:11.0.20'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation testLibs.junit.vintage
