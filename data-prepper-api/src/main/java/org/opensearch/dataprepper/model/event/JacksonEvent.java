@@ -94,6 +94,10 @@ public class JacksonEvent implements Event {
 
         this.jsonNode = getInitialJsonNode(builder.data);
         this.eventHandle = new DefaultEventHandle(eventMetadata.getTimeReceived());
+        final Instant externalOriginationTime = this.eventMetadata.getExternalOriginationTime();
+        if (externalOriginationTime != null) {
+            eventHandle.setExternalOriginationTime(externalOriginationTime);
+        }
     }
 
     protected JacksonEvent(final JacksonEvent otherEvent) {

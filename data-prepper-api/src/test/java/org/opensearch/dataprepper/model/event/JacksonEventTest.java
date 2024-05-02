@@ -485,6 +485,7 @@ public class JacksonEventTest {
     public void testBuild_withAllMetadataFields() {
 
         final Instant now = Instant.now().minusSeconds(1);
+        final Instant extTime = Instant.now().minusSeconds(10);
         final Map<String, Object> testAttributes = new HashMap<>();
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID());
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
@@ -492,6 +493,7 @@ public class JacksonEventTest {
 
         final EventMetadata metadata = DefaultEventMetadata.builder()
                 .withEventType(emEventType)
+                .withExternalOriginationTime(extTime)
                 .build();
 
         event = JacksonEvent.builder()
@@ -504,6 +506,8 @@ public class JacksonEventTest {
         assertThat(event.getMetadata().getAttributes(), is(not(equalTo(testAttributes))));
         assertThat(event.getMetadata().getTimeReceived(), is(not(equalTo(now))));
         assertThat(event.getMetadata().getEventType(), is(equalTo(emEventType)));
+        assertThat(event.getMetadata().getExternalOriginationTime(), is(equalTo(extTime)));
+        assertThat(event.getEventHandle().getExternalOriginationTime(), is(equalTo(extTime)));
     }
 
     @Test
