@@ -40,6 +40,9 @@ import java.util.stream.Collectors;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -213,7 +216,7 @@ public class S3ScanPartitionCreationSupplierTest {
         s3ObjectsList.add(invalidForFirstBucketSuffixObject);
         expectedPartitionIdentifiers.add(PartitionIdentifier.builder().withPartitionKey(secondBucket + "|" + invalidForFirstBucketSuffixObject.key()).build());
 
-        final Instant mostRecentFirstScan = Instant.now().plusSeconds(1);
+        final Instant mostRecentFirstScan = Instant.now().plusSeconds(2);
         final S3Object validObject = mock(S3Object.class);
         given(validObject.key()).willReturn("valid");
         given(validObject.lastModified()).willReturn(mostRecentFirstScan);
@@ -237,10 +240,6 @@ public class S3ScanPartitionCreationSupplierTest {
         given(listObjectsResponse.contents())
                 .willReturn(s3ObjectsList)
                 .willReturn(s3ObjectsList)
-                .willReturn(s3ObjectsList)
-                .willReturn(s3ObjectsList)
-                .willReturn(secondScanObjects)
-                .willReturn(secondScanObjects)
                 .willReturn(secondScanObjects)
                 .willReturn(secondScanObjects);
 
@@ -248,6 +247,8 @@ public class S3ScanPartitionCreationSupplierTest {
         given(s3Client.listObjectsV2(listObjectsV2RequestArgumentCaptor.capture())).willReturn(listObjectsResponse);
 
         final Map<String, Object> globalStateMap = new HashMap<>();
+
+        final Instant beforeFirstScan = Instant.now();
         final List<PartitionIdentifier> resultingPartitions = partitionCreationSupplier.apply(globalStateMap);
 
         assertThat(resultingPartitions, notNullValue());
@@ -260,10 +261,13 @@ public class S3ScanPartitionCreationSupplierTest {
         assertThat(globalStateMap.containsKey(SCAN_COUNT), equalTo(true));
         assertThat(globalStateMap.get(SCAN_COUNT), equalTo(1));
         assertThat(globalStateMap.containsKey(firstBucket), equalTo(true));
-        assertThat(globalStateMap.get(firstBucket), equalTo(mostRecentFirstScan.toString()));
+        assertThat(Instant.parse((CharSequence) globalStateMap.get(firstBucket)).toEpochMilli(), lessThanOrEqualTo(mostRecentFirstScan.toEpochMilli()));
+        assertThat(Instant.parse((CharSequence) globalStateMap.get(firstBucket)).toEpochMilli(), greaterThanOrEqualTo(beforeFirstScan.toEpochMilli()));
         assertThat(globalStateMap.containsKey(secondBucket), equalTo(true));
-        assertThat(globalStateMap.get(secondBucket), equalTo(mostRecentFirstScan.toString()));
+        assertThat(Instant.parse((CharSequence) globalStateMap.get(secondBucket)).toEpochMilli(), lessThanOrEqualTo(mostRecentFirstScan.toEpochMilli()));
+        assertThat(Instant.parse((CharSequence) globalStateMap.get(secondBucket)).toEpochMilli(), greaterThanOrEqualTo(beforeFirstScan.toEpochMilli()));
 
+        final Instant beforeSecondScan = Instant.now();
         final List<PartitionIdentifier> secondScanPartitions = partitionCreationSupplier.apply(globalStateMap);
         assertThat(secondScanPartitions.size(), equalTo(expectedPartitionIdentifiersSecondScan.size()));
         assertThat(secondScanPartitions.stream().map(PartitionIdentifier::getPartitionKey).collect(Collectors.toList()),
@@ -273,14 +277,16 @@ public class S3ScanPartitionCreationSupplierTest {
         assertThat(globalStateMap.containsKey(SCAN_COUNT), equalTo(true));
         assertThat(globalStateMap.get(SCAN_COUNT), equalTo(2));
         assertThat(globalStateMap.containsKey(firstBucket), equalTo(true));
-        assertThat(globalStateMap.get(firstBucket), equalTo(mostRecentSecondScan.toString()));
+        assertThat(Instant.parse((CharSequence) globalStateMap.get(firstBucket)).toEpochMilli(), lessThanOrEqualTo(mostRecentSecondScan.toEpochMilli()));
+        assertThat(Instant.parse((CharSequence) globalStateMap.get(firstBucket)).toEpochMilli(), greaterThanOrEqualTo(beforeSecondScan.toEpochMilli()));
         assertThat(globalStateMap.containsKey(secondBucket), equalTo(true));
-        assertThat(globalStateMap.get(secondBucket), equalTo(mostRecentSecondScan.toString()));
+        assertThat(Instant.parse((CharSequence) globalStateMap.get(secondBucket)).toEpochMilli(), lessThanOrEqualTo(mostRecentSecondScan.toEpochMilli()));
+        assertThat(Instant.parse((CharSequence) globalStateMap.get(secondBucket)).toEpochMilli(), greaterThan(beforeSecondScan.toEpochMilli()));
         assertThat(Instant.ofEpochMilli((Long) globalStateMap.get(LAST_SCAN_TIME)).isBefore(Instant.now()), equalTo(true));
 
         assertThat(partitionCreationSupplier.apply(globalStateMap), equalTo(Collections.emptyList()));
 
-        verify(listObjectsResponse, times(8)).contents();
+        verify(listObjectsResponse, times(4)).contents();
     }
 
     @Test
