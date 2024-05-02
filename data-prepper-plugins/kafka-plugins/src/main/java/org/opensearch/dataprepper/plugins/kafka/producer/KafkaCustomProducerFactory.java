@@ -57,23 +57,21 @@ public class KafkaCustomProducerFactory {
     public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaProducerConfig,
                                               final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext, final PluginMetrics pluginMetrics,
                                               final DLQSink dlqSink,
-                                              AtomicInteger maxRequestSize,
                                               final boolean topicNameInMetrics) {
         AwsContext awsContext = new AwsContext(kafkaProducerConfig, awsCredentialsSupplier);
         KeyFactory keyFactory = new KeyFactory(awsContext);
         // If either or both of Producer's max_request_size or
         // Topic's max_message_bytes is set, then maximum of the
         // two is set for both. If neither is set, then defaults are used.
+        Integer maxRequestSize = null;
         KafkaProducerProperties producerProperties = kafkaProducerConfig.getKafkaProducerProperties();
-
         if (producerProperties != null) {
-            maxRequestSize.set(Integer.valueOf(producerProperties.getMaxRequestSize()));
-        } else {
-            maxRequestSize.set(KafkaProducerProperties.DEFAULT_MAX_REQUEST_SIZE);
+            int producerMaxRequestSize = producerProperties.getMaxRequestSize();
+            if (producerMaxRequestSize > KafkaProducerProperties.DEFAULT_MAX_REQUEST_SIZE) {
+                maxRequestSize = Integer.valueOf(producerMaxRequestSize);
+            }
         }
-        prepareTopicAndSchema(kafkaProducerConfig,
-                (maxRequestSize.get() == KafkaProducerProperties.DEFAULT_MAX_REQUEST_SIZE) ?
-                               null : maxRequestSize.get());
+        prepareTopicAndSchema(kafkaProducerConfig, maxRequestSize);
         Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaProducerConfig);
         properties = Objects.requireNonNull(properties);
         KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, LOG);

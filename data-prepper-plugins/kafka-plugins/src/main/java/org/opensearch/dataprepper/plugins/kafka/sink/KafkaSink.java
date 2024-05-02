@@ -168,8 +168,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private KafkaCustomProducer createProducer() {
         final DLQSink dlqSink = new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting);
-        AtomicInteger maxRequestSize = new AtomicInteger(0);
-        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, maxRequestSize, true);
+        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, true);
     }
 
 

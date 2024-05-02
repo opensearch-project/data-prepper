@@ -12,6 +12,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 /**
  * Buffer decorator created for pipelines that make use of multiple buffers, such as PeerForwarder-enabled pipelines. The decorator
@@ -43,16 +45,9 @@ class MultiBufferDecorator<T extends Record<?>> extends DelegatingBuffer<T> impl
     }
 
     @Override
-    public Integer getMaxRequestSize() {
-        Integer result = null;
-        for (final Buffer buffer : allBuffers) {
-            Integer maxRequestSize = buffer.getMaxRequestSize();
-            if (maxRequestSize != null) {
-                if (result == null || result > maxRequestSize)
-                    result = maxRequestSize;
-            }
-        }
-        return result;
+    public Optional<Integer> getMaxRequestSize() {
+        OptionalInt maxRequestSize = allBuffers.stream().filter(b -> b.getMaxRequestSize().isPresent()).mapToInt(b -> (Integer)b.getMaxRequestSize().get()).min();
+        return  maxRequestSize.isPresent()  ? Optional.of(maxRequestSize.getAsInt()) : Optional.empty();
     }
 
     @Override

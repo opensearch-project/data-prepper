@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
 import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
 import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicProducerMetrics;
@@ -107,6 +108,14 @@ public class KafkaCustomProducer<T> {
             LOG.error("Error occurred while publishing raw data", e);
             throw e;
         }
+    }
+
+    public Integer getMaxRequestSize() {
+        KafkaProducerProperties producerProperties = kafkaProducerConfig.getKafkaProducerProperties();
+        if (producerProperties != null) {
+            return Integer.valueOf(producerProperties.getMaxRequestSize());
+        }
+        return KafkaProducerProperties.DEFAULT_MAX_REQUEST_SIZE;
     }
 
     public void produceRecords(final Record<Event> record) throws Exception {

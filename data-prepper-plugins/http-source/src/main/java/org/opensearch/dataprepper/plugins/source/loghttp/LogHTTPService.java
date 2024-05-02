@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -52,7 +53,7 @@ public class LogHTTPService {
     private final Counter successRequestsCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
-    private Integer maxRequestLength;
+    private Optional<Integer> maxRequestLength;
 
     public LogHTTPService(final int bufferWriteTimeoutInMillis,
                           final Buffer<Record<Log>> buffer,
@@ -80,7 +81,7 @@ public class LogHTTPService {
     }
 
     private void sendJsonList(List<String> jsonList) throws Exception {
-        StringBuilder sb = new StringBuilder(maxRequestLength);
+        StringBuilder sb = new StringBuilder(maxRequestLength.get());
         sb.append("[");
         String comma = "";
         String key = UUID.randomUUID().toString();
@@ -90,7 +91,7 @@ public class LogHTTPService {
             comma = ",";
         }
         sb.append("]");
-        if (sb.toString().getBytes().length > maxRequestLength) {
+        if (sb.toString().getBytes().length > maxRequestLength.get()) {
             throw new RuntimeException("Request length "+ sb.toString().getBytes().length + " exceeds maxRequestLength "+ maxRequestLength);
         }
         buffer.writeBytes(sb.toString().getBytes(), key, bufferWriteTimeoutInMillis);
@@ -101,14 +102,14 @@ public class LogHTTPService {
         List<List<String>> jsonList;
 
         try {
-            jsonList = (maxRequestLength == null) ? jsonCodec.parse(content) : jsonCodec.parse(content, maxRequestLength - SERIALIZATION_OVERHEAD);
+            jsonList = (!maxRequestLength.isPresent()) ? jsonCodec.parse(content) : jsonCodec.parse(content, maxRequestLength.get() - SERIALIZATION_OVERHEAD);
         } catch (IOException e) {
             LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
             throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
         }
         try {
             if (buffer.isByteBuffer()) {
-                if (maxRequestLength != null && content.array().length > maxRequestLength) {
+                if (maxRequestLength.isPresent() && content.array().length > maxRequestLength.get()) {
                     for (final List<String> innerJsonList: jsonList) {
                         sendJsonList(innerJsonList);
                     }

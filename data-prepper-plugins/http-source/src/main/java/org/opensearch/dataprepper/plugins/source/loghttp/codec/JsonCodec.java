@@ -20,6 +20,10 @@ import java.util.Map;
  * <p>
  */
 public class JsonCodec implements Codec<List<List<String>>> {
+    // To account for "[" and "]" when the list is converted to String
+    private static final String OVERHEAD_CHARACTERS = "[]";
+    // To account for "," when the list is converted to String
+    private static final int COMMA_OVERHEAD_LENGTH = 1;
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final TypeReference<List<Map<String, Object>>> LIST_OF_MAP_TYPE_REFERENCE =
             new TypeReference<List<Map<String, Object>>>() {};
@@ -42,17 +46,20 @@ public class JsonCodec implements Codec<List<List<String>>> {
         List<List<String>> jsonList = new ArrayList<>();
         final List<Map<String, Object>> logList = mapper.readValue(httpData.toInputStream(),
                 LIST_OF_MAP_TYPE_REFERENCE);
-        int size = 2; // To account for "[" and "]" when the list is converted to String
+        int size = OVERHEAD_CHARACTERS.length();
         List<String> innerJsonList = new ArrayList<>();
         for (final Map<String, Object> log: logList) {
             final String recordString = mapper.writeValueAsString(log);
             if (size + recordString.length() > maxSize) {
                 jsonList.add(innerJsonList);
                 innerJsonList = new ArrayList<>();
-                size = 2;
+                size = OVERHEAD_CHARACTERS.length();
             }
             innerJsonList.add(recordString);
-            size += recordString.length()+1; // +1 is to account for "," when the list is converted to String
+            size += recordString.length() + COMMA_OVERHEAD_LENGTH;
+        }
+        if (size > OVERHEAD_CHARACTERS.length()) {
+            jsonList.add(innerJsonList);
         }
 
         return jsonList;
