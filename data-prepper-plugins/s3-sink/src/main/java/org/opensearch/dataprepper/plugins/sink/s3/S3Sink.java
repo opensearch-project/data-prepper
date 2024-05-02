@@ -31,6 +31,8 @@ import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifierFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;
+import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.sink.s3.ownership.ConfigBucketOwnerProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -71,6 +73,8 @@ public class S3Sink extends AbstractSink<Record<Event>> {
         this.sinkContext = sinkContext;
         final PluginModel codecConfiguration = s3SinkConfig.getCodec();
         final CodecFactory codecFactory = new CodecFactory(pluginFactory, codecConfiguration);
+        final ConfigBucketOwnerProviderFactory configBucketOwnerProviderFactory = new ConfigBucketOwnerProviderFactory();
+        final BucketOwnerProvider bucketOwnerProvider = configBucketOwnerProviderFactory.createBucketOwnerProvider(s3SinkConfig);
 
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
                 codecConfiguration.getPluginSettings());
@@ -112,7 +116,7 @@ public class S3Sink extends AbstractSink<Record<Event>> {
         testCodec.validateAgainstCodecContext(s3OutputCodecContext);
 
         final S3GroupIdentifierFactory s3GroupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig);
-        final S3GroupManager s3GroupManager = new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, codecFactory, s3Client);
+        final S3GroupManager s3GroupManager = new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, codecFactory, s3Client, bucketOwnerProvider);
 
 
         s3SinkService = new S3SinkService(s3SinkConfig, s3OutputCodecContext, RETRY_FLUSH_BACKOFF, pluginMetrics, s3GroupManager);

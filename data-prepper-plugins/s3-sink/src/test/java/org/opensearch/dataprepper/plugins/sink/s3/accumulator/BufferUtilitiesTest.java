@@ -14,6 +14,7 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
@@ -22,6 +23,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -31,6 +33,7 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -60,6 +63,9 @@ public class BufferUtilitiesTest {
     @Mock
     private S3AsyncClient s3Client;
 
+    @Mock
+    private BucketOwnerProvider bucketOwnerProvider;
+
     @BeforeEach
     void setup() {
         targetBucket = UUID.randomUUID().toString();
@@ -74,7 +80,7 @@ public class BufferUtilitiesTest {
 
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(successfulFuture);
 
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket).join();
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, bucketOwnerProvider).join();
 
         final ArgumentCaptor<PutObjectRequest> argumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(s3Client, times(1)).putObject(argumentCaptor.capture(), eq(requestBody));
@@ -95,7 +101,7 @@ public class BufferUtilitiesTest {
         final CompletableFuture<PutObjectResponse> failedFuture = CompletableFuture.failedFuture(NoSuchBucketException.builder().build());
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(failedFuture);
 
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, null).join();
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, null, bucketOwnerProvider).join();
 
         verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), eq(requestBody));
         verify(mockRunOnCompletion).accept(false);
@@ -109,7 +115,7 @@ public class BufferUtilitiesTest {
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(failedFuture);
 
         BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket,
-                defaultBucketEnabled ? defaultBucket : null);
+                defaultBucketEnabled ? defaultBucket : null, bucketOwnerProvider);
 
         verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), eq(requestBody));
         verify(mockRunOnCompletion).accept(false);
@@ -123,7 +129,8 @@ public class BufferUtilitiesTest {
         final CompletableFuture<PutObjectResponse> failedFuture = CompletableFuture.failedFuture(exception);
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(failedFuture).thenReturn(successfulFuture);
 
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket);
+        when(bucketOwnerProvider.getBucketOwner(anyString())).thenReturn(Optional.empty());
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, bucketOwnerProvider);
 
         final ArgumentCaptor<PutObjectRequest> argumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(s3Client, times(2)).putObject(argumentCaptor.capture(), eq(requestBody));
@@ -134,10 +141,12 @@ public class BufferUtilitiesTest {
         final PutObjectRequest putObjectRequest = putObjectRequestList.get(0);
         assertThat(putObjectRequest.bucket(), equalTo(targetBucket));
         assertThat(putObjectRequest.key(), equalTo(objectKey));
+        assertThat(putObjectRequest.expectedBucketOwner(), equalTo(null));
 
         final PutObjectRequest defaultBucketPutObjectRequest = putObjectRequestList.get(1);
         assertThat(defaultBucketPutObjectRequest.bucket(), equalTo(defaultBucket));
         assertThat(defaultBucketPutObjectRequest.key(), equalTo(objectKey));
+        assertThat(defaultBucketPutObjectRequest.expectedBucketOwner(), equalTo(null));
 
         final InOrder inOrder = Mockito.inOrder(mockRunOnCompletion, mockRunOnFailure);
 
@@ -154,7 +163,12 @@ public class BufferUtilitiesTest {
         final CompletableFuture<PutObjectResponse> failedFuture = CompletableFuture.failedFuture(noSuchBucketException);
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(failedFuture).thenReturn(failedDefaultBucket);
 
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket);
+        final String bucketOwner = UUID.randomUUID().toString();
+        final String defaultBucketOwner = UUID.randomUUID().toString();
+        when(bucketOwnerProvider.getBucketOwner(targetBucket)).thenReturn(Optional.of(bucketOwner));
+        when(bucketOwnerProvider.getBucketOwner(defaultBucket)).thenReturn(Optional.of(defaultBucketOwner));
+
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, bucketOwnerProvider);
 
         final ArgumentCaptor<PutObjectRequest> argumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(s3Client, times(2)).putObject(argumentCaptor.capture(), eq(requestBody));
@@ -165,10 +179,12 @@ public class BufferUtilitiesTest {
         final PutObjectRequest putObjectRequest = putObjectRequestList.get(0);
         assertThat(putObjectRequest.bucket(), equalTo(targetBucket));
         assertThat(putObjectRequest.key(), equalTo(objectKey));
+        assertThat(putObjectRequest.expectedBucketOwner(), equalTo(bucketOwner));
 
         final PutObjectRequest defaultBucketPutObjectRequest = putObjectRequestList.get(1);
         assertThat(defaultBucketPutObjectRequest.bucket(), equalTo(defaultBucket));
         assertThat(defaultBucketPutObjectRequest.key(), equalTo(objectKey));
+        assertThat(defaultBucketPutObjectRequest.expectedBucketOwner(), equalTo(defaultBucketOwner));
 
         final InOrder inOrder = Mockito.inOrder(mockRunOnCompletion, mockRunOnFailure);
 
@@ -188,6 +204,7 @@ public class BufferUtilitiesTest {
             when(invalidBucketException.getMessage()).thenReturn(UUID.randomUUID() + INVALID_BUCKET + UUID.randomUUID());
 
             final NoSuchBucketException noSuchBucketException = mock(NoSuchBucketException.class);
+            when(noSuchBucketException.getCause()).thenReturn(noSuchBucketException);
 
             return Stream.of(
                     Arguments.arguments(noSuchBucketException),

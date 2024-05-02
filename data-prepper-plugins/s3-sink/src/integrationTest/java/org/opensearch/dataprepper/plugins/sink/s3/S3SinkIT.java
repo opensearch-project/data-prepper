@@ -168,6 +168,8 @@ public class S3SinkIT {
         when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(true);
 
         when(s3SinkConfig.getDefaultBucket()).thenReturn(null);
+        when(s3SinkConfig.getBucketOwners()).thenReturn(null);
+        when(s3SinkConfig.getDefaultBucketOwner()).thenReturn(null);
     }
 
     private S3Sink createObjectUnderTest() {

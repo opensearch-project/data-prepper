@@ -62,6 +62,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifierFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;
+import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -139,6 +140,9 @@ class S3SinkServiceIT {
 
     @Mock
     private ExpressionEvaluator expressionEvaluator;
+
+    @Mock
+    private BucketOwnerProvider bucketOwnerProvider;
 
     private OutputCodec codec;
     private KeyGenerator keyGenerator;
@@ -270,7 +274,7 @@ class S3SinkServiceIT {
     private S3SinkService createObjectUnderTest() {
         OutputCodecContext codecContext = new OutputCodecContext("Tag", Collections.emptyList(), Collections.emptyList());
         final S3GroupIdentifierFactory groupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig);
-        s3GroupManager = new S3GroupManager(s3SinkConfig, groupIdentifierFactory, bufferFactory, codecFactory, s3AsyncClient);
+        s3GroupManager = new S3GroupManager(s3SinkConfig, groupIdentifierFactory, bufferFactory, codecFactory, s3AsyncClient, bucketOwnerProvider);
 
         return new S3SinkService(s3SinkConfig, codecContext, Duration.ofSeconds(5), pluginMetrics, s3GroupManager);
     }

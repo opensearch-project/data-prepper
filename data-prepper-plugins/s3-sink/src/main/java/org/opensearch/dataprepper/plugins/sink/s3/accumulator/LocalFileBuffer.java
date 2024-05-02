@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
 import org.apache.commons.lang3.time.StopWatch;
+import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
@@ -37,6 +38,8 @@ public class LocalFileBuffer implements Buffer {
     private final S3AsyncClient s3Client;
     private final Supplier<String> bucketSupplier;
     private final Supplier<String> keySupplier;
+
+    private final BucketOwnerProvider bucketOwnerProvider;
     private int eventCount;
     private final StopWatch watch;
     private final File localFile;
@@ -51,7 +54,8 @@ public class LocalFileBuffer implements Buffer {
                     final S3AsyncClient s3Client,
                     final Supplier<String> bucketSupplier,
                     final Supplier<String> keySupplier,
-                    final String defaultBucket) throws FileNotFoundException {
+                    final String defaultBucket,
+                    final BucketOwnerProvider bucketOwnerProvider) throws FileNotFoundException {
         localFile = tempFile;
         outputStream = new BufferedOutputStream(new FileOutputStream(tempFile), 32 * 1024);
         this.s3Client = s3Client;
@@ -62,6 +66,7 @@ public class LocalFileBuffer implements Buffer {
         watch.start();
         isCodecStarted = false;
         this.defaultBucket = defaultBucket;
+        this.bucketOwnerProvider = bucketOwnerProvider;
     }
 
     @Override
@@ -93,7 +98,7 @@ public class LocalFileBuffer implements Buffer {
         final CompletableFuture<PutObjectResponse> putObjectResponseCompletableFuture = BufferUtilities.putObjectOrSendToDefaultBucket(s3Client,
                 AsyncRequestBody.fromFile(localFile),
                 consumeOnCompletion, consumeOnException,
-                getKey(), getBucket(), defaultBucket)
+                getKey(), getBucket(), defaultBucket, bucketOwnerProvider)
                 .whenComplete(((response, throwable) -> removeTemporaryFile()));
         return Optional.of(putObjectResponseCompletableFuture);
     }

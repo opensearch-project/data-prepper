@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
+import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
@@ -25,26 +26,35 @@ class BufferUtilities {
     static final String INVALID_BUCKET = "The specified bucket is not valid";
 
     static CompletableFuture<PutObjectResponse> putObjectOrSendToDefaultBucket(final S3AsyncClient s3Client,
-                                               final AsyncRequestBody requestBody,
-                                               final Consumer<Boolean> runOnCompletion,
-                                               final Consumer<Throwable> runOnFailure,
-                                               final String objectKey,
-                                               final String targetBucket,
-                                               final String defaultBucket) {
+                                                                               final AsyncRequestBody requestBody,
+                                                                               final Consumer<Boolean> runOnCompletion,
+                                                                               final Consumer<Throwable> runOnFailure,
+                                                                               final String objectKey,
+                                                                               final String targetBucket,
+                                                                               final String defaultBucket,
+                                                                               final BucketOwnerProvider bucketOwnerProvider) {
 
         final boolean[] defaultBucketAttempted = new boolean[1];
         return s3Client.putObject(
-                PutObjectRequest.builder().bucket(targetBucket).key(objectKey).build(), requestBody)
+                PutObjectRequest.builder()
+                        .bucket(targetBucket)
+                        .key(objectKey)
+                        .expectedBucketOwner(bucketOwnerProvider.getBucketOwner(targetBucket).orElse(null))
+                        .build(), requestBody)
                 .handle((result, ex) -> {
                     if (ex != null) {
                         runOnFailure.accept(ex);
 
                         if (defaultBucket != null &&
-                                (ex instanceof NoSuchBucketException || ex.getMessage().contains(ACCESS_DENIED) || ex.getMessage().contains(INVALID_BUCKET))) {
+                                (ex instanceof NoSuchBucketException || ex.getCause() instanceof NoSuchBucketException || ex.getMessage().contains(ACCESS_DENIED) || ex.getMessage().contains(INVALID_BUCKET))) {
                             LOG.warn("Bucket {} could not be accessed, attempting to send to default_bucket {}", targetBucket, defaultBucket);
                             defaultBucketAttempted[0] = true;
                             return s3Client.putObject(
-                                    PutObjectRequest.builder().bucket(defaultBucket).key(objectKey).build(),
+                                    PutObjectRequest.builder()
+                                            .bucket(defaultBucket)
+                                            .key(objectKey)
+                                            .expectedBucketOwner(bucketOwnerProvider.getBucketOwner(defaultBucket).orElse(null))
+                                            .build(),
                                     requestBody);
                         } else {
                             runOnCompletion.accept(false);

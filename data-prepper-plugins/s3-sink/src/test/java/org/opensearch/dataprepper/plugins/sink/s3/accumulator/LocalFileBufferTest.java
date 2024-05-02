@@ -8,6 +8,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
@@ -56,6 +57,9 @@ class LocalFileBufferTest {
     @Mock
     private Consumer<Throwable> mockRunOnFailure;
 
+    @Mock
+    private BucketOwnerProvider bucketOwnerProvider;
+
     private LocalFileBuffer localFileBuffer;
     private File tempFile;
 
@@ -65,7 +69,7 @@ class LocalFileBufferTest {
     void setUp() throws IOException {
         defaultBucket = UUID.randomUUID().toString();
         tempFile = File.createTempFile(PREFIX, SUFFIX);
-        localFileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier, defaultBucket);
+        localFileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider);
     }
 
     @Test
@@ -119,7 +123,7 @@ class LocalFileBufferTest {
         try (final MockedStatic<BufferUtilities> bufferUtilitiesMockedStatic = mockStatic(BufferUtilities.class)) {
             bufferUtilitiesMockedStatic.when(() ->
                             BufferUtilities.putObjectOrSendToDefaultBucket(eq(s3Client), any(AsyncRequestBody.class),
-                                    eq(mockRunOnCompletion), eq(mockRunOnFailure), eq(KEY), eq(BUCKET_NAME), eq(defaultBucket)))
+                                    eq(mockRunOnCompletion), eq(mockRunOnFailure), eq(KEY), eq(BUCKET_NAME), eq(defaultBucket), eq(bucketOwnerProvider)))
                     .thenReturn(expectedFuture);
 
             final Optional<CompletableFuture<?>> result = localFileBuffer.flushToS3(mockRunOnCompletion, mockRunOnFailure);

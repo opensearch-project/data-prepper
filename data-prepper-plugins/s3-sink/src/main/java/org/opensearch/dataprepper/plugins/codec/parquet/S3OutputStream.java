@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.codec.parquet;
 
 
 import org.apache.parquet.io.PositionOutputStream;
+import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
@@ -59,6 +60,9 @@ public class S3OutputStream extends PositionOutputStream {
     private final byte[] buf;
 
     private final S3AsyncClient s3Client;
+
+    private final BucketOwnerProvider bucketOwnerProvider;
+
     /**
      * Collection of the etags for the parts that have been uploaded
      */
@@ -93,7 +97,8 @@ public class S3OutputStream extends PositionOutputStream {
     public S3OutputStream(final S3AsyncClient s3Client,
                           final Supplier<String> bucketSupplier,
                           final Supplier<String> keySupplier,
-                          final String defaultBucket) {
+                          final String defaultBucket,
+                          final BucketOwnerProvider bucketOwnerProvider) {
         this.s3Client = s3Client;
         this.bucket = bucketSupplier.get();
         this.key = keySupplier.get();
@@ -103,6 +108,7 @@ public class S3OutputStream extends PositionOutputStream {
         open = true;
         this.defaultBucket = defaultBucket;
         this.executorService = Executors.newSingleThreadExecutor();
+        this.bucketOwnerProvider = bucketOwnerProvider;
     }
 
     @Override
@@ -191,6 +197,7 @@ public class S3OutputStream extends PositionOutputStream {
                         .build();
                 CompleteMultipartUploadRequest completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
                         .bucket(bucket)
+                        .expectedBucketOwner(bucketOwnerProvider.getBucketOwner(defaultBucket).orElse(null))
                         .key(key)
                         .uploadId(uploadId)
                         .multipartUpload(completedMultipartUpload)
@@ -250,6 +257,7 @@ public class S3OutputStream extends PositionOutputStream {
         int partNumber = etags.size() + 1;
         UploadPartRequest uploadRequest = UploadPartRequest.builder()
                 .bucket(bucket)
+                .expectedBucketOwner(bucketOwnerProvider.getBucketOwner(defaultBucket).orElse(null))
                 .key(key)
                 .uploadId(uploadId)
                 .partNumber(partNumber)
@@ -278,6 +286,7 @@ public class S3OutputStream extends PositionOutputStream {
         CreateMultipartUploadRequest uploadRequest = CreateMultipartUploadRequest.builder()
                 .bucket(bucket)
                 .key(key)
+                .expectedBucketOwner(bucketOwnerProvider.getBucketOwner(bucket).orElse(null))
                 .build();
         CompletableFuture<CreateMultipartUploadResponse> multipartUpload = s3Client.createMultipartUpload(uploadRequest);
 

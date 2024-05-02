@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
+import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.util.UUID;
@@ -44,6 +45,9 @@ class CompressionBufferFactoryTest {
 
     @Mock
     private Supplier<String> keySupplier;
+
+    @Mock
+    private BucketOwnerProvider bucketOwnerProvider;
 
     @Mock
     private OutputCodec codec;
@@ -87,21 +91,21 @@ class CompressionBufferFactoryTest {
 
         @BeforeEach
         void setUp() {
-            when(innerBufferFactory.getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket)).thenReturn(innerBuffer);
+            when(innerBufferFactory.getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider)).thenReturn(innerBuffer);
         }
 
         @Test
         void getBuffer_returns_CompressionBuffer() {
-            final Buffer buffer = createObjectUnderTest().getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket);
+            final Buffer buffer = createObjectUnderTest().getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider);
             assertThat(buffer, instanceOf(CompressionBuffer.class));
         }
 
         @Test
         void getBuffer_returns_new_on_each_call() {
             final CompressionBufferFactory objectUnderTest = createObjectUnderTest();
-            final Buffer firstBuffer = objectUnderTest.getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket);
+            final Buffer firstBuffer = objectUnderTest.getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider);
 
-            assertThat(objectUnderTest.getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket), not(equalTo(firstBuffer)));
+            assertThat(objectUnderTest.getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider), not(equalTo(firstBuffer)));
         }
 
         @Nested
@@ -113,17 +117,17 @@ class CompressionBufferFactoryTest {
 
             @Test
             void getBuffer_returns_innerBuffer_directly() {
-                final Buffer buffer = createObjectUnderTest().getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket);
+                final Buffer buffer = createObjectUnderTest().getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider);
                 assertThat(buffer, sameInstance(innerBuffer));
             }
 
             @Test
             void getBuffer_calls_on_each_call() {
                 final CompressionBufferFactory objectUnderTest = createObjectUnderTest();
-                objectUnderTest.getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket);
-                objectUnderTest.getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket);
+                objectUnderTest.getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider);
+                objectUnderTest.getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider);
 
-                verify(innerBufferFactory, times(2)).getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket);
+                verify(innerBufferFactory, times(2)).getBuffer(s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider);
             }
         }
     }
