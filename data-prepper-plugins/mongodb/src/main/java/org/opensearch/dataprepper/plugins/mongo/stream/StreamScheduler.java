@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
 
 public class StreamScheduler implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(StreamScheduler.class);
@@ -67,6 +68,10 @@ public class StreamScheduler implements Runnable {
             try {
                 final Optional<EnhancedSourcePartition> sourcePartition = sourceCoordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
                 if (sourcePartition.isPresent()) {
+                    if (sourceConfig.isDisableS3ReadForLeader()) {
+                        System.setProperty(STOP_S3_SCAN_PROCESSING_PROPERTY, "true");
+                    }
+
                     streamPartition = (StreamPartition) sourcePartition.get();
                     final StreamWorker streamWorker = getStreamWorker(streamPartition);
                     streamWorker.processStream(streamPartition);
@@ -80,6 +85,9 @@ public class StreamScheduler implements Runnable {
             } catch (final Exception e) {
                 LOG.error("Received an exception during stream processing from DocumentDB, backing off and retrying", e);
                 if (streamPartition != null) {
+                    if (sourceConfig.isDisableS3ReadForLeader()) {
+                        System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
+                    }
                     sourceCoordinator.giveUpPartition(streamPartition);
                 }
 
