@@ -57,6 +57,9 @@ public class MongoDBSourceConfig {
     @Valid
     private AwsConfig awsConfig;
 
+    @JsonProperty("disable_s3_read_for_leader")
+    private boolean disableS3ReadForLeader = false;
+
     public MongoDBSourceConfig() {
         this.readPreference = DEFAULT_READ_PREFERENCE;
         this.collections = new ArrayList<>();
@@ -124,6 +127,10 @@ public class MongoDBSourceConfig {
 
     public String getS3Region() {
         return this.s3Region;
+    }
+
+    public boolean isDisableS3ReadForLeader() {
+        return disableS3ReadForLeader;
     }
 
     public AwsConfig getAwsConfig() {

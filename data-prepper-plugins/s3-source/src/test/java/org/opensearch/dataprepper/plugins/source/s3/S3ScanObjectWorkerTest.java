@@ -42,6 +42,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -50,6 +52,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -57,11 +60,13 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.ACKNOWLEDGEMENT_SET_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION;
@@ -535,6 +540,23 @@ class S3ScanObjectWorkerTest {
 
         inOrder.verify(s3ObjectDeleteWorker).deleteS3Object(firstObjectDeleteRequest);
         inOrder.verify(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class));
+    }
+
+    @Test
+    void running_with_system_property_to_stop_processing_does_not_process_objects() throws InterruptedException {
+        System.setProperty(STOP_S3_SCAN_PROCESSING_PROPERTY, UUID.randomUUID().toString());
+
+        final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+        executorService.submit(scanObjectWorker::run);
+        Thread.sleep(50);
+        executorService.shutdownNow();
+
+        verify(sourceCoordinator, never()).getNextPartition(any(), anyBoolean());
+
+        System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
+
     }
 
 
