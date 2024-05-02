@@ -13,7 +13,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import static org.mockito.ArgumentMatchers.anyString;
 import org.mockito.Mock;
+import static org.mockito.Mockito.never;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 
@@ -41,13 +43,13 @@ class EventMetadataModifierTest {
         key = UUID.randomUUID().toString();
     }
 
-    private EventMetadataModifier createObjectUnderTest(final String metadataRootKey) {
-        return new EventMetadataModifier(metadataRootKey);
+    private EventMetadataModifier createObjectUnderTest(final String metadataRootKey, final Boolean isDeleteS3MetadataInEvent) {
+        return new EventMetadataModifier(metadataRootKey, isDeleteS3MetadataInEvent);
     }
 
     @Test
     void constructor_throws_if_metadataRootKey_is_null() {
-        assertThrows(NullPointerException.class, () -> createObjectUnderTest(null));
+        assertThrows(NullPointerException.class, () -> createObjectUnderTest(null, null));
     }
 
     @ParameterizedTest
@@ -56,10 +58,19 @@ class EventMetadataModifierTest {
         when(s3ObjectReference.getBucketName()).thenReturn(bucketName);
         when(s3ObjectReference.getKey()).thenReturn(key);
 
-        createObjectUnderTest(metadataKey).accept(event, s3ObjectReference);
+        createObjectUnderTest(metadataKey, false).accept(event, s3ObjectReference);
 
         verify(event).put(expectedRootKey + "bucket", bucketName);
         verify(event).put(expectedRootKey + "key", key);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(KeysArgumentsProvider.class)
+    void accept_does_not_set_correct_S3_bucket_and_key(final String metadataKey, final String expectedRootKey) {
+        createObjectUnderTest(metadataKey, true).accept(event, s3ObjectReference);
+
+        verify(event, never()).put(anyString(), anyString());
+        verify(event, never()).put(anyString(), anyString());
     }
 
     static class KeysArgumentsProvider implements ArgumentsProvider {

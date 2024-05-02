@@ -86,7 +86,7 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
         final S3ObjectRequest.Builder s3ObjectRequestBuilder = new S3ObjectRequest.Builder(buffer, s3SourceConfig.getNumberOfRecordsToAccumulate(),
                 s3SourceConfig.getBufferTimeout(), s3ObjectPluginMetrics);
         final BiConsumer<Event, S3ObjectReference> eventMetadataModifier = new EventMetadataModifier(
-                s3SourceConfig.getMetadataRootKey());
+                s3SourceConfig.getMetadataRootKey(), s3SourceConfig.isDeleteS3MetadataInEvent());
         final S3ObjectDeleteWorker s3ObjectDeleteWorker = new S3ObjectDeleteWorker(s3ClientBuilderFactory.getS3Client(), pluginMetrics);
 
         if (s3SelectOptional.isPresent()) {

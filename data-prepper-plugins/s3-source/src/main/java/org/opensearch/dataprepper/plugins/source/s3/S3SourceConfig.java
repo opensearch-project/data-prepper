@@ -97,6 +97,9 @@ public class S3SourceConfig {
     @JsonProperty("delete_s3_objects_on_read")
     private boolean deleteS3ObjectsOnRead = false;
 
+    @JsonProperty("disable_s3_metadata_in_event")
+    private boolean deleteS3MetadataInEvent = false;
+
     @AssertTrue(message = "A codec is required for reading objects.")
     boolean isCodecProvidedWhenNeeded() {
         if(s3SelectOptions == null)
@@ -188,5 +191,9 @@ public class S3SourceConfig {
 
     public String getDefaultBucketOwner() {
         return defaultBucketOwner;
+    }
+
+    public boolean isDeleteS3MetadataInEvent() {
+        return deleteS3MetadataInEvent;
     }
 }

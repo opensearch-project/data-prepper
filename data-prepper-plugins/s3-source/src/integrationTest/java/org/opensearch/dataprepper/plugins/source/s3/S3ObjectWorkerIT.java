@@ -67,7 +67,7 @@ class S3ObjectWorkerIT {
                 .build();
         bucket = System.getProperty("tests.s3source.bucket");
         s3ObjectGenerator = new S3ObjectGenerator(s3Client, bucket);
-        eventMetadataModifier = new EventMetadataModifier(S3SourceConfig.DEFAULT_METADATA_ROOT_KEY);
+        eventMetadataModifier = new EventMetadataModifier(S3SourceConfig.DEFAULT_METADATA_ROOT_KEY, false);
 
         buffer = mock(Buffer.class);
         recordsReceived = 0;
