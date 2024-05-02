@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeoutException;
@@ -219,6 +220,15 @@ public class MultiBufferDecoratorTest {
         createObjectUnderTest(2).shutdown();
         verify(primaryBuffer).shutdown();
         verify(secondaryBuffer, times(2)).shutdown();
+    }
+
+    @Test
+    void test_getMaxRequestSize() {
+        when(primaryBuffer.getMaxRequestSize()).thenReturn(Optional.empty());
+        when(secondaryBuffer.getMaxRequestSize()).thenReturn(Optional.empty());
+
+        final MultiBufferDecorator multiBufferDecorator = createObjectUnderTest(2);
+        assertThat(multiBufferDecorator.getMaxRequestSize(), equalTo(Optional.empty()));
     }
 
     private MultiBufferDecorator createObjectUnderTest(final int secondaryBufferCount) {

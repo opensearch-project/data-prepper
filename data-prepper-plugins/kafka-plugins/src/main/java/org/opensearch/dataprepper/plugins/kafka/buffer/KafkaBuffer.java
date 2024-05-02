@@ -41,6 +41,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -88,6 +89,11 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         consumers.forEach(this.executorService::submit);
 
         this.drainTimeout = kafkaBufferConfig.getDrainTimeout();
+    }
+
+    @Override
+    public Optional<Integer> getMaxRequestSize() {
+        return Optional.of(producer.getMaxRequestSize());
     }
 
     @Override

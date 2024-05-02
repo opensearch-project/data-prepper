@@ -21,4 +21,8 @@ public interface Codec<T> {
      * @return The target data type
      */
     T parse(HttpData httpData) throws IOException;
+
+    default T parse(HttpData httpData, int maxSize) throws IOException {
+        return parse(httpData);
+    }
 }

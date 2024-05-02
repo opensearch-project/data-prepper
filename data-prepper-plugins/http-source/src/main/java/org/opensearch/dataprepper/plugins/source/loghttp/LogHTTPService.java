@@ -27,13 +27,16 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
+
 
 /*
 * A HTTP service for log ingestion to be executed by BlockingTaskExecutor.
 */
 @Blocking
 public class LogHTTPService {
+    private static final int SERIALIZATION_OVERHEAD = 1024;
     public static final String REQUESTS_RECEIVED = "requestsReceived";
     public static final String SUCCESS_REQUESTS = "successRequests";
     public static final String PAYLOAD_SIZE = "payloadSize";
@@ -49,6 +52,7 @@ public class LogHTTPService {
     private final Counter successRequestsCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
+    private Integer maxRequestLength;
 
     public LogHTTPService(final int bufferWriteTimeoutInMillis,
                           final Buffer<Record<Log>> buffer,
@@ -56,7 +60,7 @@ public class LogHTTPService {
                           final PluginMetrics pluginMetrics) {
         this.buffer = buffer;
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
-
+        this.maxRequestLength = buffer.getMaxRequestSize().isPresent() ? buffer.getMaxRequestSize().get(): null;
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
@@ -75,26 +79,51 @@ public class LogHTTPService {
         return requestProcessDuration.recordCallable(() -> processRequest(aggregatedHttpRequest));
     }
 
+    private void sendJsonList(List<String> jsonList) throws Exception {
+        StringBuilder sb = new StringBuilder(maxRequestLength);
+        sb.append("[");
+        String comma = "";
+        String key = UUID.randomUUID().toString();
+        for (final String json: jsonList) {
+            sb.append(comma);
+            sb.append(json);
+            comma = ",";
+        }
+        sb.append("]");
+        if (sb.toString().getBytes().length > maxRequestLength) {
+            throw new RuntimeException("Request length "+ sb.toString().getBytes().length + " exceeds maxRequestLength "+ maxRequestLength);
+        }
+        buffer.writeBytes(sb.toString().getBytes(), key, bufferWriteTimeoutInMillis);
+    }
+
     private HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) throws Exception {
         final HttpData content = aggregatedHttpRequest.content();
-        List<String> jsonList;
+        List<List<String>> jsonList;
 
         try {
-            jsonList = jsonCodec.parse(content);
+            jsonList = (maxRequestLength == null) ? jsonCodec.parse(content) : jsonCodec.parse(content, maxRequestLength - SERIALIZATION_OVERHEAD);
         } catch (IOException e) {
             LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
             throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
         }
         try {
             if (buffer.isByteBuffer()) {
-                // jsonList is ignored in this path but parse() was done to make 
-                // sure that the data is in the expected json format
-                buffer.writeBytes(content.array(), null, bufferWriteTimeoutInMillis);
+                if (maxRequestLength != null && content.array().length > maxRequestLength) {
+                    for (final List<String> innerJsonList: jsonList) {
+                        sendJsonList(innerJsonList);
+                    }
+                } else {
+                    // jsonList is ignored in this path but parse() was done to make
+                    // sure that the data is in the expected json format
+                    buffer.writeBytes(content.array(), null, bufferWriteTimeoutInMillis);
+                }
             } else {
-                final List<Record<Log>> records = jsonList.stream()
-                        .map(this::buildRecordLog)
-                        .collect(Collectors.toList());
-                buffer.writeAll(records, bufferWriteTimeoutInMillis);
+                for (final List<String> innerJsonList: jsonList) {
+                    final List<Record<Log>> records = innerJsonList.stream()
+                            .map(this::buildRecordLog)
+                            .collect(Collectors.toList());
+                    buffer.writeAll(records, bufferWriteTimeoutInMillis);
+                }
             }
         } catch (Exception e) {
             LOG.error("Failed to write the request of size {} due to: {}", content.length(), e.getMessage());

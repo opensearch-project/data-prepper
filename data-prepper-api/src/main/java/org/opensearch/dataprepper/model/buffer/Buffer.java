@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -81,6 +82,10 @@ public interface Buffer<T extends Record<?>> {
      */
     default boolean isByteBuffer() {
         return false;
+    }
+
+    default Optional<Integer> getMaxRequestSize() {
+        return Optional.empty();
     }
 
     /**
