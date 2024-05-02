@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class KafkaCustomProducerFactory {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumerFactory.class);
