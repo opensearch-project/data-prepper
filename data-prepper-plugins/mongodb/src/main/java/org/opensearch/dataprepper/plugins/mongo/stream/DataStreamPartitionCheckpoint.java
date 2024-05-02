@@ -60,9 +60,20 @@ public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator 
      * @param recordCount The last processed record count
      */
     public void checkpoint(final String resumeToken, final long recordCount) {
-        LOG.debug("Checkpoint stream partition for collection " + streamPartition.getCollection() + " with record number " + recordCount);
+        LOG.debug("Checkpoint stream partition for collection {} with record number {}", streamPartition.getCollection(), recordCount);
         setProgressState(resumeToken, recordCount);
         enhancedSourceCoordinator.saveProgressStateForPartition(streamPartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
+    }
+
+    /**
+     * This method is to reset checkpoint when change stream is invalid. The current thread will give up partition and new thread
+     * will take ownership of partition. If change stream is valid then new thread proceeds with processing change stream else the
+     * process repeats.
+     */
+    public void resetCheckpoint() {
+        LOG.debug("Resetting checkpoint stream partition for collection {}", streamPartition.getCollection());
+        setProgressState(null, 0);
+        enhancedSourceCoordinator.giveUpPartition(streamPartition);
     }
 
     public Optional<StreamLoadStatus> getGlobalStreamLoadStatus() {

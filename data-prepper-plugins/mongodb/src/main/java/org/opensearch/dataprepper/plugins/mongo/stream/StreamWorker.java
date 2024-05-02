@@ -7,6 +7,7 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
+import com.mongodb.client.model.changestream.OperationType;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.bson.BsonDocument;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -40,6 +42,10 @@ public class StreamWorker {
     private static final Logger LOG = LoggerFactory.getLogger(StreamWorker.class);
     private static final int DEFAULT_EXPORT_COMPLETE_WAIT_INTERVAL_MILLIS = 90_000;
     private static final String COLLECTION_SPLITTER = "\\.";
+    private static final Set<OperationType> CRUD_OPERATION_TYPE = Set.of(OperationType.INSERT, OperationType.DELETE,
+            OperationType.UPDATE, OperationType.REPLACE);
+    private static final Set<OperationType> STREAM_TERMINATE_OPERATION_TYPE = Set.of(OperationType.INVALIDATE,
+            OperationType.DROP, OperationType.DROP_DATABASE);
     static final String SUCCESS_ITEM_COUNTER_NAME = "streamRecordsSuccessTotal";
     static final String FAILURE_ITEM_COUNTER_NAME = "streamRecordsFailedTotal";
     static final String BYTES_RECEIVED = "bytesReceived";
@@ -155,7 +161,7 @@ public class StreamWorker {
             MongoDatabase database = mongoClient.getDatabase(collectionDBNameList.get(0));
 
             // Access the collection you want to stream data from
-            MongoCollection<Document> collection = database.getCollection(collectionDBNameList.get(1));
+            MongoCollection<Document> collection = database.getCollection(collectionDbName.substring(collectionDBNameList.get(0).length() + 1));
 
             try (MongoCursor<ChangeStreamDocument<Document>> cursor = getChangeStreamCursor(collection, resumeToken.orElse(null))) {
                 while ((shouldWaitForExport(streamPartition) || shouldWaitForS3Partition(streamPartition.getCollection())) && !Thread.currentThread().isInterrupted()) {
@@ -175,35 +181,55 @@ public class StreamWorker {
                 }
                 recordConverter.initializePartitions(s3Partitions);
                 long lastBufferWriteTime = System.currentTimeMillis();
-                while (cursor.hasNext() && !Thread.currentThread().isInterrupted() && !stopWorker) {
-                    try {
-                        final ChangeStreamDocument<Document> document = cursor.next();
-                        final String record = document.getFullDocument().toJson(writerSettings);
-                        final long eventCreationTimeMillis = document.getClusterTime().getTime() * 1000L;
-                        final long bytes = record.getBytes().length;
-                        bytesReceivedSummary.record(bytes);
+                while (!Thread.currentThread().isInterrupted() && !stopWorker) {
+                    if (cursor.hasNext()) {
+                        try {
+                            final ChangeStreamDocument<Document> document = cursor.next();
+                            final OperationType operationType = document.getOperationType();
+                            LOG.debug("Event Operation type {}", operationType);
+                            if (isCRUDOperation(operationType)) {
+                                final String record;
+                                if (OperationType.DELETE == operationType) {
+                                    record = document.getDocumentKey().toJson(writerSettings);
+                                } else {
+                                    record = document.getFullDocument().toJson(writerSettings);
+                                }
+                                final long eventCreationTimeMillis = document.getClusterTime().getTime() * 1000L;
+                                final long bytes = record.getBytes().length;
+                                bytesReceivedSummary.record(bytes);
 
-                        checkPointToken = document.getResumeToken().toJson(writerSettings);
-                        // TODO fix eventVersionNumber
-                        final Event event = recordConverter.convert(record, eventCreationTimeMillis, eventCreationTimeMillis, document.getOperationTypeString());
+                                checkPointToken = document.getResumeToken().toJson(writerSettings);
+                                // TODO fix eventVersionNumber
+                                final Event event = recordConverter.convert(record, eventCreationTimeMillis, eventCreationTimeMillis, document.getOperationTypeString());
+                                records.add(event);
+                                recordCount += 1;
 
-                        records.add(event);
-                        recordCount += 1;
-
-                        if ((recordCount % recordFlushBatchSize == 0) || (System.currentTimeMillis() - lastBufferWriteTime >= bufferWriteIntervalInMs)) {
-                            LOG.debug("Write to buffer for line {} to {}", (recordCount - recordFlushBatchSize), recordCount);
-                            writeToBuffer(records, checkPointToken, recordCount);
-                            lastLocalCheckpoint = checkPointToken;
-                            lastLocalRecordCount = recordCount;
-                            lastBufferWriteTime = System.currentTimeMillis();
-                            records.clear();
+                                if ((recordCount % recordFlushBatchSize == 0) || (System.currentTimeMillis() - lastBufferWriteTime >= bufferWriteIntervalInMs)) {
+                                    LOG.debug("Write to buffer for line {} to {}", (recordCount - recordFlushBatchSize), recordCount);
+                                    writeToBuffer(records, checkPointToken, recordCount);
+                                    lastLocalCheckpoint = checkPointToken;
+                                    lastLocalRecordCount = recordCount;
+                                    lastBufferWriteTime = System.currentTimeMillis();
+                                    records.clear();
+                                }
+                            } else if(shouldTerminateChangeStream(operationType)){
+                                stop();
+                                partitionCheckpoint.resetCheckpoint();
+                                LOG.warn("The change stream is invalid due to stream operation type {}. Stopping the current change stream. New thread should restart the stream.", operationType);
+                            } else {
+                                LOG.warn("The change stream operation type {} is not handled", operationType);
+                            }
+                        } catch(Exception e){
+                            // TODO handle documents with size > 10 MB.
+                            // this will only happen if writing to buffer gets interrupted from shutdown,
+                            // otherwise it's infinite backoff and retry
+                            LOG.error("Failed to add records to buffer with error", e);
+                            failureItemsCounter.increment(records.size());
                         }
-                    } catch (Exception e) {
-                        // TODO handle documents with size > 10 MB.
-                        // this will only happen if writing to buffer gets interrupted from shutdown,
-                        // otherwise it's infinite backoff and retry
-                        LOG.error("Failed to add records to buffer with error {}", e.getMessage());
-                        failureItemsCounter.increment(records.size());
+                    } else {
+                        LOG.warn("The change stream cursor didn't return any document. Stopping the change stream. New thread should restart the stream.");
+                        stop();
+                        partitionCheckpoint.resetCheckpoint();
                     }
                 }
             }
@@ -227,6 +253,14 @@ public class StreamWorker {
         }
     }
 
+    private boolean isCRUDOperation(final OperationType operationType) {
+        return CRUD_OPERATION_TYPE.contains(operationType);
+    }
+
+    private boolean shouldTerminateChangeStream(final OperationType operationType) {
+        return STREAM_TERMINATE_OPERATION_TYPE.contains(operationType);
+    }
+
     private void writeToBuffer(final List<Event> records, final String checkPointToken, final long recordCount) {
         final AcknowledgementSet acknowledgementSet = streamAcknowledgementManager.createAcknowledgementSet(checkPointToken, recordCount).orElse(null);
         recordBufferWriter.writeToBuffer(acknowledgementSet, records);
@@ -235,7 +269,7 @@ public class StreamWorker {
 
     private void checkpointStream() {
         long lastCheckpointTime = System.currentTimeMillis();
-        while (!Thread.currentThread().isInterrupted()) {
+        while (!Thread.currentThread().isInterrupted() && !stopWorker) {
             if (lastLocalRecordCount != null && (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs)) {
                 LOG.debug("Perform regular checkpoint for resume token {} at record count {}", lastLocalCheckpoint, lastLocalRecordCount);
                 partitionCheckpoint.checkpoint(lastLocalCheckpoint, lastLocalRecordCount);
@@ -248,6 +282,7 @@ public class StreamWorker {
                 break;
             }
         }
+        LOG.info("Checkpoint monitoring thread interrupted.");
     }
 
     void stop() {
