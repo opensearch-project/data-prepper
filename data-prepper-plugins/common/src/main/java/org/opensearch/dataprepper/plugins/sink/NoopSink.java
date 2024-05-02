@@ -14,6 +14,12 @@ public class NoopSink implements Sink<Record<Object>> {
     }
 
     @Override
+    public Object outputSync(Collection<Record<Object>> records, boolean isQuery) {
+
+        return null;
+    }
+
+    @Override
     public void shutdown() {
         // empty by design.
     }

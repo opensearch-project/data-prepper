@@ -52,6 +52,15 @@ public class TestSink implements Sink<Record<String>> {
     }
 
     @Override
+    public Object outputSync(Collection<Record<String>> records, boolean isQuery) {
+        if(failSinkForTest) {
+            throw new RuntimeException("Sink is expected to fail");
+        }
+        records.stream().collect(Collectors.toCollection(() -> collectedRecords));
+        return null;
+    }
+
+    @Override
     public void shutdown() {
         isShutdown = true;
     }

@@ -7,8 +7,10 @@ package org.opensearch.dataprepper.pipeline;
 
 import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.acknowledgements.InactiveAcknowledgementSetManager;
+import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -32,12 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -350,5 +347,38 @@ public class Pipeline {
                 }, null))
             );
         return sinkFutures;
+    }
+
+    public Map<String, Object> executeRequestFromSourceInline(List<Record<Event>> inputRecords, boolean isQuery) {
+        final List<Processor> processors = this.processorSets.stream().flatMap(Collection::stream).collect(Collectors.toList());
+        Collection records = inputRecords;
+        for (final Processor processor : processors) {
+            try {
+                records = processor.execute(records);
+            } catch (final Exception e) {
+                LOG.error("A processor threw an exception. This batch of Events will be dropped, and their EventHandles will be released: ", e);
+                records = Collections.emptyList();
+                break;
+            }
+        }
+
+        Map<String, Object> responses = postToSinkSync(records, isQuery);
+
+        return responses;
+    }
+
+    Map<String, Object> postToSinkSync(final Collection<Record> records, boolean isQuery) {
+        final RouterGetRecordStrategy getRecordStrategy =
+                new RouterCopyRecordStrategy(eventFactory,
+                        (source.areAcknowledgementsEnabled() || buffer.areAcknowledgementsEnabled()) ?
+                                acknowledgementSetManager :
+                                InactiveAcknowledgementSetManager.getInstance(),
+                        sinks);
+        Map<String, Object> responses = new HashMap<>();
+        router.route(records, sinks, getRecordStrategy, (sink, events) -> {
+            sink.updateLatencyMetrics(events);
+            responses.put(sink.getClass().getSimpleName(), sink.outputSync(records, isQuery));
+        });
+        return responses;
     }
 }

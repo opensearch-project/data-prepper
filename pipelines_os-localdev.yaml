@@ -1,0 +1,57 @@
+simple-sample-pipeline:
+  source:
+    opensearch_api:
+      ssl: false
+      port: 4992
+      path_prefix: "/opensearch"
+#      async: true
+#      s3_region: "us-east-1"
+#      s3_bucket: "osi-opensearch-api-us-east-1"
+      aws:
+        sts_role_arn: "arn:aws:iam::366592962843:role/OSI-PipelineRole"
+        region: "us-east-1"
+  sink:
+    - stdout:
+    - opensearch:
+        hosts: [ "https://dev-dsk-souvbose-1a-0c1f1000.us-east-1.amazon.com:9200" ]
+        username: "admin"
+        password: "LocalTesting@2024"
+        insecure: true
+        #index_type: knn
+        template_content: >
+          {
+            "settings": {
+              "index": {
+                "knn": "true",
+                "knn.algo_param.ef_search": "100",
+                "number_of_shards": 1,
+                "number_of_replicas": 0
+              }
+            },
+            "mappings": {
+              "properties": {
+                "location": {
+                  "type": "knn_vector",
+                  "dimension": 2,
+                  "method": {
+                    "name": "hnsw",
+                    "space_type": "l2",
+                    "engine": "lucene",
+                    "parameters": {
+                      "ef_construction": 100,
+                      "m": 16
+                    }
+                  }
+                }
+              }
+            }
+          }
+        index: "${getMetadata(\"opensearch_index\")}"
+        action: "${getMetadata(\"opensearch_action\")}"
+        document_id: "${getMetadata(\"opensearch_id\")}"
+        dlq:
+          s3:
+            key_path_prefix: "dlq-files/"
+            bucket: osi-opensearch-api-dlq-us-east-1
+            region: "us-east-1"
+            sts_role_arn: "arn:aws:iam::366592962843:role/OSI-PipelineRole"

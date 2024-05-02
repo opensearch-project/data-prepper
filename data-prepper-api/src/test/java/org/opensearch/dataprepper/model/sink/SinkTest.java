@@ -30,7 +30,11 @@ public class SinkTest {
         @Override
         public void output(Collection<Record<?>> records) {
         }
-    
+
+        @Override
+        public Object outputSync(Collection<Record<?>> records, boolean isQuery) {
+            return null;
+        }
     };
 
     SinkTestClass sink;

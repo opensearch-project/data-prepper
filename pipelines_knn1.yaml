@@ -1,0 +1,68 @@
+simple-sample-pipeline:
+  source:
+    opensearch_api:
+      ssl: false
+      port: 4992
+      path_prefix: "/opensearch"
+#      async: true
+#      s3_region: "us-east-1"
+#      s3_bucket: "osi-opensearch-api-us-east-1"
+      aws:
+        sts_role_arn: "arn:aws:iam::366592962843:role/OSI-PipelineRole"
+        region: "us-east-1"
+  sink:
+    - stdout:
+    - opensearch:
+        hosts: [ "https://dev-dsk-souvbose-1a-0c1f1000.us-east-1.amazon.com:9200" ]
+        username: "admin"
+        password: "LocalTesting@2024"
+        insecure: true
+        #index_type: knn
+        template_content: >
+          {
+          "settings": {
+              "index": {
+                "knn": "true",
+                "knn.algo_param.ef_search": "100"
+              }
+            },
+          "mappings": {
+              "properties": {
+                  "my_vector1": {
+                    "type": "knn_vector",
+                    "dimension": 2,
+                    "method": {
+                      "name": "hnsw",
+                      "space_type": "l2",
+                      "engine": "nmslib",
+                      "parameters": {
+                        "ef_construction": 128,
+                        "m": 24
+                      }
+                    }
+                  },
+                  "my_vector2": {
+                    "type": "knn_vector",
+                    "dimension": 4,
+                    "method": {
+                      "name": "hnsw",
+                      "space_type": "innerproduct",
+                      "engine": "faiss",
+                      "parameters": {
+                        "ef_construction": 256,
+                        "m": 48
+                      }
+                    }
+                  }
+              }
+          }
+          }
+        index: "${getMetadata(\"opensearch_index\")}"
+        action: "${getMetadata(\"opensearch_action\")}"
+        document_id: "${getMetadata(\"opensearch_id\")}"
+        dlq:
+          s3:
+            key_path_prefix: "dlq-files/"
+            bucket: osi-opensearch-api-dlq-us-east-1
+            region: "us-east-1"
+            sts_role_arn: "arn:aws:iam::366592962843:role/OSI-PipelineRole"

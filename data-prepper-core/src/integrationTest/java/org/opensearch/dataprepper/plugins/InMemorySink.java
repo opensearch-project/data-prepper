@@ -46,6 +46,12 @@ public class InMemorySink implements Sink<Record<Event>> {
     }
 
     @Override
+    public Object outputSync(final Collection<Record<Event>> records, boolean isQuery) {
+        inMemorySinkAccessor.addEvents(testingKey, records);
+        return null;
+    }
+
+    @Override
     public void shutdown() {
 
     }

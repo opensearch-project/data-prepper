@@ -22,6 +22,7 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
     protected static final int DEFAULT_MAX_RETRIES = 600;
     protected static final int DEFAULT_WAIT_TIME_MS = 1000;
     protected final PluginMetrics pluginMetrics;
+    protected final PluginSetting pluginSetting;
     private final Counter recordsInCounter;
     private final SinkLatencyMetrics latencyMetrics;
     private final Timer timeElapsedTimer;
@@ -37,6 +38,7 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
         retryThread = null;
         this.maxRetries = numRetries;
         this.waitTimeMs = waitTimeMs;
+        this.pluginSetting = pluginSetting;
     }
 
     public AbstractSink(final PluginSetting pluginSetting) {
@@ -67,11 +69,21 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
         timeElapsedTimer.record(() -> doOutput(records));
     }
 
+    @Override
+    public Object outputSync(Collection<T> records, boolean isQuery) {
+        recordsInCounter.increment(records.size()*1.0);
+        return timeElapsedTimer.record(() -> doOutputSync(records, isQuery));
+    }
+
     /**
      * This method should implement the output logic
      * @param records Records to be output
      */
     public abstract void doOutput(Collection<T> records);
+
+    public Object doOutputSync(Collection<T> records, boolean isQuery) {
+        return "";
+    }
 
     @Override
     public void shutdown() {

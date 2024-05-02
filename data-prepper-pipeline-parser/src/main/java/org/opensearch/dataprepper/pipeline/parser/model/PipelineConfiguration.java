@@ -135,7 +135,7 @@ public class PipelineConfiguration {
         final Map<String, Object> settingsMap = Optional
                 .ofNullable(sinkModel.getPluginSettings())
                 .orElseGet(HashMap::new);
-        return new SinkContextPluginSetting(sinkModel.getPluginName(), settingsMap, new SinkContext(sinkModel.getTagsTargetKey(), sinkModel.getRoutes(), sinkModel.getIncludeKeys(), sinkModel.getExcludeKeys()));
+        return new SinkContextPluginSetting(sinkModel.getPluginName(), settingsMap, new SinkContext(sinkModel.getTagsTargetKey(), sinkModel.getRoutes(), sinkModel.getIncludeKeys(), sinkModel.getExcludeKeys(), sinkModel.getResponseActions()));
     }
 
     private Integer getWorkersFromPipelineModel(final PipelineModel pipelineModel) {

@@ -1,0 +1,51 @@
+#simple-sample-pipeline:
+#  source:
+#    http:
+#      ssl: false
+#      port: 4990
+#  sink:
+##    - pipeline:
+##        name: "opensearch-pipeline"
+#    - stdout:
+##    - pipeline:
+##        name: "stdout-pipeline"
+##opensearch-pipeline:
+##  source:
+##    pipeline:
+##      name: simple-sample-pipeline
+##  sink:
+##    - pipeline:
+##        name: "stdout-pipeline"
+##    - opensearch:
+##        hosts: [ "https://dev-dsk-souvbose-1a-0c1f1000.us-east-1.amazon.com:9200" ]
+##        username: "admin"
+##        password: "LocalTesting@2024"
+##        index: "logs-ingestion-index"
+##        insecure: true
+#stdout-pipeline:
+#  source:
+#    opensearch_api:
+#      ssl: false
+#      port: 4992
+##  buffer:
+##    kafka:
+##      bootstrap_servers:
+##        - "http://dev-dsk-souvbose-1a-0c1f1000.us-east-1.amazon.com:29092"
+##      topics:
+##        - name: osi_my_topic_as_buffer
+##          group_id: data_prepper_group
+##      encryption:
+##        type: "none"
+##        insecure: true
+##  source:
+##    pipeline:
+##      name: "opensearch-pipeline"
+#  sink:
+##    - opensearch:
+##        hosts: [ "https://search-souvikpersonal-qossprectjhjdquyr7pxs4cgve.aos.us-west-2.on.aws"]
+##                 #"https://dev-dsk-souvbose-1a-0c1f1000.us-east-1.amazon.com:9200" ]
+##        username: "admin"
+##        password: "LocalTesting@2024"
+##        index: "${index}"
+##        insecure: true
+#    - stdout:

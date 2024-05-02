@@ -81,7 +81,7 @@ class SinkModelTest {
         pluginSettings.put("key1", "value1");
         pluginSettings.put("key2", "value2");
         final String tagsTargetKey = "tags";
-        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), tagsTargetKey, Collections.emptyList(), Collections.emptyList(), pluginSettings);
+        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), tagsTargetKey, Collections.emptyList(), Collections.emptyList(), pluginSettings, Collections.emptyList());
 
         final String actualJson = objectMapper.writeValueAsString(sinkModel);
 
@@ -134,7 +134,7 @@ class SinkModelTest {
         pluginSettings.put("key1", "value1");
         pluginSettings.put("key2", "value2");
         pluginSettings.put("key3", "value3");
-        final SinkModel sinkModel = new SinkModel("customPlugin", null, null, Collections.emptyList(), Collections.emptyList(), pluginSettings);
+        final SinkModel sinkModel = new SinkModel("customPlugin", null, null, Collections.emptyList(), Collections.emptyList(), pluginSettings, Collections.emptyList());
 
         final String actualJson = objectMapper.writeValueAsString(sinkModel);
 
@@ -146,7 +146,7 @@ class SinkModelTest {
     @Test
     void sinkModel_with_include_keys() {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
-        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, Arrays.asList("bcd", "abc", "efg"), null, pluginSettings);
+        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, Arrays.asList("bcd", "abc", "efg"), null, pluginSettings, Collections.emptyList());
 
         assertThat(sinkModel.getExcludeKeys(), equalTo(new ArrayList<String>()));
         assertThat(sinkModel.getIncludeKeys(), equalTo(Arrays.asList("bcd", "abc", "efg")));
@@ -156,13 +156,13 @@ class SinkModelTest {
     @Test
     void sinkModel_with_invalid_include_keys() {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
-        assertThrows(InvalidPluginConfigurationException.class, () -> new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of("/bcd"), List.of(), pluginSettings));
+        assertThrows(InvalidPluginConfigurationException.class, () -> new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of("/bcd"), List.of(), pluginSettings, Collections.emptyList()));
     }
 
     @Test
     void sinkModel_with_exclude_keys() {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
-        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of(), Arrays.asList("abc", "bcd", "efg"), pluginSettings);
+        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of(), Arrays.asList("abc", "bcd", "efg"), pluginSettings, Collections.emptyList());
 
         assertThat(sinkModel.getIncludeKeys(), equalTo(new ArrayList<String>()));
         assertThat(sinkModel.getExcludeKeys(), equalTo(Arrays.asList("abc", "bcd", "efg")));
@@ -172,7 +172,7 @@ class SinkModelTest {
     @Test
     void sinkModel_with_invalid_exclude_keys() {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
-        assertThrows(InvalidPluginConfigurationException.class, () -> new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of(), List.of("/bcd"), pluginSettings));
+        assertThrows(InvalidPluginConfigurationException.class, () -> new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of(), List.of("/bcd"), pluginSettings, Collections.emptyList()));
     }
 
 
@@ -180,7 +180,7 @@ class SinkModelTest {
     @Test
     void sinkModel_with_both_include_and_exclude_keys() {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
-        assertThrows(InvalidPluginConfigurationException.class, () -> new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of("abc"), List.of("bcd"), pluginSettings));
+        assertThrows(InvalidPluginConfigurationException.class, () -> new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of("abc"), List.of("bcd"), pluginSettings, Collections.emptyList()));
     }
 
     @Nested

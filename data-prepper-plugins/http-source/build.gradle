@@ -10,6 +10,7 @@ plugins {
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:blocking-buffer')
+    implementation project(':data-prepper-plugins:http-source-common')
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:armeria-common')
     implementation libs.armeria.core

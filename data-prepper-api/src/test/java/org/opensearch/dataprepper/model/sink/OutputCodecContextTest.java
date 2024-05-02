@@ -9,6 +9,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 import java.util.Collections;
 import java.util.List;
@@ -40,8 +41,9 @@ public class OutputCodecContextTest {
         final String testTagsTargetKey = RandomStringUtils.randomAlphabetic(6);
         final List<String> testIncludeKeys = Collections.emptyList();
         final List<String> testExcludeKeys = Collections.emptyList();
+        final List<PluginModel> testResponseActions = Collections.emptyList();
 
-        SinkContext sinkContext = new SinkContext(testTagsTargetKey, null, testIncludeKeys, testExcludeKeys);
+        SinkContext sinkContext = new SinkContext(testTagsTargetKey, null, testIncludeKeys, testExcludeKeys, testResponseActions);
 
         OutputCodecContext codecContext = OutputCodecContext.fromSinkContext(sinkContext);
         assertThat(codecContext.getTagsTargetKey(), equalTo(testTagsTargetKey));

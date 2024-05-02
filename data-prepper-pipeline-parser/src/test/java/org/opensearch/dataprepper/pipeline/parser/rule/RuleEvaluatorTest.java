@@ -45,7 +45,7 @@ class RuleEvaluatorTest {
         sourceOptions.put("collections", collections);
         final PluginModel source = new PluginModel(pluginName, sourceOptions);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", null));
-        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null));
+        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null, Collections.emptyList()));
         final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
@@ -77,7 +77,7 @@ class RuleEvaluatorTest {
         sourceOptions.put("option2", null);
         final PluginModel source = new PluginModel("http", sourceOptions);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", null));
-        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null));
+        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null, Collections.emptyList()));
         final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
@@ -103,7 +103,7 @@ class RuleEvaluatorTest {
         sourceOptions.put("option2", null);
         final PluginModel source = new PluginModel("http", sourceOptions);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", null));
-        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null));
+        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null, Collections.emptyList()));
         final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(

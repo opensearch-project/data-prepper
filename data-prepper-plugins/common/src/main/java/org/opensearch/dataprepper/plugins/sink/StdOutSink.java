@@ -49,6 +49,19 @@ public class StdOutSink implements Sink<Record<Object>> {
         }
     }
 
+    @Override
+    public Object outputSync(final Collection<Record<Object>> records, boolean isQuery) {
+        for (final Record<Object> record : records) {
+            if (record instanceof Event) {
+                String output = ((Event)record).jsonBuilder().includeTags(tagsTargetKey).toJsonString();
+                System.out.println(output);
+            } else {
+                System.out.println(record);
+            }
+        }
+        return null;
+    }
+
     // Temporary function to support both trace and log ingestion pipelines.
     // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     private void checkTypeAndPrintObject(final Object object) {

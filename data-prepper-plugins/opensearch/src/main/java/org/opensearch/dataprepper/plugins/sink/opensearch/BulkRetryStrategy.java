@@ -24,13 +24,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public final class BulkRetryStrategy {
     public static final String DOCUMENTS_SUCCESS = "documentsSuccess";
@@ -217,6 +214,43 @@ public final class BulkRetryStrategy {
         } while (operationResponse != null);
     }
 
+    public BulkResponse executeBulkRequest(final AccumulatingBulkRequest bulkRequest) throws InterruptedException {
+        final Backoff backoff = Backoff.exponential(INITIAL_DELAY_MS, MAXIMUM_DELAY_MS).withMaxAttempts(maxRetries);
+        BulkOperationRequestResponse operationResponse;
+        BulkResponse response = null;
+        List<BulkResponse> bulkResponses = new ArrayList<>();
+        AccumulatingBulkRequest request = bulkRequest;
+        int attempt = 1;
+        do {
+            operationResponse = handleRetryWithResponses(request, response, attempt, bulkResponses);
+            if (operationResponse != null) {
+                final long delayMillis = backoff.nextDelayMillis(attempt++);
+                request = operationResponse.getBulkRequest();
+                response = operationResponse.getResponse();
+                if (delayMillis < 0) {
+                    RuntimeException e = new RuntimeException(String.format("Number of retries reached the limit of max retries (configured value %d)", maxRetries));
+                    handleFailures(request, null, e);
+                    break;
+                }
+                // Wait for backOff duration
+                try {
+                    Thread.sleep(delayMillis);
+                } catch (final InterruptedException e){
+                    LOG.error("Thread is interrupted while attempting to bulk write to OpenSearch with retry.", e);
+                }
+            }
+        } while (operationResponse != null);
+
+        List<BulkResponseItem> items = new ArrayList<>();
+        bulkResponses.forEach(bulkResponse -> items.addAll(bulkResponse.items()));
+        if (!bulkResponses.isEmpty()) {
+            BulkResponse lastBulkResponse = bulkResponses.get(bulkResponses.size() - 1);
+            return new BulkResponse.Builder().items(items).errors(lastBulkResponse.errors()).took(lastBulkResponse.took()).ingestTook(lastBulkResponse.ingestTook()).build();
+        }
+
+        return new BulkResponse.Builder().items(items).errors(false).took(0).ingestTook(1L).build();
+    }
+
     public boolean canRetry(final BulkResponse response) {
         for (final BulkResponseItem bulkItemResponse : response.items()) {
             if (isItemInError(bulkItemResponse) && !NON_RETRY_STATUS.contains(bulkItemResponse.status())) {
@@ -297,6 +331,41 @@ public final class BulkRetryStrategy {
             incrementErrorCounters(e);
             return handleRetriesAndFailures(bulkRequestForRetry, retryCount, null, e);
         }
+
+        if (bulkResponse.errors()) {
+            return handleRetriesAndFailures(bulkRequestForRetry, retryCount, bulkResponse, null);
+        } else {
+            final int numberOfDocs = bulkRequestForRetry.getOperationsCount();
+            final boolean firstAttempt = (retryCount == 1);
+            if (firstAttempt) {
+                sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
+            }
+            sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());
+            for (final BulkOperationWrapper bulkOperation: bulkRequestForRetry.getOperations()) {
+                bulkOperation.releaseEventHandle(true);
+            }
+            final int totalDuplicateDocuments = bulkResponse.items().stream().filter(this::isDuplicateDocument).mapToInt(i -> 1).sum();
+            documentsDuplicates.increment(totalDuplicateDocuments);
+        }
+        return null;
+    }
+
+    private BulkOperationRequestResponse handleRetryWithResponses(final AccumulatingBulkRequest request, final BulkResponse response, int retryCount, List<BulkResponse> bulkResponses) throws InterruptedException {
+        final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequestForRetry = createBulkRequestForRetry(request, response);
+        if (bulkRequestForRetry.getOperationsCount() == 0) {
+            return null;
+        }
+
+        final BulkResponse bulkResponse;
+        try {
+            bulkResponse = requestFunction.apply(bulkRequestForRetry);
+        } catch (Exception e) {
+            incrementErrorCounters(e);
+            return handleRetriesAndFailures(bulkRequestForRetry, retryCount, null, e);
+        }
+
+        bulkResponses.add(bulkResponse);
+
         if (bulkResponse.errors()) {
             return handleRetriesAndFailures(bulkRequestForRetry, retryCount, bulkResponse, null);
         } else {

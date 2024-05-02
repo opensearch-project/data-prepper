@@ -34,7 +34,6 @@ public class RuleEvaluator {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
     private final TransformersFactory transformersFactory;
-    private String PLUGIN_NAME = null;
 
     public RuleEvaluator(TransformersFactory transformersFactory) {
         this.transformersFactory = transformersFactory;
@@ -55,36 +54,42 @@ public class RuleEvaluator {
      * @return RuleEvaluatorResult
      */
     private RuleEvaluatorResult isDocDBSource(PipelinesDataFlowModel pipelinesModel) {
-        PLUGIN_NAME = "documentdb";
+
+        List<String> plugins = List.of("opensearch_api", "documentdb");
+
+//        String pluginRulesPath = transformersFactory.getPluginRuleFileLocation(PLUGIN_NAME);
+//        File ruleFile = new File(pluginRulesPath);
+//        LOG.info("Checking rule path {}",ruleFile.getAbsolutePath());
 
         Map<String, PipelineModel> pipelines = pipelinesModel.getPipelines();
-        for (Map.Entry<String, PipelineModel> entry : pipelines.entrySet()) {
-            try {
-                String pipelineJson = OBJECT_MAPPER.writeValueAsString(entry);
-                if (evaluate(pipelineJson, PLUGIN_NAME)) {
-                    LOG.info("Rule for {} is evaluated true for pipelineJson {}", PLUGIN_NAME, pipelineJson);
+        for (String pluginName: plugins) {
+            for (Map.Entry<String, PipelineModel> entry : pipelines.entrySet()) {
+                try {
+                    String pipelineJson = OBJECT_MAPPER.writeValueAsString(entry);
+                    if (evaluate(pipelineJson, pluginName)) {
+                        LOG.info("Rule for {} is evaluated true for pipelineJson {}", pluginName, pipelineJson);
 
-                    InputStream templateStream = transformersFactory.getPluginTemplateFileStream(PLUGIN_NAME);
-                    PipelineTemplateModel templateModel = yamlMapper.readValue(templateStream,
-                            PipelineTemplateModel.class);
-                    LOG.info("Template is chosen for {}", PLUGIN_NAME);
+                        InputStream templateStream = transformersFactory.getPluginTemplateFileStream(pluginName);
+                        PipelineTemplateModel templateModel = yamlMapper.readValue(templateStream,
+                                PipelineTemplateModel.class);
+                        LOG.info("Template is chosen for {}", pluginName);
 
-                    return RuleEvaluatorResult.builder()
-                            .withEvaluatedResult(true)
-                            .withPipelineTemplateModel(templateModel)
-                            .withPipelineName(entry.getKey())
-                            .build();
+                        return RuleEvaluatorResult.builder()
+                                .withEvaluatedResult(true)
+                                .withPipelineTemplateModel(templateModel)
+                                .withPipelineName(entry.getKey())
+                                .build();
+                    }
+                } catch (FileNotFoundException e) {
+                    LOG.error("Template File Not Found for {}", pluginName);
+                    throw new RuntimeException(e);
+                } catch (JsonProcessingException e) {
+                    LOG.error("Error processing json");
+                    throw new RuntimeException(e);
+                } catch (IOException e) {
+                    LOG.error("Error reading file");
+                    throw new RuntimeException(e);
                 }
-            } catch (FileNotFoundException e){
-                LOG.error("Template File Not Found for {}", PLUGIN_NAME);
-                throw new RuntimeException(e);
-            }
-            catch (JsonProcessingException e) {
-                LOG.error("Error processing json");
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                LOG.error("Error reading file");
-                throw new RuntimeException(e);
             }
         }
         return RuleEvaluatorResult.builder()

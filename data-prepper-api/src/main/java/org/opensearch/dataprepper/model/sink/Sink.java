@@ -22,6 +22,8 @@ public interface Sink<T extends Record<?>> {
      */
     void output(Collection<T> records);
 
+    Object outputSync(Collection<T> records, boolean isQuery);
+
     /**
      * Prepare sink for shutdown, by cleaning up resources and threads.
      */

@@ -88,6 +88,38 @@ public class FileSink implements Sink<Record<Object>> {
         }
     }
 
+    @Override
+    public Object outputSync(final Collection<Record<Object>> records, boolean isQuery) {
+        try {
+            if (isStopRequested)
+                return null;
+
+            for (final Record<Object> record : records) {
+                try {
+                    if (record instanceof Event) {
+                        String output = ((Event)record).jsonBuilder().includeTags(tagsTargetKey).toJsonString();
+                        writer.write(output);
+                        writer.newLine();
+                    } else {
+                        writer.write(record.toString());
+                        writer.newLine();
+                    }
+                } catch (final IOException ex) {
+                    throw new RuntimeException(format("Encountered exception writing to file %s", outputFilePath), ex);
+                }
+            }
+
+            try {
+                writer.flush();
+            } catch (final IOException ex) {
+                LOG.warn("Failed to flush for file {}", outputFilePath, ex);
+            }
+        } finally {
+            lock.unlock();
+        }
+        return null;
+    }
+
     // Temporary function to support both trace and log ingestion pipelines.
     // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     private void checkTypeAndWriteObject(final Object object, final BufferedWriter writer) throws IOException {

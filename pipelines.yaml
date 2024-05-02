@@ -1,0 +1,58 @@
+simple-sample-pipeline:
+  source:
+    opensearch_api:
+      ssl: false
+      port: 4992
+      path_prefix: "/opensearch"
+##      async: true
+##      s3_region: "us-east-1"
+##      s3_bucket: "osi-opensearch-api-us-east-1"
+#      aws:
+#        sts_role_arn: "arn:aws:iam::366592962843:role/OSI-PipelineRole"
+#        region: "us-east-1"
+  processor:
+    - obfuscate:
+        source: "rating"
+  sink:
+    - opensearch:
+        hosts: [ "https://6mwtahfku42iixd0oad8.us-east-1.aoss.amazonaws.com" ]
+        insecure: true
+        #index_type: knn
+        template_content: >
+          {
+            "settings": {
+              "index": {
+                "knn": "true",
+                "knn.algo_param.ef_search": "100",
+                "number_of_shards": "1",
+                "number_of_replicas": "1"
+              }
+            },
+            "mappings": {
+              "properties": {
+                "location": {
+                  "type": "knn_vector",
+                  "dimension": 2,
+                  "method": {
+                    "name": "hnsw",
+                    "space_type": "l2",
+                    "engine": "lucene",
+                    "parameters": {
+                      "ef_construction": 100,
+                      "m": 16
+                    }
+                  }
+                }
+              }
+            }
+          }
+        index: "${getMetadata(\"opensearch_index\")}"
+        action: "${getMetadata(\"opensearch_action\")}"
+#        document_id: "${getMetadata(\"opensearch_id\")}"
+        aws:
+          sts_role_arn: "arn:aws:iam::767398004756:role/OSI-PipelineRole"
+          region: "us-east-1"
+          serverless: true
+        response_actions:
+          - obfuscate:
+              source: "rating"
