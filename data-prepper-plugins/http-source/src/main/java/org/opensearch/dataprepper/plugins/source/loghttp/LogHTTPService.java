@@ -53,7 +53,7 @@ public class LogHTTPService {
     private final Counter successRequestsCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
-    private Optional<Integer> maxRequestLength;
+    private Integer maxRequestLength;
 
     public LogHTTPService(final int bufferWriteTimeoutInMillis,
                           final Buffer<Record<Log>> buffer,
@@ -61,7 +61,7 @@ public class LogHTTPService {
                           final PluginMetrics pluginMetrics) {
         this.buffer = buffer;
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
-        this.maxRequestLength = buffer.getMaxRequestSize();
+        this.maxRequestLength = buffer.getMaxRequestSize().isPresent() ? buffer.getMaxRequestSize().get(): null;
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
@@ -81,7 +81,7 @@ public class LogHTTPService {
     }
 
     private void sendJsonList(List<String> jsonList) throws Exception {
-        StringBuilder sb = new StringBuilder(maxRequestLength.get());
+        StringBuilder sb = new StringBuilder(maxRequestLength);
         sb.append("[");
         String comma = "";
         String key = UUID.randomUUID().toString();
@@ -91,7 +91,7 @@ public class LogHTTPService {
             comma = ",";
         }
         sb.append("]");
-        if (sb.toString().getBytes().length > maxRequestLength.get()) {
+        if (sb.toString().getBytes().length > maxRequestLength) {
             throw new RuntimeException("Request length "+ sb.toString().getBytes().length + " exceeds maxRequestLength "+ maxRequestLength);
         }
         buffer.writeBytes(sb.toString().getBytes(), key, bufferWriteTimeoutInMillis);
@@ -102,14 +102,14 @@ public class LogHTTPService {
         List<List<String>> jsonList;
 
         try {
-            jsonList = (!maxRequestLength.isPresent()) ? jsonCodec.parse(content) : jsonCodec.parse(content, maxRequestLength.get() - SERIALIZATION_OVERHEAD);
+            jsonList = (maxRequestLength == null) ? jsonCodec.parse(content) : jsonCodec.parse(content, maxRequestLength - SERIALIZATION_OVERHEAD);
         } catch (IOException e) {
             LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
             throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
         }
         try {
             if (buffer.isByteBuffer()) {
-                if (maxRequestLength.isPresent() && content.array().length > maxRequestLength.get()) {
+                if (maxRequestLength != null && content.array().length > maxRequestLength) {
                     for (final List<String> innerJsonList: jsonList) {
                         sendJsonList(innerJsonList);
                     }
