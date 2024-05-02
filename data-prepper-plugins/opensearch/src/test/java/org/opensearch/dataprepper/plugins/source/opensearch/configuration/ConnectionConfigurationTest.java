@@ -62,6 +62,7 @@ public class ConnectionConfigurationTest {
         assertThat(connectionConfig.getSocketTimeout(),equalTo(null));
         assertThat(connectionConfig.getConnectTimeout(),equalTo(null));
         assertThat(connectionConfig.isInsecure(),equalTo(true));
+        assertThat(connectionConfig.isCertificateValid(), is(true));
     }
 
     @ParameterizedTest

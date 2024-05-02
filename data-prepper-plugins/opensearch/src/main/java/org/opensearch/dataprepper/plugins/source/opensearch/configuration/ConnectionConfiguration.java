@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.plugins.certificate.validation.PemObjectValida
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Objects;
 
 public class ConnectionConfiguration {
 
@@ -62,7 +63,7 @@ public class ConnectionConfiguration {
 
   @AssertTrue(message = "certificate must be either valid PEM file path or public key content.")
   boolean isCertificateValid() {
-    if (PemObjectValidator.isPemObject(certificate)) {
+    if (Objects.isNull(certificate) || PemObjectValidator.isPemObject(certificate)) {
       return true;
     }
     try {
