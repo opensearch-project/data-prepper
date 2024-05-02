@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -41,6 +42,10 @@ public class StreamWorker {
     private static final Logger LOG = LoggerFactory.getLogger(StreamWorker.class);
     private static final int DEFAULT_EXPORT_COMPLETE_WAIT_INTERVAL_MILLIS = 90_000;
     private static final String COLLECTION_SPLITTER = "\\.";
+    private static final Set<OperationType> CRUD_OPERATION_TYPE = Set.of(OperationType.INSERT, OperationType.DELETE,
+            OperationType.UPDATE, OperationType.REPLACE);
+    private static final Set<OperationType> STREAM_TERMINATE_OPERATION_TYPE = Set.of(OperationType.INVALIDATE,
+            OperationType.DROP, OperationType.DROP_DATABASE);
     static final String SUCCESS_ITEM_COUNTER_NAME = "streamRecordsSuccessTotal";
     static final String FAILURE_ITEM_COUNTER_NAME = "streamRecordsFailedTotal";
     static final String BYTES_RECEIVED = "bytesReceived";
@@ -210,7 +215,7 @@ public class StreamWorker {
                             } else if(shouldTerminateChangeStream(operationType)){
                                 stop();
                                 partitionCheckpoint.resetCheckpoint();
-                                LOG.warn("The change stream is invalid due to stream operation type {}. Stopping the change stream.", operationType);
+                                LOG.warn("The change stream is invalid due to stream operation type {}. Stopping the current change stream. New thread should restart the stream.", operationType);
                             } else {
                                 LOG.warn("The change stream operation type {} is not handled", operationType);
                             }
@@ -222,7 +227,7 @@ public class StreamWorker {
                             failureItemsCounter.increment(records.size());
                         }
                     } else {
-                        LOG.warn("The change stream cursor didn't return any document. Stopping the change stream.");
+                        LOG.warn("The change stream cursor didn't return any document. Stopping the change stream. New thread should restart the stream.");
                         stop();
                         partitionCheckpoint.resetCheckpoint();
                     }
@@ -249,16 +254,11 @@ public class StreamWorker {
     }
 
     private boolean isCRUDOperation(final OperationType operationType) {
-        return OperationType.INSERT == operationType ||
-                OperationType.DELETE == operationType ||
-                OperationType.UPDATE == operationType ||
-                OperationType.REPLACE == operationType;
+        return CRUD_OPERATION_TYPE.contains(operationType);
     }
 
     private boolean shouldTerminateChangeStream(final OperationType operationType) {
-        return OperationType.INVALIDATE == operationType ||
-                OperationType.DROP == operationType ||
-                OperationType.DROP_DATABASE == operationType;
+        return STREAM_TERMINATE_OPERATION_TYPE.contains(operationType);
     }
 
     private void writeToBuffer(final List<Event> records, final String checkPointToken, final long recordCount) {
