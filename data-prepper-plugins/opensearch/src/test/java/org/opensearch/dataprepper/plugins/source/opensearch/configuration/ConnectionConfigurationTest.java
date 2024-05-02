@@ -68,7 +68,7 @@ public class ConnectionConfigurationTest {
     @ParameterizedTest
     @ValueSource(strings = {
             TEST_CERTIFICATE,
-            "/some/file/path",
+            "/some/file/path"
     })
     void connection_configuration_certificate_values_test(final String certificate) throws JsonProcessingException {
 
