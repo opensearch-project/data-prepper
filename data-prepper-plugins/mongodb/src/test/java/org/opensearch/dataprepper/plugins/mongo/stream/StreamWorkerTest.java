@@ -7,6 +7,7 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
+import com.mongodb.client.model.changestream.OperationType;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.bson.BsonDocument;
@@ -122,20 +123,22 @@ public class StreamWorkerTest {
         ChangeStreamDocument streamDoc1 = mock(ChangeStreamDocument.class);
         ChangeStreamDocument streamDoc2 = mock(ChangeStreamDocument.class);
         Document doc1 = mock(Document.class);
-        Document doc2 = mock(Document.class);
+        BsonDocument doc2Key = mock(BsonDocument.class);
         BsonDocument bsonDoc1 = new BsonDocument("resumeToken1", new BsonInt32(123));
         BsonDocument bsonDoc2 = new BsonDocument("resumeToken2", new BsonInt32(234));
         when(streamDoc1.getResumeToken()).thenReturn(bsonDoc1);
+        when(streamDoc1.getOperationType()).thenReturn(OperationType.INSERT);
         when(streamDoc2.getResumeToken()).thenReturn(bsonDoc2);
+        when(streamDoc2.getOperationType()).thenReturn(OperationType.DELETE);
         when(cursor.next())
             .thenReturn(streamDoc1)
             .thenReturn(streamDoc2);
         final String doc1Json1 = UUID.randomUUID().toString();
         final String doc1Json2 = UUID.randomUUID().toString();
         when(doc1.toJson(any(JsonWriterSettings.class))).thenReturn(doc1Json1);
-        when(doc2.toJson(any(JsonWriterSettings.class))).thenReturn(doc1Json2);
+        when(doc2Key.toJson(any(JsonWriterSettings.class))).thenReturn(doc1Json2);
         when(streamDoc1.getFullDocument()).thenReturn(doc1);
-        when(streamDoc2.getFullDocument()).thenReturn(doc2);
+        when(streamDoc2.getDocumentKey()).thenReturn(doc2Key);
         final String operationType1 = UUID.randomUUID().toString();
         final String operationType2 = UUID.randomUUID().toString();
         when(streamDoc1.getOperationTypeString()).thenReturn(operationType1);
@@ -230,8 +233,11 @@ public class StreamWorkerTest {
         when(doc2.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
         when(doc3.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
         when(streamDoc1.getFullDocument()).thenReturn(doc1);
+        when(streamDoc1.getOperationType()).thenReturn(OperationType.INSERT);
         when(streamDoc2.getFullDocument()).thenReturn(doc2);
+        when(streamDoc2.getOperationType()).thenReturn(OperationType.INSERT);
         when(streamDoc3.getFullDocument()).thenReturn(doc3);
+        when(streamDoc3.getOperationType()).thenReturn(OperationType.INSERT);
         final BsonTimestamp bsonTimestamp1 = mock(BsonTimestamp.class);
         final BsonTimestamp bsonTimestamp2 = mock(BsonTimestamp.class);
         final BsonTimestamp bsonTimestamp3 = mock(BsonTimestamp.class);
@@ -310,5 +316,68 @@ public class StreamWorkerTest {
         future.cancel(true);
         executorService.shutdownNow();
         verify(mongoDatabase).getCollection(eq("collection"));
+    }
+
+    @Test
+    void test_processStream_terminateChangeStreamSuccess() {
+        final String collection = "database.collection";
+        when(streamProgressState.shouldWaitForExport()).thenReturn(false);
+        when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
+        when(streamPartition.getCollection()).thenReturn(collection);
+        MongoClient mongoClient = mock(MongoClient.class);
+        MongoDatabase mongoDatabase = mock(MongoDatabase.class);
+        MongoCollection col = mock(MongoCollection.class);
+        ChangeStreamIterable changeStreamIterable = mock(ChangeStreamIterable.class);
+        MongoCursor cursor = mock(MongoCursor.class);
+        when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
+        when(mongoDatabase.getCollection(anyString())).thenReturn(col);
+        when(col.watch()).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.batchSize(1000)).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.iterator()).thenReturn(cursor);
+        when(cursor.hasNext()).thenReturn(true, true, true);
+        ChangeStreamDocument streamDoc1 = mock(ChangeStreamDocument.class);
+        ChangeStreamDocument streamDoc2 = mock(ChangeStreamDocument.class);
+        ChangeStreamDocument streamDoc3 = mock(ChangeStreamDocument.class);
+        Document doc1 = mock(Document.class);
+        BsonDocument bsonDoc1 = new BsonDocument("resumeToken1", new BsonInt32(123));
+        when(streamDoc1.getResumeToken()).thenReturn(bsonDoc1);
+        when(streamDoc1.getOperationType()).thenReturn(OperationType.INSERT);
+        when(streamDoc2.getOperationType()).thenReturn(OperationType.OTHER);
+        when(streamDoc3.getOperationType()).thenReturn(OperationType.DROP);
+        when(cursor.next())
+                .thenReturn(streamDoc1, streamDoc2, streamDoc3);
+        final String doc1Json1 = UUID.randomUUID().toString();
+        when(doc1.toJson(any(JsonWriterSettings.class))).thenReturn(doc1Json1);
+        when(streamDoc1.getFullDocument()).thenReturn(doc1);
+        final String operationType1 = UUID.randomUUID().toString();
+        when(streamDoc1.getOperationTypeString()).thenReturn(operationType1);
+        final BsonTimestamp bsonTimestamp1 = mock(BsonTimestamp.class);
+        final int timeSecond1 = random.nextInt();
+        when(bsonTimestamp1.getTime()).thenReturn(timeSecond1);
+        when(streamDoc1.getClusterTime()).thenReturn(bsonTimestamp1);
+        S3PartitionStatus s3PartitionStatus = mock(S3PartitionStatus.class);
+        final List<String> partitions = List.of("first", "second");
+        when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
+        when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> {
+            try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
+                mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
+                        .thenReturn(mongoClient);
+                streamWorker.processStream(streamPartition);
+            }
+        });
+        await()
+                .atMost(Duration.ofSeconds(10))
+                .untilAsserted(() ->  verify(mongoClient).close());
+        verify(mongoDatabase).getCollection(eq("collection"));
+        verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
+        verify(mockRecordConverter).initializePartitions(partitions);
+        verify(mockRecordConverter).convert(eq(doc1Json1), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(operationType1));
+        verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
+        verify(successItemsCounter).increment(1);
+        verify(failureItemsCounter, never()).increment();
+        verify(mockPartitionCheckpoint).resetCheckpoint();
     }
 }
