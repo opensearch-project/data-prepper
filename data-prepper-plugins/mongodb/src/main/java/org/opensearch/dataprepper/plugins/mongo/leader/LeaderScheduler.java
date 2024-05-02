@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
 
 public class LeaderScheduler implements Runnable {
 
@@ -80,6 +81,7 @@ public class LeaderScheduler implements Runnable {
                     if (sourcePartition.isPresent()) {
                         LOG.info("Running as a LEADER node");
                         leaderPartition = (LeaderPartition) sourcePartition.get();
+                        System.setProperty(STOP_S3_SCAN_PROCESSING_PROPERTY, "true");
                     }
                 }
                 // Once owned, run Normal LEADER node process.
@@ -112,6 +114,7 @@ public class LeaderScheduler implements Runnable {
         // Should Stop
         LOG.warn("Quitting Leader Scheduler");
         if (leaderPartition != null) {
+            System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
             coordinator.giveUpPartition(leaderPartition);
         }
     }

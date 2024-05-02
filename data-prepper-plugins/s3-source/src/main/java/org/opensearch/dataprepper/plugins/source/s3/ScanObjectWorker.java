@@ -41,6 +41,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
+
 /**
  * Class responsible for processing the s3 scan objects with the help of <code>S3ObjectWorker</code>
  * or <code>S3SelectWorker</code>.
@@ -129,7 +131,16 @@ public class ScanObjectWorker implements Runnable {
     public void run() {
         while (!isStopped) {
             try {
-                startProcessingObject(backOffMs);
+                if (System.getProperty(STOP_S3_SCAN_PROCESSING_PROPERTY) == null) {
+                    startProcessingObject(backOffMs);
+                } else {
+                    LOG.debug("System property {} is set, S3 scan is not processing objects", STOP_S3_SCAN_PROCESSING_PROPERTY);
+                    try {
+                        Thread.sleep(RETRY_BACKOFF_ON_EXCEPTION_MILLIS);
+                    } catch (final InterruptedException ex) {
+                        LOG.info("S3 Scan worker thread interrupted while waiting for property {} to be set .", STOP_S3_SCAN_PROCESSING_PROPERTY);
+                    }
+                }
             } catch (final Exception e) {
                 LOG.error("Received an exception while processing S3 objects, backing off and retrying", e);
                 try {
