@@ -28,7 +28,7 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(ConvertEntryTypeProcessor.class);
     private final List<String> convertEntryKeys;
-    private final TypeConverter converter;
+    private final TypeConverter<?> converter;
     private final String convertWhen;
     private final List<String> nullValues;
     private final String type;
