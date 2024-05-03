@@ -161,6 +161,9 @@ public class StreamWorkerTest {
         final List<String> partitions = List.of("first", "second");
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
+        Event event = mock(Event.class);
+        when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
+        when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), anyString())).thenReturn(event);
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> {
             try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
@@ -256,6 +259,9 @@ public class StreamWorkerTest {
         when(streamDoc1.getClusterTime()).thenReturn(bsonTimestamp1);
         when(streamDoc2.getClusterTime()).thenReturn(bsonTimestamp2);
         when(streamDoc3.getClusterTime()).thenReturn(bsonTimestamp3);
+        when(streamDoc1.getOperationTypeString()).thenReturn(UUID.randomUUID().toString());
+        when(streamDoc2.getOperationTypeString()).thenReturn(UUID.randomUUID().toString());
+        when(streamDoc3.getOperationTypeString()).thenReturn(UUID.randomUUID().toString());
         final String resumeToken1 = UUID.randomUUID().toString();
         final String resumeToken2 = UUID.randomUUID().toString();
         final String resumeToken3 = UUID.randomUUID().toString();
@@ -266,6 +272,9 @@ public class StreamWorkerTest {
         final List<String> partitions = List.of("first", "second");
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
+        Event event = mock(Event.class);
+        when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
+        when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), anyString())).thenReturn(event);
         try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
 
             mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
@@ -366,6 +375,9 @@ public class StreamWorkerTest {
         final List<String> partitions = List.of("first", "second");
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
+        Event event = mock(Event.class);
+        when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
+        when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), anyString())).thenReturn(event);
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> {
             try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
