@@ -80,7 +80,6 @@ public class StreamWorker {
             .binaryConverter((value, writer) ->  writer.writeString(Base64.getEncoder().encodeToString(value.getData())))
             .dateTimeConverter((value, writer) -> writer.writeNumber(String.valueOf(value.longValue())))
             .decimal128Converter((value, writer) -> writer.writeString(value.bigDecimalValue().toPlainString()))
-            .doubleConverter((value, writer) -> writer.writeNumber(String.valueOf(value.doubleValue())))
             .maxKeyConverter((value, writer) -> writer.writeNull())
             .minKeyConverter((value, writer) -> writer.writeNull())
             .regularExpressionConverter((value, writer) -> {
@@ -243,7 +242,6 @@ public class StreamWorker {
                             }
                         } catch(Exception e){
                             // TODO handle documents with size > 10 MB.
-                            // collection.find(new Document("_id", "key")).first();
                             // this will only happen if writing to buffer gets interrupted from shutdown,
                             // otherwise it's infinite backoff and retry
                             LOG.error("Failed to add records to buffer with error", e);

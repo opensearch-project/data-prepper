@@ -18,6 +18,9 @@ import org.bson.json.JsonWriterSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,6 +42,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -383,8 +387,9 @@ public class StreamWorkerTest {
         verify(mockPartitionCheckpoint).resetCheckpoint();
     }
 
-    @Test
-    void test_processStream_dataTypeConversionSuccess() {
+    @ParameterizedTest
+    @MethodSource("mongoDataTypeProvider")
+    void test_processStream_dataTypeConversionSuccess(final String actualDocument, final String expectedDocument) {
         final String collection = "database.collection";
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
@@ -402,67 +407,7 @@ public class StreamWorkerTest {
         when(changeStreamIterable.iterator()).thenReturn(cursor);
         when(cursor.hasNext()).thenReturn(true, false);
         ChangeStreamDocument streamDoc1 = mock(ChangeStreamDocument.class);
-        var document = "{" +
-            "\"_id\": {" +
-                "\"$oid\": \"6634ed693ac62386d57bcaf0\"" +
-            "}," +
-            "\"name\": \"Hello User\"," +
-            "\"doc\": {" +
-                "\"id\": {" +
-                    "\"key1\": \"value1\"," +
-                    "\"key2\": \"value2\"" +
-                "}," +
-                "\"nullField\": null," +
-                "\"numberField\": 123," +
-                "\"longValue\": {" +
-                    "\"$numberLong\": \"1234567890123456768\"" +
-                "}," +
-                "\"stringField\": \"Hello, Mongo!\"," +
-                "\"booleanField\": true," +
-                "\"dateField\": {" +
-                    "\"$date\": \"2024-05-03T13:57:51.155Z\"" +
-                "}," +
-                "\"arrayField\": [" +
-                    "\"a\"," +
-                    "\"b\"," +
-                    "\"c\"" +
-                "]," +
-                "\"objectField\": {" +
-                    "\"nestedKey\": \"nestedValue\"" +
-                "}," +
-                "\"binaryField\": {" +
-                    "\"$binary\": {" +
-                        "\"base64\": \"AQIDBA==\"," +
-                        "\"subType\": \"00\"" +
-                    "}" +
-                "}," +
-                "\"objectIdField\": {" +
-                    "\"$oid\": \"6634ed5f3ac62386d57bcaef\"" +
-                "}," +
-                "\"timestampField\": {" +
-                    "\"$timestamp\": {" +
-                        "\"t\": 1714744681," +
-                        "\"i\": 29" +
-                    "}" +
-                "}," +
-                "\"regexField\": {" +
-                    "\"$regularExpression\": {" +
-                        "\"pattern\": \"pattern\"," +
-                        "\"options\": \"i\"" +
-                    "}" +
-                "}," +
-                "\"minKeyField\": {" +
-                    "\"$minKey\": 1" +
-                "}," +
-                "\"maxKeyField\": {" +
-                    "\"$maxKey\": 1" +
-                "}" +
-            "}," +
-            "\"price128\": {" +
-                "\"$numberDecimal\": \"123.45\"" +
-            "}" +
-        "}";
-        Document doc1 = Document.parse(document);
+        Document doc1 = Document.parse(actualDocument);
         BsonDocument bsonDoc1 = new BsonDocument("resumeToken1", new BsonInt32(123));
         when(streamDoc1.getResumeToken()).thenReturn(bsonDoc1);
         when(streamDoc1.getOperationType()).thenReturn(OperationType.INSERT);
@@ -496,40 +441,66 @@ public class StreamWorkerTest {
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockRecordConverter).initializePartitions(partitions);
-        final String expectedRecord = "{" +
-            "\"_id\": \"6634ed693ac62386d57bcaf0\", " +
-            "\"name\": \"Hello User\", " +
-            "\"doc\": {" +
-                "\"id\": {" +
-                    "\"key1\": \"value1\", " +
-                    "\"key2\": \"value2\"" +
-                "}, " +
-                "\"nullField\": null, " +
-                "\"numberField\": 123, " +
-                "\"longValue\": 1234567890123456768, " +
-                "\"stringField\": \"Hello, Mongo!\", " +
-                "\"booleanField\": true, " +
-                "\"dateField\": 1714744671155, " +
-                "\"arrayField\": [\"a\", \"b\", \"c\"], " +
-                "\"objectField\": {" +
-                    "\"nestedKey\": \"nestedValue\"" +
-                "}, " +
-                "\"binaryField\": \"AQIDBA==\", " +
-                "\"objectIdField\": \"6634ed5f3ac62386d57bcaef\", " +
-                "\"timestampField\": 7364772325884952605, " +
-                "\"regexField\": {" +
-                    "\"pattern\": \"pattern\", " +
-                    "\"options\": \"i\"" +
-                "}, " +
-                "\"minKeyField\": null, " +
-                "\"maxKeyField\": null" +
-            "}, " +
-            "\"price128\": \"123.45\"" +
-        "}";
-        verify(mockRecordConverter).convert(eq(expectedRecord), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(operationType1));
+        verify(mockRecordConverter).convert(eq(expectedDocument), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(operationType1));
         verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
         verify(successItemsCounter).increment(1);
         verify(failureItemsCounter, never()).increment();
         verify(mockPartitionCheckpoint).resetCheckpoint();
+    }
+
+    private static Stream<Arguments> mongoDataTypeProvider() {
+        return Stream.of(
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"name\": \"Hello User\"}",
+                            "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"name\": \"Hello User\"}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"nullField\": null}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"nullField\": null}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"numberField\": 123}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"numberField\": 123}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"doubleValue\": 3.14159}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"doubleValue\": 3.14159}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"longValue\": { \"$numberLong\": \"1234567890123456768\"}}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"longValue\": 1234567890123456768}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"stringField\": \"Hello, Mongo!\"}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"stringField\": \"Hello, Mongo!\"}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"booleanField\": true}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"booleanField\": true}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"dateField\": { \"$date\": \"2024-05-03T13:57:51.155Z\"}}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"dateField\": 1714744671155}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"arrayField\": [\"a\",\"b\",\"c\"]}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"arrayField\": [\"a\", \"b\", \"c\"]}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"objectField\": { \"nestedKey\": \"nestedValue\"}}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"objectField\": {\"nestedKey\": \"nestedValue\"}}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"binaryField\": { \"$binary\": {\"base64\": \"AQIDBA==\", \"subType\": \"00\"}}}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"binaryField\": \"AQIDBA==\"}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"objectIdField\": { \"$oid\": \"6634ed693ac62386d57b12d0\" }}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"objectIdField\": \"6634ed693ac62386d57b12d0\"}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"timestampField\": { \"$timestamp\": {\"t\": 1714744681, \"i\": 29}}}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"timestampField\": 7364772325884952605}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"regexField\": { \"$regularExpression\": {\"pattern\": \"^ABC\", \"options\": \"i\"}}}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"regexField\": {\"pattern\": \"^ABC\", \"options\": \"i\"}}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"minKeyField\": { \"$minKey\": 1}}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"minKeyField\": null}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"maxKeyField\": { \"$maxKey\": 1}}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"maxKeyField\": null}"),
+                Arguments.of(
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"bigDecimalField\": { \"$numberDecimal\": \"123456789.0123456789\"}}",
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"bigDecimalField\": \"123456789.0123456789\"}")
+        );
     }
 }
