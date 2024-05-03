@@ -22,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.client.MongoDBConnection;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
@@ -42,6 +43,7 @@ import java.util.concurrent.Future;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
@@ -361,7 +363,7 @@ public class StreamWorkerTest {
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
-        final Future<?> future = executorService.submit(() -> {
+        executorService.submit(() -> {
             try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
                 mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
                         .thenReturn(mongoClient);
@@ -375,6 +377,154 @@ public class StreamWorkerTest {
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockRecordConverter).initializePartitions(partitions);
         verify(mockRecordConverter).convert(eq(doc1Json1), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(operationType1));
+        verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
+        verify(successItemsCounter).increment(1);
+        verify(failureItemsCounter, never()).increment();
+        verify(mockPartitionCheckpoint).resetCheckpoint();
+    }
+
+    @Test
+    void test_processStream_dataTypeConversionSuccess() {
+        final String collection = "database.collection";
+        when(streamProgressState.shouldWaitForExport()).thenReturn(false);
+        when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
+        when(streamPartition.getCollection()).thenReturn(collection);
+        MongoClient mongoClient = mock(MongoClient.class);
+        MongoDatabase mongoDatabase = mock(MongoDatabase.class);
+        MongoCollection col = mock(MongoCollection.class);
+        ChangeStreamIterable changeStreamIterable = mock(ChangeStreamIterable.class);
+        MongoCursor cursor = mock(MongoCursor.class);
+        when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
+        when(mongoDatabase.getCollection(anyString())).thenReturn(col);
+        when(col.watch()).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.batchSize(1000)).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
+        when(changeStreamIterable.iterator()).thenReturn(cursor);
+        when(cursor.hasNext()).thenReturn(true, false);
+        ChangeStreamDocument streamDoc1 = mock(ChangeStreamDocument.class);
+        var document = "{" +
+            "\"_id\": {" +
+                "\"$oid\": \"6634ed693ac62386d57bcaf0\"" +
+            "}," +
+            "\"name\": \"Hello User\"," +
+            "\"doc\": {" +
+                "\"id\": {" +
+                    "\"key1\": \"value1\"," +
+                    "\"key2\": \"value2\"" +
+                "}," +
+                "\"nullField\": null," +
+                "\"numberField\": 123," +
+                "\"longValue\": {" +
+                    "\"$numberLong\": \"1234567890123456768\"" +
+                "}," +
+                "\"stringField\": \"Hello, Mongo!\"," +
+                "\"booleanField\": true," +
+                "\"dateField\": {" +
+                    "\"$date\": \"2024-05-03T13:57:51.155Z\"" +
+                "}," +
+                "\"arrayField\": [" +
+                    "\"a\"," +
+                    "\"b\"," +
+                    "\"c\"" +
+                "]," +
+                "\"objectField\": {" +
+                    "\"nestedKey\": \"nestedValue\"" +
+                "}," +
+                "\"binaryField\": {" +
+                    "\"$binary\": {" +
+                        "\"base64\": \"AQIDBA==\"," +
+                        "\"subType\": \"00\"" +
+                    "}" +
+                "}," +
+                "\"objectIdField\": {" +
+                    "\"$oid\": \"6634ed5f3ac62386d57bcaef\"" +
+                "}," +
+                "\"timestampField\": {" +
+                    "\"$timestamp\": {" +
+                        "\"t\": 1714744681," +
+                        "\"i\": 29" +
+                    "}" +
+                "}," +
+                "\"regexField\": {" +
+                    "\"$regularExpression\": {" +
+                        "\"pattern\": \"pattern\"," +
+                        "\"options\": \"i\"" +
+                    "}" +
+                "}," +
+                "\"minKeyField\": {" +
+                    "\"$minKey\": 1" +
+                "}," +
+                "\"maxKeyField\": {" +
+                    "\"$maxKey\": 1" +
+                "}" +
+            "}," +
+            "\"price128\": {" +
+                "\"$numberDecimal\": \"123.45\"" +
+            "}" +
+        "}";
+        Document doc1 = Document.parse(document);
+        BsonDocument bsonDoc1 = new BsonDocument("resumeToken1", new BsonInt32(123));
+        when(streamDoc1.getResumeToken()).thenReturn(bsonDoc1);
+        when(streamDoc1.getOperationType()).thenReturn(OperationType.INSERT);
+        when(cursor.next())
+                .thenReturn(streamDoc1);
+        when(streamDoc1.getFullDocument()).thenReturn(doc1);
+        final String operationType1 = UUID.randomUUID().toString();
+        when(streamDoc1.getOperationTypeString()).thenReturn(operationType1);
+        final BsonTimestamp bsonTimestamp1 = mock(BsonTimestamp.class);
+        final int timeSecond1 = random.nextInt();
+        when(bsonTimestamp1.getTime()).thenReturn(timeSecond1);
+        when(streamDoc1.getClusterTime()).thenReturn(bsonTimestamp1);
+        S3PartitionStatus s3PartitionStatus = mock(S3PartitionStatus.class);
+        final List<String> partitions = List.of("first", "second");
+        when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
+        when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
+        Event event = mock(Event.class);
+        when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
+        when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), anyString())).thenReturn(event);
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> {
+            try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
+                mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
+                        .thenReturn(mongoClient);
+                streamWorker.processStream(streamPartition);
+            }
+        });
+        await()
+                .atMost(Duration.ofSeconds(10))
+                .untilAsserted(() ->  verify(mongoClient).close());
+        verify(mongoDatabase).getCollection(eq("collection"));
+        verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
+        verify(mockRecordConverter).initializePartitions(partitions);
+        final String expectedRecord = "{" +
+            "\"_id\": \"6634ed693ac62386d57bcaf0\", " +
+            "\"name\": \"Hello User\", " +
+            "\"doc\": {" +
+                "\"id\": {\"key1\": \"value1\", " +
+                "\"key2\": \"value2\"" +
+            "}, " +
+            "\"nullField\": null, " +
+            "\"numberField\": 123, " +
+            "\"longValue\": 1234567890123456768, " +
+            "\"stringField\": \"Hello, Mongo!\", " +
+            "\"booleanField\": true, " +
+            "\"dateField\": 1714744671155, " +
+            "\"arrayField\": [\"a\", \"b\", \"c\"], " +
+            "\"objectField\": {" +
+                "\"nestedKey\": \"nestedValue\"" +
+            "}, " +
+            "\"binaryField\": \"AQIDBA==\", " +
+            "\"objectIdField\": \"6634ed5f3ac62386d57bcaef\", " +
+            "\"timestampField\": 7364772325884952605, " +
+            "\"regexField\": {" +
+                "\"pattern\": \"pattern\", " +
+                "\"options\": \"i\"" +
+            "}, " +
+            "\"minKeyField\": null, " +
+            "\"maxKeyField\": null}, " +
+            "\"price128\": \"123.45\"" +
+        "}";
+        verify(mockRecordConverter).convert(eq(expectedRecord), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(operationType1));
         verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
         verify(successItemsCounter).increment(1);
         verify(failureItemsCounter, never()).increment();
