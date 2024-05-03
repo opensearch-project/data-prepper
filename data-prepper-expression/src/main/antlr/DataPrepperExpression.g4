@@ -78,7 +78,9 @@ regexEqualityOperator
 
 relationalOperatorExpression
     : relationalOperatorExpression relationalOperator setOperatorExpression
+    | relationalOperatorExpression relationalOperator typeOfOperatorExpression
     | setOperatorExpression
+    | typeOfOperatorExpression
     ;
 
 relationalOperator
@@ -86,6 +88,10 @@ relationalOperator
     | LTE
     | GT
     | GTE
+    ;
+
+typeOfOperatorExpression
+    : JsonPointer TYPEOF String
     ;
 
 setOperatorExpression
@@ -298,6 +304,7 @@ MATCH_REGEX_PATTERN : '=~';
 NOT_MATCH_REGEX_PATTERN : '!~';
 IN_SET : SPACE 'in' SPACE;
 NOT_IN_SET : SPACE 'not in' SPACE;
+TYPEOF: SPACE 'typeof' SPACE;
 AND : SPACE 'and' SPACE;
 OR : SPACE 'or' SPACE;
 NOT : 'not' SPACE;

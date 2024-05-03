@@ -75,4 +75,24 @@ public enum DataType {
     static DataType fromTypeName(final String option) {
         return TYPES_MAP.get(option);
     }
+
+    public static boolean isSameType(final Object object, final String option) {
+        DataType type = fromTypeName(option);
+        if (type == null)
+            return false;
+        switch (type) {
+          case STRING:
+            return (object instanceof String);
+          case BOOLEAN:
+            return (object instanceof Boolean);
+          case INTEGER:
+            return (object instanceof Integer);
+          case LONG:
+            return (object instanceof Long);
+          case DOUBLE:
+            return (object instanceof Double);
+          default:
+            return false;
+        }
+    }
 }
