@@ -467,7 +467,7 @@ public class StreamWorkerTest {
         when(streamDoc1.getResumeToken()).thenReturn(bsonDoc1);
         when(streamDoc1.getOperationType()).thenReturn(OperationType.INSERT);
         when(cursor.next())
-                .thenReturn(streamDoc1);
+            .thenReturn(streamDoc1);
         when(streamDoc1.getFullDocument()).thenReturn(doc1);
         final String operationType1 = UUID.randomUUID().toString();
         when(streamDoc1.getOperationTypeString()).thenReturn(operationType1);
@@ -491,8 +491,8 @@ public class StreamWorkerTest {
             }
         });
         await()
-                .atMost(Duration.ofSeconds(10))
-                .untilAsserted(() ->  verify(mongoClient).close());
+            .atMost(Duration.ofSeconds(10))
+            .untilAsserted(() ->  verify(mongoClient).close());
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockRecordConverter).initializePartitions(partitions);
@@ -500,28 +500,30 @@ public class StreamWorkerTest {
             "\"_id\": \"6634ed693ac62386d57bcaf0\", " +
             "\"name\": \"Hello User\", " +
             "\"doc\": {" +
-                "\"id\": {\"key1\": \"value1\", " +
-                "\"key2\": \"value2\"" +
+                "\"id\": {" +
+                    "\"key1\": \"value1\", " +
+                    "\"key2\": \"value2\"" +
+                "}, " +
+                "\"nullField\": null, " +
+                "\"numberField\": 123, " +
+                "\"longValue\": 1234567890123456768, " +
+                "\"stringField\": \"Hello, Mongo!\", " +
+                "\"booleanField\": true, " +
+                "\"dateField\": 1714744671155, " +
+                "\"arrayField\": [\"a\", \"b\", \"c\"], " +
+                "\"objectField\": {" +
+                    "\"nestedKey\": \"nestedValue\"" +
+                "}, " +
+                "\"binaryField\": \"AQIDBA==\", " +
+                "\"objectIdField\": \"6634ed5f3ac62386d57bcaef\", " +
+                "\"timestampField\": 7364772325884952605, " +
+                "\"regexField\": {" +
+                    "\"pattern\": \"pattern\", " +
+                    "\"options\": \"i\"" +
+                "}, " +
+                "\"minKeyField\": null, " +
+                "\"maxKeyField\": null" +
             "}, " +
-            "\"nullField\": null, " +
-            "\"numberField\": 123, " +
-            "\"longValue\": 1234567890123456768, " +
-            "\"stringField\": \"Hello, Mongo!\", " +
-            "\"booleanField\": true, " +
-            "\"dateField\": 1714744671155, " +
-            "\"arrayField\": [\"a\", \"b\", \"c\"], " +
-            "\"objectField\": {" +
-                "\"nestedKey\": \"nestedValue\"" +
-            "}, " +
-            "\"binaryField\": \"AQIDBA==\", " +
-            "\"objectIdField\": \"6634ed5f3ac62386d57bcaef\", " +
-            "\"timestampField\": 7364772325884952605, " +
-            "\"regexField\": {" +
-                "\"pattern\": \"pattern\", " +
-                "\"options\": \"i\"" +
-            "}, " +
-            "\"minKeyField\": null, " +
-            "\"maxKeyField\": null}, " +
             "\"price128\": \"123.45\"" +
         "}";
         verify(mockRecordConverter).convert(eq(expectedRecord), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(operationType1));
