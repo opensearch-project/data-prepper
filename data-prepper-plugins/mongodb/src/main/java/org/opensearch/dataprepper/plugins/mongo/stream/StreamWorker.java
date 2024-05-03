@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -49,6 +50,10 @@ public class StreamWorker {
     static final String SUCCESS_ITEM_COUNTER_NAME = "streamRecordsSuccessTotal";
     static final String FAILURE_ITEM_COUNTER_NAME = "streamRecordsFailedTotal";
     static final String BYTES_RECEIVED = "bytesReceived";
+    private static final String REGEX_PATTERN = "pattern";
+    private static final String REGEX_OPTIONS = "options";
+    public static final String MONGO_ID_FIELD_NAME = "_id";
+    public static final String DEFAULT_ID_MAPPING_FIELD_NAME = "doc_id";
     private final RecordBufferWriter recordBufferWriter;
     private final PartitionKeyRecordConverter recordConverter;
     private final DataStreamPartitionCheckpoint partitionCheckpoint;
@@ -72,6 +77,19 @@ public class StreamWorker {
     private final JsonWriterSettings writerSettings = JsonWriterSettings.builder()
             .outputMode(JsonMode.RELAXED)
             .objectIdConverter((value, writer) -> writer.writeString(value.toHexString()))
+            .binaryConverter((value, writer) ->  writer.writeString(Base64.getEncoder().encodeToString(value.getData())))
+            .dateTimeConverter((value, writer) -> writer.writeNumber(String.valueOf(value.longValue())))
+            .decimal128Converter((value, writer) -> writer.writeString(value.bigDecimalValue().toPlainString()))
+            .maxKeyConverter((value, writer) -> writer.writeNull())
+            .minKeyConverter((value, writer) -> writer.writeNull())
+            .regularExpressionConverter((value, writer) -> {
+                writer.writeStartObject();
+                writer.writeString(REGEX_PATTERN, value.getPattern());
+                writer.writeString(REGEX_OPTIONS, value.getOptions());
+                writer.writeEndObject();
+            })
+            .timestampConverter((value, writer) -> writer.writeNumber(String.valueOf(value.getValue())))
+            .undefinedConverter((value, writer) -> writer.writeNull())
             .build();
 
     public static StreamWorker create(final RecordBufferWriter recordBufferWriter,
@@ -201,6 +219,9 @@ public class StreamWorker {
                                 checkPointToken = document.getResumeToken().toJson(writerSettings);
                                 // TODO fix eventVersionNumber
                                 final Event event = recordConverter.convert(record, eventCreationTimeMillis, eventCreationTimeMillis, document.getOperationTypeString());
+                                event.put(DEFAULT_ID_MAPPING_FIELD_NAME, event.get(MONGO_ID_FIELD_NAME, Object.class));
+                                // delete _id
+                                event.delete(MONGO_ID_FIELD_NAME);
                                 records.add(event);
                                 recordCount += 1;
 
