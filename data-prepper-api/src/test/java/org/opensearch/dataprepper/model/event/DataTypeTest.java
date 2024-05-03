@@ -11,10 +11,10 @@ import org.junit.jupiter.params.provider.EnumSource;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-class TypeTest {
+class DataTypeTest {
     @ParameterizedTest
-    @EnumSource(Type.class)
-    void fromTypeName_returns_expected_value(final Type type) {
-        assertThat(Type.fromTypeName(type.getTypeName()), equalTo(type));
+    @EnumSource(DataType.class)
+    void fromTypeName_returns_expected_value(final DataType dataType) {
+        assertThat(DataType.fromTypeName(dataType.getTypeName()), equalTo(dataType));
     }
 }

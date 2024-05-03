@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.opensearch.dataprepper.model.event.Type;
+import org.opensearch.dataprepper.model.event.DataType;
 
 import java.util.stream.Stream;
 
@@ -35,11 +35,11 @@ class TargetTypeTest {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext extensionContext) {
             return Stream.of(
-                    arguments(Type.STRING.getTypeName(), TargetType.STRING),
-                    arguments(Type.BOOLEAN.getTypeName(), TargetType.BOOLEAN),
-                    arguments(Type.INTEGER.getTypeName(), TargetType.INTEGER),
-                    arguments(Type.LONG.getTypeName(), TargetType.LONG),
-                    arguments(Type.DOUBLE.getTypeName(), TargetType.DOUBLE)
+                    arguments(DataType.STRING.getTypeName(), TargetType.STRING),
+                    arguments(DataType.BOOLEAN.getTypeName(), TargetType.BOOLEAN),
+                    arguments(DataType.INTEGER.getTypeName(), TargetType.INTEGER),
+                    arguments(DataType.LONG.getTypeName(), TargetType.LONG),
+                    arguments(DataType.DOUBLE.getTypeName(), TargetType.DOUBLE)
             );
         }
     }

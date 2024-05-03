@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  *
  * @since 2.8
  */
-public enum Type {
+public enum DataType {
     /**
      * Type of <i>string</i>. Compatible with {@link java.lang.String}.
      *
@@ -48,7 +48,7 @@ public enum Type {
      */
     DOUBLE("double");
 
-    private static final Map<String, Type> TYPES_MAP = Arrays.stream(Type.values())
+    private static final Map<String, DataType> TYPES_MAP = Arrays.stream(DataType.values())
             .collect(Collectors.toMap(
                     value -> value.typeName,
                     value -> value
@@ -56,7 +56,7 @@ public enum Type {
 
     private final String typeName;
 
-    Type(final String typeName) {
+    DataType(final String typeName) {
         this.typeName = typeName;
     }
 
@@ -72,7 +72,7 @@ public enum Type {
     }
 
     @JsonCreator
-    static Type fromTypeName(final String option) {
+    static DataType fromTypeName(final String option) {
         return TYPES_MAP.get(option);
     }
 }
