@@ -91,7 +91,7 @@ public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Ev
         }
         try{
             if(targetTypeMap.containsKey(fieldKey)){
-                TypeConverter converter = targetTypeMap.get(fieldKey).getTargetConverter();
+                final TypeConverter<?> converter = targetTypeMap.get(fieldKey).getTargetConverter();
                 return converter.convert(fieldValue);
             } else {
                 return fieldValue;

@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import org.opensearch.dataprepper.model.event.DataType;
 import org.opensearch.dataprepper.typeconverter.TypeConverter;
 import org.opensearch.dataprepper.typeconverter.IntegerConverter;
 import org.opensearch.dataprepper.typeconverter.StringConverter;
@@ -18,30 +19,34 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public enum TargetType {
-    INTEGER("integer", new IntegerConverter()),
-    STRING("string", new StringConverter()),
-    DOUBLE("double", new DoubleConverter()),
-    BOOLEAN("boolean", new BooleanConverter()),
-    LONG("long", new LongConverter());
+    INTEGER(DataType.INTEGER, new IntegerConverter()),
+    STRING(DataType.STRING, new StringConverter()),
+    DOUBLE(DataType.DOUBLE, new DoubleConverter()),
+    BOOLEAN(DataType.BOOLEAN, new BooleanConverter()),
+    LONG(DataType.LONG, new LongConverter());
 
     private static final Map<String, TargetType> OPTIONS_MAP = Arrays.stream(TargetType.values())
             .collect(Collectors.toMap(
-                    value -> value.option,
+                    value -> value.dataType.getTypeName(),
                     value -> value
             ));
 
-    private final String option;
-    private final TypeConverter targetConverter;
+    private final DataType dataType;
+    private final TypeConverter<?> targetConverter;
 
-    TargetType(final String option, final TypeConverter target) {
-        this.option = option;
+    TargetType(final DataType dataType, final TypeConverter<?> target) {
+        this.dataType = dataType;
         this.targetConverter = target;
     }
 
-    public TypeConverter getTargetConverter() {
+    public TypeConverter<?> getTargetConverter() {
         return targetConverter;
     }
-    
+
+    DataType getDataType() {
+        return dataType;
+    }
+
     @JsonCreator
     static TargetType fromOptionValue(final String option) {
         return OPTIONS_MAP.get(option.toLowerCase());
