@@ -279,7 +279,7 @@ class OperatorConfiguration {
     }
 
     @Bean
-    public GenericTypeOfOperator typeofOperator() {
+    public GenericTypeOfOperator typeOfOperator() {
         return new GenericTypeOfOperator(DataPrepperExpressionParser.TYPEOF, typeOf);
     }
 

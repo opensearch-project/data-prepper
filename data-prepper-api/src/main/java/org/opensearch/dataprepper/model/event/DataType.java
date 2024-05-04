@@ -79,7 +79,7 @@ public enum DataType {
     public static boolean isSameType(final Object object, final String option) {
         DataType type = fromTypeName(option);
         if (type == null)
-            return false;
+            throw new IllegalArgumentException("");
         switch (type) {
           case STRING:
             return (object instanceof String);
@@ -92,7 +92,7 @@ public enum DataType {
           case DOUBLE:
             return (object instanceof Double);
           default:
-            return false;
+            throw new IllegalArgumentException("");
         }
     }
 }

@@ -29,6 +29,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_WHITESPACE = "lenient";
     static final boolean DEFAULT_SKIP_DUPLICATE_VALUES = false;
     static final boolean DEFAULT_REMOVE_BRACKETS = false;
+    static final boolean DEFAULT_AUTO_MODE = false;
     static final boolean DEFAULT_RECURSIVE = false;
 
     @NotEmpty
@@ -90,6 +91,10 @@ public class KeyValueProcessorConfig {
     @NotNull
     private boolean removeBrackets = DEFAULT_REMOVE_BRACKETS;
 
+    @JsonProperty("auto")
+    private boolean autoMode = DEFAULT_AUTO_MODE;
+    
+
     @JsonProperty("recursive")
     @NotNull
     private boolean recursive = DEFAULT_RECURSIVE;
@@ -109,6 +114,10 @@ public class KeyValueProcessorConfig {
 
     public String getDestination() {
         return destination;
+    }
+
+    public boolean getAutoMode() {
+        return autoMode;
     }
 
     public String getFieldDelimiterRegex() {
