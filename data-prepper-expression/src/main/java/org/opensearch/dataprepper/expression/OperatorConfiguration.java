@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+import org.opensearch.dataprepper.model.event.DataType;
 import org.springframework.context.annotation.Bean;
 
 import javax.inject.Named;
@@ -22,6 +23,7 @@ class OperatorConfiguration {
     public final BiPredicate<Object, Object> regexEquals = (x, y) -> ((String) x).matches((String) y);
     public final BiPredicate<Object, Object> equals = Objects::equals;
     public final BiPredicate<Object, Object> inSet = (x, y) -> ((Set<?>) y).contains(x);
+    public final BiPredicate<Object, Object> typeOf = (x, y) -> DataType.isSameType(x, (String)y);
 
     @Bean
     public NumericCompareOperator greaterThanOperator() {
@@ -274,6 +276,11 @@ class OperatorConfiguration {
     @Bean
     public AddBinaryOperator concatOperator() {
         return new AddBinaryOperator(DataPrepperExpressionParser.PLUS, null); 
+    }
+
+    @Bean
+    public GenericTypeOfOperator typeOfOperator() {
+        return new GenericTypeOfOperator(DataPrepperExpressionParser.TYPEOF, typeOf);
     }
 
     @Bean

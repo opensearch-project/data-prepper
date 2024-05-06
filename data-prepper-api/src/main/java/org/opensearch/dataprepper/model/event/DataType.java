@@ -46,7 +46,21 @@ public enum DataType {
      *
      * @since 2.8
      */
-    DOUBLE("double");
+    DOUBLE("double"),
+
+    /**
+     * Type of <i>map</i>. Compatible with the Java <b>map</b> primitive data type.
+     *
+     * @since 2.8
+     */
+    MAP("map"),
+
+    /**
+     * Type of <i>array</i>. Compatible with the Java <b>array</b> primitive data type.
+     *
+     * @since 2.8
+     */
+    ARRAY("array");
 
     private static final Map<String, DataType> TYPES_MAP = Arrays.stream(DataType.values())
             .collect(Collectors.toMap(
@@ -74,5 +88,27 @@ public enum DataType {
     @JsonCreator
     static DataType fromTypeName(final String option) {
         return TYPES_MAP.get(option);
+    }
+
+    public static boolean isSameType(final Object object, final String option) {
+        DataType type = fromTypeName(option);
+        if (type == null)
+            throw new IllegalArgumentException("Unknown DataType");
+        switch (type) {
+          case MAP:
+            return (object instanceof Map);
+          case ARRAY:
+            return (object.getClass().isArray());
+          case DOUBLE:
+            return (object instanceof Double);
+          case BOOLEAN:
+            return (object instanceof Boolean);
+          case INTEGER:
+            return (object instanceof Integer);
+          case LONG:
+            return (object instanceof Long);
+          default: // STRING
+            return (object instanceof String);
+        }
     }
 }
