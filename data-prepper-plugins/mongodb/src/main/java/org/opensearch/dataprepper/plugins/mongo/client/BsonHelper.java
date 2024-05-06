@@ -74,8 +74,8 @@ public class BsonHelper {
         "java.lang.Boolean",
         "java.util.Date",
         "org.bson.BsonDateTime",
-        "org.bson.BsonTimestamp"
-        //MAX_KEY
+        "org.bson.BsonTimestamp",
+        MAX_KEY
         // "org.bson.types.Code" Javascript not supported in DocDB
         // "org.bson.BsonRegularExpression" Regex and Array not support as _id field
     );
