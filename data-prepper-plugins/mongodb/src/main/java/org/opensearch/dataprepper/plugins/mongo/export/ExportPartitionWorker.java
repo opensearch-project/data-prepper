@@ -37,9 +37,11 @@ public class ExportPartitionWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ExportPartitionWorker.class);
     private static final int PARTITION_KEY_PARTS = 4;
     static final Duration VERSION_OVERLAP_TIME_FOR_EXPORT = Duration.ofMinutes(5);
-    static final String SUCCESS_ITEM_COUNTER_NAME = "exportRecordsSuccessTotal";
-    static final String FAILURE_ITEM_COUNTER_NAME = "exportRecordsFailedTotal";
+    static final String EXPORT_RECORDS_TOTAL_COUNT = "exportRecordsTotal";
+    static final String SUCCESS_ITEM_COUNTER_NAME = "exportRecordsProcessed";
+    static final String FAILURE_ITEM_COUNTER_NAME = "exportRecordProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
+    static final String BYTES_PROCESSED = "bytesProcessed";
     private static final String PARTITION_KEY_SPLITTER = "\\|";
     private static final String COLLECTION_SPLITTER = "\\.";
 
@@ -64,9 +66,11 @@ public class ExportPartitionWorker implements Runnable {
     private static volatile boolean shouldStop = false;
 
     private final MongoDBSourceConfig sourceConfig;
+    private final Counter exportRecordTotalCounter;
     private final Counter successItemsCounter;
     private final Counter failureItemsCounter;
     private final DistributionSummary bytesReceivedSummary;
+    private final DistributionSummary bytesProcessedSummary;
     private final RecordBufferWriter recordBufferWriter;
     private final PartitionKeyRecordConverter recordConverter;
     private final DataQueryPartition dataQueryPartition;
@@ -96,9 +100,11 @@ public class ExportPartitionWorker implements Runnable {
         this.partitionCheckpoint = partitionCheckpoint;
         this.startLine = 0;// replace it with checkpoint line
         this.exportStartTime = exportStartTime;
+        this.exportRecordTotalCounter = pluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT);
         this.successItemsCounter = pluginMetrics.counter(SUCCESS_ITEM_COUNTER_NAME);
         this.failureItemsCounter = pluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME);
         this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
+        this.bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
     }
 
     private boolean shouldWaitForS3Partition(final String collection) {
@@ -149,6 +155,7 @@ public class ExportPartitionWorker implements Runnable {
             int recordCount = 0;
             int lastRecordNumberProcessed = 0;
             final List<Event> records = new ArrayList<>();
+            final List<Long> recordBytes = new ArrayList<>();
             try (MongoCursor<Document> cursor = col.find(query).iterator()) {
                 while (cursor.hasNext() && !Thread.currentThread().isInterrupted()) {
                     if (shouldStop) {
@@ -162,10 +169,12 @@ public class ExportPartitionWorker implements Runnable {
                     if (totalRecords <= startLine) {
                         continue;
                     }
+                    exportRecordTotalCounter.increment();
 
                     try {
                         final String record = cursor.next().toJson(writerSettings);
                         final long bytes = record.getBytes().length;
+                        recordBytes.add(bytes);
                         bytesReceivedSummary.record(bytes);
                         // The version number is the export time minus some overlap to ensure new stream events still get priority
                         final long eventVersionNumber = (exportStartTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis()) * 1_000;
@@ -177,6 +186,9 @@ public class ExportPartitionWorker implements Runnable {
                             LOG.debug("Write to buffer for line " + (recordCount - DEFAULT_BATCH_SIZE) + " to " + recordCount);
                             recordBufferWriter.writeToBuffer(acknowledgementSet, records);
                             records.clear();
+                            recordBytes.clear();
+                            successItemsCounter.increment(DEFAULT_BATCH_SIZE);
+                            bytesProcessedSummary.record(recordBytes.stream().mapToLong(Long::longValue).sum());
                             lastRecordNumberProcessed = recordCount;
                             // checkpointing in finally block when all records are processed
                         }
@@ -185,14 +197,12 @@ public class ExportPartitionWorker implements Runnable {
                             LOG.debug("Perform regular checkpointing for Data Query Loader");
                             partitionCheckpoint.checkpoint(lastRecordNumberProcessed);
                             lastCheckpointTime = System.currentTimeMillis();
-
                         }
 
-                        successItemsCounter.increment();
                         successRecords += 1;
                     } catch (Exception e) {
                         LOG.error("Failed to add record to buffer with error {}", e.getMessage());
-                        failureItemsCounter.increment();
+                        failureItemsCounter.increment(records.size());
                         failedRecords += 1;
                     }
                 }
@@ -202,6 +212,8 @@ public class ExportPartitionWorker implements Runnable {
                     // If all records were written to buffer, checkpoint will be done in finally block
                     recordBufferWriter.writeToBuffer(acknowledgementSet, records);
                     partitionCheckpoint.checkpoint(recordCount);
+                    successItemsCounter.increment(records.size());
+                    bytesProcessedSummary.record(recordBytes.stream().mapToLong(Long::longValue).sum());
                 }
 
                 records.clear();
