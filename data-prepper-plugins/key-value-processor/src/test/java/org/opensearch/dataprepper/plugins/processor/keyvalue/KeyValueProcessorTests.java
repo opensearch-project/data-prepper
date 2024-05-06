@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -165,9 +166,8 @@ public class KeyValueProcessorTests {
         assertThatKeyEquals(parsed_message, "key2", "value2");
     }
 
-    @Test
     @ParameterizedTest
-    @MethodSource(booleans = {true, false})
+    @MethodSource("getKeyValueAutoModeTestdata")
     void testMultipleKvToObjectKeyValueProcessorInAutoMode() {
         lenient().when(mockConfig.getAutoMode()).thenReturn(true);
         final KeyValueProcessor objectUnderTest = createObjectUnderTest();
@@ -180,6 +180,12 @@ public class KeyValueProcessorTests {
         assertThatKeyEquals(parsed_message, "key2", "value2");
     }
 
+    private static Stream<Arguments> getKeyValueAutoModeTestdata() {
+        return Stream.of (
+                Arguments.of(),
+                Arguments.of(),
+                Arguments.of()
+               );
     @Test
     void testWriteToRoot() {
         when(mockConfig.getDestination()).thenReturn(null);
