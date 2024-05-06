@@ -80,8 +80,8 @@ public class BsonHelper {
         // "org.bson.BsonRegularExpression" Regex and Array not support as _id field
     );
 
-    private final static Function<Object, Bson> GT_FUNCTION = a -> gt("_id", a);
-    private final static Function<Object, Bson> GTE_FUNCTION = a -> gte("_id", a);
+    private static final Function<Object, Bson> GT_FUNCTION = a -> gt("_id", a);
+    private static final Function<Object, Bson> GTE_FUNCTION = a -> gte("_id", a);
     private static final Function<Object, Bson> LTE_FUNCTION = a -> lte("_id", a);
     private static final String REGEX_PATTERN = "pattern";
     private static final String REGEX_OPTIONS = "options";
