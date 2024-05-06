@@ -11,6 +11,7 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -33,6 +34,7 @@ import java.util.Optional;
 
 import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.JSON_WRITER_SETTINGS;
 import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.DOCUMENTDB_ID_FIELD_NAME;
+import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.UNKNOWN_TYPE;
 
 public class ExportPartitionWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ExportPartitionWorker.class);
@@ -162,12 +164,16 @@ public class ExportPartitionWorker implements Runnable {
                     }
 
                     try {
-                        final String record = cursor.next().toJson(JSON_WRITER_SETTINGS);
+                        final Document document = cursor.next();
+                        final String record = document.toJson(JSON_WRITER_SETTINGS);
                         final long bytes = record.getBytes().length;
                         bytesReceivedSummary.record(bytes);
+                        final Optional<BsonDocument> primaryKeyDoc = Optional.ofNullable(document.toBsonDocument());
+                        final String primaryKeyBsonType = primaryKeyDoc.map(bsonDocument -> bsonDocument.getBsonType().name()).orElse(UNKNOWN_TYPE);
+
                         // The version number is the export time minus some overlap to ensure new stream events still get priority
                         final long eventVersionNumber = (exportStartTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis()) * 1_000;
-                        final Event event = recordConverter.convert(record, exportStartTime, eventVersionNumber);
+                        final Event event = recordConverter.convert(record, exportStartTime, eventVersionNumber, primaryKeyBsonType);
                         // event.put(DEFAULT_ID_MAPPING_FIELD_NAME, event.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
                         // delete _id
                         event.delete(DOCUMENTDB_ID_FIELD_NAME);

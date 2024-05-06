@@ -39,6 +39,7 @@ public class BsonHelper {
     private static final String PARTITION_SPLITTER = "-";
     private static final String NUMBER_TYPE = "number";
     public static final String MAX_KEY = "MaxKey";
+    public static final String UNKNOWN_TYPE = "UNKNOWN";
 
     // https://www.mongodb.com/docs/manual/reference/bson-type-comparison-order/
     /**

@@ -7,6 +7,8 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import org.bson.BsonDocument;
+import org.bson.BsonType;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.json.JsonWriterSettings;
@@ -121,6 +123,12 @@ public class ExportPartitionWorkerTest {
         lenient().when(cursor.hasNext()).thenReturn(true, true, false);
         Document doc1 = mock(Document.class);
         Document doc2 = mock(Document.class);
+        BsonDocument bsonDoc1 = mock(BsonDocument.class);
+        BsonDocument bsonDoc2 = mock(BsonDocument.class);
+        when(doc1.toBsonDocument()).thenReturn(bsonDoc1);
+        when(doc2.toBsonDocument()).thenReturn(bsonDoc2);
+        when(bsonDoc1.getBsonType()).thenReturn(BsonType.OBJECT_ID);
+        when(bsonDoc2.getBsonType()).thenReturn(BsonType.STRING);
         final String docJson1 = UUID.randomUUID().toString();
         final String docJson2 = UUID.randomUUID() + docJson1;
         when(doc1.toJson(any(JsonWriterSettings.class))).thenReturn(docJson1);
@@ -131,8 +139,8 @@ public class ExportPartitionWorkerTest {
         final long eventVersionNumber = (exportStartTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis()) * 1_000;
         Event event1 = mock((Event.class));
         Event event2 = mock((Event.class));
-        when(mockRecordConverter.convert(docJson1, exportStartTime, eventVersionNumber)).thenReturn(event1);
-        when(mockRecordConverter.convert(docJson2, exportStartTime, eventVersionNumber)).thenReturn(event2);
+        when(mockRecordConverter.convert(docJson1, exportStartTime, eventVersionNumber, BsonType.OBJECT_ID.name())).thenReturn(event1);
+        when(mockRecordConverter.convert(docJson2, exportStartTime, eventVersionNumber, BsonType.STRING.name())).thenReturn(event2);
         lenient().when(dataQueryPartition.getPartitionKey()).thenReturn(partitionKey);
         lenient().when(sourceCoordinator.acquireAvailablePartition(DataQueryPartition.PARTITION_TYPE))
                 .thenReturn(Optional.of(dataQueryPartition));
@@ -163,8 +171,8 @@ public class ExportPartitionWorkerTest {
         future.cancel(true);
 
         verify(mongoClient, times(1)).close();
-        verify(mockRecordConverter).convert(docJson1, exportStartTime, eventVersionNumber);
-        verify(mockRecordConverter).convert(docJson2, exportStartTime, eventVersionNumber);
+        verify(mockRecordConverter).convert(docJson1, exportStartTime, eventVersionNumber, BsonType.OBJECT_ID.name());
+        verify(mockRecordConverter).convert(docJson2, exportStartTime, eventVersionNumber, BsonType.STRING.name());
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockRecordConverter).initializePartitions(partitions);
         verify(mockRecordBufferWriter).writeToBuffer(eq(mockAcknowledgementSet), any());
