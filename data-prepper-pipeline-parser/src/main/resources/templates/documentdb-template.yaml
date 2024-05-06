@@ -21,7 +21,7 @@
          event_collect_timeout: "120s"
          maximum_size: "2mb"
        aggregate_threshold:
-         maximum_size: "256kb"
+         maximum_size: "128mb"
          flush_capacity_ratio: 0
        object_key:
          path_prefix: "${getMetadata(\"s3_partition_key\")}"
@@ -63,7 +63,11 @@
           sts_header_overrides: "<<$.<<pipeline-name>>.source.documentdb.aws.sts_header_overrides>>"
         acknowledgments: true
         delete_s3_objects_on_read: true
+        disable_s3_metadata_in_event: true
         scan:
+          folder_partitions:
+            depth: [ "<<FUNCTION_NAME:calculateDepth,PARAMETER:$.<<pipeline-name>>.source.documentdb.s3_prefix>>" ]
+            max_objects_per_ownership: 50
           buckets:
             - bucket:
                 name: "<<$.<<pipeline-name>>.source.documentdb.s3_bucket>>"
