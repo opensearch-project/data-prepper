@@ -162,7 +162,7 @@ public class StreamWorkerTest {
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
         Event event = mock(Event.class);
-        when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
+        //when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
         when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), anyString())).thenReturn(event);
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> {
@@ -273,7 +273,7 @@ public class StreamWorkerTest {
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
         Event event = mock(Event.class);
-        when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
+        //when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
         when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), anyString())).thenReturn(event);
         try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
 
@@ -376,7 +376,7 @@ public class StreamWorkerTest {
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
         Event event = mock(Event.class);
-        when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
+        //when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
         when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), anyString())).thenReturn(event);
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> {
@@ -437,7 +437,7 @@ public class StreamWorkerTest {
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
         Event event = mock(Event.class);
-        when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
+        //when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
         when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), anyString())).thenReturn(event);
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> {

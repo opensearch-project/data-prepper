@@ -76,13 +76,13 @@ public class RecordConverter {
         final EventMetadata eventMetadata = event.getMetadata();
 
         eventMetadata.setAttribute(MetadataKeyAttributes.INGESTION_EVENT_TYPE_ATTRIBUTE, dataType);
-        eventMetadata.setAttribute(MetadataKeyAttributes.MONGODB_EVENT_COLLECTION_METADATA_ATTRIBUTE, collection);
-        eventMetadata.setAttribute(MetadataKeyAttributes.MONGODB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreationTimeMillis);
-        eventMetadata.setAttribute(MetadataKeyAttributes.MONGODB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE, eventName);
+        eventMetadata.setAttribute(MetadataKeyAttributes.DOCUMENTDB_EVENT_COLLECTION_METADATA_ATTRIBUTE, collection);
+        eventMetadata.setAttribute(MetadataKeyAttributes.DOCUMENTDB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreationTimeMillis);
+        eventMetadata.setAttribute(MetadataKeyAttributes.DOCUMENTDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE, eventName);
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, mapStreamEventNameToBulkAction(eventName));
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP, eventVersionNumber);
 
-        final String partitionKey = getAttributeValue(data, MetadataKeyAttributes.MONGODB_PRIMARY_KEY_ATTRIBUTE_NAME);
+        final String partitionKey = getAttributeValue(data, MetadataKeyAttributes.DOCUMENTDB_PRIMARY_KEY_ATTRIBUTE_NAME);
         eventMetadata.setAttribute(MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE, partitionKey);
         eventMetadata.setAttribute(MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE, partitionKey);
 
@@ -109,11 +109,12 @@ public class RecordConverter {
         }
 
         // https://www.mongodb.com/docs/manual/reference/change-events/
-        switch (streamEventName) {
-            case "INSERT":
-            case "MODIFY":
+        switch (streamEventName.toLowerCase()) {
+            case "insert":
+            case "modify":
+            case "replace":
                 return OpenSearchBulkActions.INDEX.toString();
-            case "REMOVE":
+            case "delete":
                 return OpenSearchBulkActions.DELETE.toString();
             default:
                 return DEFAULT_ACTION;

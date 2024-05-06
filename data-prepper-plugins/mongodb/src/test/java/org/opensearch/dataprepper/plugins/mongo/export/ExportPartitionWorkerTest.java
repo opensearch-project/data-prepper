@@ -93,11 +93,11 @@ public class ExportPartitionWorkerTest {
 
     @ParameterizedTest
     @CsvSource({
-            "test.collection|0|1|java.lang.Integer",
-            "test.collection|0|1|java.lang.Double",
-            "test.collection|0|1|java.lang.String",
-            "test.collection|0|1|java.lang.Long",
-            "test.collection|000000000000000000000000|000000000000000000000001|org.bson.types.ObjectId"
+            "test.collection|0|1|java.lang.Integer|java.lang.Integer",
+            "test.collection|0|abc|java.lang.Double|java.lang.String",
+            "test.collection|0|1|java.lang.String|java.lang.String",
+            "test.collection|0|000000000000000000000000|java.lang.Long|org.bson.types.ObjectId",
+            "test.collection|000000000000000000000000|000000000000000000000001|org.bson.types.ObjectId|org.bson.types.ObjectId"
     })
     public void testProcessPartitionSuccess(final String partitionKey) {
         when(sourceCoordinator.acquireAvailablePartition(DataQueryPartition.PARTITION_TYPE)).thenReturn(Optional.of(dataQueryPartition));
