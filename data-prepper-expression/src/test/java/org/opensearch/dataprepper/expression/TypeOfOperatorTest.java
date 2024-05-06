@@ -17,6 +17,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
+
 @ExtendWith(MockitoExtension.class)
 class TypeOfOperatorTest {
     final GenericTypeOfOperator objectUnderTest = new OperatorConfiguration().typeOfOperator();
@@ -54,6 +56,11 @@ class TypeOfOperatorTest {
         assertThat(objectUnderTest.evaluate(1.0, "long"), is(false));
         assertThat(objectUnderTest.evaluate(1.0, "double"), is(true));
         assertThat(objectUnderTest.evaluate(1L, "double"), is(false));
+        assertThat(objectUnderTest.evaluate(Map.of("k", "v"), "map"), is(true));
+        assertThat(objectUnderTest.evaluate(1L, "map"), is(false));
+        int testArray[] = {1,2};
+        assertThat(objectUnderTest.evaluate(testArray, "array"), is(true));
+        assertThat(objectUnderTest.evaluate(1L, "array"), is(false));
     }
 
     @Test
