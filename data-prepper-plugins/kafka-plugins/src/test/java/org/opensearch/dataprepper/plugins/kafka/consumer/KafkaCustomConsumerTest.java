@@ -244,6 +244,7 @@ public class KafkaCustomConsumerTest {
             if (value2 != null) {
                 Assertions.assertEquals(value2, testValue2);
             }
+            Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
         }
     }
     @Test
@@ -281,6 +282,7 @@ public class KafkaCustomConsumerTest {
             if (value2 != null) {
                 Assertions.assertEquals(value2, testValue2);
             }
+            Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
         }
     }
 
@@ -312,6 +314,7 @@ public class KafkaCustomConsumerTest {
             if (value2 != null) {
                 Assertions.assertEquals(value2, testValue2);
             }
+            Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
             event.getEventHandle().release(true);
         }
         // Wait for acknowledgement callback function to run
@@ -360,6 +363,7 @@ public class KafkaCustomConsumerTest {
             if (value2 != null) {
                 Assertions.assertEquals(value2, testValue2);
             }
+            Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
             event.getEventHandle().release(false);
         }
         // Wait for acknowledgement callback function to run
@@ -406,6 +410,7 @@ public class KafkaCustomConsumerTest {
             if (kafkaKey.equals(testKey2)) {
                 testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
+            Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
         }
     }
 
@@ -459,6 +464,7 @@ public class KafkaCustomConsumerTest {
             if (kafkaKey.equals(testKey2)) {
                 testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
+            Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
             event.getEventHandle().release(true);
         }
         // Wait for acknowledgement callback function to run
@@ -526,6 +532,7 @@ public class KafkaCustomConsumerTest {
             if (kafkaKey.equals(testKey2)) {
                 testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
+            Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
             event.getEventHandle().release(true);
         }
         // Wait for acknowledgement callback function to run
