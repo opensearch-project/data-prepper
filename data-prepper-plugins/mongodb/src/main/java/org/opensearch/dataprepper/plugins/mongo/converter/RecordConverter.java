@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.mongo.converter;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.client.model.changestream.OperationType;
 import org.opensearch.dataprepper.model.document.JacksonDocument;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
@@ -61,7 +62,8 @@ public class RecordConverter {
     public Event convert(final String record,
                         final long eventCreationTimeMillis,
                         final long eventVersionNumber,
-                        final String eventName) {
+                        final OperationType eventName,
+                        final String primaryKeyBsonType) {
         final Map<String, Object> data = convertToMap(record);
         final Event event = JacksonDocument.builder()
                 .withData(data)
@@ -85,6 +87,7 @@ public class RecordConverter {
         final String partitionKey = getAttributeValue(data, MetadataKeyAttributes.DOCUMENTDB_PRIMARY_KEY_ATTRIBUTE_NAME);
         eventMetadata.setAttribute(MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE, partitionKey);
         eventMetadata.setAttribute(MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE, partitionKey);
+        eventMetadata.setAttribute(MetadataKeyAttributes.DOCUMENTDB_ID_TYPE_METADATA_ATTRIBUTE, primaryKeyBsonType);
 
         return event;
     }
@@ -99,22 +102,23 @@ public class RecordConverter {
      */
     public Event convert(final String record,
                         final long eventCreationTimeMillis,
-                        final long eventVersionNumber) {
-        return convert(record, eventCreationTimeMillis, eventVersionNumber, null);
+                        final long eventVersionNumber,
+                        final String primaryKeyBsonType) {
+        return convert(record, eventCreationTimeMillis, eventVersionNumber, null, primaryKeyBsonType);
     }
 
-    private String mapStreamEventNameToBulkAction(final String streamEventName) {
+    private String mapStreamEventNameToBulkAction(final OperationType streamEventName) {
         if (streamEventName == null) {
             return DEFAULT_ACTION;
         }
 
         // https://www.mongodb.com/docs/manual/reference/change-events/
-        switch (streamEventName.toLowerCase()) {
-            case "insert":
-            case "modify":
-            case "replace":
+        switch (streamEventName) {
+            case INSERT:
+            case UPDATE:
+            case REPLACE:
                 return OpenSearchBulkActions.INDEX.toString();
-            case "delete":
+            case DELETE:
                 return OpenSearchBulkActions.DELETE.toString();
             default:
                 return DEFAULT_ACTION;

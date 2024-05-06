@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.mongo.converter;
 
+import com.mongodb.client.model.changestream.OperationType;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 
@@ -27,8 +28,9 @@ public class PartitionKeyRecordConverter extends RecordConverter {
     public Event convert(final String record,
                          final long eventCreationTimeMillis,
                          final long eventVersionNumber,
-                         final String eventName) {
-        final Event event =  super.convert(record, eventCreationTimeMillis, eventVersionNumber, eventName);
+                         final OperationType eventName,
+                         final String primaryKeyBsonType) {
+        final Event event =  super.convert(record, eventCreationTimeMillis, eventVersionNumber, eventName, primaryKeyBsonType);
         final EventMetadata eventMetadata = event.getMetadata();
         final String partitionKey = String.valueOf(eventMetadata.getAttribute(MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE));
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_S3_PARTITION_KEY, s3PathPrefix + S3_PATH_DELIMITER + hashKeyToPartition(partitionKey));
@@ -50,7 +52,6 @@ public class PartitionKeyRecordConverter extends RecordConverter {
             return Math.abs(hashValue) % partitionSize;
         } catch (final NoSuchAlgorithmException
                 e) {
-            //LOG.error("Exception hashing key to index.", e);
             return -1;
         }
     }

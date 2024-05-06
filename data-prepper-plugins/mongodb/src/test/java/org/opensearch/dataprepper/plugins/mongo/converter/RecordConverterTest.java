@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.mongo.converter;
 
+import com.mongodb.client.model.changestream.OperationType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,10 +59,11 @@ class RecordConverterTest {
         final long exportStartTime = Instant.now().toEpochMilli();
         final long eventVersionNumber = random.nextLong();
         final String collection = UUID.randomUUID().toString();
+        final String primaryKeyType = UUID.randomUUID().toString();
 
         final RecordConverter recordConverter = new RecordConverter(collection, ExportPartition.PARTITION_TYPE);
 
-        final JacksonEvent event = (JacksonEvent) recordConverter.convert(record, exportStartTime, eventVersionNumber);
+        final JacksonEvent event = (JacksonEvent) recordConverter.convert(record, exportStartTime, eventVersionNumber, primaryKeyType);
         assertThat(event.getMetadata(), notNullValue());
 
         assertThat(event.getMetadata().getAttribute(PARTITION_KEY_METADATA_ATTRIBUTE), equalTo(id));
@@ -88,11 +90,12 @@ class RecordConverterTest {
                 "\"orderDate\":{\"date\":\"" + LocalDate.now() +"\"}}";
         final long exportStartTime = Instant.now().toEpochMilli();
         final long eventVersionNumber = random.nextLong();
-        final String eventName = "insert";
+        final OperationType eventName = OperationType.INSERT;
         final String collection = UUID.randomUUID().toString();
+        final String primaryKeyType = UUID.randomUUID().toString();
         final RecordConverter recordConverter = new RecordConverter(collection, StreamPartition.PARTITION_TYPE);
 
-        final JacksonEvent event = (JacksonEvent) recordConverter.convert(record, exportStartTime, eventVersionNumber, eventName);
+        final JacksonEvent event = (JacksonEvent) recordConverter.convert(record, exportStartTime, eventVersionNumber, eventName, primaryKeyType);
         assertThat(event.getMetadata(), notNullValue());
 
         assertThat(event.getMetadata().getAttribute(PARTITION_KEY_METADATA_ATTRIBUTE), equalTo(id));
