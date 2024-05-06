@@ -85,6 +85,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getRemoveBrackets()).thenReturn(defaultConfig.getRemoveBrackets());
         lenient().when(mockConfig.getRecursive()).thenReturn(defaultConfig.getRecursive());
         lenient().when(mockConfig.getOverwriteIfDestinationExists()).thenReturn(defaultConfig.getOverwriteIfDestinationExists());
+        lenient().when(mockConfig.getAutoMode()).thenReturn(false);
 
         final String keyValueWhen = UUID.randomUUID().toString();
         when(mockConfig.getKeyValueWhen()).thenReturn(keyValueWhen);
@@ -157,6 +158,21 @@ public class KeyValueProcessorTests {
     void testMultipleKvToObjectKeyValueProcessor() {
         final Record<Event> record = getMessage("key1=value1&key2=value2");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @Test
+    @ParameterizedTest
+    @MethodSource(booleans = {true, false})
+    void testMultipleKvToObjectKeyValueProcessorInAutoMode() {
+        lenient().when(mockConfig.getAutoMode()).thenReturn(true);
+        final KeyValueProcessor objectUnderTest = createObjectUnderTest();
+        final Record<Event> record = getMessage("key1=value1,key2=value2");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
