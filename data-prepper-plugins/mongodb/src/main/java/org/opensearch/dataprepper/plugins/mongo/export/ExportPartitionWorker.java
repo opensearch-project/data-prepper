@@ -13,8 +13,6 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.bson.Document;
 import org.bson.conversions.Bson;
-import org.bson.json.JsonMode;
-import org.bson.json.JsonWriterSettings;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
@@ -32,6 +30,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.JSON_WRITER_SETTINGS;
+import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.DOCUMENTDB_ID_FIELD_NAME;
 
 public class ExportPartitionWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ExportPartitionWorker.class);
@@ -73,10 +74,6 @@ public class ExportPartitionWorker implements Runnable {
     private final AcknowledgementSet acknowledgementSet;
     private final long exportStartTime;
     private final DataQueryPartitionCheckpoint partitionCheckpoint;
-    private final JsonWriterSettings writerSettings = JsonWriterSettings.builder()
-            .outputMode(JsonMode.RELAXED)
-            .objectIdConverter((value, writer) -> writer.writeString(value.toHexString()))
-            .build();
 
     Optional<S3PartitionStatus> s3PartitionStatus = Optional.empty();
 
@@ -115,7 +112,8 @@ public class ExportPartitionWorker implements Runnable {
         final List<String> collection = List.of(partitionKeys.get(0).split(COLLECTION_SPLITTER));
         final String gte = partitionKeys.get(1);
         final String lte = partitionKeys.get(2);
-        final String className = partitionKeys.get(3);
+        final String gteClassName = partitionKeys.get(3);
+        final String lteClassName = partitionKeys.get(4);
         if (collection.size() < 2) {
             throw new RuntimeException("Invalid Collection Name. Must as db.collection format");
         }
@@ -139,8 +137,8 @@ public class ExportPartitionWorker implements Runnable {
         recordConverter.initializePartitions(s3Partitions);
         try (final MongoClient mongoClient = MongoDBConnection.getMongoClient(sourceConfig)) {
             final MongoDatabase db = mongoClient.getDatabase(collection.get(0));
-            final MongoCollection<Document> col = db.getCollection(collection.get(1));
-            final Bson query = BsonHelper.buildAndQuery(gte, lte, className);
+            final MongoCollection<Document> col = db.getCollection(partitionKeys.get(0).substring(collection.get(0).length()+1));
+            final Bson query = BsonHelper.buildQuery(gte, lte, gteClassName, lteClassName);
             long totalRecords = 0L;
             long successRecords = 0L;
             long failedRecords = 0L;
@@ -164,13 +162,15 @@ public class ExportPartitionWorker implements Runnable {
                     }
 
                     try {
-                        final String record = cursor.next().toJson(writerSettings);
+                        final String record = cursor.next().toJson(JSON_WRITER_SETTINGS);
                         final long bytes = record.getBytes().length;
                         bytesReceivedSummary.record(bytes);
                         // The version number is the export time minus some overlap to ensure new stream events still get priority
                         final long eventVersionNumber = (exportStartTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis()) * 1_000;
                         final Event event = recordConverter.convert(record, exportStartTime, eventVersionNumber);
-
+                        // event.put(DEFAULT_ID_MAPPING_FIELD_NAME, event.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
+                        // delete _id
+                        event.delete(DOCUMENTDB_ID_FIELD_NAME);
                         records.add(event);
 
                         if ((recordCount - startLine) % DEFAULT_BATCH_SIZE == 0) {
@@ -185,7 +185,6 @@ public class ExportPartitionWorker implements Runnable {
                             LOG.debug("Perform regular checkpointing for Data Query Loader");
                             partitionCheckpoint.checkpoint(lastRecordNumberProcessed);
                             lastCheckpointTime = System.currentTimeMillis();
-
                         }
 
                         successItemsCounter.increment();

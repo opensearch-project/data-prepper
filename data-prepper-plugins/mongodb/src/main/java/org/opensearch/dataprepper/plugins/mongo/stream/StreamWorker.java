@@ -12,8 +12,6 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.bson.BsonDocument;
 import org.bson.Document;
-import org.bson.json.JsonMode;
-import org.bson.json.JsonWriterSettings;
 import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
@@ -30,13 +28,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.JSON_WRITER_SETTINGS;
+import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.DOCUMENTDB_ID_FIELD_NAME;
 
 public class StreamWorker {
     public static final String STREAM_PREFIX = "STREAM-";
@@ -50,10 +50,6 @@ public class StreamWorker {
     static final String SUCCESS_ITEM_COUNTER_NAME = "streamRecordsSuccessTotal";
     static final String FAILURE_ITEM_COUNTER_NAME = "streamRecordsFailedTotal";
     static final String BYTES_RECEIVED = "bytesReceived";
-    private static final String REGEX_PATTERN = "pattern";
-    private static final String REGEX_OPTIONS = "options";
-    public static final String MONGO_ID_FIELD_NAME = "_id";
-    public static final String DEFAULT_ID_MAPPING_FIELD_NAME = "doc_id";
     private final RecordBufferWriter recordBufferWriter;
     private final PartitionKeyRecordConverter recordConverter;
     private final DataStreamPartitionCheckpoint partitionCheckpoint;
@@ -72,25 +68,6 @@ public class StreamWorker {
     private String lastLocalCheckpoint;
     private Long lastLocalRecordCount = null;
     Optional<S3PartitionStatus> s3PartitionStatus = Optional.empty();
-
-
-    private final JsonWriterSettings writerSettings = JsonWriterSettings.builder()
-            .outputMode(JsonMode.RELAXED)
-            .objectIdConverter((value, writer) -> writer.writeString(value.toHexString()))
-            .binaryConverter((value, writer) ->  writer.writeString(Base64.getEncoder().encodeToString(value.getData())))
-            .dateTimeConverter((value, writer) -> writer.writeNumber(String.valueOf(value.longValue())))
-            .decimal128Converter((value, writer) -> writer.writeString(value.bigDecimalValue().toPlainString()))
-            .maxKeyConverter((value, writer) -> writer.writeNull())
-            .minKeyConverter((value, writer) -> writer.writeNull())
-            .regularExpressionConverter((value, writer) -> {
-                writer.writeStartObject();
-                writer.writeString(REGEX_PATTERN, value.getPattern());
-                writer.writeString(REGEX_OPTIONS, value.getOptions());
-                writer.writeEndObject();
-            })
-            .timestampConverter((value, writer) -> writer.writeNumber(String.valueOf(value.getValue())))
-            .undefinedConverter((value, writer) -> writer.writeNull())
-            .build();
 
     public static StreamWorker create(final RecordBufferWriter recordBufferWriter,
                          final PartitionKeyRecordConverter recordConverter,
@@ -208,20 +185,20 @@ public class StreamWorker {
                             if (isCRUDOperation(operationType)) {
                                 final String record;
                                 if (OperationType.DELETE == operationType) {
-                                    record = document.getDocumentKey().toJson(writerSettings);
+                                    record = document.getDocumentKey().toJson(JSON_WRITER_SETTINGS);
                                 } else {
-                                    record = document.getFullDocument().toJson(writerSettings);
+                                    record = document.getFullDocument().toJson(JSON_WRITER_SETTINGS);
                                 }
                                 final long eventCreationTimeMillis = document.getClusterTime().getTime() * 1000L;
                                 final long bytes = record.getBytes().length;
                                 bytesReceivedSummary.record(bytes);
 
-                                checkPointToken = document.getResumeToken().toJson(writerSettings);
+                                checkPointToken = document.getResumeToken().toJson(JSON_WRITER_SETTINGS);
                                 // TODO fix eventVersionNumber
                                 final Event event = recordConverter.convert(record, eventCreationTimeMillis, eventCreationTimeMillis, document.getOperationTypeString());
-                                event.put(DEFAULT_ID_MAPPING_FIELD_NAME, event.get(MONGO_ID_FIELD_NAME, Object.class));
+                                // event.put(DEFAULT_ID_MAPPING_FIELD_NAME, event.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
                                 // delete _id
-                                event.delete(MONGO_ID_FIELD_NAME);
+                                event.delete(DOCUMENTDB_ID_FIELD_NAME);
                                 records.add(event);
                                 recordCount += 1;
 

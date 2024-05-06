@@ -105,8 +105,8 @@ public class MongoDBExportPartitionSupplierTest {
             verify(mongoDatabase).getCollection(eq("collection"));
             // And partitions are created
             assertThat(partitions.size(), is(2));
-            assertThat(partitions.get(0).getPartitionKey(), is("test.collection|0|3999|java.lang.String"));
-            assertThat(partitions.get(1).getPartitionKey(), is("test.collection|4000|4999|java.lang.String"));
+            assertThat(partitions.get(0).getPartitionKey(), is("test.collection|0|3999|java.lang.String|java.lang.String"));
+            assertThat(partitions.get(1).getPartitionKey(), is("test.collection|4000|4999|java.lang.String|java.lang.String"));
         }
     }
 

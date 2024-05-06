@@ -27,11 +27,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
+import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.MAX_KEY;
+import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.buildGtQuery;
+
 public class MongoDBExportPartitionSupplier implements Function<ExportPartition, PartitionIdentifierBatch> {
     private static final Logger LOG = LoggerFactory.getLogger(MongoDBExportPartitionSupplier.class);
-    private static final String MONGODB_PARTITION_KEY_FORMAT = "%s|%s|%s|%s"; // partition format: <db.collection>|<gte>|<lt>|<className>
+    private static final String MONGODB_PARTITION_KEY_FORMAT = "%s|%s|%s|%s|%s"; // partition format: <db.collection>|<gte>|<lt>|<gteClassName>|<lteClassName>
     private static final String COLLECTION_SPLITTER = "\\.";
-    public static final String EXPORT_PREFIX = "EXPORT-";
 
     private final MongoDBSourceConfig sourceConfig;
 
@@ -54,7 +56,7 @@ public class MongoDBExportPartitionSupplier implements Function<ExportPartition,
         Object endDocId = lastEndDocId;
         try (MongoClient mongoClient = MongoDBConnection.getMongoClient(sourceConfig)) {
             final MongoDatabase db = mongoClient.getDatabase(collection.get(0));
-            final MongoCollection<Document> col = db.getCollection(collection.get(1));
+            final MongoCollection<Document> col = db.getCollection(collectionDbName.substring(collection.get(0).length()+1));
             final int partitionSize = exportPartition.getPartitionSize();
             FindIterable<Document> startIterable;
             if (lastEndDocId != null) {
@@ -76,7 +78,7 @@ public class MongoDBExportPartitionSupplier implements Function<ExportPartition,
                     }
                     final Document startDoc = startCursor.next();
                     final Object gteValue = startDoc.get("_id");
-                    final String className = gteValue.getClass().getName();
+                    final String gteClassName = gteValue.getClass().getName();
 
                     // Get end doc
                     Document endDoc = startIterable.skip(partitionSize - 1).limit(1).first();
@@ -87,20 +89,26 @@ public class MongoDBExportPartitionSupplier implements Function<ExportPartition,
                                 .sort(new Document("_id", -1))
                                 .limit(1)
                                 .first();
+                        isLastBatch = true;
                     }
 
                     final Object lteValue = endDoc.get("_id");
+                    final String lteClassName = lteValue.getClass().getName();
                     endDocId = lteValue;
-                    final String gteValueString = BsonHelper.getPartitionStringFromMongoDBId(gteValue, className);
-                    final String lteValueString = BsonHelper.getPartitionStringFromMongoDBId(lteValue, className);
-                    LOG.info("Partition of " + collectionDbName + ": {gte: " + gteValueString + ", lte: " + lteValueString + "}");
+                    final String gteValueString = BsonHelper.getPartitionStringFromMongoDBId(gteValue, gteClassName);
+                    final String lteValueString = BsonHelper.getPartitionStringFromMongoDBId(lteValue, lteClassName);
+                    LOG.debug("Partition of {} : { gte: {} class: {}, lte: {} class {} }", collectionDbName, gteValueString, gteClassName, lteValueString, lteClassName);
                     collectionPartitions.add(
-                            PartitionIdentifier
-                                    .builder()
-                                    .withPartitionKey(String.format(MONGODB_PARTITION_KEY_FORMAT, collectionDbName, gteValueString, lteValueString, className))
-                                    .build());
+                        PartitionIdentifier
+                            .builder()
+                            .withPartitionKey(String.format(MONGODB_PARTITION_KEY_FORMAT, collectionDbName, gteValueString, lteValueString, gteClassName, lteClassName))
+                            .build());
 
-                    startIterable = col.find(Filters.gt("_id", lteValue))
+                    if (isLastBatch) {
+                        break;
+                    }
+
+                    startIterable = col.find(buildGtQuery(lteValueString, lteClassName, MAX_KEY))
                             .projection(new Document("_id", 1))
                             .sort(new Document("_id", 1))
                             .limit(1);
