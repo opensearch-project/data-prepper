@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.model.event;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -14,6 +16,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Map;
+import java.util.stream.Stream;
 
 class DataTypeTest {
     @ParameterizedTest
@@ -27,24 +30,29 @@ class DataTypeTest {
         assertThrows(IllegalArgumentException.class, () -> DataType.isSameType(2, "unknown"));
     }
 
-    @Test
-    void test_isSameType() {
-        int testArray[] = {1,2};
-        String testNotArray = "testString";
-        assertThat(DataType.isSameType(2, "integer"), equalTo(true));
-        assertThat(DataType.isSameType("testString", "string"), equalTo(true));
-        assertThat(DataType.isSameType(2L, "long"), equalTo(true));
-        assertThat(DataType.isSameType(2.0, "double"), equalTo(true));
-        assertThat(DataType.isSameType(true, "boolean"), equalTo(true));
-        assertThat(DataType.isSameType(Map.of("k", "v"), "map"), equalTo(true));
-        assertThat(DataType.isSameType(testArray, "array"), equalTo(true));
+    @ParameterizedTest
+    @MethodSource("getSameTypeTestData")
+    void test_isSameType(Object object, String type, boolean expectedResult) {
+        assertThat(DataType.isSameType(object, type), equalTo(expectedResult));
+    }
 
-        assertThat(DataType.isSameType(false, "integer"), equalTo(false));
-        assertThat(DataType.isSameType(2, "string"), equalTo(false));
-        assertThat(DataType.isSameType("testString", "long"), equalTo(false));
-        assertThat(DataType.isSameType("testString", "double"), equalTo(false));
-        assertThat(DataType.isSameType(2, "boolean"), equalTo(false));
-        assertThat(DataType.isSameType("testString", "map"), equalTo(false));
-        assertThat(DataType.isSameType(testNotArray, "array"), equalTo(false));
+    private static Stream<Arguments> getSameTypeTestData() {
+        int testArray[] = {1,2};
+        return Stream.of(
+            Arguments.of(2, "integer", true),
+            Arguments.of("testString", "string", true),
+            Arguments.of(2L, "long", true),
+            Arguments.of(2.0, "double", true),
+            Arguments.of(true, "boolean", true),
+            Arguments.of(Map.of("k","v"), "map", true),
+            Arguments.of(testArray, "array", true),
+            Arguments.of(2.0, "integer", false),
+            Arguments.of(2, "string", false),
+            Arguments.of("testString", "long", false),
+            Arguments.of("testString", "double", false),
+            Arguments.of(2, "boolean", false),
+            Arguments.of(2L, "map", false),
+            Arguments.of(2, "array", false)
+        );
     }
 }

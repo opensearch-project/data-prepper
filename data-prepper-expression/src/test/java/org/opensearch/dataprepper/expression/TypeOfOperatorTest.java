@@ -7,6 +7,9 @@ package org.opensearch.dataprepper.expression;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
+import java.util.stream.Stream;
 
 @ExtendWith(MockitoExtension.class)
 class TypeOfOperatorTest {
@@ -44,23 +48,10 @@ class TypeOfOperatorTest {
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.TYPEOF));
     }
 
-    @Test
-    void testEvalValidArgs() {
-        assertThat(objectUnderTest.evaluate(2, "integer"), is(true));
-        assertThat(objectUnderTest.evaluate(2, "string"), is(false));
-        assertThat(objectUnderTest.evaluate("testString", "string"), is(true));
-        assertThat(objectUnderTest.evaluate("testString", "double"), is(false));
-        assertThat(objectUnderTest.evaluate(true, "boolean"), is(true));
-        assertThat(objectUnderTest.evaluate(1, "boolean"), is(false));
-        assertThat(objectUnderTest.evaluate(1L, "long"), is(true));
-        assertThat(objectUnderTest.evaluate(1.0, "long"), is(false));
-        assertThat(objectUnderTest.evaluate(1.0, "double"), is(true));
-        assertThat(objectUnderTest.evaluate(1L, "double"), is(false));
-        assertThat(objectUnderTest.evaluate(Map.of("k", "v"), "map"), is(true));
-        assertThat(objectUnderTest.evaluate(1L, "map"), is(false));
-        int testArray[] = {1,2};
-        assertThat(objectUnderTest.evaluate(testArray, "array"), is(true));
-        assertThat(objectUnderTest.evaluate(1L, "array"), is(false));
+    @ParameterizedTest
+    @MethodSource("getTypeOfTestData")
+    void testEvalValidArgs(Object object, String type, boolean expectedResult) {
+        assertThat(objectUnderTest.evaluate(object, type), is(expectedResult));
     }
 
     @Test
@@ -72,5 +63,24 @@ class TypeOfOperatorTest {
     void testEvalInValidArgType() {
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, "unknown"));
     }
-}
 
+    private static Stream<Arguments> getTypeOfTestData() {
+        int testArray[] = {1,2};
+        return Stream.of(
+            Arguments.of(2, "integer", true),
+            Arguments.of("testString", "string", true),
+            Arguments.of(2L, "long", true),
+            Arguments.of(2.0, "double", true),
+            Arguments.of(true, "boolean", true),
+            Arguments.of(Map.of("k","v"), "map", true),
+            Arguments.of(testArray, "array", true),
+            Arguments.of(2.0, "integer", false),
+            Arguments.of(2, "string", false),
+            Arguments.of("testString", "long", false),
+            Arguments.of("testString", "double", false),
+            Arguments.of(2, "boolean", false),
+            Arguments.of(2L, "map", false),
+            Arguments.of(2, "array", false)
+        );
+    }
+}
