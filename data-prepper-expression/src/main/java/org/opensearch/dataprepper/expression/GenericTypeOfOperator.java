@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.expression;
 import org.antlr.v4.runtime.RuleContext;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
-import java.util.Set;
 import java.util.function.BiPredicate;
 
 import static com.google.common.base.Preconditions.checkArgument;
