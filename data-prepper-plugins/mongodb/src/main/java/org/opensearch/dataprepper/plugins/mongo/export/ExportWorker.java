@@ -15,7 +15,6 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
-import org.opensearch.dataprepper.plugins.mongo.buffer.ExportRecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
@@ -89,7 +88,7 @@ public class ExportWorker implements Runnable {
         this.sourceCoordinator = sourceCoordinator;
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-        recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator, pluginMetrics);
+        recordBufferWriter = RecordBufferWriter.create(bufferAccumulator, pluginMetrics);
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceConfig = sourceConfig;
         this.startLine = 0;// replace it with checkpoint line
