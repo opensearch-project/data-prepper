@@ -10,12 +10,24 @@ import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.OperationType;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import org.bson.BsonArray;
+import org.bson.BsonBoolean;
+import org.bson.BsonDateTime;
+import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
+import org.bson.BsonDouble;
 import org.bson.BsonInt32;
+import org.bson.BsonInt64;
+import org.bson.BsonObjectId;
+import org.bson.BsonString;
 import org.bson.BsonTimestamp;
 import org.bson.BsonType;
+import org.bson.BsonUndefined;
+import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.json.JsonWriterSettings;
+import org.bson.types.Decimal128;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,6 +71,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.DOCUMENTDB_ID_FIELD_NAME;
 import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.BYTES_RECEIVED;
 import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.FAILURE_ITEM_COUNTER_NAME;
 import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.SUCCESS_ITEM_COUNTER_NAME;
@@ -91,7 +104,7 @@ public class StreamWorkerTest {
 
     private StreamWorker streamWorker;
 
-    private final Random random = new Random();
+    private static final Random random = new Random();
 
     @BeforeEach
     public void setup() {
@@ -143,9 +156,9 @@ public class StreamWorkerTest {
             .thenReturn(streamDoc2);
         final String doc1Json1 = UUID.randomUUID().toString();
         final String doc1Json2 = UUID.randomUUID().toString();
-        when(doc1Key.getBsonType()).thenReturn(BsonType.INT64);
+        when(doc1Key.get("_id")).thenReturn(new BsonInt64(random.nextLong()));
         when(doc1.toJson(any(JsonWriterSettings.class))).thenReturn(doc1Json1);
-        when(doc2Key.getBsonType()).thenReturn(BsonType.INT32);
+        when(doc2Key.get("_id")).thenReturn(new BsonInt32(random.nextInt()));
         when(doc2Key.toJson(any(JsonWriterSettings.class))).thenReturn(doc1Json2);
         when(streamDoc1.getFullDocument()).thenReturn(doc1);
         when(streamDoc1.getDocumentKey()).thenReturn(doc1Key);
@@ -163,7 +176,8 @@ public class StreamWorkerTest {
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
         Event event = mock(Event.class);
-        //when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
+        when(mockSourceConfig.getIdKey()).thenReturn("docdb_id");
+        when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
         when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), any(OperationType.class), anyString())).thenReturn(event);
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> {
@@ -182,6 +196,7 @@ public class StreamWorkerTest {
         verify(mockRecordConverter).convert(eq(doc1Json1), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(OperationType.INSERT), eq(BsonType.INT64.name()));
         verify(mockRecordConverter).convert(eq(doc1Json2), eq(timeSecond2 * 1000L), eq(timeSecond2 * 1000L), eq(OperationType.DELETE), eq(BsonType.INT32.name()));
         verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
+        verify(event, times(2)).put(mockSourceConfig.getIdKey(), event.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
         verify(successItemsCounter).increment(2);
         verify(failureItemsCounter, never()).increment();
         verify(mockPartitionCheckpoint, atLeast(2)).checkpoint("{\"resumeToken2\": 234}", 2);
@@ -274,7 +289,6 @@ public class StreamWorkerTest {
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
         Event event = mock(Event.class);
-        //when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
         when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), any(OperationType.class), anyString())).thenReturn(event);
         try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
 
@@ -368,7 +382,7 @@ public class StreamWorkerTest {
         when(doc1.toJson(any(JsonWriterSettings.class))).thenReturn(doc1Json1);
         when(streamDoc1.getFullDocument()).thenReturn(doc1);
         when(streamDoc1.getDocumentKey()).thenReturn(keyDoc1);
-        when(keyDoc1.getBsonType()).thenReturn(BsonType.BOOLEAN);
+        when(keyDoc1.get("_id")).thenReturn(new BsonBoolean(random.nextBoolean()));
         final OperationType operationType1 = OperationType.INSERT;
         when(streamDoc1.getOperationType()).thenReturn(operationType1);
         final BsonTimestamp bsonTimestamp1 = mock(BsonTimestamp.class);
@@ -380,7 +394,6 @@ public class StreamWorkerTest {
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
         Event event = mock(Event.class);
-        //when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
         when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), any(OperationType.class), anyString())).thenReturn(event);
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> {
@@ -405,7 +418,7 @@ public class StreamWorkerTest {
 
     @ParameterizedTest
     @MethodSource("mongoDataTypeProvider")
-    void test_processStream_dataTypeConversionSuccess(final String actualDocument, final String keyType, final String expectedDocument) {
+    void test_processStream_dataTypeConversionSuccess(final String actualDocument, final BsonValue bsonValue, final String expectedDocument) {
         final String collection = "database.collection";
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
@@ -430,7 +443,7 @@ public class StreamWorkerTest {
         when(streamDoc1.getOperationType()).thenReturn(OperationType.INSERT);
         when(cursor.next())
             .thenReturn(streamDoc1);
-        when(key1.getBsonType()).thenReturn(BsonType.valueOf(keyType));
+        when(key1.get("_id")).thenReturn(bsonValue);
         when(streamDoc1.getDocumentKey()).thenReturn(key1);
         when(streamDoc1.getFullDocument()).thenReturn(doc1);
         final OperationType operationType1 = OperationType.INSERT;
@@ -444,7 +457,6 @@ public class StreamWorkerTest {
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
         Event event = mock(Event.class);
-        //when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
         when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), any(OperationType.class), anyString())).thenReturn(event);
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> {
@@ -460,7 +472,7 @@ public class StreamWorkerTest {
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockRecordConverter).initializePartitions(partitions);
-        verify(mockRecordConverter).convert(eq(expectedDocument), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(operationType1), eq(keyType));
+        verify(mockRecordConverter).convert(eq(expectedDocument), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(operationType1), eq(bsonValue.getBsonType().name()));
         verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
         verify(successItemsCounter).increment(1);
         verify(failureItemsCounter, never()).increment();
@@ -471,71 +483,71 @@ public class StreamWorkerTest {
         return Stream.of(
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"name\": \"Hello User\"}",
-                            BsonType.BOOLEAN.name(),
-                            "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"name\": \"Hello User\"}"),
+                        new BsonBoolean(random.nextBoolean()),
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"name\": \"Hello User\"}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"nullField\": null}",
-                        BsonType.ARRAY.name(),
+                        new BsonArray(),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"nullField\": null}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"numberField\": 123}",
-                        BsonType.DATE_TIME.name(),
+                        new BsonDateTime(Math.abs(random.nextLong())),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"numberField\": 123}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"doubleValue\": 3.14159}",
-                        BsonType.TIMESTAMP.name(),
+                        new BsonTimestamp(Math.abs(random.nextLong())),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"doubleValue\": 3.14159}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"longValue\": { \"$numberLong\": \"1234567890123456768\"}}",
-                        BsonType.OBJECT_ID.name(),
+                        new BsonObjectId(new ObjectId()),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"longValue\": 1234567890123456768}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"stringField\": \"Hello, Mongo!\"}",
-                        BsonType.DOCUMENT.name(),
+                        new BsonDocument(),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"stringField\": \"Hello, Mongo!\"}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"booleanField\": true}",
-                        BsonType.DOUBLE.name(),
+                        new BsonDouble(random.nextDouble()),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"booleanField\": true}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"dateField\": { \"$date\": \"2024-05-03T13:57:51.155Z\"}}",
-                        BsonType.DECIMAL128.name(),
+                        new BsonDecimal128(new Decimal128(random.nextLong())),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"dateField\": 1714744671155}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"arrayField\": [\"a\",\"b\",\"c\"]}",
-                        BsonType.UNDEFINED.name(),
+                        new BsonUndefined(),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"arrayField\": [\"a\", \"b\", \"c\"]}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"objectField\": { \"nestedKey\": \"nestedValue\"}}",
-                        BsonType.BINARY.name(),
+                        new BsonDocument(),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"objectField\": {\"nestedKey\": \"nestedValue\"}}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"binaryField\": { \"$binary\": {\"base64\": \"AQIDBA==\", \"subType\": \"00\"}}}",
-                        BsonType.STRING.name(),
+                        new BsonString(UUID.randomUUID().toString()),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"binaryField\": \"AQIDBA==\"}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"objectIdField\": { \"$oid\": \"6634ed693ac62386d57b12d0\" }}",
-                        BsonType.ARRAY.name(),
+                        new BsonString(UUID.randomUUID().toString()),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"objectIdField\": \"6634ed693ac62386d57b12d0\"}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"timestampField\": { \"$timestamp\": {\"t\": 1714744681, \"i\": 29}}}",
-                        BsonType.OBJECT_ID.name(),
+                        new BsonObjectId(new ObjectId()),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"timestampField\": 7364772325884952605}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"regexField\": { \"$regularExpression\": {\"pattern\": \"^ABC\", \"options\": \"i\"}}}",
-                        BsonType.OBJECT_ID.name(),
+                        new BsonObjectId(new ObjectId()),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"regexField\": {\"pattern\": \"^ABC\", \"options\": \"i\"}}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"minKeyField\": { \"$minKey\": 1}}",
-                        BsonType.OBJECT_ID.name(),
+                        new BsonObjectId(new ObjectId()),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"minKeyField\": null}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"maxKeyField\": { \"$maxKey\": 1}}",
-                        BsonType.OBJECT_ID.name(),
+                        new BsonObjectId(new ObjectId()),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"maxKeyField\": null}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"bigDecimalField\": { \"$numberDecimal\": \"123456789.0123456789\"}}",
-                        BsonType.OBJECT_ID.name(),
+                        new BsonObjectId(new ObjectId()),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"bigDecimalField\": \"123456789.0123456789\"}")
         );
     }

@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.mongo.configuration;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -29,6 +30,9 @@ public class MongoDBSourceConfig {
     @JsonProperty("read_preference")
     private String readPreference;
     @JsonProperty("collections")
+    @Valid
+    @NotNull
+    @Size(min = 1)
     private List<CollectionConfig> collections;
     @JsonProperty("acknowledgments")
     private Boolean acknowledgments = false;
@@ -59,6 +63,9 @@ public class MongoDBSourceConfig {
 
     @JsonProperty("disable_s3_read_for_leader")
     private boolean disableS3ReadForLeader = false;
+
+    @JsonProperty("id_key")
+    private String idKey;
 
     public MongoDBSourceConfig() {
         this.readPreference = DEFAULT_READ_PREFERENCE;
@@ -131,6 +138,10 @@ public class MongoDBSourceConfig {
 
     public boolean isDisableS3ReadForLeader() {
         return disableS3ReadForLeader;
+    }
+
+    public String getIdKey() {
+        return this.idKey;
     }
 
     public AwsConfig getAwsConfig() {

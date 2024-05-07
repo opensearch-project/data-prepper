@@ -15,7 +15,7 @@ documentdb-pipeline-writer:
           - bucket:
               name: "bucket-name1"
               filter:
-                depth: "5"
+                depth: "6"
       scheduling:
         interval: "1s"
       acknowledgments: true

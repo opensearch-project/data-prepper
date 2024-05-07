@@ -178,12 +178,14 @@ public class ExportPartitionWorker implements Runnable {
                         recordBytes.add(bytes);
                         bytesReceivedSummary.record(bytes);
                         final Optional<BsonDocument> primaryKeyDoc = Optional.ofNullable(document.toBsonDocument());
-                        final String primaryKeyBsonType = primaryKeyDoc.map(bsonDocument -> bsonDocument.getBsonType().name()).orElse(UNKNOWN_TYPE);
+                        final String primaryKeyBsonType = primaryKeyDoc.map(bsonDocument -> bsonDocument.get(DOCUMENTDB_ID_FIELD_NAME).getBsonType().name()).orElse(UNKNOWN_TYPE);
 
                         // The version number is the export time minus some overlap to ensure new stream events still get priority
                         final long eventVersionNumber = (exportStartTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis()) * 1_000;
                         final Event event = recordConverter.convert(record, exportStartTime, eventVersionNumber, primaryKeyBsonType);
-                        // event.put(DEFAULT_ID_MAPPING_FIELD_NAME, event.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
+                        if (sourceConfig.getIdKey() !=null && !sourceConfig.getIdKey().isBlank()) {
+                            event.put(sourceConfig.getIdKey(), event.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
+                        }
                         // delete _id
                         event.delete(DOCUMENTDB_ID_FIELD_NAME);
                         records.add(event);
@@ -207,7 +209,7 @@ public class ExportPartitionWorker implements Runnable {
 
                         successRecords += 1;
                     } catch (Exception e) {
-                        LOG.error("Failed to add record to buffer with error {}", e.getMessage());
+                        LOG.error("Failed to add record to buffer with error.", e);
                         failureItemsCounter.increment(records.size());
                         failedRecords += 1;
                     }
@@ -233,7 +235,7 @@ public class ExportPartitionWorker implements Runnable {
                 }
 
             } catch (Exception e) {
-                LOG.error("Exception connecting to cluster and loading partition {}. Exception: {}", query, e.getMessage());
+                LOG.error("Exception connecting to cluster and loading partition {}.", query, e);
                 throw new RuntimeException(e);
             } finally {
                 // Do final checkpoint when reaching end of partition or due to exception

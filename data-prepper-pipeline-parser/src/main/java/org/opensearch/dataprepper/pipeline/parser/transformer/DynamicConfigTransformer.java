@@ -354,9 +354,9 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      */
     public String calculateDepth(String s3Prefix) {
         if(s3Prefix == null){
-            return Integer.toString(3);
+            return Integer.toString(4);
         }
-        return Integer.toString(s3Prefix.split("/").length + 3);
+        return Integer.toString(s3Prefix.split("/").length + 4);
     }
 
     public String getSourceCoordinationIdentifierEnvVariable(String s3Prefix){

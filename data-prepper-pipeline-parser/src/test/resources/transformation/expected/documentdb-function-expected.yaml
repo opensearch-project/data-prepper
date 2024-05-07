@@ -16,4 +16,4 @@ docdb-pipeline-transformed:
   sink:
     - opensearch:
         hosts: "host"
-        depth: "5"
+        depth: "6"
