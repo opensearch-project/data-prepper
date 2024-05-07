@@ -193,8 +193,8 @@ public class StreamWorkerTest {
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockRecordConverter).initializePartitions(partitions);
-        verify(mockRecordConverter).convert(eq(doc1Json1), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(OperationType.INSERT), eq(BsonType.INT64.name()));
-        verify(mockRecordConverter).convert(eq(doc1Json2), eq(timeSecond2 * 1000L), eq(timeSecond2 * 1000L), eq(OperationType.DELETE), eq(BsonType.INT32.name()));
+        verify(mockRecordConverter).convert(eq(doc1Json1), eq(timeSecond1 * 1_000L), eq(timeSecond1 * 1_000_000L), eq(OperationType.INSERT), eq(BsonType.INT64.name()));
+        verify(mockRecordConverter).convert(eq(doc1Json2), eq(timeSecond2 * 1_000L), eq(timeSecond2 * 1_000_000L), eq(OperationType.DELETE), eq(BsonType.INT32.name()));
         verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
         verify(event, times(2)).put(mockSourceConfig.getIdKey(), event.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
         verify(successItemsCounter).increment(2);
@@ -409,7 +409,7 @@ public class StreamWorkerTest {
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockRecordConverter).initializePartitions(partitions);
-        verify(mockRecordConverter).convert(eq(doc1Json1), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(operationType1), eq(BsonType.BOOLEAN.name()));
+        verify(mockRecordConverter).convert(eq(doc1Json1), eq(timeSecond1 * 1_000L), eq(timeSecond1 * 1_000_000L), eq(operationType1), eq(BsonType.BOOLEAN.name()));
         verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
         verify(successItemsCounter).increment(1);
         verify(failureItemsCounter, never()).increment();
@@ -472,7 +472,7 @@ public class StreamWorkerTest {
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockRecordConverter).initializePartitions(partitions);
-        verify(mockRecordConverter).convert(eq(expectedDocument), eq(timeSecond1 * 1000L), eq(timeSecond1 * 1000L), eq(operationType1), eq(bsonValue.getBsonType().name()));
+        verify(mockRecordConverter).convert(eq(expectedDocument), eq(timeSecond1 * 1_000L), eq(timeSecond1 * 1_000_000L), eq(operationType1), eq(bsonValue.getBsonType().name()));
         verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
         verify(successItemsCounter).increment(1);
         verify(failureItemsCounter, never()).increment();

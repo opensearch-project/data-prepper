@@ -26,11 +26,11 @@ public class PartitionKeyRecordConverter extends RecordConverter {
 
     @Override
     public Event convert(final String record,
-                         final long eventCreationTimeMillis,
+                         final long eventCreateTimeEpochMillis,
                          final long eventVersionNumber,
                          final OperationType eventName,
                          final String primaryKeyBsonType) {
-        final Event event =  super.convert(record, eventCreationTimeMillis, eventVersionNumber, eventName, primaryKeyBsonType);
+        final Event event =  super.convert(record, eventCreateTimeEpochMillis, eventVersionNumber, eventName, primaryKeyBsonType);
         final EventMetadata eventMetadata = event.getMetadata();
         final String partitionKey = String.valueOf(eventMetadata.getAttribute(MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE));
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_S3_PARTITION_KEY, s3PathPrefix + S3_PATH_DELIMITER + hashKeyToPartition(partitionKey));

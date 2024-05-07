@@ -78,7 +78,7 @@ public class ExportPartitionWorker implements Runnable {
     private final PartitionKeyRecordConverter recordConverter;
     private final DataQueryPartition dataQueryPartition;
     private final AcknowledgementSet acknowledgementSet;
-    private final long exportStartTime;
+    private final long exportStartTimeEpochMillis;
     private final DataQueryPartitionCheckpoint partitionCheckpoint;
 
     Optional<S3PartitionStatus> s3PartitionStatus = Optional.empty();
@@ -89,7 +89,7 @@ public class ExportPartitionWorker implements Runnable {
                                  final AcknowledgementSet acknowledgementSet,
                                  final MongoDBSourceConfig sourceConfig,
                                  final DataQueryPartitionCheckpoint partitionCheckpoint,
-                                 final long exportStartTime,
+                                 final long exportStartTimeEpochMillis,
                                  final PluginMetrics pluginMetrics) {
         this.recordBufferWriter = recordBufferWriter;
         this.recordConverter = recordConverter;
@@ -98,8 +98,8 @@ public class ExportPartitionWorker implements Runnable {
         this.sourceConfig = sourceConfig;
         this.partitionCheckpoint = partitionCheckpoint;
         this.startLine = 0;// replace it with checkpoint line
-        this.exportStartTime = exportStartTime;
         this.exportRecordTotalCounter = pluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT);
+        this.exportStartTimeEpochMillis = exportStartTimeEpochMillis;
         this.successItemsCounter = pluginMetrics.counter(SUCCESS_ITEM_COUNTER_NAME);
         this.failureItemsCounter = pluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME);
         this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
@@ -181,8 +181,8 @@ public class ExportPartitionWorker implements Runnable {
                         final String primaryKeyBsonType = primaryKeyDoc.map(bsonDocument -> bsonDocument.get(DOCUMENTDB_ID_FIELD_NAME).getBsonType().name()).orElse(UNKNOWN_TYPE);
 
                         // The version number is the export time minus some overlap to ensure new stream events still get priority
-                        final long eventVersionNumber = (exportStartTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis()) * 1_000;
-                        final Event event = recordConverter.convert(record, exportStartTime, eventVersionNumber, primaryKeyBsonType);
+                        final long eventVersionNumber = (exportStartTimeEpochMillis - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis()) * 1_000L;
+                        final Event event = recordConverter.convert(record, exportStartTimeEpochMillis, eventVersionNumber, primaryKeyBsonType);
                         if (sourceConfig.getIdKey() !=null && !sourceConfig.getIdKey().isBlank()) {
                             event.put(sourceConfig.getIdKey(), event.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
                         }
