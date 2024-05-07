@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.plugins.mongo.s3partition.S3PartitionCreatorSc
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -83,10 +84,11 @@ public class DocumentDBService {
         }
 
         final String s3PathPrefix;
+        final Instant now = Instant.now();
         if (sourceCoordinator.getPartitionPrefix() != null ) {
-            s3PathPrefix = s3UserPathPrefix + sourceCoordinator.getPartitionPrefix() + S3_PATH_DELIMITER;
+            s3PathPrefix = s3UserPathPrefix + sourceCoordinator.getPartitionPrefix() + S3_PATH_DELIMITER + now.toEpochMilli() + S3_PATH_DELIMITER;
         } else {
-            s3PathPrefix = s3UserPathPrefix;
+            s3PathPrefix = s3UserPathPrefix + now.toEpochMilli() + S3_PATH_DELIMITER;
         }
         return s3PathPrefix;
     }

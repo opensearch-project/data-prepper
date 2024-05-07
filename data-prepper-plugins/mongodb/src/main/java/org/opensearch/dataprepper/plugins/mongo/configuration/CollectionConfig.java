@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.mongo.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -12,6 +13,7 @@ public class CollectionConfig {
     private static final int DEFAULT_PARTITION_COUNT = 100;
     private static final int DEFAULT_EXPORT_BATCH_SIZE = 10_000;
     @JsonProperty("collection")
+    @Pattern(regexp = ".+?\\..+", message = "Should be of pattern <database>.<collection>")
     private @NotNull String collection;
 
     @JsonProperty("export")

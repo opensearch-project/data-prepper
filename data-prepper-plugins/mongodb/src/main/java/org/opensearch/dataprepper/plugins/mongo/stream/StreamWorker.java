@@ -196,11 +196,13 @@ public class StreamWorker {
 
                                 checkPointToken = document.getResumeToken().toJson(JSON_WRITER_SETTINGS);
                                 final Optional<BsonDocument> primaryKeyDoc = Optional.ofNullable(document.getDocumentKey());
-                                final String primaryKeyBsonType = primaryKeyDoc.map(bsonDocument -> bsonDocument.getBsonType().name()).orElse(UNKNOWN_TYPE);
+                                final String primaryKeyBsonType = primaryKeyDoc.map(bsonDocument -> bsonDocument.get(DOCUMENTDB_ID_FIELD_NAME).getBsonType().name()).orElse(UNKNOWN_TYPE);
                                 // TODO fix eventVersionNumber
                                 final Event event = recordConverter.convert(record, eventCreationTimeMillis, eventCreationTimeMillis,
                                         document.getOperationType(), primaryKeyBsonType);
-                                // event.put(DEFAULT_ID_MAPPING_FIELD_NAME, event.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
+                                if (sourceConfig.getIdKey() !=null && !sourceConfig.getIdKey().isBlank()) {
+                                    event.put(sourceConfig.getIdKey(), event.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
+                                }
                                 // delete _id
                                 event.delete(DOCUMENTDB_ID_FIELD_NAME);
                                 records.add(event);

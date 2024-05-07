@@ -8,10 +8,14 @@ import com.mongodb.client.MongoDatabase;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.bson.BsonDocument;
+import org.bson.BsonObjectId;
+import org.bson.BsonString;
 import org.bson.BsonType;
+import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.json.JsonWriterSettings;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -51,6 +55,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.DOCUMENTDB_ID_FIELD_NAME;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.BYTES_RECEIVED;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.FAILURE_ITEM_COUNTER_NAME;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.SUCCESS_ITEM_COUNTER_NAME;
@@ -125,10 +130,10 @@ public class ExportPartitionWorkerTest {
         Document doc2 = mock(Document.class);
         BsonDocument bsonDoc1 = mock(BsonDocument.class);
         BsonDocument bsonDoc2 = mock(BsonDocument.class);
+        when(bsonDoc1.get("_id")).thenReturn(new BsonObjectId(new ObjectId()));
+        when(bsonDoc2.get("_id")).thenReturn(new BsonString(UUID.randomUUID().toString()));
         when(doc1.toBsonDocument()).thenReturn(bsonDoc1);
         when(doc2.toBsonDocument()).thenReturn(bsonDoc2);
-        when(bsonDoc1.getBsonType()).thenReturn(BsonType.OBJECT_ID);
-        when(bsonDoc2.getBsonType()).thenReturn(BsonType.STRING);
         final String docJson1 = UUID.randomUUID().toString();
         final String docJson2 = UUID.randomUUID() + docJson1;
         when(doc1.toJson(any(JsonWriterSettings.class))).thenReturn(docJson1);
@@ -136,9 +141,12 @@ public class ExportPartitionWorkerTest {
         lenient().when(cursor.next())
                 .thenReturn(doc1)
                 .thenReturn(doc2);
+        when(mockSourceConfig.getIdKey()).thenReturn("docdb_id");
         final long eventVersionNumber = (exportStartTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis()) * 1_000;
         Event event1 = mock((Event.class));
         Event event2 = mock((Event.class));
+        when(event1.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
+        when(event2.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
         when(mockRecordConverter.convert(docJson1, exportStartTime, eventVersionNumber, BsonType.OBJECT_ID.name())).thenReturn(event1);
         when(mockRecordConverter.convert(docJson2, exportStartTime, eventVersionNumber, BsonType.STRING.name())).thenReturn(event2);
         lenient().when(dataQueryPartition.getPartitionKey()).thenReturn(partitionKey);
@@ -176,6 +184,8 @@ public class ExportPartitionWorkerTest {
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockRecordConverter).initializePartitions(partitions);
         verify(mockRecordBufferWriter).writeToBuffer(eq(mockAcknowledgementSet), any());
+        verify(event1).put(mockSourceConfig.getIdKey(), event1.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
+        verify(event2).put(mockSourceConfig.getIdKey(), event2.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
         verify(successItemsCounter, times(2)).increment();
         verify(bytesReceivedSummary).record(docJson1.getBytes().length);
         verify(bytesReceivedSummary).record(docJson2.getBytes().length);

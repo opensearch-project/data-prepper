@@ -87,7 +87,7 @@ public class BsonHelper {
     private static final String REGEX_PATTERN = "pattern";
     private static final String REGEX_OPTIONS = "options";
     public static final String DOCUMENTDB_ID_FIELD_NAME = "_id";
-    // public static final String DEFAULT_ID_MAPPING_FIELD_NAME = "doc_id";
+
     public static final JsonWriterSettings JSON_WRITER_SETTINGS = JsonWriterSettings.builder()
         .outputMode(JsonMode.RELAXED)
         .objectIdConverter((value, writer) -> writer.writeString(value.toHexString()))
