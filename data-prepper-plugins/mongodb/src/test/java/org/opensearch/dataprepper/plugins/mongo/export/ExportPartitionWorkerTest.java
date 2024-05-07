@@ -55,7 +55,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.DOCUMENTDB_ID_FIELD_NAME;
+import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.EXPORT_RECORDS_TOTAL_COUNT;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.BYTES_RECEIVED;
+import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.BYTES_PROCESSED;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.FAILURE_ITEM_COUNTER_NAME;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.SUCCESS_ITEM_COUNTER_NAME;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.VERSION_OVERLAP_TIME_FOR_EXPORT;
@@ -82,7 +84,10 @@ public class ExportPartitionWorkerTest {
     private Counter successItemsCounter;
     @Mock
     private DistributionSummary bytesReceivedSummary;
-
+    @Mock
+    private DistributionSummary bytesProcessedSummary;
+    @Mock
+    private Counter exportRecordTotalCounter;
     @Mock
     private Counter failureItemsCounter;
     private ExportPartitionWorker exportPartitionWorker;
@@ -90,9 +95,11 @@ public class ExportPartitionWorkerTest {
     @BeforeEach
     public void setup() {
         exportStartTime = Instant.now().toEpochMilli();
+        when(mockPluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT)).thenReturn(exportRecordTotalCounter);
         when(mockPluginMetrics.counter(SUCCESS_ITEM_COUNTER_NAME)).thenReturn(successItemsCounter);
         when(mockPluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME)).thenReturn(failureItemsCounter);
         when(mockPluginMetrics.summary(BYTES_RECEIVED)).thenReturn(bytesReceivedSummary);
+        when(mockPluginMetrics.summary(BYTES_PROCESSED)).thenReturn(bytesProcessedSummary);
         exportPartitionWorker = new ExportPartitionWorker(mockRecordBufferWriter, mockRecordConverter, dataQueryPartition,
                 mockAcknowledgementSet, mockSourceConfig, mockPartitionCheckpoint, exportStartTime, mockPluginMetrics);
     }
@@ -185,9 +192,11 @@ public class ExportPartitionWorkerTest {
         verify(mockRecordBufferWriter).writeToBuffer(eq(mockAcknowledgementSet), any());
         verify(event1).put(mockSourceConfig.getIdKey(), event1.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
         verify(event2).put(mockSourceConfig.getIdKey(), event2.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
-        verify(successItemsCounter, times(2)).increment();
+        verify(exportRecordTotalCounter, times(2)).increment();
+        verify(successItemsCounter).increment(2.0);
         verify(bytesReceivedSummary).record(docJson1.getBytes().length);
         verify(bytesReceivedSummary).record(docJson2.getBytes().length);
+        verify(bytesProcessedSummary).record(docJson1.getBytes().length + docJson2.getBytes().length);
         verify(failureItemsCounter, never()).increment();
     }
 }

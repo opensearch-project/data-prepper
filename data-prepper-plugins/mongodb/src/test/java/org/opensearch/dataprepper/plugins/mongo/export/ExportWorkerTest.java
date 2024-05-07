@@ -11,7 +11,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.mongo.buffer.ExportRecordBufferWriter;
+import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
 
@@ -44,7 +44,7 @@ public class ExportWorkerTest {
     private MongoDBSourceConfig sourceConfig;
 
     @Mock
-    private ExportRecordBufferWriter recordBufferWriter;
+    private RecordBufferWriter recordBufferWriter;
 
     private ExportWorker exportWorker;
 

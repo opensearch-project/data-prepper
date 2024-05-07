@@ -32,8 +32,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.opensearch.dataprepper.plugins.mongo.buffer.ExportRecordBufferWriter.EXPORT_RECORDS_PROCESSED_COUNT;
-import static org.opensearch.dataprepper.plugins.mongo.buffer.ExportRecordBufferWriter.EXPORT_RECORDS_PROCESSING_ERROR_COUNT;
+import static org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter.RECORDS_PROCESSED_COUNT;
+import static org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter.RECORDS_PROCESSING_ERROR_COUNT;
 
 @ExtendWith(MockitoExtension.class)
 class ExportRecordBufferWriterTest {
@@ -61,8 +61,8 @@ class ExportRecordBufferWriterTest {
 
     @BeforeEach
     void setup() {
-        given(pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT)).willReturn(exportRecordSuccess);
-        given(pluginMetrics.counter(EXPORT_RECORDS_PROCESSING_ERROR_COUNT)).willReturn(exportRecordErrors);
+        given(pluginMetrics.counter(RECORDS_PROCESSED_COUNT)).willReturn(exportRecordSuccess);
+        given(pluginMetrics.counter(RECORDS_PROCESSING_ERROR_COUNT)).willReturn(exportRecordErrors);
 
     }
 
@@ -79,7 +79,7 @@ class ExportRecordBufferWriterTest {
         int numberOfRecords = random.nextInt(10);
 
         final List<Event> data = generateData(numberOfRecords);
-        final ExportRecordBufferWriter recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator,
+        final RecordBufferWriter recordBufferWriter = RecordBufferWriter.create(bufferAccumulator,
                 pluginMetrics);
 
         recordBufferWriter.writeToBuffer(null, data);
@@ -93,7 +93,7 @@ class ExportRecordBufferWriterTest {
     void test_writeSingleRecordToBuffer() throws Exception {
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
 
-        final ExportRecordBufferWriter recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator,
+        final RecordBufferWriter recordBufferWriter = RecordBufferWriter.create(bufferAccumulator,
                 pluginMetrics);
 
         recordBufferWriter.writeToBuffer(null, List.of(event));
@@ -108,7 +108,7 @@ class ExportRecordBufferWriterTest {
     void test_writeSingleRecordToBufferWithAcknowledgementSet() throws Exception {
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
 
-        final ExportRecordBufferWriter recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator,
+        final RecordBufferWriter recordBufferWriter = RecordBufferWriter.create(bufferAccumulator,
                 pluginMetrics);
         recordBufferWriter.writeToBuffer(acknowledgementSet, List.of(event));
         verify(bufferAccumulator).add(recordArgumentCaptor.capture());
@@ -123,7 +123,7 @@ class ExportRecordBufferWriterTest {
     void test_writeSingleRecordFlushException() throws Exception {
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
 
-        final ExportRecordBufferWriter recordBufferWriter = ExportRecordBufferWriter.create(bufferAccumulator,
+        final RecordBufferWriter recordBufferWriter = RecordBufferWriter.create(bufferAccumulator,
                 pluginMetrics);
         doThrow(RuntimeException.class).when(bufferAccumulator).flush();
 

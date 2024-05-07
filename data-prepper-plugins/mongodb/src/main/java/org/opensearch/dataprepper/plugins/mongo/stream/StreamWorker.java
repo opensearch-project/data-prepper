@@ -48,8 +48,8 @@ public class StreamWorker {
             OperationType.UPDATE, OperationType.REPLACE);
     private static final Set<OperationType> STREAM_TERMINATE_OPERATION_TYPE = Set.of(OperationType.INVALIDATE,
             OperationType.DROP, OperationType.DROP_DATABASE);
-    static final String SUCCESS_ITEM_COUNTER_NAME = "streamRecordsSuccessTotal";
-    static final String FAILURE_ITEM_COUNTER_NAME = "streamRecordsFailedTotal";
+    static final String SUCCESS_ITEM_COUNTER_NAME = "changeEventsProcessed";
+    static final String FAILURE_ITEM_COUNTER_NAME = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
     private final RecordBufferWriter recordBufferWriter;
     private final PartitionKeyRecordConverter recordConverter;
