@@ -245,6 +245,7 @@ public class KafkaCustomConsumerTest {
                 Assertions.assertEquals(value2, testValue2);
             }
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
+            Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
         }
     }
     @Test
@@ -283,6 +284,7 @@ public class KafkaCustomConsumerTest {
                 Assertions.assertEquals(value2, testValue2);
             }
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
+            Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
         }
     }
 
@@ -315,6 +317,7 @@ public class KafkaCustomConsumerTest {
                 Assertions.assertEquals(value2, testValue2);
             }
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
+            Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
             event.getEventHandle().release(true);
         }
         // Wait for acknowledgement callback function to run
@@ -364,6 +367,7 @@ public class KafkaCustomConsumerTest {
                 Assertions.assertEquals(value2, testValue2);
             }
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
+            Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
             event.getEventHandle().release(false);
         }
         // Wait for acknowledgement callback function to run
@@ -411,6 +415,7 @@ public class KafkaCustomConsumerTest {
                 testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
+            Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
         }
     }
 
@@ -465,6 +470,7 @@ public class KafkaCustomConsumerTest {
                 testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
+            Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
             event.getEventHandle().release(true);
         }
         // Wait for acknowledgement callback function to run
@@ -533,6 +539,7 @@ public class KafkaCustomConsumerTest {
                 testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
+            Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
             event.getEventHandle().release(true);
         }
         // Wait for acknowledgement callback function to run
