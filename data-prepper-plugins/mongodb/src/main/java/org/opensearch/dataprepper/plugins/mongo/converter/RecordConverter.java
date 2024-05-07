@@ -54,13 +54,13 @@ public class RecordConverter {
      * Convert the source data into a JacksonEvent.
      *
      * @param record                  record that will be converted to Event.
-     * @param eventCreationTimeMillis Creation timestamp of the event
+     * @param eventCreateTimeEpochMillis Creation timestamp of the event in epoch millis
      * @param eventVersionNumber      Event version number to handle conflicts
      * @param eventName               Event name
      * @return Jackson document event
      */
     public Event convert(final String record,
-                        final long eventCreationTimeMillis,
+                        final long eventCreateTimeEpochMillis,
                         final long eventVersionNumber,
                         final OperationType eventName,
                         final String primaryKeyBsonType) {
@@ -71,7 +71,7 @@ public class RecordConverter {
 
         // Only set external origination time for stream events, not export
         if (eventName != null) {
-            final Instant externalOriginationTime = Instant.ofEpochMilli(eventCreationTimeMillis);
+            final Instant externalOriginationTime = Instant.ofEpochMilli(eventCreateTimeEpochMillis);
             event.getEventHandle().setExternalOriginationTime(externalOriginationTime);
             event.getMetadata().setExternalOriginationTime(externalOriginationTime);
         }
@@ -79,7 +79,7 @@ public class RecordConverter {
 
         eventMetadata.setAttribute(MetadataKeyAttributes.INGESTION_EVENT_TYPE_ATTRIBUTE, dataType);
         eventMetadata.setAttribute(MetadataKeyAttributes.DOCUMENTDB_EVENT_COLLECTION_METADATA_ATTRIBUTE, collection);
-        eventMetadata.setAttribute(MetadataKeyAttributes.DOCUMENTDB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreationTimeMillis);
+        eventMetadata.setAttribute(MetadataKeyAttributes.DOCUMENTDB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreateTimeEpochMillis);
         eventMetadata.setAttribute(MetadataKeyAttributes.DOCUMENTDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE, eventName);
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, mapStreamEventNameToBulkAction(eventName));
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP, eventVersionNumber);

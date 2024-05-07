@@ -51,6 +51,7 @@ public class StreamWorker {
     static final String SUCCESS_ITEM_COUNTER_NAME = "changeEventsProcessed";
     static final String FAILURE_ITEM_COUNTER_NAME = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
+    private static final long MILLI_SECOND = 1_000_000L;
     private final RecordBufferWriter recordBufferWriter;
     private final PartitionKeyRecordConverter recordConverter;
     private final DataStreamPartitionCheckpoint partitionCheckpoint;
@@ -69,6 +70,8 @@ public class StreamWorker {
     private String lastLocalCheckpoint;
     private Long lastLocalRecordCount = null;
     Optional<S3PartitionStatus> s3PartitionStatus = Optional.empty();
+    private Integer currentEpochSecond;
+    private int recordsSeenThisSecond = 0;
 
     public static StreamWorker create(final RecordBufferWriter recordBufferWriter,
                          final PartitionKeyRecordConverter recordConverter,
@@ -190,15 +193,15 @@ public class StreamWorker {
                                 } else {
                                     record = document.getFullDocument().toJson(JSON_WRITER_SETTINGS);
                                 }
-                                final long eventCreationTimeMillis = document.getClusterTime().getTime() * 1000L;
+                                final long eventCreateTimeEpochMillis = document.getClusterTime().getTime() * 1_000L;
+                                final long eventCreationTimeEpochNanos = calculateTieBreakingVersionFromTimestamp(document.getClusterTime().getTime());
                                 final long bytes = record.getBytes().length;
                                 bytesReceivedSummary.record(bytes);
 
                                 checkPointToken = document.getResumeToken().toJson(JSON_WRITER_SETTINGS);
                                 final Optional<BsonDocument> primaryKeyDoc = Optional.ofNullable(document.getDocumentKey());
                                 final String primaryKeyBsonType = primaryKeyDoc.map(bsonDocument -> bsonDocument.get(DOCUMENTDB_ID_FIELD_NAME).getBsonType().name()).orElse(UNKNOWN_TYPE);
-                                // TODO fix eventVersionNumber
-                                final Event event = recordConverter.convert(record, eventCreationTimeMillis, eventCreationTimeMillis,
+                                final Event event = recordConverter.convert(record, eventCreateTimeEpochMillis, eventCreationTimeEpochNanos,
                                         document.getOperationType(), primaryKeyBsonType);
                                 if (sourceConfig.getIdKey() !=null && !sourceConfig.getIdKey().isBlank()) {
                                     event.put(sourceConfig.getIdKey(), event.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
@@ -255,6 +258,21 @@ public class StreamWorker {
                 streamAcknowledgementManager.shutdown();
             }
         }
+    }
+
+    private long calculateTieBreakingVersionFromTimestamp(final int eventTimeInEpochSeconds) {
+        if (currentEpochSecond == null) {
+            currentEpochSecond = eventTimeInEpochSeconds;
+        } else if (currentEpochSecond > eventTimeInEpochSeconds) {
+            return eventTimeInEpochSeconds * MILLI_SECOND;
+        } else if (currentEpochSecond < eventTimeInEpochSeconds) {
+            recordsSeenThisSecond = 0;
+            currentEpochSecond = eventTimeInEpochSeconds;
+        } else {
+            recordsSeenThisSecond++;
+        }
+
+        return eventTimeInEpochSeconds * MILLI_SECOND + recordsSeenThisSecond;
     }
 
     private boolean isCRUDOperation(final OperationType operationType) {
