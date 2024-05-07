@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -168,24 +170,40 @@ public class KeyValueProcessorTests {
 
     @ParameterizedTest
     @MethodSource("getKeyValueAutoModeTestdata")
-    void testMultipleKvToObjectKeyValueProcessorInAutoMode() {
+    void testMultipleKvToObjectKeyValueProcessorInAutoMode(String fieldDelimiters, String input, Map<String, Object> expectedResultMap) {
         lenient().when(mockConfig.getAutoMode()).thenReturn(true);
+        lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(fieldDelimiters);
         final KeyValueProcessor objectUnderTest = createObjectUnderTest();
-        final Record<Event> record = getMessage("key1=value1,key2=value2");
+        final Record<Event> record = getMessage(input);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
-        assertThat(parsed_message.size(), equalTo(2));
-        assertThatKeyEquals(parsed_message, "key1", "value1");
-        assertThatKeyEquals(parsed_message, "key2", "value2");
+        assertThat(parsed_message.size(), equalTo(expectedResultMap.size()));
+        for (Map.Entry<String, Object>entry: expectedResultMap.entrySet()) {
+            System.out.println("---parsed--"+parsed_message+"..."+entry.getKey()+"..."+entry.getValue());
+            assertThatKeyEquals(parsed_message, entry.getKey(), entry.getValue());
+        }
     }
 
     private static Stream<Arguments> getKeyValueAutoModeTestdata() {
         return Stream.of (
-                Arguments.of(),
-                Arguments.of(),
-                Arguments.of()
+                Arguments.of(",", "key1=value1,key2=value2", Map.of("key1", "value1", "key2", "value2")),
+                Arguments.of(",", "key1=value1 key2=value2", Map.of("key1", "value1", "key2", "value2")),
+                Arguments.of(",", "key1=value1 ,key2=value2", Map.of("key1", "value1", "key2", "value2")),
+                Arguments.of(",", "key1=value1, key2=value2", Map.of("key1", "value1", "key2", "value2")),
+                Arguments.of(",", "key1=It\'sValue1, key2=value2", Map.of("key1", "It\'sValue1", "key2", "value2")),
+                Arguments.of(",", "text1 text2 key1=value1, key2=value2 text3 text4", Map.of("key1", "value1", "key2", "value2")),
+                Arguments.of(",", "text1 text2 foo key1=value1 url=http://foo.com?bar=text,text&foo=zoo  bar k2=\"http://bar.com?a=b&c=foo bar\" bar", Map.of("key1", "value1", "url", "http://foo.com?bar=text,text&foo=zoo", "k2", "\"http://bar.com?a=b&c=foo bar\"")),
+                Arguments.of(",", "vendorMessage=VendorMessage(uid=1847060493-1712778523223, feedValue=https://syosetu.org/novel/147705/15.html, bundleId=, linkType=URL, vendor=DOUBLEVERIFY, platform=DESKTOP, deviceTypeId=1, bidCount=6, appStoreTld=, feedSource=DSP, regions=[APAC], timestamp=1712778523223, externalId=)", Map.of("vendorMessage", "VendorMessage(uid=1847060493-1712778523223, feedValue=https://syosetu.org/novel/147705/15.html, bundleId=, linkType=URL, vendor=DOUBLEVERIFY, platform=DESKTOP, deviceTypeId=1, bidCount=6, appStoreTld=, feedSource=DSP, regions=[APAC], timestamp=1712778523223, externalId=)")),
+                Arguments.of(",", "key1=[value1,value2], key3=value3", Map.of("key1", "[value1,value2]", "key3", "value3")),
+                Arguments.of(",", "key1=(value1, value2), key3=value3", Map.of("key1", "(value1, value2)", "key3", "value3")),
+                Arguments.of(",", "key1=<value1 ,value2>, key3=value3", Map.of("key1", "<value1 ,value2>", "key3", "value3")),
+                Arguments.of(",", "key1={value1,value2}, key3=value3", Map.of("key1", "{value1,value2}", "key3", "value3")),
+                Arguments.of(",", "key1='value1,value2', key3=value3", Map.of("key1", "'value1,value2'", "key3", "value3")),
+                Arguments.of(",", "key1=\"value1,value2\", key3=value3", Map.of("key1", "\"value1,value2\"", "key3", "value3"))
                );
+    }
+
     @Test
     void testWriteToRoot() {
         when(mockConfig.getDestination()).thenReturn(null);

@@ -292,7 +292,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private void addPart(List<String> parts, final String str, final int start, final int end) {
         String part = str.substring(start,end).trim();
         if (part.length() > 0 && isKeyValueDelimiterPresentInPart(part)) {
-            System.out.println("====="+part);
             parts.add(part);
         }
     }
