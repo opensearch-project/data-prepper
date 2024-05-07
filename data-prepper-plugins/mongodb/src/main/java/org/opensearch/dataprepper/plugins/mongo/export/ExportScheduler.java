@@ -82,19 +82,14 @@ public class ExportScheduler implements Runnable {
 
                     final PartitionIdentifierBatch partitionIdentifierBatch = mongoDBExportPartitionSupplier.apply(exportPartition);
 
-                    final boolean createStatus = createDataQueryPartitions(
+                    createDataQueryPartitions(
                             exportPartition.getCollection(), Instant.now(), partitionIdentifierBatch.getPartitionIdentifiers(),
                             (GlobalState) globalPartition.get());
+                    updateExportPartition(exportPartition, partitionIdentifierBatch);
 
-                    if (createStatus) {
-                        updateExportPartition(exportPartition, partitionIdentifierBatch);
-
-                        if (partitionIdentifierBatch.isLastBatch()) {
-                            completeExportPartition(exportPartition);
-                            markTotalPartitionsAsComplete(exportPartition.getCollection());
-                        }
-                    } else {
-                        closeExportPartitionWithError(exportPartition);
+                    if (partitionIdentifierBatch.isLastBatch()) {
+                        completeExportPartition(exportPartition);
+                        markTotalPartitionsAsComplete(exportPartition.getCollection());
                     }
                 }
                 try {

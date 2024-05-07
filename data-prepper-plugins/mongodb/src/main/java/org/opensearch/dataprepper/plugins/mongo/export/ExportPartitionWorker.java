@@ -185,10 +185,10 @@ public class ExportPartitionWorker implements Runnable {
                         if ((recordCount - startLine) % DEFAULT_BATCH_SIZE == 0) {
                             LOG.debug("Write to buffer for line " + (recordCount - DEFAULT_BATCH_SIZE) + " to " + recordCount);
                             recordBufferWriter.writeToBuffer(acknowledgementSet, records);
+                            successItemsCounter.increment(records.size());
+                            bytesProcessedSummary.record(recordBytes.stream().mapToLong(Long::longValue).sum());
                             records.clear();
                             recordBytes.clear();
-                            successItemsCounter.increment(DEFAULT_BATCH_SIZE);
-                            bytesProcessedSummary.record(recordBytes.stream().mapToLong(Long::longValue).sum());
                             lastRecordNumberProcessed = recordCount;
                             // checkpointing in finally block when all records are processed
                         }
@@ -217,6 +217,7 @@ public class ExportPartitionWorker implements Runnable {
                 }
 
                 records.clear();
+                recordBytes.clear();
 
                 LOG.info("Completed writing query partition: {} to buffer", query);
 
