@@ -53,6 +53,7 @@ public class StreamWorker {
     static final String SUCCESS_ITEM_COUNTER_NAME = "changeEventsProcessed";
     static final String FAILURE_ITEM_COUNTER_NAME = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
+    static final String BYTES_PROCESSED = "bytesProcessed";
     private static final long MILLI_SECOND = 1_000_000L;
     private static final String UPDATE_DESCRIPTION = "updateDescription";
     private final RecordBufferWriter recordBufferWriter;
@@ -62,6 +63,7 @@ public class StreamWorker {
     private final Counter successItemsCounter;
     private final Counter failureItemsCounter;
     private final DistributionSummary bytesReceivedSummary;
+    private final DistributionSummary bytesProcessedSummary;
     private final StreamAcknowledgementManager streamAcknowledgementManager;
     private final  PluginMetrics pluginMetrics;
     private final int recordFlushBatchSize;
@@ -114,6 +116,7 @@ public class StreamWorker {
         this.successItemsCounter = pluginMetrics.counter(SUCCESS_ITEM_COUNTER_NAME);
         this.failureItemsCounter = pluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME);
         this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
+        this.bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
         this.executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("mongodb-stream-checkpoint"));
         if (sourceConfig.isAcknowledgmentsEnabled()) {
             // starts acknowledgement monitoring thread
@@ -159,6 +162,7 @@ public class StreamWorker {
         }
         long recordCount = 0;
         final List<Event> records = new ArrayList<>();
+        final List<Long> recordBytes = new ArrayList<>();
         String checkPointToken = null;
         try (MongoClient mongoClient = MongoDBConnection.getMongoClient(sourceConfig)) {
             // Access the database
@@ -214,6 +218,7 @@ public class StreamWorker {
                                 // delete _id
                                 event.delete(DOCUMENTDB_ID_FIELD_NAME);
                                 records.add(event);
+                                recordBytes.add(bytes);
                                 recordCount += 1;
 
                                 if ((recordCount % recordFlushBatchSize == 0) || (System.currentTimeMillis() - lastBufferWriteTime >= bufferWriteIntervalInMs)) {
@@ -222,7 +227,9 @@ public class StreamWorker {
                                     lastLocalCheckpoint = checkPointToken;
                                     lastLocalRecordCount = recordCount;
                                     lastBufferWriteTime = System.currentTimeMillis();
+                                    bytesProcessedSummary.record(recordBytes.stream().mapToLong(Long::longValue).sum());
                                     records.clear();
+                                    recordBytes.clear();
                                 }
                             } else if(shouldTerminateChangeStream(operationType)){
                                 stop();
