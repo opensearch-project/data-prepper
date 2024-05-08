@@ -175,7 +175,9 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(fieldDelimiters);
         final KeyValueProcessor objectUnderTest = createObjectUnderTest();
         final Record<Event> record = getMessage(input);
+        System.out.println("IN________"+record.getData().toJsonString());
         final List<Record<Event>> editedRecords = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
+        System.out.println("OUT________"+editedRecords.get(0).getData().toJsonString());
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(expectedResultMap.size()));
@@ -191,7 +193,7 @@ public class KeyValueProcessorTests {
                 Arguments.of(",", "key1=value1 key2=value2", Map.of("key1", "value1", "key2", "value2")),
                 Arguments.of(",", "key1=value1 ,key2=value2", Map.of("key1", "value1", "key2", "value2")),
                 Arguments.of(",", "key1=value1, key2=value2", Map.of("key1", "value1", "key2", "value2")),
-                Arguments.of(",", "key1=It\'sValue1, key2=value2", Map.of("key1", "It\'sValue1", "key2", "value2")),
+                Arguments.of(",", "key1=It\\'sValue1, key2=value2", Map.of("key1", "It\\'sValue1", "key2", "value2")),
                 Arguments.of(",", "text1 text2 key1=value1, key2=value2 text3 text4", Map.of("key1", "value1", "key2", "value2")),
                 Arguments.of(",", "text1 text2 foo key1=value1 url=http://foo.com?bar=text,text&foo=zoo  bar k2=\"http://bar.com?a=b&c=foo bar\" bar", Map.of("key1", "value1", "url", "http://foo.com?bar=text,text&foo=zoo", "k2", "\"http://bar.com?a=b&c=foo bar\"")),
                 Arguments.of(",", "vendorMessage=VendorMessage(uid=1847060493-1712778523223, feedValue=https://syosetu.org/novel/147705/15.html, bundleId=, linkType=URL, vendor=DOUBLEVERIFY, platform=DESKTOP, deviceTypeId=1, bidCount=6, appStoreTld=, feedSource=DSP, regions=[APAC], timestamp=1712778523223, externalId=)", Map.of("vendorMessage", "VendorMessage(uid=1847060493-1712778523223, feedValue=https://syosetu.org/novel/147705/15.html, bundleId=, linkType=URL, vendor=DOUBLEVERIFY, platform=DESKTOP, deviceTypeId=1, bidCount=6, appStoreTld=, feedSource=DSP, regions=[APAC], timestamp=1712778523223, externalId=)")),

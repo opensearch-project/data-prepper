@@ -300,8 +300,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         int j = 0;
         while (j < startGroupStrings.length) {
             try {
-                if (startGroupStrings[j].equals(str.substring(idx, idx+startGroupStrings[j].length())))
-                    return j;
+                if (startGroupStrings[j].equals(str.substring(idx, idx+startGroupStrings[j].length()))) {
+                    if (j <= 1 && idx > 0 && str.charAt(idx-1) != '\\') {
+                        return j;
+                    } else if (j > 1) {
+                        return j;
+                    }
+                }
             } catch (Exception e) {
                 return -1;
             }
@@ -321,6 +326,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 continue;
             }
             int groupIndex = findInStartGroup(str, i);
+            System.out.println("+++++++++"+str+"_____"+i+"....."+groupIndex);
             if (groupIndex >= 0) {
                 i = skipToEndChar(str, i+1, endGroupChars[groupIndex])+2;
             } else if (str.substring(i,i+fieldDelimiter.length()).equals(fieldDelimiter)) {
