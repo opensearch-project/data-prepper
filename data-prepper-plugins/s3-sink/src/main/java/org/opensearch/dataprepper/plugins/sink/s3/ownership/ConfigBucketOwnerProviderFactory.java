@@ -54,6 +54,6 @@ public class ConfigBucketOwnerProviderFactory {
             return roleArn.accountId().get();
         }
 
-        return null;
+        throw new RuntimeException(String.format("Unable to extract account id from sts_role_arn %s", s3SinkConfig.getAwsAuthenticationOptions().getAwsStsRoleArn()));
     }
 }

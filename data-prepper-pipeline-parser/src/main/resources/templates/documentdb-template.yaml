@@ -27,6 +27,7 @@
          path_prefix: "${getMetadata(\"s3_partition_key\")}"
        codec:
          event_json:
+       default_bucket_owner: "<<FUNCTION_NAME:getAccountIdFromRole,PARAMETER:$.<<pipeline-name>>.source.documentdb.aws.sts_role_arn>>"
     - s3:
         routes:
           - stream_load
@@ -46,7 +47,7 @@
           path_prefix: "${getMetadata(\"s3_partition_key\")}"
         codec:
           event_json:
-
+        default_bucket_owner: "<<FUNCTION_NAME:getAccountIdFromRole,PARAMETER:$.<<pipeline-name>>.source.documentdb.aws.sts_role_arn>>"
 "<<pipeline-name>>-s3":
     workers: "<<$.<<pipeline-name>>.workers>>"
     delay: "<<$.<<pipeline-name>>.delay>>"
