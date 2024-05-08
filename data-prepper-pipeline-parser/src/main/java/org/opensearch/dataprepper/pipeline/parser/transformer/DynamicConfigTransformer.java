@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluatorResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.arns.Arn;
 
 import javax.xml.transform.TransformerException;
 import java.io.IOException;
@@ -365,6 +366,10 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             return envSourceCoordinationIdentifier;
         }
         return s3Prefix+"/"+envSourceCoordinationIdentifier;
+    }
+
+    public String getAccountIdFromRole(final String roleArn) {
+        return Arn.fromString(roleArn).accountId().orElse(null);
     }
 
     /**

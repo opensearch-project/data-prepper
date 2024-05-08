@@ -25,6 +25,7 @@ dependencies {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
     implementation 'software.amazon.cloudwatchlogs:aws-embedded-metrics:2.0.0-beta-1'
+    implementation 'software.amazon.awssdk:arns'
     testImplementation testLibs.bundles.junit
     testImplementation testLibs.bundles.mockito
     testImplementation testLibs.hamcrest

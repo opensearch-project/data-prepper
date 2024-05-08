@@ -99,6 +99,7 @@ class S3SinkTest {
         when(objectKeyOptions.getNamePattern()).thenReturn(UUID.randomUUID().toString());
         when(s3SinkConfig.getObjectKeyOptions()).thenReturn(objectKeyOptions);
         when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(true);
+        when(s3SinkConfig.getDefaultBucketOwner()).thenReturn(UUID.randomUUID().toString());
     }
 
     private S3Sink createObjectUnderTest() {

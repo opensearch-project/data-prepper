@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.aws.validator.AwsAccountId;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
@@ -17,6 +18,8 @@ import org.opensearch.dataprepper.plugins.sink.s3.configuration.AggregateThresho
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
+
+import java.util.Map;
 
 /**
  * s3 sink configuration class contains properties, used to read yaml configuration.
@@ -73,6 +76,13 @@ public class S3SinkConfig {
 
     @JsonProperty("max_retries")
     private int maxUploadRetries = DEFAULT_UPLOAD_RETRIES;
+
+    @JsonProperty("bucket_owners")
+    private Map<String, @AwsAccountId String> bucketOwners;
+
+    @JsonProperty("default_bucket_owner")
+    @AwsAccountId
+    private String defaultBucketOwner;
 
     /**
      * Aws Authentication configuration Options.
@@ -154,4 +164,12 @@ public class S3SinkConfig {
     }
 
     public String getDefaultBucket() { return defaultBucket; }
+
+    public Map<String, String> getBucketOwners() {
+        return bucketOwners;
+    }
+
+    public String getDefaultBucketOwner() {
+        return defaultBucketOwner;
+    }
 }

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
@@ -50,6 +51,9 @@ public class S3OutputStreamTest {
     @Mock
     private Consumer<Throwable> runOnError;
 
+    @Mock
+    private BucketOwnerProvider bucketOwnerProvider;
+
     private String bucket;
 
     private String defaultBucket;
@@ -64,7 +68,7 @@ public class S3OutputStreamTest {
     }
 
     private S3OutputStream createObjectUnderTest() {
-        return new S3OutputStream(s3Client, () -> bucket, () -> objectKey, defaultBucket);
+        return new S3OutputStream(s3Client, () -> bucket, () -> objectKey, defaultBucket, bucketOwnerProvider);
     }
 
     @Test

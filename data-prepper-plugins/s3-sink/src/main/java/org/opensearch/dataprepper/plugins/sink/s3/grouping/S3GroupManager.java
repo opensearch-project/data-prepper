@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.S3SinkConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.codec.CodecFactory;
+import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -33,6 +34,8 @@ public class S3GroupManager {
 
     private final S3AsyncClient s3Client;
 
+    private final BucketOwnerProvider bucketOwnerProvider;
+
     private long totalGroupSize;
 
 
@@ -40,13 +43,15 @@ public class S3GroupManager {
                           final S3GroupIdentifierFactory s3GroupIdentifierFactory,
                           final BufferFactory bufferFactory,
                           final CodecFactory codecFactory,
-                          final S3AsyncClient s3Client) {
+                          final S3AsyncClient s3Client,
+                          final BucketOwnerProvider bucketOwnerProvider) {
         this.s3SinkConfig = s3SinkConfig;
         this.s3GroupIdentifierFactory = s3GroupIdentifierFactory;
         this.bufferFactory = bufferFactory;
         this.codecFactory = codecFactory;
         this.s3Client = s3Client;
         totalGroupSize = 0;
+        this.bucketOwnerProvider = bucketOwnerProvider;
     }
 
     public boolean hasNoGroups() {
@@ -74,7 +79,7 @@ public class S3GroupManager {
         if (allGroups.containsKey(s3GroupIdentifier)) {
             return allGroups.get(s3GroupIdentifier);
         } else {
-            final Buffer bufferForNewGroup =  bufferFactory.getBuffer(s3Client, s3GroupIdentifier::getFullBucketName, s3GroupIdentifier::getGroupIdentifierFullObjectKey, s3SinkConfig.getDefaultBucket());
+            final Buffer bufferForNewGroup =  bufferFactory.getBuffer(s3Client, s3GroupIdentifier::getFullBucketName, s3GroupIdentifier::getGroupIdentifierFullObjectKey, s3SinkConfig.getDefaultBucket(), bucketOwnerProvider);
             final OutputCodec outputCodec = codecFactory.provideCodec();
             final S3Group s3Group = new S3Group(s3GroupIdentifier, bufferForNewGroup, outputCodec);
             allGroups.put(s3GroupIdentifier, s3Group);

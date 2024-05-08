@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
 import org.apache.commons.lang3.time.StopWatch;
+import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 
@@ -28,6 +29,8 @@ public class InMemoryBuffer implements Buffer {
     private final S3AsyncClient s3Client;
     private final Supplier<String> bucketSupplier;
     private final Supplier<String> keySupplier;
+
+    private final BucketOwnerProvider bucketOwnerProvider;
     private int eventCount;
     private final StopWatch watch;
     private boolean isCodecStarted;
@@ -39,7 +42,8 @@ public class InMemoryBuffer implements Buffer {
     InMemoryBuffer(final S3AsyncClient s3Client,
                    final Supplier<String> bucketSupplier,
                    final Supplier<String> keySupplier,
-                   final String defaultBucket) {
+                   final String defaultBucket,
+                   final BucketOwnerProvider bucketOwnerProvider) {
         this.s3Client = s3Client;
         this.bucketSupplier = bucketSupplier;
         this.keySupplier = keySupplier;
@@ -49,6 +53,7 @@ public class InMemoryBuffer implements Buffer {
         watch.start();
         isCodecStarted = false;
         this.defaultBucket = defaultBucket;
+        this.bucketOwnerProvider = bucketOwnerProvider;
     }
 
     @Override
@@ -73,7 +78,7 @@ public class InMemoryBuffer implements Buffer {
         final byte[] byteArray = byteArrayOutputStream.toByteArray();
         return Optional.ofNullable(BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, AsyncRequestBody.fromBytes(byteArray),
                 consumeOnCompletion, consumeOnException,
-                getKey(), getBucket(), defaultBucket));
+                getKey(), getBucket(), defaultBucket, bucketOwnerProvider));
     }
 
     private String getBucket() {
