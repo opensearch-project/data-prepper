@@ -60,6 +60,7 @@ import java.util.stream.Stream;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -135,7 +136,7 @@ public class StreamWorkerTest {
         MongoCursor cursor = mock(MongoCursor.class);
         when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
         when(mongoDatabase.getCollection(anyString())).thenReturn(col);
-        when(col.watch()).thenReturn(changeStreamIterable);
+        when(col.watch(anyList())).thenReturn(changeStreamIterable);
         when(changeStreamIterable.batchSize(1000)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.iterator()).thenReturn(cursor);
@@ -232,7 +233,7 @@ public class StreamWorkerTest {
         MongoCursor cursor = mock(MongoCursor.class);
         when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
         when(mongoDatabase.getCollection(anyString())).thenReturn(col);
-        when(col.watch()).thenReturn(changeStreamIterable);
+        when(col.watch(anyList())).thenReturn(changeStreamIterable);
         when(changeStreamIterable.batchSize(1000)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.iterator()).thenReturn(cursor);
@@ -323,7 +324,7 @@ public class StreamWorkerTest {
         MongoCursor cursor = mock(MongoCursor.class);
         when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
         when(mongoDatabase.getCollection(anyString())).thenReturn(col);
-        when(col.watch()).thenReturn(changeStreamIterable);
+        when(col.watch(anyList())).thenReturn(changeStreamIterable);
         when(changeStreamIterable.batchSize(1000)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.iterator()).thenReturn(cursor);
@@ -361,7 +362,7 @@ public class StreamWorkerTest {
         MongoCursor cursor = mock(MongoCursor.class);
         when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
         when(mongoDatabase.getCollection(anyString())).thenReturn(col);
-        when(col.watch()).thenReturn(changeStreamIterable);
+        when(col.watch(anyList())).thenReturn(changeStreamIterable);
         when(changeStreamIterable.batchSize(1000)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.iterator()).thenReturn(cursor);
@@ -430,7 +431,7 @@ public class StreamWorkerTest {
         MongoCursor cursor = mock(MongoCursor.class);
         when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
         when(mongoDatabase.getCollection(anyString())).thenReturn(col);
-        when(col.watch()).thenReturn(changeStreamIterable);
+        when(col.watch(anyList())).thenReturn(changeStreamIterable);
         when(changeStreamIterable.batchSize(1000)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP)).thenReturn(changeStreamIterable);
         when(changeStreamIterable.iterator()).thenReturn(cursor);

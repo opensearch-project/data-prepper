@@ -5,6 +5,8 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.OperationType;
@@ -52,6 +54,7 @@ public class StreamWorker {
     static final String FAILURE_ITEM_COUNTER_NAME = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
     private static final long MILLI_SECOND = 1_000_000L;
+    private static final String UPDATE_DESCRIPTION = "updateDescription";
     private final RecordBufferWriter recordBufferWriter;
     private final PartitionKeyRecordConverter recordConverter;
     private final DataStreamPartitionCheckpoint partitionCheckpoint;
@@ -124,7 +127,9 @@ public class StreamWorker {
     private MongoCursor<ChangeStreamDocument<Document>> getChangeStreamCursor(final MongoCollection<Document> collection,
                             final String resumeToken
                             ) {
-        final ChangeStreamIterable<Document> changeStreamIterable = collection.watch().batchSize(streamBatchSize);
+        final ChangeStreamIterable<Document> changeStreamIterable = collection.watch(
+                        List.of(Aggregates.project(Projections.exclude(UPDATE_DESCRIPTION))))
+                .batchSize(streamBatchSize);
 
         if (resumeToken == null) {
             return changeStreamIterable.fullDocument(FullDocument.UPDATE_LOOKUP).iterator();
