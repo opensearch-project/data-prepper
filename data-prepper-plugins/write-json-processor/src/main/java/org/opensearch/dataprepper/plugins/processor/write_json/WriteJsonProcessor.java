@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.write_json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -25,7 +26,9 @@ import java.util.Collection;
 @DataPrepperPlugin(name = "write_json", pluginType = Processor.class, pluginConfigurationType = WriteJsonProcessorConfig.class)
 public class WriteJsonProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(WriteJsonProcessor.class);
+    private static final String WRITE_JSON_FAILED_COUNTER = "writeJsonFailedCounter";
     private final String source;
+    private final Counter writeJsonFailedCounter;
     private String target;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
@@ -37,6 +40,7 @@ public class WriteJsonProcessor extends AbstractProcessor<Record<Event>, Record<
         if (target == null) {
             target = source;
         }
+        writeJsonFailedCounter = pluginMetrics.counter(WRITE_JSON_FAILED_COUNTER);
     }
 
     @Override
@@ -48,7 +52,8 @@ public class WriteJsonProcessor extends AbstractProcessor<Record<Event>, Record<
                 try {
                     event.put(target, objectMapper.writeValueAsString(value));
                 } catch (Exception e) {
-                    LOG.error("Failed to convert source to json string");
+                    LOG.error("Failed to convert source to json string", e);
+                    writeJsonFailedCounter.increment();
                 }
             }
         }
