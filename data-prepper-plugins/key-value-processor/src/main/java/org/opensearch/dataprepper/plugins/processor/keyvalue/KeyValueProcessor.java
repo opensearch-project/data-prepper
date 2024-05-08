@@ -315,7 +315,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return -1;
     }
     
-    private List<String> executeAutoMode(String str) {
+    private List<String> parseWithValueGrouping(String str) {
         String fieldDelimiter = keyValueProcessorConfig.getFieldSplitCharacters();
         int i = 0;
         int start = i;
@@ -326,7 +326,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 continue;
             }
             int groupIndex = findInStartGroup(str, i);
-            System.out.println("+++++++++"+str+"_____"+i+"....."+groupIndex);
             if (groupIndex >= 0) {
                 i = skipToEndChar(str, i+1, endGroupChars[groupIndex])+2;
             } else if (str.substring(i,i+fieldDelimiter.length()).equals(fieldDelimiter)) {
@@ -368,9 +367,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     continue;
                 }
                 String[] groups;
-                if (keyValueProcessorConfig.getAutoMode()) {
-                    //groups = (String[])executeAutoMode(groupsRaw).toArray();
-                    groups = executeAutoMode(groupsRaw).stream().toArray(String[]::new);
+                if (keyValueProcessorConfig.getValueGrouping()) {
+                    groups = parseWithValueGrouping(groupsRaw).stream().toArray(String[]::new);
                 } else {
                     groups = fieldDelimiterPattern.split(groupsRaw, 0);
                 }

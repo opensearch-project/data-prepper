@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.keyvalue;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +30,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_WHITESPACE = "lenient";
     static final boolean DEFAULT_SKIP_DUPLICATE_VALUES = false;
     static final boolean DEFAULT_REMOVE_BRACKETS = false;
-    static final boolean DEFAULT_AUTO_MODE = false;
+    static final boolean DEFAULT_VALUE_GROUPING = false;
     static final boolean DEFAULT_RECURSIVE = false;
 
     @NotEmpty
@@ -91,9 +92,8 @@ public class KeyValueProcessorConfig {
     @NotNull
     private boolean removeBrackets = DEFAULT_REMOVE_BRACKETS;
 
-    @JsonProperty("auto")
-    private boolean autoMode = DEFAULT_AUTO_MODE;
-    
+    @JsonProperty("value_grouping")
+    private boolean valueGrouping = DEFAULT_VALUE_GROUPING;
 
     @JsonProperty("recursive")
     @NotNull
@@ -108,6 +108,11 @@ public class KeyValueProcessorConfig {
     @JsonProperty("key_value_when")
     private String keyValueWhen;
 
+    @AssertTrue(message = "Invalid Configuration. valueGrouping option and field_delimiter_regex are mutually exclusive")
+    boolean isValidValueGroupingAndFieldDelimiterRegex() {
+        return (!valueGrouping || fieldDelimiterRegex == null);
+    }
+
     public String getSource() {
         return source;
     }
@@ -116,8 +121,8 @@ public class KeyValueProcessorConfig {
         return destination;
     }
 
-    public boolean getAutoMode() {
-        return autoMode;
+    public boolean getValueGrouping() {
+        return valueGrouping;
     }
 
     public String getFieldDelimiterRegex() {
