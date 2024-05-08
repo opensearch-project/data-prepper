@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalSta
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus;
 import org.opensearch.dataprepper.plugins.mongo.model.StreamLoadStatus;
+import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,14 +78,15 @@ public class ExportWorker implements Runnable {
     private final ExecutorService executor;
     private final PluginMetrics pluginMetrics;
     private final String s3PathPrefix;
-
+    private final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics;
 
     public ExportWorker(final EnhancedSourceCoordinator sourceCoordinator,
                         final Buffer<Record<Event>> buffer,
                         final PluginMetrics pluginMetrics,
                         final AcknowledgementSetManager acknowledgementSetManager,
                         final MongoDBSourceConfig sourceConfig,
-                        final String s3PathPrefix) {
+                        final String s3PathPrefix,
+                        final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics) {
         this.sourceCoordinator = sourceCoordinator;
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
@@ -95,6 +97,7 @@ public class ExportWorker implements Runnable {
         this.pluginMetrics = pluginMetrics;
         checkArgument(Objects.nonNull(s3PathPrefix), "S3 path prefix must not be null");
         this.s3PathPrefix = s3PathPrefix;
+        this.documentDBAggregateMetrics = documentDBAggregateMetrics;
         this.successPartitionCounter = pluginMetrics.counter(SUCCESS_PARTITION_COUNTER_NAME);
         this.failureParitionCounter = pluginMetrics.counter(FAILURE_PARTITION_COUNTER_NAME);
         this.activeExportPartitionConsumerGauge = pluginMetrics.gauge(ACTIVE_EXPORT_PARTITION_CONSUMERS_GAUGE, numOfWorkers);
@@ -118,7 +121,7 @@ public class ExportWorker implements Runnable {
                         final PartitionKeyRecordConverter recordConverter = new PartitionKeyRecordConverter(dataQueryPartition.getCollection(),
                                 ExportPartition.PARTITION_TYPE, s3Prefix);
                         final ExportPartitionWorker exportPartitionWorker = new ExportPartitionWorker(recordBufferWriter, recordConverter,
-                                dataQueryPartition, acknowledgementSet, sourceConfig, partitionCheckpoint, Instant.now().toEpochMilli(), pluginMetrics);
+                                dataQueryPartition, acknowledgementSet, sourceConfig, partitionCheckpoint, Instant.now().toEpochMilli(), pluginMetrics, documentDBAggregateMetrics);
                         final CompletableFuture<Void> runLoader = CompletableFuture.runAsync(exportPartitionWorker, executor);
                         runLoader.whenComplete(completePartitionLoader(dataQueryPartition));
                         numOfWorkers.incrementAndGet();

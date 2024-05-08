@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.mongo.export;
 
+import com.mongodb.MongoClientException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -16,6 +17,7 @@ import org.bson.conversions.Bson;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -32,6 +34,7 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfi
 import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
 import org.opensearch.dataprepper.plugins.mongo.model.S3PartitionStatus;
+import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -43,6 +46,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -55,9 +59,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.DOCUMENTDB_ID_FIELD_NAME;
-import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.EXPORT_RECORDS_TOTAL_COUNT;
-import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.BYTES_RECEIVED;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.BYTES_PROCESSED;
+import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.BYTES_RECEIVED;
+import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.EXPORT_RECORDS_TOTAL_COUNT;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.FAILURE_ITEM_COUNTER_NAME;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.SUCCESS_ITEM_COUNTER_NAME;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportPartitionWorker.VERSION_OVERLAP_TIME_FOR_EXPORT;
@@ -81,6 +85,14 @@ public class ExportPartitionWorkerTest {
     @Mock
     private PluginMetrics mockPluginMetrics;
     @Mock
+    private DocumentDBSourceAggregateMetrics documentDBSourceAggregateMetrics;
+    @Mock
+    private Counter exportApiInvocations;
+    @Mock
+    private Counter export4xxErrors;
+    @Mock
+    private Counter export5xxErrors;
+    @Mock
     private Counter successItemsCounter;
     @Mock
     private DistributionSummary bytesReceivedSummary;
@@ -92,6 +104,7 @@ public class ExportPartitionWorkerTest {
     private Counter failureItemsCounter;
     private ExportPartitionWorker exportPartitionWorker;
     private long exportStartTime;
+
     @BeforeEach
     public void setup() {
         exportStartTime = Instant.now().toEpochMilli();
@@ -100,8 +113,11 @@ public class ExportPartitionWorkerTest {
         when(mockPluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME)).thenReturn(failureItemsCounter);
         when(mockPluginMetrics.summary(BYTES_RECEIVED)).thenReturn(bytesReceivedSummary);
         when(mockPluginMetrics.summary(BYTES_PROCESSED)).thenReturn(bytesProcessedSummary);
+        when(documentDBSourceAggregateMetrics.getExportApiInvocations()).thenReturn(exportApiInvocations);
+        lenient().when(documentDBSourceAggregateMetrics.getExport4xxErrors()).thenReturn(export4xxErrors);
+        lenient().when(documentDBSourceAggregateMetrics.getExport5xxErrors()).thenReturn(export5xxErrors);
         exportPartitionWorker = new ExportPartitionWorker(mockRecordBufferWriter, mockRecordConverter, dataQueryPartition,
-                mockAcknowledgementSet, mockSourceConfig, mockPartitionCheckpoint, exportStartTime, mockPluginMetrics);
+                mockAcknowledgementSet, mockSourceConfig, mockPartitionCheckpoint, exportStartTime, mockPluginMetrics, documentDBSourceAggregateMetrics);
     }
 
     @ParameterizedTest
@@ -198,5 +214,53 @@ public class ExportPartitionWorkerTest {
         verify(bytesReceivedSummary).record(docJson2.getBytes().length);
         verify(bytesProcessedSummary).record(docJson1.getBytes().length + docJson2.getBytes().length);
         verify(failureItemsCounter, never()).increment();
+        verify(exportApiInvocations).increment();
+        verify(export4xxErrors, never()).increment();
+        verify(export5xxErrors, never()).increment();
+    }
+
+    @Test
+    public void testExport5xxErrorsIncrement() {
+
+        final String invalidPartitionKey = "test.collection|0|1";
+        when(dataQueryPartition.getPartitionKey()).thenReturn(invalidPartitionKey);
+
+        assertThrows(RuntimeException.class, () -> exportPartitionWorker.run());
+        verify(exportApiInvocations).increment();
+        verify(export5xxErrors).increment();
+        verify(export4xxErrors, never()).increment();
+    }
+
+    @Test
+    public void testExport4xxErrorsIncrement() {
+        final String partitionKey = "test-collection|0|1|java.lang.Integer|java.lang.Integer";
+        when(dataQueryPartition.getPartitionKey()).thenReturn(partitionKey);
+
+        assertThrows(IllegalArgumentException.class, () -> exportPartitionWorker.run());
+        verify(exportApiInvocations).increment();
+        verify(export4xxErrors).increment();
+        verify(export5xxErrors, never()).increment();
+    }
+
+    @Test
+    void testExportWithdbException() {
+        final String partitionKey = "test.collection|0|1|java.lang.Integer|java.lang.Integer";
+        when(dataQueryPartition.getPartitionKey()).thenReturn(partitionKey);
+
+        S3PartitionStatus s3PartitionStatus = mock(S3PartitionStatus.class);
+        final List<String> partitions = List.of("first", "second");
+        when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
+        final String collectionName = partitionKey.split("\\|")[0];
+        when(dataQueryPartition.getCollection()).thenReturn(collectionName);
+        when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collectionName)).thenReturn(Optional.of(s3PartitionStatus));
+
+        try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
+            mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
+                    .thenThrow(MongoClientException.class);
+            assertThrows(RuntimeException.class, () -> exportPartitionWorker.run());
+            verify(exportApiInvocations).increment();
+            verify(export4xxErrors).increment();
+            verify(export5xxErrors, never()).increment();
+        }
     }
 }
