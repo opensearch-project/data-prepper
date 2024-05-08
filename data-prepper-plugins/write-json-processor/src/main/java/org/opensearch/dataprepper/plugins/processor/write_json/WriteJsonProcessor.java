@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
@@ -52,7 +53,7 @@ public class WriteJsonProcessor extends AbstractProcessor<Record<Event>, Record<
                 try {
                     event.put(target, objectMapper.writeValueAsString(value));
                 } catch (Exception e) {
-                    LOG.error("Failed to convert source to json string", e);
+                    LOG.error(EVENT, "Failed to convert source to json string", e);
                     writeJsonFailedCounter.increment();
                 }
             }
