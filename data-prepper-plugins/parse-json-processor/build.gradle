@@ -13,7 +13,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-ion'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
-    implementation 'org.apache.parquet:parquet-common:1.13.1'
+    implementation 'org.apache.parquet:parquet-common:1.14.0'
     testImplementation project(':data-prepper-test-common')
 }
 
