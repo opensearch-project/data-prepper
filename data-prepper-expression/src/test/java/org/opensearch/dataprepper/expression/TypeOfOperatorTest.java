@@ -20,6 +20,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -66,6 +68,9 @@ class TypeOfOperatorTest {
 
     private static Stream<Arguments> getTypeOfTestData() {
         int testArray[] = {1,2};
+        List<Integer> testArrayList = new ArrayList<Integer>();
+        testArrayList.add(1);
+        testArrayList.add(2);
         return Stream.of(
             Arguments.of(2, "integer", true),
             Arguments.of("testString", "string", true),
@@ -74,6 +79,7 @@ class TypeOfOperatorTest {
             Arguments.of(true, "boolean", true),
             Arguments.of(Map.of("k","v"), "map", true),
             Arguments.of(testArray, "array", true),
+            Arguments.of(testArrayList, "array", true),
             Arguments.of(2.0, "integer", false),
             Arguments.of(2, "string", false),
             Arguments.of("testString", "long", false),
