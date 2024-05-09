@@ -73,6 +73,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.DOCUMENTDB_ID_FIELD_NAME;
+import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.BYTES_PROCESSED;
 import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.BYTES_RECEIVED;
 import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.FAILURE_ITEM_COUNTER_NAME;
 import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.SUCCESS_ITEM_COUNTER_NAME;
@@ -98,6 +99,8 @@ public class StreamWorkerTest {
     @Mock
     private DistributionSummary bytesReceivedSummary;
     @Mock
+    private DistributionSummary bytesProcessedSummary;
+    @Mock
     private Counter failureItemsCounter;
 
     @Mock
@@ -112,6 +115,7 @@ public class StreamWorkerTest {
         when(mockPluginMetrics.counter(SUCCESS_ITEM_COUNTER_NAME)).thenReturn(successItemsCounter);
         when(mockPluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME)).thenReturn(failureItemsCounter);
         when(mockPluginMetrics.summary(BYTES_RECEIVED)).thenReturn(bytesReceivedSummary);
+        when(mockPluginMetrics.summary(BYTES_PROCESSED)).thenReturn(bytesProcessedSummary);
         when(mockSourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
         streamWorker = new StreamWorker(mockRecordBufferWriter, mockRecordConverter, mockSourceConfig, mockStreamAcknowledgementManager,
                 mockPartitionCheckpoint, mockPluginMetrics, 2, 0, 10_000, 1_000);
@@ -198,7 +202,10 @@ public class StreamWorkerTest {
         verify(mockRecordConverter).convert(eq(doc1Json2), eq(timeSecond2 * 1_000L), eq(timeSecond2 * 1_000_000L), eq(OperationType.DELETE), eq(BsonType.INT32.name()));
         verify(mockRecordBufferWriter).writeToBuffer(eq(null), any());
         verify(event, times(2)).put(mockSourceConfig.getIdKey(), event.get(DOCUMENTDB_ID_FIELD_NAME, Object.class));
+        // doc1Json1 and doc2Json2 are of the same byte size
+        verify(bytesReceivedSummary, times(2)).record(doc1Json1.getBytes().length);
         verify(successItemsCounter).increment(2);
+        verify(bytesProcessedSummary).record(doc1Json1.getBytes().length + doc1Json2.getBytes().length);
         verify(failureItemsCounter, never()).increment();
         verify(mockPartitionCheckpoint, atLeast(2)).checkpoint("{\"resumeToken2\": 234}", 2);
     }
