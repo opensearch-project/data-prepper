@@ -295,7 +295,7 @@ public class ScanObjectWorker implements Runnable {
                     .fetchOwner(true)
                     .continuationToken(Objects.nonNull(listObjectsV2Response) ? listObjectsV2Response.nextContinuationToken() : null)
                     .build());
-            LOG.info("Found page of {} objects from bucket {} and prefix {}", listObjectsV2Response.keyCount(), bucket, s3Prefix);
+            LOG.debug("Found page of {} objects from bucket {} and prefix {}", listObjectsV2Response.keyCount(), bucket, s3Prefix);
 
             objectsToProcess.addAll(listObjectsV2Response.contents().stream()
                     .map(s3Object -> S3ObjectReference.bucketAndKey(bucket, s3Object.key()).build())

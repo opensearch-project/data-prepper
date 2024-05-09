@@ -67,6 +67,8 @@ public class StreamScheduler implements Runnable {
             try {
                 final Optional<EnhancedSourcePartition> sourcePartition = sourceCoordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
                 if (sourcePartition.isPresent()) {
+                    LOG.info("Acquired partition to read from streams");
+
                     if (sourceConfig.isDisableS3ReadForLeader()) {
                         System.setProperty(STOP_S3_SCAN_PROCESSING_PROPERTY, "true");
                     }

@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 
+import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
 import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.STREAM_PREFIX;
 
 /**
@@ -74,6 +75,7 @@ public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator 
         LOG.debug("Resetting checkpoint stream partition for collection {}", streamPartition.getCollection());
         setProgressState(null, 0);
         enhancedSourceCoordinator.giveUpPartition(streamPartition);
+        System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
     }
 
     public Optional<StreamLoadStatus> getGlobalStreamLoadStatus() {
@@ -92,5 +94,6 @@ public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator 
 
     public void giveUpPartition() {
         enhancedSourceCoordinator.giveUpPartition(streamPartition);
+        System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
     }
 }
