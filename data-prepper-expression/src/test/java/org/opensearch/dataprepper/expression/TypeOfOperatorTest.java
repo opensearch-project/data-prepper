@@ -68,7 +68,9 @@ class TypeOfOperatorTest {
 
     private static Stream<Arguments> getTypeOfTestData() {
         int testArray[] = {1,2};
-        List<Integer> testArrayList = new ArrayList<Integer>(){{add(1);add(2);}};
+        List<Integer> testArrayList = new ArrayList<Integer>();
+        testArrayList.add(1);
+        testArrayList.add(2);
         return Stream.of(
             Arguments.of(2, "integer", true),
             Arguments.of("testString", "string", true),
