@@ -11,10 +11,10 @@ dependencies {
     implementation(libs.hadoop.mapreduce) {
         exclude group: 'org.apache.hadoop', module: 'hadoop-hdfs-client'
     }
-    implementation 'org.apache.parquet:parquet-avro:1.13.1'
-    implementation 'org.apache.parquet:parquet-column:1.13.1'
-    implementation 'org.apache.parquet:parquet-common:1.13.1'
-    implementation 'org.apache.parquet:parquet-hadoop:1.13.1'
+    implementation 'org.apache.parquet:parquet-avro:1.14.0'
+    implementation 'org.apache.parquet:parquet-column:1.14.0'
+    implementation 'org.apache.parquet:parquet-common:1.14.0'
+    implementation 'org.apache.parquet:parquet-hadoop:1.14.0'
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-test-event')
 

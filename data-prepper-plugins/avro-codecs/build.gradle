@@ -6,7 +6,7 @@
 dependencies {
     implementation project(path: ':data-prepper-api')
     implementation libs.avro.core
-    implementation 'org.apache.parquet:parquet-common:1.13.1'
+    implementation 'org.apache.parquet:parquet-common:1.14.0'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
     testImplementation 'org.json:json:20240205'

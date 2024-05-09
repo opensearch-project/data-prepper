@@ -19,7 +19,7 @@ dependencies {
     implementation libs.bouncycastle.bcpkix
     implementation libs.reflections.core
     implementation 'io.micrometer:micrometer-core'
-    implementation 'org.apache.parquet:parquet-common:1.13.1'
+    implementation 'org.apache.parquet:parquet-common:1.14.0'
     implementation 'org.xerial.snappy:snappy-java:1.1.10.5'
     testImplementation project(':data-prepper-plugins:blocking-buffer')
     testImplementation project(':data-prepper-test-event')
