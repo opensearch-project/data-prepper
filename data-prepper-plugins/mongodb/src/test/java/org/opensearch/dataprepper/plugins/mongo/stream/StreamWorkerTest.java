@@ -310,9 +310,8 @@ public class StreamWorkerTest {
         verify(cursor).close();
         verify(cursor, times(4)).hasNext();
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
-        //verify(mockPartitionCheckpoint, atLeast(1)).checkpoint(resumeToken3, 3);
+        verify(mockPartitionCheckpoint, atLeast(1)).checkpoint(resumeToken3, 3);
         verify(successItemsCounter).increment(1);
-        //verify(mockPartitionCheckpoint, atLeast(1)).checkpoint(resumeToken2, 2);
         verify(mockRecordBufferWriter, times(2)).writeToBuffer(eq(null), any());
         verify(successItemsCounter).increment(2);
         verify(failureItemsCounter, never()).increment();

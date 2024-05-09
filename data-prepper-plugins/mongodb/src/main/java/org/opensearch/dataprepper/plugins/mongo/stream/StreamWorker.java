@@ -354,7 +354,7 @@ public class StreamWorker {
                         LOG.debug("Perform regular checkpoint for resume token {} at record count {}", lastLocalCheckpoint, lastLocalRecordCount);
                         partitionCheckpoint.checkpoint(lastLocalCheckpoint, lastLocalRecordCount);
                     } catch (Exception e) {
-                        LOG.error("Exception checkpointing the current state. New thread should start the stream from previous checkpoint.", e);
+                        LOG.warn("Exception checkpointing the current state. New thread should start the stream from previous checkpoint.", e);
                         stop();
                     } finally {
                         lock.unlock();;
