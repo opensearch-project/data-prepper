@@ -26,7 +26,7 @@ import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariab
 public class StreamScheduler implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(StreamScheduler.class);
     private static final int DEFAULT_TAKE_LEASE_INTERVAL_MILLIS = 60_000;
-    static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 120_000;
+    static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 60_000;
     static final int DEFAULT_BUFFER_WRITE_INTERVAL_MILLS = 15_000;
     private static final int DEFAULT_MONITOR_WAIT_TIME_MS = 15_000;
     /**
