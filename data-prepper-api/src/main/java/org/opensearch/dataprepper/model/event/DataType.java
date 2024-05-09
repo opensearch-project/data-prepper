@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.model.event;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -98,7 +99,7 @@ public enum DataType {
           case MAP:
             return (object instanceof Map);
           case ARRAY:
-            return (object.getClass().isArray());
+            return (object instanceof ArrayList || object.getClass().isArray());
           case DOUBLE:
             return (object instanceof Double);
           case BOOLEAN:

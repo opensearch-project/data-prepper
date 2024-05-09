@@ -91,7 +91,7 @@ relationalOperator
     ;
 
 typeOfOperatorExpression
-    : JsonPointer TYPEOF String
+    : JsonPointer TYPEOF DataTypes
     ;
 
 setOperatorExpression
@@ -285,6 +285,16 @@ EscapeSequence
     : '\\' [btnfr"'\\$]
     ;
 
+DataTypes
+    : INTEGER
+    | BOOLEAN
+    | LONG
+    | MAP
+    | ARRAY
+    | DOUBLE
+    | STRING
+    ;
+
 SET_DELIMITER
     : COMMA
     ;
@@ -323,6 +333,14 @@ EXPONENTLETTER
     : 'E'
     | 'e'
     ;
+
+INTEGER: 'integer';
+BOOLEAN: 'boolean';
+LONG   : 'long';
+DOUBLE : 'double';
+STRING : 'string';
+MAP    : 'map';
+ARRAY  : 'array';
 
 fragment
 SPACE : ' ';
