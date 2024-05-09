@@ -60,6 +60,7 @@ public class StreamWorker {
     static final String BYTES_PROCESSED = "bytesProcessed";
     private static final long MILLI_SECOND = 1_000_000L;
     private static final String UPDATE_DESCRIPTION = "updateDescription";
+    private static final int BUFFER_WRITE_TIMEOUT_MILLIS = 15_000;
     private final RecordBufferWriter recordBufferWriter;
     private final PartitionKeyRecordConverter recordConverter;
     private final DataStreamPartitionCheckpoint partitionCheckpoint;
@@ -332,7 +333,7 @@ public class StreamWorker {
     private void bufferWriteAndCheckpointStream() {
         long lastCheckpointTime = System.currentTimeMillis();
         while (!Thread.currentThread().isInterrupted() && !stopWorker) {
-            if (!records.isEmpty() && lastBufferWriteTime < Instant.now().minusMillis(checkPointIntervalInMs).toEpochMilli()) {
+            if (!records.isEmpty() && lastBufferWriteTime < Instant.now().minusMillis(BUFFER_WRITE_TIMEOUT_MILLIS).toEpochMilli()) {
                 lock.lock();
                 LOG.debug("Writing to buffer due to buffer write delay");
                 try {
@@ -354,7 +355,7 @@ public class StreamWorker {
                         LOG.debug("Perform regular checkpoint for resume token {} at record count {}", lastLocalCheckpoint, lastLocalRecordCount);
                         partitionCheckpoint.checkpoint(lastLocalCheckpoint, lastLocalRecordCount);
                     } catch (Exception e) {
-                        LOG.warn("Exception checkpointing the current state. New thread should start the stream from previous checkpoint.", e);
+                        LOG.warn("Exception checkpointing the current state. The stream record processing will start from previous checkpoint.", e);
                         stop();
                     } finally {
                         lock.unlock();;
@@ -364,7 +365,7 @@ public class StreamWorker {
             }
 
             try {
-                Thread.sleep(checkPointIntervalInMs);
+                Thread.sleep(BUFFER_WRITE_TIMEOUT_MILLIS);
             } catch (InterruptedException ex) {
                 break;
             }
