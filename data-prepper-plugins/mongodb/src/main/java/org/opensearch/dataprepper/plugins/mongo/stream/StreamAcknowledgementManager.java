@@ -80,8 +80,8 @@ public class StreamAcknowledgementManager {
                     }
                 } else {
                     if (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) {
-                        LOG.debug("No records processed. Checkpoint to extend the lease of the worker");
-                        partitionCheckpoint.checkpoint(null, 0);
+                        LOG.debug("No records processed. Extend the lease of the partition worker.");
+                        partitionCheckpoint.extendLease();
                         lastCheckpointTime = System.currentTimeMillis();
                     }
                 }

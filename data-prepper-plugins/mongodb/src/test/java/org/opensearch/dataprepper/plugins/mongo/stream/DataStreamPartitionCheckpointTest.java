@@ -62,4 +62,10 @@ public class DataStreamPartitionCheckpointTest {
         verify(streamProgressState).setLoadedRecords(0);
         verify(streamProgressState).setLastUpdateTimestamp(anyLong());
     }
+
+    @Test
+    public void extendLease_success() {
+        dataStreamPartitionCheckpoint.extendLease();
+        verify(enhancedSourceCoordinator).saveProgressStateForPartition(streamPartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
+    }
 }
