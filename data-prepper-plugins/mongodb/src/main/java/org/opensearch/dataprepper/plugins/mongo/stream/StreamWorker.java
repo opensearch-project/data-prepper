@@ -37,6 +37,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
 import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.JSON_WRITER_SETTINGS;
 import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.DOCUMENTDB_ID_FIELD_NAME;
 import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.UNKNOWN_TYPE;
@@ -264,6 +265,8 @@ public class StreamWorker {
             if (!sourceConfig.isAcknowledgmentsEnabled()) {
                 partitionCheckpoint.checkpoint(checkPointToken, recordCount);
             }
+
+            System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
 
             // shutdown acknowledgement monitoring thread
             if (streamAcknowledgementManager != null) {
