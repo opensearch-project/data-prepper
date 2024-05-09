@@ -254,7 +254,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return false;
     }
 
-    public int skipToEndChar(final String str, int idx, final Character endChar) {
+    public int skipGroup(final String str, int idx, final Character endChar) {
         int i = idx;
         while (i < str.length()) {
             if (isEscapedQuote(str, i)) {
@@ -265,33 +265,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             } else
                 i++;
         }
-        throw new RuntimeException("Bad Input, no end character found in "+str+" after index " + idx +" end char = "+endChar);
+        throw new RuntimeException("Bad Input, no end character found in "+str+" after index " + idx +", expected end char = "+endChar);
     }
 
-    public boolean isKeyValueDelimiterPresentInPart(final String part) {
-        String keyValueDelimiter = keyValueProcessorConfig.getValueSplitCharacters();
-        int i = 0;
-        while (i < part.length()) {
-            if (isEscapedQuote(part, i)) {
-                i++;
-                continue;
-            }
-            
-            int groupIndex = findInStartGroup(part, i);
-            if (groupIndex >= 0) {
-                i = skipToEndChar(part, i+1, endGroupChars[groupIndex])+2;
-            } else if (part.substring(i, i+keyValueDelimiter.length()).equals(keyValueDelimiter)) {
-                return true;
-            } else {
-                i++;
-            }
-        }
-        return false;
-    }
-    
     private void addPart(List<String> parts, final String str, final int start, final int end) {
         String part = str.substring(start,end).trim();
-        if (part.length() > 0 && isKeyValueDelimiterPresentInPart(part)) {
+        if (part.length() > 0) {
             parts.add(part);
         }
     }
@@ -317,26 +296,27 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     
     private List<String> parseWithValueGrouping(String str) {
         String fieldDelimiter = keyValueProcessorConfig.getFieldSplitCharacters();
+        Set<Character> fieldDelimiterSet = new HashSet<>();
+        for (char ch : fieldDelimiter.toCharArray()) {
+            fieldDelimiterSet.add(ch);
+        }
         int i = 0;
         int start = i;
         List<String> parts = new ArrayList<>();
         while (i < str.length()) {
+            // checks if a " or ' is escaped using \, if yes, it is
+            // not considered as a start of a group
             if (isEscapedQuote(str, i)) {
                 i++;
                 continue;
             }
             int groupIndex = findInStartGroup(str, i);
             if (groupIndex >= 0) {
-                i = skipToEndChar(str, i+1, endGroupChars[groupIndex])+2;
-            } else if (str.substring(i,i+fieldDelimiter.length()).equals(fieldDelimiter)) {
-                addPart(parts, str, start, i);
-                i += fieldDelimiter.length();
-                start = i;
-            } else if (Character.isWhitespace(str.charAt(i))) {
+                i = skipGroup(str, i+1, endGroupChars[groupIndex])+2;
+            } else if (fieldDelimiterSet.contains(str.charAt(i))) {
                 addPart(parts, str, start, i);
                 i++;
                 start = i;
-                
             } else {
                i++;
             }
@@ -606,6 +586,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             processed.put(pair.getKey(), pair.getValue());
         }
 
+        if (keyValueProcessorConfig.getDropKeysWithNoValue()) {
+            processed.entrySet().removeIf(entry -> entry.getValue() == null);
+        }
         return processed;
     }
 

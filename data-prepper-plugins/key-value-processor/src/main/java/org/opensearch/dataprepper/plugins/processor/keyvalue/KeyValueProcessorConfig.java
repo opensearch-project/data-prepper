@@ -105,6 +105,9 @@ public class KeyValueProcessorConfig {
     @JsonProperty("overwrite_if_destination_exists")
     private boolean overwriteIfDestinationExists = true;
 
+    @JsonProperty("drop_keys_with_no_value")
+    private boolean dropKeysWithNoValue = false;
+
     @JsonProperty("key_value_when")
     private String keyValueWhen;
 
@@ -143,6 +146,10 @@ public class KeyValueProcessorConfig {
 
     public Map<String, Object> getDefaultValues() {
         return defaultValues;
+    }
+
+    public boolean getDropKeysWithNoValue() {
+        return dropKeysWithNoValue;
     }
 
     public String getKeyValueDelimiterRegex() {
