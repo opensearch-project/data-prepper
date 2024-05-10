@@ -317,10 +317,13 @@ public class StreamWorker {
         final AcknowledgementSet acknowledgementSet = streamAcknowledgementManager.createAcknowledgementSet(checkPointToken, recordCount).orElse(null);
         recordBufferWriter.writeToBuffer(acknowledgementSet, records);
         successItemsCounter.increment(records.size());
+        if (acknowledgementSet != null) {
+            acknowledgementSet.complete();
+        }
     }
 
     private void writeToBuffer() {
-        LOG.debug("Write to buffer for line {} to {}", (recordCount - recordFlushBatchSize), recordCount);
+        LOG.debug("Write to buffer for line {} to {}", lastLocalRecordCount, recordCount);
         writeToBuffer(records, checkPointToken, recordCount);
         lastLocalCheckpoint = checkPointToken;
         lastLocalRecordCount = recordCount;
