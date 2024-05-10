@@ -118,7 +118,7 @@ public class StreamWorkerTest {
         when(mockPluginMetrics.summary(BYTES_PROCESSED)).thenReturn(bytesProcessedSummary);
         when(mockSourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
         streamWorker = new StreamWorker(mockRecordBufferWriter, mockRecordConverter, mockSourceConfig, mockStreamAcknowledgementManager,
-                mockPartitionCheckpoint, mockPluginMetrics, 2, 0, 10_000, 1_000);
+                mockPartitionCheckpoint, mockPluginMetrics, 2, 1000, 10_000, 1_000);
     }
 
     @Test
@@ -180,8 +180,8 @@ public class StreamWorkerTest {
         final List<String> partitions = List.of("first", "second");
         when(s3PartitionStatus.getPartitions()).thenReturn(partitions);
         when(mockPartitionCheckpoint.getGlobalS3FolderCreationStatus(collection)).thenReturn(Optional.of(s3PartitionStatus));
-        Event event = mock(Event.class);
         when(mockSourceConfig.getIdKey()).thenReturn("docdb_id");
+        Event event = mock(Event.class);
         when(event.get("_id", Object.class)).thenReturn(UUID.randomUUID().toString());
         when(mockRecordConverter.convert(anyString(), anyLong(), anyLong(), any(OperationType.class), anyString())).thenReturn(event);
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -207,7 +207,7 @@ public class StreamWorkerTest {
         verify(successItemsCounter).increment(2);
         verify(bytesProcessedSummary).record(doc1Json1.getBytes().length + doc1Json2.getBytes().length);
         verify(failureItemsCounter, never()).increment();
-        verify(mockPartitionCheckpoint, atLeast(2)).checkpoint("{\"resumeToken2\": 234}", 2);
+        verify(mockPartitionCheckpoint, atLeast(1)).checkpoint("{\"resumeToken2\": 234}", 2);
     }
 
 
@@ -312,7 +312,6 @@ public class StreamWorkerTest {
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockPartitionCheckpoint, atLeast(1)).checkpoint(resumeToken3, 3);
         verify(successItemsCounter).increment(1);
-        verify(mockPartitionCheckpoint, atLeast(1)).checkpoint(resumeToken2, 2);
         verify(mockRecordBufferWriter, times(2)).writeToBuffer(eq(null), any());
         verify(successItemsCounter).increment(2);
         verify(failureItemsCounter, never()).increment();

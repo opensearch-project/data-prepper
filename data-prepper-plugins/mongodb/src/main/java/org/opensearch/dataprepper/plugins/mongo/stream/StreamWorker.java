@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.plugins.mongo.model.StreamLoadStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +37,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
 import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.JSON_WRITER_SETTINGS;
@@ -57,6 +60,7 @@ public class StreamWorker {
     static final String BYTES_PROCESSED = "bytesProcessed";
     private static final long MILLI_SECOND = 1_000_000L;
     private static final String UPDATE_DESCRIPTION = "updateDescription";
+    private static final int BUFFER_WRITE_TIMEOUT_MILLIS = 15_000;
     private final RecordBufferWriter recordBufferWriter;
     private final PartitionKeyRecordConverter recordConverter;
     private final DataStreamPartitionCheckpoint partitionCheckpoint;
@@ -73,11 +77,17 @@ public class StreamWorker {
     private final int streamBatchSize;
     private boolean stopWorker = false;
     private final ExecutorService executorService;
-    private String lastLocalCheckpoint;
-    private Long lastLocalRecordCount = null;
+    private String lastLocalCheckpoint = null;
+    private long lastLocalRecordCount = 0;
     Optional<S3PartitionStatus> s3PartitionStatus = Optional.empty();
     private Integer currentEpochSecond;
     private int recordsSeenThisSecond = 0;
+    final List<Event> records = new ArrayList<>();
+    final List<Long> recordBytes = new ArrayList<>();
+    long lastBufferWriteTime = System.currentTimeMillis();
+    private String checkPointToken = null;
+    private long recordCount = 0;
+    private final Lock lock;
 
     public static StreamWorker create(final RecordBufferWriter recordBufferWriter,
                          final PartitionKeyRecordConverter recordConverter,
@@ -119,13 +129,14 @@ public class StreamWorker {
         this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
         this.bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
         this.executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("mongodb-stream-checkpoint"));
+        this.lock = new ReentrantLock();
         if (sourceConfig.isAcknowledgmentsEnabled()) {
             // starts acknowledgement monitoring thread
             streamAcknowledgementManager.init((Void) -> stop());
-        } else {
-            // checkpoint in separate thread
-            this.executorService.submit(this::checkpointStream);
         }
+        // buffer write and checkpoint in separate thread on timeout
+        this.executorService.submit(this::bufferWriteAndCheckpointStream);
+
     }
 
     private MongoCursor<ChangeStreamDocument<Document>> getChangeStreamCursor(final MongoCollection<Document> collection,
@@ -156,15 +167,16 @@ public class StreamWorker {
 
     public void processStream(final StreamPartition streamPartition) {
         Optional<String> resumeToken = streamPartition.getProgressState().map(StreamProgressState::getResumeToken);
+        resumeToken.ifPresent(token -> checkPointToken = token);
+        Optional<Long> loadedRecords = streamPartition.getProgressState().map(StreamProgressState::getLoadedRecords);
+        loadedRecords.ifPresent(count -> recordCount = count);
+
         final String collectionDbName = streamPartition.getCollection();
         List<String> collectionDBNameList = List.of(collectionDbName.split(COLLECTION_SPLITTER));
         if (collectionDBNameList.size() < 2) {
             throw new IllegalArgumentException("Invalid Collection Name. Must be in db.collection format");
         }
-        long recordCount = 0;
-        final List<Event> records = new ArrayList<>();
-        final List<Long> recordBytes = new ArrayList<>();
-        String checkPointToken = null;
+
         try (MongoClient mongoClient = MongoDBConnection.getMongoClient(sourceConfig)) {
             // Access the database
             MongoDatabase database = mongoClient.getDatabase(collectionDBNameList.get(0));
@@ -189,7 +201,6 @@ public class StreamWorker {
                     throw new IllegalStateException("S3 partitions are not created. Please check the S3 partition creator thread.");
                 }
                 recordConverter.initializePartitions(s3Partitions);
-                long lastBufferWriteTime = System.currentTimeMillis();
                 while (!Thread.currentThread().isInterrupted() && !stopWorker) {
                     if (cursor.hasNext()) {
                         try {
@@ -208,7 +219,6 @@ public class StreamWorker {
                                 final long bytes = record.getBytes().length;
                                 bytesReceivedSummary.record(bytes);
 
-                                checkPointToken = document.getResumeToken().toJson(JSON_WRITER_SETTINGS);
                                 final Optional<BsonDocument> primaryKeyDoc = Optional.ofNullable(document.getDocumentKey());
                                 final String primaryKeyBsonType = primaryKeyDoc.map(bsonDocument -> bsonDocument.get(DOCUMENTDB_ID_FIELD_NAME).getBsonType().name()).orElse(UNKNOWN_TYPE);
                                 final Event event = recordConverter.convert(record, eventCreateTimeEpochMillis, eventCreationTimeEpochNanos,
@@ -220,18 +230,19 @@ public class StreamWorker {
                                 event.delete(DOCUMENTDB_ID_FIELD_NAME);
                                 records.add(event);
                                 recordBytes.add(bytes);
-                                recordCount += 1;
 
-                                if ((recordCount % recordFlushBatchSize == 0) || (System.currentTimeMillis() - lastBufferWriteTime >= bufferWriteIntervalInMs)) {
-                                    LOG.debug("Write to buffer for line {} to {}", (recordCount - recordFlushBatchSize), recordCount);
-                                    writeToBuffer(records, checkPointToken, recordCount);
-                                    lastLocalCheckpoint = checkPointToken;
-                                    lastLocalRecordCount = recordCount;
-                                    lastBufferWriteTime = System.currentTimeMillis();
-                                    bytesProcessedSummary.record(recordBytes.stream().mapToLong(Long::longValue).sum());
-                                    records.clear();
-                                    recordBytes.clear();
+                                lock.lock();
+                                try {
+                                    recordCount += 1;
+                                    checkPointToken = document.getResumeToken().toJson(JSON_WRITER_SETTINGS);
+
+                                    if ((recordCount % recordFlushBatchSize == 0) || (System.currentTimeMillis() - lastBufferWriteTime >= bufferWriteIntervalInMs)) {
+                                        writeToBuffer();
+                                    }
+                                } finally {
+                                    lock.unlock();
                                 }
+
                             } else if(shouldTerminateChangeStream(operationType)){
                                 stop();
                                 partitionCheckpoint.resetCheckpoint();
@@ -240,7 +251,6 @@ public class StreamWorker {
                                 LOG.warn("The change stream operation type {} is not handled", operationType);
                             }
                         } catch(Exception e){
-                            // TODO handle documents with size > 10 MB.
                             // this will only happen if writing to buffer gets interrupted from shutdown,
                             // otherwise it's infinite backoff and retry
                             LOG.error("Failed to add records to buffer with error", e);
@@ -267,6 +277,11 @@ public class StreamWorker {
             }
 
             System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
+
+            // stop other threads for this worker
+            stop();
+
+            partitionCheckpoint.giveUpPartition();
 
             // shutdown acknowledgement monitoring thread
             if (streamAcknowledgementManager != null) {
@@ -304,17 +319,53 @@ public class StreamWorker {
         successItemsCounter.increment(records.size());
     }
 
-    private void checkpointStream() {
+    private void writeToBuffer() {
+        LOG.debug("Write to buffer for line {} to {}", (recordCount - recordFlushBatchSize), recordCount);
+        writeToBuffer(records, checkPointToken, recordCount);
+        lastLocalCheckpoint = checkPointToken;
+        lastLocalRecordCount = recordCount;
+        lastBufferWriteTime = System.currentTimeMillis();
+        bytesProcessedSummary.record(recordBytes.stream().mapToLong(Long::longValue).sum());
+        records.clear();
+        recordBytes.clear();
+    }
+
+    private void bufferWriteAndCheckpointStream() {
         long lastCheckpointTime = System.currentTimeMillis();
         while (!Thread.currentThread().isInterrupted() && !stopWorker) {
-            if (lastLocalRecordCount != null && (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs)) {
-                LOG.debug("Perform regular checkpoint for resume token {} at record count {}", lastLocalCheckpoint, lastLocalRecordCount);
-                partitionCheckpoint.checkpoint(lastLocalCheckpoint, lastLocalRecordCount);
-                lastCheckpointTime = System.currentTimeMillis();
+            if (!records.isEmpty() && lastBufferWriteTime < Instant.now().minusMillis(BUFFER_WRITE_TIMEOUT_MILLIS).toEpochMilli()) {
+                lock.lock();
+                LOG.debug("Writing to buffer due to buffer write delay");
+                try {
+                    writeToBuffer();
+                } catch(Exception e){
+                    // this will only happen if writing to buffer gets interrupted from shutdown,
+                    // otherwise it's infinite backoff and retry
+                    LOG.error("Failed to add records to buffer with error", e);
+                    failureItemsCounter.increment(records.size());
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            if (!sourceConfig.isAcknowledgmentsEnabled()) {
+                if (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) {
+                    try {
+                        lock.lock();
+                        LOG.debug("Perform regular checkpoint for resume token {} at record count {}", lastLocalCheckpoint, lastLocalRecordCount);
+                        partitionCheckpoint.checkpoint(lastLocalCheckpoint, lastLocalRecordCount);
+                    } catch (Exception e) {
+                        LOG.warn("Exception checkpointing the current state. The stream record processing will start from previous checkpoint.", e);
+                        stop();
+                    } finally {
+                        lock.unlock();;
+                    }
+                    lastCheckpointTime = System.currentTimeMillis();
+                }
             }
 
             try {
-                Thread.sleep(checkPointIntervalInMs);
+                Thread.sleep(BUFFER_WRITE_TIMEOUT_MILLIS);
             } catch (InterruptedException ex) {
                 break;
             }

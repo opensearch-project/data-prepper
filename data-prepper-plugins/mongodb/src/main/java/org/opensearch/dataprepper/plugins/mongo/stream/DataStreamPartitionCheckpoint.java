@@ -66,6 +66,11 @@ public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator 
         enhancedSourceCoordinator.saveProgressStateForPartition(streamPartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
     }
 
+    public void extendLease() {
+        LOG.debug("Extending lease of stream partition for collection {}", streamPartition.getCollection());
+        enhancedSourceCoordinator.saveProgressStateForPartition(streamPartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
+    }
+
     /**
      * This method is to reset checkpoint when change stream is invalid. The current thread will give up partition and new thread
      * will take ownership of partition. If change stream is valid then new thread proceeds with processing change stream else the
