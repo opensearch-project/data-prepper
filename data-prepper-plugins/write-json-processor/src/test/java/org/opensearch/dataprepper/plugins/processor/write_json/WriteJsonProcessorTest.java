@@ -66,7 +66,7 @@ public class WriteJsonProcessorTest {
         String expectedString1 = "{\"mapKey\":{\"stringKey\":\"testString\",\"intKey\":10},\"boolKey\":true}";
         String expectedString2 = "{\"boolKey\":true,\"mapKey\":{\"stringKey\":\"testString\",\"intKey\":10}}";
         String expectedString3 = "{\"boolKey\":true,\"mapKey\":{\"intKey\":10,\"stringKey\":\"testString\"}}";
-        String expectedString4 = "{\"boolKey\":true,\"mapKey\":{\"intKey\":10,\"stringKey\":\"testString\"}}";
+        String expectedString4 = "{\"mapKey\":{\"intKey\":10,\"stringKey\":\"testString\"},\"boolKey\":true}";
 
 
         Map<String, Object> data = Map.of(sourceKey, value);
