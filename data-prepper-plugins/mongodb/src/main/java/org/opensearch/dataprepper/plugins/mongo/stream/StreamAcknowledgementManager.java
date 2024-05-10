@@ -69,7 +69,7 @@ public class StreamAcknowledgementManager {
                                 if (ackCount % CHECKPOINT_RECORD_INTERVAL == 0) {
                                     checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
                                 }
-                            } while (checkpointStatus != null);
+                            } while (checkpointStatus != null && checkpointStatus.isAcknowledged());
                             checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
                             lastCheckpointTime = System.currentTimeMillis();
                         }
