@@ -505,9 +505,9 @@ public class StreamWorkerTest {
                         new BsonTimestamp(Math.abs(random.nextLong())),
                         "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"doubleValue\": 3.14159}"),
                 Arguments.of(
-                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"longValue\": { \"$numberLong\": \"1234567890123456768\"}}",
+                        "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"longValue\": { \"$numberLong\": \"9223372036854775801\"}}",
                         new BsonObjectId(new ObjectId()),
-                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"longValue\": 1234567890123456768}"),
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"longValue\": 9223372036854775801}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"stringField\": \"Hello, Mongo!\"}",
                         new BsonDocument(),
@@ -539,7 +539,7 @@ public class StreamWorkerTest {
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"timestampField\": { \"$timestamp\": {\"t\": 1714744681, \"i\": 29}}}",
                         new BsonObjectId(new ObjectId()),
-                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"timestampField\": 7364772325884952605}"),
+                        "{\"_id\": \"6634ed693ac62386d57bcaf0\", \"timestampField\": 1714744681}"),
                 Arguments.of(
                         "{\"_id\": { \"$oid\": \"6634ed693ac62386d57bcaf0\" }, \"regexField\": { \"$regularExpression\": {\"pattern\": \"^ABC\", \"options\": \"i\"}}}",
                         new BsonObjectId(new ObjectId()),
