@@ -108,6 +108,7 @@ public class StreamAcknowledgementManager {
         final CheckpointStatus checkpointStatus = new CheckpointStatus(resumeToken, recordNumber, Instant.now().toEpochMilli());
         checkpoints.add(checkpointStatus);
         ackStatus.put(resumeToken, checkpointStatus);
+        LOG.debug("Creating acknowledgment for resumeToken {}", checkpointStatus.getResumeToken());
         return Optional.of(acknowledgementSetManager.create((result) -> {
             if (result) {
                 final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);

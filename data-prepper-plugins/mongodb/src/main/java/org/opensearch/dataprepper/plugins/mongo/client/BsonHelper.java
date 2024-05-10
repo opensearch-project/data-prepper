@@ -102,7 +102,7 @@ public class BsonHelper {
             writer.writeString(REGEX_OPTIONS, value.getOptions());
             writer.writeEndObject();
         })
-        .timestampConverter((value, writer) -> writer.writeNumber(String.valueOf(value.getValue())))
+        .timestampConverter((value, writer) -> writer.writeNumber(String.valueOf(value.getTime())))
         .undefinedConverter((value, writer) -> writer.writeNull())
         .build();
 
