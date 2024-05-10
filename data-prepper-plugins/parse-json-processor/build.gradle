@@ -15,6 +15,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
     implementation 'org.apache.parquet:parquet-common:1.13.1'
     testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test-event')
 }
 
 test {
