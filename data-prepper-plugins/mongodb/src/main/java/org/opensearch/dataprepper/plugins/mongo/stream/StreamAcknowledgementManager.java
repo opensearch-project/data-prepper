@@ -19,6 +19,7 @@ import java.util.function.Consumer;
 
 public class StreamAcknowledgementManager {
     private static final Logger LOG = LoggerFactory.getLogger(StreamAcknowledgementManager.class);
+    private static final int CHECKPOINT_RECORD_INTERVAL = 50;
     private final ConcurrentLinkedQueue<CheckpointStatus> checkpoints = new ConcurrentLinkedQueue<>();
     private final ConcurrentHashMap<String, CheckpointStatus> ackStatus = new ConcurrentHashMap<>();
     private final AcknowledgementSetManager acknowledgementSetManager;
@@ -54,14 +55,22 @@ public class StreamAcknowledgementManager {
         CheckpointStatus lastCheckpointStatus = null;
         while (!Thread.currentThread().isInterrupted()) {
             try {
-                final CheckpointStatus checkpointStatus = checkpoints.peek();
+                CheckpointStatus checkpointStatus = checkpoints.peek();
                 if (checkpointStatus != null) {
                     if (checkpointStatus.isAcknowledged()) {
-                        lastCheckpointStatus = checkpoints.poll();
-                        ackStatus.remove(checkpointStatus.getResumeToken());
                         if (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) {
-                            LOG.debug("Perform regular checkpointing for resume token {} at record count {}", checkpointStatus.getResumeToken(), checkpointStatus.getRecordCount());
-                            partitionCheckpoint.checkpoint(checkpointStatus.getResumeToken(), checkpointStatus.getRecordCount());
+                            long ackCount = 0;
+                            do {
+                                lastCheckpointStatus = checkpoints.poll();
+                                ackStatus.remove(checkpointStatus.getResumeToken());
+                                checkpointStatus = checkpoints.peek();
+                                ackCount++;
+                                // at high TPS each ack contains 100 records. This should checkpoint every 100*50 = 5000 records.
+                                if (ackCount % CHECKPOINT_RECORD_INTERVAL == 0) {
+                                    checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
+                                }
+                            } while (checkpointStatus != null && checkpointStatus.isAcknowledged());
+                            checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
                             lastCheckpointTime = System.currentTimeMillis();
                         }
                     } else {
@@ -98,6 +107,11 @@ public class StreamAcknowledgementManager {
         }
         stopWorkerConsumer.accept(null);
         executorService.shutdown();
+    }
+
+    private void checkpoint(final String resumeToken, final long recordCount) {
+        LOG.debug("Perform regular checkpointing for resume token {} at record count {}", resumeToken, recordCount);
+        partitionCheckpoint.checkpoint(resumeToken, recordCount);
     }
 
     Optional<AcknowledgementSet> createAcknowledgementSet(final String resumeToken, final long recordNumber) {
