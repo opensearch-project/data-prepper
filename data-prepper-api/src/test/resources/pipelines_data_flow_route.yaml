@@ -3,7 +3,7 @@ test-pipeline:
     testSource: null
   processor:
   - testPrepper: null
-  route:
+  routes:
   - my-route: "/a==b"
   sink:
   - testSink:

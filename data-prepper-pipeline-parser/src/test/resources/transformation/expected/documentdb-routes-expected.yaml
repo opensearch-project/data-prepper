@@ -29,7 +29,7 @@ documentdb-pipeline-s3:
         match:
           log:
             - "%{COMMONAPACHELOG_DATATYPED}"
-  route:
+  routes:
     - "2xx_status": "/response >= 200 and /response < 300"
     - "3xx_status": "/response >= 300 and /response < 400"
     - "4xx_status": "/response >= 400 and /response < 500"
@@ -80,7 +80,7 @@ documentdb-pipeline:
       aws:
         sts_role_arn: "arn:aws:iam::123123123123:role/Admin"
       s3_bucket: "benebucket"
-  route:
+  routes:
     - initial_load: "getMetadata(\"ingestion_type\") == \"EXPORT\""
     - stream_load: "getMetadata(\"ingestion_type\") == \"STREAM\""
   sink:

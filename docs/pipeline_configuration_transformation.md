@@ -77,9 +77,5 @@ as other placeholders are jsonPaths.
 ### Developer Guide
 When defining a placeholder for routes. Always define it as route.
 ```aidl
-routes: "<<$.<<pipeline-name>>.route>>" # routes or route (defined as alias) will be transformed to route in json as route will be primarily picked in pipelineModel.
-```
-OR
-```
-route: "<<$.<<pipeline-name>>.route>>"
+routes: "<<$.<<pipeline-name>>.routes>>" # routes or route (defined as alias) will be transformed to routes in json as routes will be primarily picked in pipelineModel.
 ```
