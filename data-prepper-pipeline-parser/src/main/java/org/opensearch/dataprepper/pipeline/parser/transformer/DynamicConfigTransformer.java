@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.Option;
@@ -18,6 +19,7 @@ import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import static java.lang.String.format;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.opensearch.dataprepper.model.configuration.SinkModel;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluatorResult;
 import org.slf4j.Logger;
@@ -72,6 +74,8 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     private static final String JSON_PATH_IDENTIFIER = "$.";
     private static final String ARRAY_NODE_PATTERN = "([^\\[]+)\\[(\\d+)\\]$";
     private static final String SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE = "SOURCE_COORDINATION_PIPELINE_IDENTIFIER";
+    private static final String SINK_SUBPIPELINE_PLUGIN_NAME = "pipeline";
+    private static final String SUBPIPELINE_PATH = "$.source.pipeline";
 
 
     Configuration parseConfigWithJsonNode = Configuration.builder()
@@ -116,6 +120,8 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         try {
 
             Map<String, PipelineModel> pipelines = preTransformedPipelinesDataFlowModel.getPipelines();
+            List<String> subPipelineNames = new ArrayList<>();
+            checkForSubPipelines(preTransformedPipelinesDataFlowModel, pipelineNameThatNeedsTransformation, subPipelineNames);
             Map<String, PipelineModel> pipelineMap = new HashMap<>();
             pipelineMap.put(pipelineNameThatNeedsTransformation,
                     pipelines.get(pipelineNameThatNeedsTransformation));
@@ -156,12 +162,31 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                 }
             });
 
-            PipelinesDataFlowModel transformedPipelinesDataFlowModel = getTransformedPipelinesDataFlowModel(pipelineNameThatNeedsTransformation, preTransformedPipelinesDataFlowModel, templateRootNode);
+            PipelinesDataFlowModel transformedPipelinesDataFlowModel = getTransformedPipelinesDataFlowModel(pipelineNameThatNeedsTransformation,
+                    preTransformedPipelinesDataFlowModel,
+                    templateRootNode,
+                    subPipelineNames);
             return transformedPipelinesDataFlowModel;
         } catch (JsonProcessingException | TransformerException e) {
             throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void checkForSubPipelines(PipelinesDataFlowModel preTransformedPipelinesDataFlowModel,
+                                      String pipelineNameThatNeedsTransformation,
+                                      List<String> subPipelineNames) {
+        Map<String, PipelineModel> pipelines = preTransformedPipelinesDataFlowModel.getPipelines();
+        PipelineModel transformationPipeline = pipelines.get(pipelineNameThatNeedsTransformation);
+
+        List<SinkModel> sinks = transformationPipeline.getSinks();
+        for(SinkModel sink : sinks){
+            String pluginName = sink.getPluginName();
+            if (pluginName.equals(SINK_SUBPIPELINE_PLUGIN_NAME)) {
+                String subPipelineName = sink.getPluginSettings().get("name").toString();
+                subPipelineNames.add(subPipelineName);
+            }
         }
     }
 
@@ -171,10 +196,14 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * @param pipelineNameThatNeedsTransformation
      * @param preTransformedPipelinesDataFlowModel
      * @param templateRootNode                     - transformedJson Node.
+     * @param subPipelineNames
      * @return PipelinesDataFlowModel - transformed model.
      * @throws JsonProcessingException
      */
-    private PipelinesDataFlowModel getTransformedPipelinesDataFlowModel(String pipelineNameThatNeedsTransformation, PipelinesDataFlowModel preTransformedPipelinesDataFlowModel, JsonNode templateRootNode) throws JsonProcessingException {
+    private PipelinesDataFlowModel getTransformedPipelinesDataFlowModel(String pipelineNameThatNeedsTransformation,
+                                                                        PipelinesDataFlowModel preTransformedPipelinesDataFlowModel,
+                                                                        JsonNode templateRootNode,
+                                                                        List<String> subPipelineNames) throws JsonProcessingException {
 
         //update template json
         JsonNode transformedJsonNode = templateRootNode.get(TEMPLATE_PIPELINE_ROOT_STRING);
@@ -189,7 +218,19 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         Map<String, PipelineModel> pipelines = preTransformedPipelinesDataFlowModel.getPipelines();
         pipelines.forEach((pipelineName, pipeline) -> {
             if (!pipelineName.equals(pipelineNameThatNeedsTransformation)) {
-                transformedPipelines.put(pipelineName, pipeline);
+                if(subPipelineNames.size()>0 && subPipelineNames.contains(pipelineName)){ //if there are subpipelines
+                    for(String subPipelineName: subPipelineNames){
+                        String pipelineJson = null;
+                        try {
+                            PipelineModel subPipeline = getSubPipeline(pipeline, pipelineNameThatNeedsTransformation);
+                            transformedPipelines.put(pipelineName, subPipeline);
+                        } catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }else {
+                    transformedPipelines.put(pipelineName, pipeline);
+                }
             }
         });
 
@@ -202,6 +243,23 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         LOG.info("Transformed PipelinesDataFlowModel: {}", transformedPipelinesDataFlowModelJson);
 
         return transformedPipelinesDataFlowModel;
+    }
+
+    private PipelineModel getSubPipeline(PipelineModel pipeline,
+                                         String pipelineNameThatNeedsTransformation) throws JsonProcessingException {
+        String pipelineJson;
+        pipelineJson = objectMapper.writeValueAsString(pipeline);
+        JsonNode pipelineNode = objectMapper.readTree(pipelineJson);
+        String parentPath = SUBPIPELINE_PATH;
+        JsonNode parentNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelineNode).read(parentPath);
+
+        //TODO - Dynamically detect the 2nd pipeline in the template of the transformed pipeline
+        JsonNode newNode = new TextNode(pipelineNameThatNeedsTransformation +"-s3");
+        ((ObjectNode) parentNode).replace("name", newNode);
+        String subPipelineJson = objectMapper.writeValueAsString(pipelineNode);
+        PipelineModel subPipeline = objectMapper.readValue(subPipelineJson, PipelineModel.class);
+
+        return subPipeline;
     }
 
     private String replaceTemplatePipelineName(String templateJsonStringWithPipelinePlaceholder, String pipelineName) {

@@ -78,4 +78,4 @@
             interval: "60s"
     processor: "<<$.<<pipeline-name>>.processor>>"
     sink: "<<$.<<pipeline-name>>.sink>>"
-    routes: "<<$.<<pipeline-name>>.routes>>"
+    route: "<<$.<<pipeline-name>>.route>>" # In placeholder, routes or route (defined as alias) will be transformed to route in json as route will be primarily picked in pipelineModel.

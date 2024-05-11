@@ -1,0 +1,126 @@
+documentdb-pipeline-s3:
+  source:
+    s3:
+      codec:
+        event_json: null
+      disable_s3_metadata_in_event: true
+      scan:
+        folder_partitions:
+          depth: "4"
+          max_objects_per_ownership: 50
+        buckets:
+          - bucket:
+              name: "benebucket"
+              filter:
+                include_prefix:
+                  - null
+        scheduling:
+          interval: "60s"
+      acknowledgments: true
+      compression: "none"
+      aws:
+        region: "us-west-2"
+        sts_role_arn: "arn:aws:iam::123123123123:role/Admin"
+        sts_external_id: null
+        sts_header_overrides: null
+      delete_s3_objects_on_read: true
+  processor:
+    - grok:
+        match:
+          log:
+            - "%{COMMONAPACHELOG_DATATYPED}"
+  route:
+    - "2xx_status": "/response >= 200 and /response < 300"
+    - "3xx_status": "/response >= 300 and /response < 400"
+    - "4xx_status": "/response >= 400 and /response < 500"
+    - "5xx_status": "/response >= 500 and /response < 600"
+  sink:
+    - opensearch:
+        routes:
+          - "2xx_status"
+        exclude_keys:
+          - "_id"
+        document_version_type: "external"
+        hosts:
+          - "https://search-osis-fgac2-bxzuq7pzdkvygg6gaecl4jrfqy.us-west-2.es.amazonaws.com"
+        index: "docdb-gd-l1transf-route"
+        action: "${getMetadata(\"opensearch_action\")}"
+        document_id: "${getMetadata(\"primary_key\")}"
+        document_version: "${getMetadata(\"document_version\")}"
+        aws:
+          sts_role_arn: "arn:aws:iam::123123123123:role/Admin"
+          region: "us-west-2"
+        index_type: "custom"
+    - opensearch:
+        routes:
+          - "3xx_status"
+        exclude_keys:
+          - "_id"
+        document_version_type: "external"
+        hosts:
+          - "https://search-osis-fgac2-bxzuq7pzdkvygg6gaecl4jrfqy.us-west-2.es.amazonaws.com"
+        index: "docdb-gd-l1transf-route"
+        action: "${getMetadata(\"opensearch_action\")}"
+        document_id: "${getMetadata(\"primary_key\")}"
+        document_version: "${getMetadata(\"document_version\")}"
+        aws:
+          sts_role_arn: "arn:aws:iam::123123123123:role/Admin"
+          region: "us-west-2"
+        index_type: "custom"
+documentdb-pipeline:
+  source:
+    documentdb:
+      s3_region: "us-west-2"
+      collections:
+        - collection: "gharchive.events"
+          export: true
+          stream: true
+      host: "documentdb.cluster-c0acx1an8oxg.us-west-2.docdb.amazonaws.com"
+      acknowledgments: true
+      aws:
+        sts_role_arn: "arn:aws:iam::123123123123:role/Admin"
+      s3_bucket: "benebucket"
+  route:
+    - initial_load: "getMetadata(\"ingestion_type\") == \"EXPORT\""
+    - stream_load: "getMetadata(\"ingestion_type\") == \"STREAM\""
+  sink:
+    - s3:
+        routes:
+          - "initial_load"
+        bucket: "benebucket"
+        codec:
+          event_json: null
+        object_key:
+          path_prefix: "${getMetadata(\"s3_partition_key\")}"
+        default_bucket_owner: "123123123123"
+        aggregate_threshold:
+          maximum_size: "128mb"
+          flush_capacity_ratio: 0
+        threshold:
+          event_collect_timeout: "120s"
+          maximum_size: "2mb"
+        aws:
+          region: "us-west-2"
+          sts_role_arn: "arn:aws:iam::123123123123:role/Admin"
+          sts_external_id: null
+          sts_header_overrides: null
+    - s3:
+        routes:
+          - "stream_load"
+        bucket: "benebucket"
+        codec:
+          event_json: null
+        object_key:
+          path_prefix: "${getMetadata(\"s3_partition_key\")}"
+        default_bucket_owner: "123123123123"
+        aggregate_threshold:
+          maximum_size: "128mb"
+          flush_capacity_ratio: 0
+        threshold:
+          event_collect_timeout: "15s"
+          maximum_size: "1mb"
+        aws:
+          region: "us-west-2"
+          sts_role_arn: "arn:aws:iam::123123123123:role/Admin"
+          sts_external_id: null
+          sts_header_overrides: null
