@@ -219,14 +219,11 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         pipelines.forEach((pipelineName, pipeline) -> {
             if (!pipelineName.equals(pipelineNameThatNeedsTransformation)) {
                 if(subPipelineNames.size()>0 && subPipelineNames.contains(pipelineName)){ //if there are subpipelines
-                    for(String subPipelineName: subPipelineNames){
-                        String pipelineJson = null;
-                        try {
-                            PipelineModel subPipeline = getSubPipeline(pipeline, pipelineNameThatNeedsTransformation);
-                            transformedPipelines.put(pipelineName, subPipeline);
-                        } catch (JsonProcessingException e) {
-                            throw new RuntimeException(e);
-                        }
+                    try {
+                        PipelineModel subPipeline = getSubModifiedPipeline(pipeline, pipelineNameThatNeedsTransformation);
+                        transformedPipelines.put(pipelineName, subPipeline);
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
                     }
                 }else {
                     transformedPipelines.put(pipelineName, pipeline);
@@ -245,13 +242,11 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         return transformedPipelinesDataFlowModel;
     }
 
-    private PipelineModel getSubPipeline(PipelineModel pipeline,
+    private PipelineModel getSubModifiedPipeline(PipelineModel pipeline,
                                          String pipelineNameThatNeedsTransformation) throws JsonProcessingException {
-        String pipelineJson;
-        pipelineJson = objectMapper.writeValueAsString(pipeline);
+        String pipelineJson = objectMapper.writeValueAsString(pipeline);
         JsonNode pipelineNode = objectMapper.readTree(pipelineJson);
-        String parentPath = SUBPIPELINE_PATH;
-        JsonNode parentNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelineNode).read(parentPath);
+        JsonNode parentNode = JsonPath.using(parseConfigWithJsonNode).parse(pipelineNode).read(SUBPIPELINE_PATH);
 
         //TODO - Dynamically detect the 2nd pipeline in the template of the transformed pipeline
         JsonNode newNode = new TextNode(pipelineNameThatNeedsTransformation +"-s3");
