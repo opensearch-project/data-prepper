@@ -44,6 +44,9 @@ public class TestConfigurationProvider {
     public static final String USER_CONFIG_TRANSFORMATION_DOCDB2_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb2-userconfig.yaml";
     public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-userconfig.yaml";
     public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-subpipelines-userconfig.yaml";
+    public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_ROUTES_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-routes-userconfig.yaml";
+    public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_ROUTE_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-route-userconfig.yaml";
+    public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_ROUTES_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-subpipelines-routes-userconfig.yaml";
     public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_FUNCTION_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-function-userconfig.yaml";
 
     public static final String RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/rules/documentdb1-rule.yaml";
@@ -55,12 +58,16 @@ public class TestConfigurationProvider {
     public static final String TEMPLATE_TRANSFORMATION_DOCDB2_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb2-template.yaml";
     public static final String TEMPLATE_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-template.yaml";
     public static final String TEMPLATE_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-subpipelines-template.yaml";
+    public static final String TEMPLATE_TRANSFORMATION_DOCUMENTDB_FINAL_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-template-final.yaml";
     public static final String TEMPLATE_TRANSFORMATION_DOCUMENTDB_FUNCTION_CONFIG_FILE = "src/test/resources/transformation/templates/testSource/documentdb-function-template.yaml";
 
     public static final String EXPECTED_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb1-expected.yaml";
     public static final String EXPECTED_TRANSFORMATION_DOCDB2_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb2-expected.yaml";
     public static final String EXPECTED_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb-expected.yaml";
     public static final String EXPECTED_TRANSFORMATION_DOCUMENTDB_SUBPIPLINES_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb-subpipelines-expected.yaml";
+    public static final String EXPECTED_TRANSFORMATION_DOCUMENTDB_ROUTES_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb-routes-expected.yaml";
+    public static final String EXPECTED_TRANSFORMATION_DOCUMENTDB_ROUTE_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb-route-expected.yaml";
+    public static final String EXPECTED_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_ROUTES_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb-subpipelines-routes-expected.yaml";
     public static final String EXPECTED_TRANSFORMATION_DOCUMENTDB_FUNCTION_CONFIG_FILE = "src/test/resources/transformation/expected/documentdb-function-expected.yaml";
 
 

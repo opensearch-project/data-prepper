@@ -41,6 +41,7 @@ public class RuleEvaluator {
     }
 
     public RuleEvaluatorResult isTransformationNeeded(PipelinesDataFlowModel pipelineModel) {
+        //TODO - Dynamically scan the rules folder and get the corresponding template.
         return isDocDBSource(pipelineModel);
     }
 
