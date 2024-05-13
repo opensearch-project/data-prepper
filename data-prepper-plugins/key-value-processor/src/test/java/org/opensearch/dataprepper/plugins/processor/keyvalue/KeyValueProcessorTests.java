@@ -89,6 +89,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getRecursive()).thenReturn(defaultConfig.getRecursive());
         lenient().when(mockConfig.getOverwriteIfDestinationExists()).thenReturn(defaultConfig.getOverwriteIfDestinationExists());
         lenient().when(mockConfig.getValueGrouping()).thenReturn(false);
+        lenient().when(mockConfig.getDropKeysWithNoValue()).thenReturn(false);
 
         final String keyValueWhen = UUID.randomUUID().toString();
         when(mockConfig.getKeyValueWhen()).thenReturn(keyValueWhen);
@@ -166,6 +167,20 @@ public class KeyValueProcessorTests {
         assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key1", "value1");
         assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @Test
+    void testDropKeysWithNoValue() {
+        lenient().when(mockConfig.getDropKeysWithNoValue()).thenReturn(true);
+
+        keyValueProcessor = createObjectUnderTest();
+
+        final Record<Event> record = getMessage("key1=value1&key2");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
     }
 
     @ParameterizedTest

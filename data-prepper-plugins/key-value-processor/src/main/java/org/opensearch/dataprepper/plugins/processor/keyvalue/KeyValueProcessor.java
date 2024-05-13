@@ -276,8 +276,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     }
 
     public int findInStartGroup(final String str, int idx) {
-        int j = 0;
-        while (j < startGroupStrings.length) {
+        for (int j = 0; j < startGroupStrings.length; j++) {
             try {
                 if (startGroupStrings[j].equals(str.substring(idx, idx+startGroupStrings[j].length()))) {
                     if (j <= 1 && idx > 0 && str.charAt(idx-1) != '\\') {
@@ -289,7 +288,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             } catch (Exception e) {
                 return -1;
             }
-            j++;
         }
         return -1;
     }

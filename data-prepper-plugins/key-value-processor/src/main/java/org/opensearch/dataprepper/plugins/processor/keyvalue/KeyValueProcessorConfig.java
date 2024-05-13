@@ -111,7 +111,7 @@ public class KeyValueProcessorConfig {
     @JsonProperty("key_value_when")
     private String keyValueWhen;
 
-    @AssertTrue(message = "Invalid Configuration. valueGrouping option and field_delimiter_regex are mutually exclusive")
+    @AssertTrue(message = "Invalid Configuration. value_grouping option and field_delimiter_regex are mutually exclusive")
     boolean isValidValueGroupingAndFieldDelimiterRegex() {
         return (!valueGrouping || fieldDelimiterRegex == null);
     }
