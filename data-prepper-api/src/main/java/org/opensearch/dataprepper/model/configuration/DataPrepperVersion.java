@@ -6,7 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DataPrepperVersion {
-    private static final String CURRENT_VERSION = "2.8";
+    private static final String CURRENT_VERSION = "2.9";
 
     private static final String FULL_FORMAT = "%d.%d";
     private static final String SHORTHAND_FORMAT = "%d";
