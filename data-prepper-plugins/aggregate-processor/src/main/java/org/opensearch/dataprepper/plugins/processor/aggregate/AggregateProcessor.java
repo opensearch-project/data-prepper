@@ -151,6 +151,16 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     }
 
     @Override
+    public boolean isForLocalProcessingOnly(Event event) {
+        // no need to check for when condition here because it is
+        // done in doExecute(). isApplicableEventForPeerForwarding()
+        // checks for when condition because it is an optimization to
+        // not send events not matching the condition to remote peer
+        // only to be skipped later.
+        return localMode;
+    }
+
+    @Override
     public boolean isApplicableEventForPeerForwarding(Event event) {
         if (localMode) {
             return false;

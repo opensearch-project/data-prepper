@@ -189,8 +189,24 @@ class PeerForwardingProcessingDecoratorTest {
             verify(processor).execute(anyCollection());
         }
 
+
         @Test
-        void PeerForwardingProcessingDecorator_inner_processor_with_is_applicable_event_overridden() {
+        void PeerForwardingProcessingDecorator_execute_will_call_inner_processors_execute_with_local_processing() {
+            Event event = mock(Event.class);
+            when(record.getData()).thenReturn(event);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event)).thenReturn(false);
+            when(requiresPeerForwarding.isForLocalProcessingOnly(event)).thenReturn(true);
+
+            final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
+            Collection<Record<Event>> testData = Collections.singletonList(record);
+
+            assertThat(processors.size(), equalTo(1));
+            processors.get(0).execute(testData);
+            verify(processor).execute(anyCollection());
+        }
+
+        @Test
+        void PeerForwardingProcessingDecorator_inner_processor_with_is_applicable_event_and_local_processing() {
             Event event1 = mock(Event.class);
             Event event2 = mock(Event.class);
             Event event3 = mock(Event.class);
@@ -201,9 +217,12 @@ class PeerForwardingProcessingDecoratorTest {
             List<Record> aggregatedRecords = new ArrayList<>();
             aggregatedRecords.add(aggregatedRecord);
             when(processor.execute(anyCollection())).thenReturn(aggregatedRecords);
-            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event1)).thenReturn(true);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event1)).thenReturn(false);
             when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event2)).thenReturn(false);
-            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event3)).thenReturn(true);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event3)).thenReturn(false);
+            when(requiresPeerForwarding.isForLocalProcessingOnly(event1)).thenReturn(true);
+            when(requiresPeerForwarding.isForLocalProcessingOnly(event2)).thenReturn(true);
+            when(requiresPeerForwarding.isForLocalProcessingOnly(event3)).thenReturn(true);
             final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
             when(record1.getData()).thenReturn(event1);
             when(record2.getData()).thenReturn(event2);
@@ -216,8 +235,39 @@ class PeerForwardingProcessingDecoratorTest {
             assertThat(processors.size(), equalTo(1));
             Collection<Record<Event>> recordsOut = processors.get(0).execute(recordsIn);
             verify(processor).execute(anyCollection());
-            assertThat(recordsOut.size(), equalTo(2));
+            assertThat(recordsOut.size(), equalTo(1));
             assertTrue(recordsOut.contains(aggregatedRecord));
+        }
+
+        @Test
+        void PeerForwardingProcessingDecorator_inner_processor_with_is_applicable_event_overridden() {
+            Event event1 = mock(Event.class);
+            Event event2 = mock(Event.class);
+            Event event3 = mock(Event.class);
+            Record record1 = mock(Record.class);
+            Record record2 = mock(Record.class);
+            Record record3 = mock(Record.class);
+            Record aggregatedRecord = mock(Record.class);
+            List<Record> aggregatedRecords = new ArrayList<>();
+            aggregatedRecords.add(aggregatedRecord);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event1)).thenReturn(true);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event2)).thenReturn(false);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event3)).thenReturn(true);
+            when(requiresPeerForwarding.isForLocalProcessingOnly(event2)).thenReturn(false);
+            final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
+            when(record1.getData()).thenReturn(event1);
+            when(record2.getData()).thenReturn(event2);
+            when(record3.getData()).thenReturn(event3);
+            Collection<Record<Event>> recordsIn = new ArrayList<>();
+            recordsIn.add(record1);
+            recordsIn.add(record2);
+            recordsIn.add(record3);
+
+            assertThat(processors.size(), equalTo(1));
+            Collection<Record<Event>> recordsOut = processors.get(0).execute(recordsIn);
+            verify(processor).execute(anyCollection());
+            // one record skipped, no records locally processed
+            assertThat(recordsOut.size(), equalTo(1));
             assertTrue(recordsOut.contains(record2));
         }
 

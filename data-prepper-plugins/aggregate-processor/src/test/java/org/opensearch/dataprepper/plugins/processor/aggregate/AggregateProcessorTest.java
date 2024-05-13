@@ -360,6 +360,9 @@ public class AggregateProcessorTest {
             assertThat(objectUnderTest.isApplicableEventForPeerForwarding(event), equalTo(false));
             assertThat(objectUnderTest.isApplicableEventForPeerForwarding(firstEvent), equalTo(false));
             assertThat(objectUnderTest.isApplicableEventForPeerForwarding(secondEvent), equalTo(false));
+            assertThat(objectUnderTest.isForLocalProcessingOnly(event), equalTo(true));
+            assertThat(objectUnderTest.isForLocalProcessingOnly(firstEvent), equalTo(true));
+            assertThat(objectUnderTest.isForLocalProcessingOnly(secondEvent), equalTo(true));
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(c);
 
             assertThat(recordsOut.size(), equalTo(3));
