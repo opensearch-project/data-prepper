@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.keyvalue;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +30,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_WHITESPACE = "lenient";
     static final boolean DEFAULT_SKIP_DUPLICATE_VALUES = false;
     static final boolean DEFAULT_REMOVE_BRACKETS = false;
+    static final boolean DEFAULT_VALUE_GROUPING = false;
     static final boolean DEFAULT_RECURSIVE = false;
 
     @NotEmpty
@@ -90,6 +92,9 @@ public class KeyValueProcessorConfig {
     @NotNull
     private boolean removeBrackets = DEFAULT_REMOVE_BRACKETS;
 
+    @JsonProperty("value_grouping")
+    private boolean valueGrouping = DEFAULT_VALUE_GROUPING;
+
     @JsonProperty("recursive")
     @NotNull
     private boolean recursive = DEFAULT_RECURSIVE;
@@ -100,8 +105,16 @@ public class KeyValueProcessorConfig {
     @JsonProperty("overwrite_if_destination_exists")
     private boolean overwriteIfDestinationExists = true;
 
+    @JsonProperty("drop_keys_with_no_value")
+    private boolean dropKeysWithNoValue = false;
+
     @JsonProperty("key_value_when")
     private String keyValueWhen;
+
+    @AssertTrue(message = "Invalid Configuration. value_grouping option and field_delimiter_regex are mutually exclusive")
+    boolean isValidValueGroupingAndFieldDelimiterRegex() {
+        return (!valueGrouping || fieldDelimiterRegex == null);
+    }
 
     public String getSource() {
         return source;
@@ -109,6 +122,10 @@ public class KeyValueProcessorConfig {
 
     public String getDestination() {
         return destination;
+    }
+
+    public boolean getValueGrouping() {
+        return valueGrouping;
     }
 
     public String getFieldDelimiterRegex() {
@@ -129,6 +146,10 @@ public class KeyValueProcessorConfig {
 
     public Map<String, Object> getDefaultValues() {
         return defaultValues;
+    }
+
+    public boolean getDropKeysWithNoValue() {
+        return dropKeysWithNoValue;
     }
 
     public String getKeyValueDelimiterRegex() {

@@ -42,6 +42,8 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 @DataPrepperPlugin(name = "key_value", pluginType = Processor.class, pluginConfigurationType = KeyValueProcessorConfig.class)
 public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(KeyValueProcessor.class);
+    private static String startGroupStrings[] = {"\"","'", "(", "[", "<", "{", "http://", "https://"};
+    private static Character endGroupChars[] ={'"', '\'', ')', ']', '>', '}', ' ', ' '};
 
     private final KeyValueProcessorConfig keyValueProcessorConfig;
 
@@ -243,6 +245,87 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
     }
 
+    private boolean isEscapedQuote(final String str, int idx) {
+        if (idx > 0) {
+            if ((str.charAt(idx) == '"' || str.charAt(idx) == '\'') &&
+                (str.charAt(idx-1) == '\\'))
+                return true;
+        }
+        return false;
+    }
+
+    public int skipGroup(final String str, int idx, final Character endChar) {
+        int i = idx;
+        while (i < str.length()) {
+            if (isEscapedQuote(str, i)) {
+                i++;
+                continue;
+            } else if (str.charAt(i) == endChar) {
+                return i-1;
+            } else
+                i++;
+        }
+        throw new RuntimeException("Bad Input, no end character found in "+str+" after index " + idx +", expected end char = "+endChar);
+    }
+
+    private void addPart(List<String> parts, final String str, final int start, final int end) {
+        String part = str.substring(start,end).trim();
+        if (part.length() > 0) {
+            parts.add(part);
+        }
+    }
+
+    public int findInStartGroup(final String str, int idx) {
+        for (int j = 0; j < startGroupStrings.length; j++) {
+            try {
+                if (startGroupStrings[j].equals(str.substring(idx, idx+startGroupStrings[j].length()))) {
+                    if (j <= 1 && idx > 0 && str.charAt(idx-1) != '\\') {
+                        return j;
+                    } else if (j > 1) {
+                        return j;
+                    }
+                }
+            } catch (Exception e) {
+                return -1;
+            }
+        }
+        return -1;
+    }
+    
+    private List<String> parseWithValueGrouping(String str) {
+        String fieldDelimiter = keyValueProcessorConfig.getFieldSplitCharacters();
+        Set<Character> fieldDelimiterSet = new HashSet<>();
+        for (char ch : fieldDelimiter.toCharArray()) {
+            fieldDelimiterSet.add(ch);
+        }
+        int i = 0;
+        int start = i;
+        List<String> parts = new ArrayList<>();
+        while (i < str.length()) {
+            // checks if a " or ' is escaped using \, if yes, it is
+            // not considered as a start of a group
+            if (isEscapedQuote(str, i)) {
+                i++;
+                continue;
+            }
+            int groupIndex = findInStartGroup(str, i);
+            if (groupIndex >= 0) {
+                i = skipGroup(str, i+1, endGroupChars[groupIndex])+2;
+            } else if (fieldDelimiterSet.contains(str.charAt(i))) {
+                addPart(parts, str, start, i);
+                i++;
+                start = i;
+            } else {
+               i++;
+            }
+        }
+        if (start != i) {
+            addPart(parts, str, start, i);
+        }
+        
+        return parts;
+    }
+
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         final ObjectMapper mapper = new ObjectMapper();
@@ -261,7 +344,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 if (groupsRaw == null) {
                     continue;
                 }
-                final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
+                String[] groups;
+                if (keyValueProcessorConfig.getValueGrouping()) {
+                    groups = parseWithValueGrouping(groupsRaw).stream().toArray(String[]::new);
+                } else {
+                    groups = fieldDelimiterPattern.split(groupsRaw, 0);
+                }
 
                 if (keyValueProcessorConfig.getRecursive()) {
                     try {
@@ -496,6 +584,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             processed.put(pair.getKey(), pair.getValue());
         }
 
+        if (keyValueProcessorConfig.getDropKeysWithNoValue()) {
+            processed.entrySet().removeIf(entry -> entry.getValue() == null);
+        }
         return processed;
     }
 
