@@ -100,10 +100,8 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
 
         recordsToProcessLocally = CollectionUtils.union(recordsToProcessLocally, receivedRecordsFromBuffer);
 
-        Collection<Record<Event>> recordsOut = recordsSkipped;
-        if (recordsToProcessLocally.size() > 0) {
-            recordsOut.addAll(innerProcessor.execute(recordsToProcessLocally));
-        }
+        Collection<Record<Event>> recordsOut = innerProcessor.execute(recordsToProcessLocally);
+        recordsOut.addAll(recordsSkipped);
         return recordsOut;
     }
 

@@ -186,7 +186,7 @@ class PeerForwardingProcessingDecoratorTest {
 
             assertThat(processors.size(), equalTo(1));
             processors.get(0).execute(testData);
-            verify(processor, times(0)).execute(anyCollection());
+            verify(processor).execute(anyCollection());
         }
 
 
@@ -265,7 +265,7 @@ class PeerForwardingProcessingDecoratorTest {
 
             assertThat(processors.size(), equalTo(1));
             Collection<Record<Event>> recordsOut = processors.get(0).execute(recordsIn);
-            verify(processor, times(0)).execute(anyCollection());
+            verify(processor).execute(anyCollection());
             // one record skipped, no records locally processed
             assertThat(recordsOut.size(), equalTo(1));
             assertTrue(recordsOut.contains(record2));
