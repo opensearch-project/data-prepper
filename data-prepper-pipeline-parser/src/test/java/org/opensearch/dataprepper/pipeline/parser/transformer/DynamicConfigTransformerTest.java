@@ -206,6 +206,115 @@ class DynamicConfigTransformerTest {
     }
 
     @Test
+    void test_successful_transformation_with_routes_keyword() throws IOException {
+
+        String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_ROUTES_CONFIG_FILE;
+        String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCUMENTDB_FINAL_CONFIG_FILE;
+        String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
+        String expectedDocDBFilePath = TestConfigurationProvider.EXPECTED_TRANSFORMATION_DOCUMENTDB_ROUTES_CONFIG_FILE;
+        String pluginName = "documentdb";
+        PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
+        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+
+        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
+                TEMPLATES_DIRECTORY_PATH));
+        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
+        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+        InputStream templateStream = new FileInputStream(templateDocDBFilePath);
+        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
+        ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        // Load the original and template YAML files from the test resources directory
+        PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
+        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration(pipelinesDataFlowModel);
+        String transformedYaml = yamlMapper.writeValueAsString(transformedModel);
+
+        Map<String, Object> transformedYamlasMap = yamlMapper.readValue(transformedYaml, Map.class);
+
+        Map<String, Object> expectedYamlasMap = yamlMapper.readValue(new File(expectedDocDBFilePath), Map.class);
+        assertThat(expectedYamlasMap).usingRecursiveComparison().isEqualTo(transformedYamlasMap);
+    }
+
+
+
+    @Test
+    void test_successful_transformation_with_route_keyword() throws IOException {
+
+        String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_ROUTE_CONFIG_FILE;
+        String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCUMENTDB_FINAL_CONFIG_FILE;
+        String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
+        //should be same as with routes keyword
+        String expectedDocDBFilePath = TestConfigurationProvider.EXPECTED_TRANSFORMATION_DOCUMENTDB_ROUTES_CONFIG_FILE;
+        String pluginName = "documentdb";
+        PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
+        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+
+        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
+                TEMPLATES_DIRECTORY_PATH));
+        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
+        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+        InputStream templateStream = new FileInputStream(templateDocDBFilePath);
+        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
+        ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        // Load the original and template YAML files from the test resources directory
+        PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
+        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration(pipelinesDataFlowModel);
+        String transformedYaml = yamlMapper.writeValueAsString(transformedModel);
+
+        Map<String, Object> transformedYamlasMap = yamlMapper.readValue(transformedYaml, Map.class);
+
+        Map<String, Object> expectedYamlasMap = yamlMapper.readValue(new File(expectedDocDBFilePath), Map.class);
+        assertThat(expectedYamlasMap).usingRecursiveComparison().isEqualTo(transformedYamlasMap);
+    }
+
+
+    @Test
+    void test_successful_transformation_with_routes_and_subpipelines() throws IOException {
+
+        String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_ROUTES_CONFIG_FILE;
+        String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCUMENTDB_FINAL_CONFIG_FILE;
+        String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
+        String expectedDocDBFilePath = TestConfigurationProvider.EXPECTED_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_ROUTES_CONFIG_FILE;
+        String pluginName = "documentdb";
+        PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
+        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+
+        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
+                TEMPLATES_DIRECTORY_PATH));
+        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
+        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+        InputStream ruleStream2 = new FileInputStream(ruleDocDBFilePath);
+        InputStream ruleStream3 = new FileInputStream(ruleDocDBFilePath);
+        InputStream templateStream = new FileInputStream(templateDocDBFilePath);
+
+        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream).thenReturn(ruleStream2).thenReturn(ruleStream3);
+        when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
+        ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        // Load the original and template YAML files from the test resources directory
+        PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
+        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration(pipelinesDataFlowModel);
+        String transformedYaml = yamlMapper.writeValueAsString(transformedModel);
+
+        Map<String, Object> transformedYamlasMap = yamlMapper.readValue(transformedYaml, Map.class);
+
+        Map<String, Object> expectedYamlasMap = yamlMapper.readValue(new File(expectedDocDBFilePath), Map.class);
+        assertThat(expectedYamlasMap).usingRecursiveComparison().isEqualTo(transformedYamlasMap);
+    }
+
+    @Test
     void testInvalidJsonPathThrowsException() throws IOException {
         String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCDB_SIMPLE_CONFIG_FILE;
         String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCDB_SIMPLE_CONFIG_FILE;

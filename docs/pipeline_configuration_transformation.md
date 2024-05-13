@@ -73,3 +73,9 @@ there can be only one pipeline that can support transformation.
 4. `<<$ .. >>` is the placeholder in the template.
 `<< pipeline-name >>` is handled differently as compared to other placeholders
 as other placeholders are jsonPaths.
+
+### Developer Guide
+When defining a placeholder for routes. Always define it as route.
+```aidl
+routes: "<<$.<<pipeline-name>>.routes>>" # routes or route (defined as alias) will be transformed to routes in json as routes will be primarily picked in pipelineModel.
+```

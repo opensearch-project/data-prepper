@@ -1,0 +1,83 @@
+version: "2"
+documentdb-pipeline:
+  source:
+    documentdb:
+      acknowledgments: true
+      host: "docdb-gd-documentdb.cluster-c0acx1an8oxg.us-west-2.docdb.amazon\
+        aws.com"
+      aws:
+        sts_role_arn: "arn:aws:iam::123123123123:role/Admin"
+      s3_bucket: "benebucket"
+      s3_region: "us-west-2"
+      collections:
+        - collection: "gharchive.events"
+          export: true
+          stream: true
+  processor:
+    - grok:
+        match:
+          log: [ "%{COMMONAPACHELOG_DATATYPED}" ]
+  routes:
+    - 2xx_status: "/response >= 200 and /response < 300"
+    - 3xx_status: "/response >= 300 and /response < 400"
+    - 4xx_status: "/response >= 400 and /response < 500"
+    - 5xx_status: "/response >= 500 and /response < 600"
+  sink:
+    - pipeline:
+        name: "sub-pipe1"
+        routes:
+          - 2xx_status
+    - pipeline:
+        name: "sub-pipe2"
+        routes:
+          - 3xx_status
+sub-pipe1:
+  source:
+    pipeline:
+      name: "documentdb-pipeline"
+  sink:
+    - opensearch:
+        # REQUIRED: Provide an AWS OpenSearch endpoint
+        hosts:
+          [
+            "https://search-osis-fgac2-bxzuq7pzdkvygg6gaecl4jrfqy.us-west-2.es.amazonaws.com"
+          ]
+        index: "docdb-gd-l1transf-subpipe"
+        index_type: custom
+        # DocumentDB _docId
+        exclude_keys: [ "_id" ]
+        document_id: "${getMetadata(\"primary_key\")}"
+        action: "${getMetadata(\"opensearch_action\")}"
+        # DocumentDB record creation or event timestamp
+        document_version: "${getMetadata(\"document_version\")}"
+        document_version_type: "external"
+        aws:
+          # REQUIRED: Provide a Role ARN with access to the domain. This role should have a trust relationship with osis-pipelines.amazonaws.com
+          sts_role_arn: "arn:aws:iam::123123123123:role/Admin"
+          # Provide the region of the domain.
+          region: "us-west-2"
+sub-pipe2:
+  source:
+    pipeline:
+      name: "documentdb-pipeline"
+  sink:
+    - opensearch:
+        # REQUIRED: Provide an AWS OpenSearch endpoint
+        hosts:
+          [
+            "https://search-osis-fgac2-bxzuq7pzdkvygg6gaecl4jrfqy.us-west-2.es.amazonaws.com"
+          ]
+        index: "docdb-gd-l1transf-subpipe"
+        index_type: custom
+        # DocumentDB _docId
+        exclude_keys: [ "_id" ]
+        document_id: "${getMetadata(\"primary_key\")}"
+        action: "${getMetadata(\"opensearch_action\")}"
+        # DocumentDB record creation or event timestamp
+        document_version: "${getMetadata(\"document_version\")}"
+        document_version_type: "external"
+        aws:
+          # REQUIRED: Provide a Role ARN with access to the domain. This role should have a trust relationship with osis-pipelines.amazonaws.com
+          sts_role_arn: "arn:aws:iam::123123123123:role/Admin"
+          # Provide the region of the domain.
+          region: "us-west-2"
