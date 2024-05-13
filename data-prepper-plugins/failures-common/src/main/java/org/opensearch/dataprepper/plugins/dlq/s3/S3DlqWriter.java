@@ -123,7 +123,7 @@ public class S3DlqWriter implements DlqWriter {
         } catch (final IOException ioException) {
             throw ioException;
         } catch (final Exception ex) {
-            LOG.error(SENSITIVE, "Failed timed write to S3 dlq: [{}]", content, ex);
+            LOG.error(SENSITIVE, "Failed timed write to S3 dlq with content: [{}]", content, ex);
             throw new IOException("Failed timed write to S3 dlq.", ex);
         }
     }
@@ -132,7 +132,7 @@ public class S3DlqWriter implements DlqWriter {
         try {
             return s3Client.putObject(request, RequestBody.fromString(content));
         } catch (Exception ex) {
-            LOG.error(SENSITIVE, "Failed to write to S3 dlq: [{}] to S3", content, ex);
+            LOG.error(SENSITIVE, "Failed to write content [{}] to S3 dlq", content, ex);
             throw new IOException("Failed to write to S3 dlq.", ex);
         }
     }
