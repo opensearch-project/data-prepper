@@ -250,13 +250,10 @@ class PeerForwardingProcessingDecoratorTest {
             Record aggregatedRecord = mock(Record.class);
             List<Record> aggregatedRecords = new ArrayList<>();
             aggregatedRecords.add(aggregatedRecord);
-            //when(processor.execute(anyCollection())).thenReturn(aggregatedRecords);
             when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event1)).thenReturn(true);
             when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event2)).thenReturn(false);
             when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event3)).thenReturn(true);
-            //when(requiresPeerForwarding.isForLocalProcessingOnly(event1)).thenReturn(false);
             when(requiresPeerForwarding.isForLocalProcessingOnly(event2)).thenReturn(false);
-            //when(requiresPeerForwarding.isForLocalProcessingOnly(event3)).thenReturn(false);
             final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
             when(record1.getData()).thenReturn(event1);
             when(record2.getData()).thenReturn(event2);
