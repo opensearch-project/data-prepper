@@ -151,6 +151,11 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     }
 
     @Override
+    public boolean isForLocalProcessingOnly(Event event) {
+        return localMode;
+    }
+
+    @Override
     public boolean isApplicableEventForPeerForwarding(Event event) {
         if (localMode) {
             return false;

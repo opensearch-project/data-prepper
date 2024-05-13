@@ -30,4 +30,15 @@ public interface RequiresPeerForwarding {
     default boolean isApplicableEventForPeerForwarding(Event event) {
         return true;
     }
+
+    /**
+     * Determines if an event should be handled on the local node only
+     *
+     * @param event input event
+     *
+     * @return true if the event should be processed locally only
+     */
+    default boolean isForLocalProcessingOnly(Event event) {
+        return false;
+    }
 }

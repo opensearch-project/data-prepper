@@ -27,6 +27,7 @@ class RequiresPeerForwardingTest {
         Event event = mock(Event.class);
         RequiresPeerForwarding requiresPeerForwarding = new SimpleRequiresPeerForwarding();
         assertThat(requiresPeerForwarding.isApplicableEventForPeerForwarding(event), equalTo(true));
+        assertThat(requiresPeerForwarding.isForLocalProcessingOnly(event), equalTo(false));
     }
 }
 
