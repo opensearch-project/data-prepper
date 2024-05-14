@@ -13,10 +13,17 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface DataPrepperExtensionPlugin {
+    String DEFAULT_DEPRECATED_ROOT_KEY_JSON_PATH = "";
+
     /**
      * @return extension plugin configuration class.
      */
     Class<?> modelType();
+
+    /**
+     * @return valid JSON path string starts with "/" pointing towards the configuration block.
+     */
+    String deprecatedRootKeyJsonPath() default DEFAULT_DEPRECATED_ROOT_KEY_JSON_PATH;
 
     /**
      * @return valid JSON path string starts with "/" pointing towards the configuration block.

@@ -31,6 +31,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator.DEFAULT_DEPRECATED_PREFIX;
 
 @ExtendWith(MockitoExtension.class)
 class VariableExpanderTest {
@@ -99,6 +100,25 @@ class VariableExpanderTest {
         final String testSecretReference = String.format("${{%s:%s}}", testTranslatorKey, testSecretKey);
         final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
         jsonParser.nextToken();
+        when(pluginConfigValueTranslator.getDeprecatedPrefix()).thenReturn(DEFAULT_DEPRECATED_PREFIX);
+        when(pluginConfigValueTranslator.getPrefix()).thenReturn(testTranslatorKey);
+        when(pluginConfigValueTranslator.translate(eq(testSecretKey))).thenReturn(value.replace("\"", ""));
+        objectUnderTest = new VariableExpander(OBJECT_MAPPER, Set.of(pluginConfigValueTranslator));
+        final Object actualResult = objectUnderTest.translate(jsonParser, clazz);
+        assertThat(actualResult, equalTo(expectedResult));
+    }
+
+    @ParameterizedTest
+    @MethodSource("getStringTypeArguments")
+    void testTranslateJsonParserWithStringValue_translate_success_with_deprecated_prefix(
+            final Class<?> clazz, final String value, final Object expectedResult) throws IOException {
+        final String testSecretKey = "testSecretKey";
+        final String testTranslatorKey = "test_prefix";
+        final String testDeprecatedTranslatorKey = "test_deprecated_prefix";
+        final String testSecretReference = String.format("${{%s:%s}}", testDeprecatedTranslatorKey, testSecretKey);
+        final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
+        jsonParser.nextToken();
+        when(pluginConfigValueTranslator.getDeprecatedPrefix()).thenReturn(testDeprecatedTranslatorKey);
         when(pluginConfigValueTranslator.getPrefix()).thenReturn(testTranslatorKey);
         when(pluginConfigValueTranslator.translate(eq(testSecretKey))).thenReturn(value.replace("\"", ""));
         objectUnderTest = new VariableExpander(OBJECT_MAPPER, Set.of(pluginConfigValueTranslator));

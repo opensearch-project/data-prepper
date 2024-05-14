@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import org.opensearch.dataprepper.plugins.test.TestExtensionConfig;
 import org.opensearch.dataprepper.plugins.test.TestExtensionWithConfig;
+import org.opensearch.dataprepper.plugins.test.TestExtensionWithDeprecatedRootJsonPath;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -113,6 +114,47 @@ class ExtensionLoaderTest {
         assertThat(extensionPlugins, notNullValue());
         assertThat(extensionPlugins.size(), equalTo(1));
         assertThat(extensionPlugins.get(0), equalTo(expectedPlugin));
+    }
+
+    @Test
+    void loadExtensions_returns_single_extension_with_deprecated_root_json_path_for_single_plugin_class() {
+        final TestExtensionConfig testExtensionConfig = new TestExtensionConfig();
+        when(extensionClassProvider.loadExtensionPluginClasses())
+                .thenReturn(Collections.singleton(TestExtensionWithDeprecatedRootJsonPath.class));
+
+        final TestExtensionWithDeprecatedRootJsonPath expectedPlugin =
+                mock(TestExtensionWithDeprecatedRootJsonPath.class);
+        final String expectedPluginName = "test_extension_with_deprecated_root_json_path";
+        when(extensionPluginConfigurationConverter.convert(eq(true), eq(TestExtensionConfig.class),
+                eq("/test_extension_name"))).thenReturn(null);
+        when(extensionPluginConfigurationConverter.convert(eq(true), eq(TestExtensionConfig.class),
+                eq("/deprecated_test_extension_name"))).thenReturn(testExtensionConfig);
+        when(extensionPluginCreator.newPluginInstance(
+                eq(TestExtensionWithDeprecatedRootJsonPath.class),
+                any(PluginArgumentsContext.class),
+                eq(expectedPluginName)))
+                .thenReturn(expectedPlugin);
+
+        final List<? extends ExtensionPlugin> extensionPlugins = createObjectUnderTest().loadExtensions();
+
+        verify(extensionPluginCreator).newPluginInstance(eq(TestExtensionWithDeprecatedRootJsonPath.class),
+                pluginArgumentsContextArgumentCaptor.capture(), eq(expectedPluginName));
+        assertThat(pluginArgumentsContextArgumentCaptor.getValue(), instanceOf(
+                ExtensionLoader.SingleConfigArgumentArgumentsContext.class));
+        assertThat(extensionPlugins, notNullValue());
+        assertThat(extensionPlugins.size(), equalTo(1));
+        assertThat(extensionPlugins.get(0), equalTo(expectedPlugin));
+    }
+
+    @Test
+    void loadExtensions_throws_invalid_plugin_definition_exception_with_both_root_json_path_and_deprecated_root_json_path_for_single_plugin_class() {
+        final TestExtensionConfig testExtensionConfig = new TestExtensionConfig();
+        when(extensionClassProvider.loadExtensionPluginClasses())
+                .thenReturn(Collections.singleton(TestExtensionWithDeprecatedRootJsonPath.class));
+        when(extensionPluginConfigurationConverter.convert(eq(true), eq(TestExtensionConfig.class),
+                any())).thenReturn(testExtensionConfig);
+
+        assertThrows(InvalidPluginDefinitionException.class, () -> createObjectUnderTest().loadExtensions());
     }
 
     @Test

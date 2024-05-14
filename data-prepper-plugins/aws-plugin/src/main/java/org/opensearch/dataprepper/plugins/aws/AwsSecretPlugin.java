@@ -21,7 +21,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-@DataPrepperExtensionPlugin(modelType = AwsSecretPluginConfig.class, rootKeyJsonPath = "/aws/secrets",
+@DataPrepperExtensionPlugin(modelType = AwsSecretPluginConfig.class, deprecatedRootKeyJsonPath = "/aws/secrets_manager",
+        rootKeyJsonPath = "/aws/secrets",
         allowInPipelineConfigurations = true)
 public class AwsSecretPlugin implements ExtensionPlugin {
     static final int PERIOD_IN_SECONDS = 60;

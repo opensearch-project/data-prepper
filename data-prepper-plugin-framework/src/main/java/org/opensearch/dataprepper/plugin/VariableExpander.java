@@ -20,6 +20,8 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator.DEFAULT_DEPRECATED_PREFIX;
+
 @Named
 public class VariableExpander {
     static final String VALUE_REFERENCE_KEY = "valueReferenceKey";
@@ -34,9 +36,17 @@ public class VariableExpander {
             final Set<PluginConfigValueTranslator> pluginConfigValueTranslators) {
         this.objectMapper = objectMapper;
         patternPluginConfigValueTranslatorMap = pluginConfigValueTranslators.stream().collect(Collectors.toMap(
-                pluginConfigValueTranslator -> Pattern.compile(
-                        String.format(SECRETS_REFERENCE_PATTERN_STRING,
-                                pluginConfigValueTranslator.getPrefix(), VALUE_REFERENCE_KEY)),
+                pluginConfigValueTranslator -> {
+                    final String prefix = DEFAULT_DEPRECATED_PREFIX.equals(
+                            pluginConfigValueTranslator.getDeprecatedPrefix()) ?
+                            pluginConfigValueTranslator.getPrefix() :
+                            "(" + String.join("|",
+                                    pluginConfigValueTranslator.getDeprecatedPrefix(),
+                                    pluginConfigValueTranslator.getPrefix()) + ")";
+                    return Pattern.compile(
+                            String.format(SECRETS_REFERENCE_PATTERN_STRING,
+                                    prefix, VALUE_REFERENCE_KEY));
+                },
                 Function.identity()));
     }
 
