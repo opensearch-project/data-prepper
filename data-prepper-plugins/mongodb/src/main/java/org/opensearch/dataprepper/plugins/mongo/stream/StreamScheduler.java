@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,12 +45,14 @@ public class StreamScheduler implements Runnable {
     private final MongoDBSourceConfig sourceConfig;
     private final String s3PathPrefix;
     private final PluginMetrics pluginMetrics;
+    private final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics;
     public StreamScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final Buffer<Record<Event>> buffer,
                            final AcknowledgementSetManager acknowledgementSetManager,
                            final MongoDBSourceConfig sourceConfig,
                            final String s3PathPrefix,
-                           final PluginMetrics pluginMetrics) {
+                           final PluginMetrics pluginMetrics,
+                           final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics) {
         this.sourceCoordinator = sourceCoordinator;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
         recordBufferWriter = RecordBufferWriter.create(bufferAccumulator, pluginMetrics);
@@ -58,6 +61,7 @@ public class StreamScheduler implements Runnable {
         checkArgument(Objects.nonNull(s3PathPrefix), "S3 path prefix must not be null");
         this.s3PathPrefix = s3PathPrefix;
         this.pluginMetrics = pluginMetrics;
+        this.documentDBAggregateMetrics = documentDBAggregateMetrics;
     }
 
     @Override
@@ -113,7 +117,7 @@ public class StreamScheduler implements Runnable {
                 .get();
         return StreamWorker.create(recordBufferWriter, recordConverter, sourceConfig,
                 streamAcknowledgementManager, partitionCheckpoint, pluginMetrics, DEFAULT_RECORD_FLUSH_BATCH_SIZE,
-                DEFAULT_CHECKPOINT_INTERVAL_MILLS, DEFAULT_BUFFER_WRITE_INTERVAL_MILLS, partitionCollectionConfig.getStreamBatchSize());
+                DEFAULT_CHECKPOINT_INTERVAL_MILLS, DEFAULT_BUFFER_WRITE_INTERVAL_MILLS, partitionCollectionConfig.getStreamBatchSize(), documentDBAggregateMetrics);
     }
 
     private PartitionKeyRecordConverter getPartitionKeyRecordConverter(final StreamPartition streamPartition) {

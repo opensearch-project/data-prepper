@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.leader.LeaderScheduler;
 import org.opensearch.dataprepper.plugins.mongo.s3partition.S3PartitionCreatorScheduler;
+import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +31,7 @@ public class DocumentDBService {
     private final MongoDBSourceConfig sourceConfig;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final PluginConfigObservable pluginConfigObservable;
+    private final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics;
     private ExecutorService leaderExecutor;
     public DocumentDBService(final EnhancedSourceCoordinator sourceCoordinator,
                              final MongoDBSourceConfig sourceConfig,
@@ -41,6 +43,7 @@ public class DocumentDBService {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceConfig = sourceConfig;
         this.pluginConfigObservable = pluginConfigObservable;
+        this.documentDBAggregateMetrics = new DocumentDBSourceAggregateMetrics();
     }
 
     /**
@@ -69,7 +72,7 @@ public class DocumentDBService {
                 buffer, sourceCoordinator, pluginMetrics, acknowledgementSetManager,
                 numThread -> Executors.newFixedThreadPool(
                         numThread, BackgroundThreadFactory.defaultExecutorThreadFactory("documentdb-source")),
-                s3PathPrefix);
+                s3PathPrefix, documentDBAggregateMetrics);
         mongoTasksRefresher.initialize(sourceConfig);
         pluginConfigObservable.addPluginConfigObserver(
                 pluginConfig -> mongoTasksRefresher.update((MongoDBSourceConfig) pluginConfig));

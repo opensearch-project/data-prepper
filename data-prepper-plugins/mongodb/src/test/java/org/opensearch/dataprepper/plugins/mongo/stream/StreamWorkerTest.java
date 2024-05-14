@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.mongo.stream;
 
+import com.mongodb.MongoClientException;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -46,6 +47,7 @@ import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConv
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.mongo.model.S3PartitionStatus;
+import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 
 import java.time.Duration;
 import java.util.List;
@@ -65,6 +67,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -106,6 +109,18 @@ public class StreamWorkerTest {
     @Mock
     private PluginMetrics mockPluginMetrics;
 
+    @Mock
+    private DocumentDBSourceAggregateMetrics documentDBSourceAggregateMetrics;
+
+    @Mock
+    private Counter streamApiInvocations;
+
+    @Mock
+    private Counter stream4xxErrors;
+
+    @Mock
+    private Counter stream5xxErrors;
+
     private StreamWorker streamWorker;
 
     private static final Random random = new Random();
@@ -117,14 +132,20 @@ public class StreamWorkerTest {
         when(mockPluginMetrics.summary(BYTES_RECEIVED)).thenReturn(bytesReceivedSummary);
         when(mockPluginMetrics.summary(BYTES_PROCESSED)).thenReturn(bytesProcessedSummary);
         when(mockSourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
+        when(documentDBSourceAggregateMetrics.getStreamApiInvocations()).thenReturn(streamApiInvocations);
+        lenient().when(documentDBSourceAggregateMetrics.getStream4xxErrors()).thenReturn(stream4xxErrors);
+        lenient().when(documentDBSourceAggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
         streamWorker = new StreamWorker(mockRecordBufferWriter, mockRecordConverter, mockSourceConfig, mockStreamAcknowledgementManager,
-                mockPartitionCheckpoint, mockPluginMetrics, 2, 1000, 10_000, 1_000);
+                mockPartitionCheckpoint, mockPluginMetrics, 2, 1000, 10_000, 1_000, documentDBSourceAggregateMetrics);
     }
 
     @Test
     void test_processStream_invalidCollection() {
         when(streamPartition.getCollection()).thenReturn(UUID.randomUUID().toString());
         assertThrows(IllegalArgumentException.class, () -> streamWorker.processStream(streamPartition));
+        verify(streamApiInvocations).increment();
+        verify(stream4xxErrors).increment();
+        verify(stream5xxErrors, never()).increment();
     }
 
     @Test
@@ -208,6 +229,9 @@ public class StreamWorkerTest {
         verify(bytesProcessedSummary).record(doc1Json1.getBytes().length + doc1Json2.getBytes().length);
         verify(failureItemsCounter, never()).increment();
         verify(mockPartitionCheckpoint, atLeast(1)).checkpoint("{\"resumeToken2\": 234}", 2);
+        verify(streamApiInvocations).increment();
+        verify(stream4xxErrors, never()).increment();
+        verify(stream5xxErrors, never()).increment();
     }
 
 
@@ -218,13 +242,16 @@ public class StreamWorkerTest {
         MongoClient mongoClient = mock(MongoClient.class);
         try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
             mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
-                    .thenThrow(RuntimeException.class);
+                    .thenThrow(MongoClientException.class);
             assertThrows(RuntimeException.class, () -> streamWorker.processStream(streamPartition));
         }
         verifyNoInteractions(mongoClient);
         verifyNoInteractions(mockRecordBufferWriter);
         verifyNoInteractions(successItemsCounter);
         verifyNoInteractions(failureItemsCounter);
+        verify(streamApiInvocations).increment();
+        verify(stream4xxErrors).increment();
+        verify(stream5xxErrors, never()).increment();
     }
 
     @Test
@@ -315,6 +342,9 @@ public class StreamWorkerTest {
         verify(mockRecordBufferWriter, times(2)).writeToBuffer(eq(null), any());
         verify(successItemsCounter).increment(2);
         verify(failureItemsCounter, never()).increment();
+        verify(streamApiInvocations).increment();
+        verify(stream4xxErrors, never()).increment();
+        verify(stream5xxErrors, never()).increment();
     }
 
     @Test
@@ -353,6 +383,9 @@ public class StreamWorkerTest {
         future.cancel(true);
         executorService.shutdownNow();
         verify(mongoDatabase).getCollection(eq("collection"));
+        verify(streamApiInvocations).increment();
+        verify(stream4xxErrors, never()).increment();
+        verify(stream5xxErrors, never()).increment();
     }
 
     @Test
@@ -421,6 +454,9 @@ public class StreamWorkerTest {
         verify(successItemsCounter).increment(1);
         verify(failureItemsCounter, never()).increment();
         verify(mockPartitionCheckpoint).resetCheckpoint();
+        verify(streamApiInvocations).increment();
+        verify(stream4xxErrors, never()).increment();
+        verify(stream5xxErrors, never()).increment();
     }
 
     @ParameterizedTest
@@ -484,6 +520,9 @@ public class StreamWorkerTest {
         verify(successItemsCounter).increment(1);
         verify(failureItemsCounter, never()).increment();
         verify(mockPartitionCheckpoint).resetCheckpoint();
+        verify(streamApiInvocations).increment();
+        verify(stream4xxErrors, never()).increment();
+        verify(stream5xxErrors, never()).increment();
     }
 
     private static Stream<Arguments> mongoDataTypeProvider() {

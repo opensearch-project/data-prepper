@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.mongo.export;
 
+import com.mongodb.MongoClientException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -19,6 +20,7 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfi
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.mongo.model.PartitionIdentifierBatch;
+import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,16 +38,21 @@ public class MongoDBExportPartitionSupplier implements Function<ExportPartition,
     private static final String COLLECTION_SPLITTER = "\\.";
 
     private final MongoDBSourceConfig sourceConfig;
+    private final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics;
 
-    public MongoDBExportPartitionSupplier(final MongoDBSourceConfig sourceConfig) {
+    public MongoDBExportPartitionSupplier(final MongoDBSourceConfig sourceConfig,
+                                          final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics) {
         this.sourceConfig = sourceConfig;
+        this.documentDBAggregateMetrics = documentDBAggregateMetrics;
     }
 
     private PartitionIdentifierBatch buildPartitions(final ExportPartition exportPartition) {
+        documentDBAggregateMetrics.getExportApiInvocations().increment();
         final List<PartitionIdentifier> collectionPartitions = new ArrayList<>();
         final String collectionDbName = exportPartition.getCollection();
         List<String> collection = List.of(collectionDbName.split(COLLECTION_SPLITTER));
         if (collection.size() < 2) {
+            documentDBAggregateMetrics.getExport4xxErrors().increment();
             throw new IllegalArgumentException("Invalid Collection Name. Must be in db.collection format");
         }
         final Optional<ExportProgressState> exportProgressStateOptional = exportPartition
@@ -112,12 +119,20 @@ public class MongoDBExportPartitionSupplier implements Function<ExportPartition,
                             .projection(new Document("_id", 1))
                             .sort(new Document("_id", 1))
                             .limit(1);
-                } catch (Exception e) {
-                    LOG.error("Failed to read start cursor when build partitions", e);
-                    throw new RuntimeException(e);
                 }
             }
+        } catch (final IllegalArgumentException | MongoClientException e) {
+            // IllegalArgumentException is thrown when database or collection name is not valid
+            // MongoClientException is thrown for exceptions indicating a failure condition with the MongoClient
+            documentDBAggregateMetrics.getExport4xxErrors().increment();
+            LOG.error("Client side exception while build partitions.", e);
+            throw new RuntimeException(e);
+        } catch (final Exception e) {
+            documentDBAggregateMetrics.getExport5xxErrors().increment();
+            LOG.error("Server side exception while build partitions.", e);
+            throw new RuntimeException(e);
         }
+
         return new PartitionIdentifierBatch(collectionPartitions, isLastBatch, endDocId);
     }
 

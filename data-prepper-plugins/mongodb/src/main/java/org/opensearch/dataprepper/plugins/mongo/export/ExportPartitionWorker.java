@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.mongo.export;
 
+import com.mongodb.MongoClientException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
@@ -24,6 +25,7 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfi
 import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
 import org.opensearch.dataprepper.plugins.mongo.model.S3PartitionStatus;
+import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +82,7 @@ public class ExportPartitionWorker implements Runnable {
     private final AcknowledgementSet acknowledgementSet;
     private final long exportStartTimeEpochMillis;
     private final DataQueryPartitionCheckpoint partitionCheckpoint;
+    private final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics;
 
     Optional<S3PartitionStatus> s3PartitionStatus = Optional.empty();
 
@@ -90,7 +93,8 @@ public class ExportPartitionWorker implements Runnable {
                                  final MongoDBSourceConfig sourceConfig,
                                  final DataQueryPartitionCheckpoint partitionCheckpoint,
                                  final long exportStartTimeEpochMillis,
-                                 final PluginMetrics pluginMetrics) {
+                                 final PluginMetrics pluginMetrics,
+                                 final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics) {
         this.recordBufferWriter = recordBufferWriter;
         this.recordConverter = recordConverter;
         this.dataQueryPartition = dataQueryPartition;
@@ -104,6 +108,7 @@ public class ExportPartitionWorker implements Runnable {
         this.failureItemsCounter = pluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME);
         this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
         this.bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
+        this.documentDBAggregateMetrics = documentDBAggregateMetrics;
     }
 
     private boolean shouldWaitForS3Partition(final String collection) {
@@ -113,8 +118,11 @@ public class ExportPartitionWorker implements Runnable {
 
     @Override
     public void run() {
+        documentDBAggregateMetrics.getExportApiInvocations().increment();
+
         final List<String> partitionKeys = List.of(dataQueryPartition.getPartitionKey().split(PARTITION_KEY_SPLITTER));
         if (partitionKeys.size() < PARTITION_KEY_PARTS) {
+            documentDBAggregateMetrics.getExport5xxErrors().increment();
             throw new RuntimeException("Invalid Partition Key. Must as db.collection|gte|lte format. Key: " + dataQueryPartition.getPartitionKey());
         }
         final List<String> collection = List.of(partitionKeys.get(0).split(COLLECTION_SPLITTER));
@@ -123,7 +131,8 @@ public class ExportPartitionWorker implements Runnable {
         final String gteClassName = partitionKeys.get(3);
         final String lteClassName = partitionKeys.get(4);
         if (collection.size() < 2) {
-            throw new RuntimeException("Invalid Collection Name. Must as db.collection format");
+            documentDBAggregateMetrics.getExport4xxErrors().increment();
+            throw new IllegalArgumentException("Invalid Collection Name. Must as db.collection format");
         }
         long lastCheckpointTime = System.currentTimeMillis();
         while (shouldWaitForS3Partition(dataQueryPartition.getCollection()) && !Thread.currentThread().isInterrupted()) {
@@ -139,6 +148,7 @@ public class ExportPartitionWorker implements Runnable {
         final List<String> s3Partitions = s3PartitionStatus.get().getPartitions();
         if (s3Partitions.isEmpty()) {
             // This should not happen unless the S3 partition creator failed.
+            documentDBAggregateMetrics.getExport5xxErrors().increment();
             throw new IllegalStateException("S3 partitions are not created. Please check the S3 partition creator thread.");
         }
 
@@ -237,12 +247,22 @@ public class ExportPartitionWorker implements Runnable {
             } catch (Exception e) {
                 LOG.error("Exception connecting to cluster and loading partition {}.", query, e);
                 throw new RuntimeException(e);
-            } finally {
+            }  finally {
                 // Do final checkpoint when reaching end of partition or due to exception
                 partitionCheckpoint.checkpoint(recordCount);
             }
 
             LOG.info("Records processed: {}, recordCount: {}", totalRecords, recordCount);
+        } catch (final IllegalArgumentException | MongoClientException e) {
+            // IllegalArgumentException is thrown when database or collection name is not valid
+            // MongoClientException is thrown for exceptions indicating a failure condition with the MongoClient
+            documentDBAggregateMetrics.getExport4xxErrors().increment();
+            LOG.error("Client side exception while connecting to cluster and loading partition.", e);
+            throw new RuntimeException(e);
+        } catch (final Exception e) {
+            documentDBAggregateMetrics.getExport5xxErrors().increment();
+            LOG.error("Server side exception while connecting to cluster and loading partition.", e);
+            throw new RuntimeException(e);
         }
     }
 
