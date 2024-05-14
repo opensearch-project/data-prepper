@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.mongo.export.ExportWorker;
 import org.opensearch.dataprepper.plugins.mongo.export.MongoDBExportPartitionSupplier;
 import org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler;
+import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +43,7 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
     private final Counter credentialsChangeCounter;
     private final Counter executorRefreshErrorsCounter;
     private final String s3PathPrefix;
+    private final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics;
     private MongoDBExportPartitionSupplier currentMongoDBExportPartitionSupplier;
     private MongoDBSourceConfig currentMongoDBSourceConfig;
     private ExecutorService currentExecutor;
@@ -51,7 +53,8 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
                                final PluginMetrics pluginMetrics,
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final Function<Integer, ExecutorService> executorServiceFunction,
-                               final String s3PathPrefix) {
+                               final String s3PathPrefix,
+                               final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics) {
         this.sourceCoordinator = sourceCoordinator;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -61,6 +64,7 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
         this.executorRefreshErrorsCounter = pluginMetrics.counter(EXECUTOR_REFRESH_ERRORS);
         checkArgument(Objects.nonNull(s3PathPrefix), "S3 path prefix must not be null");
         this.s3PathPrefix = s3PathPrefix;
+        this.documentDBAggregateMetrics = documentDBAggregateMetrics;
     }
 
     public void initialize(final MongoDBSourceConfig sourceConfig) {
@@ -87,14 +91,14 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
     private void refreshJobs(MongoDBSourceConfig pluginConfig) {
         final List<Runnable> runnables = new ArrayList<>();
         if (pluginConfig.getCollections().stream().anyMatch(CollectionConfig::isExport)) {
-            currentMongoDBExportPartitionSupplier = new MongoDBExportPartitionSupplier(pluginConfig);
+            currentMongoDBExportPartitionSupplier = new MongoDBExportPartitionSupplier(pluginConfig, documentDBAggregateMetrics);
             runnables.add(new ExportScheduler(sourceCoordinator, currentMongoDBExportPartitionSupplier, pluginMetrics));
             runnables.add(new ExportWorker(
-                    sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, pluginConfig, s3PathPrefix));
+                    sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, pluginConfig, s3PathPrefix, documentDBAggregateMetrics));
         }
         if (pluginConfig.getCollections().stream().anyMatch(CollectionConfig::isStream)) {
             runnables.add(new StreamScheduler(
-                    sourceCoordinator, buffer, acknowledgementSetManager, pluginConfig, s3PathPrefix, pluginMetrics));
+                    sourceCoordinator, buffer, acknowledgementSetManager, pluginConfig, s3PathPrefix, pluginMetrics, documentDBAggregateMetrics));
         }
         this.currentExecutor = executorServiceFunction.apply(runnables.size());
         runnables.forEach(currentExecutor::submit);
