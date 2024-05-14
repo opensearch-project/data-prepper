@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
+import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -46,11 +47,14 @@ public class ExportWorkerTest {
     @Mock
     private RecordBufferWriter recordBufferWriter;
 
+    @Mock
+    private DocumentDBSourceAggregateMetrics documentDBSourceAggregateMetrics;
+
     private ExportWorker exportWorker;
 
     @BeforeEach
     public void setup() throws Exception {
-        exportWorker = new ExportWorker(sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, sourceConfig, S3_PATH_PREFIX);
+        exportWorker = new ExportWorker(sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, sourceConfig, S3_PATH_PREFIX, documentDBSourceAggregateMetrics);
     }
 
     @Test
@@ -67,7 +71,7 @@ public class ExportWorkerTest {
 
     @Test
     void test_export_withNullS3PathPrefix() {
-        assertThrows(IllegalArgumentException.class, () -> new ExportWorker(sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, sourceConfig, null));
+        assertThrows(IllegalArgumentException.class, () -> new ExportWorker(sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, sourceConfig, null, documentDBSourceAggregateMetrics));
     }
 
 }
