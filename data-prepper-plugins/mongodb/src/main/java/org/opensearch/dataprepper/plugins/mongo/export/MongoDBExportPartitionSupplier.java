@@ -73,6 +73,7 @@ public class MongoDBExportPartitionSupplier implements Function<ExportPartition,
             while (!Thread.currentThread().isInterrupted()) {
                 try (final MongoCursor<Document> startCursor = startIterable.iterator()) {
                     if (!startCursor.hasNext()) {
+                        LOG.info("No records to process or has reached end of the export partition.");
                         isLastBatch = true;
                         break;
                     }

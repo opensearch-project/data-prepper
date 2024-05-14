@@ -186,7 +186,7 @@ public class StreamWorker {
 
             try (MongoCursor<ChangeStreamDocument<Document>> cursor = getChangeStreamCursor(collection, resumeToken.orElse(null))) {
                 while ((shouldWaitForExport(streamPartition) || shouldWaitForS3Partition(streamPartition.getCollection())) && !Thread.currentThread().isInterrupted()) {
-                    LOG.info("Initial load not complete for collection {}, waiting for initial lo be complete before resuming streams.", collectionDbName);
+                    LOG.info("Initial load not complete for collection {}, waiting for initial load to be complete before resuming streams.", collectionDbName);
                     try {
                         Thread.sleep(DEFAULT_EXPORT_COMPLETE_WAIT_INTERVAL_MILLIS);
                     } catch (final InterruptedException ex) {
@@ -201,6 +201,7 @@ public class StreamWorker {
                     throw new IllegalStateException("S3 partitions are not created. Please check the S3 partition creator thread.");
                 }
                 recordConverter.initializePartitions(s3Partitions);
+                LOG.info("Starting to watch streams for change events.");
                 while (!Thread.currentThread().isInterrupted() && !stopWorker) {
                     if (cursor.hasNext()) {
                         try {
