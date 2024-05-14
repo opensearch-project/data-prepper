@@ -1,6 +1,8 @@
 package org.opensearch.dataprepper.plugins.mongo.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
@@ -23,11 +25,17 @@ public class CollectionConfig {
     private boolean stream;
 
     @JsonProperty("partition_count")
+    @Min(1)
+    @Max(1000)
     private int partitionCount;
 
     @JsonProperty("export_batch_size")
+    @Min(1)
+    @Max(1_000_000)
     private int exportBatchSize;
     @JsonProperty("stream_batch_size")
+    @Min(1)
+    @Max(1_000_000)
     private int streamBatchSize;
 
     public CollectionConfig() {
