@@ -65,7 +65,7 @@ documentdb-pipeline-reader:
         username: "${{aws_secrets:secret:password}}"
         password: "${{aws_secrets:secret:password}}"
       s3_prefix: "folder1/folder2"
-  route:
+  routes:
     - initial_load: "getMetadata(\"ingestion_type\") == \"EXPORT\""
     - stream_load: "getMetadata(\"ingestion_type\") == \"STREAM\""
   sink:

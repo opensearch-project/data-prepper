@@ -23,7 +23,7 @@ dodb-pipeline-transformed:
     bounded_blocking:
       batch_size: 125000
       buffer_size: 1000000
-  route:
+  routes:
     - initial_load: "getMetadata(\"ingestion_type\") == \"EXPORT\""
     - stream_load: "getMetadata(\"ingestion_type\") == \"STREAM\""
   sink:
