@@ -58,16 +58,18 @@ public class ExtensionLoader {
                     pluginAnnotation.allowInPipelineConfigurations(),
                     pluginConfigurationType, rootKey);
             if (!DEFAULT_DEPRECATED_ROOT_KEY_JSON_PATH.equals(deprecatedRootKey)) {
-                if (configuration != null) {
-                    throw new InvalidPluginDefinitionException(
-                            String.format(
-                                    "Deprecated extension json path [%s] cannot be configured together with " +
-                                            "the current extension json path [%s].", deprecatedRootKey, rootKey));
-                }
                 final Object deprecatedConfiguration = extensionPluginConfigurationConverter.convert(
                         pluginAnnotation.allowInPipelineConfigurations(),
                         pluginConfigurationType, deprecatedRootKey);
-                return new SingleConfigArgumentArgumentsContext(deprecatedConfiguration);
+                if (deprecatedConfiguration != null) {
+                    if (configuration != null) {
+                        throw new InvalidPluginDefinitionException(
+                                String.format(
+                                        "Deprecated extension json path [%s] cannot be configured together with " +
+                                                "the current extension json path [%s].", deprecatedRootKey, rootKey));
+                    }
+                    return new SingleConfigArgumentArgumentsContext(deprecatedConfiguration);
+                }
             }
             return new SingleConfigArgumentArgumentsContext(configuration);
         }

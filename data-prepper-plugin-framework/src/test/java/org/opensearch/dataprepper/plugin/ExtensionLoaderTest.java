@@ -152,7 +152,9 @@ class ExtensionLoaderTest {
         when(extensionClassProvider.loadExtensionPluginClasses())
                 .thenReturn(Collections.singleton(TestExtensionWithDeprecatedRootJsonPath.class));
         when(extensionPluginConfigurationConverter.convert(eq(true), eq(TestExtensionConfig.class),
-                any())).thenReturn(testExtensionConfig);
+                eq("/test_extension_name"))).thenReturn(testExtensionConfig);
+        when(extensionPluginConfigurationConverter.convert(eq(true), eq(TestExtensionConfig.class),
+                eq("/deprecated_test_extension_name"))).thenReturn(testExtensionConfig);
 
         assertThrows(InvalidPluginDefinitionException.class, () -> createObjectUnderTest().loadExtensions());
     }
