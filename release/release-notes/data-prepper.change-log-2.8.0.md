@@ -1,22 +1,35 @@
 
-* __Adding &#39;single_word_only&#39; option to obfuscate processor (#4476)__
+* __Generated THIRD-PARTY file for cedaf87 (#4548)__
 
-    [Utkarsh Agarwal](mailto:126544832+Utkarsh-Aga@users.noreply.github.com) - Wed, 15 May 2024 15:38:36 -0700
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Wed, 15 May 2024 15:36:08 -0700
     
-    EAD -&gt; refs/heads/main, refs/remotes/origin/main, refs/remotes/origin/HEAD
-    Adding &#39;single_word_only&#39; option to obfuscate processor
-     Signed-off-by: Utkarsh Agarwal &lt;utkarsh07379@gmail.com&gt;
+    EAD -&gt; refs/heads/2.8, refs/remotes/origin/2.8
+    Signed-off-by: GitHub &lt;noreply@github.com&gt;
+    Co-authored-by: dlvenable
+    &lt;dlvenable@users.noreply.github.com&gt;
 
-* __Updates werkzeug to 3.0.3 in examples to fix CVE-2024-34069. Resolves #4515 (#4546)__
+* __Updates werkzeug to 3.0.3 in examples to fix CVE-2024-34069. Resolves #4515 (#4546) (#4547)__
 
-    [David Venable](mailto:dlv@amazon.com) - Wed, 15 May 2024 15:04:53 -0700
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Wed, 15 May 2024 15:26:50 -0700
     
     
     Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit 906e8255f3440faa90bc2cde4cbd6ffa76ba004c)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
 
-* __Logging update and config validation (#4541)__
+* __Change version for 2.8 release to be 2.8.0 (#4540)__
 
-    [Dinu John](mailto:86094133+dinujoh@users.noreply.github.com) - Tue, 14 May 2024 17:57:24 -0500
+    [Krishna Kondaka](mailto:41027584+kkondaka@users.noreply.github.com) - Wed, 15 May 2024 10:55:21 -0700
+    
+    
+    Signed-off-by: Krishna Kondaka
+    &lt;krishkdk@dev-dsk-krishkdk-2c-bd29c437.us-west-2.amazon.com&gt;
+    Co-authored-by:
+    Krishna Kondaka &lt;krishkdk@dev-dsk-krishkdk-2c-bd29c437.us-west-2.amazon.com&gt;
+
+* __Logging update and config validation (#4541) (#4542)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Wed, 15 May 2024 10:54:55 -0700
     
     
     * Logging improvements for export and stream processing for DocumentDB source
@@ -27,38 +40,36 @@
     
     ---------
      Signed-off-by: Dinu John &lt;86094133+dinujoh@users.noreply.github.com&gt;
+    (cherry picked from commit 94fa30d74d5857a19110eb04e959d990b755b48e)
+     Co-authored-by: Dinu John &lt;86094133+dinujoh@users.noreply.github.com&gt;
 
-* __Add aggregate metrics (#4531)__
+* __Add aggregate metrics (#4531) (#4537)__
 
-    [Hai Yan](mailto:8153134+oeyh@users.noreply.github.com) - Tue, 14 May 2024 16:30:13 -0500
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Tue, 14 May 2024 17:43:09 -0500
     
     
     Signed-off-by: Hai Yan &lt;oeyh@amazon.com&gt;
+    (cherry picked from commit 0495fae1ae0c6eb36a45e587de89932892e5cbbb)
+     Co-authored-by: Hai Yan &lt;8153134+oeyh@users.noreply.github.com&gt;
 
-* __Updates the next Data Prepper version to 2.9 (#4532)__
+* __Adds an ndjson input codec. This reads JSON objects for ND-JSON and more lenient formats that do not have the newline. (#4533) (#4536)__
 
-    [Krishna Kondaka](mailto:41027584+kkondaka@users.noreply.github.com) - Tue, 14 May 2024 14:19:56 -0700
-    
-    
-    Signed-off-by: Krishna Kondaka
-    &lt;krishkdk@dev-dsk-krishkdk-2c-bd29c437.us-west-2.amazon.com&gt;
-    Co-authored-by:
-    Krishna Kondaka &lt;krishkdk@dev-dsk-krishkdk-2c-bd29c437.us-west-2.amazon.com&gt;
-
-* __Adds an ndjson input codec. This reads JSON objects for ND-JSON and more lenient formats that do not have the newline. (#4533)__
-
-    [David Venable](mailto:dlv@amazon.com) - Tue, 14 May 2024 12:10:01 -0700
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Tue, 14 May 2024 14:17:04 -0700
     
     
     Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit 59e9fd6227117d3b309975256e87b1ab324d6e30)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
 
-* __Address route and subpipeline for pipeline tranformation (#4528)__
+* __Address route and subpipeline for pipeline tranformation (#4528) (#4535)__
 
-    [Srikanth Govindarajan](mailto:srigovs@amazon.com) - Mon, 13 May 2024 15:58:11 -0700
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Tue, 14 May 2024 12:15:31 -0700
     
     
     Address route and subpipeline for pipeline tranformation
      Signed-off-by: srigovs &lt;srigovs@amazon.com&gt;
+    (cherry picked from commit e35b4eaf26af79d67834c0f183a846f501be4c16)
+     Co-authored-by: Srikanth Govindarajan &lt;srigovs@amazon.com&gt;
 
 * __Fix an issue that exception messages are masked (#4416)__
 
