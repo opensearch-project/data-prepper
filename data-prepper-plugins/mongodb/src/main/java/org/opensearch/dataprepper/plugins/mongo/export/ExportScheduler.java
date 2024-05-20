@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.plugins.mongo.coordination.state.DataQueryProg
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus;
 import org.opensearch.dataprepper.plugins.mongo.model.PartitionIdentifierBatch;
+import org.opensearch.dataprepper.plugins.mongo.model.StreamLoadStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +26,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static org.opensearch.dataprepper.plugins.mongo.stream.StreamWorker.STREAM_PREFIX;
 
 public class ExportScheduler implements Runnable {
     public static final String EXPORT_PREFIX = "EXPORT-";
@@ -83,12 +86,11 @@ public class ExportScheduler implements Runnable {
                     final PartitionIdentifierBatch partitionIdentifierBatch = mongoDBExportPartitionSupplier.apply(exportPartition);
 
                     createDataQueryPartitions(
-                            exportPartition.getCollection(), Instant.now(), partitionIdentifierBatch.getPartitionIdentifiers(),
-                            (GlobalState) globalPartition.get());
+                            Instant.now(), partitionIdentifierBatch.getPartitionIdentifiers(), (GlobalState) globalPartition.get());
                     updateExportPartition(exportPartition, partitionIdentifierBatch);
 
                     if (partitionIdentifierBatch.isLastBatch()) {
-                        completeExportPartition(exportPartition);
+                        completeExportPartition(exportPartition, partitionIdentifierBatch.getPartitionIdentifiers().isEmpty());
                         markTotalPartitionsAsComplete(exportPartition.getCollection());
                     }
                 }
@@ -111,9 +113,7 @@ public class ExportScheduler implements Runnable {
         LOG.warn("Export scheduler interrupted, looks like shutdown has triggered");
     }
 
-    private boolean createDataQueryPartitions(final String collection,
-                                           final Instant exportTime,
-                                           final List<PartitionIdentifier> partitionIdentifiers,
+    private boolean createDataQueryPartitions(final Instant exportTime, final List<PartitionIdentifier> partitionIdentifiers,
                                               final GlobalState globalState) {
         AtomicLong totalQueries = new AtomicLong();
         partitionIdentifiers.forEach(partitionIdentifier -> {
@@ -153,11 +153,17 @@ public class ExportScheduler implements Runnable {
         }
     }
 
-    private void completeExportPartition(final ExportPartition exportPartition) {
+    private void completeExportPartition(final ExportPartition exportPartition, final boolean emptyPartition) {
         exportJobSuccessCounter.increment();
         final ExportProgressState state = exportPartition.getProgressState().get();
         state.setStatus(COMPLETED_STATUS);
         enhancedSourceCoordinator.completePartition(exportPartition);
+        if (emptyPartition) {
+            LOG.info("There are no records to export. Streaming can continue...");
+            final StreamLoadStatus streamLoadStatus = new StreamLoadStatus(Instant.now().toEpochMilli());
+            enhancedSourceCoordinator.createPartition(
+                    new GlobalState(STREAM_PREFIX + exportPartition.getCollection(), streamLoadStatus.toMap()));
+        }
     }
 
     private void markTotalPartitionsAsComplete(final String collection) {
