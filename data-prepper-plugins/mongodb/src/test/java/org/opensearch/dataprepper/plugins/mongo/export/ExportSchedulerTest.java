@@ -165,7 +165,7 @@ public class ExportSchedulerTest {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> exportScheduler.run());
         await()
-            .atMost(Duration.ofMillis(DEFAULT_GET_PARTITION_BACKOFF_MILLIS).plus(Duration.ofSeconds(60)))
+            .atMost(Duration.ofMillis(DEFAULT_GET_PARTITION_BACKOFF_MILLIS).plus(Duration.ofSeconds(2)))
             .untilAsserted(() -> verify(coordinator, times(1)).createPartition(any()));
 
         future.cancel(true);
