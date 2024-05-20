@@ -1,9 +1,20 @@
 
+* __Adding &#39;single_word_only&#39; option to obfuscate processor (#4476) (#4550)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Thu, 16 May 2024 09:37:36 -0700
+    
+    EAD -&gt; refs/heads/2.8, tag: refs/tags/2.8.0, refs/remotes/origin/2.8
+    Adding &#39;single_word_only&#39; option to obfuscate processor
+     Signed-off-by: Utkarsh Agarwal &lt;utkarsh07379@gmail.com&gt;
+    (cherry picked from commit 6d48efba0d71ae0e0674b65ef33ce492b8b215ee)
+     Co-authored-by: Utkarsh Agarwal
+    &lt;126544832+Utkarsh-Aga@users.noreply.github.com&gt;
+
 * __Generated THIRD-PARTY file for cedaf87 (#4548)__
 
     [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Wed, 15 May 2024 15:36:08 -0700
     
-    EAD -&gt; refs/heads/2.8, refs/remotes/origin/2.8
+
     Signed-off-by: GitHub &lt;noreply@github.com&gt;
     Co-authored-by: dlvenable
     &lt;dlvenable@users.noreply.github.com&gt;
