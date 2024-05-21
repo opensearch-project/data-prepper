@@ -7,12 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import org.opensearch.dataprepper.model.event.DataType;
-import org.opensearch.dataprepper.typeconverter.TypeConverter;
-import org.opensearch.dataprepper.typeconverter.IntegerConverter;
-import org.opensearch.dataprepper.typeconverter.StringConverter;
-import org.opensearch.dataprepper.typeconverter.DoubleConverter;
-import org.opensearch.dataprepper.typeconverter.BooleanConverter;
-import org.opensearch.dataprepper.typeconverter.LongConverter;
+import org.opensearch.dataprepper.typeconverter.*;
 
 import java.util.Map;
 import java.util.Arrays;
@@ -23,7 +18,8 @@ public enum TargetType {
     STRING(DataType.STRING, new StringConverter()),
     DOUBLE(DataType.DOUBLE, new DoubleConverter()),
     BOOLEAN(DataType.BOOLEAN, new BooleanConverter()),
-    LONG(DataType.LONG, new LongConverter());
+    LONG(DataType.LONG, new LongConverter()),
+    BIGDECIMAL(DataType.BIGDECIMAL, new BigDecimalConverter());
 
     private static final Map<String, TargetType> OPTIONS_MAP = Arrays.stream(TargetType.values())
             .collect(Collectors.toMap(

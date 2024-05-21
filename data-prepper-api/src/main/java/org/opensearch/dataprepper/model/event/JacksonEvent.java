@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
@@ -63,9 +64,10 @@ public class JacksonEvent implements Event {
 
     private static final ObjectMapper mapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
-            .registerModule(new Jdk8Module()); // required for using Optional with Jackson. Ref: https://github.com/FasterXML/jackson-modules-java8
+            .registerModule(new Jdk8Module()) // required for using Optional with Jackson. Ref: https://github.com/FasterXML/jackson-modules-java8
+            .setNodeFactory(JsonNodeFactory.withExactBigDecimals(true));
 
-    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {
+    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {
     };
 
     private final EventMetadata eventMetadata;

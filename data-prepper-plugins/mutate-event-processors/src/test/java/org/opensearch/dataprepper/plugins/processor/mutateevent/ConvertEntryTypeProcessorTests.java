@@ -8,6 +8,9 @@ package org.opensearch.dataprepper.plugins.processor.mutateevent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -15,6 +18,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.typeconverter.BigDecimalConverter;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -22,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.math.BigDecimal;
+import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -53,7 +58,7 @@ public class ConvertEntryTypeProcessorTests {
     }
 
     @BeforeEach
-    private void setup() {
+    public void setup() {
         lenient().when(mockConfig.getKey()).thenReturn(TEST_KEY);
         lenient().when(mockConfig.getKeys()).thenReturn(null);
         lenient().when(mockConfig.getConvertWhen()).thenReturn(null);
@@ -101,6 +106,51 @@ public class ConvertEntryTypeProcessorTests {
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue.toString());
         assertThat(event.get(TEST_KEY, Integer.class), equalTo(testValue.intValue()));
+    }
+
+    @Test
+    void testDecimalToBigDecimalConvertEntryTypeProcessor() {
+        BigDecimal testValue = new BigDecimal(Integer.MAX_VALUE);
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("bigdecimal"));
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+        Event event = executeAndGetProcessedEvent(testValue.toString());
+        assertThat(event.get(TEST_KEY, BigDecimal.class), equalTo(testValue));
+    }
+
+    @Test
+    void testDecimalToBigDecimalWithScaleConvertEntryTypeProcessor() {
+        String testValue = "2147483647";
+        TargetType bigdecimalTargetType = TargetType.fromOptionValue("bigdecimal");
+        ((BigDecimalConverter)bigdecimalTargetType.getTargetConverter()).setScale(5);
+        when(mockConfig.getType()).thenReturn(bigdecimalTargetType);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+        Event event = executeAndGetProcessedEvent(testValue);
+        //As we set the scale to 5, we expect to see 5 positions filled with zeros
+        assertThat(event.get(TEST_KEY, BigDecimal.class), equalTo(new BigDecimal(testValue+".00000")));
+        ((BigDecimalConverter)bigdecimalTargetType.getTargetConverter()).setScale(0);
+    }
+
+    @ParameterizedTest
+    @MethodSource("decimalFormatKeysArgumentProvider")
+    void testDecimalToBigDecimalWithRoundingConvertEntryTypeProcessor(String source, String target) {
+
+        TargetType bigdecimalTargetType = TargetType.fromOptionValue("bigdecimal");
+        ((BigDecimalConverter)bigdecimalTargetType.getTargetConverter()).setScale(5);
+        when(mockConfig.getType()).thenReturn(bigdecimalTargetType);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+        //Default HALF_ROUND_UP applied for all the conversions
+        Event event1 = executeAndGetProcessedEvent(source);
+        assertThat(event1.get(TEST_KEY, BigDecimal.class), equalTo(new BigDecimal(target)));
+    }
+
+    private static Stream<Arguments> decimalFormatKeysArgumentProvider() {
+        //Default HALF_ROUND_UP applied for all the conversions
+        return Stream.of(
+                Arguments.of("1703908412.707011", "1703908412.70701"),
+                Arguments.of("1703908412.707016", "1703908412.70702"),
+                Arguments.of("1703908412.707015", "1703908412.70702"),
+                Arguments.of("1703908412.707014", "1703908412.70701")
+        );
     }
 
     @Test
