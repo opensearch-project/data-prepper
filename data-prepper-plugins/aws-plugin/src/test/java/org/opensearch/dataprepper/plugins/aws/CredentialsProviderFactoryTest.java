@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -31,6 +32,7 @@ import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -58,8 +60,11 @@ class CredentialsProviderFactoryTest {
     @Mock
     private AwsCredentialsOptions awsCredentialsOptions;
 
+    @Mock
+    private AwsStsConfiguration defaultStsConfiguration;
+
     private CredentialsProviderFactory createObjectUnderTest() {
-        return new CredentialsProviderFactory();
+        return new CredentialsProviderFactory(defaultStsConfiguration);
     }
 
     @Test
@@ -97,6 +102,22 @@ class CredentialsProviderFactoryTest {
                 .thenReturn(Region.US_EAST_1);
         final AwsCredentialsProvider awsCredentialsProvider = createObjectUnderTest().providerFromOptions(awsCredentialsOptions);
         assertThat(awsCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+    }
+
+    @ParameterizedTest
+    @MethodSource("getRegions")
+    void getDefaultRegion_returns_expected_region(final Region region) {
+        when(defaultStsConfiguration.getAwsRegion()).thenReturn(region);
+
+        final CredentialsProviderFactory credentialsProviderFactory = createObjectUnderTest();
+
+        final Region actualRegion = credentialsProviderFactory.getDefaultRegion();
+
+        assertThat(actualRegion, equalTo(region));
+    }
+
+    private static List<Region> getRegions() {
+        return Region.regions();
     }
 
 

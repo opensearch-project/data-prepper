@@ -36,10 +36,21 @@ class CredentialsProviderFactory {
     static final long STS_CLIENT_BASE_BACKOFF_MILLIS = 1000L;
     static final long STS_CLIENT_MAX_BACKOFF_MILLIS = 60000L;
 
+    private final AwsStsConfiguration defaultStsConfiguration;
+
+    public CredentialsProviderFactory(final AwsStsConfiguration defaultStsConfiguration) {
+        Objects.requireNonNull(defaultStsConfiguration);
+        this.defaultStsConfiguration = defaultStsConfiguration;
+    }
+
+    Region getDefaultRegion() {
+        return defaultStsConfiguration.getAwsRegion();
+    }
+
     AwsCredentialsProvider providerFromOptions(final AwsCredentialsOptions credentialsOptions) {
         Objects.requireNonNull(credentialsOptions);
 
-        if(credentialsOptions.getStsRoleArn() != null) {
+        if(credentialsOptions.getStsRoleArn() != null || defaultStsConfiguration.getAwsStsRoleArn() != null) {
             return createStsCredentials(credentialsOptions);
         }
 
@@ -48,13 +59,15 @@ class CredentialsProviderFactory {
 
     private AwsCredentialsProvider createStsCredentials(final AwsCredentialsOptions credentialsOptions) {
 
-        final String stsRoleArn = credentialsOptions.getStsRoleArn();
+        final String stsRoleArn = credentialsOptions.getStsRoleArn() == null ? defaultStsConfiguration.getAwsStsRoleArn() : credentialsOptions.getStsRoleArn();
 
         validateStsRoleArn(stsRoleArn);
 
         LOG.debug("Creating new AwsCredentialsProvider with role {}.", stsRoleArn);
 
-        final StsClient stsClient = createStsClient(credentialsOptions.getRegion());
+        final Region region = credentialsOptions.getRegion() == null ? defaultStsConfiguration.getAwsRegion() : credentialsOptions.getRegion();
+
+        final StsClient stsClient = createStsClient(region);
 
         AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
                 .roleSessionName("Data-Prepper-" + UUID.randomUUID())
