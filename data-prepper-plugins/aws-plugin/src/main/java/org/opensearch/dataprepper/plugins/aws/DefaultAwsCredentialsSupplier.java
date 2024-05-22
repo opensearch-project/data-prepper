@@ -8,6 +8,9 @@ package org.opensearch.dataprepper.plugins.aws;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+
+import java.util.Optional;
 
 class DefaultAwsCredentialsSupplier implements AwsCredentialsSupplier {
     private final CredentialsProviderFactory credentialsProviderFactory;
@@ -21,5 +24,10 @@ class DefaultAwsCredentialsSupplier implements AwsCredentialsSupplier {
     @Override
     public AwsCredentialsProvider getProvider(final AwsCredentialsOptions options) {
         return credentialsCache.getOrCreate(options, () -> credentialsProviderFactory.providerFromOptions(options));
+    }
+
+    @Override
+    public Optional<Region> getDefaultRegion() {
+        return Optional.ofNullable(credentialsProviderFactory.getDefaultRegion());
     }
 }
