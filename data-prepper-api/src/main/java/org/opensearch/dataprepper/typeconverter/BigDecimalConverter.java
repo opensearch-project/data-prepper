@@ -13,9 +13,9 @@ import java.math.RoundingMode;
  * If required, the scale can be set using the setScale method.
  */
 public class BigDecimalConverter implements TypeConverter<BigDecimal> {
-    //TODO: Scale declared here becomes the state of this converter which
-    // makes it globally applied for this pipeline right from the first use, which may not be right.
-    // Need to think of a better way to handle this.
+    // Scale declared here becomes the state of this converter.
+    // If the same instance of the converter is used for multiple conversions,
+    // scale value set will be preserved and applied on the next conversion.
     private int scale = 0;
 
     public void setScale(int scale) {
