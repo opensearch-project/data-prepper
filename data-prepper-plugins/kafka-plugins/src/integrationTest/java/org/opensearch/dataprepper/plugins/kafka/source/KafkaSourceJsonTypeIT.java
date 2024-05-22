@@ -13,6 +13,9 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,8 +39,10 @@ import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -49,12 +54,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
 
 public class KafkaSourceJsonTypeIT {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSourceJsonTypeIT.class);
@@ -98,6 +105,10 @@ public class KafkaSourceJsonTypeIT {
     private String testKey;
     private String testTopic;
     private String testGroup;
+    private String headerKey1;
+    private byte[] headerValue1;
+    private String headerKey2;
+    private byte[] headerValue2;
 
     public KafkaSource createObjectUnderTest() {
         return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, kafkaClusterConfigSupplier, pluginConfigObservable);
@@ -105,6 +116,10 @@ public class KafkaSourceJsonTypeIT {
 
     @BeforeEach
     public void setup() throws Throwable {
+        headerKey1 = RandomStringUtils.randomAlphabetic(6);
+        headerValue1 = RandomStringUtils.randomAlphabetic(10).getBytes(StandardCharsets.UTF_8);
+        headerKey2 = RandomStringUtils.randomAlphabetic(5);
+        headerValue2 = RandomStringUtils.randomAlphabetic(15).getBytes(StandardCharsets.UTF_8);
         sourceConfig = mock(KafkaSourceConfig.class);
         pluginMetrics = mock(PluginMetrics.class);
         counter = mock(Counter.class);
@@ -181,7 +196,7 @@ public class KafkaSourceJsonTypeIT {
     }
 
     @Test
-    public void TestJsonRecordsWithNullKey() throws Exception {
+    public void TestJsonRecordsWithNullKeyKK() throws Exception {
         final int numRecords = 1;
         when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
@@ -209,6 +224,10 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("kafka_key"), equalTo(null));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
             assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
+            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) map.get("kafka_headers");
+            assertThat(kafkaHeaders.get(headerKey1), equalTo(headerValue1));
+            assertThat(kafkaHeaders.get(headerKey2), equalTo(headerValue2));
+            assertThat(map.get("kakfaCreateTime_timestamp"), not(equalTo(null)));
         }
     }
 
@@ -240,6 +259,9 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("status"), equalTo(true));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
             assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
+            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) map.get("kafka_headers");
+            assertThat(kafkaHeaders.get(headerKey1), equalTo(headerValue1));
+            assertThat(kafkaHeaders.get(headerKey2), equalTo(headerValue2));
             event.getEventHandle().release(false);
         }
         receivedRecords.clear();
@@ -258,6 +280,9 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("status"), equalTo(true));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
             assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
+            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) map.get("kafka_headers");
+            assertThat(kafkaHeaders.get(headerKey1), equalTo(headerValue1));
+            assertThat(kafkaHeaders.get(headerKey2), equalTo(headerValue2));
             event.getEventHandle().release(true);
         }
     }
@@ -289,6 +314,9 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("status"), equalTo(true));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
             assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
+            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) map.get("kafka_headers");
+            assertThat(kafkaHeaders.get(headerKey1), equalTo(headerValue1));
+            assertThat(kafkaHeaders.get(headerKey2), equalTo(headerValue2));
         }
     }
 
@@ -320,6 +348,9 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("kafka_key"), equalTo(testKey));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
             assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
+            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) map.get("kafka_headers");
+            assertThat(kafkaHeaders.get(headerKey1), equalTo(headerValue1));
+            assertThat(kafkaHeaders.get(headerKey2), equalTo(headerValue2));
         }
     }
 
@@ -351,6 +382,9 @@ public class KafkaSourceJsonTypeIT {
             assertThat(metadata.getAttributes().get("kafka_key"), equalTo(testKey));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
             assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
+            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) map.get("kafka_headers");
+            assertThat(kafkaHeaders.get(headerKey1), equalTo(headerValue1));
+            assertThat(kafkaHeaders.get(headerKey2), equalTo(headerValue2));
         }
     }
 
@@ -364,8 +398,12 @@ public class KafkaSourceJsonTypeIT {
         KafkaProducer producer = new KafkaProducer(props);
         for (int i = 0; i < numRecords; i++) {
             String value = "{\"name\":\"testName" + i + "\", \"id\":" + (TEST_ID + i) + ", \"status\":true}";
+            List<Header> headers = Arrays.asList(
+                new RecordHeader(headerKey1, headerValue1),
+                new RecordHeader(headerKey2, headerValue2)
+            );
             ProducerRecord<String, String> record =
-                    new ProducerRecord<>(topicName, testKey, value);
+                    new ProducerRecord<>(topicName, null, testKey, value, new RecordHeaders(headers));
             producer.send(record);
             try {
                 Thread.sleep(100);

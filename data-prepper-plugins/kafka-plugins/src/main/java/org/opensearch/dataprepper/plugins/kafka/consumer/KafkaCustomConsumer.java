@@ -17,6 +17,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
@@ -421,6 +424,16 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             }
             data.put(key, value);
         }
+        Headers headers = consumerRecord.headers();
+        if (headers != null) {
+            Map<String, byte[]> headerData = new HashMap<>();
+            for (Header header: headers) {
+                headerData.put(header.key(), header.value());
+            }
+            data.put("kafka_headers", headerData);
+        }
+        String kafkaTimestampKey = consumerRecord.timestampType() != TimestampType.NO_TIMESTAMP_TYPE ? consumerRecord.timestampType().toString() : "";
+        data.put("kakfa"+kafkaTimestampKey+"_timestamp", consumerRecord.timestamp());
         event = JacksonLog.builder().withData(data).build();
         EventMetadata eventMetadata = event.getMetadata();
         if (kafkaKeyMode == KafkaKeyMode.INCLUDE_AS_METADATA) {
