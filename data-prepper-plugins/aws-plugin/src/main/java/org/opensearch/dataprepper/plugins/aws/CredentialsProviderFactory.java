@@ -43,10 +43,6 @@ class CredentialsProviderFactory {
         this.defaultStsConfiguration = defaultStsConfiguration;
     }
 
-    Region getDefaultRegion() {
-        return defaultStsConfiguration.getAwsRegion();
-    }
-
     AwsCredentialsProvider providerFromOptions(final AwsCredentialsOptions credentialsOptions) {
         Objects.requireNonNull(credentialsOptions);
 
