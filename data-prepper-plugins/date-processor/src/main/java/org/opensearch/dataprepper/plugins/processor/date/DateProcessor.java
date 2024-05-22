@@ -126,9 +126,11 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 .appendPattern(pattern)
                 .parseDefaulting(ChronoField.MONTH_OF_YEAR, localDateForDefaultValues.getMonthValue())
                 .parseDefaulting(ChronoField.DAY_OF_MONTH, localDateForDefaultValues.getDayOfMonth())
-                .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
                 .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
                 .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0);
+
+        if(!pattern.contains("a"))
+            dateTimeFormatterBuilder.parseDefaulting(ChronoField.HOUR_OF_DAY, 0);
 
         if (!(pattern.contains("y") || pattern.contains("u")))
             dateTimeFormatterBuilder.parseDefaulting(ChronoField.YEAR_OF_ERA, localDateForDefaultValues.getYear());
