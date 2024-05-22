@@ -7,18 +7,12 @@ package org.opensearch.dataprepper.plugins.aws;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -67,28 +61,5 @@ class DefaultAwsCredentialsSupplierTest {
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
         when(credentialsProviderFactory.providerFromOptions(options)).thenReturn(awsCredentialsProvider);
         assertThat(actualCredentialsSupplier.get(), equalTo(awsCredentialsProvider));
-    }
-
-    @ParameterizedTest
-    @MethodSource("getRegions")
-    void getDefaultRegion_returns_default_region(final Region region) {
-        when(credentialsProviderFactory.getDefaultRegion()).thenReturn(region);
-
-        final AwsCredentialsSupplier objectUnderTest = createObjectUnderTest();
-        assertThat(objectUnderTest.getDefaultRegion().isPresent(), equalTo(true));
-        assertThat(objectUnderTest.getDefaultRegion().get(), equalTo(credentialsProviderFactory.getDefaultRegion()));
-    }
-
-    @Test
-    void no_default_region_returns_empty_optional() {
-        when(credentialsProviderFactory.getDefaultRegion()).thenReturn(null);
-
-        final AwsCredentialsSupplier objectUnderTest = createObjectUnderTest();
-        assertThat(objectUnderTest.getDefaultRegion(), equalTo(Optional.empty()));
-
-    }
-
-    private static List<Region> getRegions() {
-        return Region.regions();
     }
 }
