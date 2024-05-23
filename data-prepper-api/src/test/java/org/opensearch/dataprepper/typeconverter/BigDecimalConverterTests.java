@@ -27,12 +27,21 @@ public class BigDecimalConverterTests {
         final String stringConstant = "12345678912.12345";
         assertThat(converter.convert(stringConstant), equalTo(new BigDecimal(stringConstant)));
     }
+
     @Test
     void testIntegerToBigDecimalConversion() {
         BigDecimalConverter converter = new BigDecimalConverter();
         final int intConstant = 12345;
         assertThat(converter.convert(intConstant), equalTo(BigDecimal.valueOf(intConstant)));
     }
+
+    @Test
+    void testLongToBigDecimalConversion() {
+        BigDecimalConverter converter = new BigDecimalConverter();
+        final long longConstant = 123456789012L;
+        assertThat(converter.convert(longConstant).longValue(), equalTo(longConstant));
+    }
+
     @Test
     void testBooleanToBigDecimalConversion() {
         BigDecimalConverter converter = new BigDecimalConverter();
@@ -40,6 +49,13 @@ public class BigDecimalConverterTests {
         assertThat(converter.convert(boolFalseConstant), equalTo(BigDecimal.valueOf(0)));
         final Boolean boolTrueConstant = true;
         assertThat(converter.convert(boolTrueConstant), equalTo(BigDecimal.valueOf(1)));
+    }
+
+    @Test
+    void testFloatToBigDecimalConversion() {
+        BigDecimalConverter converter = new BigDecimalConverter();
+        final float fval = 12345.6789f;
+        assertThat(converter.convert(fval).floatValue(), equalTo(fval));
     }
 
     @Test
@@ -76,6 +92,7 @@ public class BigDecimalConverterTests {
             Arguments.of(BigDecimal.valueOf(Double.MIN_VALUE), Double.MIN_VALUE, 0)
         );
     }
+
     @Test
     void testInvalidBigDecimalConversion() {
         BigDecimalConverter converter = new BigDecimalConverter();
