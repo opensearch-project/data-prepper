@@ -9,11 +9,14 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
@@ -22,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.containsStringIgnoringCase;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -880,6 +884,26 @@ public class JacksonEventTest {
             currentObject = nextObject;
         }
         return dataObject;
+    }
+
+    @ParameterizedTest
+    @MethodSource("getBigDecimalPutTestData")
+    void testPutAndGet_withBigDecimal(final String value) {
+        final String key = "bigDecimalKey";
+        event.put(key, new BigDecimal(value));
+        final Object result = event.get(key, Object.class);
+        assertThat(result, is(notNullValue()));
+        assertThat(result.toString(), is(equalTo(value)));
+    }
+
+    private static Stream<Arguments> getBigDecimalPutTestData() {
+        return Stream.of(
+                Arguments.of("702062202420"),
+                Arguments.of("1.23345E+9"),
+                Arguments.of("1.2345E+60"),
+                Arguments.of("1.2345E+6"),
+                Arguments.of("1.000")
+        );
     }
 
 }
