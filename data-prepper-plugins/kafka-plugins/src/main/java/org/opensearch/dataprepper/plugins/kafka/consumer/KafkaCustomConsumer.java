@@ -433,7 +433,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             data.put("kafka_headers", headerData);
         }
         String kafkaTimestampKey = consumerRecord.timestampType() != TimestampType.NO_TIMESTAMP_TYPE ? consumerRecord.timestampType().toString() : "";
-        data.put("kakfa"+kafkaTimestampKey+"_timestamp", consumerRecord.timestamp());
+        data.put("kafka"+kafkaTimestampKey+"_timestamp", consumerRecord.timestamp());
         event = JacksonLog.builder().withData(data).build();
         EventMetadata eventMetadata = event.getMetadata();
         if (kafkaKeyMode == KafkaKeyMode.INCLUDE_AS_METADATA) {
