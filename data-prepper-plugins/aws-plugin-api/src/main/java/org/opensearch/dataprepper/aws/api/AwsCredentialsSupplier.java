@@ -6,6 +6,9 @@
 package org.opensearch.dataprepper.aws.api;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+
+import java.util.Optional;
 
 /**
  * An interface available to plugins via the AWS Plugin Extension which supplies
@@ -19,4 +22,10 @@ public interface AwsCredentialsSupplier {
      * @return An {@link AwsCredentialsProvider} to use.
      */
     AwsCredentialsProvider getProvider(AwsCredentialsOptions options);
+
+    /**
+     * Gets the default region if it is configured. Otherwise returns null
+     * @return Default {@link Region}
+     */
+    Optional<Region> getDefaultRegion();
 }

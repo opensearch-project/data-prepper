@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -72,6 +74,9 @@ public class KafkaBuffer_KmsIT {
     @Mock
     private AcknowledgementSet acknowledgementSet;
 
+    @Mock
+    private AwsCredentialsSupplier awsCredentialsSupplier;
+
     private Random random;
 
     private BufferTopicConfig topicConfig;
@@ -121,10 +126,12 @@ public class KafkaBuffer_KmsIT {
         kmsClient = KmsClient.create();
 
         byteDecoder = null;
+
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenAnswer(options -> DefaultCredentialsProvider.create());
     }
 
     private KafkaBuffer createObjectUnderTest() {
-        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, ignored -> DefaultCredentialsProvider.create(), null);
+        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, awsCredentialsSupplier, null);
     }
 
     @Nested
