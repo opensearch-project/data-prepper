@@ -13,16 +13,12 @@ import java.math.RoundingMode;
  * If required, the scale can be set using the setScale method.
  */
 public class BigDecimalConverter implements TypeConverter<BigDecimal> {
-    // Scale declared here becomes the state of this converter.
-    // If the same instance of the converter is used for multiple conversions,
-    // scale value set will be preserved and applied on the next conversion.
-    private int scale = 0;
-
-    public void setScale(int scale) {
-        this.scale = scale;
-    }
 
     public BigDecimal convert(Object source) throws IllegalArgumentException {
+        return this.convert(source, 0);
+    }
+
+    public BigDecimal convert(Object source, int scale) throws IllegalArgumentException {
         BigDecimal result = null;
         if (source instanceof String) {
             result = new BigDecimal((String)source);

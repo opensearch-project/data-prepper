@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.opensearch.dataprepper.typeconverter.BigDecimalConverter;
 
 import java.util.List;
 import java.util.Optional;
@@ -42,12 +41,9 @@ public class ConvertEntryTypeProcessorConfig  {
 
     public List<String> getKeys() { return keys; }
 
-    public TargetType getType() {
-        if(type == TargetType.BIGDECIMAL && scale!=0) {
-            ((BigDecimalConverter) type.getTargetConverter()).setScale(scale);
-        }
-        return type;
-    }
+    public TargetType getType() { return type;  }
+
+    public int getScale() { return scale;  }
 
     public String getConvertWhen() { return convertWhen; }
 
