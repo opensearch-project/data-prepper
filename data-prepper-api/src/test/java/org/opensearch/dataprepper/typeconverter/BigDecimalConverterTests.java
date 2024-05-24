@@ -70,10 +70,9 @@ public class BigDecimalConverterTests {
     void testDoubleToBigDecimalConversion(BigDecimal expectedBigDecimal, double actualValue, int scale) {
         BigDecimalConverter converter = new BigDecimalConverter();
         if(scale!=0) {
-            converter.setScale(scale);
             expectedBigDecimal = expectedBigDecimal.setScale(scale, RoundingMode.HALF_EVEN);
         }
-        assertThat(converter.convert(actualValue), equalTo(expectedBigDecimal));
+        assertThat(converter.convert(actualValue, scale), equalTo(expectedBigDecimal));
     }
 
     private static Stream<Arguments> decimalToBigDecimalValueProvider() {
