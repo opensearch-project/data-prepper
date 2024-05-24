@@ -196,7 +196,7 @@ public class KafkaSourceJsonTypeIT {
     }
 
     @Test
-    public void TestJsonRecordsWithNullKeyKK() throws Exception {
+    public void TestJsonRecordsWithNullKey() throws Exception {
         final int numRecords = 1;
         when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
@@ -224,10 +224,12 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("kafka_key"), equalTo(null));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
             assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
-            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) map.get("kafka_headers");
+            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) metadata.getAttributes().get("kafka_headers");
             assertThat(kafkaHeaders.get(headerKey1), equalTo(headerValue1));
             assertThat(kafkaHeaders.get(headerKey2), equalTo(headerValue2));
-            assertThat(map.get("kakfaCreateTime_timestamp"), not(equalTo(null)));
+            assertThat(metadata.getAttributes().get("kafkaCreateTime_timestamp"), not(equalTo(null)));
+            assertThat(metadata.getAttribute("kafka_headers/"+headerKey1), equalTo(headerValue1));
+            assertThat(metadata.getAttribute("kafka_headers/"+headerKey2), equalTo(headerValue2));
         }
     }
 
@@ -259,9 +261,12 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("status"), equalTo(true));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
             assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
-            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) map.get("kafka_headers");
+            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) metadata.getAttributes().get("kafka_headers");
             assertThat(kafkaHeaders.get(headerKey1), equalTo(headerValue1));
             assertThat(kafkaHeaders.get(headerKey2), equalTo(headerValue2));
+            assertThat(metadata.getAttributes().get("kafkaCreateTime_timestamp"), not(equalTo(null)));
+            assertThat(metadata.getAttribute("kafka_headers/"+headerKey1), equalTo(headerValue1));
+            assertThat(metadata.getAttribute("kafka_headers/"+headerKey2), equalTo(headerValue2));
             event.getEventHandle().release(false);
         }
         receivedRecords.clear();
@@ -280,9 +285,12 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("status"), equalTo(true));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
             assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
-            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) map.get("kafka_headers");
+            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) metadata.getAttributes().get("kafka_headers");
             assertThat(kafkaHeaders.get(headerKey1), equalTo(headerValue1));
             assertThat(kafkaHeaders.get(headerKey2), equalTo(headerValue2));
+            assertThat(metadata.getAttributes().get("kafkaCreateTime_timestamp"), not(equalTo(null)));
+            assertThat(metadata.getAttribute("kafka_headers/"+headerKey1), equalTo(headerValue1));
+            assertThat(metadata.getAttribute("kafka_headers/"+headerKey2), equalTo(headerValue2));
             event.getEventHandle().release(true);
         }
     }
@@ -314,9 +322,12 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("status"), equalTo(true));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
             assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
-            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) map.get("kafka_headers");
+            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) metadata.getAttributes().get("kafka_headers");
             assertThat(kafkaHeaders.get(headerKey1), equalTo(headerValue1));
             assertThat(kafkaHeaders.get(headerKey2), equalTo(headerValue2));
+            assertThat(metadata.getAttributes().get("kafkaCreateTime_timestamp"), not(equalTo(null)));
+            assertThat(metadata.getAttribute("kafka_headers/"+headerKey1), equalTo(headerValue1));
+            assertThat(metadata.getAttribute("kafka_headers/"+headerKey2), equalTo(headerValue2));
         }
     }
 
@@ -348,9 +359,12 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("kafka_key"), equalTo(testKey));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
             assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
-            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) map.get("kafka_headers");
+            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) metadata.getAttributes().get("kafka_headers");
             assertThat(kafkaHeaders.get(headerKey1), equalTo(headerValue1));
             assertThat(kafkaHeaders.get(headerKey2), equalTo(headerValue2));
+            assertThat(metadata.getAttributes().get("kafkaCreateTime_timestamp"), not(equalTo(null)));
+            assertThat(metadata.getAttribute("kafka_headers/"+headerKey1), equalTo(headerValue1));
+            assertThat(metadata.getAttribute("kafka_headers/"+headerKey2), equalTo(headerValue2));
         }
     }
 
@@ -382,9 +396,12 @@ public class KafkaSourceJsonTypeIT {
             assertThat(metadata.getAttributes().get("kafka_key"), equalTo(testKey));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(testTopic));
             assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
-            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) map.get("kafka_headers");
+            Map<String, byte[]> kafkaHeaders = (Map<String, byte[]>) metadata.getAttributes().get("kafka_headers");
             assertThat(kafkaHeaders.get(headerKey1), equalTo(headerValue1));
             assertThat(kafkaHeaders.get(headerKey2), equalTo(headerValue2));
+            assertThat(metadata.getAttributes().get("kafkaCreateTime_timestamp"), not(equalTo(null)));
+            assertThat(metadata.getAttribute("kafka_headers/"+headerKey1), equalTo(headerValue1));
+            assertThat(metadata.getAttribute("kafka_headers/"+headerKey2), equalTo(headerValue2));
         }
     }
 

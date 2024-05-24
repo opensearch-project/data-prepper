@@ -134,6 +134,25 @@ public class DefaultEventMetadataTest {
         assertThat(eventMetadata.getAttribute(key), equalTo(value));
     }
 
+    private static Stream<Arguments> getNestedAttributeTestInputs() {
+        return Stream.of(Arguments.of(Map.of("k1", "v1", "k2", Map.of("k3", "v3")), "k1", "v1"),
+                         Arguments.of(Map.of("k1", "v1", "k2", Map.of("k3", "v3")), "k2/k3", "v3"),
+                         Arguments.of(Map.of("k1", "v1", "k2", Map.of("k3", Map.of("k4", 4))), "k2/k3/k4", 4),
+                         Arguments.of(Map.of("k1", "v1", "k2", Map.of("k3", 4)), "k2/k3/k4", null),
+                         Arguments.of(Map.of("k1","v1"),"k1", "v1"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("getNestedAttributeTestInputs")
+    public void testNestedGetAttribute(Map<String, Object> attributes, final String key, final Object expectedValue) {
+        eventMetadata = DefaultEventMetadata.builder()
+                .withEventType(testEventType)
+                .withTimeReceived(testTimeReceived)
+                .withAttributes(attributes)
+                .build();
+        assertThat(eventMetadata.getAttribute(key), equalTo(expectedValue));
+    }
+
     @Test
     public void test_with_ExternalOriginationTime() {
         Instant now = Instant.now();

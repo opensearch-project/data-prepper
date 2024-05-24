@@ -424,21 +424,21 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             }
             data.put(key, value);
         }
+        event = JacksonLog.builder().withData(data).build();
+        EventMetadata eventMetadata = event.getMetadata();
+        if (kafkaKeyMode == KafkaKeyMode.INCLUDE_AS_METADATA) {
+            eventMetadata.setAttribute("kafka_key", key);
+        }
         Headers headers = consumerRecord.headers();
         if (headers != null) {
             Map<String, byte[]> headerData = new HashMap<>();
             for (Header header: headers) {
                 headerData.put(header.key(), header.value());
             }
-            data.put("kafka_headers", headerData);
+            eventMetadata.setAttribute("kafka_headers", headerData);
         }
         String kafkaTimestampKey = consumerRecord.timestampType() != TimestampType.NO_TIMESTAMP_TYPE ? consumerRecord.timestampType().toString() : "";
-        data.put("kafka"+kafkaTimestampKey+"_timestamp", consumerRecord.timestamp());
-        event = JacksonLog.builder().withData(data).build();
-        EventMetadata eventMetadata = event.getMetadata();
-        if (kafkaKeyMode == KafkaKeyMode.INCLUDE_AS_METADATA) {
-            eventMetadata.setAttribute("kafka_key", key);
-        }
+        eventMetadata.setAttribute("kafka"+kafkaTimestampKey+"_timestamp", consumerRecord.timestamp());
         eventMetadata.setAttribute("kafka_topic", topicName);
         eventMetadata.setAttribute("kafka_partition", String.valueOf(partition));
         eventMetadata.setExternalOriginationTime(Instant.ofEpochMilli(consumerRecord.timestamp()));
