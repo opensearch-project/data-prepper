@@ -87,6 +87,7 @@ public class BigDecimalConverterTests {
             Arguments.of(new BigDecimal ("-12345678912.12345"), -12345678912.12345, 1),
             Arguments.of(BigDecimal.ONE, BigDecimal.ONE.doubleValue(), 1),
             Arguments.of(new BigDecimal("1.7976931348623157E+308"), 1.7976931348623157E+308, 0),
+            Arguments.of(new BigDecimal("1702062202420"), 1.70206220242E+12, 12),
             Arguments.of(BigDecimal.valueOf(Double.MAX_VALUE), Double.MAX_VALUE, 0),
             Arguments.of(BigDecimal.valueOf(Double.MIN_VALUE), Double.MIN_VALUE, 0)
         );

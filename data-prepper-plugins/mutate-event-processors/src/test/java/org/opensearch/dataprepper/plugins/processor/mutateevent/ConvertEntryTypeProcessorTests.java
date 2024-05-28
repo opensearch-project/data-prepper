@@ -57,7 +57,7 @@ public class ConvertEntryTypeProcessorTests {
     }
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         lenient().when(mockConfig.getKey()).thenReturn(TEST_KEY);
         lenient().when(mockConfig.getKeys()).thenReturn(null);
         lenient().when(mockConfig.getConvertWhen()).thenReturn(null);
