@@ -48,6 +48,7 @@ public class RdsSourceConfig {
     private String s3Region;
 
     @JsonProperty("export")
+    @Valid
     private ExportConfig exportConfig;
 
     public String getDbIdentifier() {
