@@ -37,6 +37,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
+import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
 import org.opensearch.dataprepper.plugins.kafka.consumer.PauseConsumePredicate;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
@@ -318,25 +319,7 @@ public class KafkaSource implements Source<Record<Event>> {
     }
 
     private void setConsumerTopicProperties(Properties properties, TopicConsumerConfig topicConfig) {
-        properties.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupID);
-        properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, (int) topicConfig.getMaxPartitionFetchBytes());
-        properties.put(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, ((Long) topicConfig.getRetryBackoff().toMillis()).intValue());
-        properties.put(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, ((Long) topicConfig.getReconnectBackoff().toMillis()).intValue());
-        properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
-                topicConfig.getAutoCommit());
-        properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
-                ((Long) topicConfig.getCommitInterval().toMillis()).intValue());
-        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-                topicConfig.getAutoOffsetReset());
-        properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
-                topicConfig.getConsumerMaxPollRecords());
-        properties.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG,
-                ((Long) topicConfig.getMaxPollInterval().toMillis()).intValue());
-        properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, ((Long) topicConfig.getSessionTimeOut().toMillis()).intValue());
-        properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, ((Long) topicConfig.getHeartBeatInterval().toMillis()).intValue());
-        properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, (int) topicConfig.getFetchMaxBytes());
-        properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, topicConfig.getFetchMaxWait());
-        properties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, (int) topicConfig.getFetchMinBytes());
+        KafkaCustomConsumerFactory.setConsumerTopicProperties(properties, topicConfig, consumerGroupID);
     }
 
     private void setPropertiesForSchemaRegistryConnectivity(Properties properties) {

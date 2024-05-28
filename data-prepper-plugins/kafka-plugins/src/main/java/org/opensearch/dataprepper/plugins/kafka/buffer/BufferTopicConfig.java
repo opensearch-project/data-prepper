@@ -65,6 +65,11 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     @Size(min = 1, max = 255, message = "size of group id should be between 1 and 255")
     private String groupId;
 
+    @JsonProperty("client_id")
+    @Valid
+    @Size(min = 1, max = 255, message = "size of client id should be between 1 and 255")
+    private String clientId;
+
     @JsonProperty("workers")
     @Valid
     @Size(min = 1, max = 200, message = "Number of worker threads should lies between 1 and 200")
@@ -133,6 +138,11 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     @Override
     public String getGroupId() {
         return groupId;
+    }
+
+    @Override
+    public String getClientId() {
+        return clientId;
     }
 
     @Override
