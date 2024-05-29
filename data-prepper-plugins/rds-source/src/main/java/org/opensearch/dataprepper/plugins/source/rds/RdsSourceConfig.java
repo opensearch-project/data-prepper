@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
 
 import java.util.List;
@@ -23,6 +24,9 @@ public class RdsSourceConfig {
      */
     @JsonProperty("db_identifier")
     private String dbIdentifier;
+
+    @JsonProperty("engine")
+    private EngineType engine = EngineType.MYSQL;
 
     @JsonProperty("tables")
     private List<String> tables;
@@ -53,6 +57,10 @@ public class RdsSourceConfig {
 
     public String getDbIdentifier() {
         return dbIdentifier;
+    }
+
+    public EngineType getEngine() {
+        return engine;
     }
 
     public List<String> getTables() {

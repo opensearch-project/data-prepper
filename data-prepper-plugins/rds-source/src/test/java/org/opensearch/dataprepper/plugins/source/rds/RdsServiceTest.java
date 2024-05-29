@@ -24,7 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,12 +56,16 @@ class RdsServiceTest {
     @BeforeEach
     void setUp() {
         when(clientFactory.buildRdsClient()).thenReturn(rdsClient);
+
     }
 
     @Test
     void test_normal_service_start() {
         RdsService rdsService = createObjectUnderTest();
-        rdsService.start(buffer);
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
+            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executor);
+            rdsService.start(buffer);
+        }
 
         verify(executor).submit(any(LeaderScheduler.class));
         verify(executor).submit(any(ExportScheduler.class));
@@ -70,15 +74,16 @@ class RdsServiceTest {
     @Test
     void test_service_shutdown_calls_executor_shutdownNow() {
         RdsService rdsService = createObjectUnderTest();
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
+            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executor);
+            rdsService.start(buffer);
+        }
         rdsService.shutdown();
 
         verify(executor).shutdownNow();
     }
 
     private RdsService createObjectUnderTest() {
-        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(eq(2))).thenReturn(executor);
-            return new RdsService(sourceCoordinator, sourceConfig, clientFactory, pluginMetrics);
-        }
+        return new RdsService(sourceCoordinator, sourceConfig, clientFactory, pluginMetrics);
     }
 }

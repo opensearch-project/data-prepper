@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.rds;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
 
 import java.util.UUID;
@@ -20,6 +21,7 @@ class RdsSourceConfigTest {
     void test_default_RdsSrouceConfig_returns_default_values() {
         final RdsSourceConfig objectUnderTest = createObjectUnderTest();
 
+        assertThat(objectUnderTest.getEngine(), equalTo(EngineType.MYSQL));
         assertThat(objectUnderTest.isAcknowledgmentsEnabled(), equalTo(false));
     }
 

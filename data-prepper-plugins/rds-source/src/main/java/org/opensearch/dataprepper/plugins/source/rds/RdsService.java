@@ -16,6 +16,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.rds.RdsClient;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -26,7 +28,7 @@ public class RdsService {
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final PluginMetrics pluginMetrics;
     private final RdsSourceConfig sourceConfig;
-    private final ExecutorService executor;
+    private ExecutorService executor;
 
     public RdsService(final EnhancedSourceCoordinator sourceCoordinator,
                       final RdsSourceConfig sourceConfig,
@@ -37,7 +39,6 @@ public class RdsService {
         this.sourceConfig = sourceConfig;
 
         rdsClient = clientFactory.buildRdsClient();
-        executor = Executors.newFixedThreadPool(2);
     }
 
     /**
@@ -49,12 +50,12 @@ public class RdsService {
      */
     public void start(Buffer<Record<Event>> buffer) {
         LOG.info("Start running RDS service");
-        Runnable leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig);
+        final List<Runnable> runnableList = new ArrayList<>();
+        runnableList.add(new LeaderScheduler(sourceCoordinator, sourceConfig));
+        runnableList.add(new ExportScheduler(sourceCoordinator, rdsClient, pluginMetrics));
 
-        Runnable exportScheduler = new ExportScheduler(sourceCoordinator, rdsClient, pluginMetrics);
-
-        executor.submit(leaderScheduler);
-        executor.submit(exportScheduler);
+        executor = Executors.newFixedThreadPool(runnableList.size());
+        runnableList.forEach(executor::submit);
     }
 
     /**
@@ -62,7 +63,9 @@ public class RdsService {
      * Each scheduler must implement logic for gracefully shutdown.
      */
     public void shutdown() {
-        LOG.info("shutdown RDS schedulers");
-        executor.shutdownNow();
+        if (executor != null) {
+            LOG.info("shutdown RDS schedulers");
+            executor.shutdownNow();
+        }
     }
 }
