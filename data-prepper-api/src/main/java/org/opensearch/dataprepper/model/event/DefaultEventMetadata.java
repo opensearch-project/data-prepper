@@ -100,8 +100,19 @@ public class DefaultEventMetadata implements EventMetadata {
     public Object getAttribute(final String attributeKey) {
         String key = (attributeKey.charAt(0) == '/') ? attributeKey.substring(1) : attributeKey;
 
-        // Does not support recursive or inner-object lookups for now.
-        return attributes.get(key);
+        Map<String, Object> mapObject = attributes;
+        if (key.contains("/")) {
+            String[] keys = key.split("/");
+            for (int i = 0; i < keys.length-1; i++) {
+                Object value = mapObject.get(keys[i]);
+                if (value == null || !(value instanceof Map)) {
+                    return null;
+                }
+                mapObject = (Map<String, Object>)value;
+                key = keys[i+1];
+            }
+        }
+        return mapObject.get(key);
     }
 
     @Override
