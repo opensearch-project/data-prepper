@@ -187,6 +187,7 @@ public class KeyValueProcessorTests {
     @MethodSource("getKeyValueGroupingTestdata")
     void testMultipleKvToObjectKeyValueProcessorWithValueGrouping(String fieldDelimiters, String input, Map<String, Object> expectedResultMap) {
         lenient().when(mockConfig.getValueGrouping()).thenReturn(true);
+        lenient().when(mockConfig.getEnableDoubleQuoteGrouping()).thenReturn(true);
         lenient().when(mockConfig.getDropKeysWithNoValue()).thenReturn(true);
         lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(fieldDelimiters);
         final KeyValueProcessor objectUnderTest = createObjectUnderTest();
@@ -208,8 +209,11 @@ public class KeyValueProcessorTests {
                 Arguments.of(", ", "key1=value1, key2=value2", Map.of("key1", "value1", "key2", "value2")),
                 Arguments.of(", ", "key1=It\\'sValue1, key2=value2", Map.of("key1", "It\\'sValue1", "key2", "value2")),
                 Arguments.of(", ", "text1 text2 key1=value1, key2=value2 text3 text4", Map.of("key1", "value1", "key2", "value2")),
-                Arguments.of(", ", "text1 text2 foo key1=value1 url=http://foo.com?bar=text,text&foo=zoo  bar k2=\"http://bar.com?a=b&c=foo bar\" barr", Map.of("key1", "value1", "url", "http://foo.com?bar=text,text&foo=zoo", "k2", "\"http://bar.com?a=b&c=foo bar\"")),
+                Arguments.of(", ", "text1 text2 foo key1=value1 url=http://foo.com?bar=text,text&foo=zoo bar k2=\"http://bar.com?a=b&c=foo bar\" barr", Map.of("key1", "value1", "url", "http://foo.com?bar=text,text&foo=zoo", "k2", "\"http://bar.com?a=b&c=foo bar\"")),
                 Arguments.of(", ", "vendorMessage=VendorMessage(uid=1847060493-1712778523223, feedValue=https://syosetu.org/novel/147705/15.html, bundleId=, linkType=URL, vendor=DOUBLEVERIFY, platform=DESKTOP, deviceTypeId=1, bidCount=6, appStoreTld=, feedSource=DSP, regions=[APAC], timestamp=1712778523223, externalId=)", Map.of("vendorMessage", "VendorMessage(uid=1847060493-1712778523223, feedValue=https://syosetu.org/novel/147705/15.html, bundleId=, linkType=URL, vendor=DOUBLEVERIFY, platform=DESKTOP, deviceTypeId=1, bidCount=6, appStoreTld=, feedSource=DSP, regions=[APAC], timestamp=1712778523223, externalId=)")),
+                Arguments.of(", ()", "vendorMessage: vendorMessage(key1=value1, key2=value2)", Map.of("key1", "value1", "key2", "value2")),
+                Arguments.of(", ", "vendorMessage: vendorMessage(key1=value1, key2=value2)", Map.of("vendorMessage(key1", "value1", "key2", "value2)")),
+                Arguments.of(", ", "key1 \"key2=val2\" key3=\"value3,value4\"", Map.of("key3", "\"value3,value4\"")),
                 Arguments.of(", ", "key1=[value1,value2], key3=value3", Map.of("key1", "[value1,value2]", "key3", "value3")),
                 Arguments.of(", ", "key1=(value1, value2), key3=value3", Map.of("key1", "(value1, value2)", "key3", "value3")),
                 Arguments.of(", ", "key1=<value1 ,value2>, key3=value3", Map.of("key1", "<value1 ,value2>", "key3", "value3")),
@@ -217,6 +221,22 @@ public class KeyValueProcessorTests {
                 Arguments.of(", ", "key1='value1,value2', key3=value3", Map.of("key1", "'value1,value2'", "key3", "value3")),
                 Arguments.of(", ", "key1=\"value1,value2\", key3=value3", Map.of("key1", "\"value1,value2\"", "key3", "value3"))
                );
+    }
+
+    @Test
+    void testDoubleQuoteGrouping() {
+        when(mockConfig.getDestination()).thenReturn(null);
+        lenient().when(mockConfig.getEnableDoubleQuoteGrouping()).thenReturn(true);
+        final Record<Event> record = getMessage("\"ignore this\"key1=value1&key2=value2 \"ignore=this&too\"");
+        keyValueProcessor = createObjectUnderTest();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+
+        final Event event = editedRecords.get(0).getData();
+        assertThat(event.containsKey("parsed_message"), is(false));
+
+        assertThat(event.containsKey("key1"), is(true));
+        assertThat(event.containsKey("key2"), is(true));
+        assertThat(event.get("key1", Object.class), is("value1"));
     }
 
     @Test

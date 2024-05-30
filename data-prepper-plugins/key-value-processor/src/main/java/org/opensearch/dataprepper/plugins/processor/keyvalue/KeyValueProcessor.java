@@ -42,6 +42,7 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 @DataPrepperPlugin(name = "key_value", pluginType = Processor.class, pluginConfigurationType = KeyValueProcessorConfig.class)
 public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(KeyValueProcessor.class);
+    private static final String DOUBLE_QUOTE = "\"";
     private static String startGroupStrings[] = {"\"","'", "(", "[", "<", "{", "http://", "https://"};
     private static Character endGroupChars[] ={'"', '\'', ')', ']', '>', '}', ' ', ' '};
 
@@ -65,6 +66,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     final String delimiterBracketCheck = "[\\[\\]()<>]";
     private final Set<Character> bracketSet = Set.of('[', ']', '(', ')', '<', '>');
     private final List<String> tagsOnFailure;
+    private final boolean doubelQuotesGroupingEnabled;
+    private String keyValueDelimiterRegex;
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics,
@@ -74,6 +77,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         this.keyValueProcessorConfig = keyValueProcessorConfig;
 
         tagsOnFailure = keyValueProcessorConfig.getTagsOnFailure();
+        doubelQuotesGroupingEnabled =   keyValueProcessorConfig.getEnableDoubleQuoteGrouping();
 
         if (keyValueProcessorConfig.getFieldDelimiterRegex() != null
                 && !keyValueProcessorConfig.getFieldDelimiterRegex().isEmpty()) {
@@ -120,6 +124,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 throw new PatternSyntaxException("key_value_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getKeyValueDelimiterRegex(), -1);
             }
 
+            keyValueDelimiterRegex = keyValueProcessorConfig.getKeyValueDelimiterRegex();
             keyValueDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex());
 
             if (keyValueProcessorConfig.getRecursive()
@@ -138,6 +143,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getValueSplitCharacters());
             }
+            keyValueDelimiterRegex = regex;
 
             keyValueDelimiterPattern = Pattern.compile(regex);
 
@@ -163,7 +169,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         validateKeySets(includeKeysSet, excludeKeysSet, defaultValuesSet);
-        
+
         if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
             throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
         }
@@ -261,7 +267,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 i++;
                 continue;
             } else if (str.charAt(i) == endChar) {
-                return i-1;
+                return i;
             } else
                 i++;
         }
@@ -291,7 +297,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
         return -1;
     }
-    
+
     private List<String> parseWithValueGrouping(String str) {
         String fieldDelimiter = keyValueProcessorConfig.getFieldSplitCharacters();
         Set<Character> fieldDelimiterSet = new HashSet<>();
@@ -309,9 +315,20 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 continue;
             }
             int groupIndex = findInStartGroup(str, i);
+            boolean skippedGroup = false;
             if (groupIndex >= 0) {
-                i = skipGroup(str, i+1, endGroupChars[groupIndex])+2;
-            } else if (fieldDelimiterSet.contains(str.charAt(i))) {
+                String[] s = keyValueDelimiterPattern.split(str.substring(start,i+1));
+                // Only handle Grouping patterns in the values, not keys
+                if (s.length > 1 || startGroupStrings[groupIndex].equals("\"")) {
+                    i = skipGroup(str, i+1, endGroupChars[groupIndex]);
+                    skippedGroup = true;
+                }
+            }
+            if (fieldDelimiterSet.contains(str.charAt(i))) {
+                // If end of group character is same as field delimiter, then include that in the value if value grouping is done
+                if (skippedGroup) {
+                    i++;
+                }
                 addPart(parts, str, start, i);
                 i++;
                 start = i;
@@ -340,9 +357,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     continue;
                 }
 
-                final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
+                String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
                 if (groupsRaw == null) {
                     continue;
+                }
+                if (doubelQuotesGroupingEnabled && groupsRaw.contains(DOUBLE_QUOTE)) {
+                    String regex = "(?<!(" + keyValueDelimiterRegex + "))\"(?:\\\\\"|[^\"])*\"";
+                    groupsRaw = groupsRaw.replaceAll(regex, "");
                 }
                 String[] groups;
                 if (keyValueProcessorConfig.getValueGrouping()) {
