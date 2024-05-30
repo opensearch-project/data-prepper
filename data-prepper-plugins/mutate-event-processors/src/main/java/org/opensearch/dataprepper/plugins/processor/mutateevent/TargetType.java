@@ -25,7 +25,7 @@ public enum TargetType {
     DOUBLE(DataType.DOUBLE, new DoubleConverter()),
     BOOLEAN(DataType.BOOLEAN, new BooleanConverter()),
     LONG(DataType.LONG, new LongConverter()),
-    BIGDECIMAL(DataType.BIGDECIMAL, new BigDecimalConverter());
+    BIG_DECIMAL(DataType.BIG_DECIMAL, new BigDecimalConverter());
 
     private static final Map<String, TargetType> OPTIONS_MAP = Arrays.stream(TargetType.values())
             .collect(Collectors.toMap(

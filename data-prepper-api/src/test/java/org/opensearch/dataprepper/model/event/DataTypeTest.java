@@ -44,7 +44,7 @@ class DataTypeTest {
             Arguments.of("testString", "string", true),
             Arguments.of(2L, "long", true),
             Arguments.of(2.0, "double", true),
-            Arguments.of(BigDecimal.valueOf(2.34567), "bigdecimal", true),
+            Arguments.of(BigDecimal.valueOf(2.34567), "big_decimal", true),
             Arguments.of(true, "boolean", true),
             Arguments.of(Map.of("k","v"), "map", true),
             Arguments.of(testArray, "array", true),

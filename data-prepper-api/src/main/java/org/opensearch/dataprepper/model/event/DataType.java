@@ -55,7 +55,7 @@ public enum DataType {
      *
      * @since 2.8
      */
-    BIGDECIMAL("bigdecimal"),
+    BIG_DECIMAL("big_decimal"),
 
     /**
      * Type of <i>map</i>. Compatible with the Java <b>map</b> primitive data type.
@@ -116,7 +116,7 @@ public enum DataType {
                 return (object instanceof Integer);
             case LONG:
                 return (object instanceof Long);
-            case BIGDECIMAL:
+            case BIG_DECIMAL:
                 return (object instanceof BigDecimal);
             default: // STRING
                 return (object instanceof String);

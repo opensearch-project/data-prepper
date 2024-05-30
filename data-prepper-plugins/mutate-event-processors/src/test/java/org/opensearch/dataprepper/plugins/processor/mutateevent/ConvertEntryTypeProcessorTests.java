@@ -110,7 +110,7 @@ public class ConvertEntryTypeProcessorTests {
     @Test
     void testDecimalToBigDecimalConvertEntryTypeProcessor() {
         BigDecimal testValue = new BigDecimal(Integer.MAX_VALUE);
-        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("bigdecimal"));
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("big_decimal"));
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue.toString());
         assertThat(event.get(TEST_KEY, BigDecimal.class), equalTo(testValue));
@@ -119,7 +119,7 @@ public class ConvertEntryTypeProcessorTests {
     @Test
     void testDecimalToBigDecimalWithScaleConvertEntryTypeProcessor() {
         String testValue = "2147483647";
-        TargetType bigdecimalTargetType = TargetType.fromOptionValue("bigdecimal");
+        TargetType bigdecimalTargetType = TargetType.fromOptionValue("big_decimal");
         when(mockConfig.getType()).thenReturn(bigdecimalTargetType);
         when(mockConfig.getScale()).thenReturn(5);
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
@@ -132,7 +132,7 @@ public class ConvertEntryTypeProcessorTests {
     @MethodSource("decimalFormatKeysArgumentProvider")
     void testDecimalToBigDecimalWithRoundingConvertEntryTypeProcessor(String source, String target) {
 
-        TargetType bigdecimalTargetType = TargetType.fromOptionValue("bigdecimal");
+        TargetType bigdecimalTargetType = TargetType.fromOptionValue("big_decimal");
         when(mockConfig.getType()).thenReturn(bigdecimalTargetType);
         when(mockConfig.getScale()).thenReturn(5);
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
