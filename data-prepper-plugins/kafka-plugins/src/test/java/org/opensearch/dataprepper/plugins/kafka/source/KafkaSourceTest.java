@@ -82,6 +82,7 @@ class KafkaSourceTest {
     private PluginConfigObservable pluginConfigObservable;
 
     private static final String TEST_GROUP_ID = "testGroupId";
+    private static final String TEST_CLIENT_ID = "testClientId";
 
     public KafkaSource createObjectUnderTest() {
         return new KafkaSource(
@@ -107,6 +108,8 @@ class KafkaSourceTest {
         when(topic2.getConsumerMaxPollRecords()).thenReturn(1);
         when(topic1.getGroupId()).thenReturn(TEST_GROUP_ID);
         when(topic2.getGroupId()).thenReturn(TEST_GROUP_ID);
+        when(topic1.getClientId()).thenReturn(TEST_CLIENT_ID);
+        when(topic2.getClientId()).thenReturn(TEST_CLIENT_ID);
         when(topic1.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));
         when(topic2.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));
         when(topic1.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(5));
@@ -150,6 +153,18 @@ class KafkaSourceTest {
     void test_kafkaSource_basicFunctionality() {
         when(topic1.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
         when(topic2.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+        kafkaSource = createObjectUnderTest();
+        assertTrue(Objects.nonNull(kafkaSource));
+        kafkaSource.start(buffer);
+        assertTrue(Objects.nonNull(kafkaSource.getConsumer()));
+    }
+
+    @Test
+    void test_kafkaSource_basicFunctionalityWithClientIdNull() {
+        when(topic1.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+        when(topic2.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+        when(topic1.getClientId()).thenReturn(null);
+        when(topic1.getClientId()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
         assertTrue(Objects.nonNull(kafkaSource));
         kafkaSource.start(buffer);
