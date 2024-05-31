@@ -20,16 +20,31 @@ import java.util.List;
 public class RdsSourceConfig {
 
     /**
-     * Identifier for RDS instance or Aurora cluster
+     * Identifier for RDS instance/cluster or Aurora cluster
      */
     @JsonProperty("db_identifier")
     private String dbIdentifier;
 
+    /**
+     * Whether the db_identifier refers to a cluster or an instance
+     */
+    @JsonProperty("cluster")
+    private boolean isCluster = false;
+
     @JsonProperty("engine")
     private EngineType engine = EngineType.MYSQL;
 
-    @JsonProperty("tables")
-    private List<String> tables;
+    /**
+     * Whether the source is an Aurora cluster
+     */
+    @JsonProperty("aurora")
+    private boolean isAurora = false;
+
+    /**
+     * The table name is in the format of `database.table` for MySQL engine
+     */
+    @JsonProperty("table_names")
+    private List<String> tableNames;
 
     @JsonProperty("aws")
     @NotNull
@@ -59,12 +74,20 @@ public class RdsSourceConfig {
         return dbIdentifier;
     }
 
+    public boolean isCluster() {
+        return isCluster;
+    }
+
     public EngineType getEngine() {
         return engine;
     }
 
-    public List<String> getTables() {
-        return tables;
+    public boolean isAurora() {
+        return isAurora;
+    }
+
+    public List<String> getTableNames() {
+        return tableNames;
     }
 
     public AwsAuthenticationConfig getAwsAuthenticationConfig() {

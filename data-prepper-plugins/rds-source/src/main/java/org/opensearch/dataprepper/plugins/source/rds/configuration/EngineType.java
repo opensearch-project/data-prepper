@@ -13,8 +13,7 @@ import java.util.stream.Collectors;
 
 public enum EngineType {
 
-    MYSQL("mysql"),
-    AURORA_MYSQL("aurora-mysql");
+    MYSQL("mysql");
 
     private static final Map<String, EngineType> ENGINE_TYPE_MAP = Arrays.stream(EngineType.values())
             .collect(Collectors.toMap(

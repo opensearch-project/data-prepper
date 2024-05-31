@@ -22,6 +22,8 @@ class RdsSourceConfigTest {
         final RdsSourceConfig objectUnderTest = createObjectUnderTest();
 
         assertThat(objectUnderTest.getEngine(), equalTo(EngineType.MYSQL));
+        assertThat(objectUnderTest.isCluster(), equalTo(false));
+        assertThat(objectUnderTest.isAurora(), equalTo(false));
         assertThat(objectUnderTest.isAcknowledgmentsEnabled(), equalTo(false));
     }
 
