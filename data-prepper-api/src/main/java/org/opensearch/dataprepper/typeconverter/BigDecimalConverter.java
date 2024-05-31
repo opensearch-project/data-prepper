@@ -14,8 +14,8 @@ import java.math.RoundingMode;
  */
 public class BigDecimalConverter implements TypeConverter<BigDecimal> {
 
-    public BigDecimal convert(Object source) throws IllegalArgumentException {
-        return this.convert(source, 0);
+    public BigDecimal convert(Object source, ConverterArguments arguments) throws IllegalArgumentException {
+        return this.convert(source, arguments.getScale());
     }
 
     public BigDecimal convert(Object source, int scale) throws IllegalArgumentException {

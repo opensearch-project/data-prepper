@@ -13,7 +13,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.typeconverter.BigDecimalConverter;
+import org.opensearch.dataprepper.typeconverter.ConverterArguments;
 import org.opensearch.dataprepper.typeconverter.TypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,12 +37,14 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
     private int scale = 0;
 
     private final ExpressionEvaluator expressionEvaluator;
+    private final ConverterArguments converterArguments;
 
     @DataPrepperPluginConstructor
     public ConvertEntryTypeProcessor(final PluginMetrics pluginMetrics,
                                      final ConvertEntryTypeProcessorConfig convertEntryTypeProcessorConfig,
                                      final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
+        this.converterArguments = convertEntryTypeProcessorConfig;
         this.convertEntryKeys = getKeysToConvert(convertEntryTypeProcessorConfig);
         TargetType targetType = convertEntryTypeProcessorConfig.getType();
         this.type = targetType.name();
@@ -71,11 +73,7 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                     if (keyVal != null) {
                         if (!nullValues.contains(keyVal.toString())) {
                             try {
-                                if(converter instanceof BigDecimalConverter) {
-                                    recordEvent.put(key, ((BigDecimalConverter)converter).convert(keyVal, scale));
-                                }else {
-                                    recordEvent.put(key, converter.convert(keyVal));
-                                }
+                                recordEvent.put(key, converter.convert(keyVal, converterArguments));
                             } catch (final RuntimeException e) {
                                 LOG.error(EVENT, "Unable to convert key: {} with value: {} to {}", key, keyVal, type, e);
                                 recordEvent.getMetadata().addTags(tagsOnFailure);

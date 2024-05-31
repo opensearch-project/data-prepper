@@ -6,11 +6,12 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.opensearch.dataprepper.typeconverter.ConverterArguments;
 
 import java.util.List;
 import java.util.Optional;
 
-public class ConvertEntryTypeProcessorConfig  {
+public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     @JsonProperty("key")
     private String key;
 
@@ -43,6 +44,7 @@ public class ConvertEntryTypeProcessorConfig  {
 
     public TargetType getType() { return type;  }
 
+    @Override
     public int getScale() { return scale;  }
 
     public String getConvertWhen() { return convertWhen; }

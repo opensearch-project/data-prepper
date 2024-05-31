@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.typeconverter;
 
 public class BooleanConverter implements TypeConverter<Boolean> {
-    public Boolean convert(Object source) throws IllegalArgumentException {
+    public Boolean convert(Object source, ConverterArguments arguments) throws IllegalArgumentException {
         if (source instanceof String) {
             return Boolean.parseBoolean((String)source);
         }

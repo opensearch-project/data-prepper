@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.typeconverter;
 
 public class StringConverter implements TypeConverter<String> {
-    public String convert(Object source) throws IllegalArgumentException {
+    public String convert(Object source, ConverterArguments arguments) throws IllegalArgumentException {
         if (source instanceof Number || source instanceof Boolean || source instanceof String)  {
             return source.toString();
         }
