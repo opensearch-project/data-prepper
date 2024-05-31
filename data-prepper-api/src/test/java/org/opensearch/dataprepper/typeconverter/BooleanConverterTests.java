@@ -21,11 +21,19 @@ import java.math.BigDecimal;
 import java.util.stream.Stream;
 
 public class BooleanConverterTests {
+
+    @Test
+    void testStringToBooleanConversionWithArguments() {
+        BooleanConverter converter = new BooleanConverter();
+        final String stringConstant = "12345678912.12345";
+        assertThat(converter.convert(stringConstant, () -> 0), equalTo(false));
+    }
+
     @Test
     void testStringToBooleanConversion() {
         BooleanConverter converter = new BooleanConverter();
         final String stringConstant = "12345678912.12345";
-        assertThat(converter.convert(stringConstant), equalTo(Boolean.parseBoolean(stringConstant)));
+        assertThat(converter.convert(stringConstant), equalTo(false));
     }
     @Test
     void testIntegerToBooleanConversion() {

@@ -6,7 +6,12 @@
 package org.opensearch.dataprepper.typeconverter;
 
 public class DoubleConverter implements TypeConverter<Double> {
+
     public Double convert(Object source, ConverterArguments arguments) throws IllegalArgumentException {
+        return convert(source);
+    }
+
+    public Double convert(Object source) throws IllegalArgumentException {
         if (source instanceof String) {
             return Double.parseDouble((String)source);
         }
