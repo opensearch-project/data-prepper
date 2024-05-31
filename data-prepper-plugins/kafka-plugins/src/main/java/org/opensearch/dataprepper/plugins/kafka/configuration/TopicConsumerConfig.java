@@ -16,6 +16,8 @@ public interface TopicConsumerConfig extends TopicConfig {
 
     String getGroupId();
 
+    String getClientId();
+
     Boolean getAutoCommit();
 
     String getAutoOffsetReset();
