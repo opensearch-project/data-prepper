@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
@@ -24,6 +24,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 class DynamicConfigTransformerTest {
@@ -48,15 +52,19 @@ class DynamicConfigTransformerTest {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
-        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
-                TEMPLATES_DIRECTORY_PATH));
-        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
-        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+
+        Path ruleFile = mock(Path.class);
+        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
+        List<Path> ruleFiles = Collections.singletonList(ruleFile);
+        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
-        ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
+
 
         // Load the original and template YAML files from the test resources directory
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
@@ -81,13 +89,14 @@ class DynamicConfigTransformerTest {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
-        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
-                TEMPLATES_DIRECTORY_PATH));
-        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
-        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        Path ruleFile = mock(Path.class);
+        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
+        List<Path> ruleFiles = Collections.singletonList(ruleFile);
+        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
@@ -115,14 +124,16 @@ class DynamicConfigTransformerTest {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
-        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
-                TEMPLATES_DIRECTORY_PATH));
-        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
-        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        Path ruleFile = mock(Path.class);
+        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
+        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream ruleStream1 = new FileInputStream(ruleDocDBFilePath);
         InputStream ruleStream2 = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream1).thenReturn(ruleStream2);
+        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream).thenReturn(ruleStream1).thenReturn(ruleStream2);
+        List<Path> ruleFiles = Collections.singletonList(ruleFile);
+        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
@@ -149,13 +160,14 @@ class DynamicConfigTransformerTest {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
-        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
-                TEMPLATES_DIRECTORY_PATH));
-        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
-        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        Path ruleFile = mock(Path.class);
+        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
+        List<Path> ruleFiles = Collections.singletonList(ruleFile);
+        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
@@ -183,13 +195,14 @@ class DynamicConfigTransformerTest {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
-        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
-                TEMPLATES_DIRECTORY_PATH));
-        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
-        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        Path ruleFile = mock(Path.class);
+        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
+        List<Path> ruleFiles = Collections.singletonList(ruleFile);
+        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
@@ -217,13 +230,14 @@ class DynamicConfigTransformerTest {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
-        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
-                TEMPLATES_DIRECTORY_PATH));
-        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
-        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        Path ruleFile = mock(Path.class);
+        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
+        List<Path> ruleFiles = Collections.singletonList(ruleFile);
+        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
@@ -240,7 +254,6 @@ class DynamicConfigTransformerTest {
     }
 
 
-
     @Test
     void test_successful_transformation_with_route_keyword() throws IOException {
 
@@ -254,13 +267,14 @@ class DynamicConfigTransformerTest {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
-        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
-                TEMPLATES_DIRECTORY_PATH));
-        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
-        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        Path ruleFile = mock(Path.class);
+        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
+        List<Path> ruleFiles = Collections.singletonList(ruleFile);
+        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
@@ -289,16 +303,16 @@ class DynamicConfigTransformerTest {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
-        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
-                TEMPLATES_DIRECTORY_PATH));
-        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
-        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        Path ruleFile = mock(Path.class);
+        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream ruleStream2 = new FileInputStream(ruleDocDBFilePath);
         InputStream ruleStream3 = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-
-        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream).thenReturn(ruleStream2).thenReturn(ruleStream3);
+        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream).thenReturn(ruleStream2).thenReturn(ruleStream3);
+        List<Path> ruleFiles = Collections.singletonList(ruleFile);
+        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles).thenReturn(ruleFiles);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
@@ -324,13 +338,14 @@ class DynamicConfigTransformerTest {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
-        transformersFactory = Mockito.spy(new TransformersFactory(RULES_DIRECTORY_PATH,
-                TEMPLATES_DIRECTORY_PATH));
-        when(transformersFactory.getPluginRuleFileLocation(pluginName)).thenReturn(ruleDocDBFilePath);
-        when(transformersFactory.getPluginTemplateFileLocation(pluginName)).thenReturn(templateDocDBFilePath);
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        Path ruleFile = mock(Path.class);
+        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.getPluginRuleFileStream(pluginName)).thenReturn(ruleStream);
+        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
+        List<Path> ruleFiles = Collections.singletonList(ruleFile);
+        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 

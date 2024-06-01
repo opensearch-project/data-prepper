@@ -1,2 +1,3 @@
+plugin_name: "documentdb"
 apply_when:
   - "$..source.documentdb"

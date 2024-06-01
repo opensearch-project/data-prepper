@@ -14,6 +14,18 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class TransformersFactory implements PipelineTransformationPathProvider {
 
@@ -41,35 +53,63 @@ public class TransformersFactory implements PipelineTransformationPathProvider {
     }
 
     public String getPluginTemplateFileLocation(String pluginName) {
-        if(pluginName == null || pluginName.isEmpty()){
-            throw  new RuntimeException("Transformation plugin not found");
+        if (pluginName == null || pluginName.isEmpty()) {
+            throw new RuntimeException("Transformation plugin not found");
         }
         return templatesDirectoryPath + "/" + pluginName + TEMPLATE_FILE_NAME_PATTERN;
     }
 
-    public String getPluginRuleFileLocation(String pluginName) {
-        if(pluginName == null || pluginName.isEmpty()){
-            throw  new RuntimeException("Transformation plugin not found");
-        }
-        return rulesDirectoryPath + "/" + pluginName + RULE_FILE_NAME_PATTERN;
-    }
-
-    public InputStream getPluginRuleFileStream(String pluginName) {
-        if(pluginName == null || pluginName.isEmpty()){
-            throw  new RuntimeException("Transformation plugin not found");
-        }
-        ClassLoader classLoader = TransformersFactory.class.getClassLoader();
-        InputStream filestream = classLoader.getResourceAsStream("rules" + "/" + pluginName + RULE_FILE_NAME_PATTERN);
-        return filestream;
-    }
-
     public InputStream getPluginTemplateFileStream(String pluginName) {
-        if(pluginName == null || pluginName.isEmpty()){
-            throw  new RuntimeException("Transformation plugin not found");
+        if (pluginName == null || pluginName.isEmpty()) {
+            throw new RuntimeException("Transformation plugin not found");
         }
         ClassLoader classLoader = TransformersFactory.class.getClassLoader();
         InputStream filestream = classLoader.getResourceAsStream("templates" + "/" + pluginName + TEMPLATE_FILE_NAME_PATTERN);
         return filestream;
+    }
+
+    public List<Path> getRuleFiles() {
+        // Get the URI of the rules folder
+        URI uri = null;
+        try {
+            uri = getClass().getClassLoader().getResource("rules").toURI();
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+
+        Path rulesFolderPath;
+
+        if ("jar".equals(uri.getScheme())) {
+            // File is inside a JAR, create a filesystem for it
+            try (FileSystem fileSystem = FileSystems.newFileSystem(uri, Collections.emptyMap())) {
+                rulesFolderPath = fileSystem.getPath("rules");
+                return scanFolder(rulesFolderPath);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            // File is not inside a JAR
+            rulesFolderPath = Paths.get(uri);
+            return scanFolder(rulesFolderPath);
+        }
+    }
+
+    private List<Path> scanFolder(Path folderPath) {
+        List<Path> pathsList = new ArrayList<>();
+        try (Stream<Path> paths = Files.walk(folderPath)) {
+            pathsList = paths
+                    .filter(Files::isRegularFile) // Filter to include only regular files
+                    .collect(Collectors.toList()); // Collect paths into the list
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return pathsList;
+    }
+
+    public InputStream readRuleFile(Path ruleFile) throws IOException {
+        ClassLoader classLoader = TransformersFactory.class.getClassLoader();
+        InputStream ruleStream = classLoader.getResourceAsStream("rules" + "/" + ruleFile.getFileName().toString());
+        return ruleStream;
     }
 
     public PipelineTemplateModel getTemplateModel(String pluginName) {
