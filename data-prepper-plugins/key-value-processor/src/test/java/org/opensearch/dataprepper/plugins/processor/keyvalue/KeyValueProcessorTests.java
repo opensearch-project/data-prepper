@@ -69,6 +69,7 @@ public class KeyValueProcessorTests {
     @BeforeEach
     void setup() {
         final KeyValueProcessorConfig defaultConfig = new KeyValueProcessorConfig();
+        lenient().when(mockConfig.getAllowKeys()).thenReturn(null);
         lenient().when(mockConfig.getSource()).thenReturn(defaultConfig.getSource());
         lenient().when(mockConfig.getDestination()).thenReturn(defaultConfig.getDestination());
         lenient().when(mockConfig.getFieldDelimiterRegex()).thenReturn(defaultConfig.getFieldDelimiterRegex());
@@ -170,6 +171,18 @@ public class KeyValueProcessorTests {
     }
 
     @Test
+    void testMultipleKvToObjectKeyValueProcessorWithAllowKeys() {
+        lenient().when(mockConfig.getAllowKeys()).thenReturn(List.of("key1"));
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final KeyValueProcessor objectUnderTest = createObjectUnderTest();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+    }
+
+    @Test
     void testDropKeysWithNoValue() {
         lenient().when(mockConfig.getDropKeysWithNoValue()).thenReturn(true);
 
@@ -211,14 +224,40 @@ public class KeyValueProcessorTests {
                 Arguments.of(", ", "text1 text2 key1=value1, key2=value2 text3 text4", Map.of("key1", "value1", "key2", "value2")),
                 Arguments.of(", ", "text1 text2 foo key1=value1 url=http://foo.com?bar=text,text&foo=zoo bar k2=\"http://bar.com?a=b&c=foo bar\" barr", Map.of("key1", "value1", "url", "http://foo.com?bar=text,text&foo=zoo", "k2", "\"http://bar.com?a=b&c=foo bar\"")),
                 Arguments.of(", ", "vendorMessage=VendorMessage(uid=1847060493-1712778523223, feedValue=https://syosetu.org/novel/147705/15.html, bundleId=, linkType=URL, vendor=DOUBLEVERIFY, platform=DESKTOP, deviceTypeId=1, bidCount=6, appStoreTld=, feedSource=DSP, regions=[APAC], timestamp=1712778523223, externalId=)", Map.of("vendorMessage", "VendorMessage(uid=1847060493-1712778523223, feedValue=https://syosetu.org/novel/147705/15.html, bundleId=, linkType=URL, vendor=DOUBLEVERIFY, platform=DESKTOP, deviceTypeId=1, bidCount=6, appStoreTld=, feedSource=DSP, regions=[APAC], timestamp=1712778523223, externalId=)")),
-                Arguments.of(", ()", "vendorMessage: vendorMessage(key1=value1, key2=value2)", Map.of("key1", "value1", "key2", "value2")),
-                Arguments.of(", ", "vendorMessage: vendorMessage(key1=value1, key2=value2)", Map.of("vendorMessage(key1", "value1", "key2", "value2)")),
+                Arguments.of(", ()", "foo bar(key1=value1, key2=value2, key3=)", Map.of("key1", "value1", "key2", "value2", "key3","")),
+                Arguments.of(", ", "foo bar(key1=value1, key2=value2, key3=)", Map.of("bar(key1", "value1", "key2", "value2", "key3",")")),
+                Arguments.of(", ", "foo bar[key1=value1, key2=value2, key3=]", Map.of("bar[key1", "value1", "key2", "value2", "key3","]")),
+                Arguments.of(", ", "foo bar{key1=value1, key2=value2, key3=}", Map.of("bar{key1", "value1", "key2", "value2", "key3","}")),
                 Arguments.of(", ", "key1 \"key2=val2\" key3=\"value3,value4\"", Map.of("key3", "\"value3,value4\"")),
                 Arguments.of(", ", "key1=[value1,value2], key3=value3", Map.of("key1", "[value1,value2]", "key3", "value3")),
                 Arguments.of(", ", "key1=(value1, value2), key3=value3", Map.of("key1", "(value1, value2)", "key3", "value3")),
                 Arguments.of(", ", "key1=<value1 ,value2>, key3=value3", Map.of("key1", "<value1 ,value2>", "key3", "value3")),
                 Arguments.of(", ", "key1={value1,value2}, key3=value3", Map.of("key1", "{value1,value2}", "key3", "value3")),
                 Arguments.of(", ", "key1='value1,value2', key3=value3", Map.of("key1", "'value1,value2'", "key3", "value3")),
+                Arguments.of(", ", "foo  key1=val1, key2=val2,key3=val3 bar", Map.of("key1", "val1", "key2", "val2", "key3", "val3")),
+                Arguments.of(", ", "foo,key1=(val1,key2=val2,val3),key4=val4 bar", Map.of("key1", "(val1,key2=val2,val3)", "key4", "val4")),
+                Arguments.of(", ", "foo,key1=(val1,key2=val2,val3,key4=val4 bar", Map.of("key1", "(val1,key2=val2,val3,key4=val4 bar")),
+
+                Arguments.of(", ", "foo,key1=[val1,key2=val2,val3],key4=val4 bar", Map.of("key1", "[val1,key2=val2,val3]", "key4", "val4")),
+                Arguments.of(", ", "foo,key1=[val1,key2=val2,val3,key4=val4 bar", Map.of("key1", "[val1,key2=val2,val3,key4=val4 bar")),
+
+                Arguments.of(", ", "foo,key1={val1,key2=val2,val3},key4=val4 bar", Map.of("key1", "{val1,key2=val2,val3}", "key4", "val4")),
+                Arguments.of(", ", "foo,key1={val1,key2=val2,val3,key4=val4 bar", Map.of("key1", "{val1,key2=val2,val3,key4=val4 bar")),
+
+                Arguments.of(", ", "foo,key1=<val1,key2=val2,val3>,key4=val4 bar", Map.of("key1", "<val1,key2=val2,val3>", "key4", "val4")),
+                Arguments.of(", ", "foo,key1=<val1,key2=val2,val3,key4=val4 bar", Map.of("key1", "<val1,key2=val2,val3,key4=val4 bar")),
+
+                Arguments.of(", ", "foo,key1=\"val1,key2=val2,val3\",key4=val4 bar", Map.of("key1", "\"val1,key2=val2,val3\"", "key4", "val4")),
+                Arguments.of(", ", "foo,key1=\"val1,key2=val2,val3,key4=val4 bar", Map.of("key1", "\"val1,key2=val2,val3,key4=val4 bar")),
+
+                Arguments.of(", ", "foo,key1='val1,key2=val2,val3',key4=val4 bar", Map.of("key1", "'val1,key2=val2,val3'", "key4", "val4")),
+                Arguments.of(", ", "foo,key1='val1,key2=val2,val3,key4=val4 bar", Map.of("key1", "'val1,key2=val2,val3,key4=val4 bar")),
+
+                Arguments.of(", ", "foo \"key1=key2 bar\" key2=val2 baz", Map.of("key2", "val2")),
+                Arguments.of(", ", "foo  key1=https://bar.baz/?key2=val2&url=https://quz.fred/ bar", Map.of("key1","https://bar.baz/?key2=val2&url=https://quz.fred/")),
+                //Arguments.of(", ", "foo key1=\"bar \" qux\" fred", Map.of("key1", "\"bar \"")),
+                Arguments.of(", ", "foo key1=\"bar \\\" qux\" fred", Map.of("key1", "\"bar \\\" qux\"")),
+
                 Arguments.of(", ", "key1=\"value1,value2\", key3=value3", Map.of("key1", "\"value1,value2\"", "key3", "value3"))
                );
     }

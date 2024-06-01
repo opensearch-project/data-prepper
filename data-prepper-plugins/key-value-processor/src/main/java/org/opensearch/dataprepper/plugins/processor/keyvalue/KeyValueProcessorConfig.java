@@ -114,6 +114,15 @@ public class KeyValueProcessorConfig {
     @JsonProperty("key_value_when")
     private String keyValueWhen;
 
+    @JsonProperty("strict_grouping")
+    private boolean strictGrouping = false;
+
+    @JsonProperty("ignore_text_in_double_quotes")
+    private boolean ignoreTextInDoubleQuotes = false;
+
+    @JsonProperty("allow_keys")
+    private List<String> allowKeys = null;
+
     @AssertTrue(message = "Invalid Configuration. value_grouping option and field_delimiter_regex are mutually exclusive")
     boolean isValidValueGroupingAndFieldDelimiterRegex() {
         return (!valueGrouping || fieldDelimiterRegex == null);
@@ -121,6 +130,18 @@ public class KeyValueProcessorConfig {
 
     public String getSource() {
         return source;
+    }
+
+    public List<String> getAllowKeys() {
+        return allowKeys;
+    }
+
+    public boolean getIgnoreTextInDoubleQuotes() {
+        return ignoreTextInDoubleQuotes;
+    }
+
+    public boolean isStrictGroupingEnabled() {
+        return strictGrouping;
     }
 
     public String getDestination() {

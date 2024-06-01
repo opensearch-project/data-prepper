@@ -52,6 +52,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
+    private final Pattern keyValueDelimiterWithQuotePattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
     private final Set<String> excludeKeysSet = new HashSet<String>();
     private final HashMap<String, Object> defaultValuesMap = new HashMap<>();
@@ -66,8 +67,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     final String delimiterBracketCheck = "[\\[\\]()<>]";
     private final Set<Character> bracketSet = Set.of('[', ']', '(', ')', '<', '>');
     private final List<String> tagsOnFailure;
-    private final boolean doubelQuotesGroupingEnabled;
+    private final boolean ignoreTextInDoubleQuotes;
     private String keyValueDelimiterRegex;
+    private final Set<String> allowKeys;
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics,
@@ -75,9 +77,16 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                              final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.keyValueProcessorConfig = keyValueProcessorConfig;
+        if (keyValueProcessorConfig.getAllowKeys() != null) {
+            allowKeys = new HashSet<>();
+            for (String allowKey: keyValueProcessorConfig.getAllowKeys()) {
+                allowKeys.add(allowKey);
+            }
+        } else
+            allowKeys = null;
 
         tagsOnFailure = keyValueProcessorConfig.getTagsOnFailure();
-        doubelQuotesGroupingEnabled =   keyValueProcessorConfig.getEnableDoubleQuoteGrouping();
+        ignoreTextInDoubleQuotes = keyValueProcessorConfig.getIgnoreTextInDoubleQuotes();
 
         if (keyValueProcessorConfig.getFieldDelimiterRegex() != null
                 && !keyValueProcessorConfig.getFieldDelimiterRegex().isEmpty()) {
@@ -124,7 +133,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 throw new PatternSyntaxException("key_value_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getKeyValueDelimiterRegex(), -1);
             }
 
-            keyValueDelimiterRegex = keyValueProcessorConfig.getKeyValueDelimiterRegex();
+            keyValueDelimiterRegex = keyValueProcessorConfig.getKeyValueDelimiterRegex()+"\"";
             keyValueDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex());
 
             if (keyValueProcessorConfig.getRecursive()
@@ -143,7 +152,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getValueSplitCharacters());
             }
-            keyValueDelimiterRegex = regex;
+            keyValueDelimiterRegex = regex+"\"";
 
             keyValueDelimiterPattern = Pattern.compile(regex);
 
@@ -152,6 +161,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 throw new IllegalArgumentException("While recursive is true, the set value split characters cannot contain brackets while you are trying to recurse.");
             }
         }
+        keyValueDelimiterWithQuotePattern = Pattern.compile(keyValueDelimiterRegex);
 
         if (!validateRegex(keyValueProcessorConfig.getDeleteKeyRegex())) {
             throw new PatternSyntaxException("delete_key_regex is not a valid regex string", keyValueProcessorConfig.getDeleteKeyRegex(), -1);
@@ -271,11 +281,17 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             } else
                 i++;
         }
-        throw new RuntimeException("Bad Input, no end character found in "+str+" after index " + idx +", expected end char = "+endChar);
+        if (keyValueProcessorConfig.isStrictGroupingEnabled()) {
+            throw new RuntimeException("Bad Input, no end character found in "+str+" after index " + idx +", expected end char = "+endChar);
+        }
+        return i-1;
     }
 
     private void addPart(List<String> parts, final String str, final int start, final int end) {
         String part = str.substring(start,end).trim();
+        if (ignoreTextInDoubleQuotes && part.contains("\"") && !keyValueDelimiterWithQuotePattern.matcher(part).find()) {
+            return;
+        }
         if (part.length() > 0) {
             parts.add(part);
         }
@@ -319,6 +335,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             if (groupIndex >= 0) {
                 String[] s = keyValueDelimiterPattern.split(str.substring(start,i+1));
                 // Only handle Grouping patterns in the values, not keys
+                
                 if (s.length > 1 || startGroupStrings[groupIndex].equals("\"")) {
                     i = skipGroup(str, i+1, endGroupChars[groupIndex]);
                     skippedGroup = true;
@@ -360,10 +377,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
                 if (groupsRaw == null) {
                     continue;
-                }
-                if (doubelQuotesGroupingEnabled && groupsRaw.contains(DOUBLE_QUOTE)) {
-                    String regex = "(?<!(" + keyValueDelimiterRegex + "))\"(?:\\\\\"|[^\"])*\"";
-                    groupsRaw = groupsRaw.replaceAll(regex, "");
                 }
                 String[] groups;
                 if (keyValueProcessorConfig.getValueGrouping()) {
@@ -529,7 +542,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 } else {
                     valueList = new ArrayList<Object>();
                     valueList.add(existingValue);
-                    nonRecursedMap.put(key, valueList);
+                    if (validKeyAndValue(key, valueList)) {
+                        nonRecursedMap.put(key, valueList);
+                    }
                 }
 
                 if (keyValueProcessorConfig.getSkipDuplicateValues()) {
@@ -540,7 +555,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     valueList.add(value);
                 }
             } else {
-                nonRecursedMap.put(key, value);
+                if (validKeyAndValue(key, value)) {
+                    nonRecursedMap.put(key, value);
+                }
             }
         }
 
@@ -602,12 +619,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 LOG.debug("Skipping already included default key: '{}'", pair.getKey());
                 continue;
             }
-            processed.put(pair.getKey(), pair.getValue());
+            if (validKeyAndValue(pair.getKey(), pair.getValue())) {
+                processed.put(pair.getKey(), pair.getValue());
+            }
         }
 
-        if (keyValueProcessorConfig.getDropKeysWithNoValue()) {
-            processed.entrySet().removeIf(entry -> entry.getValue() == null);
-        }
         return processed;
     }
 
@@ -627,8 +643,26 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return key;
     }
 
+    private boolean validKeyAndValue(String key, Object value) {
+        if (key == null || key.isEmpty()) {
+            return false;
+        }
+        if (allowKeys != null && !allowKeys.contains(key)) {
+            return false;
+        }
+            
+        if (keyValueProcessorConfig.getDropKeysWithNoValue() && value == null) {
+            return false;
+        }
+        return true;
+    }
+
     private void addKeyValueToMap(final Map<String, Object> parsedMap, final String key, Object value) {
         Object processedValue = value;
+
+        if (!validKeyAndValue(key, value)) {
+            return;
+        }
 
         if (value instanceof List) {
             List<?> valueAsList = (List<?>) value;
