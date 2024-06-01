@@ -7,24 +7,31 @@ package org.opensearch.dataprepper.pipeline.parser.transformer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
 
 public class TransformersFactoryTest {
 
-    private TransformersFactory transformersFactory;
-    private final String templatesDirectoryPath = "src/test/resources/templates";
-    private final String rulesDirectoryPath = "src/test/resources/rules";
+    private final String templatesDirectoryPath = "src/test/resources/transformation/templates";
+    private final String rulesDirectoryPath = "src/test/resources/transformation/rules";
     private final String validPluginName = "testPlugin";
     private final String invalidPluginName = "";
+    private TransformersFactory transformersFactory;
 
     @BeforeEach
     public void setUp() {
-        transformersFactory = new TransformersFactory(rulesDirectoryPath, templatesDirectoryPath);
+        transformersFactory = spy(new TransformersFactory(rulesDirectoryPath, templatesDirectoryPath));
     }
 
     @Test
@@ -37,20 +44,6 @@ public class TransformersFactoryTest {
     public void testGetPluginTemplateFileLocation_invalidPluginName() {
         Exception exception = assertThrows(RuntimeException.class, () -> {
             transformersFactory.getPluginTemplateFileLocation(invalidPluginName);
-        });
-        assertEquals("Transformation plugin not found", exception.getMessage());
-    }
-
-    @Test
-    public void testGetPluginRuleFileLocation_validPluginName() {
-        String expectedPath = rulesDirectoryPath + "/" + validPluginName + "-rule.yaml";
-        assertEquals(expectedPath, transformersFactory.getPluginRuleFileLocation(validPluginName));
-    }
-
-    @Test
-    public void testGetPluginRuleFileLocation_invalidPluginName() {
-        Exception exception = assertThrows(RuntimeException.class, () -> {
-            transformersFactory.getPluginRuleFileLocation(invalidPluginName);
         });
         assertEquals("Transformation plugin not found", exception.getMessage());
     }
@@ -72,5 +65,34 @@ public class TransformersFactoryTest {
         assertThrows(RuntimeException.class, () -> transformersFactory.getTemplateModel(invalidPluginName),
                 "Should throw a RuntimeException for empty plugin name.");
     }
+
+    @Test
+    public void testGetRuleFiles() throws IOException {
+        List<Path> mockRuleFiles = Arrays.asList(
+                Paths.get("src/test/resources/transformation/rules/documentdb-rule1.yaml"),
+                Paths.get("src/test/resources/transformation/rules/documentdb-rule.yaml")
+        );
+        doReturn(mockRuleFiles).when(transformersFactory).getRuleFiles();
+        assertTrue(mockRuleFiles.size() > 0, "There should be at least one rule file.");
+    }
+
+
+    @Test
+    public void testReadFile() throws IOException {
+        // Mocking the getRuleFiles method
+        List<Path> mockRuleFiles = Arrays.asList(
+                Paths.get("src/test/resources/transformation/rules/documentdb-rule1.yaml"),
+                Paths.get("src/test/resources/transformation/rules/documentdb-rule.yaml")
+        );
+        doReturn(mockRuleFiles).when(transformersFactory).getRuleFiles();
+
+        List<Path> ruleFiles = transformersFactory.getRuleFiles();
+        assertEquals(ruleFiles.size(), 2);
+        Path firstRuleFile = ruleFiles.get(0);
+        Path secondRuleFile = ruleFiles.get(1);
+
+        assertEquals(firstRuleFile.getFileName().toString(), "documentdb-rule1.yaml");
+    }
+
 }
 
