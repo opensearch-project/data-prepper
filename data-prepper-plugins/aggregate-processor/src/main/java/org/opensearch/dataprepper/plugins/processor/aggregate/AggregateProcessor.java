@@ -28,6 +28,7 @@ import java.time.Instant;
 
 @DataPrepperPlugin(name = "aggregate", pluginType = Processor.class, pluginConfigurationType = AggregateProcessorConfig.class)
 public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> implements RequiresPeerForwarding {
+    static final String AGGREGATED_TAG = "aggregated";
     static final String ACTION_HANDLE_EVENTS_OUT = "actionHandleEventsOut";
     static final String ACTION_HANDLE_EVENTS_DROPPED = "actionHandleEventsDropped";
     static final String ACTION_CONCLUDE_GROUP_EVENTS_OUT = "actionConcludeGroupEventsOut";
@@ -49,6 +50,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     private boolean localMode = false;
     private final String whenCondition;
     private final ExpressionEvaluator expressionEvaluator;
+    private final boolean allowRawEvents;
 
     @DataPrepperPluginConstructor
     public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final ExpressionEvaluator expressionEvaluator) {
@@ -60,6 +62,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         super(pluginMetrics);
         this.aggregateProcessorConfig = aggregateProcessorConfig;
         this.aggregateGroupManager = aggregateGroupManager;
+        this.allowRawEvents = aggregateProcessorConfig.getAllowRawEvents();
         this.expressionEvaluator = expressionEvaluator;
         this.identificationKeysHasher = identificationKeysHasher;
         this.aggregateAction = loadAggregateAction(pluginFactory);
@@ -116,10 +119,14 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
             final Event aggregateActionResponseEvent = handleEventResponse.getEvent();
 
             if (aggregateActionResponseEvent != null) {
+                aggregateActionResponseEvent.getMetadata().addTags(List.of(AGGREGATED_TAG));
                 recordsOut.add(new Record<>(aggregateActionResponseEvent, record.getMetadata()));
                 handleEventsOut++;
             } else {
                 handleEventsDropped++;
+            }
+            if (allowRawEvents) {
+                recordsOut.add(record);
             }
         }
 

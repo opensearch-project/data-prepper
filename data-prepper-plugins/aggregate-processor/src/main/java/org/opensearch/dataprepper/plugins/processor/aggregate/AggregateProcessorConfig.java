@@ -32,6 +32,9 @@ public class AggregateProcessorConfig {
     @NotNull
     private Boolean localMode = false;
 
+    @JsonProperty("allow_raw_events")
+    private Boolean allowRawEvents;
+
     @JsonProperty("aggregate_when")
     private String whenCondition;
 
@@ -45,6 +48,10 @@ public class AggregateProcessorConfig {
 
     public String getWhenCondition() {
         return whenCondition;
+    }
+
+    public Boolean getAllowRawEvents() {
+        return allowRawEvents;
     }
 
     public Boolean getLocalMode() {
