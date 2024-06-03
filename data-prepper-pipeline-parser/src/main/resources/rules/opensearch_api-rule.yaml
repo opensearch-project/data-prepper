@@ -1,3 +1,0 @@
-apply_when:
-  - "$..source.opensearch_api"
-  - "$..source.opensearch_api.s3_bucket"
