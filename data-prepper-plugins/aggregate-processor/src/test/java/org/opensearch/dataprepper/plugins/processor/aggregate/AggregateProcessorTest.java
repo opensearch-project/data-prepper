@@ -41,6 +41,7 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -417,6 +418,8 @@ public class AggregateProcessorTest {
             assertThat(recordsOut.get(0).getData(), equalTo(event));
             assertThat(recordsOut.get(1), notNullValue());
             assertThat(recordsOut.get(1).getData(), equalTo(event));
+            Event receivedEvent = recordsOut.get(1).getData();
+            assertTrue(receivedEvent.getMetadata().hasTags(List.of(AggregateProcessor.AGGREGATED_TAG)));
 
             verify(actionHandleEventsOutCounter).increment(1);
             verify(actionHandleEventsDroppedCounter).increment(0);
