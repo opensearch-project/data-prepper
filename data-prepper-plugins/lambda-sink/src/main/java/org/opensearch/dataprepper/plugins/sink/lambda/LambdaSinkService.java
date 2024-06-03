@@ -181,14 +181,19 @@ public class LambdaSinkService {
                     if (isFlushToLambda) {
                         LOG.info("Successfully flushed to Lambda {}.", functionName);
                         numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
+                        releaseEventHandles(true);
                     } else {
                         LOG.error("Failed to save to Lambda {}", functionName);
                         numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
                         SdkBytes payload = currentBuffer.getPayload();
-                        dlqPushHandler.perform(pluginSetting,new LambdaSinkFailedDlqData(payload,errorMsgObj.get(),0));
+                        if(dlqPushHandler!=null) {
+                            dlqPushHandler.perform(pluginSetting, new LambdaSinkFailedDlqData(payload, errorMsgObj.get(), 0));
+                            releaseEventHandles(true);
+                        }else{
+                            releaseEventHandles(false);
+                        }
                     }
-                    //release even if failed
-                    releaseEventHandles(true);
+
                     //reset buffer after flush
                     currentBuffer = bufferFactory.getBuffer(lambdaClient,functionName,invocationType);
                 } catch (final IOException e) {

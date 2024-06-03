@@ -30,12 +30,12 @@ import java.util.Collection;
 public class LambdaSink extends AbstractSink<Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(LambdaSink.class);
-    private final DlqPushHandler dlqPushHandler;
     private volatile boolean sinkInitialized;
     private final LambdaSinkService lambdaSinkService;
     private final BufferFactory bufferFactory;
     private static final String BUCKET = "bucket";
     private static final String KEY_PATH = "key_path_prefix";
+    private DlqPushHandler dlqPushHandler = null;
 
     @DataPrepperPluginConstructor
     public LambdaSink(final PluginSetting pluginSetting,
@@ -48,11 +48,13 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
         sinkInitialized = Boolean.FALSE;
         OutputCodecContext outputCodecContext = OutputCodecContext.fromSinkContext(sinkContext);
         LambdaClient lambdaClient = LambdaClientFactory.createLambdaClient(lambdaSinkConfig, awsCredentialsSupplier);
-        this.dlqPushHandler = new DlqPushHandler(pluginFactory,
-                String.valueOf(lambdaSinkConfig.getDlqPluginSetting().get(BUCKET)),
-                lambdaSinkConfig.getDlqStsRoleARN()
-                , lambdaSinkConfig.getDlqStsRegion(),
-                String.valueOf(lambdaSinkConfig.getDlqPluginSetting().get(KEY_PATH)));
+        if(lambdaSinkConfig.getDlqPluginSetting() != null) {
+            this.dlqPushHandler = new DlqPushHandler(pluginFactory,
+                    String.valueOf(lambdaSinkConfig.getDlqPluginSetting().get(BUCKET)),
+                    lambdaSinkConfig.getDlqStsRoleARN()
+                    , lambdaSinkConfig.getDlqStsRegion(),
+                    String.valueOf(lambdaSinkConfig.getDlqPluginSetting().get(KEY_PATH)));
+        }
         this.bufferFactory = new InMemoryBufferFactory();
 
         lambdaSinkService = new LambdaSinkService(lambdaClient,
