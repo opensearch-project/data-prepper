@@ -54,7 +54,7 @@ public class BooleanConverterTests {
     @Test
     void testLongToBooleanConversion() {
         BooleanConverter converter = new BooleanConverter();
-        final Long longTrueConstant = (long)1234578912;
+        final Long longTrueConstant = 1234578912345L;
         assertThat(converter.convert(longTrueConstant), equalTo(true));
         final Long longFalseConstant = (long)0;
         assertThat(converter.convert(longFalseConstant), equalTo(false));

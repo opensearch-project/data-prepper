@@ -781,6 +781,13 @@ public class JacksonEventTest {
                 .build();
 
         // Include Keys must start with / and also ordered, This is pre-processed in SinkModel
+        List<String> includeNullKey = null;
+        assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeNullKey).toJsonString(), equalTo(jsonString));
+
+        List<String> includeEmptyKey = List.of();
+        assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeEmptyKey).toJsonString(), equalTo(jsonString));
+
+        // Include Keys must start with / and also ordered, This is pre-processed in SinkModel
         List<String> includeKeys1 = Arrays.asList("foo", "info");
         final String expectedJsonString1 = "{\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"}}";
         assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeKeys1).toJsonString(), equalTo(expectedJsonString1));
@@ -865,7 +872,16 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @CsvSource(value = {"test_key, true", "/test_key, true", "inv(alid, false", "getMetadata(\"test_key\"), false"})
+    @CsvSource(value = {"test_key, true",
+            "/test_key, true",
+            "inv(alid, false",
+            "getMetadata(\"test_key\"), false",
+            "key.with.dot, true",
+            "key-with-hyphen, true",
+            "key_with_underscore, true",
+            "key@with@at, true",
+            "key[with]brackets, true"
+    })
     void isValidEventKey_returns_expected_result(final String key, final boolean isValid) {
         assertThat(JacksonEvent.isValidEventKey(key), equalTo(isValid));
     }

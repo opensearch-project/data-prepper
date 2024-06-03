@@ -16,6 +16,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -39,6 +41,7 @@ class DataTypeTest {
 
     private static Stream<Arguments> getSameTypeTestData() {
         int[] testArray = {1,2};
+        List<Integer> testList = new ArrayList<>();
         return Stream.of(
             Arguments.of(2, "integer", true),
             Arguments.of("testString", "string", true),
@@ -48,6 +51,7 @@ class DataTypeTest {
             Arguments.of(true, "boolean", true),
             Arguments.of(Map.of("k","v"), "map", true),
             Arguments.of(testArray, "array", true),
+            Arguments.of(testList, "array", true),
             Arguments.of(2.0, "integer", false),
             Arguments.of(2, "string", false),
             Arguments.of("testString", "long", false),

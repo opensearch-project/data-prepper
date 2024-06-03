@@ -73,6 +73,7 @@ public class BigDecimalConverterTests {
             expectedBigDecimal = expectedBigDecimal.setScale(scale, RoundingMode.HALF_EVEN);
         }
         assertThat(converter.convert(actualValue, scale), equalTo(expectedBigDecimal));
+        assertThat(converter.convert(actualValue, () -> scale), equalTo(expectedBigDecimal));
     }
 
     private static Stream<Arguments> decimalToBigDecimalValueProvider() {
