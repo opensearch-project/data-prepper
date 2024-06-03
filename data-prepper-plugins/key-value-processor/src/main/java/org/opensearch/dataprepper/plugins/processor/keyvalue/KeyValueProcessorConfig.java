@@ -108,9 +108,6 @@ public class KeyValueProcessorConfig {
     @JsonProperty("drop_keys_with_no_value")
     private boolean dropKeysWithNoValue = false;
 
-    @JsonProperty("enable_double_quote_grouping")
-    private boolean enableDoubleQuoteGrouping = false;
-
     @JsonProperty("key_value_when")
     private String keyValueWhen;
 

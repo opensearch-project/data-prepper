@@ -52,7 +52,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
-    private final Pattern keyValueDelimiterWithQuotePattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
     private final Set<String> excludeKeysSet = new HashSet<String>();
     private final HashMap<String, Object> defaultValuesMap = new HashMap<>();
@@ -68,7 +67,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Set<Character> bracketSet = Set.of('[', ']', '(', ')', '<', '>');
     private final List<String> tagsOnFailure;
     private final Character stringLiteralCharacter;
-    private String keyValueDelimiterRegex;
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics,
@@ -78,8 +76,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         this.keyValueProcessorConfig = keyValueProcessorConfig;
 
         this.stringLiteralCharacter = keyValueProcessorConfig.getStringLiteralCharacter();
-        if (stringLiteralCharacter != null && !keyValueProcessorConfig.getValueGrouping()) {
-            LOG.warn("string literal character config is ignored becuase value grouping is disabled");
+        if (stringLiteralCharacter != null) {
+            if (!keyValueProcessorConfig.getValueGrouping()) {
+                LOG.warn("string literal character config is ignored becuase value grouping is disabled");
+            }
+            if (stringLiteralCharacter != '\"' && stringLiteralCharacter != '\'') {
+                throw new RuntimeException("Only single quote and double quote are supported as string literal character");
+            }
         }
 
         tagsOnFailure = keyValueProcessorConfig.getTagsOnFailure();
@@ -129,7 +132,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 throw new PatternSyntaxException("key_value_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getKeyValueDelimiterRegex(), -1);
             }
 
-            keyValueDelimiterRegex = keyValueProcessorConfig.getKeyValueDelimiterRegex()+"\"";
             keyValueDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex());
 
             if (keyValueProcessorConfig.getRecursive()
@@ -148,7 +150,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getValueSplitCharacters());
             }
-            keyValueDelimiterRegex = regex+"\"";
 
             keyValueDelimiterPattern = Pattern.compile(regex);
 
@@ -157,7 +158,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 throw new IllegalArgumentException("While recursive is true, the set value split characters cannot contain brackets while you are trying to recurse.");
             }
         }
-        keyValueDelimiterWithQuotePattern = Pattern.compile(keyValueDelimiterRegex);
 
         if (!validateRegex(keyValueProcessorConfig.getDeleteKeyRegex())) {
             throw new PatternSyntaxException("delete_key_regex is not a valid regex string", keyValueProcessorConfig.getDeleteKeyRegex(), -1);
@@ -330,7 +330,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             if (groupIndex >= 0) {
                 String[] s = keyValueDelimiterPattern.split(str.substring(start,i+1));
                 // Only handle Grouping patterns in the values, not keys
-                if (s.length > 1 || startGroupStrings[groupIndex].equals("\"")) {
+                if (s.length > 1 || startGroupStrings[groupIndex].charAt(0) == stringLiteralCharacter) {
                     i = skipGroup(str, i+1, endGroupChars[groupIndex]);
                     skippedGroup = true;
                 }

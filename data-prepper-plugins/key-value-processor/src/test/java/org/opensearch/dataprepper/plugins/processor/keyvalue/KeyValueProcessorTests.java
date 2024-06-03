@@ -70,6 +70,7 @@ public class KeyValueProcessorTests {
     void setup() {
         final KeyValueProcessorConfig defaultConfig = new KeyValueProcessorConfig();
         lenient().when(mockConfig.getSource()).thenReturn(defaultConfig.getSource());
+        lenient().when(mockConfig.getStringLiteralCharacter()).thenReturn(null);
         lenient().when(mockConfig.getDestination()).thenReturn(defaultConfig.getDestination());
         lenient().when(mockConfig.getFieldDelimiterRegex()).thenReturn(defaultConfig.getFieldDelimiterRegex());
         lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(defaultConfig.getFieldSplitCharacters());
