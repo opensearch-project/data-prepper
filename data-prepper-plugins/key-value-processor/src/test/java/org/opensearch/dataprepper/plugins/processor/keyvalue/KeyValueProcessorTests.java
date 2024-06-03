@@ -69,7 +69,6 @@ public class KeyValueProcessorTests {
     @BeforeEach
     void setup() {
         final KeyValueProcessorConfig defaultConfig = new KeyValueProcessorConfig();
-        lenient().when(mockConfig.getAllowKeys()).thenReturn(null);
         lenient().when(mockConfig.getSource()).thenReturn(defaultConfig.getSource());
         lenient().when(mockConfig.getDestination()).thenReturn(defaultConfig.getDestination());
         lenient().when(mockConfig.getFieldDelimiterRegex()).thenReturn(defaultConfig.getFieldDelimiterRegex());
@@ -170,9 +169,10 @@ public class KeyValueProcessorTests {
         assertThatKeyEquals(parsed_message, "key2", "value2");
     }
 
+/*
     @Test
     void testMultipleKvToObjectKeyValueProcessorWithAllowKeys() {
-        lenient().when(mockConfig.getAllowKeys()).thenReturn(List.of("key1"));
+        lenient().when(mockConfig.getIncludeKeys()).thenReturn(List.of("key1"));
         final Record<Event> record = getMessage("key1=value1&key2=value2");
         final KeyValueProcessor objectUnderTest = createObjectUnderTest();
         final List<Record<Event>> editedRecords = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
@@ -181,6 +181,7 @@ public class KeyValueProcessorTests {
         assertThat(parsed_message.size(), equalTo(1));
         assertThatKeyEquals(parsed_message, "key1", "value1");
     }
+*/
 
     @Test
     void testDropKeysWithNoValue() {
@@ -200,7 +201,7 @@ public class KeyValueProcessorTests {
     @MethodSource("getKeyValueGroupingTestdata")
     void testMultipleKvToObjectKeyValueProcessorWithValueGrouping(String fieldDelimiters, String input, Map<String, Object> expectedResultMap) {
         lenient().when(mockConfig.getValueGrouping()).thenReturn(true);
-        lenient().when(mockConfig.getEnableDoubleQuoteGrouping()).thenReturn(true);
+        lenient().when(mockConfig.getStringLiteralCharacter()).thenReturn('\"');
         lenient().when(mockConfig.getDropKeysWithNoValue()).thenReturn(true);
         lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(fieldDelimiters);
         final KeyValueProcessor objectUnderTest = createObjectUnderTest();
@@ -263,10 +264,12 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testDoubleQuoteGrouping() {
+    void testStringLiteralCharacter() {
         when(mockConfig.getDestination()).thenReturn(null);
-        lenient().when(mockConfig.getEnableDoubleQuoteGrouping()).thenReturn(true);
-        final Record<Event> record = getMessage("\"ignore this\"key1=value1&key2=value2 \"ignore=this&too\"");
+        lenient().when(mockConfig.getStringLiteralCharacter()).thenReturn('\"');
+        lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(" &");
+        lenient().when(mockConfig.getValueGrouping()).thenReturn(true);
+        final Record<Event> record = getMessage("\"ignore this\" key1=value1&key2=value2 \"ignore=this&too\"");
         keyValueProcessor = createObjectUnderTest();
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
 

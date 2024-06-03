@@ -67,9 +67,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     final String delimiterBracketCheck = "[\\[\\]()<>]";
     private final Set<Character> bracketSet = Set.of('[', ']', '(', ')', '<', '>');
     private final List<String> tagsOnFailure;
-    private final boolean ignoreTextInDoubleQuotes;
+    private final Character stringLiteralCharacter;
     private String keyValueDelimiterRegex;
-    private final Set<String> allowKeys;
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics,
@@ -77,16 +76,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                              final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.keyValueProcessorConfig = keyValueProcessorConfig;
-        if (keyValueProcessorConfig.getAllowKeys() != null) {
-            allowKeys = new HashSet<>();
-            for (String allowKey: keyValueProcessorConfig.getAllowKeys()) {
-                allowKeys.add(allowKey);
-            }
-        } else
-            allowKeys = null;
+
+        this.stringLiteralCharacter = keyValueProcessorConfig.getStringLiteralCharacter();
+        if (stringLiteralCharacter != null && !keyValueProcessorConfig.getValueGrouping()) {
+            LOG.warn("string literal character config is ignored becuase value grouping is disabled");
+        }
 
         tagsOnFailure = keyValueProcessorConfig.getTagsOnFailure();
-        ignoreTextInDoubleQuotes = keyValueProcessorConfig.getIgnoreTextInDoubleQuotes();
 
         if (keyValueProcessorConfig.getFieldDelimiterRegex() != null
                 && !keyValueProcessorConfig.getFieldDelimiterRegex().isEmpty()) {
@@ -289,9 +285,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private void addPart(List<String> parts, final String str, final int start, final int end) {
         String part = str.substring(start,end).trim();
-        if (ignoreTextInDoubleQuotes && part.contains("\"") && !keyValueDelimiterWithQuotePattern.matcher(part).find()) {
-            return;
-        }
         if (part.length() > 0) {
             parts.add(part);
         }
@@ -301,7 +294,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         for (int j = 0; j < startGroupStrings.length; j++) {
             try {
                 if (startGroupStrings[j].equals(str.substring(idx, idx+startGroupStrings[j].length()))) {
-                    if (j <= 1 && idx > 0 && str.charAt(idx-1) != '\\') {
+                    // For " and ', make sure, it's not escaped
+                    if (j <= 1 && (idx == 0 || str.charAt(idx-1) != '\\')) {
                         return j;
                     } else if (j > 1) {
                         return j;
@@ -330,12 +324,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 i++;
                 continue;
             }
+
             int groupIndex = findInStartGroup(str, i);
             boolean skippedGroup = false;
             if (groupIndex >= 0) {
                 String[] s = keyValueDelimiterPattern.split(str.substring(start,i+1));
                 // Only handle Grouping patterns in the values, not keys
-                
                 if (s.length > 1 || startGroupStrings[groupIndex].equals("\"")) {
                     i = skipGroup(str, i+1, endGroupChars[groupIndex]);
                     skippedGroup = true;
@@ -356,7 +350,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         if (start != i) {
             addPart(parts, str, start, i);
         }
-        
+
         return parts;
     }
 
@@ -494,7 +488,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     valueEnd = pair.length() - 1;
                     valueString = pair.substring(valueStart, valueEnd).stripLeading();
                     JsonNode child = ((ObjectNode) root).put(keyString, recurse(valueString, mapper));
-                } 
+                }
             } else {
                 valueString = pair.substring(valueStart).stripLeading();
                 ObjectNode child = ((ObjectNode)root).put(keyString, valueString);
@@ -523,10 +517,19 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         List<Object> valueList;
 
         for(final String group : groups) {
+            // If a group starts and ends with stringLiteralCharacter,
+            // treat the entire group as key with null as the value
+            if (stringLiteralCharacter != null && group.charAt(0) == stringLiteralCharacter && group.charAt(group.length()-1) == stringLiteralCharacter) {
+                if (validKeyAndValue(group, null)) {
+                    nonRecursedMap.put(group, null);
+                }
+                continue;
+            }
+
             final String[] terms = keyValueDelimiterPattern.split(group, 2);
             String key = terms[0];
             Object value;
-            
+
             if (terms.length == 2) {
                 value = terms[1];
             } else {
@@ -631,7 +634,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         String[] arr = {key.stripTrailing(), value.toString().stripLeading()};
         return arr;
     }
-    
+
     private String transformKey(String key) {
         if (keyValueProcessorConfig.getTransformKey().equals(lowercaseKey)) {
             key = key.toLowerCase();
@@ -647,10 +650,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         if (key == null || key.isEmpty()) {
             return false;
         }
-        if (allowKeys != null && !allowKeys.contains(key)) {
-            return false;
-        }
-            
+
         if (keyValueProcessorConfig.getDropKeysWithNoValue() && value == null) {
             return false;
         }
