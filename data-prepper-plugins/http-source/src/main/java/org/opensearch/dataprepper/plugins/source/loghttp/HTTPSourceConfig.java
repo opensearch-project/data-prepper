@@ -5,20 +5,45 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
-import org.opensearch.dataprepper.http.BaseHttpServerConfig;
+import org.opensearch.dataprepper.http.HttpServerConfig;
+import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 
-public class HTTPSourceConfig extends BaseHttpServerConfig {
-
+public class HTTPSourceConfig extends HttpServerConfig {
     static final String DEFAULT_LOG_INGEST_URI = "/log/ingest";
     static final int DEFAULT_PORT = 2021;
+    static final String COMPRESSION = "compression";
 
-    @Override
-    public int getDefaultPort() {
-        return DEFAULT_PORT;
+    @JsonProperty("port")
+    @Min(0)
+    @Max(65535)
+    private int port = DEFAULT_PORT;
+
+    @JsonProperty("path")
+    @Size(min = 1, message = "path length should be at least 1")
+    private String path = DEFAULT_LOG_INGEST_URI;
+
+    @JsonProperty(COMPRESSION)
+    private CompressionOption compression = CompressionOption.NONE;
+
+    @AssertTrue(message = "path should start with /")
+    boolean isPathValid() {
+        return path.startsWith("/");
     }
 
-    @Override
-    public String getDefaultPath() {
-        return DEFAULT_LOG_INGEST_URI;
+    public int getPort() {
+        return port;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public CompressionOption getCompression() {
+        return compression;
     }
 }

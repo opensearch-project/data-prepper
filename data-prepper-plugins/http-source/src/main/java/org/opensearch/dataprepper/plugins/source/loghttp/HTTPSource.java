@@ -13,7 +13,6 @@ import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import com.linecorp.armeria.server.throttling.ThrottlingService;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
-import org.opensearch.dataprepper.http.HttpServerConfig;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
 import org.opensearch.dataprepper.http.LogThrottlingStrategy;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -52,7 +51,7 @@ public class HTTPSource implements Source<Record<Log>> {
     public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
     static final String SERVER_CONNECTIONS = "serverConnections";
 
-    private final HttpServerConfig sourceConfig;
+    private final HTTPSourceConfig sourceConfig;
     private final CertificateProviderFactory certificateProviderFactory;
     private final ArmeriaHttpAuthenticationProvider authenticationProvider;
     private final HttpRequestExceptionHandler httpRequestExceptionHandler;

@@ -9,7 +9,6 @@ plugins {
 
 dependencies {
     implementation project(':data-prepper-plugins:common')
-    implementation project(':data-prepper-test-common')
     implementation libs.armeria.core
     implementation 'software.amazon.awssdk:acm'
     implementation 'software.amazon.awssdk:s3'

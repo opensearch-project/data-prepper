@@ -13,7 +13,6 @@ dependencies {
     implementation project(':data-prepper-plugins:http-source-common')
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:armeria-common')
-    implementation project(':data-prepper-test-common')
     implementation libs.armeria.core
     implementation libs.commons.io
     implementation 'software.amazon.awssdk:acm'
