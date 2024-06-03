@@ -42,7 +42,6 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 @DataPrepperPlugin(name = "key_value", pluginType = Processor.class, pluginConfigurationType = KeyValueProcessorConfig.class)
 public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(KeyValueProcessor.class);
-    private static final String DOUBLE_QUOTE = "\"";
     private static String startGroupStrings[] = {"\"","'", "(", "[", "<", "{", "http://", "https://"};
     private static Character endGroupChars[] ={'"', '\'', ')', ']', '>', '}', ' ', ' '};
 
