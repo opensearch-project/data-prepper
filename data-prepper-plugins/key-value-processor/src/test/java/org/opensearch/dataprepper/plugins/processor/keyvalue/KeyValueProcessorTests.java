@@ -170,20 +170,6 @@ public class KeyValueProcessorTests {
         assertThatKeyEquals(parsed_message, "key2", "value2");
     }
 
-/*
-    @Test
-    void testMultipleKvToObjectKeyValueProcessorWithAllowKeys() {
-        lenient().when(mockConfig.getIncludeKeys()).thenReturn(List.of("key1"));
-        final Record<Event> record = getMessage("key1=value1&key2=value2");
-        final KeyValueProcessor objectUnderTest = createObjectUnderTest();
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
-        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
-
-        assertThat(parsed_message.size(), equalTo(1));
-        assertThatKeyEquals(parsed_message, "key1", "value1");
-    }
-*/
-
     @Test
     void testDropKeysWithNoValue() {
         lenient().when(mockConfig.getDropKeysWithNoValue()).thenReturn(true);
@@ -257,7 +243,7 @@ public class KeyValueProcessorTests {
 
                 Arguments.of(", ", "foo \"key1=key2 bar\" key2=val2 baz", Map.of("key2", "val2")),
                 Arguments.of(", ", "foo  key1=https://bar.baz/?key2=val2&url=https://quz.fred/ bar", Map.of("key1","https://bar.baz/?key2=val2&url=https://quz.fred/")),
-                //Arguments.of(", ", "foo key1=\"bar \" qux\" fred", Map.of("key1", "\"bar \"")),
+                Arguments.of(", ", "foo key1=\"bar \" qux\" fred", Map.of("key1", "\"bar \"")),
                 Arguments.of(", ", "foo key1=\"bar \\\" qux\" fred", Map.of("key1", "\"bar \\\" qux\"")),
 
                 Arguments.of(", ", "key1=\"value1,value2\", key3=value3", Map.of("key1", "\"value1,value2\"", "key3", "value3"))
