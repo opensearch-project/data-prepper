@@ -127,7 +127,7 @@ public class AggregateProcessorIT {
 
         pluginMetrics = PluginMetrics.fromNames(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
-        when(aggregateProcessorConfig.getAllowRawEvents()).thenReturn(false);
+        when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(false);
         when(aggregateProcessorConfig.getIdentificationKeys()).thenReturn(identificationKeys);
         when(aggregateProcessorConfig.getAggregateAction()).thenReturn(actionConfiguration);
         when(actionConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
@@ -447,8 +447,10 @@ public class AggregateProcessorIT {
     }
 
     @RepeatedTest(value = 2)
-    void aggregateWithCountAggregateActionWithRawEvents() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
-        when(aggregateProcessorConfig.getAllowRawEvents()).thenReturn(true);
+    void aggregateWithCountAggregateActionWithUnaggregatedEvents() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
+        when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(true);
+        String tag = UUID.randomUUID().toString();
+        when(aggregateProcessorConfig.getAggregatedEventsTag()).thenReturn(tag);
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
         setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
         aggregateAction = new CountAggregateAction(countAggregateActionConfig);
@@ -482,6 +484,7 @@ public class AggregateProcessorIT {
         expectedEventMap.put(DEFAULT_COUNT_KEY, NUM_THREADS * NUM_EVENTS_PER_BATCH);
 
         final Record<Event> record = (Record<Event>)results.toArray()[0];
+        assertTrue(record.getData().getMetadata().hasTags(List.of(tag)));
         expectedEventMap.forEach((k, v) -> assertThat(record.getData().toMap(), hasEntry(k,v)));
         assertThat(record.getData().toMap(), hasKey(DEFAULT_START_TIME_KEY));
     }

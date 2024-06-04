@@ -125,7 +125,7 @@ public class AggregateProcessorTest {
     @BeforeEach
     void setUp() {
         when(aggregateProcessorConfig.getAggregateAction()).thenReturn(actionConfiguration);
-        when(aggregateProcessorConfig.getAllowRawEvents()).thenReturn(false);
+        when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(false);
         when(aggregateProcessorConfig.getLocalMode()).thenReturn(false);
         when(actionConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
         when(actionConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
@@ -403,8 +403,10 @@ public class AggregateProcessorTest {
             verify(aggregateGroupManager).getGroupsToConclude(eq(false));
         }
         @Test
-        void handleEvent_returning_with_event_adds_event_to_records_out_with_allow_raw_events() {
-            when(aggregateProcessorConfig.getAllowRawEvents()).thenReturn(true);
+        void handleEvent_returning_with_event_adds_event_to_records_out_with_output_unaggregated_events() {
+            when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(true);
+            String tag = UUID.randomUUID().toString();
+            when(aggregateProcessorConfig.getAggregatedEventsTag()).thenReturn(tag);
             final AggregateProcessor objectUnderTest = createObjectUnderTest();
             final Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>(identificationKeysMap, aggregateGroup);
             when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.singletonList(groupEntry));
@@ -419,7 +421,7 @@ public class AggregateProcessorTest {
             assertThat(recordsOut.get(1), notNullValue());
             assertThat(recordsOut.get(1).getData(), equalTo(event));
             Event receivedEvent = recordsOut.get(1).getData();
-            assertTrue(receivedEvent.getMetadata().hasTags(List.of(AggregateProcessor.AGGREGATED_TAG)));
+            assertTrue(receivedEvent.getMetadata().hasTags(List.of(tag)));
 
             verify(actionHandleEventsOutCounter).increment(1);
             verify(actionHandleEventsDroppedCounter).increment(0);

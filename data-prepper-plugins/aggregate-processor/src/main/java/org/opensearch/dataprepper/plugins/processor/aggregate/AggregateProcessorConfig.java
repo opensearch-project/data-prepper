@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
@@ -32,8 +33,11 @@ public class AggregateProcessorConfig {
     @NotNull
     private Boolean localMode = false;
 
-    @JsonProperty("allow_raw_events")
-    private Boolean allowRawEvents;
+    @JsonProperty("output_unaggregated_events")
+    private Boolean outputUnaggregatedEvents = false;
+
+    @JsonProperty("aggregated_events_tag")
+    private String aggregatedEventsTag;
 
     @JsonProperty("aggregate_when")
     private String whenCondition;
@@ -50,12 +54,21 @@ public class AggregateProcessorConfig {
         return whenCondition;
     }
 
-    public Boolean getAllowRawEvents() {
-        return allowRawEvents;
+    public String getAggregatedEventsTag() {
+        return aggregatedEventsTag;
+    }
+
+    public Boolean getOutputUnaggregatedEvents() {
+        return outputUnaggregatedEvents;
     }
 
     public Boolean getLocalMode() {
         return localMode;
+    }
+
+    @AssertTrue(message="Aggragated Events Tag must be set when output_unaggregated_events is set")
+    boolean isValidConfig() {
+        return (!outputUnaggregatedEvents || (outputUnaggregatedEvents && aggregatedEventsTag != null));
     }
 
     public PluginModel getAggregateAction() { return aggregateAction; }
