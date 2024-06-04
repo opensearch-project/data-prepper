@@ -39,7 +39,8 @@ class TargetTypeTest {
                     arguments(DataType.BOOLEAN.getTypeName(), TargetType.BOOLEAN),
                     arguments(DataType.INTEGER.getTypeName(), TargetType.INTEGER),
                     arguments(DataType.LONG.getTypeName(), TargetType.LONG),
-                    arguments(DataType.DOUBLE.getTypeName(), TargetType.DOUBLE)
+                    arguments(DataType.DOUBLE.getTypeName(), TargetType.DOUBLE),
+                    arguments(DataType.BIG_DECIMAL.getTypeName(), TargetType.BIG_DECIMAL)
             );
         }
     }

@@ -25,6 +25,7 @@ public class DoubleConverterTests {
         DoubleConverter converter = new DoubleConverter();
         final String stringConstant = "12345678912.12345";
         assertThat(converter.convert(stringConstant), equalTo(Double.parseDouble(stringConstant)));
+        assertThat(converter.convert(stringConstant, () -> 0), equalTo(Double.parseDouble(stringConstant)));
     }
     @Test
     void testIntegerToDoubleConversion() {
@@ -43,7 +44,7 @@ public class DoubleConverterTests {
     @Test
     void testDoubleToDoubleConversion() {
         DoubleConverter converter = new DoubleConverter();
-        final Double doubleConstant = (double)12345.123;
+        final Double doubleConstant = 12345.123;
         assertThat(converter.convert(doubleConstant), equalTo(doubleConstant));
     }
     @ParameterizedTest
@@ -56,16 +57,16 @@ public class DoubleConverterTests {
         return Stream.of(
             Arguments.of(new BigDecimal ("0"), (double)0),
             Arguments.of(new BigDecimal ("0.0"), (double)0),
-            Arguments.of(new BigDecimal ("0.00000000000000000000000"), (double)0.00000000000000000000000),
+            Arguments.of(new BigDecimal ("0.00000000000000000000000"), 0.00000000000000000000000),
             Arguments.of(BigDecimal.ZERO, BigDecimal.ZERO.doubleValue()),
             Arguments.of(new BigDecimal ("1"), (double)1),
-            Arguments.of(new BigDecimal ("1703908514.045833"), (double)1703908514.045833),
-            Arguments.of(new BigDecimal ("1.00000000000000000000000"), (double)1.00000000000000000000000),
-            Arguments.of(new BigDecimal ("-12345678912.12345"), (double)-12345678912.12345),
+            Arguments.of(new BigDecimal ("1703908514.045833"), 1703908514.045833),
+            Arguments.of(new BigDecimal ("1.00000000000000000000000"), 1.00000000000000000000000),
+            Arguments.of(new BigDecimal ("-12345678912.12345"), -12345678912.12345),
             Arguments.of(BigDecimal.ONE, BigDecimal.ONE.doubleValue()),
-            Arguments.of(new BigDecimal("1.7976931348623157E+308"), (double)1.7976931348623157E+308),
-            Arguments.of(new BigDecimal(Double.MAX_VALUE), (double)Double.MAX_VALUE),
-            Arguments.of(new BigDecimal(Double.MIN_VALUE), (double)Double.MIN_VALUE)
+            Arguments.of(new BigDecimal("1.7976931348623157E+308"), 1.7976931348623157E+308),
+            Arguments.of(new BigDecimal(Double.MAX_VALUE), Double.MAX_VALUE),
+            Arguments.of(new BigDecimal(Double.MIN_VALUE), Double.MIN_VALUE)
         );
     }
     @Test

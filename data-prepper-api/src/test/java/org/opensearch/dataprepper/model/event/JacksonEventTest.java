@@ -9,11 +9,14 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
@@ -22,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.containsStringIgnoringCase;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -777,6 +781,13 @@ public class JacksonEventTest {
                 .build();
 
         // Include Keys must start with / and also ordered, This is pre-processed in SinkModel
+        List<String> includeNullKey = null;
+        assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeNullKey).toJsonString(), equalTo(jsonString));
+
+        List<String> includeEmptyKey = List.of();
+        assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeEmptyKey).toJsonString(), equalTo(jsonString));
+
+        // Include Keys must start with / and also ordered, This is pre-processed in SinkModel
         List<String> includeKeys1 = Arrays.asList("foo", "info");
         final String expectedJsonString1 = "{\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"}}";
         assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeKeys1).toJsonString(), equalTo(expectedJsonString1));
@@ -861,7 +872,16 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @CsvSource(value = {"test_key, true", "/test_key, true", "inv(alid, false", "getMetadata(\"test_key\"), false"})
+    @CsvSource(value = {"test_key, true",
+            "/test_key, true",
+            "inv(alid, false",
+            "getMetadata(\"test_key\"), false",
+            "key.with.dot, true",
+            "key-with-hyphen, true",
+            "key_with_underscore, true",
+            "key@with@at, true",
+            "key[with]brackets, true"
+    })
     void isValidEventKey_returns_expected_result(final String key, final boolean isValid) {
         assertThat(JacksonEvent.isValidEventKey(key), equalTo(isValid));
     }
@@ -880,6 +900,26 @@ public class JacksonEventTest {
             currentObject = nextObject;
         }
         return dataObject;
+    }
+
+    @ParameterizedTest
+    @MethodSource("getBigDecimalPutTestData")
+    void testPutAndGet_withBigDecimal(final String value) {
+        final String key = "bigDecimalKey";
+        event.put(key, new BigDecimal(value));
+        final Object result = event.get(key, Object.class);
+        assertThat(result, is(notNullValue()));
+        assertThat(result.toString(), is(equalTo(value)));
+    }
+
+    private static Stream<Arguments> getBigDecimalPutTestData() {
+        return Stream.of(
+                Arguments.of("702062202420"),
+                Arguments.of("1.23345E+9"),
+                Arguments.of("1.2345E+60"),
+                Arguments.of("1.2345E+6"),
+                Arguments.of("1.000")
+        );
     }
 
 }

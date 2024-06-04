@@ -177,6 +177,20 @@ public class DefaultEventMetadataTest {
     }
 
     @Test
+    public void testAttributes_with_attributes_of_not_map_type() {
+        Object v1 = new Object();
+        eventMetadata = DefaultEventMetadata.builder()
+                .withEventType(testEventType)
+                .withTimeReceived(testTimeReceived)
+                .withAttributes(Map.of("key1", v1))
+                .build();
+        assertThat(eventMetadata.getAttribute("key1"), equalTo(v1));
+        assertThat(eventMetadata.getAttribute("key1/key2/"), equalTo(null));
+        assertThat(eventMetadata.getAttribute("key3"), equalTo(null));
+
+    }
+
+    @Test
     public void testBuild_withoutTimeReceived() {
 
         final Instant before = Instant.now();
@@ -303,6 +317,40 @@ public class DefaultEventMetadataTest {
         @Test
         void equals_returns_false_for_null() {
             assertThat(event.equals(null), equalTo(false));
+            assertThat(event.equals(new Object()), equalTo(false));
+        }
+
+        @Test
+        void equals_returns_false_when_timeinstance_not_match() {
+            DefaultEventMetadata newEvent = DefaultEventMetadata.builder()
+                    .withEventType(eventType)
+                    .withTimeReceived(Instant.now())
+                    .withAttributes(Collections.singletonMap(attributeKey, attributeValue))
+                    .build();
+            assertThat(event.equals(newEvent), equalTo(false));
+        }
+
+        @Test
+        void equals_returns_false_when_attributes_not_match() {
+            String newAttributeKey = UUID.randomUUID().toString();
+            String newAttributeValue = UUID.randomUUID().toString();
+            DefaultEventMetadata newEvent = DefaultEventMetadata.builder()
+                    .withEventType(eventType)
+                    .withTimeReceived(timeReceived)
+                    .withAttributes(Collections.singletonMap(newAttributeKey, newAttributeValue))
+                    .build();
+            assertThat(event.equals(newEvent), equalTo(false));
+        }
+
+        @Test
+        void equals_returns_false_when_tags_not_match() {
+            DefaultEventMetadata newEvent = DefaultEventMetadata.builder()
+                    .withEventType(eventType)
+                    .withTimeReceived(timeReceived)
+                    .withAttributes(Collections.singletonMap(attributeKey, attributeValue))
+                    .withTags(Set.of("some","new","tag"))
+                    .build();
+            assertThat(event.equals(newEvent), equalTo(false));
         }
 
         @Test

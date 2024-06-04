@@ -24,18 +24,19 @@ import org.junit.jupiter.params.provider.ValueSource;
      void testStringToLongConversion(String stringValue) {
          LongConverter converter = new LongConverter();
          assertThat(converter.convert(stringValue), equalTo(Long.parseLong(stringValue)));
+         assertThat(converter.convert(stringValue, () -> 0), equalTo(Long.parseLong(stringValue)));
      }
      @ParameterizedTest
      @ValueSource(floats = {(float)1234.56789, Float.MAX_VALUE, Float.MIN_VALUE})
      void testfloatToLongConversion(float floatValue) {
          LongConverter converter = new LongConverter();
-         assertThat(converter.convert(floatValue), equalTo((long)(float)floatValue));
+         assertThat(converter.convert(floatValue), equalTo((long) floatValue));
      }
      @ParameterizedTest
      @ValueSource(doubles = {12345678.12345678, 2.0 * Integer.MAX_VALUE, Double.MAX_VALUE, Double.MIN_VALUE})
      void testDoubleToLongConversion(double doubleValue) {
         LongConverter converter = new LongConverter();
-        assertThat(converter.convert(doubleValue), equalTo((long)(double)doubleValue));
+        assertThat(converter.convert(doubleValue), equalTo((long) doubleValue));
      }
      @ParameterizedTest
      @ValueSource(booleans = {false,true})
@@ -77,8 +78,8 @@ import org.junit.jupiter.params.provider.ValueSource;
             Arguments.of(new BigDecimal("1.7976931348623157E+308"), (long)0),
             Arguments.of(new BigDecimal(Integer.MAX_VALUE), (long)Integer.MAX_VALUE),
             Arguments.of(new BigDecimal(Integer.MIN_VALUE), (long)Integer.MIN_VALUE),   
-            Arguments.of(new BigDecimal(Long.MAX_VALUE), (long)Long.MAX_VALUE),
-            Arguments.of(new BigDecimal(Long.MIN_VALUE), (long)Long.MIN_VALUE),
+            Arguments.of(new BigDecimal(Long.MAX_VALUE), Long.MAX_VALUE),
+            Arguments.of(new BigDecimal(Long.MIN_VALUE), Long.MIN_VALUE),
             Arguments.of(new BigDecimal("267694723"), (long)267694723)
 
         );

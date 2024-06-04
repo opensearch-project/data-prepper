@@ -6,11 +6,12 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.opensearch.dataprepper.typeconverter.ConverterArguments;
 
 import java.util.List;
 import java.util.Optional;
 
-public class ConvertEntryTypeProcessorConfig  {
+public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     @JsonProperty("key")
     private String key;
 
@@ -19,6 +20,12 @@ public class ConvertEntryTypeProcessorConfig  {
 
     @JsonProperty("type")
     private TargetType type = TargetType.INTEGER;
+
+    /**
+     * Optional scale value used only in the case of BigDecimal converter
+     */
+    @JsonProperty("scale")
+    private int scale = 0;
 
     @JsonProperty("convert_when")
     private String convertWhen;
@@ -35,9 +42,10 @@ public class ConvertEntryTypeProcessorConfig  {
 
     public List<String> getKeys() { return keys; }
 
-    public TargetType getType() {
-        return type;
-    }
+    public TargetType getType() { return type;  }
+
+    @Override
+    public int getScale() { return scale;  }
 
     public String getConvertWhen() { return convertWhen; }
 

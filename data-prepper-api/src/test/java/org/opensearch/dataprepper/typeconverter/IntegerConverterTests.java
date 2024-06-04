@@ -23,6 +23,7 @@ public class IntegerConverterTests {
         IntegerConverter converter = new IntegerConverter();
         final String stringConstant = "1234";
         assertThat(converter.convert(stringConstant), equalTo(Integer.parseInt(stringConstant)));
+        assertThat(converter.convert(stringConstant, () -> 0), equalTo(Integer.parseInt(stringConstant)));
     }
     @Test
     void testFloatToIntegerConversion() {
@@ -41,7 +42,7 @@ public class IntegerConverterTests {
     @Test
     void testIntegerToIntegerConversion() {
         IntegerConverter converter = new IntegerConverter();
-        final Integer intConstant = (int)1234;
+        final Integer intConstant = 1234;
         assertThat(converter.convert(intConstant), equalTo(intConstant));
     }
     @ParameterizedTest
@@ -52,18 +53,18 @@ public class IntegerConverterTests {
     }
     private static Stream<Arguments> BigDecimalValueProvider() {
         return Stream.of(
-            Arguments.of(new BigDecimal ("0"), (int)0),
-            Arguments.of(new BigDecimal ("0.0"), (int)0),
-            Arguments.of(new BigDecimal ("0.00000000000000000000000"), (int)0),
+            Arguments.of(new BigDecimal ("0"), 0),
+            Arguments.of(new BigDecimal ("0.0"), 0),
+            Arguments.of(new BigDecimal ("0.00000000000000000000000"), 0),
             Arguments.of(BigDecimal.ZERO, BigDecimal.ZERO.intValue()),
-            Arguments.of(new BigDecimal ("1"), (int)1),
-            Arguments.of(new BigDecimal ("1703908514.045833"), (int)1703908514),
-            Arguments.of(new BigDecimal ("1.00000000000000000000000"), (int)1),
-            Arguments.of(new BigDecimal ("-12345678.12345"), (int)-12345678),
+            Arguments.of(new BigDecimal ("1"), 1),
+            Arguments.of(new BigDecimal ("1703908514.045833"), 1703908514),
+            Arguments.of(new BigDecimal ("1.00000000000000000000000"), 1),
+            Arguments.of(new BigDecimal ("-12345678.12345"), -12345678),
             Arguments.of(BigDecimal.ONE, BigDecimal.ONE.intValue()),
-            Arguments.of(new BigDecimal("1.7976931348623157E+308"), (int)0),
-            Arguments.of(new BigDecimal(Integer.MAX_VALUE), (int)Integer.MAX_VALUE),
-            Arguments.of(new BigDecimal(Integer.MIN_VALUE), (int)Integer.MIN_VALUE)
+            Arguments.of(new BigDecimal("1.7976931348623157E+308"), 0),
+            Arguments.of(new BigDecimal(Integer.MAX_VALUE), Integer.MAX_VALUE),
+            Arguments.of(new BigDecimal(Integer.MIN_VALUE), Integer.MIN_VALUE)
         );
     }
     @Test

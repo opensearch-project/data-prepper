@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.stream.Stream;
 
@@ -53,6 +54,7 @@ class DataPrepperScalarTypeDeserializerTest {
                 Arguments.of(Long.class, 200L),
                 Arguments.of(Double.class, 1.23d),
                 Arguments.of(Float.class, 2.15f),
-                Arguments.of(Character.class, 'c'));
+                Arguments.of(Character.class, 'c'),
+                Arguments.of(BigDecimal.class, 1.2345E+5));
     }
 }
