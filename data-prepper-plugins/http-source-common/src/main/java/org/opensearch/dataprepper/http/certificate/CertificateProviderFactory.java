@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.loghttp.certificate;
+package org.opensearch.dataprepper.http.certificate;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
@@ -11,7 +11,7 @@ import org.opensearch.dataprepper.plugins.certificate.acm.ACMCertificateProvider
 import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.s3.S3CertificateProvider;
 import org.opensearch.dataprepper.plugins.metricpublisher.MicrometerMetricPublisher;
-import org.opensearch.dataprepper.plugins.source.loghttp.HTTPSourceConfig;
+import org.opensearch.dataprepper.http.HttpServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -36,13 +36,13 @@ public class CertificateProviderFactory {
     private static final long ACM_CLIENT_BASE_BACKOFF_MILLIS = 1000l;
     private static final long ACM_CLIENT_MAX_BACKOFF_MILLIS = 60000l;
 
-    final HTTPSourceConfig httpSourceConfig;
-    public CertificateProviderFactory(final HTTPSourceConfig httpSourceConfig) {
-        this.httpSourceConfig = httpSourceConfig;
+    final HttpServerConfig httpServerConfig;
+    public CertificateProviderFactory(final HttpServerConfig httpServerConfig) {
+        this.httpServerConfig = httpServerConfig;
     }
 
     public CertificateProvider getCertificateProvider() {
-        if (httpSourceConfig.isUseAcmCertificateForSsl()) {
+        if (httpServerConfig.isUseAcmCertificateForSsl()) {
             LOG.info("Using ACM certificate and private key for SSL/TLS.");
             final AwsCredentialsProvider credentialsProvider = AwsCredentialsProviderChain.builder()
                     .addCredentialsProvider(DefaultCredentialsProvider.create())
@@ -65,7 +65,7 @@ public class CertificateProviderFactory {
             final PluginMetrics awsSdkMetrics = PluginMetrics.fromNames("sdk", "aws");
 
             final AcmClient awsCertificateManager = AcmClient.builder()
-                    .region(Region.of(httpSourceConfig.getAwsRegion()))
+                    .region(Region.of(httpServerConfig.getAwsRegion()))
                     .credentialsProvider(credentialsProvider)
                     .overrideConfiguration(clientConfig)
                     .httpClientBuilder(ApacheHttpClient.builder())
@@ -73,30 +73,30 @@ public class CertificateProviderFactory {
                     .build();
 
             return new ACMCertificateProvider(awsCertificateManager,
-                    httpSourceConfig.getAcmCertificateArn(),
-                    httpSourceConfig.getAcmCertificateTimeoutMillis(),
-                    httpSourceConfig.getAcmPrivateKeyPassword());
-        } else if (httpSourceConfig.isSslCertAndKeyFileInS3()) {
+                    httpServerConfig.getAcmCertificateArn(),
+                    httpServerConfig.getAcmCertificateTimeoutMillis(),
+                    httpServerConfig.getAcmPrivateKeyPassword());
+        } else if (httpServerConfig.isSslCertAndKeyFileInS3()) {
             LOG.info("Using S3 to fetch certificate and private key for SSL/TLS.");
             final AwsCredentialsProvider credentialsProvider = AwsCredentialsProviderChain.builder()
                     .addCredentialsProvider(DefaultCredentialsProvider.create()).build();
 
             final S3Client s3Client = S3Client.builder()
-                    .region(Region.of(httpSourceConfig.getAwsRegion()))
+                    .region(Region.of(httpServerConfig.getAwsRegion()))
                     .credentialsProvider(credentialsProvider)
                     .httpClientBuilder(ApacheHttpClient.builder())
                     .build();
 
             return new S3CertificateProvider(
                     s3Client,
-                    httpSourceConfig.getSslCertificateFile(),
-                    httpSourceConfig.getSslKeyFile()
+                    httpServerConfig.getSslCertificateFile(),
+                    httpServerConfig.getSslKeyFile()
             );
         } else {
             LOG.info("Using local file system to get certificate and private key for SSL/TLS.");
             return new FileCertificateProvider(
-                    httpSourceConfig.getSslCertificateFile(),
-                    httpSourceConfig.getSslKeyFile()
+                    httpServerConfig.getSslCertificateFile(),
+                    httpServerConfig.getSslKeyFile()
             );
         }
     }
