@@ -25,6 +25,7 @@ public class StringConverterTests {
         StringConverter converter = new StringConverter();
         final Long longConstant = (long)100000000 * (long)10000000;
         assertThat(converter.convert(longConstant), equalTo(longConstant.toString()));
+        assertThat(converter.convert(longConstant, () -> 0), equalTo(longConstant.toString()));
     }
     @Test
     void testDoubleToStringConversion() {

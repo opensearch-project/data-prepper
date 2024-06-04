@@ -26,6 +26,7 @@ public class BigDecimalConverterTests {
         BigDecimalConverter converter = new BigDecimalConverter();
         final String stringConstant = "12345678912.12345";
         assertThat(converter.convert(stringConstant), equalTo(new BigDecimal(stringConstant)));
+        assertThat(converter.convert(stringConstant, () -> 0), equalTo(new BigDecimal(stringConstant)));
     }
 
     @Test
@@ -33,6 +34,7 @@ public class BigDecimalConverterTests {
         BigDecimalConverter converter = new BigDecimalConverter();
         final int intConstant = 12345;
         assertThat(converter.convert(intConstant), equalTo(BigDecimal.valueOf(intConstant)));
+        assertThat(converter.convert(intConstant, () -> 0), equalTo(new BigDecimal(intConstant)));
     }
 
     @Test
@@ -40,6 +42,7 @@ public class BigDecimalConverterTests {
         BigDecimalConverter converter = new BigDecimalConverter();
         final long longConstant = 123456789012L;
         assertThat(converter.convert(longConstant).longValue(), equalTo(longConstant));
+        assertThat(converter.convert(longConstant, () -> 0).longValue(), equalTo(longConstant));
     }
 
     @Test
@@ -49,6 +52,7 @@ public class BigDecimalConverterTests {
         assertThat(converter.convert(boolFalseConstant), equalTo(BigDecimal.valueOf(0)));
         final Boolean boolTrueConstant = true;
         assertThat(converter.convert(boolTrueConstant), equalTo(BigDecimal.valueOf(1)));
+        assertThat(converter.convert(boolTrueConstant, () -> 0), equalTo(BigDecimal.valueOf(1)));
     }
 
     @Test
@@ -56,6 +60,7 @@ public class BigDecimalConverterTests {
         BigDecimalConverter converter = new BigDecimalConverter();
         final float fval = 12345.6789f;
         assertThat(converter.convert(fval).floatValue(), equalTo(fval));
+        assertThat(converter.convert(fval, () -> 0).floatValue(), equalTo(fval));
     }
 
     @Test
@@ -63,6 +68,7 @@ public class BigDecimalConverterTests {
         BigDecimalConverter converter = new BigDecimalConverter();
         BigDecimal bigDecimal = new BigDecimal("12345.6789");
         assertThat(converter.convert(bigDecimal), equalTo(bigDecimal));
+        assertThat(converter.convert(bigDecimal, () -> 0), equalTo(bigDecimal));
     }
 
     @ParameterizedTest
