@@ -250,13 +250,15 @@ public class KeyValueProcessorTests {
                );
     }
 
-    @Test
-    void testStringLiteralCharacter() {
+    @ParameterizedTest
+    @ValueSource(strings = {"\"", "'"})
+    void testStringLiteralCharacter(String literalString) {
         when(mockConfig.getDestination()).thenReturn(null);
-        lenient().when(mockConfig.getStringLiteralCharacter()).thenReturn('\"');
+        String message = literalString+"ignore this "+literalString+" key1=value1&key2=value2 "+literalString+"ignore=this&too"+literalString;
+        lenient().when(mockConfig.getStringLiteralCharacter()).thenReturn(literalString.charAt(0));
         lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(" &");
         lenient().when(mockConfig.getValueGrouping()).thenReturn(true);
-        final Record<Event> record = getMessage("\"ignore this\" key1=value1&key2=value2 \"ignore=this&too\"");
+        final Record<Event> record = getMessage(message);
         keyValueProcessor = createObjectUnderTest();
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
 

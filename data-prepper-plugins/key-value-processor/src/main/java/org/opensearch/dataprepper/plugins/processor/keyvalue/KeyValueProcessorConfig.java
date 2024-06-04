@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Size;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -115,11 +116,22 @@ public class KeyValueProcessorConfig {
     private boolean strictGrouping = false;
 
     @JsonProperty("string_literal_character")
-    private Character stringLiteralCharacter = null;
+    @Size(min = 0, max = 1, message = "string_literal_character may only have character")
+    private String stringLiteralCharacter = null;
 
     @AssertTrue(message = "Invalid Configuration. value_grouping option and field_delimiter_regex are mutually exclusive")
     boolean isValidValueGroupingAndFieldDelimiterRegex() {
         return (!valueGrouping || fieldDelimiterRegex == null);
+    }
+
+    @AssertTrue(message = "Invalid Configuration. String literal character config is valid only when value_grouping is enabled, and only double quote (\") and single quote are (') are valid string literal characters.")
+    boolean isValidStringLiteralConfig() {
+        if (stringLiteralCharacter == null)
+            return true;
+        if ((!stringLiteralCharacter.equals("\"") &&
+                (!stringLiteralCharacter.equals("'"))))
+            return false;
+        return valueGrouping;
     }
 
     public String getSource() {
@@ -127,7 +139,7 @@ public class KeyValueProcessorConfig {
     }
 
     public Character getStringLiteralCharacter() {
-        return stringLiteralCharacter;
+        return stringLiteralCharacter == null ? null : stringLiteralCharacter.charAt(0);
     }
 
     public boolean isStrictGroupingEnabled() {

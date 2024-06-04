@@ -75,14 +75,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         this.keyValueProcessorConfig = keyValueProcessorConfig;
 
         this.stringLiteralCharacter = keyValueProcessorConfig.getStringLiteralCharacter();
-        if (stringLiteralCharacter != null) {
-            if (!keyValueProcessorConfig.getValueGrouping()) {
-                LOG.warn("string literal character config is ignored becuase value grouping is disabled");
-            }
-            if (stringLiteralCharacter != '\"' && stringLiteralCharacter != '\'') {
-                throw new RuntimeException("Only single quote and double quote are supported as string literal character");
-            }
-        }
 
         tagsOnFailure = keyValueProcessorConfig.getTagsOnFailure();
 
@@ -367,7 +359,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     continue;
                 }
 
-                String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
+                final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
                 if (groupsRaw == null) {
                     continue;
                 }
@@ -511,14 +503,20 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return mapper.convertValue(node, new TypeReference<HashMap<String, Object>>() {});
     }
 
+    private boolean isIgnoredGroup(String group) {
+        // If a group starts and ends with stringLiteralCharacter,
+        // treat the entire group as key with null as the value
+        return stringLiteralCharacter != null &&
+            group.charAt(0) == stringLiteralCharacter &&
+            group.charAt(group.length()-1) == stringLiteralCharacter;
+    }
+
     private Map<String, Object> createNonRecursedMap(String[] groups) {
         Map<String, Object> nonRecursedMap = new LinkedHashMap<>();
         List<Object> valueList;
 
         for(final String group : groups) {
-            // If a group starts and ends with stringLiteralCharacter,
-            // treat the entire group as key with null as the value
-            if (stringLiteralCharacter != null && group.charAt(0) == stringLiteralCharacter && group.charAt(group.length()-1) == stringLiteralCharacter) {
+            if (isIgnoredGroup(group)) {
                 if (validKeyAndValue(group, null)) {
                     nonRecursedMap.put(group, null);
                 }
@@ -700,8 +698,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private void writeToRoot(final Event event, final Map<String, Object> parsedJson) {
         for (Map.Entry<String, Object> entry : parsedJson.entrySet()) {
-            if (keyValueProcessorConfig.getOverwriteIfDestinationExists() || !event.containsKey(entry.getKey())) {
-                event.put(entry.getKey(), entry.getValue());
+            try {
+                if (keyValueProcessorConfig.getOverwriteIfDestinationExists() || !event.containsKey(entry.getKey())) {
+                    event.put(entry.getKey(), entry.getValue());
+                }
+            } catch (IllegalArgumentException e) {
+                LOG.warn("Failed to put key: "+entry.getKey()+" value : "+entry.getValue()+" into event. ", e);
             }
         }
     }
