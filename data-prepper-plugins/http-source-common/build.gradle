@@ -9,12 +9,12 @@ plugins {
 
 dependencies {
     implementation project(':data-prepper-plugins:common')
-    implementation project(':data-prepper-test-common')
     implementation libs.armeria.core
     implementation 'software.amazon.awssdk:acm'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
     testImplementation 'org.assertj:assertj-core:3.25.3'
+    testImplementation project(':data-prepper-test-common')
 }
 
 jacocoTestCoverageVerification {
