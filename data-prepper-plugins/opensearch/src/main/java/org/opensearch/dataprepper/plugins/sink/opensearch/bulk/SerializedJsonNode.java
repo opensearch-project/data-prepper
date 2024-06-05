@@ -14,12 +14,14 @@ class SerializedJsonNode implements SerializedJson, Serializable {
     private JsonNode jsonNode;
     private String documentId = null;
     private String routingField = null;
+    private String pipelineField = null;
 
     public SerializedJsonNode(final JsonNode jsonNode, SerializedJson doc) {
         this.jsonNode = jsonNode;
         this.documentId = doc.getDocumentId().orElse(null);
         this.routingField = doc.getRoutingField().orElse(null);
         this.document = jsonNode.toString().getBytes();
+        this.pipelineField = doc.getPipelineField().orElse(null);;
     }
 
     public SerializedJsonNode(final JsonNode jsonNode) {
@@ -46,4 +48,7 @@ class SerializedJsonNode implements SerializedJson, Serializable {
     public Optional<String> getRoutingField() {
         return Optional.ofNullable(routingField);
     }
+
+    @Override
+    public Optional<String> getPipelineField() { return Optional.ofNullable(pipelineField); }
 }

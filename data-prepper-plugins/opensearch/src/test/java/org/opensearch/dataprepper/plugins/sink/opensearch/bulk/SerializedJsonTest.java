@@ -18,22 +18,24 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class SerializedJsonTest {
     @Test
     void fromString_returns_SerializedJsonImpl() {
-        assertThat(SerializedJson.fromStringAndOptionals("{}", null, null), instanceOf(SerializedJsonImpl.class));
+        assertThat(SerializedJson.fromStringAndOptionals("{}", null, null, null), instanceOf(SerializedJsonImpl.class));
     }
 
     @Test
     void fromString_throws_if_the_jsonString_is_null() {
-        assertThrows(NullPointerException.class, () -> SerializedJson.fromStringAndOptionals(null, null, null));
+        assertThrows(NullPointerException.class, () -> SerializedJson.fromStringAndOptionals(null, null, null, null));
     }
 
     @Test
     void fromString_returns_SerializedJsonImpl_with_correctValues() {
         String documentId = RandomStringUtils.randomAlphabetic(10);
         String routingField = RandomStringUtils.randomAlphabetic(10);
-        SerializedJson serializedJson = SerializedJson.fromStringAndOptionals("{}", documentId, routingField);
+        String pipelineField = RandomStringUtils.randomAlphabetic(10);
+        SerializedJson serializedJson = SerializedJson.fromStringAndOptionals("{}", documentId, routingField, pipelineField);
             assertThat(serializedJson, instanceOf(SerializedJsonImpl.class));
         assertThat(serializedJson.getDocumentId().get(), equalTo(documentId));
         assertThat(serializedJson.getRoutingField().get(), equalTo(routingField));
+        assertThat(serializedJson.getPipelineField().get(), equalTo(pipelineField));
         assertThat(serializedJson.getSerializedJson(), equalTo("{}".getBytes()));
     }
 
@@ -41,6 +43,7 @@ class SerializedJsonTest {
     void fromString_returns_SerializedJsonNode_with_correctValues() {
         String documentId = RandomStringUtils.randomAlphabetic(10);
         String routingField = RandomStringUtils.randomAlphabetic(10);
+        String pipelineField = RandomStringUtils.randomAlphabetic(10);
         final String jsonString = "{\"key\":\"value\"}";
         JsonNode jsonNode;
         ObjectMapper objectMapper = new ObjectMapper();
@@ -49,11 +52,12 @@ class SerializedJsonTest {
         } catch (Exception e) {
             jsonNode = null;
         }
-        SerializedJson document = SerializedJson.fromStringAndOptionals(jsonString, documentId, routingField);
+        SerializedJson document = SerializedJson.fromStringAndOptionals(jsonString, documentId, routingField, pipelineField);
         SerializedJson serializedJson = SerializedJson.fromJsonNode(jsonNode, document);
         assertThat(serializedJson, instanceOf(SerializedJsonNode.class));
         assertThat(serializedJson.getDocumentId().get(), equalTo(documentId));
         assertThat(serializedJson.getRoutingField().get(), equalTo(routingField));
+        assertThat(serializedJson.getPipelineField().get(), equalTo(pipelineField));
         assertThat(serializedJson.getSerializedJson(), equalTo(jsonString.getBytes()));
     }
 }

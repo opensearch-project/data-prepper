@@ -146,6 +146,7 @@ public class OpenSearchSinkTest {
         when(indexConfiguration.getDocumentIdField()).thenReturn(null);
         when(indexConfiguration.getRoutingField()).thenReturn(null);
         when(indexConfiguration.getRouting()).thenReturn(null);
+        when(indexConfiguration.getPipeline()).thenReturn(null);
         when(indexConfiguration.getActions()).thenReturn(null);
         when(indexConfiguration.getDocumentRootKey()).thenReturn(null);
         lenient().when(indexConfiguration.getVersionType()).thenReturn(null);
@@ -287,6 +288,22 @@ public class OpenSearchSinkTest {
         when(indexConfiguration.getRouting()).thenReturn("${"+routingKey+"}");
         final OpenSearchSink objectUnderTest2 = createObjectUnderTest();
         assertThat(objectUnderTest2.getDocument(event).getRoutingField(), equalTo(Optional.of(routingValue)));
+    }
+
+    @Test
+    void test_pipeline_in_document() throws IOException {
+        String pipelineValue = UUID.randomUUID().toString();
+        String pipelineKey = UUID.randomUUID().toString();
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        final Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(Collections.singletonMap(pipelineKey, pipelineValue))
+                .build();
+        assertThat(objectUnderTest.getDocument(event).getPipelineField(), equalTo(Optional.empty()));
+
+        when(indexConfiguration.getPipeline()).thenReturn("${"+pipelineKey+"}");
+        final OpenSearchSink objectUnderTest2 = createObjectUnderTest();
+        assertThat(objectUnderTest2.getDocument(event).getPipelineField(), equalTo(Optional.of(pipelineValue)));
     }
 
     @Test

@@ -57,6 +57,7 @@ public class IndexConfiguration {
     public static final String DOCUMENT_ID = "document_id";
     public static final String ROUTING_FIELD = "routing_field";
     public static final String ROUTING = "routing";
+    public static final String PIPELINE = "pipeline";
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
     public static final boolean DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION = false;
@@ -81,6 +82,7 @@ public class IndexConfiguration {
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
     private final String documentId;
+    private final String pipeline;
     private final String routingField;
     private final String routing;
     private final long bulkSize;
@@ -147,6 +149,7 @@ public class IndexConfiguration {
         this.flushTimeout = builder.flushTimeout;
         this.routingField = builder.routingField;
         this.routing = builder.routing;
+        this.pipeline = builder.pipeline;
 
         String documentIdField = builder.documentIdField;
         String documentId = builder.documentId;
@@ -266,6 +269,11 @@ public class IndexConfiguration {
             builder = builder.withRouting(routing);
         }
 
+        final String pipeline = pluginSetting.getStringOrDefault(PIPELINE, null);
+        if (pipeline != null) {
+            builder = builder.withPipeline(pipeline);
+        }
+
         final String ismPolicyFile = pluginSetting.getStringOrDefault(ISM_POLICY_FILE, null);
         builder = builder.withIsmPolicyFile(ismPolicyFile);
 
@@ -334,6 +342,10 @@ public class IndexConfiguration {
 
     public String getRouting() {
         return routing;
+    }
+
+    public String getPipeline() {
+        return pipeline;
     }
 
     public long getBulkSize() {
@@ -459,6 +471,7 @@ public class IndexConfiguration {
         private int numReplicas;
         private String routingField;
         private String routing;
+        private String pipeline;
         private String documentIdField;
         private String documentId;
         private long bulkSize = DEFAULT_BULK_SIZE;
@@ -531,6 +544,11 @@ public class IndexConfiguration {
 
         public Builder withRouting(final String routing) {
             this.routing = routing;
+            return this;
+        }
+
+        public Builder withPipeline(final String pipeline) {
+            this.pipeline = pipeline;
             return this;
         }
 
