@@ -321,7 +321,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             if (groupIndex >= 0) {
                 String[] s = keyValueDelimiterPattern.split(str.substring(start,i+1));
                 // Only handle Grouping patterns in the values, not keys
-                if (s.length > 1 || startGroupStrings[groupIndex].charAt(0) == stringLiteralCharacter) {
+                if (s.length > 1 || (stringLiteralCharacter != null && startGroupStrings[groupIndex].charAt(0) == stringLiteralCharacter)) {
                     i = skipGroup(str, i+1, endGroupChars[groupIndex]);
                     skippedGroup = true;
                 }
