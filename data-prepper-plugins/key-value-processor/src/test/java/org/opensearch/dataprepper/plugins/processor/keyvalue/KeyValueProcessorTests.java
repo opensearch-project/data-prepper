@@ -250,6 +250,24 @@ public class KeyValueProcessorTests {
                );
     }
 
+    @Test
+    void testValueGroupingWithOutStringLiterals() {
+        when(mockConfig.getDestination()).thenReturn(null);
+        String message = "text1 text2 [ key1=value1  value2";
+        lenient().when(mockConfig.getStringLiteralCharacter()).thenReturn(null);
+        lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(" ,");
+        lenient().when(mockConfig.getValueGrouping()).thenReturn(true);
+        final Record<Event> record = getMessage(message);
+        keyValueProcessor = createObjectUnderTest();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+
+        final Event event = editedRecords.get(0).getData();
+        assertThat(event.containsKey("parsed_message"), is(false));
+
+        assertThat(event.containsKey("key1"), is(true));
+        assertThat(event.get("key1", Object.class), is("value1"));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"\"", "'"})
     void testStringLiteralCharacter(String literalString) {
