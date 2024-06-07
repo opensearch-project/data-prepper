@@ -92,7 +92,8 @@ public class KafkaSecurityConfigurer {
     private static final String SSL_TRUSTSTORE_LOCATION = "ssl.truststore.location";
     private static final String SSL_TRUSTSTORE_PASSWORD = "ssl.truststore.password";
 
-    private static AwsCredentialsProvider credentialsProvider;
+    private static AwsCredentialsProvider mskCredentialsProvider;
+    private static AwsCredentialsProvider awsGlueCredentialsProvider;
     private static GlueSchemaRegistryKafkaDeserializer glueDeserializer;
 
 
@@ -225,14 +226,16 @@ public class KafkaSecurityConfigurer {
         }
     }
 
-    public static String getBootStrapServersForMsk(final AwsIamAuthConfig awsIamAuthConfig, final AwsConfig awsConfig, final Logger LOG) {
-        if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
+    private static void configureMSKCredentialsProvider(final AuthConfig authConfig, final AwsConfig awsConfig) {
+        mskCredentialsProvider = DefaultCredentialsProvider.create();
+        if (Objects.nonNull(authConfig) && Objects.nonNull(authConfig.getSaslAuthConfig()) &&
+                authConfig.getSaslAuthConfig().getAwsIamAuthConfig() == AwsIamAuthConfig.ROLE) {
             String sessionName = "data-prepper-kafka-session" + UUID.randomUUID();
             StsClient stsClient = StsClient.builder()
                     .region(Region.of(awsConfig.getRegion()))
-                    .credentialsProvider(credentialsProvider)
+                    .credentialsProvider(mskCredentialsProvider)
                     .build();
-            credentialsProvider = StsAssumeRoleCredentialsProvider
+            mskCredentialsProvider = StsAssumeRoleCredentialsProvider
                     .builder()
                     .stsClient(stsClient)
                     .refreshRequest(
@@ -242,12 +245,15 @@ public class KafkaSecurityConfigurer {
                                     .roleSessionName(sessionName)
                                     .build()
                     ).build();
-        } else if (awsIamAuthConfig != AwsIamAuthConfig.DEFAULT) {
-            throw new RuntimeException("Unknown AWS IAM auth mode");
         }
+    }
+
+    public static String getBootStrapServersForMsk(final AwsConfig awsConfig,
+                                                   final AwsCredentialsProvider mskCredentialsProvider,
+                                                   final Logger LOG) {
         final AwsConfig.AwsMskConfig awsMskConfig = awsConfig.getAwsMskConfig();
         KafkaClient kafkaClient = KafkaClient.builder()
-                .credentialsProvider(credentialsProvider)
+                .credentialsProvider(mskCredentialsProvider)
                 .region(Region.of(awsConfig.getRegion()))
                 .build();
         final GetBootstrapBrokersRequest request =
@@ -306,11 +312,14 @@ public class KafkaSecurityConfigurer {
         final AwsConfig awsConfig = kafkaClusterAuthConfig.getAwsConfig();
         final AuthConfig authConfig = kafkaClusterAuthConfig.getAuthConfig();
         final EncryptionConfig encryptionConfig = kafkaClusterAuthConfig.getEncryptionConfig();
-        credentialsProvider = DefaultCredentialsProvider.create();
+        configureMSKCredentialsProvider(authConfig, awsConfig);
 
         String bootstrapServers = "";
         if (Objects.nonNull(kafkaClusterAuthConfig.getBootstrapServers())) {
             bootstrapServers = String.join(",", kafkaClusterAuthConfig.getBootstrapServers());
+        }
+        if (Objects.nonNull(awsConfig) && Objects.nonNull(awsConfig.getAwsMskConfig())) {
+            bootstrapServers = getBootStrapServersForMsk(awsConfig, mskCredentialsProvider, LOG);
         }
 
         if (Objects.nonNull(authConfig)) {
@@ -327,7 +336,6 @@ public class KafkaSecurityConfigurer {
                         throw new RuntimeException("AWS Config is not specified");
                     }
                     setAwsIamAuthProperties(properties, awsIamAuthConfig, awsConfig);
-                    bootstrapServers = getBootStrapServersForMsk(awsIamAuthConfig, awsConfig, LOG);
                 } else if (Objects.nonNull(saslAuthConfig.getOAuthConfig())) {
                     setOauthProperties(kafkaClusterAuthConfig, properties);
                 } else if (Objects.nonNull(plainTextAuthConfig) && Objects.nonNull(kafkaClusterAuthConfig.getEncryptionConfig())) {
@@ -358,6 +366,7 @@ public class KafkaSecurityConfigurer {
     }
 
     public static GlueSchemaRegistryKafkaDeserializer getGlueSerializer(final KafkaConsumerConfig kafkaConsumerConfig) {
+        configureAwsGlueCredentialsProvider(kafkaConsumerConfig.getAwsConfig());
         SchemaConfig schemaConfig = kafkaConsumerConfig.getSchemaConfig();
         if (Objects.isNull(schemaConfig) || schemaConfig.getType() != SchemaRegistryType.AWS_GLUE) {
             return null;
@@ -368,8 +377,30 @@ public class KafkaSecurityConfigurer {
         configs.put(AWSSchemaRegistryConstants.CACHE_TIME_TO_LIVE_MILLIS, "86400000");
         configs.put(AWSSchemaRegistryConstants.CACHE_SIZE, "10");
         configs.put(AWSSchemaRegistryConstants.COMPATIBILITY_SETTING, Compatibility.FULL);
-        glueDeserializer = new GlueSchemaRegistryKafkaDeserializer(credentialsProvider, configs);
+        glueDeserializer = new GlueSchemaRegistryKafkaDeserializer(awsGlueCredentialsProvider, configs);
         return glueDeserializer;
+    }
+
+    private static void configureAwsGlueCredentialsProvider(final AwsConfig awsConfig) {
+        awsGlueCredentialsProvider = DefaultCredentialsProvider.create();
+        if (Objects.nonNull(awsConfig) &&
+                Objects.nonNull(awsConfig.getRegion()) && Objects.nonNull(awsConfig.getStsRoleArn())) {
+            String sessionName = "data-prepper-kafka-session" + UUID.randomUUID();
+            StsClient stsClient = StsClient.builder()
+                    .region(Region.of(awsConfig.getRegion()))
+                    .credentialsProvider(awsGlueCredentialsProvider)
+                    .build();
+            awsGlueCredentialsProvider = StsAssumeRoleCredentialsProvider
+                    .builder()
+                    .stsClient(stsClient)
+                    .refreshRequest(
+                            AssumeRoleRequest
+                                    .builder()
+                                    .roleArn(awsConfig.getStsRoleArn())
+                                    .roleSessionName(sessionName)
+                                    .build()
+                    ).build();
+        }
     }
 
 }
