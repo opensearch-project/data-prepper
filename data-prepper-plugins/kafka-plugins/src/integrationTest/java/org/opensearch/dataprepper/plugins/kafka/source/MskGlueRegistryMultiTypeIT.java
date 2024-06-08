@@ -226,7 +226,7 @@ public class MskGlueRegistryMultiTypeIT {
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
                 adminClient.createTopics(
-                                Collections.singleton(new NewTopic(topicName, 1, (short)1)))
+                                Collections.singleton(new NewTopic(topicName, 1, (short)3)))
                         .all().get(30, TimeUnit.SECONDS);
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -293,7 +293,7 @@ public class MskGlueRegistryMultiTypeIT {
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
                 adminClient.createTopics(
-                                Collections.singleton(new NewTopic(topicName, 1, (short)1)))
+                                Collections.singleton(new NewTopic(topicName, 1, (short)0)))
                         .all().get(30, TimeUnit.SECONDS);
             } catch (Exception e) {
                 throw new RuntimeException(e);

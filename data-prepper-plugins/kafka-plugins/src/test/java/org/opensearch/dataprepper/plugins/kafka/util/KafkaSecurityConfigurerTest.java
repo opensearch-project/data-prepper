@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.services.kafka.KafkaClient;
 import software.amazon.awssdk.services.kafka.KafkaClientBuilder;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersRequest;
@@ -233,12 +234,23 @@ public class KafkaSecurityConfigurerTest {
 
     @Test
     void testGetGlueSerializerWithDefaultCredentialsProvider() throws IOException {
-        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-glue-default.yaml");
-        final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
-                .getGlueSerializer(kafkaSourceConfig);
-        assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
-        assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
-                instanceOf(DefaultCredentialsProvider.class));
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig(
+                "kafka-pipeline-bootstrap-servers-glue-default.yaml");
+        final DefaultAwsRegionProviderChain.Builder defaultAwsRegionProviderChainBuilder = mock(
+                DefaultAwsRegionProviderChain.Builder.class);
+        final DefaultAwsRegionProviderChain defaultAwsRegionProviderChain = mock(DefaultAwsRegionProviderChain.class);
+        when(defaultAwsRegionProviderChainBuilder.build()).thenReturn(defaultAwsRegionProviderChain);
+        when(defaultAwsRegionProviderChain.getRegion()).thenReturn(Region.US_EAST_1);
+        try (MockedStatic<DefaultAwsRegionProviderChain> defaultAwsRegionProviderChainMockedStatic =
+                     mockStatic(DefaultAwsRegionProviderChain.class)) {
+            defaultAwsRegionProviderChainMockedStatic.when(DefaultAwsRegionProviderChain::builder)
+                    .thenReturn(defaultAwsRegionProviderChainBuilder);
+            final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
+                    .getGlueSerializer(kafkaSourceConfig);
+            assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
+            assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
+                    instanceOf(DefaultCredentialsProvider.class));
+        }
     }
 
     @Test
