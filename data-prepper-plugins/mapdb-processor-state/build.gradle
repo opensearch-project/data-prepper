@@ -15,7 +15,7 @@ dependencies {
     }
     implementation 'org.lz4:lz4-java:1.8.0'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.21'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.23'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:2.0.0'
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
 }
 
