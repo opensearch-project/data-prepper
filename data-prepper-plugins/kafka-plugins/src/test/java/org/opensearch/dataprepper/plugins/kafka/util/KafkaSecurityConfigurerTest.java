@@ -19,6 +19,11 @@ import org.opensearch.dataprepper.plugins.kafka.source.KafkaSourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.kafka.KafkaClient;
+import software.amazon.awssdk.services.kafka.KafkaClientBuilder;
+import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersRequest;
+import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersResponse;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -33,6 +38,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.is;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -144,6 +150,64 @@ public class KafkaSecurityConfigurerTest {
         assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
         assertThat(props.get("sasl.client.callback.handler.class"),
                 is("software.amazon.msk.auth.iam.IAMClientCallbackHandler"));
+    }
+
+    @Test
+    public void testSetAuthPropertiesBootstrapServersOverrideByMSK() throws IOException {
+        final String testMSKEndpoint = "bootstrap-server-string";
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-override-by-msk.yaml");
+        final KafkaClientBuilder kafkaClientBuilder = mock(KafkaClientBuilder.class);
+        final KafkaClient kafkaClient = mock(KafkaClient.class);
+        when(kafkaClientBuilder.credentialsProvider(any())).thenReturn(kafkaClientBuilder);
+        when(kafkaClientBuilder.region(any(Region.class))).thenReturn(kafkaClientBuilder);
+        when(kafkaClientBuilder.build()).thenReturn(kafkaClient);
+        final GetBootstrapBrokersResponse response = mock(GetBootstrapBrokersResponse.class);
+        when(response.bootstrapBrokerStringSaslIam()).thenReturn(testMSKEndpoint);
+        when(kafkaClient.getBootstrapBrokers(any(GetBootstrapBrokersRequest.class))).thenReturn(response);
+        try (MockedStatic<KafkaClient> mockedKafkaClient = mockStatic(KafkaClient.class)) {
+            mockedKafkaClient.when(KafkaClient::builder).thenReturn(kafkaClientBuilder);
+            KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
+        }
+        assertThat(props.getProperty("bootstrap.servers"), is(testMSKEndpoint));
+        assertThat(props.getProperty("sasl.mechanism"), is("AWS_MSK_IAM"));
+        assertThat(props.getProperty("sasl.jaas.config"),
+                is("software.amazon.msk.auth.iam.IAMLoginModule required awsRoleArn=\"sts_role_arn\" awsStsRegion=\"us-east-2\";"));
+        assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
+        assertThat(props.getProperty("certificateContent"), is(nullValue()));
+        assertThat(props.getProperty("ssl.truststore.location"), is(nullValue()));
+        assertThat(props.getProperty("ssl.truststore.password"), is(nullValue()));
+        assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
+        assertThat(props.get("sasl.client.callback.handler.class"),
+                is("software.amazon.msk.auth.iam.IAMClientCallbackHandler"));
+    }
+
+    @Test
+    public void testSetAuthPropertiesMskWithSaslPlain() throws IOException {
+        final String testMSKEndpoint = "bootstrap-server-string";
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-msk-sasl-plain.yaml");
+        final KafkaClientBuilder kafkaClientBuilder = mock(KafkaClientBuilder.class);
+        final KafkaClient kafkaClient = mock(KafkaClient.class);
+        when(kafkaClientBuilder.credentialsProvider(any())).thenReturn(kafkaClientBuilder);
+        when(kafkaClientBuilder.region(any(Region.class))).thenReturn(kafkaClientBuilder);
+        when(kafkaClientBuilder.build()).thenReturn(kafkaClient);
+        final GetBootstrapBrokersResponse response = mock(GetBootstrapBrokersResponse.class);
+        when(response.bootstrapBrokerStringSaslIam()).thenReturn(testMSKEndpoint);
+        when(kafkaClient.getBootstrapBrokers(any(GetBootstrapBrokersRequest.class))).thenReturn(response);
+        try (MockedStatic<KafkaClient> mockedKafkaClient = mockStatic(KafkaClient.class)) {
+            mockedKafkaClient.when(KafkaClient::builder).thenReturn(kafkaClientBuilder);
+            KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
+        }
+        assertThat(props.getProperty("bootstrap.servers"), is(testMSKEndpoint));
+        assertThat(props.getProperty("sasl.mechanism"), is("PLAIN"));
+        assertThat(props.getProperty("sasl.jaas.config"),
+                is("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"username\" password=\"password\";"));
+        assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
+        assertThat(props.getProperty("certificateContent"), is(nullValue()));
+        assertThat(props.getProperty("ssl.truststore.location"), is(nullValue()));
+        assertThat(props.getProperty("ssl.truststore.password"), is(nullValue()));
+        assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
     }
 
     @Test

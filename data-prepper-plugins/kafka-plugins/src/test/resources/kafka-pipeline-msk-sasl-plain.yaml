@@ -1,0 +1,20 @@
+log-pipeline :
+  source:
+     kafka:
+        encryption:
+          type: "SSL"
+        authentication:
+          sasl:
+            plain:
+              username: username
+              password: password
+        aws:
+          region: us-east-2
+          sts_role_arn: sts_role_arn
+          msk:
+            arn: service Arn
+        topics:
+        - name: "quickstart-events"
+          group_id: "groupdID1"
+  sink:
+    stdout:
