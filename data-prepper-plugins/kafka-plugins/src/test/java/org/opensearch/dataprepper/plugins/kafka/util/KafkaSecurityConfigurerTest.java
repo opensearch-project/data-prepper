@@ -1,8 +1,11 @@
 package org.opensearch.dataprepper.plugins.kafka.util;
 
+import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -19,11 +22,13 @@ import org.opensearch.dataprepper.plugins.kafka.source.KafkaSourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.kafka.KafkaClient;
 import software.amazon.awssdk.services.kafka.KafkaClientBuilder;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersRequest;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersResponse;
+import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -35,6 +40,8 @@ import java.util.Properties;
 
 import static org.apache.kafka.common.config.SaslConfigs.SASL_CLIENT_CALLBACK_HANDLER_CLASS;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.is;
@@ -208,6 +215,30 @@ public class KafkaSecurityConfigurerTest {
         assertThat(props.getProperty("ssl.truststore.location"), is(nullValue()));
         assertThat(props.getProperty("ssl.truststore.password"), is(nullValue()));
         assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "kafka-pipeline-bootstrap-servers-glue-sts-assume-role.yaml",
+            "kafka-pipeline-msk-default-glue-sts-assume-role.yaml"
+    })
+    void testGetGlueSerializerWithStsAssumeRoleCredentialsProvider(final String filename) throws IOException {
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig(filename);
+        final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
+                .getGlueSerializer(kafkaSourceConfig);
+        assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
+        assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
+                instanceOf(StsAssumeRoleCredentialsProvider.class));
+    }
+
+    @Test
+    void testGetGlueSerializerWithDefaultCredentialsProvider() throws IOException {
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-glue-default.yaml");
+        final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
+                .getGlueSerializer(kafkaSourceConfig);
+        assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
+        assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
+                instanceOf(DefaultCredentialsProvider.class));
     }
 
     @Test

@@ -372,7 +372,10 @@ public class KafkaSecurityConfigurer {
             return null;
         }
         Map<String, Object> configs = new HashMap<>();
-        configs.put(AWSSchemaRegistryConstants.AWS_REGION, kafkaConsumerConfig.getAwsConfig().getRegion());
+        final AwsConfig awsConfig = kafkaConsumerConfig.getAwsConfig();
+        if (Objects.nonNull(awsConfig) && Objects.nonNull(awsConfig.getRegion())) {
+            configs.put(AWSSchemaRegistryConstants.AWS_REGION, kafkaConsumerConfig.getAwsConfig().getRegion());
+        }
         configs.put(AWSSchemaRegistryConstants.AVRO_RECORD_TYPE, AvroRecordType.GENERIC_RECORD.getName());
         configs.put(AWSSchemaRegistryConstants.CACHE_TIME_TO_LIVE_MILLIS, "86400000");
         configs.put(AWSSchemaRegistryConstants.CACHE_SIZE, "10");
