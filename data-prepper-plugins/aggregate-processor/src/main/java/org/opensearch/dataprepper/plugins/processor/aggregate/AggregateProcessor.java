@@ -49,6 +49,8 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     private boolean localMode = false;
     private final String whenCondition;
     private final ExpressionEvaluator expressionEvaluator;
+    private final boolean outputUnaggregatedEvents;
+    private final String aggregatedEventsTag;
 
     @DataPrepperPluginConstructor
     public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final ExpressionEvaluator expressionEvaluator) {
@@ -59,7 +61,9 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
                               final IdentificationKeysHasher identificationKeysHasher, final AggregateActionSynchronizer.AggregateActionSynchronizerProvider aggregateActionSynchronizerProvider, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.aggregateProcessorConfig = aggregateProcessorConfig;
+        this.aggregatedEventsTag = aggregateProcessorConfig.getAggregatedEventsTag();
         this.aggregateGroupManager = aggregateGroupManager;
+        this.outputUnaggregatedEvents = aggregateProcessorConfig.getOutputUnaggregatedEvents();
         this.expressionEvaluator = expressionEvaluator;
         this.identificationKeysHasher = identificationKeysHasher;
         this.aggregateAction = loadAggregateAction(pluginFactory);
@@ -92,6 +96,9 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
             final List<Event> concludeGroupEvents = actionOutput != null ? actionOutput.getEvents() : null;
             if (!concludeGroupEvents.isEmpty()) {
                 concludeGroupEvents.stream().forEach((event) -> {
+                    if (aggregatedEventsTag != null) {
+                        event.getMetadata().addTags(List.of(aggregatedEventsTag));
+                    }
                     recordsOut.add(new Record(event));
                     actionConcludeGroupEventsOutCounter.increment();
                 });
@@ -116,10 +123,16 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
             final Event aggregateActionResponseEvent = handleEventResponse.getEvent();
 
             if (aggregateActionResponseEvent != null) {
+                if (aggregatedEventsTag != null) {
+                    aggregateActionResponseEvent.getMetadata().addTags(List.of(aggregatedEventsTag));
+                }
                 recordsOut.add(new Record<>(aggregateActionResponseEvent, record.getMetadata()));
                 handleEventsOut++;
             } else {
                 handleEventsDropped++;
+            }
+            if (outputUnaggregatedEvents) {
+                recordsOut.add(record);
             }
         }
 

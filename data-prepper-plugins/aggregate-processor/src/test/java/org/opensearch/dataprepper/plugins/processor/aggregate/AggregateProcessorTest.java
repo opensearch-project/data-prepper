@@ -41,6 +41,7 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -124,6 +125,7 @@ public class AggregateProcessorTest {
     @BeforeEach
     void setUp() {
         when(aggregateProcessorConfig.getAggregateAction()).thenReturn(actionConfiguration);
+        when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(false);
         when(aggregateProcessorConfig.getLocalMode()).thenReturn(false);
         when(actionConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
         when(actionConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
@@ -396,6 +398,33 @@ public class AggregateProcessorTest {
             verify(actionHandleEventsOutCounter).increment(1);
             verify(actionHandleEventsDroppedCounter).increment(0);
             verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
+            verifyNoInteractions(actionConcludeGroupEventsOutCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
+        }
+        @Test
+        void handleEvent_returning_with_event_adds_event_to_records_out_with_output_unaggregated_events() {
+            when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(true);
+            String tag = UUID.randomUUID().toString();
+            when(aggregateProcessorConfig.getAggregatedEventsTag()).thenReturn(tag);
+            final AggregateProcessor objectUnderTest = createObjectUnderTest();
+            final Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>(identificationKeysMap, aggregateGroup);
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.singletonList(groupEntry));
+            when(aggregateActionResponse.getEvent()).thenReturn(event);
+            when(aggregateActionSynchronizer.concludeGroup(identificationKeysMap, aggregateGroup, false)).thenReturn(new AggregateActionOutput(List.of()));
+
+            final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
+
+            assertThat(recordsOut.size(), equalTo(2));
+            assertThat(recordsOut.get(0), notNullValue());
+            assertThat(recordsOut.get(0).getData(), equalTo(event));
+            assertThat(recordsOut.get(1), notNullValue());
+            assertThat(recordsOut.get(1).getData(), equalTo(event));
+            Event receivedEvent = recordsOut.get(1).getData();
+            assertTrue(receivedEvent.getMetadata().hasTags(List.of(tag)));
+
+            verify(actionHandleEventsOutCounter).increment(1);
+            verify(actionHandleEventsDroppedCounter).increment(0);
             verifyNoInteractions(actionConcludeGroupEventsOutCounter);
 
             verify(aggregateGroupManager).getGroupsToConclude(eq(false));
