@@ -143,14 +143,30 @@ public class KafkaSecurityConfigurerTest {
     }
 
     @Test
-    public void testSetAuthPropertiesBootstrapServersWithSaslIAM() throws IOException {
+    public void testSetAuthPropertiesBootstrapServersWithSaslIAMRole() throws IOException {
         final Properties props = new Properties();
-        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-sasl-iam.yaml");
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-sasl-iam-role.yaml");
         KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
         assertThat(props.getProperty("bootstrap.servers"), is("localhost:9092"));
         assertThat(props.getProperty("sasl.mechanism"), is("AWS_MSK_IAM"));
         assertThat(props.getProperty("sasl.jaas.config"),
                 is("software.amazon.msk.auth.iam.IAMLoginModule required awsRoleArn=\"sts_role_arn\" awsStsRegion=\"us-east-2\";"));
+        assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
+        assertThat(props.getProperty("certificateContent"), is(nullValue()));
+        assertThat(props.getProperty("ssl.truststore.location"), is(nullValue()));
+        assertThat(props.getProperty("ssl.truststore.password"), is(nullValue()));
+        assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
+        assertThat(props.get("sasl.client.callback.handler.class"),
+                is("software.amazon.msk.auth.iam.IAMClientCallbackHandler"));
+    }
+
+    @Test
+    public void testSetAuthPropertiesBootstrapServersWithSaslIAMDefault() throws IOException {
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-sasl-iam-default.yaml");
+        KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
+        assertThat(props.getProperty("bootstrap.servers"), is("localhost:9092"));
+        assertThat(props.getProperty("sasl.mechanism"), is("AWS_MSK_IAM"));
         assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
         assertThat(props.getProperty("certificateContent"), is(nullValue()));
         assertThat(props.getProperty("ssl.truststore.location"), is(nullValue()));
