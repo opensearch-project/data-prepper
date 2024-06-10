@@ -208,6 +208,9 @@ public class KafkaSecurityConfigurer {
         properties.put(SASL_MECHANISM, "AWS_MSK_IAM");
         properties.put(SASL_CLIENT_CALLBACK_HANDLER_CLASS, "software.amazon.msk.auth.iam.IAMClientCallbackHandler");
         if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
+            if (Objects.isNull(awsConfig)) {
+                throw new RuntimeException("AWS Config needs to be specified when sasl/aws_msk_iam is set to \"role\"");
+            }
             String baseIamAuthConfig = "software.amazon.msk.auth.iam.IAMLoginModule required " +
                 "awsRoleArn=\"%s\" " +
                 "awsStsRegion=\"%s\"";
@@ -331,9 +334,6 @@ public class KafkaSecurityConfigurer {
                 if (Objects.nonNull(awsIamAuthConfig)) {
                     if (checkEncryptionType(encryptionConfig, EncryptionType.NONE)) {
                         throw new RuntimeException("Encryption Config must be SSL to use IAM authentication mechanism");
-                    }
-                    if (Objects.isNull(awsConfig)) {
-                        throw new RuntimeException("AWS Config is not specified");
                     }
                     setAwsIamAuthProperties(properties, awsIamAuthConfig, awsConfig);
                 } else if (Objects.nonNull(saslAuthConfig.getOAuthConfig())) {
