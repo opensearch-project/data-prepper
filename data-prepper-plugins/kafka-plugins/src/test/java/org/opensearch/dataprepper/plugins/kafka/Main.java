@@ -38,7 +38,7 @@ public class Main {
         }
     };
 
-    public static void createTopic(String servers, String username, String password) throws Throwable {
+    public static void createTopic(String servers, String username, String password, String topic) throws Throwable {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
 //        props.put("security.protocol", "SASL_PLAINTEXT");
@@ -58,7 +58,7 @@ public class Main {
         Throwable[] createThrowable = new Throwable[1];
         try (AdminClient adminClient = AdminClient.create(props)) {
             // Create a new topic
-            NewTopic newTopic = new NewTopic("topic_4", 1, (short) 3); // Topic name, numPartitions, replicationFactor
+            NewTopic newTopic = new NewTopic(topic, 1, (short) 3); // Topic name, numPartitions, replicationFactor
             adminClient.createTopics(Collections.singleton(newTopic)).all().get();
             System.out.println("Topic created successfully.");
         } catch (InterruptedException | ExecutionException e) {
@@ -106,8 +106,8 @@ public class Main {
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer");
 //        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.StringSerializer.class);
         props.put("basic.auth.credentials.source", "USER_INFO");
-        props.put("schema.registry.url", "https://psrc-m5k9x.us-west-2.aws.confluent.cloud");
-        props.put("basic.auth.user.info", "6PB6XRBLRWMMJJRT:sJ/MUyz0dnWyKqiqGhLhBB5KkP94CKYRyplya3HpgUjF1tbEzgKvsS8xCUouqQbW");
+        props.put("schema.registry.url", "https://psrc-e8157.us-east-2.aws.confluent.cloud");
+        props.put("basic.auth.user.info", "7HTGQJCWT37CYCSA:O82vJ0cdCGIld0qVtOlIvnJEKuI2FEhlyZZRbnLrzunm0OjWEPfYpSZpRugmNpRN");
         props.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\""
                 + username +"\" password=\""+ password +"\";");
         KafkaProducer producer = new KafkaProducer(props);
@@ -138,9 +138,10 @@ public class Main {
 
     @Test
     void createTopic() throws Throwable {
+        String topic = System.getenv("TOPIC");
         String bootstrapServers = System.getenv("BOOTSTRAP_SERVERS");
         String username = System.getenv("USERNAME");
         String password = System.getenv("PASSWORD");
-        createTopic(bootstrapServers, username, password);
+        createTopic(bootstrapServers, username, password, topic);
     }
 }
