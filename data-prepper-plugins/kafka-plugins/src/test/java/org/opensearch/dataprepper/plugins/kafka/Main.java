@@ -52,8 +52,8 @@ public class Main {
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer");
 //        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.StringSerializer.class);
         props.put("basic.auth.credentials.source", "USER_INFO");
-        props.put("schema.registry.url", "https://psrc-m5k9x.us-west-2.aws.confluent.cloud");
-        props.put("basic.auth.user.info", "6PB6XRBLRWMMJJRT:sJ/MUyz0dnWyKqiqGhLhBB5KkP94CKYRyplya3HpgUjF1tbEzgKvsS8xCUouqQbW");
+        props.put("schema.registry.url", "https://psrc-e8157.us-east-2.aws.confluent.cloud");
+        props.put("basic.auth.user.info", "7HTGQJCWT37CYCSA:O82vJ0cdCGIld0qVtOlIvnJEKuI2FEhlyZZRbnLrzunm0OjWEPfYpSZpRugmNpRN");
         props.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\""+ username +"\" password=\""+ password +"\";");
         Throwable[] createThrowable = new Throwable[1];
         try (AdminClient adminClient = AdminClient.create(props)) {
@@ -106,8 +106,8 @@ public class Main {
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer");
 //        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.StringSerializer.class);
         props.put("basic.auth.credentials.source", "USER_INFO");
-        props.put("schema.registry.url", "https://psrc-m5k9x.us-west-2.aws.confluent.cloud");
-        props.put("basic.auth.user.info", "6PB6XRBLRWMMJJRT:sJ/MUyz0dnWyKqiqGhLhBB5KkP94CKYRyplya3HpgUjF1tbEzgKvsS8xCUouqQbW");
+        props.put("schema.registry.url", "https://psrc-e8157.us-east-2.aws.confluent.cloud");
+        props.put("basic.auth.user.info", "7HTGQJCWT37CYCSA:O82vJ0cdCGIld0qVtOlIvnJEKuI2FEhlyZZRbnLrzunm0OjWEPfYpSZpRugmNpRN");
         props.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\""+ username +"\" password=\""+ password +"\";");
         KafkaProducer producer = new KafkaProducer(props);
         for (int i = 0; i < numRecords; i++) {
