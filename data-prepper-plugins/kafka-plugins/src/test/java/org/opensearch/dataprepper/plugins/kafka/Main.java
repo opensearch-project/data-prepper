@@ -128,10 +128,11 @@ public class Main {
     @Test
     void generate() throws Throwable {
 //        createTopic("pkc-rgm37.us-west-2.aws.confluent.cloud:9092", "Q5OE24C6PM4UQC5Q", "NqxLY3IB4or56QPxH5VIW0zTRRm6oBUzEpDFfJ0HEmXKmu7HT8toT/3ahhFFSDsJ");
+        String topic = System.getenv("TOPIC");
         String bootstrapServers = System.getenv("BOOTSTRAP_SERVERS");
         String username = System.getenv("USERNAME");
         String password = System.getenv("PASSWORD");
-        produceJsonRecords("topic_4", bootstrapServers, 10,
+        produceJsonRecords(topic, bootstrapServers, 10,
                 username, password);
     }
 
