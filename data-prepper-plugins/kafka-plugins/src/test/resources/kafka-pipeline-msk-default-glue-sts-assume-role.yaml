@@ -1,0 +1,20 @@
+log-pipeline :
+  source:
+     kafka:
+        encryption:
+          type: "SSL"
+        authentication:
+          sasl:
+            aws_msk_iam: default
+        aws:
+          region: us-east-2
+          sts_role_arn: sts_role_arn
+          msk:
+            arn: service Arn
+        schema:
+          type: aws_glue
+        topics:
+        - name: "quickstart-events"
+          group_id: "groupdID1"
+  sink:
+    stdout:
