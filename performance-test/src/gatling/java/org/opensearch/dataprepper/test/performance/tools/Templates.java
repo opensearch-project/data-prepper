@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -31,22 +32,20 @@ public final class Templates {
     }
     
     public static Function<Session, String> apacheCommonLogTemplate(final int batchSize) {
-        return session -> {
-            final List<String> logs = IntStream.range(0, batchSize)
-                    .mapToObj(i -> "{\"log\": \"" + ipAddress() + " - frank [" + now() + "] \\\"" + httpMethod() + " /apache_pb.gif HTTP/1.0\\\" "+ statusCode() + " " + responseSize() + "\"}")
-                    .collect(Collectors.toList());
-            final String logArray = String.join(",", logs);
-            return "[" + logArray + "]";
-        };
+        return generateLogArray(batchSize,
+                () -> ipAddress() + " - frank [" + now() + "] \\\"" + httpMethod() + " /apache_pb.gif HTTP/1.0\\\" "+ statusCode() + " " + responseSize());
     }
 
     public static Function<Session, String> userAgent(final int batchSize) {
+        return generateLogArray(batchSize, () -> userAgent());
+    }
+
+    private static Function<Session, String> generateLogArray(final int batchSize, final Supplier<String> stringSupplier) {
         return session -> {
             final List<String> logs = IntStream.range(0, batchSize)
-                    .mapToObj(i -> "{\"log\": \"" + userAgent() + "\"}")
+                    .mapToObj(i -> "{\"log\": \"" + stringSupplier.get() + "\"}")
                     .collect(Collectors.toList());
-            final String logArray = String.join(",", logs);
-            return "[" + logArray + "]";
+            return logs.stream().collect(Collectors.joining(",", "[", "]"));
         };
     }
 

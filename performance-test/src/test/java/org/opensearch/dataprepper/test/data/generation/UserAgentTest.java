@@ -8,9 +8,9 @@ package org.opensearch.dataprepper.test.data.generation;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 
@@ -22,9 +22,9 @@ class UserAgentTest {
         assertThat(userAgent, notNullValue());
         assertThat(userAgent.length(), greaterThanOrEqualTo(10));
 
-        assertThat(userAgent, containsString("/"));
-        assertThat(userAgent, containsString("("));
-        assertThat(userAgent, containsString("."));
+        String expectedRegex = "^[A-Za-z0-9]+/[0-9]+.[0-9]+.[0-9]+ \\([A-Za-z0-9]+; [A-Za-z0-9]+ [0-9]+.[0-9]+.[0-9]+\\)$";
+
+        assertThat(userAgent, matchesPattern(expectedRegex));
     }
 
     @Test
