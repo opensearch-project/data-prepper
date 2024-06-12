@@ -253,7 +253,7 @@ public class KafkaSecurityConfigurer {
 
     public static String getBootStrapServersForMsk(final AwsConfig awsConfig,
                                                    final AwsCredentialsProvider mskCredentialsProvider,
-                                                   final Logger LOG) {
+                                                   final Logger log) {
         final AwsConfig.AwsMskConfig awsMskConfig = awsConfig.getAwsMskConfig();
         KafkaClient kafkaClient = KafkaClient.builder()
                 .credentialsProvider(mskCredentialsProvider)
@@ -273,7 +273,7 @@ public class KafkaSecurityConfigurer {
             try {
                 result = kafkaClient.getBootstrapBrokers(request);
             } catch (KafkaException | StsException e) {
-                LOG.info("Failed to get bootstrap server information from MSK. Will try every 10 seconds for {} seconds", 10*MAX_KAFKA_CLIENT_RETRIES, e);
+                log.info("Failed to get bootstrap server information from MSK. Will try every 10 seconds for {} seconds", 10*MAX_KAFKA_CLIENT_RETRIES, e);
                 try {
                     Thread.sleep(10000);
                 } catch (InterruptedException exp) {}
@@ -311,7 +311,7 @@ public class KafkaSecurityConfigurer {
             }
         }
     }
-    public static void setAuthProperties(final Properties properties, final KafkaClusterAuthConfig kafkaClusterAuthConfig, final Logger LOG) {
+    public static void setAuthProperties(final Properties properties, final KafkaClusterAuthConfig kafkaClusterAuthConfig, final Logger log) {
         final AwsConfig awsConfig = kafkaClusterAuthConfig.getAwsConfig();
         final AuthConfig authConfig = kafkaClusterAuthConfig.getAuthConfig();
         final EncryptionConfig encryptionConfig = kafkaClusterAuthConfig.getEncryptionConfig();
@@ -322,7 +322,7 @@ public class KafkaSecurityConfigurer {
             bootstrapServers = String.join(",", kafkaClusterAuthConfig.getBootstrapServers());
         }
         if (Objects.nonNull(awsConfig) && Objects.nonNull(awsConfig.getAwsMskConfig())) {
-            bootstrapServers = getBootStrapServersForMsk(awsConfig, mskCredentialsProvider, LOG);
+            bootstrapServers = getBootStrapServersForMsk(awsConfig, mskCredentialsProvider, log);
         }
 
         if (Objects.nonNull(authConfig)) {

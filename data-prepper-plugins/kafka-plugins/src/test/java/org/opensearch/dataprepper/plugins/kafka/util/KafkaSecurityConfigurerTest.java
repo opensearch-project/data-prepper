@@ -38,6 +38,7 @@ import java.io.StringReader;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.UUID;
 
 import static org.apache.kafka.common.config.SaslConfigs.SASL_CLIENT_CALLBACK_HANDLER_CLASS;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -150,7 +151,8 @@ public class KafkaSecurityConfigurerTest {
         assertThat(props.getProperty("bootstrap.servers"), is("localhost:9092"));
         assertThat(props.getProperty("sasl.mechanism"), is("AWS_MSK_IAM"));
         assertThat(props.getProperty("sasl.jaas.config"),
-                is("software.amazon.msk.auth.iam.IAMLoginModule required awsRoleArn=\"sts_role_arn\" awsStsRegion=\"us-east-2\";"));
+                is("software.amazon.msk.auth.iam.IAMLoginModule required " +
+                        "awsRoleArn=\"test_sasl_iam_sts_role\" awsStsRegion=\"us-east-2\";"));
         assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
         assertThat(props.getProperty("certificateContent"), is(nullValue()));
         assertThat(props.getProperty("ssl.truststore.location"), is(nullValue()));
@@ -166,6 +168,7 @@ public class KafkaSecurityConfigurerTest {
         final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-sasl-iam-default.yaml");
         KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
         assertThat(props.getProperty("bootstrap.servers"), is("localhost:9092"));
+        assertThat(props.getProperty("sasl.jaas.config"), is("software.amazon.msk.auth.iam.IAMLoginModule required;"));
         assertThat(props.getProperty("sasl.mechanism"), is("AWS_MSK_IAM"));
         assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
         assertThat(props.getProperty("certificateContent"), is(nullValue()));
@@ -178,7 +181,7 @@ public class KafkaSecurityConfigurerTest {
 
     @Test
     public void testSetAuthPropertiesBootstrapServersOverrideByMSK() throws IOException {
-        final String testMSKEndpoint = "bootstrap-server-string";
+        final String testMSKEndpoint = UUID.randomUUID().toString();
         final Properties props = new Properties();
         final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-override-by-msk.yaml");
         final KafkaClientBuilder kafkaClientBuilder = mock(KafkaClientBuilder.class);
@@ -208,7 +211,7 @@ public class KafkaSecurityConfigurerTest {
 
     @Test
     public void testSetAuthPropertiesMskWithSaslPlain() throws IOException {
-        final String testMSKEndpoint = "bootstrap-server-string";
+        final String testMSKEndpoint = UUID.randomUUID().toString();
         final Properties props = new Properties();
         final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-msk-sasl-plain.yaml");
         final KafkaClientBuilder kafkaClientBuilder = mock(KafkaClientBuilder.class);
@@ -226,7 +229,8 @@ public class KafkaSecurityConfigurerTest {
         assertThat(props.getProperty("bootstrap.servers"), is(testMSKEndpoint));
         assertThat(props.getProperty("sasl.mechanism"), is("PLAIN"));
         assertThat(props.getProperty("sasl.jaas.config"),
-                is("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"username\" password=\"password\";"));
+                is("org.apache.kafka.common.security.plain.PlainLoginModule required " +
+                        "username=\"test_sasl_username\" password=\"test_sasl_password\";"));
         assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
         assertThat(props.getProperty("certificateContent"), is(nullValue()));
         assertThat(props.getProperty("ssl.truststore.location"), is(nullValue()));

@@ -6,8 +6,8 @@ log-pipeline :
         authentication:
           sasl:
             plain:
-              username: username
-              password: password
+              username: test_sasl_username
+              password: test_sasl_password
         aws:
           region: us-east-2
           sts_role_arn: sts_role_arn
