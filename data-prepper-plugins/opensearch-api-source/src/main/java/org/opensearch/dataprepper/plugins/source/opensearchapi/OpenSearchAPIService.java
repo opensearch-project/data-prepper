@@ -5,9 +5,20 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearchapi;
 
+import com.linecorp.armeria.common.AggregatedHttpRequest;
+import com.linecorp.armeria.common.HttpData;
+import com.linecorp.armeria.common.HttpResponse;
+import com.linecorp.armeria.common.HttpStatus;
+import com.linecorp.armeria.common.annotation.Nullable;
 import com.linecorp.armeria.server.ServiceRequestContext;
+import com.linecorp.armeria.server.annotation.Blocking;
 import com.linecorp.armeria.server.annotation.Param;
-import io.micrometer.common.util.StringUtils;
+import com.linecorp.armeria.server.annotation.Post;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
+import org.apache.commons.lang3.StringUtils;
+import org.opensearch.dataprepper.http.BaseHttpService;
 import org.opensearch.dataprepper.http.codec.MultiLineJsonCodec;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -16,36 +27,26 @@ import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
-import com.linecorp.armeria.common.AggregatedHttpRequest;
-import com.linecorp.armeria.common.HttpData;
-import com.linecorp.armeria.common.HttpResponse;
-import com.linecorp.armeria.common.HttpStatus;
-import com.linecorp.armeria.server.annotation.Blocking;
-import com.linecorp.armeria.server.annotation.Post;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.DistributionSummary;
-import io.micrometer.core.instrument.Timer;
+import org.opensearch.dataprepper.plugins.source.opensearchapi.model.BulkAPIEventMetadataKeyAttributes;
 import org.opensearch.dataprepper.plugins.source.opensearchapi.model.BulkAPIRequestParams;
 import org.opensearch.dataprepper.plugins.source.opensearchapi.model.BulkActionAndMetadataObject;
-import org.opensearch.dataprepper.plugins.source.opensearchapi.model.BulkAPIEventMetadataKeyAttributes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Optional;
 import java.util.List;
 import java.util.Map;
-import java.util.Arrays;
-import java.util.ArrayList;
 
 /*
-* OpenSearch API Service class is responsible for handling bulk API requests.
-* The bulk API is responsible for 1/ parsing the request body, 2/ validating against the schema for Document API (Bulk) and finally creating data prepper events.
-* Bulk API supports query parameters "pipeline", "routing" and "refresh"
-*/
+ * OpenSearch API Service class is responsible for handling bulk API requests.
+ * The bulk API is responsible for 1/ parsing the request body, 2/ validating against the schema for Document API (Bulk) and finally creating data prepper events.
+ * Bulk API supports query parameters "pipeline", "routing" and "refresh"
+ */
 @Blocking
-public class OpenSearchAPIService {
+public class OpenSearchAPIService implements BaseHttpService {
 
     //TODO: Will need to revisit the metrics per API endpoint
     public static final String REQUESTS_RECEIVED = "RequestsReceived";
@@ -77,39 +78,37 @@ public class OpenSearchAPIService {
 
     @Post("/_bulk")
     public HttpResponse doPostBulk(final ServiceRequestContext serviceRequestContext, final AggregatedHttpRequest aggregatedHttpRequest,
-                                   @Param("pipeline") Optional<String> pipeline, @Param("routing") Optional<String> routing) throws Exception {
+                                   @Param("pipeline") @Nullable String pipeline,
+                                   @Param("routing") @Nullable String routing) throws Exception {
 
-        requestsReceivedCounter.increment();
-        payloadSizeSummary.record(aggregatedHttpRequest.content().length());
-
-        if(serviceRequestContext.isTimedOut()) {
-            return HttpResponse.of(HttpStatus.REQUEST_TIMEOUT);
-        }
         BulkAPIRequestParams bulkAPIRequestParams = BulkAPIRequestParams.builder()
-                .pipeline(pipeline.orElse(""))
-                .routing(routing.orElse(""))
+                .pipeline(pipeline)
+                .routing(routing)
                 .build();
-        return requestProcessDuration.recordCallable(() -> processBulkRequest(aggregatedHttpRequest, bulkAPIRequestParams));
+        return requestProcessDuration.recordCallable(() -> processBulkRequest(serviceRequestContext, aggregatedHttpRequest, bulkAPIRequestParams));
     }
 
     @Post("/{index}/_bulk")
-    public HttpResponse doPostBulkIndex(final ServiceRequestContext serviceRequestContext, final AggregatedHttpRequest aggregatedHttpRequest, @Param("index") Optional<String> index,
-                                    @Param("pipeline") Optional<String> pipeline, @Param("routing") Optional<String> routing) throws Exception {
+    public HttpResponse doPostBulkIndex(final ServiceRequestContext serviceRequestContext, final AggregatedHttpRequest aggregatedHttpRequest,
+                                        @Param("index") String index,
+                                        @Param("pipeline") @Nullable String pipeline,
+                                        @Param("routing") @Nullable String routing) throws Exception {
+        BulkAPIRequestParams bulkAPIRequestParams = BulkAPIRequestParams.builder()
+                .index(index)
+                .pipeline(pipeline)
+                .routing(routing)
+                .build();
+        return requestProcessDuration.recordCallable(() -> processBulkRequest(serviceRequestContext, aggregatedHttpRequest, bulkAPIRequestParams));
+    }
+
+    private HttpResponse processBulkRequest(final ServiceRequestContext serviceRequestContext, final AggregatedHttpRequest aggregatedHttpRequest, final BulkAPIRequestParams bulkAPIRequestParams) throws Exception {
         requestsReceivedCounter.increment();
         payloadSizeSummary.record(aggregatedHttpRequest.content().length());
 
-        if(serviceRequestContext.isTimedOut()) {
+        if (serviceRequestContext.isTimedOut()) {
             return HttpResponse.of(HttpStatus.REQUEST_TIMEOUT);
         }
-        BulkAPIRequestParams bulkAPIRequestParams = BulkAPIRequestParams.builder()
-                .index(index.orElse(""))
-                .pipeline(pipeline.orElse(""))
-                .routing(routing.orElse(""))
-                .build();
-        return requestProcessDuration.recordCallable(() -> processBulkRequest(aggregatedHttpRequest, bulkAPIRequestParams));
-    }
 
-    private HttpResponse processBulkRequest(final AggregatedHttpRequest aggregatedHttpRequest, final BulkAPIRequestParams bulkAPIRequestParams) throws Exception {
         final HttpData content = aggregatedHttpRequest.content();
         List<Map<String, Object>> bulkRequestPayloadList;
 
@@ -142,10 +141,6 @@ public class OpenSearchAPIService {
     }
 
     private List<Record<Event>> generateEventsFromBulkRequest(final List<Map<String, Object>> bulkRequestPayloadList, final BulkAPIRequestParams bulkAPIRequestParams) throws Exception {
-        if (bulkRequestPayloadList.isEmpty()) {
-            throw new IOException("Invalid request data.");
-        }
-
         List<Record<Event>> records = new ArrayList<>();
         Iterator<Map<String, Object>> bulkRequestPayloadListIterator = bulkRequestPayloadList.iterator();
 
@@ -157,14 +152,14 @@ public class OpenSearchAPIService {
 
             BulkActionAndMetadataObject bulkActionAndMetadataObject = new BulkActionAndMetadataObject(actionMetadataRow);
             final boolean isDeleteAction = bulkActionAndMetadataObject.getAction().equals(OpenSearchBulkActions.DELETE.toString());
-            Optional<Map<String, Object>> documentDataObject = Optional.empty();
+            Map<String, Object> documentDataObject = null;
             if (!isDeleteAction) {
                 if (!bulkRequestPayloadListIterator.hasNext()) {
                     throw new IOException("Invalid request data.");
                 }
-                documentDataObject = Optional.of(bulkRequestPayloadListIterator.next());
+                documentDataObject = bulkRequestPayloadListIterator.next();
                 // Performing another validation check to make sure that the doc row is not a valid action row
-                if (!documentDataObject.isPresent() || isValidBulkAction(documentDataObject.get())) {
+                if (isValidBulkAction(documentDataObject)) {
                     throw new IOException("Invalid request data.");
                 }
             }
@@ -176,15 +171,16 @@ public class OpenSearchAPIService {
     }
 
     private JacksonEvent createBulkRequestActionEvent(
-          final BulkActionAndMetadataObject bulkActionAndMetadataObject,
-          final BulkAPIRequestParams bulkAPIRequestParams, Optional<Map<String, Object>> optionalDocumentData) {
+            final BulkActionAndMetadataObject bulkActionAndMetadataObject,
+            final BulkAPIRequestParams bulkAPIRequestParams, Map<String, Object> optionalDocumentData) {
 
         final JacksonEvent.Builder eventBuilder = JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString());
-        optionalDocumentData.ifPresent(eventBuilder::withData);
+        if (optionalDocumentData != null) {
+            eventBuilder.withData(optionalDocumentData);
+        }
         final JacksonEvent event = eventBuilder.build();
 
-        final String index = bulkActionAndMetadataObject.getIndex().isBlank() || bulkActionAndMetadataObject.getIndex().isEmpty()
-                ? bulkAPIRequestParams.getIndex() : bulkActionAndMetadataObject.getIndex();
+        final String index = !StringUtils.isEmpty(bulkAPIRequestParams.getIndex()) ? bulkAPIRequestParams.getIndex() : bulkActionAndMetadataObject.getIndex();
 
         event.getMetadata().setAttribute(BulkAPIEventMetadataKeyAttributes.BULK_API_EVENT_METADATA_ATTRIBUTE_ACTION, bulkActionAndMetadataObject.getAction());
         event.getMetadata().setAttribute(BulkAPIEventMetadataKeyAttributes.BULK_API_EVENT_METADATA_ATTRIBUTE_INDEX, index);
