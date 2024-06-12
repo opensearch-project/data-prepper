@@ -66,9 +66,7 @@ class CaffeineCachingParserTest {
 
     @Test
     void parseUserAgent_returns_expected_results() {
-        final CaffeineCachingParser objectUnderTest = createObjectUnderTest();
-
-        final UserAgent userAgent = objectUnderTest.parseUserAgent(KNOWN_USER_AGENT_STRING);
+        final UserAgent userAgent = createObjectUnderTest().parseUserAgent(KNOWN_USER_AGENT_STRING);
 
         assertThat(userAgent, notNullValue());
         assertThat(userAgent.family, equalTo("Mobile Safari"));
@@ -97,9 +95,7 @@ class CaffeineCachingParserTest {
 
     @Test
     void parseDevice_returns_expected_results() {
-        final CaffeineCachingParser objectUnderTest = createObjectUnderTest();
-
-        final Device device = objectUnderTest.parseDevice(KNOWN_USER_AGENT_STRING);
+        final Device device = createObjectUnderTest().parseDevice(KNOWN_USER_AGENT_STRING);
 
         assertThat(device, notNullValue());
         assertThat(device.family, equalTo("iPhone"));
@@ -127,9 +123,7 @@ class CaffeineCachingParserTest {
 
     @Test
     void parseOS_returns_expected_results() {
-        final CaffeineCachingParser objectUnderTest = createObjectUnderTest();
-
-        final OS os = objectUnderTest.parseOS(KNOWN_USER_AGENT_STRING);
+        final OS os = createObjectUnderTest().parseOS(KNOWN_USER_AGENT_STRING);
 
         assertThat(os, notNullValue());
         assertThat(os.family, equalTo("iOS"));

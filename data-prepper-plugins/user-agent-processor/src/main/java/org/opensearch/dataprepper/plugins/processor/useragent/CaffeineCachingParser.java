@@ -25,7 +25,8 @@ class CaffeineCachingParser extends Parser {
     private final Cache<String, OS> osCache;
 
     /**
-     * Constructs a new instance with a given cache size.
+     * Constructs a new instance with a given cache size. Each parse method
+     * will have its own cache.
      *
      * @param cacheSize The size of the cache as a count of items.
      */
