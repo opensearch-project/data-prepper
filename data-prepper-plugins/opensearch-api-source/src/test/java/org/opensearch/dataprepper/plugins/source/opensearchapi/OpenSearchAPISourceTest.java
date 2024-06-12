@@ -21,7 +21,6 @@ import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Statistic;
-import org.apache.commons.io.IOUtils;
 import io.netty.util.AsciiString;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -30,14 +29,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
+import org.opensearch.dataprepper.http.BaseHttpSource;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
@@ -56,12 +53,8 @@ import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.opensearchapi.model.BulkAPIEventMetadataKeyAttributes;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -70,7 +63,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 
@@ -78,7 +70,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -86,11 +77,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OpenSearchAPISourceTest {
+    private static final ObjectMapper mapper = new ObjectMapper();
     private final String PLUGIN_NAME = "opensearch_api";
     private final String TEST_PIPELINE_NAME = "test_pipeline";
     private final String TEST_INDEX = "test-index";
@@ -100,12 +91,8 @@ class OpenSearchAPISourceTest {
     private final int DEFAULT_THREAD_COUNT = 200;
     private final int MAX_CONNECTIONS_COUNT = 500;
     private final int MAX_PENDING_REQUESTS_COUNT = 1024;
-
     private final String TEST_SSL_CERTIFICATE_FILE = getClass().getClassLoader().getResource("test_cert.crt").getFile();
     private final String TEST_SSL_KEY_FILE = getClass().getClassLoader().getResource("test_decrypted_key.key").getFile();
-
-    private static final ObjectMapper mapper = new ObjectMapper();
-
     @Mock
     private ServerBuilder serverBuilder;
 
@@ -172,7 +159,7 @@ class OpenSearchAPISourceTest {
                         .add(OpenSearchAPIService.PAYLOAD_SIZE).toString());
         serverConnectionsMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
-                        .add(OpenSearchAPISource.SERVER_CONNECTIONS).toString());
+                        .add(BaseHttpSource.SERVER_CONNECTIONS).toString());
     }
 
     private byte[] createGZipCompressedPayload(final String payload) throws IOException {
@@ -256,11 +243,11 @@ class OpenSearchAPISourceTest {
 
         // When
         WebClient.of().execute(RequestHeaders.builder()
-                                .scheme(SessionProtocol.HTTP)
-                                .authority(AUTHORITY)
-                                .method(HttpMethod.GET)
-                                .path("/health")
-                                .build())
+                        .scheme(SessionProtocol.HTTP)
+                        .authority(AUTHORITY)
+                        .method(HttpMethod.GET)
+                        .path("/health")
+                        .build())
                 .aggregate()
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
     }
@@ -271,8 +258,8 @@ class OpenSearchAPISourceTest {
         when(sourceConfig.isUnauthenticatedHealthCheck()).thenReturn(false);
         when(sourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
                 Map.of(
-                    "username", "test",
-                    "password", "test"
+                        "username", "test",
+                        "password", "test"
                 )));
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
         openSearchAPISource = new OpenSearchAPISource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
@@ -300,13 +287,13 @@ class OpenSearchAPISourceTest {
 
         // When
         WebClient.of().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority(AUTHORITY)
-                        .method(HttpMethod.POST)
-                        .path(includeIndexInPath ? "/opensearch/" + TEST_INDEX + "/_bulk" :"/opensearch/_bulk")
-                        .contentType(MediaType.JSON_UTF_8)
-                        .build(),
-                HttpData.ofUtf8(testBadData))
+                                .scheme(SessionProtocol.HTTP)
+                                .authority(AUTHORITY)
+                                .method(HttpMethod.POST)
+                                .path(includeIndexInPath ? "/" + TEST_INDEX + "/_bulk" : "/_bulk")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.ofUtf8(testBadData))
                 .aggregate()
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.BAD_REQUEST)).join();
 
@@ -338,7 +325,7 @@ class OpenSearchAPISourceTest {
                                 .scheme(SessionProtocol.HTTP)
                                 .authority(AUTHORITY)
                                 .method(HttpMethod.POST)
-                                .path(includeIndexInPath ? "/opensearch/" + TEST_INDEX + "/_bulk" :"/opensearch/_bulk")
+                                .path(includeIndexInPath ? "/" + TEST_INDEX + "/_bulk" : "/_bulk")
                                 .contentType(MediaType.JSON_UTF_8)
                                 .build(),
                         HttpData.ofUtf8(testBadData))
@@ -385,7 +372,7 @@ class OpenSearchAPISourceTest {
                                     .scheme(SessionProtocol.HTTP)
                                     .authority(AUTHORITY)
                                     .method(HttpMethod.POST)
-                                    .path(includeIndexInPath ? "/opensearch/" + TEST_INDEX + "/_bulk" :"/opensearch/_bulk")
+                                    .path(includeIndexInPath ? "/" + TEST_INDEX + "/_bulk" : "/_bulk")
                                     .add(HttpHeaderNames.CONTENT_ENCODING, "gzip")
                                     .build(),
                             createGZipCompressedPayload(testData))
@@ -396,7 +383,7 @@ class OpenSearchAPISourceTest {
                                     .scheme(SessionProtocol.HTTP)
                                     .authority(AUTHORITY)
                                     .method(HttpMethod.POST)
-                                    .path(includeIndexInPath ? "/opensearch/" + TEST_INDEX + "/_bulk" : "/opensearch/_bulk")
+                                    .path(includeIndexInPath ? "/" + TEST_INDEX + "/_bulk" : "/_bulk")
                                     .contentType(MediaType.JSON_UTF_8)
                                     .build(),
                             HttpData.ofUtf8(testData))
@@ -463,7 +450,7 @@ class OpenSearchAPISourceTest {
         final RequestHeaders testRequestHeaders = RequestHeaders.builder().scheme(SessionProtocol.HTTP)
                 .authority(AUTHORITY)
                 .method(HttpMethod.POST)
-                .path(includeIndexInPath? "/opensearch/"+TEST_INDEX+"/_bulk" : "/opensearch/_bulk")
+                .path(includeIndexInPath ? "/" + TEST_INDEX + "/_bulk" : "/_bulk")
                 .contentType(MediaType.JSON_UTF_8)
                 .build();
         final HttpData testHttpData = HttpData.ofUtf8(generateTestData(includeIndexInPath, 1));
@@ -507,7 +494,7 @@ class OpenSearchAPISourceTest {
                                 .scheme(SessionProtocol.HTTP)
                                 .authority(AUTHORITY)
                                 .method(HttpMethod.POST)
-                                .path(includeIndexInPath ? "/opensearch/"+TEST_INDEX+"/_bulk" : "/opensearch/_bulk")
+                                .path(includeIndexInPath ? "/" + TEST_INDEX + "/_bulk" : "/_bulk")
                                 .contentType(MediaType.JSON_UTF_8)
                                 .build(),
                         HttpData.ofUtf8(testData))
@@ -552,7 +539,7 @@ class OpenSearchAPISourceTest {
         final RequestHeaders testRequestHeaders = RequestHeaders.builder().scheme(SessionProtocol.HTTP)
                 .authority(AUTHORITY)
                 .method(HttpMethod.POST)
-                .path(includeIndexInPath ? "/opensearch/"+TEST_INDEX+"/_bulk" : "/opensearch/_bulk")
+                .path(includeIndexInPath ? "/" + TEST_INDEX + "/_bulk" : "/_bulk")
                 .contentType(MediaType.JSON_UTF_8)
                 .build();
         final HttpData testHttpData = HttpData.ofUtf8(generateTestData(includeIndexInPath, 1));
@@ -564,34 +551,6 @@ class OpenSearchAPISourceTest {
         // Verify connections metric value is 1
         serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
         Assertions.assertEquals(1.0, serverConnectionsMeasurement.getValue());
-    }
-
-    @Test
-    public void testOpenSearchAPISourceServerStartCertFileSuccess() throws IOException {
-        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
-            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            when(server.stop()).thenReturn(completableFuture);
-
-            final Path certFilePath = new File(TEST_SSL_CERTIFICATE_FILE).toPath();
-            final Path keyFilePath = new File(TEST_SSL_KEY_FILE).toPath();
-            final String certAsString = Files.readString(certFilePath);
-            final String keyAsString = Files.readString(keyFilePath);
-
-            when(sourceConfig.isSsl()).thenReturn(true);
-            when(sourceConfig.getSslCertificateFile()).thenReturn(TEST_SSL_CERTIFICATE_FILE);
-            when(sourceConfig.getSslKeyFile()).thenReturn(TEST_SSL_KEY_FILE);
-            openSearchAPISource = new OpenSearchAPISource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-            openSearchAPISource.start(testBuffer);
-            openSearchAPISource.stop();
-
-            final ArgumentCaptor<InputStream> certificateIs = ArgumentCaptor.forClass(InputStream.class);
-            final ArgumentCaptor<InputStream> privateKeyIs = ArgumentCaptor.forClass(InputStream.class);
-            verify(serverBuilder).tls(certificateIs.capture(), privateKeyIs.capture());
-            final String actualCertificate = IOUtils.toString(certificateIs.getValue(), StandardCharsets.UTF_8.name());
-            final String actualPrivateKey = IOUtils.toString(privateKeyIs.getValue(), StandardCharsets.UTF_8.name());
-            assertThat(actualCertificate, is(certAsString));
-            assertThat(actualPrivateKey, is(keyAsString));
-        }
     }
 
     @ParameterizedTest
@@ -613,129 +572,15 @@ class OpenSearchAPISourceTest {
         openSearchAPISource.start(testBuffer);
 
         WebClient.builder().factory(ClientFactory.insecure()).build().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTPS)
-                        .authority(AUTHORITY)
-                        .method(HttpMethod.POST)
-                        .path(includeIndexInPath ? "/opensearch/"+TEST_INDEX+"/_bulk" : "/opensearch/_bulk")
-                        .contentType(MediaType.JSON_UTF_8)
-                        .build(),
-                HttpData.ofUtf8(generateTestData(includeIndexInPath, 1)))
+                                .scheme(SessionProtocol.HTTPS)
+                                .authority(AUTHORITY)
+                                .method(HttpMethod.POST)
+                                .path(includeIndexInPath ? "/" + TEST_INDEX + "/_bulk" : "/_bulk")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.ofUtf8(generateTestData(includeIndexInPath, 1)))
                 .aggregate()
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
-    }
-
-    @Test
-    public void testDoubleStart() {
-        // starting server
-        openSearchAPISource.start(testBuffer);
-        // double start server
-        Assertions.assertThrows(IllegalStateException.class, () -> openSearchAPISource.start(testBuffer));
-    }
-
-    @Test
-    public void testStartWithEmptyBuffer() {
-        final OpenSearchAPISource source = new OpenSearchAPISource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        Assertions.assertThrows(IllegalStateException.class, () -> source.start(null));
-    }
-
-    @Test
-    public void testStartWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
-        // Prepare
-        final OpenSearchAPISource source = new OpenSearchAPISource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
-            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            when(completableFuture.get()).thenThrow(new ExecutionException("", null));
-
-            // When/Then
-            Assertions.assertThrows(RuntimeException.class, () -> source.start(testBuffer));
-        }
-    }
-
-    @Test
-    public void testStartWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
-        // Prepare
-        final OpenSearchAPISource source = new OpenSearchAPISource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
-            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            final NullPointerException expCause = new NullPointerException();
-            when(completableFuture.get()).thenThrow(new ExecutionException("", expCause));
-
-            // When/Then
-            final RuntimeException ex = Assertions.assertThrows(RuntimeException.class, () -> source.start(testBuffer));
-            Assertions.assertEquals(expCause, ex);
-        }
-    }
-
-    @Test
-    public void testStartWithInterruptedException() throws ExecutionException, InterruptedException {
-        // Prepare
-        final OpenSearchAPISource source = new OpenSearchAPISource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
-            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            when(completableFuture.get()).thenThrow(new InterruptedException());
-
-            // When/Then
-            Assertions.assertThrows(RuntimeException.class, () -> source.start(testBuffer));
-            Assertions.assertTrue(Thread.interrupted());
-        }
-    }
-
-    @Test
-    public void testStopWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
-        // Prepare
-        final OpenSearchAPISource source = new OpenSearchAPISource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
-            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            source.start(testBuffer);
-            when(server.stop()).thenReturn(completableFuture);
-
-            // When/Then
-            when(completableFuture.get()).thenThrow(new ExecutionException("", null));
-            Assertions.assertThrows(RuntimeException.class, source::stop);
-        }
-    }
-
-    @Test
-    public void testStopWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
-        // Prepare
-        final OpenSearchAPISource source = new OpenSearchAPISource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
-            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            source.start(testBuffer);
-            when(server.stop()).thenReturn(completableFuture);
-            final NullPointerException expCause = new NullPointerException();
-            when(completableFuture.get()).thenThrow(new ExecutionException("", expCause));
-
-            // When/Then
-            final RuntimeException ex = Assertions.assertThrows(RuntimeException.class, source::stop);
-            Assertions.assertEquals(expCause, ex);
-        }
-    }
-
-    @Test
-    public void testStopWithInterruptedException() throws ExecutionException, InterruptedException {
-        // Prepare
-        final OpenSearchAPISource source = new OpenSearchAPISource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
-            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            source.start(testBuffer);
-            when(server.stop()).thenReturn(completableFuture);
-            when(completableFuture.get()).thenThrow(new InterruptedException());
-
-            // When/Then
-            Assertions.assertThrows(RuntimeException.class, source::stop);
-            Assertions.assertTrue(Thread.interrupted());
-        }
-    }
-
-    @Test
-    public void testRunAnotherSourceWithSamePort() {
-        // starting server
-        openSearchAPISource.start(testBuffer);
-
-        final OpenSearchAPISource secondSource = new OpenSearchAPISource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
-        Assertions.assertThrows(RuntimeException.class, () -> secondSource.start(testBuffer));
     }
 
     @Test
@@ -765,10 +610,10 @@ class OpenSearchAPISourceTest {
                                 .scheme(SessionProtocol.HTTP)
                                 .authority(AUTHORITY)
                                 .method(HttpMethod.POST)
-                                .path("/opensearch")
+                                .path("/")
                                 .contentType(MediaType.JSON_UTF_8)
                                 .build(),
-                HttpData.ofUtf8(testData))
+                        HttpData.ofUtf8(testData))
                 .aggregate()
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.REQUEST_ENTITY_TOO_LARGE)).join();
 
