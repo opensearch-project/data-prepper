@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.test.performance.tools;
 
 import io.gatling.javaapi.core.Session;
 import org.opensearch.dataprepper.test.data.generation.IpAddress;
+import org.opensearch.dataprepper.test.data.generation.UserAgent;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -39,8 +40,22 @@ public final class Templates {
         };
     }
 
+    public static Function<Session, String> userAgent(final int batchSize) {
+        return session -> {
+            final List<String> logs = IntStream.range(0, batchSize)
+                    .mapToObj(i -> "{\"log\": \"" + userAgent() + "\"}")
+                    .collect(Collectors.toList());
+            final String logArray = String.join(",", logs);
+            return "[" + logArray + "]";
+        };
+    }
+
     private static String ipAddress() {
         return IpAddress.getInstance().ipAddress();
+    }
+
+    private static String userAgent() {
+        return UserAgent.getInstance().userAgent();
     }
 
     private static String httpMethod() {
