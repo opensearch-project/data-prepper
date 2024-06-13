@@ -9,6 +9,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.avro.AvroParquetReader;
+import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -65,7 +66,7 @@ public class ParquetOutputScenario implements OutputScenario {
         int validatedRecords = 0;
 
         int count = 0;
-        try (final ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(inputFile)
+        try (final ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(inputFile, new PlainParquetConfiguration())
                 .build()) {
             GenericRecord record;
 
