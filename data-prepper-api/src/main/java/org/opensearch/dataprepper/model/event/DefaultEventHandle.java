@@ -28,7 +28,7 @@ public class DefaultEventHandle implements EventHandle, InternalEventHandle, Ser
     }
 
     @Override
-    public void setAcknowledgementSet(final AcknowledgementSet acknowledgementSet) {
+    public void addAcknowledgementSet(final AcknowledgementSet acknowledgementSet) {
         this.acknowledgementSetRef = new WeakReference<>(acknowledgementSet);
     }
 
@@ -45,6 +45,22 @@ public class DefaultEventHandle implements EventHandle, InternalEventHandle, Ser
     }
 
     @Override
+    public boolean hasAcknowledgementSet() {
+        AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
+        return acknowledgementSet != null;
+    }
+
+/*
+    @Override
+    void addEventHandle(EventHandle eventHandle) {
+        AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
+        if (acknowledgementSet != null) {
+            acknowledgementSet.add(eventHandle);
+        }
+    }
+*/
+
+    @Override
     public Instant getInternalOriginationTime() {
         return this.internalOriginationTime;
     }
@@ -55,7 +71,7 @@ public class DefaultEventHandle implements EventHandle, InternalEventHandle, Ser
     }
 
     @Override
-    public void release(boolean result) {
+    public boolean release(boolean result) {
         synchronized (releaseConsumers) {
             for (final BiConsumer<EventHandle, Boolean> consumer: releaseConsumers) {
                 consumer.accept(this, result);
@@ -64,7 +80,9 @@ public class DefaultEventHandle implements EventHandle, InternalEventHandle, Ser
         AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
         if (acknowledgementSet != null) {
             acknowledgementSet.release(this, result);
+            return true;
         }
+        return false;
     }
 
     @Override
