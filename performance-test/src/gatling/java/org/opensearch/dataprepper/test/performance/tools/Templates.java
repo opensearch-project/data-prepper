@@ -41,12 +41,9 @@ public final class Templates {
     }
 
     private static Function<Session, String> generateLogArray(final int batchSize, final Supplier<String> stringSupplier) {
-        return session -> {
-            final List<String> logs = IntStream.range(0, batchSize)
-                    .mapToObj(i -> "{\"log\": \"" + stringSupplier.get() + "\"}")
-                    .collect(Collectors.toList());
-            return logs.stream().collect(Collectors.joining(",", "[", "]"));
-        };
+        return session -> IntStream.range(0, batchSize)
+                .mapToObj(i -> "{\"log\": \"" + stringSupplier.get() + "\"}")
+                .collect(Collectors.joining(",", "[", "]"));
     }
 
     private static String ipAddress() {
