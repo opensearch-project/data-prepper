@@ -14,7 +14,6 @@ import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ua_parser.CachingParser;
 import ua_parser.Client;
 import ua_parser.Parser;
 
@@ -36,7 +35,7 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
     public UserAgentProcessor(final PluginMetrics pluginMetrics, final UserAgentProcessorConfig config) {
         super(pluginMetrics);
         this.config = config;
-        this.userAgentParser = new CachingParser(config.getCacheSize());
+        this.userAgentParser = new CaffeineCachingParser(config.getCacheSize());
     }
 
     @Override

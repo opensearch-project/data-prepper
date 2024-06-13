@@ -65,6 +65,7 @@ dependencyResolutionManagement {
             library('hadoop-mapreduce', 'org.apache.hadoop', 'hadoop-mapreduce-client-core').versionRef('hadoop')
             version('avro', '1.11.3')
             library('avro-core', 'org.apache.avro', 'avro').versionRef('avro')
+            library('caffeine', 'com.github.ben-manes.caffeine', 'caffeine').version('3.1.8')
         }
         testLibs {
             version('junit', '5.8.2')
