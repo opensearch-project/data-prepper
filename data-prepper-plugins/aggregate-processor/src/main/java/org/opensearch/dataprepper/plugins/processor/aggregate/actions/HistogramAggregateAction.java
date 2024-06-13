@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateProcessor;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
@@ -35,8 +36,8 @@ import java.util.Arrays;
 import java.util.ArrayList;
 
 /**
- * An AggregateAction that combines multiple Events into a single Event. This action will create a combined event with histogram buckets of the values 
- * of specified list of keys from the groupState on concludeGroup. 
+ * An AggregateAction that combines multiple Events into a single Event. This action will create a combined event with histogram buckets of the values
+ * of specified list of keys from the groupState on concludeGroup.
  * @since 2.1
  */
 @DataPrepperPlugin(name = "histogram", pluginType = AggregateAction.class, pluginConfigurationType = HistogramAggregateActionConfig.class)
@@ -137,16 +138,29 @@ public class HistogramAggregateAction implements AggregateAction {
             return AggregateActionResponse.nullEventResponse();
         }
         double doubleValue = convertToDouble(value);
-        
+
         int idx = Arrays.binarySearch(this.buckets, doubleValue);
         if (idx < 0) {
             idx = -idx-2;
         }
+        Instant eventTime = Instant.now();
+        Instant eventStartTime = eventTime;
+        Instant eventEndTime = eventTime;
+        Object startTime = event.get(startTimeKey, Object.class);
+        Object endTime = event.get(endTimeKey, Object.class);
+        if (startTime != null) {
+            eventStartTime = AggregateProcessor.convertObjectToInstant(startTime);
+        }
+        if (endTime != null) {
+            eventEndTime = AggregateProcessor.convertObjectToInstant(endTime);
+        }
         if (groupState.get(bucketCountsKey) == null) {
+            groupState.put(startTimeKey, eventStartTime);
+            groupState.put(endTimeKey, eventEndTime);
             Long[] bucketCountsList = new Long[buckets.length-1];
             Arrays.fill(bucketCountsList, (long)0);
             bucketCountsList[idx]++;
-            groupState.put(startTimeKey, Instant.now());
+            groupState.put(startTimeKey, eventTime);
             groupState.putAll(aggregateActionInput.getIdentificationKeys());
             groupState.put(sumKey, doubleValue);
             groupState.put(countKey, 1);
@@ -180,9 +194,13 @@ public class HistogramAggregateAction implements AggregateAction {
                     maxValue = doubleValue;
                 }
             }
-        } 
-        // Keep over-writing endTime to get the last time a record of this group received
-        groupState.put(endTimeKey, Instant.now());
+            Instant groupStartTime = (Instant)groupState.get(startTimeKey);
+            Instant groupEndTime = (Instant)groupState.get(endTimeKey);
+            if (eventStartTime.isBefore(groupStartTime))
+                groupState.put(startTimeKey, eventStartTime);
+            if (eventEndTime.isAfter(groupEndTime))
+                groupState.put(endTimeKey, eventEndTime);
+        }
         return AggregateActionResponse.nullEventResponse();
     }
 
@@ -247,7 +265,7 @@ public class HistogramAggregateAction implements AggregateAction {
                 .build(false);
             event = (Event)histogram;
         }
-        
+
         return new AggregateActionOutput(List.of(event));
     }
 }
