@@ -12,8 +12,10 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 
@@ -37,6 +39,8 @@ class UserAgentProcessorTest {
 
     @Mock
     private UserAgentProcessorConfig mockConfig;
+
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
 
     @ParameterizedTest
     @MethodSource("userAgentStringArguments")
@@ -109,6 +113,7 @@ class UserAgentProcessorTest {
     public void testParsingWhenUserAgentStringNotExist() {
         when(mockConfig.getSource()).thenReturn("bad_source");
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
+        when(mockConfig.getTarget()).thenReturn("user_agent");
 
         final UserAgentProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(UUID.randomUUID().toString());
@@ -122,6 +127,7 @@ class UserAgentProcessorTest {
     public void testTagsAddedOnParseFailure() {
         when(mockConfig.getSource()).thenReturn("bad_source");
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
+        when(mockConfig.getTarget()).thenReturn("user_agent");
 
         final String tagOnFailure1 = UUID.randomUUID().toString();
         final String tagOnFailure2 = UUID.randomUUID().toString();
@@ -138,7 +144,7 @@ class UserAgentProcessorTest {
     }
 
     private UserAgentProcessor createObjectUnderTest() {
-        return new UserAgentProcessor(pluginMetrics, mockConfig);
+        return new UserAgentProcessor(mockConfig, eventKeyFactory, pluginMetrics);
     }
 
     private Record<Event> createTestRecord(String uaString) {

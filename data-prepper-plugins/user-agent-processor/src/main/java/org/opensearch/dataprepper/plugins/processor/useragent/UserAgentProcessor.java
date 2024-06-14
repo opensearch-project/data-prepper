@@ -9,6 +9,8 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -30,12 +32,19 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
     private static final Logger LOG = LoggerFactory.getLogger(UserAgentProcessor.class);
     private final UserAgentProcessorConfig config;
     private final Parser userAgentParser;
+    private final EventKey sourceKey;
+    private final EventKey targetKey;
 
     @DataPrepperPluginConstructor
-    public UserAgentProcessor(final PluginMetrics pluginMetrics, final UserAgentProcessorConfig config) {
+    public UserAgentProcessor(
+            final UserAgentProcessorConfig config,
+            final EventKeyFactory eventKeyFactory,
+            final PluginMetrics pluginMetrics) {
         super(pluginMetrics);
         this.config = config;
         this.userAgentParser = new CaffeineCachingParser(config.getCacheSize());
+        sourceKey = eventKeyFactory.createEventKey(config.getSource(), EventKeyFactory.EventAction.GET);
+        targetKey = eventKeyFactory.createEventKey(config.getTarget(), EventKeyFactory.EventAction.PUT);
     }
 
     @Override
@@ -44,7 +53,7 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
             final Event event = record.getData();
 
             try {
-                final String userAgentStr = event.get(config.getSource(), String.class);
+                final String userAgentStr = event.get(sourceKey, String.class);
                 Objects.requireNonNull(userAgentStr);
 
                 final Client clientInfo = this.userAgentParser.parse(userAgentStr);
@@ -53,10 +62,10 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
                 if (!config.getExcludeOriginal()) {
                     parsedUserAgent.put("original", userAgentStr);
                 }
-                event.put(config.getTarget(), parsedUserAgent);
+                event.put(targetKey, parsedUserAgent);
             } catch (Exception e) {
                 LOG.error(EVENT, "An exception occurred when parsing user agent data from event [{}] with source key [{}]",
-                        event, config.getSource(), e);
+                        event, sourceKey.getKey(), e);
 
                 final List<String> tagsOnParseFailure = config.getTagsOnParseFailure();
                 if (Objects.nonNull(tagsOnParseFailure) && tagsOnParseFailure.size() > 0) {
