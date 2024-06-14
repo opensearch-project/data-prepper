@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.plugins.hasher.IdentificationKeysHasher;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -147,6 +148,23 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         return currentTimeNanos;
     }
 
+    public static Instant convertObjectToInstant(Object timeObject) {
+        if (timeObject instanceof Instant) {
+            return (Instant)timeObject;
+        } else if (timeObject instanceof String) {
+            return Instant.parse((String)timeObject);
+        } else if (timeObject instanceof Integer || timeObject instanceof Long) {
+            long value = ((Number)timeObject).longValue();
+            return (value > 1E10) ? Instant.ofEpochMilli(value) : Instant.ofEpochSecond(value);
+        } else if (timeObject instanceof Double || timeObject instanceof Float || timeObject instanceof BigDecimal) {
+            double value = ((Number)timeObject).doubleValue();
+            long seconds = (long) value;
+            long nanos = (long) ((value - seconds) * 1_000_000_000);
+            return Instant.ofEpochSecond(seconds, nanos);
+        } else {
+            throw new RuntimeException("Invalid format for time "+timeObject);
+        }
+    }
 
     @Override
     public void prepareForShutdown() {
