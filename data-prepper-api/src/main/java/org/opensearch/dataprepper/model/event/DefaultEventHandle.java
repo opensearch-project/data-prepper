@@ -50,15 +50,15 @@ public class DefaultEventHandle implements EventHandle, InternalEventHandle, Ser
         return acknowledgementSet != null;
     }
 
-/*
     @Override
-    void addEventHandle(EventHandle eventHandle) {
-        AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
-        if (acknowledgementSet != null) {
-            acknowledgementSet.add(eventHandle);
+    public void acquireReference() {
+        synchronized (this) {
+            AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
+            if (acknowledgementSet != null) {
+                acknowledgementSet.acquire(this);
+            }
         }
     }
-*/
 
     @Override
     public Instant getInternalOriginationTime() {

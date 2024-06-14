@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
@@ -27,7 +28,7 @@ import java.util.Map;
 import java.util.concurrent.Future;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -104,7 +105,6 @@ public class ProcessWorkerTest {
         final Record<Event> mockRecord = mock(Record.class);
         final Event mockEvent = mock(Event.class);
         final EventHandle eventHandle = mock(DefaultEventHandle.class);
-        when(((DefaultEventHandle) eventHandle).getAcknowledgementSet()).thenReturn(mock(AcknowledgementSet.class));
         when(mockRecord.getData()).thenReturn(mockEvent);
         when(mockEvent.getEventHandle()).thenReturn(eventHandle);
 
@@ -174,8 +174,11 @@ public class ProcessWorkerTest {
         final Record<Event> mockRecord = mock(Record.class);
         final Event mockEvent = mock(Event.class);
         final EventHandle eventHandle = mock(DefaultEventHandle.class);
-        when(((DefaultEventHandle) eventHandle).getAcknowledgementSet()).thenReturn(mock(AcknowledgementSet.class));
-        doNothing().when(eventHandle).release(true);
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        lenient().doAnswer(a-> {
+            return null;
+        }).when(acknowledgementSet).release(eventHandle, true);
+        ((InternalEventHandle)eventHandle).addAcknowledgementSet(acknowledgementSet);
         when(mockRecord.getData()).thenReturn(mockEvent);
         when(mockEvent.getEventHandle()).thenReturn(eventHandle);
 
@@ -218,8 +221,11 @@ public class ProcessWorkerTest {
         final Record<Event> mockRecord = mock(Record.class);
         final Event mockEvent = mock(Event.class);
         final EventHandle eventHandle = mock(DefaultEventHandle.class);
-        when(((DefaultEventHandle) eventHandle).getAcknowledgementSet()).thenReturn(mock(AcknowledgementSet.class));
-        doNothing().when(eventHandle).release(true);
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        lenient().doAnswer(a-> {
+            return null;
+        }).when(acknowledgementSet).release(eventHandle, true);
+        ((InternalEventHandle)eventHandle).addAcknowledgementSet(acknowledgementSet);
         when(mockRecord.getData()).thenReturn(mockEvent);
         when(mockEvent.getEventHandle()).thenReturn(eventHandle);
 

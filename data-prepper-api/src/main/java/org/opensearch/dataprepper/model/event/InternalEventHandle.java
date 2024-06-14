@@ -25,13 +25,11 @@ public interface InternalEventHandle {
     boolean hasAcknowledgementSet();
 
     /**
-     * Adds new event handle to the acknowledgement sets associated
-     * with this event handle
+     * Acquires reference to acknowledgement set(s) in the event handle
      *
-     * @param eventHandle event handle to add
      * @since 2.9
-    void addEventHandle(EventHandle eventHandle);
      */
+    void acquireReference();
 
 }
 

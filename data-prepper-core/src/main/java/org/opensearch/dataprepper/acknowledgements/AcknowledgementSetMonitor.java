@@ -5,9 +5,6 @@
 
 package org.opensearch.dataprepper.acknowledgements;
 
-import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.event.DefaultEventHandle;
-import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 
 import java.util.concurrent.locks.ReentrantLock;
@@ -32,15 +29,6 @@ class AcknowledgementSetMonitor implements Runnable {
     private final AtomicInteger numInvalidAcquires;
     private final AtomicInteger numInvalidReleases;
     private final AtomicInteger numNullHandles;
-
-    private DefaultAcknowledgementSet getAcknowledgementSet(final EventHandle eventHandle) {
-        if (eventHandle instanceof DefaultEventHandle) {
-            InternalEventHandle internalEventHandle = (InternalEventHandle)(DefaultEventHandle)eventHandle;
-            return (DefaultAcknowledgementSet)internalEventHandle.getAcknowledgementSet();
-        } else {
-            throw new RuntimeException("Unsupported event handle");
-        }
-    }
 
     public AcknowledgementSetMonitor() {
         this.acknowledgementSets = new HashSet<>();
@@ -67,55 +55,6 @@ class AcknowledgementSetMonitor implements Runnable {
         }
     }
 
-    public void acquire(final EventHandle eventHandle) {
-        if (eventHandle == null) {
-            numNullHandles.incrementAndGet();
-            return;
-        }
-
-        DefaultAcknowledgementSet acknowledgementSet = getAcknowledgementSet(eventHandle);
-        lock.lock();
-        boolean exists = false;
-        try {
-            exists = acknowledgementSets.contains(acknowledgementSet);
-        } finally {
-            lock.unlock();
-        }
-        // if acknowledgementSet doesn't exist then it means that the
-        // event still active even after the acknowledgement set is
-        // cleaned up.
-        if (exists) {
-            acknowledgementSet.acquire(eventHandle);
-        } else {
-            LOG.warn("Trying acquire an event in an AcknowledgementSet that does not exist");
-            numInvalidAcquires.incrementAndGet();
-        }
-    }
-
-    public void release(final EventHandle eventHandle, final boolean success) {
-        if (eventHandle == null) {
-            numNullHandles.incrementAndGet();
-            return;
-        }
-        DefaultAcknowledgementSet acknowledgementSet = getAcknowledgementSet(eventHandle);
-        lock.lock();
-        boolean exists = false;
-        try {
-            exists = acknowledgementSets.contains(acknowledgementSet);
-        } finally {
-            lock.unlock();
-        }
-        // if acknowledgementSet doesn't exist then it means some late
-        // arrival of event handle release after the acknowledgement set
-        // is cleaned up.
-        if (exists) {
-            boolean b = acknowledgementSet.release(eventHandle, success);
-        } else {
-            LOG.warn("Trying to release from an AcknowledgementSet that does not exist");
-            numInvalidReleases.incrementAndGet();
-        }
-    }
-
     /**
      * for testing
      * @return the size
@@ -131,6 +70,8 @@ class AcknowledgementSetMonitor implements Runnable {
             if (acknowledgementSets.size() > 0) {
                 acknowledgementSets.removeIf((ackSet) -> ((DefaultAcknowledgementSet) ackSet).isDone());
             }
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
         } finally {
             lock.unlock();
         }

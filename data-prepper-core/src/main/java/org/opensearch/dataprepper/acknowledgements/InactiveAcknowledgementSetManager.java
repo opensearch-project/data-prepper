@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.acknowledgements;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import java.util.function.Consumer;
@@ -26,15 +24,4 @@ public class InactiveAcknowledgementSetManager implements AcknowledgementSetMana
         throw new UnsupportedOperationException("create operation not supported");
     }
 
-    public void acquireEventReference(final Event event) {
-        throw new UnsupportedOperationException("acquire operation not supported");
-    }
-    
-    public void acquireEventReference(final EventHandle eventHandle) {
-        throw new UnsupportedOperationException("acquire operation not supported");
-    }
-    
-    public void releaseEventReference(final EventHandle eventHandle, boolean success) {
-        throw new UnsupportedOperationException("release operation not supported");
-    }
 }
