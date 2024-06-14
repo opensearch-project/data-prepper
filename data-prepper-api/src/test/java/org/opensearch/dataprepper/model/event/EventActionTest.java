@@ -15,6 +15,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
@@ -33,20 +34,20 @@ class EventActionTest {
 
     @ParameterizedTest
     @EnumSource(value = EventKeyFactory.EventAction.class)
-    void supports_returns_true_for_self(final EventKeyFactory.EventAction eventAction) {
-        assertThat(eventAction.supports(eventAction), equalTo(true));
+    void getSupportedActions_includes_self(final EventKeyFactory.EventAction eventAction) {
+        assertThat(eventAction.getSupportedActions(), hasItem(eventAction));
     }
 
     @ParameterizedTest
     @EnumSource(value = EventKeyFactory.EventAction.class)
-    void supports_returns_true_for_all_actions_when_ALL(final EventKeyFactory.EventAction eventAction) {
-        assertThat(EventKeyFactory.EventAction.ALL.supports(eventAction), equalTo(true));
+    void getSupportedActions_includes_for_all_actions_when_ALL(final EventKeyFactory.EventAction eventAction) {
+        assertThat(EventKeyFactory.EventAction.ALL.getSupportedActions(), hasItem(eventAction));
     }
 
     @ParameterizedTest
     @ArgumentsSource(SupportsArgumentsProvider.class)
-    void supports_returns_expected_value(final EventKeyFactory.EventAction eventAction, final EventKeyFactory.EventAction otherAction, boolean expectedSupports) {
-        assertThat(eventAction.supports(otherAction), equalTo(expectedSupports));
+    void supports_returns_expected_value(final EventKeyFactory.EventAction eventAction, final EventKeyFactory.EventAction otherAction, final boolean expectedSupports) {
+        assertThat(eventAction.getSupportedActions().contains(otherAction), equalTo(expectedSupports));
     }
 
     static class SupportsArgumentsProvider implements ArgumentsProvider {

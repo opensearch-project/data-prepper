@@ -5,6 +5,12 @@
 
 package org.opensearch.dataprepper.model.event;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
+
 /**
  * A factory for producing {@link EventKey} objects.
  *
@@ -41,16 +47,25 @@ public interface EventKeyFactory {
         GET,
         DELETE,
         PUT,
-        ALL;
+        ALL(GET, DELETE, PUT);
+
+        private final List<EventAction> includedActions;
+
+        EventAction(EventAction... eventActions) {
+            includedActions = Arrays.asList(eventActions);
+
+        }
 
         boolean isMutableAction() {
             return this != GET;
         }
 
-        boolean supports(final EventAction eventAction) {
-            if(this == ALL)
-                return true;
-            return this == eventAction;
+        Set<EventAction> getSupportedActions() {
+            final EnumSet<EventAction> supportedActions = EnumSet.noneOf(EventAction.class);
+            supportedActions.add(this);
+            supportedActions.addAll(includedActions);
+
+            return Collections.unmodifiableSet(supportedActions);
         }
     }
 }

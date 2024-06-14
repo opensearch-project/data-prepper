@@ -157,6 +157,13 @@ class JacksonEventKeyTest {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext extensionContext) throws Exception {
             return Stream.of(
+                    arguments(List.of(), EventKeyFactory.EventAction.GET, true),
+                    arguments(List.of(), EventKeyFactory.EventAction.PUT, true),
+                    arguments(List.of(), EventKeyFactory.EventAction.DELETE, true),
+                    arguments(List.of(), EventKeyFactory.EventAction.ALL, true),
+                    arguments(List.of(EventKeyFactory.EventAction.GET), EventKeyFactory.EventAction.GET, true),
+                    arguments(List.of(EventKeyFactory.EventAction.PUT), EventKeyFactory.EventAction.PUT, true),
+                    arguments(List.of(EventKeyFactory.EventAction.DELETE), EventKeyFactory.EventAction.DELETE, true),
                     arguments(List.of(EventKeyFactory.EventAction.GET), EventKeyFactory.EventAction.PUT, false),
                     arguments(List.of(EventKeyFactory.EventAction.GET, EventKeyFactory.EventAction.PUT), EventKeyFactory.EventAction.PUT, true),
                     arguments(List.of(EventKeyFactory.EventAction.PUT, EventKeyFactory.EventAction.GET), EventKeyFactory.EventAction.PUT, true),

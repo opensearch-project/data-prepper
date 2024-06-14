@@ -9,8 +9,10 @@ import com.fasterxml.jackson.core.JsonPointer;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -22,13 +24,14 @@ class JacksonEventKey implements EventKey {
     private final String trimmedKey;
     private final List<String> keyPathList;
     private final JsonPointer jsonPointer;
+    private final Set<EventKeyFactory.EventAction> supportedActions;
 
     JacksonEventKey(final String key, final EventKeyFactory.EventAction... eventActions) {
         this.key = Objects.requireNonNull(key, "Parameter key cannot be null for EventKey.");
         this.eventActions = eventActions.length == 0 ? new EventKeyFactory.EventAction[] { EventKeyFactory.EventAction.ALL } : eventActions;
 
         if(key.isEmpty()) {
-            for (final EventKeyFactory.EventAction action : eventActions) {
+            for (final EventKeyFactory.EventAction action : this.eventActions) {
                 if (action.isMutableAction()) {
                     throw new IllegalArgumentException("Event key cannot be an empty string for " + action + " actions.");
                 }
@@ -39,6 +42,12 @@ class JacksonEventKey implements EventKey {
 
         keyPathList = Collections.unmodifiableList(Arrays.asList(trimmedKey.split(SEPARATOR, -1)));
         jsonPointer = toJsonPointer(trimmedKey);
+
+        supportedActions = EnumSet.noneOf(EventKeyFactory.EventAction.class);
+        for (final EventKeyFactory.EventAction eventAction : this.eventActions) {
+            supportedActions.addAll(eventAction.getSupportedActions());
+        }
+
     }
 
     @Override
@@ -59,7 +68,7 @@ class JacksonEventKey implements EventKey {
     }
 
     boolean supports(final EventKeyFactory.EventAction eventAction) {
-        return Arrays.stream(eventActions).anyMatch(a -> a.supports(eventAction));
+        return supportedActions.contains(eventAction);
     }
 
     private String checkAndTrimKey(final String key) {
