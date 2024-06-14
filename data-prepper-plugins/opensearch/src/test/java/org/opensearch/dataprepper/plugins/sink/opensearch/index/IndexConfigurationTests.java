@@ -52,6 +52,9 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConf
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_ROOT_KEY;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_VERSION_EXPRESSION;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.PIPELINE;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.ROUTING;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.ROUTING_FIELD;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.SERVERLESS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.TEMPLATE_TYPE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
@@ -474,6 +477,39 @@ public class IndexConfigurationTests {
         metadata.put(DOCUMENT_ROOT_KEY, "");
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         assertThrows(IllegalArgumentException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
+    }
+
+    @Test
+    public void testReadIndexConfig_pipeline() {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
+        final String expectedPipelineValue = UUID.randomUUID().toString();
+        metadata.put(PIPELINE, expectedPipelineValue);
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+        assertEquals(expectedPipelineValue, indexConfiguration.getPipeline());
+    }
+
+    @Test
+    public void testReadIndexConfig_routing() {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
+        final String expectedRoutingValue = UUID.randomUUID().toString();
+        metadata.put(ROUTING, expectedRoutingValue);
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+        assertEquals(expectedRoutingValue, indexConfiguration.getRouting());
+    }
+
+    @Test
+    public void testReadIndexConfig_routingField() {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
+        final String expectedRoutingFieldValue = UUID.randomUUID().toString();
+        metadata.put(ROUTING_FIELD, expectedRoutingFieldValue);
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+        assertEquals(expectedRoutingFieldValue, indexConfiguration.getRoutingField());
     }
 
     @ParameterizedTest

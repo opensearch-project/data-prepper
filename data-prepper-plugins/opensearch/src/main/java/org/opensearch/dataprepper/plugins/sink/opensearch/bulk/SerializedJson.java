@@ -17,6 +17,7 @@ public interface SerializedJson extends SizedDocument {
     byte[] getSerializedJson();
     Optional<String> getDocumentId();
     Optional<String> getRoutingField();
+    Optional<String> getPipelineField();
 
     /**
      * Creates a new {@link SerializedJson} from a JSON string and optional documentId and routingField.
@@ -26,9 +27,9 @@ public interface SerializedJson extends SizedDocument {
      * @param routingField Optional routing field string
      * @return A new {@link SerializedJson}.
      */
-    static SerializedJson fromStringAndOptionals(String jsonString, String docId, String routingField) {
+    static SerializedJson fromStringAndOptionals(String jsonString, String docId, String routingField, String pipelineField) {
         Objects.requireNonNull(jsonString);
-        return new SerializedJsonImpl(jsonString.getBytes(StandardCharsets.UTF_8), docId, routingField);
+        return new SerializedJsonImpl(jsonString.getBytes(StandardCharsets.UTF_8), docId, routingField, pipelineField);
     }
 
     static SerializedJson fromJsonNode(final JsonNode jsonNode, SerializedJson document) {
