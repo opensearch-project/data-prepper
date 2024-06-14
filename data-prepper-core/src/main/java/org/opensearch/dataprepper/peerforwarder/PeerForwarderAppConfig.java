@@ -20,6 +20,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+
+import javax.inject.Named;
+
 
 @Configuration
 class PeerForwarderAppConfig {
@@ -71,12 +75,18 @@ class PeerForwarderAppConfig {
                 peerForwarderConfiguration, peerForwarderClientFactory, peerForwarderCodec, pluginMetrics);
     }
 
-    @Bean
-    public PeerForwarderProvider peerForwarderProvider(final PeerForwarderClientFactory peerForwarderClientFactory,
+    @Bean(name = "defaultPeerForwarder")
+    public DefaultPeerForwarderProvider peerForwarderProvider(final PeerForwarderClientFactory peerForwarderClientFactory,
                                                        final PeerForwarderClient peerForwarderClient,
                                                        final PeerForwarderConfiguration peerForwarderConfiguration,
                                                        @Qualifier("peerForwarderMetrics") final PluginMetrics pluginMetrics) {
-        return new PeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient, peerForwarderConfiguration, pluginMetrics);
+        return new DefaultPeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient, peerForwarderConfiguration, pluginMetrics);
+    }
+
+    @Bean
+    @Primary
+    public PeerForwarderProvider peerForwarderProvider(@Named("defaultPeerForwarder") final PeerForwarderProvider peerForwarderProvider) {
+        return new LocalModePeerForwarderProvider(peerForwarderProvider);
     }
 
     @Bean

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 
@@ -35,7 +36,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class PeerForwarderProviderTest {
+class DefaultPeerForwarderProviderTest {
     private static final int PIPELINE_WORKER_THREADS = new Random().nextInt(10) + 1;
 
     @Mock
@@ -49,6 +50,9 @@ class PeerForwarderProviderTest {
 
     @Mock
     private HashRing hashRing;
+
+    @Mock
+    private Processor processor;
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -71,13 +75,13 @@ class PeerForwarderProviderTest {
     }
 
     private PeerForwarderProvider createObjectUnderTest() {
-        return new PeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient, peerForwarderConfiguration, pluginMetrics);
+        return new DefaultPeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient, peerForwarderConfiguration, pluginMetrics);
     }
 
     @Test
     void register_creates_a_new_RemotePeerForwarder_with_cloud_map_discovery_mode() {
         when(peerForwarderConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.AWS_CLOUD_MAP);
-        final PeerForwarder peerForwarder = createObjectUnderTest().register(pipelineName, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
+        final PeerForwarder peerForwarder = createObjectUnderTest().register(pipelineName, processor, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
 
         assertThat(peerForwarder, instanceOf(RemotePeerForwarder.class));
     }
@@ -86,7 +90,7 @@ class PeerForwarderProviderTest {
     void register_creates_a_new_RemotePeerForwarder_with_static_discovery_mode_of_size_grater_than_one() {
         when(peerForwarderConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.STATIC);
         when(peerForwarderConfiguration.getStaticEndpoints()).thenReturn(List.of("endpoint1", "endpoint2"));
-        final PeerForwarder peerForwarder = createObjectUnderTest().register(pipelineName, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
+        final PeerForwarder peerForwarder = createObjectUnderTest().register(pipelineName, processor, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
 
         assertThat(peerForwarder, instanceOf(RemotePeerForwarder.class));
     }
@@ -95,14 +99,14 @@ class PeerForwarderProviderTest {
     void register_creates_a_new_RemotePeerForwarder_with_static_discovery_mode_of_size_one() {
         when(peerForwarderConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.STATIC);
         when(peerForwarderConfiguration.getStaticEndpoints()).thenReturn(List.of("endpoint1"));
-        final PeerForwarder peerForwarder = createObjectUnderTest().register(pipelineName, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
+        final PeerForwarder peerForwarder = createObjectUnderTest().register(pipelineName, processor, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
 
         assertThat(peerForwarder, instanceOf(LocalPeerForwarder.class));
     }
 
     @Test
     void register_creates_a_new_LocalPeerForwarder_with_local_discovery_mode() {
-        final PeerForwarder peerForwarder = createObjectUnderTest().register(pipelineName, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
+        final PeerForwarder peerForwarder = createObjectUnderTest().register(pipelineName, processor, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
 
         assertThat(peerForwarder, instanceOf(LocalPeerForwarder.class));
     }
@@ -110,7 +114,7 @@ class PeerForwarderProviderTest {
     @Test
     void register_creates_HashRing_if_peer_forwarding_is_required() {
         when(peerForwarderConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.AWS_CLOUD_MAP);
-        createObjectUnderTest().register(pipelineName, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
+        createObjectUnderTest().register(pipelineName, processor, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
 
         verify(peerForwarderClientFactory).createHashRing();
     }
@@ -121,7 +125,7 @@ class PeerForwarderProviderTest {
         final PeerForwarderProvider objectUnderTest = createObjectUnderTest();
 
         for (int i = 0; i < 10; i++)
-            objectUnderTest.register(pipelineName, UUID.randomUUID().toString(), identificationKeys, PIPELINE_WORKER_THREADS);
+            objectUnderTest.register(pipelineName, processor, UUID.randomUUID().toString(), identificationKeys, PIPELINE_WORKER_THREADS);
 
         verify(peerForwarderClientFactory, times(1)).createHashRing();
     }
@@ -137,17 +141,17 @@ class PeerForwarderProviderTest {
     void isAtLeastOnePeerForwarderRegistered_should_throw_when_register_is_called_with_same_pipeline_and_plugin() {
         final PeerForwarderProvider objectUnderTest = createObjectUnderTest();
 
-        objectUnderTest.register(pipelineName, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
+        objectUnderTest.register(pipelineName, processor, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
 
         assertThrows(RuntimeException.class, () ->
-                objectUnderTest.register(pipelineName, pluginId, identificationKeys, PIPELINE_WORKER_THREADS));
+                objectUnderTest.register(pipelineName, processor, pluginId, identificationKeys, PIPELINE_WORKER_THREADS));
     }
 
     @Test
     void isAtLeastOnePeerForwarderRegistered_should_return_false_if_register_is_called_with_local_discovery_mode() {
         final PeerForwarderProvider objectUnderTest = createObjectUnderTest();
 
-        objectUnderTest.register(pipelineName, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
+        objectUnderTest.register(pipelineName, processor, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
 
         assertThat(objectUnderTest.isPeerForwardingRequired(), equalTo(false));
     }
@@ -157,7 +161,7 @@ class PeerForwarderProviderTest {
         when(peerForwarderConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.AWS_CLOUD_MAP);
         final PeerForwarderProvider objectUnderTest = createObjectUnderTest();
 
-        objectUnderTest.register(pipelineName, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
+        objectUnderTest.register(pipelineName, processor, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
 
         assertThat(objectUnderTest.isPeerForwardingRequired(), equalTo(true));
     }
@@ -179,7 +183,7 @@ class PeerForwarderProviderTest {
     void getPipelinePeerForwarderReceiveBufferMap_should_return_non_empty_map_when_register_is_called() {
         final PeerForwarderProvider objectUnderTest = createObjectUnderTest();
 
-        objectUnderTest.register(pipelineName, UUID.randomUUID().toString(), identificationKeys, PIPELINE_WORKER_THREADS);
+        objectUnderTest.register(pipelineName, processor, UUID.randomUUID().toString(), identificationKeys, PIPELINE_WORKER_THREADS);
 
         final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap = objectUnderTest
                 .getPipelinePeerForwarderReceiveBufferMap();
