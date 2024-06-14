@@ -12,25 +12,16 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.BiConsumer;
 import java.time.Instant;
 import java.io.Serializable;
 
-public class AggregateEventHandle implements EventHandle, InternalEventHandle, Serializable {
-    private Instant externalOriginationTime;
-    private final Instant internalOriginationTime;
+public class AggregateEventHandle extends AbstractEventHandle implements Serializable {
     private List<WeakReference<AcknowledgementSet>> acknowledgementSetRefList;
     private Set<Integer> acknowledgementSetHashes;
-    private final ReentrantLock lock;
-    private List<BiConsumer<EventHandle, Boolean>> releaseConsumers;
 
     public AggregateEventHandle(final Instant internalOriginationTime) {
+        super(internalOriginationTime);
         this.acknowledgementSetRefList = new ArrayList<>();
-        this.externalOriginationTime = null;
-        this.internalOriginationTime = internalOriginationTime;
-        this.lock = new ReentrantLock(true);
-        this.releaseConsumers = new ArrayList<>();
         this.acknowledgementSetHashes = new HashSet<>();
     }
 
@@ -44,23 +35,8 @@ public class AggregateEventHandle implements EventHandle, InternalEventHandle, S
     }
 
     @Override
-    public void setExternalOriginationTime(final Instant externalOriginationTime) {
-        this.externalOriginationTime = externalOriginationTime;
-    }
-
-    @Override
     public boolean hasAcknowledgementSet() {
         return acknowledgementSetRefList.size() != 0;
-    }
-
-    @Override
-    public Instant getInternalOriginationTime() {
-        return this.internalOriginationTime;
-    }
-
-    @Override
-    public Instant getExternalOriginationTime() {
-        return this.externalOriginationTime;
     }
 
     @Override
@@ -77,14 +53,10 @@ public class AggregateEventHandle implements EventHandle, InternalEventHandle, S
 
     @Override
     public boolean release(boolean result) {
-        synchronized (releaseConsumers) {
-            for (final BiConsumer<EventHandle, Boolean> consumer: releaseConsumers) {
-                consumer.accept(this, result);
-            }
-        }
+        notifyReleaseConsumers(result);
         boolean returnValue = true;
         synchronized (this) {
-            for (WeakReference<AcknowledgementSet> acknowledgementSetRef: acknowledgementSetRefList) {;
+            for (WeakReference<AcknowledgementSet> acknowledgementSetRef: acknowledgementSetRefList) {
                 AcknowledgementSet acknowledgementSet = acknowledgementSetRef.get();
                 if (acknowledgementSet != null) {
                     acknowledgementSet.release(this, result);
@@ -101,11 +73,5 @@ public class AggregateEventHandle implements EventHandle, InternalEventHandle, S
         return acknowledgementSetRefList;
     }
 
-    @Override
-    public void onRelease(BiConsumer<EventHandle, Boolean> releaseConsumer) {
-        synchronized (releaseConsumers) {
-            releaseConsumers.add(releaseConsumer);
-        }
-    }
 }
 

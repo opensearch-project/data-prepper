@@ -175,9 +175,6 @@ public class ProcessWorkerTest {
         final Event mockEvent = mock(Event.class);
         final EventHandle eventHandle = mock(DefaultEventHandle.class);
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
-        lenient().doAnswer(a-> {
-            return null;
-        }).when(acknowledgementSet).release(eventHandle, true);
         ((InternalEventHandle)eventHandle).addAcknowledgementSet(acknowledgementSet);
         when(mockRecord.getData()).thenReturn(mockEvent);
         when(mockEvent.getEventHandle()).thenReturn(eventHandle);
@@ -222,9 +219,6 @@ public class ProcessWorkerTest {
         final Event mockEvent = mock(Event.class);
         final EventHandle eventHandle = mock(DefaultEventHandle.class);
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
-        lenient().doAnswer(a-> {
-            return null;
-        }).when(acknowledgementSet).release(eventHandle, true);
         ((InternalEventHandle)eventHandle).addAcknowledgementSet(acknowledgementSet);
         when(mockRecord.getData()).thenReturn(mockEvent);
         when(mockEvent.getEventHandle()).thenReturn(eventHandle);

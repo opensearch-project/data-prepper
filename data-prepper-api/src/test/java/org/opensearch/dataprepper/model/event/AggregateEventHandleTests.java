@@ -14,7 +14,6 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.doAnswer;
 import org.mockito.Mock;
 
 import java.lang.ref.WeakReference;
@@ -26,7 +25,6 @@ class AggregateEventHandleTests {
     @Mock
     private AcknowledgementSet acknowledgementSet2;
     private int count;
-    private int acquireCount;
 
     @Test
     void testBasic() {
@@ -41,19 +39,10 @@ class AggregateEventHandleTests {
 
     @Test
     void testWithAcknowledgementSet() {
-        acquireCount = 0;
         acknowledgementSet1 = mock(AcknowledgementSet.class);
         acknowledgementSet2 = mock(AcknowledgementSet.class);
         when(acknowledgementSet1.release(any(EventHandle.class), any(Boolean.class))).thenReturn(true);
         when(acknowledgementSet2.release(any(EventHandle.class), any(Boolean.class))).thenReturn(true);
-        doAnswer(a -> {
-            acquireCount++;
-            return null;
-        }).when(acknowledgementSet1).acquire(any(EventHandle.class));
-        doAnswer(a -> {
-            acquireCount++;
-            return null;
-        }).when(acknowledgementSet2).acquire(any(EventHandle.class));
         Instant now = Instant.now();
         AggregateEventHandle eventHandle = new AggregateEventHandle(now);
         assertThat(eventHandle.getInternalOriginationTime(), equalTo(now));
@@ -66,7 +55,6 @@ class AggregateEventHandleTests {
         eventHandle.acquireReference();
         verify(acknowledgementSet1).acquire(eventHandle);
         verify(acknowledgementSet2).acquire(eventHandle);
-        assertThat(acquireCount, equalTo(2));
         eventHandle.release(true);
         verify(acknowledgementSet1).release(eventHandle, true);
         verify(acknowledgementSet2).release(eventHandle, true);

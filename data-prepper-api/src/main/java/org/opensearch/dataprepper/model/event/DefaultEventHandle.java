@@ -14,27 +14,17 @@ import java.util.function.BiConsumer;
 import java.time.Instant;
 import java.io.Serializable;
 
-public class DefaultEventHandle implements EventHandle, InternalEventHandle, Serializable {
-    private Instant externalOriginationTime;
-    private final Instant internalOriginationTime;
+public class DefaultEventHandle extends AbstractEventHandle implements Serializable {
     private WeakReference<AcknowledgementSet> acknowledgementSetRef;
-    private List<BiConsumer<EventHandle, Boolean>> releaseConsumers;
 
     public DefaultEventHandle(final Instant internalOriginationTime) {
+        super(internalOriginationTime);
         this.acknowledgementSetRef = null;
-        this.externalOriginationTime = null;
-        this.internalOriginationTime = internalOriginationTime;
-        this.releaseConsumers = new ArrayList<>();
     }
 
     @Override
     public void addAcknowledgementSet(final AcknowledgementSet acknowledgementSet) {
         this.acknowledgementSetRef = new WeakReference<>(acknowledgementSet);
-    }
-
-    @Override
-    public void setExternalOriginationTime(final Instant externalOriginationTime) {
-        this.externalOriginationTime = externalOriginationTime;
     }
 
     public AcknowledgementSet getAcknowledgementSet() {
@@ -61,22 +51,8 @@ public class DefaultEventHandle implements EventHandle, InternalEventHandle, Ser
     }
 
     @Override
-    public Instant getInternalOriginationTime() {
-        return this.internalOriginationTime;
-    }
-
-    @Override
-    public Instant getExternalOriginationTime() {
-        return this.externalOriginationTime;
-    }
-
-    @Override
     public boolean release(boolean result) {
-        synchronized (releaseConsumers) {
-            for (final BiConsumer<EventHandle, Boolean> consumer: releaseConsumers) {
-                consumer.accept(this, result);
-            }
-        }
+        notifyReleaseConsumers(result);
         AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
         if (acknowledgementSet != null) {
             acknowledgementSet.release(this, result);
@@ -85,10 +61,4 @@ public class DefaultEventHandle implements EventHandle, InternalEventHandle, Ser
         return false;
     }
 
-    @Override
-    public void onRelease(BiConsumer<EventHandle, Boolean> releaseConsumer) {
-        synchronized (releaseConsumers) {
-            releaseConsumers.add(releaseConsumer);
-        }
-    }
 }
