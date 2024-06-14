@@ -74,6 +74,53 @@ public class JacksonEventTest {
         assertThat(result, is(equalTo(value)));
     }
 
+    @Test
+    public void testPutAndGet_withRandomString_eventKey() {
+        final EventKey key = new JacksonEventKey("aRandomKey" + UUID.randomUUID());
+        final UUID value = UUID.randomUUID();
+
+        event.put(key, value);
+        final UUID result = event.get(key, UUID.class);
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(value)));
+    }
+
+    @Test
+    public void testPutAndGet_withRandomString_eventKey_multiple_events() {
+        final EventKey key = new JacksonEventKey("aRandomKey" + UUID.randomUUID());
+        final UUID value = UUID.randomUUID();
+
+        for(int i = 0; i < 10; i++) {
+            event = JacksonEvent.builder()
+                    .withEventType(eventType)
+                    .build();
+
+            event.put(key, value);
+            final UUID result = event.get(key, UUID.class);
+
+            assertThat(result, is(notNullValue()));
+            assertThat(result, is(equalTo(value)));
+        }
+    }
+
+    @Test
+    public void testPutAndGet_eventKey_with_non_JacksonEventKey_throws() {
+        final EventKey key = mock(EventKey.class);
+        final UUID value = UUID.randomUUID();
+
+        assertThrows(IllegalArgumentException.class, () -> event.put(key, value));
+        assertThrows(IllegalArgumentException.class, () -> event.get(key, UUID.class));
+    }
+
+    @Test
+    public void testPut_eventKey_with_immutable_action() {
+        final EventKey key = new JacksonEventKey("aRandomKey" + UUID.randomUUID(), EventKeyFactory.EventAction.GET);
+        final UUID value = UUID.randomUUID();
+
+        assertThrows(IllegalArgumentException.class, () -> event.put(key, value));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"/", "foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/", "a1K.k3-01_02", "keyWithBrackets[]"})
     void testPutAndGet_withStrings(final String key) {
@@ -86,6 +133,19 @@ public class JacksonEventTest {
         assertThat(result, is(equalTo(value)));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"/", "foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/", "a1K.k3-01_02", "keyWithBrackets[]"})
+    void testPutAndGet_withStrings_eventKey(final String key) {
+        final UUID value = UUID.randomUUID();
+
+        final EventKey eventKey = new JacksonEventKey(key);
+        event.put(eventKey, value);
+        final UUID result = event.get(eventKey, UUID.class);
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(value)));
+    }
+
     @Test
     public void testPutKeyCannotBeEmptyString() {
         Throwable exception = assertThrows(IllegalArgumentException.class, () -> event.put("", "value"));
@@ -93,8 +153,20 @@ public class JacksonEventTest {
     }
 
     @Test
-    public void testPutAndGet_withMultLevelKey() {
+    public void testPutAndGet_withMultiLevelKey() {
         final String key = "foo/bar";
+        final UUID value = UUID.randomUUID();
+
+        event.put(key, value);
+        final UUID result = event.get(key, UUID.class);
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(value)));
+    }
+
+    @Test
+    public void testPutAndGet_withMultiLevelKey_eventKey() {
+        final EventKey key = new JacksonEventKey("foo/bar");
         final UUID value = UUID.randomUUID();
 
         event.put(key, value);
@@ -126,8 +198,41 @@ public class JacksonEventTest {
     }
 
     @Test
+    public void testPutAndGet_withMultiLevelKeyTwice_eventKey() {
+        final EventKey key = new JacksonEventKey("foo/bar");
+        final UUID value = UUID.randomUUID();
+
+        event.put(key, value);
+        final UUID result = event.get(key, UUID.class);
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(value)));
+
+        final EventKey key2 = new JacksonEventKey("foo/fizz");
+        final UUID value2 = UUID.randomUUID();
+
+        event.put(key2, value2);
+        final UUID result2 = event.get(key2, UUID.class);
+
+        assertThat(result2, is(notNullValue()));
+        assertThat(result2, is(equalTo(value2)));
+    }
+
+    @Test
     public void testPutAndGet_withMultiLevelKeyWithADash() {
         final String key = "foo/bar-bar";
+        final UUID value = UUID.randomUUID();
+
+        event.put(key, value);
+        final UUID result = event.get(key, UUID.class);
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(value)));
+    }
+
+    @Test
+    public void testPutAndGet_withMultiLevelKeyWithADash_eventKey() {
+        final EventKey key = new JacksonEventKey("foo/bar-bar");
         final UUID value = UUID.randomUUID();
 
         event.put(key, value);
@@ -149,12 +254,34 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"foo", "/foo", "/foo/", "foo/"})
+    void testGetAtRootLevel_eventKey(final String key) {
+        final String value = UUID.randomUUID().toString();
+
+        event.put(new JacksonEventKey(key), value);
+        final Map<String, String> result = event.get(new JacksonEventKey("", EventKeyFactory.EventAction.GET), Map.class);
+
+        assertThat(result, is(Map.of("foo", value)));
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"/foo/bar", "foo/bar", "foo/bar/"})
     void testGetAtRootLevelWithMultiLevelKey(final String key) {
         final String value = UUID.randomUUID().toString();
 
         event.put(key, value);
         final Map<String, String> result = event.get("", Map.class);
+
+        assertThat(result, is(Map.of("foo", Map.of("bar", value))));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/foo/bar", "foo/bar", "foo/bar/"})
+    void testGetAtRootLevelWithMultiLevelKey_eventKey(final String key) {
+        final String value = UUID.randomUUID().toString();
+
+        event.put(new JacksonEventKey(key), value);
+        final Map<String, String> result = event.get( new JacksonEventKey("", EventKeyFactory.EventAction.GET), Map.class);
 
         assertThat(result, is(Map.of("foo", Map.of("bar", value))));
     }
@@ -291,6 +418,14 @@ public class JacksonEventTest {
         final UUID result = event.get(key, UUID.class);
 
         assertThat(result, is(nullValue()));
+    }
+
+    @Test
+    public void testDelete_eventKey_with_immutable_action() {
+        final EventKey key = new JacksonEventKey("aRandomKey" + UUID.randomUUID(), EventKeyFactory.EventAction.GET);
+        final UUID value = UUID.randomUUID();
+
+        assertThrows(IllegalArgumentException.class, () -> event.delete(key));
     }
 
     @Test
