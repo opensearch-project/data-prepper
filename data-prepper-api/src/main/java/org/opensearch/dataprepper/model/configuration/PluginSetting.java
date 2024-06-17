@@ -5,10 +5,22 @@
 
 package org.opensearch.dataprepper.model.configuration;
 
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Deprecated class for getting plugin settings.
+ * <p>
+ * Only projects within data-prepper-core should use this. It is currently used
+ * extensively in plugin framework to load plugins. In Data Prepper 3.0 this
+ * class will be moved into data-prepper-core and not exposed to plugins anymore.
+ *
+ * @deprecated Use {@link DataPrepperPlugin#pluginConfigurationType()} or {@link PipelineDescription} instead.
+ */
+@Deprecated
 public class PluginSetting implements PipelineDescription {
 
     private static final String UNEXPECTED_ATTRIBUTE_TYPE_MSG = "Unexpected type [%s] for attribute [%s]";
