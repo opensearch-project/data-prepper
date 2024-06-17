@@ -8,9 +8,6 @@ package org.opensearch.dataprepper.model.event;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import java.lang.ref.WeakReference;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.BiConsumer;
 import java.time.Instant;
 import java.io.Serializable;
 
