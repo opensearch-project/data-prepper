@@ -100,7 +100,7 @@ public class ProcessWorker implements Runnable {
             EventHandle eventHandle = event.getEventHandle();
             if (eventHandle != null && eventHandle instanceof DefaultEventHandle) {
                 InternalEventHandle internalEventHandle = (InternalEventHandle)(DefaultEventHandle)eventHandle;
-                if (internalEventHandle.getAcknowledgementSet() != null && !outputEventsSet.contains(event)) {
+                if (!outputEventsSet.contains(event)) {
                     eventHandle.release(true);
                 }
             } else if (eventHandle != null) {

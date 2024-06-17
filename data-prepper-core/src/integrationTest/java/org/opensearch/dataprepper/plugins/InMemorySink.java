@@ -40,7 +40,7 @@ public class InMemorySink implements Sink<Record<Event>> {
         records.stream().forEach((record) -> {
             EventHandle eventHandle = ((Event)record.getData()).getEventHandle();
             if (acknowledgements) {
-                acknowledgementSetManager.releaseEventReference(eventHandle, result);
+                eventHandle.release(result);
             }
         });
     }

@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
@@ -65,8 +66,8 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
         }
         if (referencedRecords.contains(record) || ((routedRecords != null) && routedRecords.contains(record))) {
             EventHandle eventHandle = ((JacksonEvent)record.getData()).getEventHandle();
-            if (eventHandle != null && eventHandle instanceof DefaultEventHandle) {
-                acknowledgementSetManager.acquireEventReference(eventHandle);
+            if (eventHandle != null && eventHandle instanceof InternalEventHandle) {
+                ((InternalEventHandle)eventHandle).acquireReference();
             }
         } else if (!referencedRecords.contains(record)) {
             referencedRecords.add(record);

@@ -82,7 +82,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
                 EventHandle eventHandle = event.getEventHandle();
                 if (eventHandle instanceof DefaultEventHandle) {
                     InternalEventHandle internalEventHandle = (InternalEventHandle)(DefaultEventHandle)eventHandle;
-                    internalEventHandle.setAcknowledgementSet(this);
+                    internalEventHandle.addAcknowledgementSet(this);
                     pendingAcknowledgments.put(eventHandle, new AtomicInteger(1));
                     totalEventsAdded.incrementAndGet();
                 }

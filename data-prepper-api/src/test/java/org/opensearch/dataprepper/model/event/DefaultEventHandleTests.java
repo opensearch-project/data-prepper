@@ -13,6 +13,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import org.mockito.Mock;
 
 import java.time.Instant;
@@ -29,6 +30,8 @@ class DefaultEventHandleTests {
         assertThat(eventHandle.getAcknowledgementSet(), equalTo(null));
         assertThat(eventHandle.getInternalOriginationTime(), equalTo(now));
         assertThat(eventHandle.getExternalOriginationTime(), equalTo(null));
+        eventHandle.acquireReference();
+        assertThat(eventHandle.hasAcknowledgementSet(), equalTo(false));
         eventHandle.release(true);
     }
 
@@ -36,12 +39,16 @@ class DefaultEventHandleTests {
     void testWithAcknowledgementSet() {
         acknowledgementSet = mock(AcknowledgementSet.class);
         when(acknowledgementSet.release(any(EventHandle.class), any(Boolean.class))).thenReturn(true);
+        doNothing().when(acknowledgementSet).acquire(any(EventHandle.class));
         Instant now = Instant.now();
         DefaultEventHandle eventHandle = new DefaultEventHandle(now);
         assertThat(eventHandle.getAcknowledgementSet(), equalTo(null));
         assertThat(eventHandle.getInternalOriginationTime(), equalTo(now));
         assertThat(eventHandle.getExternalOriginationTime(), equalTo(null));
-        eventHandle.setAcknowledgementSet(acknowledgementSet);
+        eventHandle.addAcknowledgementSet(acknowledgementSet);
+        assertThat(eventHandle.hasAcknowledgementSet(), equalTo(true));
+        eventHandle.acquireReference();
+        verify(acknowledgementSet).acquire(eventHandle);
         eventHandle.release(true);
         verify(acknowledgementSet).release(eventHandle, true);
     }

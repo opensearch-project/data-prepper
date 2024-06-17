@@ -69,7 +69,7 @@ public class SplitEventProcessorTest {
         
         DefaultEventHandle eventHandle = (DefaultEventHandle) event.getEventHandle();
 
-        eventHandle.setAcknowledgementSet(mockAcknowledgementSet);
+        eventHandle.addAcknowledgementSet(mockAcknowledgementSet);
         return new Record<>(event);
    }
 

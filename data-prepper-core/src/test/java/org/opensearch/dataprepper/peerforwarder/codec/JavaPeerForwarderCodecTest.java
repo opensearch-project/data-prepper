@@ -78,7 +78,7 @@ class JavaPeerForwarderCodecTest {
         inputEvents.getEvents().stream()
                 .map(Event::getEventHandle)
                 .map(handle -> (InternalEventHandle)handle)
-                .forEach(handle -> handle.setAcknowledgementSet(mock(AcknowledgementSet.class)));
+                .forEach(handle -> handle.addAcknowledgementSet(mock(AcknowledgementSet.class)));
         final byte[] bytes = createObjectUnderTest().serialize(inputEvents);
         final PeerForwardingEvents outputEvents = createObjectUnderTest().deserialize(bytes);
         assertThat(outputEvents.getDestinationPipelineName(), equalTo(inputEvents.getDestinationPipelineName()));
