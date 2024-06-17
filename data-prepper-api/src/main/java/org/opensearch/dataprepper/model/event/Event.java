@@ -29,11 +29,31 @@ public interface Event extends Serializable {
     /**
      * Adds or updates the key with a given value in the Event
      *
+     * @param key where the value will be set
+     * @param value value to set the key to
+     * @since 2.8
+     */
+    void put(EventKey key, Object value);
+
+    /**
+     * Adds or updates the key with a given value in the Event
+     *
      * @param key   where the value will be set
      * @param value value to set the key to
      * @since 1.2
      */
     void put(String key, Object value);
+
+    /**
+     * Retrieves the given key from the Event
+     *
+     * @param key the value to retrieve from
+     * @param clazz the return type of the value
+     * @param <T> The type
+     * @return T a clazz object from the key
+     * @since 2.8
+     */
+    <T> T get(EventKey key, Class<T> clazz);
 
     /**
      * Retrieves the given key from the Event
@@ -53,9 +73,28 @@ public interface Event extends Serializable {
      * @param clazz the return type of elements in the list
      * @param <T>   The type
      * @return {@literal List<T>} a list of clazz elements
+     * @since 2.8
+     */
+    <T> List<T> getList(EventKey key, Class<T> clazz);
+
+    /**
+     * Retrieves the given key from the Event as a List
+     *
+     * @param key   the value to retrieve from
+     * @param clazz the return type of elements in the list
+     * @param <T>   The type
+     * @return {@literal List<T>} a list of clazz elements
      * @since 1.2
      */
     <T> List<T> getList(String key, Class<T> clazz);
+
+    /**
+     * Deletes the given key from the Event
+     *
+     * @param key the field to be deleted
+     * @since 2.8
+     */
+    void delete(EventKey key);
 
     /**
      * Deletes the given key from the Event
@@ -92,6 +131,15 @@ public interface Event extends Serializable {
      *
      * @param key the field to be returned
      * @return Json string of the field
+     * @since 2.8
+     */
+    String getAsJsonString(EventKey key);
+
+    /**
+     * Gets a serialized Json string of the specific key in the Event
+     *
+     * @param key the field to be returned
+     * @return Json string of the field
      * @since 2.2
      */
     String getAsJsonString(String key);
@@ -109,9 +157,27 @@ public interface Event extends Serializable {
      *
      * @param key name of the key to look for
      * @return returns true if the key exists, otherwise false
+     * @since 2.8
+     */
+    boolean containsKey(EventKey key);
+
+    /**
+     * Checks if the key exists.
+     *
+     * @param key name of the key to look for
+     * @return returns true if the key exists, otherwise false
      * @since 1.2
      */
     boolean containsKey(String key);
+
+    /**
+     * Checks if the value stored for the key is list
+     *
+     * @param key name of the key to look for
+     * @return returns true if the key is a list, otherwise false
+     * @since 2.8
+     */
+    boolean isValueAList(EventKey key);
 
     /**
      * Checks if the value stored for the key is list

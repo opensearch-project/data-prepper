@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugin;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.inject.Inject;
@@ -31,6 +32,7 @@ class ApplicationContextToTypedSuppliers {
     @Inject
     ApplicationContextToTypedSuppliers(
             final EventFactory eventFactory,
+            final EventKeyFactory eventKeyFactory,
             final AcknowledgementSetManager acknowledgementSetManager,
             @Autowired(required = false) final CircuitBreaker circuitBreaker
     ) {
@@ -39,6 +41,7 @@ class ApplicationContextToTypedSuppliers {
 
         typedSuppliers = Map.of(
                 EventFactory.class, () -> eventFactory,
+                EventKeyFactory.class, () -> eventKeyFactory,
                 AcknowledgementSetManager.class, () -> acknowledgementSetManager,
                 CircuitBreaker.class, () -> circuitBreaker
         );

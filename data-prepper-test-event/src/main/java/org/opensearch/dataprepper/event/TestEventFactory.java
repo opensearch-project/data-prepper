@@ -5,18 +5,15 @@
 
 package org.opensearch.dataprepper.event;
 
-import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
 import org.opensearch.dataprepper.model.event.BaseEventBuilder;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 /**
  * An implementation of {@link EventFactory} that is useful for integration and unit tests
  * in other projects.
  */
 public class TestEventFactory implements EventFactory {
-    private static AnnotationConfigApplicationContext APPLICATION_CONTEXT;
     private static EventFactory DEFAULT_EVENT_FACTORY;
     private final EventFactory innerEventFactory;
 
@@ -25,11 +22,8 @@ public class TestEventFactory implements EventFactory {
     }
 
     public static EventFactory getTestEventFactory() {
-        if(APPLICATION_CONTEXT == null) {
-            APPLICATION_CONTEXT = new AnnotationConfigApplicationContext();
-            APPLICATION_CONTEXT.scan(EventFactoryApplicationContextMarker.class.getPackageName());
-            APPLICATION_CONTEXT.refresh();
-            DEFAULT_EVENT_FACTORY = APPLICATION_CONTEXT.getBean(EventFactory.class);
+        if(DEFAULT_EVENT_FACTORY == null) {
+            DEFAULT_EVENT_FACTORY = TestEventContext.getFromContext(EventFactory.class);
         }
         return new TestEventFactory(DEFAULT_EVENT_FACTORY);
     }

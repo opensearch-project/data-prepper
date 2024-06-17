@@ -1,0 +1,14 @@
+processor-pipeline:
+  delay: 10
+  source:
+    in_memory:
+      testing_key: ProcessorPipelineIT
+
+  processor:
+    - simple_test:
+        key1: /test1
+        value_prefix1: knownPrefix1
+
+  sink:
+    - in_memory:
+        testing_key: ProcessorPipelineIT
