@@ -21,6 +21,7 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -175,5 +176,92 @@ class JacksonEventKeyTest {
                     arguments(List.of(EventKeyFactory.EventAction.ALL), EventKeyFactory.EventAction.DELETE, true)
             );
         }
+    }
+
+    @ParameterizedTest
+    @EnumSource(EventKeyFactory.EventAction.class)
+    void equals_returns_true_for_same_key_and_actions(final EventKeyFactory.EventAction eventAction) {
+        final String testKey = UUID.randomUUID().toString();
+        final JacksonEventKey objectUnderTest = new JacksonEventKey(testKey, eventAction);
+        final JacksonEventKey other = new JacksonEventKey(testKey, eventAction);
+
+        assertThat(objectUnderTest.equals(other), equalTo(true));
+    }
+
+    @Test
+    void equals_returns_true_for_same_instance() {
+        final JacksonEventKey objectUnderTest = new JacksonEventKey(UUID.randomUUID().toString(),
+                EventKeyFactory.EventAction.PUT);
+
+        assertThat(objectUnderTest.equals(objectUnderTest), equalTo(true));
+    }
+
+    @Test
+    void equals_returns_false_for_null() {
+        final JacksonEventKey objectUnderTest = new JacksonEventKey(UUID.randomUUID().toString(),
+                EventKeyFactory.EventAction.PUT);
+
+        assertThat(objectUnderTest.equals(null), equalTo(false));
+    }
+
+    @Test
+    void equals_returns_false_for_non_EventKey() {
+        final String testKey = UUID.randomUUID().toString();
+        final JacksonEventKey objectUnderTest = new JacksonEventKey(testKey,
+                EventKeyFactory.EventAction.PUT);
+
+        assertThat(objectUnderTest.equals(testKey), equalTo(false));
+    }
+
+    @Test
+    void equals_returns_false_for_same_key_but_different_actions() {
+        final String testKey = UUID.randomUUID().toString();
+        final JacksonEventKey objectUnderTest = new JacksonEventKey(testKey, EventKeyFactory.EventAction.PUT);
+        final JacksonEventKey other = new JacksonEventKey(testKey, EventKeyFactory.EventAction.GET);
+
+        assertThat(objectUnderTest.equals(other), equalTo(false));
+    }
+
+    @ParameterizedTest
+    @EnumSource(EventKeyFactory.EventAction.class)
+    void equals_returns_false_for_different_key_but_same_actions(final EventKeyFactory.EventAction eventAction) {
+        final JacksonEventKey objectUnderTest = new JacksonEventKey(UUID.randomUUID().toString(), eventAction);
+        final JacksonEventKey other = new JacksonEventKey(UUID.randomUUID().toString(), eventAction);
+
+        assertThat(objectUnderTest.equals(other), equalTo(false));
+    }
+
+    @ParameterizedTest
+    @EnumSource(EventKeyFactory.EventAction.class)
+    void hashCode_is_the_same_for_same_key_and_actions(final EventKeyFactory.EventAction eventAction) {
+        final String testKey = UUID.randomUUID().toString();
+        final JacksonEventKey objectUnderTest = new JacksonEventKey(testKey, eventAction);
+        final JacksonEventKey other = new JacksonEventKey(testKey, eventAction);
+
+        assertThat(objectUnderTest.hashCode(), equalTo(other.hashCode()));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "test, PUT, test2, PUT",
+            "test, PUT, test2, PUT",
+            "test, PUT, test, GET"
+    })
+    void hashCode_is_the_different_for_same_key_and_actions(
+            final String testKey, final EventKeyFactory.EventAction eventAction,
+            final String testKeyOther, final EventKeyFactory.EventAction eventActionOther) {
+        final JacksonEventKey objectUnderTest = new JacksonEventKey(testKey, eventAction);
+        final JacksonEventKey other = new JacksonEventKey(testKeyOther, eventActionOther);
+
+        assertThat(objectUnderTest.hashCode(), not(equalTo(other.hashCode())));
+    }
+
+    @ParameterizedTest
+    @EnumSource(EventKeyFactory.EventAction.class)
+    void toString_returns_the_key(final EventKeyFactory.EventAction eventAction) {
+        final String testKey = UUID.randomUUID().toString();
+        final JacksonEventKey objectUnderTest = new JacksonEventKey(testKey, eventAction);
+
+        assertThat(objectUnderTest.toString(), equalTo(testKey));
     }
 }
