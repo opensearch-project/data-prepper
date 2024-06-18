@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -20,6 +22,8 @@ import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ObjectMapperConfigurationTest {
@@ -28,10 +32,13 @@ class ObjectMapperConfigurationTest {
     @Mock
     private VariableExpander variableExpander;
 
+    @Mock
+    private EventKeyFactory eventKeyFactory;
+
     @Test
     void test_duration_with_pluginConfigObjectMapper() {
         final String durationTestString = "10s";
-        final ObjectMapper objectMapper = objectMapperConfiguration.pluginConfigObjectMapper(variableExpander);
+        final ObjectMapper objectMapper = objectMapperConfiguration.pluginConfigObjectMapper(variableExpander, eventKeyFactory);
         final Duration duration = objectMapper.convertValue(durationTestString, Duration.class);
         assertThat(duration, equalTo(Duration.ofSeconds(10)));
     }
@@ -39,7 +46,7 @@ class ObjectMapperConfigurationTest {
     @Test
     void test_enum_with_pluginConfigObjectMapper() {
         final String testString = "test";
-        final ObjectMapper objectMapper = objectMapperConfiguration.pluginConfigObjectMapper(variableExpander);
+        final ObjectMapper objectMapper = objectMapperConfiguration.pluginConfigObjectMapper(variableExpander, eventKeyFactory);
         final TestType duration = objectMapper.convertValue(testString, TestType.class);
         assertThat(duration, equalTo(TestType.fromOptionValue(testString)));
     }
@@ -58,6 +65,16 @@ class ObjectMapperConfigurationTest {
         final ObjectMapper objectMapper = objectMapperConfiguration.extensionPluginConfigObjectMapper();
         final TestType duration = objectMapper.convertValue(testString, TestType.class);
         assertThat(duration, equalTo(TestType.fromOptionValue(testString)));
+    }
+
+    @Test
+    void test_eventKey_with_pluginConfigObjectMapper() {
+        final String testKey = "test";
+        final EventKey eventKey = mock(EventKey.class);
+        when(eventKeyFactory.createEventKey(testKey, EventKeyFactory.EventAction.ALL)).thenReturn(eventKey);
+        final ObjectMapper objectMapper = objectMapperConfiguration.pluginConfigObjectMapper(variableExpander, eventKeyFactory);
+        final EventKey actualEventKey = objectMapper.convertValue(testKey, EventKey.class);
+        assertThat(actualEventKey, equalTo(eventKey));
     }
 
     private enum TestType {

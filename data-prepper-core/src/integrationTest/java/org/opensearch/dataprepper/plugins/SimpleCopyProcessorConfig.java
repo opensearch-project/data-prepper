@@ -9,16 +9,16 @@ import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
-public class SimpleProcessorConfig {
-    @EventKeyConfiguration(EventKeyFactory.EventAction.PUT)
-    private EventKey key1;
-    private String valuePrefix1;
+public class SimpleCopyProcessorConfig {
+    @EventKeyConfiguration(EventKeyFactory.EventAction.GET)
+    private EventKey source;
+    private EventKey target;
 
-    public EventKey getKey1() {
-        return key1;
+    public EventKey getSource() {
+        return source;
     }
 
-    public String getValuePrefix1() {
-        return valuePrefix1;
+    public EventKey getTarget() {
+        return target;
     }
 }

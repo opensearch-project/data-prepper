@@ -8,6 +8,9 @@ processor-pipeline:
     - simple_test:
         key1: /test1
         value_prefix1: knownPrefix1
+    - simple_copy_test:
+        source: /test1
+        target: /test1_copy
 
   sink:
     - in_memory:
