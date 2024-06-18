@@ -1,0 +1,68 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(path: ':data-prepper-plugins:common')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation project(':data-prepper-plugins:failures-common')
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'software.amazon.awssdk:lambda:2.17.99'
+    implementation 'software.amazon.awssdk:sdk-core:2.x.x'
+    implementation 'software.amazon.awssdk:sts'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation'org.json:json'
+    implementation libs.commons.lang3
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    implementation 'org.projectlombok:lombok:1.18.22'
+    compileOnly 'org.projectlombok:lombok:1.18.20'
+    annotationProcessor 'org.projectlombok:lombok:1.18.20'
+    testCompileOnly 'org.projectlombok:lombok:1.18.20'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.20'
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-plugins:parse-json-processor')
+}
+
+test {
+    useJUnitPlatform()
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    systemProperty 'log4j.configurationFile', 'src/test/resources/log4j2.properties'
+    systemProperty 'tests.sink.lambda.region', System.getProperty('tests.sink.lambda.region')
+    systemProperty 'tests.sink.lambda.functionName', System.getProperty('tests.sink.lambda.functionName')
+    systemProperty 'tests.sink.lambda.sts_role_arn', System.getProperty('tests.sink.lambda.sts_role_arn')
+
+    filter {
+        includeTestsMatching '*IT'
+    }
+}
