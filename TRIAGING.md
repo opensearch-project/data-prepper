@@ -16,7 +16,7 @@ However, should we run out of time before your issue is discussed, you are alway
 
 ### How do I join the triage meeting?
 
-Meetings are hosted regularly at 2:30 PM US Central Time (12:30 PM Pacific Time) and can be joined via the links posted on the [OpenSearch Meetup Group](https://www.meetup.com/opensearch/events/) list of events.
+Meetings are hosted regularly Tuesdays at 2:30 PM US Central Time (12:30 PM Pacific Time) and can be joined via the links posted on the [OpenSearch Meetup Group](https://www.meetup.com/opensearch/events/) list of events.
 The event will be titled `Data Prepper Triage Meeting`.
 
 After joining the Zoom meeting, you can enable your video / voice to join the discussion.
