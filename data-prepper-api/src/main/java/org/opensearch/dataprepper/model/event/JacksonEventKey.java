@@ -71,6 +71,26 @@ class JacksonEventKey implements EventKey {
         return supportedActions.contains(eventAction);
     }
 
+    @Override
+    public boolean equals(final Object other) {
+        if (this == other)
+            return true;
+        if (other == null || getClass() != other.getClass())
+            return false;
+        final JacksonEventKey that = (JacksonEventKey) other;
+        return Objects.equals(key, that.key) && Arrays.equals(eventActions, that.eventActions);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(key, Arrays.hashCode(eventActions));
+    }
+
+    @Override
+    public String toString() {
+        return key;
+    }
+
     private String checkAndTrimKey(final String key) {
         checkKey(key);
         return trimTrailingSlashInKey(key);
