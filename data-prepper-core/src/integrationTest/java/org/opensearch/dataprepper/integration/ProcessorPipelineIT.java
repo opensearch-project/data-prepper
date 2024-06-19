@@ -79,6 +79,7 @@ class ProcessorPipelineIT {
         assertThat(records.get(0).getData(), notNullValue());
         assertThat(records.get(0).getData().get("message", String.class), equalTo(messageValue));
         assertThat(records.get(0).getData().get("test1", String.class), equalTo("knownPrefix10"));
+        assertThat(records.get(0).getData().get("test1_copy", String.class), equalTo("knownPrefix10"));
     }
 
     @Test
@@ -112,6 +113,8 @@ class ProcessorPipelineIT {
                     recordData.get("message", String.class),
                     equalTo(inputRecord.getData().get("message", String.class)));
             assertThat(recordData.get("test1", String.class),
+                    equalTo("knownPrefix1" + i));
+            assertThat(recordData.get("test1_copy", String.class),
                     equalTo("knownPrefix1" + i));
         }
     }

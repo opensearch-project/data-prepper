@@ -8,9 +8,12 @@ package org.opensearch.dataprepper.plugin;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.pipeline.parser.ByteCountDeserializer;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
+import org.opensearch.dataprepper.pipeline.parser.EventKeyDeserializer;
 import org.springframework.context.annotation.Bean;
 
 import javax.inject.Named;
@@ -38,10 +41,13 @@ public class ObjectMapperConfiguration {
     }
 
     @Bean(name = "pluginConfigObjectMapper")
-    ObjectMapper pluginConfigObjectMapper(final VariableExpander variableExpander) {
+    ObjectMapper pluginConfigObjectMapper(
+            final VariableExpander variableExpander,
+            final EventKeyFactory eventKeyFactory) {
         final SimpleModule simpleModule = new SimpleModule();
         simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
         simpleModule.addDeserializer(ByteCount.class, new ByteCountDeserializer());
+        simpleModule.addDeserializer(EventKey.class, new EventKeyDeserializer(eventKeyFactory));
         TRANSLATE_VALUE_SUPPORTED_JAVA_TYPES.stream().forEach(clazz -> simpleModule.addDeserializer(
                 clazz, new DataPrepperScalarTypeDeserializer<>(variableExpander, clazz)));
 
