@@ -33,8 +33,8 @@ public class HistogramAggregateActionConfig {
     @NotNull
     String units;
 
-    @JsonProperty("name")
-    String name = HISTOGRAM_METRIC_NAME;
+    @JsonProperty("metric_name")
+    String metricName = HISTOGRAM_METRIC_NAME;
 
     @JsonProperty("generated_key_prefix")
     String generatedKeyPrefix = DEFAULT_GENERATED_KEY_PREFIX;
@@ -49,8 +49,8 @@ public class HistogramAggregateActionConfig {
     @JsonProperty("record_minmax")
     boolean recordMinMax = false;
 
-    public String getName() {
-        return name;
+    public String getMetricName() {
+        return metricName;
     }
 
     public boolean getRecordMinMax() {

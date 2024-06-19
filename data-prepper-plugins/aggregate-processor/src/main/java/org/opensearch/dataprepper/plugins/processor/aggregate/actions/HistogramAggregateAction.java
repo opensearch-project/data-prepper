@@ -61,7 +61,7 @@ public class HistogramAggregateAction implements AggregateAction {
     private Event maxEvent;
     private double minValue;
     private double maxValue;
-    private final String name;
+    private final String metricName;
 
     private long startTimeNanos;
     private double[] buckets;
@@ -72,7 +72,7 @@ public class HistogramAggregateAction implements AggregateAction {
         List<Number> bucketList = histogramAggregateActionConfig.getBuckets();
         this.buckets = new double[bucketList.size()+2];
         int bucketIdx = 0;
-        this.name = histogramAggregateActionConfig.getName();
+        this.metricName = histogramAggregateActionConfig.getMetricName();
         this.buckets[bucketIdx++] = -Float.MAX_VALUE;
         for (int i = 0; i < bucketList.size(); i++) {
             this.buckets[bucketIdx++] = convertToDouble(bucketList.get(i));
@@ -213,7 +213,7 @@ public class HistogramAggregateAction implements AggregateAction {
         Instant endTime = (Instant)groupState.get(endTimeKey);
         long startTimeNanos = getTimeNanos(startTime);
         long endTimeNanos = getTimeNanos(endTime);
-        String histogramKey = this.name + "_key";
+        String histogramKey = this.metricName + "_key";
         List<Exemplar> exemplarList = new ArrayList<>();
         exemplarList.add(createExemplar("min", minEvent, minValue));
         exemplarList.add(createExemplar("max", maxEvent, maxValue));
@@ -246,7 +246,7 @@ public class HistogramAggregateAction implements AggregateAction {
             Integer count = (Integer)groupState.get(countKey);
             String description = String.format("Histogram of %s in the events", key);
             JacksonHistogram histogram = JacksonHistogram.builder()
-                .withName(this.name)
+                .withName(this.metricName)
                 .withDescription(description)
                 .withTime(OTelProtoCodec.convertUnixNanosToISO8601(endTimeNanos))
                 .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(startTimeNanos))

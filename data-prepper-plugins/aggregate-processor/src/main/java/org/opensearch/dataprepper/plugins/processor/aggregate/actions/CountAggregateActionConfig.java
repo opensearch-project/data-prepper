@@ -19,8 +19,8 @@ public class CountAggregateActionConfig {
     @JsonProperty("count_key")
     String countKey = DEFAULT_COUNT_KEY;
 
-    @JsonProperty("name")
-    String name = SUM_METRIC_NAME;
+    @JsonProperty("metric_name")
+    String metricName = SUM_METRIC_NAME;
 
     @JsonProperty("start_time_key")
     String startTimeKey = DEFAULT_START_TIME_KEY;
@@ -31,8 +31,8 @@ public class CountAggregateActionConfig {
     @JsonProperty("output_format")
     String outputFormat = OutputFormat.OTEL_METRICS.toString();
 
-    public String getName() {
-        return name;
+    public String getMetricName() {
+        return metricName;
     }
 
     public String getCountKey() {

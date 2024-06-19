@@ -43,7 +43,7 @@ public class HistogramAggregateActionConfigTests {
         assertThat(histogramAggregateActionConfig.getGeneratedKeyPrefix(), equalTo(DEFAULT_GENERATED_KEY_PREFIX));
         assertThat(histogramAggregateActionConfig.getRecordMinMax(), equalTo(false));
         assertThat(histogramAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS.toString()));
-        assertThat(histogramAggregateActionConfig.getName(), equalTo(HistogramAggregateActionConfig.HISTOGRAM_METRIC_NAME));
+        assertThat(histogramAggregateActionConfig.getMetricName(), equalTo(HistogramAggregateActionConfig.HISTOGRAM_METRIC_NAME));
     }
 
     @Test
@@ -110,8 +110,8 @@ public class HistogramAggregateActionConfigTests {
         setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "buckets", longBuckets);
         assertThat(histogramAggregateActionConfig.getBuckets(), containsInAnyOrder(longBuckets.toArray()));
         final String testName = UUID.randomUUID().toString();
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "name", testName);
-        assertThat(histogramAggregateActionConfig.getName(), equalTo(testName));
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "metricName", testName);
+        assertThat(histogramAggregateActionConfig.getMetricName(), equalTo(testName));
     }
 
     @Test

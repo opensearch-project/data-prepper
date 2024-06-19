@@ -251,7 +251,7 @@ public class HistogramAggregateActionTests {
         when(mockConfig.getStartTimeKey()).thenReturn(startTimeKey);
         when(mockConfig.getEndTimeKey()).thenReturn(endTimeKey);
         final String testName = UUID.randomUUID().toString();
-        when(mockConfig.getName()).thenReturn(testName);
+        when(mockConfig.getMetricName()).thenReturn(testName);
         when(mockConfig.getOutputFormat()).thenReturn(OutputFormat.OTEL_METRICS.toString());
         String keyPrefix = UUID.randomUUID().toString();
         final String testUnits = "ms";
