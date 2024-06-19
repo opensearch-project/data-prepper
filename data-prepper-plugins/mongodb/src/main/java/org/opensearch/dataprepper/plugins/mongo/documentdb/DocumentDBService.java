@@ -33,6 +33,7 @@ public class DocumentDBService {
     private final PluginConfigObservable pluginConfigObservable;
     private final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics;
     private ExecutorService leaderExecutor;
+    private MongoTasksRefresher mongoTasksRefresher;
     public DocumentDBService(final EnhancedSourceCoordinator sourceCoordinator,
                              final MongoDBSourceConfig sourceConfig,
                              final PluginMetrics pluginMetrics,
@@ -68,7 +69,7 @@ public class DocumentDBService {
                 BackgroundThreadFactory.defaultExecutorThreadFactory("documentdb-source"));
         runnableList.forEach(leaderExecutor::submit);
 
-        final MongoTasksRefresher mongoTasksRefresher = new MongoTasksRefresher(
+        mongoTasksRefresher = new MongoTasksRefresher(
                 buffer, sourceCoordinator, pluginMetrics, acknowledgementSetManager,
                 numThread -> Executors.newFixedThreadPool(
                         numThread, BackgroundThreadFactory.defaultExecutorThreadFactory("documentdb-source")),
@@ -104,6 +105,11 @@ public class DocumentDBService {
         if (leaderExecutor != null) {
             LOG.info("shutdown DocumentDB Service scheduler and worker");
             leaderExecutor.shutdownNow();
+        }
+
+        if (mongoTasksRefresher != null) {
+            LOG.info("shutdown DocumentDB Task refresher");
+            mongoTasksRefresher.shutdown();
         }
     }
 }

@@ -14,6 +14,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import org.bson.Document;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.mongo.client.BsonHelper;
 import org.opensearch.dataprepper.plugins.mongo.client.MongoDBConnection;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
@@ -38,11 +39,14 @@ public class MongoDBExportPartitionSupplier implements Function<ExportPartition,
     private static final String COLLECTION_SPLITTER = "\\.";
 
     private final MongoDBSourceConfig sourceConfig;
+    private final EnhancedSourceCoordinator enhancedSourceCoordinator;
     private final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics;
 
     public MongoDBExportPartitionSupplier(final MongoDBSourceConfig sourceConfig,
+                                          final EnhancedSourceCoordinator enhancedSourceCoordinator,
                                           final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics) {
         this.sourceConfig = sourceConfig;
+        this.enhancedSourceCoordinator = enhancedSourceCoordinator;
         this.documentDBAggregateMetrics = documentDBAggregateMetrics;
     }
 
@@ -111,10 +115,14 @@ public class MongoDBExportPartitionSupplier implements Function<ExportPartition,
                             .builder()
                             .withPartitionKey(String.format(MONGODB_PARTITION_KEY_FORMAT, collectionDbName, gteValueString, lteValueString, gteClassName, lteClassName))
                             .build());
+                    documentDBAggregateMetrics.getExportPartitionQueryCount().increment();
 
                     if (isLastBatch) {
                         break;
                     }
+
+                    // extend the ownership of the partition
+                    enhancedSourceCoordinator.saveProgressStateForPartition(exportPartition, null);
 
                     startIterable = col.find(buildGtQuery(lteValueString, lteClassName, MAX_KEY))
                             .projection(new Document("_id", 1))

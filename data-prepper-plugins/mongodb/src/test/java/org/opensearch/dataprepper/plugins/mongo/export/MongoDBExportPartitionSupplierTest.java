@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.mongo.client.MongoDBConnection;
 import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
@@ -54,6 +55,9 @@ public class MongoDBExportPartitionSupplierTest {
     private MongoDBSourceConfig mongoDBConfig;
 
     @Mock
+    private EnhancedSourceCoordinator sourceCoordinator;
+
+    @Mock
     private DocumentDBSourceAggregateMetrics documentDBSourceAggregateMetrics;
 
     @Mock
@@ -64,6 +68,8 @@ public class MongoDBExportPartitionSupplierTest {
 
     @Mock
     private Counter exportApiInvocations;
+    @Mock
+    private Counter exportPartitionQueryCount;
     @Mock
     private Counter export4xxErrors;
     @Mock
@@ -77,9 +83,10 @@ public class MongoDBExportPartitionSupplierTest {
         lenient().when(collectionConfig.getCollectionName()).thenReturn(TEST_COLLECTION_NAME);
         lenient().when(mongoDBConfig.getCollections()).thenReturn(Collections.singletonList(collectionConfig));
         when(documentDBSourceAggregateMetrics.getExportApiInvocations()).thenReturn(exportApiInvocations);
+        lenient().when(documentDBSourceAggregateMetrics.getExportPartitionQueryCount()).thenReturn(exportPartitionQueryCount);
         lenient().when(documentDBSourceAggregateMetrics.getExport4xxErrors()).thenReturn(export4xxErrors);
         lenient().when(documentDBSourceAggregateMetrics.getExport5xxErrors()).thenReturn(export5xxErrors);
-        testSupplier = new MongoDBExportPartitionSupplier(mongoDBConfig, documentDBSourceAggregateMetrics);
+        testSupplier = new MongoDBExportPartitionSupplier(mongoDBConfig, sourceCoordinator, documentDBSourceAggregateMetrics);
     }
 
     @Test
@@ -121,6 +128,7 @@ public class MongoDBExportPartitionSupplierTest {
             verify(mongoClient, times(1)).close();
             verify(mongoDatabase).getCollection(eq("collection"));
             verify(exportApiInvocations).increment();
+            verify(exportPartitionQueryCount, times(2)).increment();
             verify(export4xxErrors, never()).increment();
             verify(export5xxErrors, never()).increment();
             // And partitions are created
@@ -135,6 +143,7 @@ public class MongoDBExportPartitionSupplierTest {
         when(exportPartition.getCollection()).thenReturn("invalidDBName");
         assertThrows(IllegalArgumentException.class, () -> testSupplier.apply(exportPartition));
         verify(exportApiInvocations).increment();
+        verify(exportPartitionQueryCount, never()).increment();
         verify(export4xxErrors).increment();
         verify(export5xxErrors, never()).increment();
     }
@@ -146,6 +155,7 @@ public class MongoDBExportPartitionSupplierTest {
                     .thenThrow(MongoClientException.class);
             assertThrows(RuntimeException.class, () -> testSupplier.apply(exportPartition));
             verify(exportApiInvocations).increment();
+            verify(exportPartitionQueryCount, never()).increment();
             verify(export4xxErrors).increment();
             verify(export5xxErrors, never()).increment();
         }
