@@ -17,8 +17,7 @@ public class DocumentDBSourceAggregateMetrics {
     private static final String DOCUMENT_DB_EXPORT_5XX_ERRORS = "export5xxErrors";
     private static final String DOCUMENT_DB_EXPORT_4XX_ERRORS = "export4xxErrors";
     private static final String DOCUMENT_DB_EXPORT_API_INVOCATIONS = "exportApiInvocations";
-
-
+    private static final String DOCUMENT_DB_EXPORT_PARTITION_QUERY_COUNT = "exportPartitionQueryCount";
 
     private final PluginMetrics pluginMetrics;
 
@@ -28,6 +27,7 @@ public class DocumentDBSourceAggregateMetrics {
     private final Counter export5xxErrors;
     private final Counter export4xxErrors;
     private final Counter exportApiInvocations;
+    private final Counter exportPartitionQueryCount;
 
     public DocumentDBSourceAggregateMetrics() {
         this.pluginMetrics = PluginMetrics.fromPrefix(DOCUMENT_DB);
@@ -37,6 +37,7 @@ public class DocumentDBSourceAggregateMetrics {
         this.export5xxErrors = pluginMetrics.counter(DOCUMENT_DB_EXPORT_5XX_ERRORS);
         this.export4xxErrors = pluginMetrics.counter(DOCUMENT_DB_EXPORT_4XX_ERRORS);
         this.exportApiInvocations = pluginMetrics.counter(DOCUMENT_DB_EXPORT_API_INVOCATIONS);
+        this.exportPartitionQueryCount = pluginMetrics.counter(DOCUMENT_DB_EXPORT_PARTITION_QUERY_COUNT);
     }
 
     public Counter getStream5xxErrors() {
@@ -61,5 +62,9 @@ public class DocumentDBSourceAggregateMetrics {
 
     public Counter getExportApiInvocations() {
         return exportApiInvocations;
+    }
+
+    public Counter getExportPartitionQueryCount() {
+        return exportPartitionQueryCount;
     }
 }

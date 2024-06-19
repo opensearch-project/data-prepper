@@ -91,7 +91,7 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
     private void refreshJobs(MongoDBSourceConfig pluginConfig) {
         final List<Runnable> runnables = new ArrayList<>();
         if (pluginConfig.getCollections().stream().anyMatch(CollectionConfig::isExport)) {
-            currentMongoDBExportPartitionSupplier = new MongoDBExportPartitionSupplier(pluginConfig, documentDBAggregateMetrics);
+            currentMongoDBExportPartitionSupplier = new MongoDBExportPartitionSupplier(pluginConfig, sourceCoordinator, documentDBAggregateMetrics);
             runnables.add(new ExportScheduler(sourceCoordinator, currentMongoDBExportPartitionSupplier, pluginMetrics));
             runnables.add(new ExportWorker(
                     sourceCoordinator, buffer, pluginMetrics, acknowledgementSetManager, pluginConfig, s3PathPrefix, documentDBAggregateMetrics));
@@ -109,5 +109,16 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
                 .getAuthenticationConfig();
         return !Objects.equals(currentAuthConfig.getUsername(), newAuthConfig.getUsername()) ||
                 !Objects.equals(currentAuthConfig.getPassword(), newAuthConfig.getPassword());
+    }
+
+    /**
+     * Interrupt the running of schedulers.
+     * Each scheduler must implement logic for gracefully shutdown.
+     */
+    public void shutdown() {
+        if (currentExecutor != null) {
+            LOG.info("shutdown down export worker and stream worker");
+            currentExecutor.shutdownNow();
+        }
     }
 }
