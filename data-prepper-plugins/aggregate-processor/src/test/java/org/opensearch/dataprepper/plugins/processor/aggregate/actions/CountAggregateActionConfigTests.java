@@ -38,6 +38,7 @@ public class CountAggregateActionConfigTests {
         assertThat(countAggregateActionConfig.getCountKey(), equalTo(DEFAULT_COUNT_KEY));
         assertThat(countAggregateActionConfig.getStartTimeKey(), equalTo(DEFAULT_START_TIME_KEY));
         assertThat(countAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS.toString()));
+        assertThat(countAggregateActionConfig.getName(), equalTo(CountAggregateActionConfig.SUM_METRIC_NAME));
     }
 
     @Test
@@ -51,6 +52,9 @@ public class CountAggregateActionConfigTests {
         final String testOutputFormat = OutputFormat.OTEL_METRICS.toString();
         setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", testOutputFormat);
         assertThat(countAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS.toString()));
+        final String testName = UUID.randomUUID().toString();
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "name", testName);
+        assertThat(countAggregateActionConfig.getName(), equalTo(testName));
     }
 
     @Test

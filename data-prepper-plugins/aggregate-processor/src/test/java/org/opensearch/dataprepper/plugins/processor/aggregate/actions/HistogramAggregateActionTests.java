@@ -198,7 +198,7 @@ public class HistogramAggregateActionTests {
         final String expectedStartTimeKey = histogramAggregateActionConfig.getStartTimeKey();
         Map<String, Object> expectedEventMap = new HashMap<>(Collections.singletonMap("count", (long)testCount));
         expectedEventMap.put("unit", testUnits);
-        expectedEventMap.put("name", HistogramAggregateAction.HISTOGRAM_METRIC_NAME);
+        expectedEventMap.put("name", HistogramAggregateActionConfig.HISTOGRAM_METRIC_NAME);
         expectedEventMap.put("sum", expectedSum);
         expectedEventMap.put("min", expectedMin);
         expectedEventMap.put("max", expectedMax);
@@ -212,7 +212,7 @@ public class HistogramAggregateActionTests {
         for (int i = 0; i < expectedBucketCounts.length; i++) {
             assertThat(expectedBucketCounts[i], equalTo(bucketCountsFromResult.get(i)));
         }
-        assertThat(((Map<String, String>)result.get(0).toMap().get("attributes")), hasEntry(HistogramAggregateAction.HISTOGRAM_METRIC_NAME+"_key", testKey));
+        assertThat(((Map<String, String>)result.get(0).toMap().get("attributes")), hasEntry(HistogramAggregateActionConfig.HISTOGRAM_METRIC_NAME+"_key", testKey));
         List<Exemplar> exemplars = (List <Exemplar>)result.get(0).toMap().get("exemplars");
         assertThat(exemplars.size(), equalTo(2));
         assertThat(((Map<String, String>)result.get(0).toMap().get("attributes")), hasEntry(dataKey, dataValue));
@@ -250,6 +250,8 @@ public class HistogramAggregateActionTests {
         final String testKeyPrefix = RandomStringUtils.randomAlphabetic(5)+"_";
         when(mockConfig.getStartTimeKey()).thenReturn(startTimeKey);
         when(mockConfig.getEndTimeKey()).thenReturn(endTimeKey);
+        final String testName = UUID.randomUUID().toString();
+        when(mockConfig.getName()).thenReturn(testName);
         when(mockConfig.getOutputFormat()).thenReturn(OutputFormat.OTEL_METRICS.toString());
         String keyPrefix = UUID.randomUUID().toString();
         final String testUnits = "ms";
@@ -323,7 +325,7 @@ public class HistogramAggregateActionTests {
         final String expectedStartTimeKey = mockConfig.getStartTimeKey();
         Map<String, Object> expectedEventMap = new HashMap<>(Collections.singletonMap("count", (long)testCount));
         expectedEventMap.put("unit", testUnits);
-        expectedEventMap.put("name", HistogramAggregateAction.HISTOGRAM_METRIC_NAME);
+        expectedEventMap.put("name", testName);
         expectedEventMap.put("sum", expectedSum);
         expectedEventMap.put("min", expectedMin);
         expectedEventMap.put("max", expectedMax);
@@ -337,7 +339,7 @@ public class HistogramAggregateActionTests {
         for (int i = 0; i < expectedBucketCounts.length; i++) {
             assertThat(expectedBucketCounts[i], equalTo(bucketCountsFromResult.get(i)));
         }
-        assertThat(((Map<String, String>)result.get(0).toMap().get("attributes")), hasEntry(HistogramAggregateAction.HISTOGRAM_METRIC_NAME+"_key", testKey));
+        assertThat(((Map<String, String>)result.get(0).toMap().get("attributes")), hasEntry(testName+"_key", testKey));
         List<Exemplar> exemplars = (List <Exemplar>)result.get(0).toMap().get("exemplars");
         assertThat(exemplars.size(), equalTo(2));
         assertThat(((Map<String, String>)result.get(0).toMap().get("attributes")), hasEntry(dataKey, dataValue));

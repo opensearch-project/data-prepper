@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 
 public class HistogramAggregateActionConfig {
+    public static final String HISTOGRAM_METRIC_NAME = "histogram";
     public static final String DEFAULT_GENERATED_KEY_PREFIX = "aggr._";
     public static final String SUM_KEY = "sum";
     public static final String COUNT_KEY = "count";
@@ -32,6 +33,9 @@ public class HistogramAggregateActionConfig {
     @NotNull
     String units;
 
+    @JsonProperty("name")
+    String name = HISTOGRAM_METRIC_NAME;
+
     @JsonProperty("generated_key_prefix")
     String generatedKeyPrefix = DEFAULT_GENERATED_KEY_PREFIX;
 
@@ -44,6 +48,10 @@ public class HistogramAggregateActionConfig {
 
     @JsonProperty("record_minmax")
     boolean recordMinMax = false;
+
+    public String getName() {
+        return name;
+    }
 
     public boolean getRecordMinMax() {
         return recordMinMax;

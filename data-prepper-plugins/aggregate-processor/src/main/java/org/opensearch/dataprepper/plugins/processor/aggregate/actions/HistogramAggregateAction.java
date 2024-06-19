@@ -44,7 +44,6 @@ import java.util.ArrayList;
 public class HistogramAggregateAction implements AggregateAction {
     private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
     private static final String EVENT_TYPE = "event";
-    public static final String HISTOGRAM_METRIC_NAME = "histogram";
     private final String countKey;
     private final String bucketCountsKey;
     private final String bucketsKey;
@@ -62,6 +61,7 @@ public class HistogramAggregateAction implements AggregateAction {
     private Event maxEvent;
     private double minValue;
     private double maxValue;
+    private final String name;
 
     private long startTimeNanos;
     private double[] buckets;
@@ -72,6 +72,7 @@ public class HistogramAggregateAction implements AggregateAction {
         List<Number> bucketList = histogramAggregateActionConfig.getBuckets();
         this.buckets = new double[bucketList.size()+2];
         int bucketIdx = 0;
+        this.name = histogramAggregateActionConfig.getName();
         this.buckets[bucketIdx++] = -Float.MAX_VALUE;
         for (int i = 0; i < bucketList.size(); i++) {
             this.buckets[bucketIdx++] = convertToDouble(bucketList.get(i));
@@ -212,7 +213,7 @@ public class HistogramAggregateAction implements AggregateAction {
         Instant endTime = (Instant)groupState.get(endTimeKey);
         long startTimeNanos = getTimeNanos(startTime);
         long endTimeNanos = getTimeNanos(endTime);
-        String histogramKey = HISTOGRAM_METRIC_NAME + "_key";
+        String histogramKey = this.name + "_key";
         List<Exemplar> exemplarList = new ArrayList<>();
         exemplarList.add(createExemplar("min", minEvent, minValue));
         exemplarList.add(createExemplar("max", maxEvent, maxValue));
@@ -245,7 +246,7 @@ public class HistogramAggregateAction implements AggregateAction {
             Integer count = (Integer)groupState.get(countKey);
             String description = String.format("Histogram of %s in the events", key);
             JacksonHistogram histogram = JacksonHistogram.builder()
-                .withName(HISTOGRAM_METRIC_NAME)
+                .withName(this.name)
                 .withDescription(description)
                 .withTime(OTelProtoCodec.convertUnixNanosToISO8601(endTimeNanos))
                 .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(startTimeNanos))

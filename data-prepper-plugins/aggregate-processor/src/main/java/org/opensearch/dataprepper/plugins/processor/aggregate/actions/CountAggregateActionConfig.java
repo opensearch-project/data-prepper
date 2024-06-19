@@ -10,6 +10,7 @@ import java.util.HashSet;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class CountAggregateActionConfig {
+    static final String SUM_METRIC_NAME = "count";
     public static final String DEFAULT_COUNT_KEY = "aggr._count";
     public static final String DEFAULT_START_TIME_KEY = "aggr._start_time";
     public static final String DEFAULT_END_TIME_KEY = "aggr._end_time";
@@ -17,6 +18,9 @@ public class CountAggregateActionConfig {
 
     @JsonProperty("count_key")
     String countKey = DEFAULT_COUNT_KEY;
+
+    @JsonProperty("name")
+    String name = SUM_METRIC_NAME;
 
     @JsonProperty("start_time_key")
     String startTimeKey = DEFAULT_START_TIME_KEY;
@@ -26,6 +30,10 @@ public class CountAggregateActionConfig {
 
     @JsonProperty("output_format")
     String outputFormat = OutputFormat.OTEL_METRICS.toString();
+
+    public String getName() {
+        return name;
+    }
 
     public String getCountKey() {
         return countKey;
