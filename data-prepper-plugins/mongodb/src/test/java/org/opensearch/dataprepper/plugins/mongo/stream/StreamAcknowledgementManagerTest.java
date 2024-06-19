@@ -73,7 +73,7 @@ public class StreamAcknowledgementManagerTest {
         consumer.accept(true);
         final ConcurrentHashMap<String, CheckpointStatus> ackStatus = streamAckManager.getAcknowledgementStatus();
         final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);
-        assertThat(ackCheckpointStatus.isAcknowledged(), is(true));
+        assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(true));
         await()
            .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 verify(partitionCheckpoint).checkpoint(resumeToken, recordCount));
@@ -109,7 +109,7 @@ public class StreamAcknowledgementManagerTest {
         consumers.get(1).accept(true);
         ConcurrentHashMap<String, CheckpointStatus> ackStatus = streamAckManager.getAcknowledgementStatus();
         CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken2);
-        assertThat(ackCheckpointStatus.isAcknowledged(), is(true));
+        assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(true));
         await()
             .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 verify(partitionCheckpoint).checkpoint(resumeToken2, recordCount2));
@@ -143,7 +143,7 @@ public class StreamAcknowledgementManagerTest {
         consumers.get(1).accept(true);
         ConcurrentHashMap<String, CheckpointStatus> ackStatus = streamAckManager.getAcknowledgementStatus();
         CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken2);
-        assertThat(ackCheckpointStatus.isAcknowledged(), is(true));
+        assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(true));
         await()
             .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 verify(partitionCheckpoint).giveUpPartition());
@@ -169,7 +169,7 @@ public class StreamAcknowledgementManagerTest {
         consumer.accept(false);
         final ConcurrentHashMap<String, CheckpointStatus> ackStatus = streamAckManager.getAcknowledgementStatus();
         final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);
-        assertThat(ackCheckpointStatus.isAcknowledged(), is(false));
+        assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(false));
         await()
             .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 verify(stopWorkerConsumer).accept(null));
