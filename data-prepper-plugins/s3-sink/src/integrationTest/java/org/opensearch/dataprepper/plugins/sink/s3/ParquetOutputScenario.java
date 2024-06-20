@@ -100,6 +100,11 @@ public class ParquetOutputScenario implements OutputScenario {
         assertThat("Not all the sample data was validated.", validatedRecords, equalTo(sampleEventData.size()));
     }
 
+    @Override
+    public void validateDynamicPartition(int expectedRecords, int partitionNumber, File actualContentFile, CompressionScenario compressionScenario) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
     private static void validateParquetStructure(int expectedRecords, final List<Map<String, Object>> allEventData, final InputFile inputFile, CompressionCodecName expectedCompressionCodec) throws IOException {
         // This test assumes that the data all has the same keys.
         final Map<String, Object> sampleEvent = allEventData.iterator().next();
