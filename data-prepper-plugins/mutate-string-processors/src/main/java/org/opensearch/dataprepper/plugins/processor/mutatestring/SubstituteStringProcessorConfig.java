@@ -6,19 +6,20 @@
 package org.opensearch.dataprepper.plugins.processor.mutatestring;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.opensearch.dataprepper.model.event.EventKey;
 
 import java.util.List;
 
 public class SubstituteStringProcessorConfig implements StringProcessorConfig<SubstituteStringProcessorConfig.Entry> {
     public static class Entry {
-        private String source;
+        private EventKey source;
         private String from;
         private String to;
 
         @JsonProperty("substitute_when")
         private String substituteWhen;
 
-        public String getSource() {
+        public EventKey getSource() {
             return source;
         }
 
@@ -32,7 +33,7 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
 
         public String getSubstituteWhen() { return substituteWhen; }
 
-        public Entry(final String source, final String from, final String to, final String substituteWhen) {
+        public Entry(final EventKey source, final String from, final String to, final String substituteWhen) {
             this.source = source;
             this.from = from;
             this.to = to;

@@ -5,21 +5,26 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutatestring;
 
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventFactory;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventBuilder;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.model.record.Record;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -29,6 +34,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class TrimStringProcessorTests {
+    private static final EventFactory TEST_EVENT_FACTORY = TestEventFactory.getTestEventFactory();
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -37,7 +44,7 @@ public class TrimStringProcessorTests {
 
     @BeforeEach
     public void setup() {
-        lenient().when(config.getIterativeConfig()).thenReturn(Collections.singletonList("message"));
+        lenient().when(config.getIterativeConfig()).thenReturn(Stream.of("message").map(eventKeyFactory::createEventKey).collect(Collectors.toList()));
     }
 
     @Test
@@ -62,7 +69,7 @@ public class TrimStringProcessorTests {
 
     @Test
     public void testHappyPathMultiTrimStringProcessor() {
-        when(config.getIterativeConfig()).thenReturn(Arrays.asList("message", "message2"));
+        when(config.getIterativeConfig()).thenReturn(Stream.of("message", "message2").map(eventKeyFactory::createEventKey).collect(Collectors.toList()));
 
         final TrimStringProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage ");
@@ -77,7 +84,7 @@ public class TrimStringProcessorTests {
 
     @Test
     public void testHappyPathMultiMixedTrimStringProcessor() {
-        lenient().when(config.getIterativeConfig()).thenReturn(Arrays.asList("message", "message2"));
+        lenient().when(config.getIterativeConfig()).thenReturn(Stream.of("message", "message2").map(eventKeyFactory::createEventKey).collect(Collectors.toList()));
 
         final TrimStringProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage   ");
@@ -147,7 +154,7 @@ public class TrimStringProcessorTests {
     }
 
     private static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
-        return new Record<>(JacksonEvent.builder()
+        return new Record<>(TEST_EVENT_FACTORY.eventBuilder(EventBuilder.class)
                 .withData(data)
                 .withEventType("event")
                 .build());
