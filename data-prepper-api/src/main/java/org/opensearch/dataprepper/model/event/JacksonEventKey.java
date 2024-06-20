@@ -22,13 +22,44 @@ class JacksonEventKey implements EventKey {
     private final String key;
     private final EventKeyFactory.EventAction[] eventActions;
     private final String trimmedKey;
-    private final List<String> keyPathList;
-    private final JsonPointer jsonPointer;
+    private List<String> keyPathList;
+    private JsonPointer jsonPointer;
     private final Set<EventKeyFactory.EventAction> supportedActions;
 
+    /**
+     * Constructor for the JacksonEventKey which should only be used by implementation
+     * of {@link EventKeyFactory} in Data Prepper core.
+     *
+     * @param key The key
+     * @param eventActions Event actions to support
+     */
     JacksonEventKey(final String key, final EventKeyFactory.EventAction... eventActions) {
+        this(key, false, eventActions);
+    }
+
+    /**
+     * Constructs a new JacksonEventKey.
+     * <p>
+     * This overload should only be used by {@link JacksonEvent} directly. It allows for skipping creating
+     * some resources knowing they will not be needed. The {@link JacksonEvent} only needs a JSON pointer
+     * when performing GET event actions. So we can optimize PUT/DELETE actions when called with a string
+     * key instead of an EventKey by not creating the JSON Pointer at all.
+     * <p>
+     * For EventKey's constructed through the factory, we should not perform lazy initialization since
+     * we may lose some possible validations.
+     *
+     * @param key the key
+     * @param lazy Use true to lazily initialize. This will not be thread-safe, however.
+     * @param eventActions Event actions to support
+     */
+    JacksonEventKey(final String key, final boolean lazy, final EventKeyFactory.EventAction... eventActions) {
         this.key = Objects.requireNonNull(key, "Parameter key cannot be null for EventKey.");
         this.eventActions = eventActions.length == 0 ? new EventKeyFactory.EventAction[] { EventKeyFactory.EventAction.ALL } : eventActions;
+
+        supportedActions = EnumSet.noneOf(EventKeyFactory.EventAction.class);
+        for (final EventKeyFactory.EventAction eventAction : this.eventActions) {
+            supportedActions.addAll(eventAction.getSupportedActions());
+        }
 
         if(key.isEmpty()) {
             for (final EventKeyFactory.EventAction action : this.eventActions) {
@@ -40,14 +71,10 @@ class JacksonEventKey implements EventKey {
 
         trimmedKey = checkAndTrimKey(key);
 
-        keyPathList = Collections.unmodifiableList(Arrays.asList(trimmedKey.split(SEPARATOR, -1)));
-        jsonPointer = toJsonPointer(trimmedKey);
-
-        supportedActions = EnumSet.noneOf(EventKeyFactory.EventAction.class);
-        for (final EventKeyFactory.EventAction eventAction : this.eventActions) {
-            supportedActions.addAll(eventAction.getSupportedActions());
+        if(!lazy) {
+            keyPathList = toKeyPathList();
+            jsonPointer = toJsonPointer(trimmedKey);
         }
-
     }
 
     @Override
@@ -60,10 +87,16 @@ class JacksonEventKey implements EventKey {
     }
 
     List<String> getKeyPathList() {
+        if(keyPathList == null) {
+            keyPathList = toKeyPathList();
+        }
         return keyPathList;
     }
 
     JsonPointer getJsonPointer() {
+        if(jsonPointer == null) {
+            jsonPointer = toJsonPointer(trimmedKey);
+        }
         return jsonPointer;
     }
 
@@ -136,7 +169,11 @@ class JacksonEventKey implements EventKey {
         return true;
     }
 
-    private JsonPointer toJsonPointer(final String key) {
+    private List<String> toKeyPathList() {
+        return Collections.unmodifiableList(Arrays.asList(trimmedKey.split(SEPARATOR, -1)));
+    }
+
+    private static JsonPointer toJsonPointer(final String key) {
         final String jsonPointerExpression;
         if (key.isEmpty() || key.startsWith("/")) {
             jsonPointerExpression = key;

@@ -116,6 +116,23 @@ class JacksonEventKeyTest {
     }
 
     @ParameterizedTest
+    @EnumSource(value = EventKeyFactory.EventAction.class)
+    void getJsonPointer_returns_valid_JsonPointer_when_constructed_with_fromJacksonEvent(final EventKeyFactory.EventAction eventAction) {
+        final String testKey = UUID.randomUUID().toString();
+        final JacksonEventKey objectUnderTest = new JacksonEventKey(testKey, true, eventAction);
+
+        final JsonPointer jsonPointer = objectUnderTest.getJsonPointer();
+        assertThat(jsonPointer, notNullValue());
+        assertThat(jsonPointer.toString(), equalTo("/" + testKey));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(KeyPathListArgumentsProvider.class)
+    void getKeyPathList_returns_expected_value_when_constructed_with_fromJacksonEvent(final String key, final List<String> expectedKeyPathList) {
+        assertThat(new JacksonEventKey(key, true).getKeyPathList(), equalTo(expectedKeyPathList));
+    }
+
+    @ParameterizedTest
     @ArgumentsSource(SupportsArgumentsProvider.class)
     void supports_returns_true_if_any_supports(final List<EventKeyFactory.EventAction> eventActionsList, final EventKeyFactory.EventAction otherAction, final boolean expectedSupports) {
         final String testKey = UUID.randomUUID().toString();

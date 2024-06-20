@@ -170,7 +170,7 @@ public class JacksonEvent implements Event {
      */
     @Override
     public void put(final String key, final Object value) {
-        final JacksonEventKey jacksonEventKey = new JacksonEventKey(key, EventKeyFactory.EventAction.PUT);
+        final JacksonEventKey jacksonEventKey = new JacksonEventKey(key, true, EventKeyFactory.EventAction.PUT);
         put(jacksonEventKey, value);
     }
 
@@ -229,7 +229,7 @@ public class JacksonEvent implements Event {
      */
     @Override
     public <T> T get(final String key, final Class<T> clazz) {
-        final JacksonEventKey jacksonEventKey = new JacksonEventKey(key, EventKeyFactory.EventAction.GET);
+        final JacksonEventKey jacksonEventKey = new JacksonEventKey(key, true, EventKeyFactory.EventAction.GET);
         return get(jacksonEventKey, clazz);
     }
 
@@ -274,7 +274,7 @@ public class JacksonEvent implements Event {
      */
     @Override
     public <T> List<T> getList(final String key, final Class<T> clazz) {
-        JacksonEventKey jacksonEventKey = new JacksonEventKey(key, EventKeyFactory.EventAction.GET);
+        JacksonEventKey jacksonEventKey = new JacksonEventKey(key, true, EventKeyFactory.EventAction.GET);
         return getList(jacksonEventKey, clazz);
     }
 
@@ -330,7 +330,7 @@ public class JacksonEvent implements Event {
      */
     @Override
     public void delete(final String key) {
-        final JacksonEventKey jacksonEventKey = new JacksonEventKey(key, EventKeyFactory.EventAction.DELETE);
+        final JacksonEventKey jacksonEventKey = new JacksonEventKey(key, true, EventKeyFactory.EventAction.DELETE);
         delete(jacksonEventKey);
     }
 
@@ -362,7 +362,7 @@ public class JacksonEvent implements Event {
 
     @Override
     public String getAsJsonString(final String key) {
-        JacksonEventKey jacksonEventKey = new JacksonEventKey(key, EventKeyFactory.EventAction.GET);
+        JacksonEventKey jacksonEventKey = new JacksonEventKey(key, true, EventKeyFactory.EventAction.GET);
         return getAsJsonString(jacksonEventKey);
     }
 
@@ -459,7 +459,7 @@ public class JacksonEvent implements Event {
 
     @Override
     public boolean containsKey(final String key) {
-        JacksonEventKey jacksonEventKey = new JacksonEventKey(key, EventKeyFactory.EventAction.GET);
+        JacksonEventKey jacksonEventKey = new JacksonEventKey(key, true, EventKeyFactory.EventAction.GET);
         return containsKey(jacksonEventKey);
     }
 
@@ -474,7 +474,7 @@ public class JacksonEvent implements Event {
 
     @Override
     public boolean isValueAList(final String key) {
-        JacksonEventKey jacksonEventKey = new JacksonEventKey(key, EventKeyFactory.EventAction.GET);
+        JacksonEventKey jacksonEventKey = new JacksonEventKey(key, true, EventKeyFactory.EventAction.GET);
         return isValueAList(jacksonEventKey);
     }
 
