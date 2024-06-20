@@ -40,7 +40,6 @@ public class CountAggregateAction implements AggregateAction {
     private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
     private static final String exemplarKey = "__exemplar";
     static final String EVENT_TYPE = "event";
-    static final String SUM_METRIC_NAME = "count";
     static final String SUM_METRIC_DESCRIPTION = "Number of events";
     static final String SUM_METRIC_UNIT = "1";
     static final boolean SUM_METRIC_IS_MONOTONIC = true;
@@ -49,6 +48,7 @@ public class CountAggregateAction implements AggregateAction {
     public final String endTimeKey;
     public final String outputFormat;
     private long startTimeNanos;
+    private final String metricName;
 
     @DataPrepperPluginConstructor
     public CountAggregateAction(final CountAggregateActionConfig countAggregateActionConfig) {
@@ -56,6 +56,7 @@ public class CountAggregateAction implements AggregateAction {
         this.startTimeKey = countAggregateActionConfig.getStartTimeKey();
         this.endTimeKey = countAggregateActionConfig.getEndTimeKey();
         this.outputFormat = countAggregateActionConfig.getOutputFormat();
+        this.metricName = countAggregateActionConfig.getMetricName();
     }
 
     public Exemplar createExemplar(final Event event) {
@@ -133,7 +134,7 @@ public class CountAggregateAction implements AggregateAction {
             Map<String, Object> attr = new HashMap<String, Object>();
             groupState.forEach((k, v) -> attr.put((String)k, v));
             JacksonSum sum = JacksonSum.builder()
-                .withName(SUM_METRIC_NAME)
+                .withName(this.metricName)
                 .withDescription(SUM_METRIC_DESCRIPTION)
                 .withTime(OTelProtoCodec.convertUnixNanosToISO8601(endTimeNanos))
                 .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(startTimeNanos))

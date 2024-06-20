@@ -50,6 +50,7 @@ public class CountAggregateActionTest {
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 10, 100})
     void testCountAggregate(int testCount) throws NoSuchFieldException, IllegalAccessException {
+        final String testName = UUID.randomUUID().toString();
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
         setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
         countAggregateAction = createObjectUnderTest(countAggregateActionConfig);
@@ -79,8 +80,10 @@ public class CountAggregateActionTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 10, 100})
-    void testCountAggregateOTelFormat(int testCount) {
+    void testCountAggregateOTelFormat(int testCount) throws NoSuchFieldException, IllegalAccessException {
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
+        final String testName = UUID.randomUUID().toString();
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "metricName", testName);
         countAggregateAction = createObjectUnderTest(countAggregateActionConfig);
         final String key1 = "key-"+UUID.randomUUID().toString();
         final String value1 = UUID.randomUUID().toString();
@@ -119,6 +122,7 @@ public class CountAggregateActionTest {
         expectedEventMap.put("isMonotonic", true);
         expectedEventMap.put("aggregationTemporality", "AGGREGATION_TEMPORALITY_DELTA");
         expectedEventMap.put("unit", "1");
+        expectedEventMap.put("name", testName);
         expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k,v)));
         assertThat(result.get(0).toMap().get("attributes"), equalTo(eventMap));
         JacksonMetric metric = (JacksonMetric) result.get(0);
@@ -149,6 +153,8 @@ public class CountAggregateActionTest {
     void testCountAggregateOTelFormatWithStartAndEndTimesInTheEvent(int testCount) {
         CountAggregateActionConfig mockConfig = mock(CountAggregateActionConfig.class);
         when(mockConfig.getCountKey()).thenReturn(CountAggregateActionConfig.DEFAULT_COUNT_KEY);
+        final String testName = UUID.randomUUID().toString();
+        when(mockConfig.getMetricName()).thenReturn(testName);
         String startTimeKey = UUID.randomUUID().toString();
         String endTimeKey = UUID.randomUUID().toString();
         when(mockConfig.getStartTimeKey()).thenReturn(startTimeKey);
@@ -195,7 +201,7 @@ public class CountAggregateActionTest {
         assertThat(result.size(), equalTo(1));
         Map<String, Object> expectedEventMap = new HashMap<>();
         expectedEventMap.put("value", (double)testCount);
-        expectedEventMap.put("name", "count");
+        expectedEventMap.put("name", testName);
         expectedEventMap.put("description", "Number of events");
         expectedEventMap.put("isMonotonic", true);
         expectedEventMap.put("aggregationTemporality", "AGGREGATION_TEMPORALITY_DELTA");

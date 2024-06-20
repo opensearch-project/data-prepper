@@ -533,7 +533,7 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1500);
 
         boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
