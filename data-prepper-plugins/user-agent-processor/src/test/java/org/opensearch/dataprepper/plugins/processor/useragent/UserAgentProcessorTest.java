@@ -46,7 +46,7 @@ class UserAgentProcessorTest {
     @MethodSource("userAgentStringArguments")
     public void testParsingUserAgentStrings(
             String uaString, String uaName, String uaVersion, String osName, String osVersion, String osFull, String deviceName) {
-        when(mockConfig.getSource()).thenReturn("source");
+        when(mockConfig.getSource()).thenReturn(eventKeyFactory.createEventKey("source"));
         when(mockConfig.getTarget()).thenReturn("user_agent");
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
 
@@ -68,7 +68,7 @@ class UserAgentProcessorTest {
     @MethodSource("userAgentStringArguments")
     public void testParsingUserAgentStringsWithCustomTarget(
             String uaString, String uaName, String uaVersion, String osName, String osVersion, String osFull, String deviceName) {
-        when(mockConfig.getSource()).thenReturn("source");
+        when(mockConfig.getSource()).thenReturn(eventKeyFactory.createEventKey("source"));
         when(mockConfig.getTarget()).thenReturn("my_target");
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
 
@@ -90,7 +90,7 @@ class UserAgentProcessorTest {
     @MethodSource("userAgentStringArguments")
     public void testParsingUserAgentStringsExcludeOriginal(
             String uaString, String uaName, String uaVersion, String osName, String osVersion, String osFull, String deviceName) {
-        when(mockConfig.getSource()).thenReturn("source");
+        when(mockConfig.getSource()).thenReturn(eventKeyFactory.createEventKey("source"));
         when(mockConfig.getTarget()).thenReturn("user_agent");
         when(mockConfig.getExcludeOriginal()).thenReturn(true);
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
@@ -111,7 +111,7 @@ class UserAgentProcessorTest {
 
     @Test
     public void testParsingWhenUserAgentStringNotExist() {
-        when(mockConfig.getSource()).thenReturn("bad_source");
+        when(mockConfig.getSource()).thenReturn(eventKeyFactory.createEventKey("bad_source"));
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
         when(mockConfig.getTarget()).thenReturn("user_agent");
 
@@ -125,7 +125,7 @@ class UserAgentProcessorTest {
 
     @Test
     public void testTagsAddedOnParseFailure() {
-        when(mockConfig.getSource()).thenReturn("bad_source");
+        when(mockConfig.getSource()).thenReturn(eventKeyFactory.createEventKey("bad_source"));
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
         when(mockConfig.getTarget()).thenReturn("user_agent");
 

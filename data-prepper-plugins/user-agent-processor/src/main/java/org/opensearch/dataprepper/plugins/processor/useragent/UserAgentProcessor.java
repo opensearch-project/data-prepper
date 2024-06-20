@@ -43,7 +43,7 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
         super(pluginMetrics);
         this.config = config;
         this.userAgentParser = new CaffeineCachingParser(config.getCacheSize());
-        sourceKey = eventKeyFactory.createEventKey(config.getSource(), EventKeyFactory.EventAction.GET);
+        sourceKey = config.getSource();
         targetKey = eventKeyFactory.createEventKey(config.getTarget(), EventKeyFactory.EventAction.PUT);
     }
 
