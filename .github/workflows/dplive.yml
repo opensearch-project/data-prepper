@@ -14,8 +14,12 @@ permissions:
   issues: write
 
 jobs:
-   - name: Run DataPrepper docker
-       run: |
+  dplive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run DataPrepper docker
+        run: |
           echo "test input line" > input-file
           echo "sample-pipeline:\n\tsource:\n\t\tfile:\n\t\t\tpath:"./input-file"\n\tsink:\n\t\tfile:\n\t\t\tpath:"./output-file" >pipeline-config.yaml
           echo "ssl: false" > data-prepper-config.yaml
