@@ -15,7 +15,7 @@ permissions:
 
 jobs:
    - name: Run DataPrepper docker
-        run: |
+       run: |
           echo "test input line" > input-file
           echo "sample-pipeline:\n\tsource:\n\t\tfile:\n\t\t\tpath:"./input-file"\n\tsink:\n\t\tfile:\n\t\t\tpath:"./output-file" >pipeline-config.yaml
           echo "ssl: false" > data-prepper-config.yaml
