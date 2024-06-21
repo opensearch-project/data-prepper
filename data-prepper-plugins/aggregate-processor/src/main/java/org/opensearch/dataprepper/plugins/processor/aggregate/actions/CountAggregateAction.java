@@ -54,7 +54,7 @@ public class CountAggregateAction implements AggregateAction {
     public final String outputFormat;
     private long startTimeNanos;
     private final String metricName;
-    private final IdentificationKeysHasher identificationKeysHasher;
+    private final IdentificationKeysHasher uniqueKeysHasher;
 
     @DataPrepperPluginConstructor
     public CountAggregateAction(final CountAggregateActionConfig countAggregateActionConfig) {
@@ -64,9 +64,9 @@ public class CountAggregateAction implements AggregateAction {
         this.outputFormat = countAggregateActionConfig.getOutputFormat();
         this.metricName = countAggregateActionConfig.getMetricName();
         if (countAggregateActionConfig.getUniqueKeys() != null) {
-            this.identificationKeysHasher = new IdentificationKeysHasher(countAggregateActionConfig.getUniqueKeys());
+            this.uniqueKeysHasher = new IdentificationKeysHasher(countAggregateActionConfig.getUniqueKeys());
         } else {
-            this.identificationKeysHasher = null;
+            this.uniqueKeysHasher = null;
         }
     }
 
@@ -104,11 +104,11 @@ public class CountAggregateAction implements AggregateAction {
         }
         if (groupState.get(countKey) == null) {
             groupState.putAll(aggregateActionInput.getIdentificationKeys());
-            if (identificationKeysHasher != null) {
-                Set<IdentificationKeysHasher.IdentificationKeysMap> identificationKeysMapSet = new HashSet<>();
+            if (uniqueKeysHasher != null) {
+                Set<IdentificationKeysHasher.IdentificationKeysMap> uniqueKeysMapSet = new HashSet<>();
             
-                identificationKeysMapSet.add(identificationKeysHasher.createIdentificationKeysMapFromEvent(event));
-                groupState.put(UNIQUE_KEYS_SETKEY, identificationKeysMapSet);
+                uniqueKeysMapSet.add(uniqueKeysHasher.createIdentificationKeysMapFromEvent(event));
+                groupState.put(UNIQUE_KEYS_SETKEY, uniqueKeysMapSet);
             } 
             groupState.put(countKey, 1);
             groupState.put(exemplarKey, createExemplar(event));
@@ -117,10 +117,10 @@ public class CountAggregateAction implements AggregateAction {
         } else {
             Integer v = (Integer)groupState.get(countKey) + 1;
             
-            if (identificationKeysHasher != null) {
-                Set<IdentificationKeysHasher.IdentificationKeysMap> identificationKeysMapSet = (Set<IdentificationKeysHasher.IdentificationKeysMap>) groupState.get(UNIQUE_KEYS_SETKEY);
-                identificationKeysMapSet.add(identificationKeysHasher.createIdentificationKeysMapFromEvent(event));
-                v = identificationKeysMapSet.size();
+            if (uniqueKeysHasher != null) {
+                Set<IdentificationKeysHasher.IdentificationKeysMap> uniqueKeysMapSet = (Set<IdentificationKeysHasher.IdentificationKeysMap>) groupState.get(UNIQUE_KEYS_SETKEY);
+                uniqueKeysMapSet.add(uniqueKeysHasher.createIdentificationKeysMapFromEvent(event));
+                v = uniqueKeysMapSet.size();
             }
             groupState.put(countKey, v);
             Instant groupStartTime = (Instant)groupState.get(startTimeKey);
