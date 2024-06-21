@@ -5,8 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
-import java.util.Set;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class CountAggregateActionConfig {
@@ -22,6 +23,9 @@ public class CountAggregateActionConfig {
     @JsonProperty("metric_name")
     String metricName = SUM_METRIC_NAME;
 
+    @JsonProperty("unique_keys")
+    List<String> uniqueKeys = null;
+
     @JsonProperty("start_time_key")
     String startTimeKey = DEFAULT_START_TIME_KEY;
 
@@ -33,6 +37,10 @@ public class CountAggregateActionConfig {
 
     public String getMetricName() {
         return metricName;
+    }
+
+    public List<String> getUniqueKeys() {
+        return uniqueKeys;
     }
 
     public String getCountKey() {

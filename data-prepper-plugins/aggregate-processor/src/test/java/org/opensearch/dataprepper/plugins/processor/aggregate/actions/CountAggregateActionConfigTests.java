@@ -13,6 +13,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig.DEFAULT_COUNT_KEY;
 import static org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig.DEFAULT_START_TIME_KEY;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -39,6 +41,7 @@ public class CountAggregateActionConfigTests {
         assertThat(countAggregateActionConfig.getStartTimeKey(), equalTo(DEFAULT_START_TIME_KEY));
         assertThat(countAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS.toString()));
         assertThat(countAggregateActionConfig.getMetricName(), equalTo(CountAggregateActionConfig.SUM_METRIC_NAME));
+        assertThat(countAggregateActionConfig.getUniqueKeys(), equalTo(null));
     }
 
     @Test
@@ -55,6 +58,11 @@ public class CountAggregateActionConfigTests {
         final String testName = UUID.randomUUID().toString();
         setField(CountAggregateActionConfig.class, countAggregateActionConfig, "metricName", testName);
         assertThat(countAggregateActionConfig.getMetricName(), equalTo(testName));
+        final List<String> uniqueKeys = new ArrayList<>();
+        uniqueKeys.add(UUID.randomUUID().toString());
+        uniqueKeys.add(UUID.randomUUID().toString());
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "uniqueKeys", uniqueKeys);
+        assertThat(countAggregateActionConfig.getUniqueKeys(), equalTo(uniqueKeys));
     }
 
     @Test
