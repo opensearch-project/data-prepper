@@ -119,14 +119,15 @@ public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Ev
         final Map<String, Object> resultMap = new HashMap<>();
 
         for (final Map.Entry<String, Object> entry : inputMap.entrySet()) {
-            final String keyWithoutIndices = removeListIndices(entry.getKey());
+            final String keyWithoutIndices = removeListIndices(entry.getKey(), config.isRemoveBrackets());
             addFieldsToMapWithMerge(keyWithoutIndices, entry.getValue(), resultMap);
         }
         return resultMap;
     }
 
-    private String removeListIndices(final String key) {
-        return key.replaceAll("\\[\\d+\\]", "[]");
+    private String removeListIndices(final String key, final boolean removeBrackets) {
+        final String replacement = removeBrackets ? "" : "[]";
+        return key.replaceAll("\\[\\d+\\]", replacement);
     }
 
     private void addFieldsToMapWithMerge(String key, Object value, Map<String, Object> map) {
