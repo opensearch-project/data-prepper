@@ -24,6 +24,5 @@ jobs:
           echo "sample-pipeline:\n\tsource:\n\t\tfile:\n\t\t\tpath:"./input-file"\n\tsink:\n\t\tfile:\n\t\t\tpath:"./output-file" >pipeline-config.yaml
           echo "ssl: false" > data-prepper-config.yaml
           docker pull opensearch-data-prepper:latest
-          docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d opensearchproject/opensearch:${{ matrix.opensearch }}
           docker run --name data-prepper --network host  -v pipeline-config.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml  -v ./data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml opensearch-data-prepper:latest
           sleep 90
