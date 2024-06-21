@@ -15,9 +15,6 @@ import java.time.Duration;
  */
 public class ThresholdCheck {
 
-    public ThresholdCheck() {
-    }
-
     public static boolean checkThresholdExceed(final Buffer currentBuffer, final int maxEvents, final ByteCount maxBytes, final Duration maxCollectionDuration, final Boolean isBatchEnabled) {
         if (!isBatchEnabled) return true;
 
