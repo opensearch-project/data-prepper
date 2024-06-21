@@ -273,8 +273,6 @@ public class CountAggregateActionTest {
         expectedEventMap.put("aggregationTemporality", "AGGREGATION_TEMPORALITY_DELTA");
         expectedEventMap.put("unit", "1");
         expectedEventMap.put("name", testName);
-        System.out.println("===EXP==="+expectedEventMap);
-        System.out.println("===RES==="+result.get(0).toMap());
         expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k,v)));
         assertThat(result.get(0).toMap().get("attributes"), equalTo(eventMap));
         JacksonMetric metric = (JacksonMetric) result.get(0);
