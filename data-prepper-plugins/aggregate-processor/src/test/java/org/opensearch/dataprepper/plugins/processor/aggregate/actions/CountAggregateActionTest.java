@@ -153,6 +153,7 @@ public class CountAggregateActionTest {
     void testCountAggregateOTelFormatWithStartAndEndTimesInTheEvent(int testCount) {
         CountAggregateActionConfig mockConfig = mock(CountAggregateActionConfig.class);
         when(mockConfig.getCountKey()).thenReturn(CountAggregateActionConfig.DEFAULT_COUNT_KEY);
+        when(mockConfig.getUniqueKeys()).thenReturn(null);
         final String testName = UUID.randomUUID().toString();
         when(mockConfig.getMetricName()).thenReturn(testName);
         String startTimeKey = UUID.randomUUID().toString();
@@ -232,5 +233,58 @@ public class CountAggregateActionTest {
         attributes = (Map<String, Object>)exemplar.get("attributes");
         assertThat(attributes.get(key2), equalTo(value2));
         assertTrue(attributes.containsKey(dataKey2));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 3, 10, 20})
+    void testCountAggregateOTelFormatUniqueKeys(int testCount) throws NoSuchFieldException, IllegalAccessException {
+        CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
+        final String testName = UUID.randomUUID().toString();
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "metricName", testName);
+        final String key1 = "key-"+UUID.randomUUID().toString();
+        final String value1 = UUID.randomUUID().toString();
+        final String dataKey1 = "datakey-"+UUID.randomUUID().toString();
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "uniqueKeys", List.of(dataKey1));
+        countAggregateAction = createObjectUnderTest(countAggregateActionConfig);
+        Map<Object, Object> eventMap = Collections.singletonMap(key1, value1);
+        Event testEvent = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(eventMap)
+                .build();
+        AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
+        final String dataKey1_1 = UUID.randomUUID().toString();
+        final String dataKey1_2 = UUID.randomUUID().toString();
+        final String dataKey1_3 = UUID.randomUUID().toString();
+        final String[] dataKeysList = {dataKey1_1, dataKey1_2, dataKey1_3};
+        for (int i = 0; i < testCount; i++) { 
+            testEvent.put(dataKey1, dataKeysList[i % 3]);
+            AggregateActionResponse aggregateActionResponse = countAggregateAction.handleEvent(testEvent, aggregateActionInput);
+            assertThat(aggregateActionResponse.getEvent(), equalTo(null));
+        }
+
+        AggregateActionOutput actionOutput = countAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
+        assertThat(result.size(), equalTo(1));
+        Map<String, Object> expectedEventMap = new HashMap<>();
+        double expectedCount = (testCount >= 3) ? 3 : testCount;
+        expectedEventMap.put("value", expectedCount);
+        expectedEventMap.put("description", "Number of events");
+        expectedEventMap.put("isMonotonic", true);
+        expectedEventMap.put("aggregationTemporality", "AGGREGATION_TEMPORALITY_DELTA");
+        expectedEventMap.put("unit", "1");
+        expectedEventMap.put("name", testName);
+        expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k,v)));
+        assertThat(result.get(0).toMap().get("attributes"), equalTo(eventMap));
+        JacksonMetric metric = (JacksonMetric) result.get(0);
+        assertThat(metric.toJsonString().indexOf("attributes"), not(-1));
+        assertThat(result.get(0).toMap(), hasKey("startTime"));
+        assertThat(result.get(0).toMap(), hasKey("time"));
+        List<Map<String, Object>> exemplars = (List <Map<String, Object>>)result.get(0).toMap().get("exemplars");
+        assertThat(exemplars.size(), equalTo(1));
+        Map<String, Object> exemplar = exemplars.get(0);
+        Map<String, Object> attributes = (Map<String, Object>)exemplar.get("attributes");
+        assertThat(attributes.get(key1), equalTo(value1));
+        assertTrue(attributes.containsKey(dataKey1));
+
     }
 }
