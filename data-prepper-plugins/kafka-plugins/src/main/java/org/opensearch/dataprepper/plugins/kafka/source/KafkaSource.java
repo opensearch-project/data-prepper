@@ -241,7 +241,6 @@ public class KafkaSource implements Source<Record<Event>> {
         }
         setConsumerTopicProperties(properties, topicConfig);
         setSchemaRegistryProperties(properties, topicConfig);
-        LOG.debug("Starting consumer with the properties : {}", properties);
         return properties;
     }
 
