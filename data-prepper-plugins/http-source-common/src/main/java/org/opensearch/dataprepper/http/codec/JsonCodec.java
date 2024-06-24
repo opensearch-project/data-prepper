@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.common.HttpData;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +57,7 @@ public class JsonCodec implements Codec<List<List<String>>> {
                 size = OVERHEAD_CHARACTERS.length();
             }
             innerJsonList.add(recordString);
-            size += recordString.length() + COMMA_OVERHEAD_LENGTH;
+            size += recordString.getBytes(Charset.defaultCharset()).length + COMMA_OVERHEAD_LENGTH;
         }
         if (size > OVERHEAD_CHARACTERS.length()) {
             jsonList.add(innerJsonList);
