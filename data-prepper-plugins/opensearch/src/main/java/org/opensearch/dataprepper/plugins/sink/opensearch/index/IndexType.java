@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 public enum IndexType {
     TRACE_ANALYTICS_RAW("trace-analytics-raw"),
     TRACE_ANALYTICS_SERVICE_MAP("trace-analytics-service-map"),
+    LOG_ANALYTICS("log-analytics"),
+    METRIC_ANALYTICS("metric-analytics"),
     CUSTOM("custom"),
     MANAGEMENT_DISABLED("management_disabled");
 
