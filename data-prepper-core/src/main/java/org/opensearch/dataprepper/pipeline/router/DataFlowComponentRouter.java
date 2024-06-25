@@ -38,7 +38,6 @@ class DataFlowComponentRouter {
                 final Set<String> routesForEvent = recordsToRoutes
                         .getOrDefault(record, Collections.emptySet());
 
-                System.out.println("_____________"+routesForEvent.size()+"____"+dataFlowComponentRoutes);
                 if (routesForEvent.size() == 0 && dataFlowComponentRoutes.contains(DEFAULT_ROUTE)) {
                     recordsForComponent.add(getRecordStrategy.getRecord(record));
                 } else if (routesForEvent.stream().anyMatch(dataFlowComponentRoutes::contains)) {
