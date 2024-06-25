@@ -55,6 +55,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
+
 public class KafkaCustomConsumerFactory {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumerFactory.class);
 
@@ -136,7 +138,7 @@ public class KafkaCustomConsumerFactory {
         }
         setConsumerTopicProperties(properties, topicConfig, topicConfig.getGroupId());
         setSchemaRegistryProperties(sourceConfig, properties, topicConfig);
-        LOG.debug("Starting consumer with the properties : {}", properties);
+        LOG.debug(SENSITIVE, "Starting consumer with the properties : {}", properties);
         return properties;
     }
 

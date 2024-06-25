@@ -61,6 +61,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
+
 /**
  * The starting point of the Kafka-source plugin and the Kafka consumer
  * properties and kafka multithreaded consumers are being handled here.
@@ -241,7 +243,7 @@ public class KafkaSource implements Source<Record<Event>> {
         }
         setConsumerTopicProperties(properties, topicConfig);
         setSchemaRegistryProperties(properties, topicConfig);
-        LOG.debug("Starting consumer with the properties : {}", properties);
+        LOG.debug(SENSITIVE, "Starting consumer with the properties : {}", properties);
         return properties;
     }
 
