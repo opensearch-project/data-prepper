@@ -67,13 +67,10 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
                     "Peer Forwarder Plugin: %s cannot have empty identification keys." + pluginId);
         }
 
+        final PeerForwarder peerForwarder = peerForwarderProvider.register(pipelineName, firstInnerProcessor, pluginId, identificationKeys, pipelineWorkerThreads);
 
-        return processors.stream()
-               .map(processor -> {
-                    PeerForwarder peerForwarder = peerForwarderProvider.register(pipelineName, processor, pluginId, identificationKeys, pipelineWorkerThreads);
-                    return new PeerForwardingProcessorDecorator(peerForwarder, processor);
-                })
-                 .collect(Collectors.toList());
+        return processors.stream().map(processor -> new PeerForwardingProcessorDecorator(peerForwarder, processor))
+                .collect(Collectors.toList());
     }
 
     private PeerForwardingProcessorDecorator(final PeerForwarder peerForwarder, final Processor innerProcessor) {
