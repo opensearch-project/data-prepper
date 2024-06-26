@@ -20,6 +20,7 @@ import java.util.function.BiConsumer;
  * intended to help break apart {@link Router} for better testing.
  */
 class DataFlowComponentRouter {
+    static final String DEFAULT_ROUTE = "_default";
     <C> void route(final Collection<Record> allRecords,
                    final DataFlowComponent<C> dataFlowComponent,
                    final Map<Record, Set<String>> recordsToRoutes,
@@ -37,7 +38,9 @@ class DataFlowComponentRouter {
                 final Set<String> routesForEvent = recordsToRoutes
                         .getOrDefault(record, Collections.emptySet());
 
-                if (routesForEvent.stream().anyMatch(dataFlowComponentRoutes::contains)) {
+                if (routesForEvent.size() == 0 && dataFlowComponentRoutes.contains(DEFAULT_ROUTE)) {
+                    recordsForComponent.add(getRecordStrategy.getRecord(record));
+                } else if (routesForEvent.stream().anyMatch(dataFlowComponentRoutes::contains)) {
                     recordsForComponent.add(getRecordStrategy.getRecord(record));
                 }
             }

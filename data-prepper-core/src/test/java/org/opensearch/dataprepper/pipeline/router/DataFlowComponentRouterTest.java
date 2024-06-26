@@ -158,6 +158,17 @@ class DataFlowComponentRouterTest {
             verify(componentRecordsConsumer).accept(testComponent, Collections.emptyList());
         }
 
+        @Test
+        void route_no_Events_when_none_have_matching_routes_with_default_route() {
+            when(dataFlowComponent.getRoutes()).thenReturn(Set.of(DataFlowComponentRouter.DEFAULT_ROUTE));
+            final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
+                    .collect(Collectors.toMap(Function.identity(), r -> Collections.emptySet()));
+
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
+
+            verify(componentRecordsConsumer).accept(testComponent, recordsIn);
+        }
+
 
         @Test
         void route_all_Events_when_all_have_matched_route() {
@@ -235,6 +246,33 @@ class DataFlowComponentRouterTest {
 
             verify(componentRecordsConsumer).accept(testComponent, Collections.emptyList());
         }
+
+        @Test
+        void route_no_Events_when_none_have_matching_routes_with_default_route() {
+            when(dataFlowComponent.getRoutes()).thenReturn(Set.of(DataFlowComponentRouter.DEFAULT_ROUTE));
+            final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
+                    .collect(Collectors.toMap(Function.identity(), r -> Collections.emptySet()));
+
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
+
+            verify(componentRecordsConsumer).accept(testComponent, recordsIn);
+        }
+
+        @Test
+        void route_matched_events_with_none_to_default_route() {
+            DataFlowComponent<TestComponent> dataFlowComponent2 = mock(DataFlowComponent.class);
+            when(dataFlowComponent2.getRoutes()).thenReturn(Set.of(DataFlowComponentRouter.DEFAULT_ROUTE));
+            final Map<Record, Set<String>> allMatchingRoutes = recordsIn.stream()
+                    .collect(Collectors.toMap(Function.identity(), r -> Collections.singleton(knownRoute)));
+
+            createObjectUnderTest().route(recordsIn, dataFlowComponent2, allMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
+            verify(componentRecordsConsumer).accept(null, Collections.emptyList());
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, allMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
+
+            verify(componentRecordsConsumer).accept(testComponent, recordsIn);
+
+        }
+
 
 
         @Test
