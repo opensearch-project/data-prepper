@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.model.event.EventKey;
 
 import java.util.List;
 
@@ -19,7 +20,7 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
 
         @NotEmpty
         @NotNull
-        private String source;
+        private EventKey source;
 
         @JsonProperty("delimiter_regex")
         private String delimiterRegex;
@@ -30,7 +31,7 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
         @JsonProperty("split_when")
         private String splitWhen;
 
-        public String getSource() {
+        public EventKey getSource() {
             return source;
         }
 
@@ -44,7 +45,7 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
 
         public String getSplitWhen() { return splitWhen; }
 
-        public Entry(final String source, final String delimiterRegex, final String delimiter, final String splitWhen) {
+        public Entry(final EventKey source, final String delimiterRegex, final String delimiter, final String splitWhen) {
             this.source = source;
             this.delimiterRegex = delimiterRegex;
             this.delimiter = delimiter;

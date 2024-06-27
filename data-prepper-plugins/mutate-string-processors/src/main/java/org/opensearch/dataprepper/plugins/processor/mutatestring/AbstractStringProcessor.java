@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.mutatestring;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.record.Record;
 
@@ -46,8 +47,8 @@ public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Recor
     private void performStringAction(final Event recordEvent)
     {
         try {
-            for(T entry : entries) {
-                final String key = getKey(entry);
+            for(final T entry : entries) {
+                final EventKey key = getKey(entry);
 
                 if(recordEvent.containsKey(key)) {
                     final Object value = recordEvent.get(key, Object.class);
@@ -64,7 +65,7 @@ public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Recor
 
     protected abstract void performKeyAction(final Event recordEvent, final T entry, final String value);
 
-    protected abstract String getKey(final T entry);
+    protected abstract EventKey getKey(final T entry);
 
     @Override
     public void prepareForShutdown() {

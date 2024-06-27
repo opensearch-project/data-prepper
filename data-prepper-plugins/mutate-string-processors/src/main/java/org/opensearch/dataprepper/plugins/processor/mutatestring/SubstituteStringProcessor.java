@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.processor.Processor;
 
 import java.util.HashMap;
@@ -51,7 +52,7 @@ public class SubstituteStringProcessor extends AbstractStringProcessor<Substitut
     }
 
     @Override
-    protected String getKey(final SubstituteStringProcessorConfig.Entry entry) {
+    protected EventKey getKey(final SubstituteStringProcessorConfig.Entry entry) {
         return entry.getSource();
     }
 }
