@@ -65,7 +65,7 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
                 event.put(targetKey, parsedUserAgent);
             } catch (Exception e) {
                 LOG.error(EVENT, "An exception occurred when parsing user agent data from event [{}] with source key [{}]",
-                        event, sourceKey.getKey(), e);
+                        event, sourceKey, e);
 
                 final List<String> tagsOnParseFailure = config.getTagsOnParseFailure();
                 if (Objects.nonNull(tagsOnParseFailure) && tagsOnParseFailure.size() > 0) {
