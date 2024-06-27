@@ -9,7 +9,6 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportProgressState;
 
-import java.time.Instant;
 import java.util.Optional;
 
 /**

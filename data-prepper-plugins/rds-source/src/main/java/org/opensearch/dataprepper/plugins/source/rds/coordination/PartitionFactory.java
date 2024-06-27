@@ -8,8 +8,8 @@ package org.opensearch.dataprepper.plugins.source.rds.coordination;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
-import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
 
 import java.util.function.Function;
 
