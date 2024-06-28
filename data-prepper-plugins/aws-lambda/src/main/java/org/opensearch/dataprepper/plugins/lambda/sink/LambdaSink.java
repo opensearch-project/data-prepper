@@ -26,7 +26,7 @@ import software.amazon.awssdk.services.lambda.LambdaClient;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "lambda", pluginType = Sink.class, pluginConfigurationType = LambdaSinkConfig.class)
+@DataPrepperPlugin(name = "aws_lambda", pluginType = Sink.class, pluginConfigurationType = LambdaSinkConfig.class)
 public class LambdaSink extends AbstractSink<Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(LambdaSink.class);

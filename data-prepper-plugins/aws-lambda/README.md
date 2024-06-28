@@ -7,7 +7,7 @@ This plugin enables you to send data from your Data Prepper pipeline directly to
 lambda-pipeline:
 ...
   sink:
-    - lambda:
+    - aws_lambda:
         aws:
             region: "us-east-1"
             sts_role_arn: "<arn>"

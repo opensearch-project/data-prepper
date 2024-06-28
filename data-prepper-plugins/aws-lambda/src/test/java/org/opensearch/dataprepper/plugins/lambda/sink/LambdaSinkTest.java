@@ -28,7 +28,7 @@ class LambdaSinkTest {
 
     public static final String S3_REGION = "us-east-1";
     public static final String CODEC_PLUGIN_NAME = "json";
-    public static final String SINK_PLUGIN_NAME = "lambda";
+    public static final String SINK_PLUGIN_NAME = "aws_lambda";
     public static final String SINK_PIPELINE_NAME = "lambda-sink-pipeline";
     private LambdaSinkConfig lambdaSinkConfig;
     private LambdaSink lambdaSink;
