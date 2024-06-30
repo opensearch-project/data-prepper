@@ -63,9 +63,13 @@ task integrationTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     systemProperty 'log4j.configurationFile', 'src/test/resources/log4j2.properties'
-    systemProperty 'tests.sink.lambda.region', System.getProperty('tests.sink.lambda.region')
-    systemProperty 'tests.sink.lambda.functionName', System.getProperty('tests.sink.lambda.functionName')
-    systemProperty 'tests.sink.lambda.sts_role_arn', System.getProperty('tests.sink.lambda.sts_role_arn')
+    systemProperty 'tests.lambda.sink.region', System.getProperty('tests.lambda.sink.region')
+    systemProperty 'tests.lambda.sink.functionName', System.getProperty('tests.lambda.sink.functionName')
+    systemProperty 'tests.lambda.sink.sts_role_arn', System.getProperty('tests.lambda.sink.sts_role_arn')
+
+    systemProperty 'tests.lambda.processor.region', System.getProperty('tests.lambda.processor.region')
+    systemProperty 'tests.lambda.processor.functionName', System.getProperty('tests.lambda.processor.functionName')
+    systemProperty 'tests.lambda.processor.sts_role_arn', System.getProperty('tests.lambda.processor.sts_role_arn')
 
     filter {
         includeTestsMatching '*IT'

@@ -225,7 +225,6 @@ public class LambdaProcessorTest {
     public void testDoExecute_WithConfig() throws JsonProcessingException {
         final String config = "        function_name: test_function\n" + "        mode: synchronous\n" + "        aws:\n" + "          region: us-east-1\n" + "          sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" + "          sts_header_overrides: {\"test\":\"test\"}\n" + "        max_retries: 3\n";
 
-
         this.lambdaProcessorConfig = objectMapper.readValue(config, LambdaProcessorConfig.class);
 
         Event event = JacksonEvent.builder().withEventType("event").withData("{\"status\":true}").build();
@@ -238,6 +237,5 @@ public class LambdaProcessorTest {
         Collection<Record<Event>> resultRecords = lambdaProcessor.doExecute(records);
         verify(lambdaClient, times(1)).invoke(any(InvokeRequest.class));
         assertEquals(resultRecords.size(), 1);
-
     }
 }
