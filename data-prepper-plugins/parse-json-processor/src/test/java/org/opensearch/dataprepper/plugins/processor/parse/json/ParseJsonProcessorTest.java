@@ -195,6 +195,22 @@ public class ParseJsonProcessorTest {
     }
 
     @Test
+    void test_when_deleteSourceFlagEnabled() {
+        when(processorConfig.isDeleteSourceRequested()).thenReturn(true);
+        parseJsonProcessor = new ParseJsonProcessor(pluginMetrics, jsonProcessorConfig, expressionEvaluator);
+
+        final String key = "key";
+        final ArrayList<String> value = new ArrayList<>(List.of("Element0","Element1","Element2"));
+        final String jsonArray = "{\"key\":[\"Element0\",\"Element1\",\"Element2\"]}";
+        final Event parsedEvent = createAndParseMessageEvent(jsonArray);
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(false));
+        assertThat(parsedEvent.get(key, ArrayList.class), equalTo(value));
+        final String pointerToFirstElement = key + "/0";
+        assertThat(parsedEvent.get(pointerToFirstElement, String.class), equalTo(value.get(0)));
+    }
+
+    @Test
     void test_when_nestedJSONArrayOfJSON_then_parsedIntoArrayAndIndicesAccessible() {
         parseJsonProcessor = createObjectUnderTest();
 
@@ -218,8 +234,6 @@ public class ParseJsonProcessorTest {
         when(processorConfig.getPointer()).thenReturn(pointer);
         parseJsonProcessor = createObjectUnderTest();
 
-        final ArrayList<Map<String, Object>> value = new ArrayList<>(List.of(Collections.singletonMap("key0","value0"),
-                Collections.singletonMap("key1","value1")));
         final String jsonArray = "{\"key\":[{\"key0\":\"value0\"},{\"key1\":\"value1\"}]}";
 
         final Event parsedEvent = createAndParseMessageEvent(jsonArray);
@@ -373,23 +387,21 @@ public class ParseJsonProcessorTest {
 
     /**
      * Naive serialization that converts every = to : and wraps every word with double quotes (no error handling or input validation).
-     * @param messageMap
-     * @return
+     * @param messageMap source key value map
+     * @return serialized string representation of the map
      */
     private String convertMapToJSONString(final Map<String, Object> messageMap) {
         final String replaceEquals = messageMap.toString().replace("=",":");
-        final String addQuotes = replaceEquals.replaceAll("(\\w+)", "\"$1\""); // wrap every word in quotes
-        return addQuotes;
+        return replaceEquals.replaceAll("(\\w+)", "\"$1\"");
     }
 
     /**
      * Creates a Map that maps a single key to a value nested numberOfLayers layers deep.
-     * @param numberOfLayers
-     * @return
+     * @param numberOfLayers indicates the depth of layers count
+     * @return a Map representing the nested structure
      */
     private Map<String, Object> constructArbitrarilyDeepJsonMap(final int numberOfLayers) {
-        final Map<String, Object> result = Collections.singletonMap(DEEPLY_NESTED_KEY_NAME,deepJsonMapHelper(0,numberOfLayers));
-        return result;
+        return Collections.singletonMap(DEEPLY_NESTED_KEY_NAME,deepJsonMapHelper(0,numberOfLayers));
     }
 
     private Object deepJsonMapHelper(final int currentLayer, final int numberOfLayers) {

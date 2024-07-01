@@ -35,6 +35,9 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
     @JsonProperty("overwrite_if_destination_exists")
     private boolean overwriteIfDestinationExists = true;
 
+    @JsonProperty("delete_source")
+    private boolean deleteSource = false;
+
     @Override
     public String getSource() {
         return source;
@@ -63,11 +66,16 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
         return overwriteIfDestinationExists;
     }
 
+    @Override
+    public boolean isDeleteSourceRequested() {
+        return deleteSource;
+    }
+
     @AssertTrue(message = "destination cannot be empty, whitespace, or a front slash (/)")
     boolean isValidDestination() {
         if (Objects.isNull(destination)) return true;
 
         final String trimmedDestination = destination.trim();
-        return trimmedDestination.length() != 0 && !(trimmedDestination.equals("/"));
+        return !trimmedDestination.isEmpty() && !(trimmedDestination.equals("/"));
     }
 }
