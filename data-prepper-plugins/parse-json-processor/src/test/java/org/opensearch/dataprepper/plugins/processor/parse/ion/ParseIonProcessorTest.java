@@ -47,6 +47,22 @@ class ParseIonProcessorTest extends ParseJsonProcessorTest {
         final String serializedMessage = "{bareKey: 1, symbol: SYMBOL, timestamp: 2023-11-30T21:05:23.383Z, attribute: dollars::100.0 }";
         final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
 
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
+        assertThat(parsedEvent.get("bareKey", Integer.class), equalTo(1));
+        assertThat(parsedEvent.get("symbol", String.class), equalTo("SYMBOL"));
+        assertThat(parsedEvent.get("timestamp", String.class), equalTo("2023-11-30T21:05:23.383Z"));
+        assertThat(parsedEvent.get("attribute", Double.class), equalTo(100.0));
+    }
+
+    @Test
+    void test_when_deleteSourceFlagEnabled() {
+        when(processorConfig.isDeleteSourceRequested()).thenReturn(true);
+        parseJsonProcessor = new ParseIonProcessor(pluginMetrics, ionProcessorConfig, expressionEvaluator);
+
+        final String serializedMessage = "{bareKey: 1, symbol: SYMBOL, timestamp: 2023-11-30T21:05:23.383Z, attribute: dollars::100.0 }";
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(false));
         assertThat(parsedEvent.get("bareKey", Integer.class), equalTo(1));
         assertThat(parsedEvent.get("symbol", String.class), equalTo("SYMBOL"));
         assertThat(parsedEvent.get("timestamp", String.class), equalTo("2023-11-30T21:05:23.383Z"));

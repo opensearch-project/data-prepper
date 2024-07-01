@@ -29,6 +29,7 @@ public class ParseJsonProcessorConfigTest {
         assertThat(objectUnderTest.getPointer(), equalTo(null));
         assertThat(objectUnderTest.getTagsOnFailure(), equalTo(null));
         assertThat(objectUnderTest.getOverwriteIfDestinationExists(), equalTo(true));
+        assertThat(objectUnderTest.isDeleteSourceRequested(), equalTo(false));
     }
 
     @Nested
@@ -57,6 +58,9 @@ public class ParseJsonProcessorConfigTest {
             setField(ParseJsonProcessorConfig.class, config, "tagsOnFailure", tagsList);
 
             assertThat(config.getTagsOnFailure(), equalTo(tagsList));
+
+            setField(ParseJsonProcessorConfig.class, config, "deleteSource", true);
+            assertThat(config.isDeleteSourceRequested(), equalTo(true));
         }
     }
 }

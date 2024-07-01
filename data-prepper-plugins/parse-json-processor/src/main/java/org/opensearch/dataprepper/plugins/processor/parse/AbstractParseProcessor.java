@@ -36,6 +36,7 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
     private final String parseWhen;
     private final List<String> tagsOnFailure;
     private final boolean overwriteIfDestinationExists;
+    private final boolean deleteSourceRequested;
 
     private final ExpressionEvaluator expressionEvaluator;
 
@@ -50,6 +51,7 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
         parseWhen = commonParseConfig.getParseWhen();
         tagsOnFailure = commonParseConfig.getTagsOnFailure();
         overwriteIfDestinationExists = commonParseConfig.getOverwriteIfDestinationExists();
+        deleteSourceRequested = commonParseConfig.isDeleteSourceRequested();
         this.expressionEvaluator = expressionEvaluator;
     }
 
@@ -92,6 +94,10 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                     writeToRoot(event, parsedValue);
                 } else if (overwriteIfDestinationExists || !event.containsKey(destination)) {
                     event.put(destination, parsedValue);
+                }
+
+                if(deleteSourceRequested) {
+                    event.delete(this.source);
                 }
             } catch (Exception e) {
                 LOG.error(EVENT, "An exception occurred while using the {} processor on Event [{}]", getProcessorName(), record.getData(), e);
