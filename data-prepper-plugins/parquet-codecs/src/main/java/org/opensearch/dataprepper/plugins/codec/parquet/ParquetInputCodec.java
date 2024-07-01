@@ -6,8 +6,9 @@
 package org.opensearch.dataprepper.plugins.codec.parquet;
 
 import org.apache.avro.generic.GenericRecord;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.avro.AvroParquetReader;
+import org.apache.parquet.conf.ParquetConfiguration;
+import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -46,13 +47,13 @@ public class ParquetInputCodec implements InputCodec {
 
     private static final Logger LOG = LoggerFactory.getLogger(ParquetInputCodec.class);
 
-    private final Configuration configuration;
+    private final ParquetConfiguration configuration;
     private final EventFactory eventFactory;
 
     @DataPrepperPluginConstructor
     public ParquetInputCodec(final EventFactory eventFactory) {
         this.eventFactory = eventFactory;
-        configuration = new Configuration();
+        configuration = new PlainParquetConfiguration();
         configuration.setBoolean(READ_INT96_AS_FIXED, true);
     }
 
@@ -80,8 +81,7 @@ public class ParquetInputCodec implements InputCodec {
     }
 
     private void parseParquetFile(final InputFile inputFile, final Consumer<Record<Event>> eventConsumer) throws IOException {
-        try (ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(inputFile)
-                .withConf(this.configuration)
+        try (ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(inputFile, this.configuration)
                 .build()) {
             GenericRecordJsonEncoder encoder = new GenericRecordJsonEncoder();
             GenericRecord record = null;
