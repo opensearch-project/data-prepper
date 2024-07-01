@@ -5,15 +5,17 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
-import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,9 +38,11 @@ public class DeleteEntryProcessorTests {
     @Mock
     private ExpressionEvaluator expressionEvaluator;
 
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
+
     @Test
     public void testSingleDeleteProcessorTest() {
-        when(mockConfig.getWithKeys()).thenReturn(new String[] { "message" });
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey("message", EventKeyFactory.EventAction.DELETE)));
         when(mockConfig.getDeleteWhen()).thenReturn(null);
 
         final DeleteEntryProcessor processor = createObjectUnderTest();
@@ -52,7 +56,7 @@ public class DeleteEntryProcessorTests {
 
     @Test
     public void testWithKeyDneDeleteProcessorTest() {
-        when(mockConfig.getWithKeys()).thenReturn(new String[] { "message2" });
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey("message2", EventKeyFactory.EventAction.DELETE)));
         when(mockConfig.getDeleteWhen()).thenReturn(null);
 
         final DeleteEntryProcessor processor = createObjectUnderTest();
@@ -67,7 +71,9 @@ public class DeleteEntryProcessorTests {
 
     @Test
     public void testMultiDeleteProcessorTest() {
-        when(mockConfig.getWithKeys()).thenReturn(new String[] { "message", "message2" });
+        when(mockConfig.getWithKeys()).thenReturn(List.of(
+                eventKeyFactory.createEventKey("message", EventKeyFactory.EventAction.DELETE),
+                eventKeyFactory.createEventKey("message2", EventKeyFactory.EventAction.DELETE)));
         when(mockConfig.getDeleteWhen()).thenReturn(null);
 
         final DeleteEntryProcessor processor = createObjectUnderTest();
@@ -83,7 +89,7 @@ public class DeleteEntryProcessorTests {
 
     @Test
     public void testKeyIsNotDeleted_when_deleteWhen_returns_false() {
-        when(mockConfig.getWithKeys()).thenReturn(new String[] { "message" });
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey("message", EventKeyFactory.EventAction.DELETE)));
         final String deleteWhen = UUID.randomUUID().toString();
         when(mockConfig.getDeleteWhen()).thenReturn(deleteWhen);
 
@@ -98,8 +104,9 @@ public class DeleteEntryProcessorTests {
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
     }
 
+    @Test
     public void testNestedDeleteProcessorTest() {
-        when(mockConfig.getWithKeys()).thenReturn(new String[]{"nested/foo"});
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey("nested/foo", EventKeyFactory.EventAction.DELETE)));
 
         Map<String, Object> nested = Map.of("foo", "bar", "fizz", 42);
 
