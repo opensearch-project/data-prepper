@@ -281,6 +281,42 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
     }
 
+    public int findInStartGroup3(final String str, int idx) {
+        if (idx < 0 || idx >= str.length()) {
+            return -1; // Invalid starting index
+        }
+
+        // Handle the special cases for the first two elements
+        for (int j = 0; j < startGroupStrings.length; j++) {
+            String startGroup = startGroupStrings[j];
+            int startGroupLen = startGroup.length();
+
+            if (idx + startGroupLen <= str.length()) { // Check boundary conditions first
+                boolean match = true;
+
+                // Check if characters match
+                for (int i = 0; i < startGroupLen; i++) {
+                    if (str.charAt(idx + i) != startGroup.charAt(i)) {
+                        match = false;
+                        break;
+                    }
+                }
+
+                if (match) {
+                    // For the first two elements, check for escape characters
+                    if (j <= 1) {
+                        if (idx == 0 || str.charAt(idx - 1) != '\\') {
+                            return j;
+                        }
+                    } else {
+                        return j;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
     public int findInStartGroup(final String str, int idx) {
         for (int j = 0; j < startGroupStrings.length; j++) {
             try {
