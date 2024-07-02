@@ -27,8 +27,8 @@ class ExportStatusTest {
 
     @ParameterizedTest
     @ArgumentsSource(ProvideTerminalStatusTestData.class)
-    void test_is_terminal_returns_expected_result(final String status, final boolean expected_result) {
-        assertThat(ExportStatus.isTerminal(status), equalTo(expected_result));
+    void test_is_terminal_returns_expected_result(final String status, final boolean expectedResult) {
+        assertThat(ExportStatus.isTerminal(status), equalTo(expectedResult));
     }
 
     static class ProvideTerminalStatusTestData implements ArgumentsProvider {

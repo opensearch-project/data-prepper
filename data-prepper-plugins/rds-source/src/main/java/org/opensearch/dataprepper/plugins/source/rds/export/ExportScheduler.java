@@ -122,8 +122,10 @@ public class ExportScheduler implements Runnable {
         }
 
         final String snapshotId = snapshotInfo.getSnapshotId();
+        final CheckSnapshotStatusRunner checkSnapshotStatusRunner = new CheckSnapshotStatusRunner(
+                snapshotId, snapshotManager, DEFAULT_SNAPSHOT_STATUS_CHECK_TIMEOUT);
         try {
-            checkSnapshotStatus(snapshotId, DEFAULT_SNAPSHOT_STATUS_CHECK_TIMEOUT);
+            checkSnapshotStatusRunner.run();
         } catch (Exception e) {
             LOG.warn("Check snapshot status for {} failed", snapshotId, e);
             sourceCoordinator.giveUpPartition(exportPartition);
@@ -155,28 +157,41 @@ public class ExportScheduler implements Runnable {
         sourceCoordinator.closePartition(exportPartition, DEFAULT_CLOSE_DURATION, DEFAULT_MAX_CLOSE_COUNT);
     }
 
-    private String checkSnapshotStatus(String snapshotId, Duration timeout) {
-        final Instant endTime = Instant.now().plus(timeout);
+    private static class CheckSnapshotStatusRunner implements Runnable {
+        private final String snapshotId;
+        private final SnapshotManager snapshotManager;
+        private final Duration timeout;
 
-        LOG.debug("Start checking status of snapshot {}", snapshotId);
-        while (Instant.now().isBefore(endTime)) {
-            SnapshotInfo snapshotInfo = snapshotManager.checkSnapshotStatus(snapshotId);
-            String status = snapshotInfo.getStatus();
-            // Valid snapshot statuses are: available, copying, creating
-            // The status should never be "copying" here
-            if (SnapshotStatus.AVAILABLE.getStatusName().equals(status)) {
-                LOG.info("Snapshot {} is available.", snapshotId);
-                return status;
-            }
-
-            LOG.debug("Snapshot {} is still creating. Wait and check later", snapshotId);
-            try {
-                Thread.sleep(DEFAULT_CHECK_STATUS_INTERVAL_MILLS);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+        public CheckSnapshotStatusRunner(final String snapshotId, final SnapshotManager snapshotManager, final Duration timeout) {
+            this.snapshotId = snapshotId;
+            this.snapshotManager = snapshotManager;
+            this.timeout = timeout;
         }
-        throw new RuntimeException("Snapshot status check timed out.");
+
+        @Override
+        public void run() {
+            final Instant endTime = Instant.now().plus(timeout);
+
+            LOG.debug("Start checking status of snapshot {}", snapshotId);
+            while (Instant.now().isBefore(endTime)) {
+                SnapshotInfo snapshotInfo = snapshotManager.checkSnapshotStatus(snapshotId);
+                String status = snapshotInfo.getStatus();
+                // Valid snapshot statuses are: available, copying, creating
+                // The status should never be "copying" here
+                if (SnapshotStatus.AVAILABLE.getStatusName().equals(status)) {
+                    LOG.info("Snapshot {} is available.", snapshotId);
+                    return;
+                }
+
+                LOG.debug("Snapshot {} is still creating. Wait and check later", snapshotId);
+                try {
+                    Thread.sleep(DEFAULT_CHECK_STATUS_INTERVAL_MILLS);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            throw new RuntimeException("Snapshot status check timed out.");
+        }
     }
 
     private String checkExportStatus(ExportPartition exportPartition) {
