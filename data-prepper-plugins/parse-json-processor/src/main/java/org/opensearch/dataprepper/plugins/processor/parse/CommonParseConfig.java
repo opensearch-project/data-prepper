@@ -54,4 +54,12 @@ public interface CommonParseConfig {
      * Defaults to true.
      */
     boolean getOverwriteIfDestinationExists();
+
+    /**
+     * An optional setting used to request dropping the original raw message after successfully parsing the input event.
+     * Defaults to false.
+     */
+    default boolean isDeleteSourceRequested() {
+        return false;
+    }
 }
