@@ -17,6 +17,8 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.PartitionFactory;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +49,7 @@ public class RdsSource implements Source<Record<Event>>, UsesEnhancedSourceCoord
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         Objects.requireNonNull(sourceCoordinator);
+        sourceCoordinator.createPartition(new LeaderPartition());
 
         rdsService = new RdsService(sourceCoordinator, sourceConfig, clientFactory, pluginMetrics);
 
@@ -70,6 +73,6 @@ public class RdsSource implements Source<Record<Event>>, UsesEnhancedSourceCoord
 
     @Override
     public Function<SourcePartitionStoreItem, EnhancedSourcePartition> getPartitionFactory() {
-        return null;
+        return new PartitionFactory();
     }
 }

@@ -56,7 +56,6 @@ class RdsServiceTest {
     @BeforeEach
     void setUp() {
         when(clientFactory.buildRdsClient()).thenReturn(rdsClient);
-
     }
 
     @Test
