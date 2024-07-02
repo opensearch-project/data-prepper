@@ -119,6 +119,7 @@ public class ParquetOutputCodecTest {
         parquetOutputCodec.complete(outputStream);
         List<Map<String, Object>> actualRecords = createParquetRecordsList(new FileInputStream(tempFile));
         int index = 0;
+        assertThat(inputMaps.size(), equalTo(actualRecords.size()));
         for (final Map<String, Object> actualMap : actualRecords) {
             assertThat(actualMap, notNullValue());
             Map expectedMap = inputMaps.get(index);
@@ -146,6 +147,7 @@ public class ParquetOutputCodecTest {
         parquetOutputCodec.complete(outputStream);
         List<Map<String, Object>> actualRecords = createParquetRecordsList(new FileInputStream(tempFile));
         int index = 0;
+        assertThat(inputMaps.size(), equalTo(actualRecords.size()));
         for (final Map<String, Object> actualMap : actualRecords) {
             assertThat(actualMap, notNullValue());
             Map expectedMap = inputMaps.get(index);
@@ -173,6 +175,7 @@ public class ParquetOutputCodecTest {
         parquetOutputCodec.complete(outputStream);
         List<Map<String, Object>> actualRecords = createParquetRecordsList(new FileInputStream(tempFile));
         int index = 0;
+        assertThat(inputMaps.size(), equalTo(actualRecords.size()));
         for (final Map<String, Object> actualMap : actualRecords) {
             assertThat(actualMap, notNullValue());
             Map expectedMap = inputMaps.get(index);
