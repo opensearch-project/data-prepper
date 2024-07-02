@@ -29,7 +29,7 @@ public class KafkaStartIT {
         try (AdminClient adminClient = AdminClient.create(props)) {
             await().atMost(Duration.ofMinutes(3))
                     .pollDelay(Duration.ofSeconds(2))
-                    .untilAsserted(() -> adminClient.listTopics().names().get());
+                    .until(() -> adminClient.listTopics().names().get() != null);
         }
     }
 }
