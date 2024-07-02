@@ -11,7 +11,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class AwsSecretsPluginConfigValueTranslator implements PluginConfigValueTranslator {
-    static final String AWS_SECRETS_PREFIX = "aws_secrets";
+    static final String DEPRECATED_AWS_SECRETS_PREFIX = "aws_secrets";
+    static final String AWS_SECRETS_PREFIX = "aws:secrets";
     static final String SECRET_CONFIGURATION_ID_GROUP = "secretConfigurationId";
     static final String SECRET_KEY_GROUP = "secretKey";
     static final Pattern SECRETS_REF_PATTERN = Pattern.compile(
@@ -37,6 +38,11 @@ public class AwsSecretsPluginConfigValueTranslator implements PluginConfigValueT
                     "Unable to parse %s or %s according to pattern %s",
                     SECRET_CONFIGURATION_ID_GROUP, SECRET_KEY_GROUP, SECRETS_REF_PATTERN.pattern()));
         }
+    }
+
+    @Override
+    public String getDeprecatedPrefix() {
+        return DEPRECATED_AWS_SECRETS_PREFIX;
     }
 
     @Override
