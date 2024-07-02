@@ -29,7 +29,7 @@ public class LeaderScheduler implements Runnable {
     private final RdsSourceConfig sourceConfig;
 
     private LeaderPartition leaderPartition;
-    private volatile boolean shutDownRequested = false;
+    private volatile boolean shutdownRequested = false;
 
     public LeaderScheduler(final EnhancedSourceCoordinator sourceCoordinator, final RdsSourceConfig sourceConfig) {
         this.sourceCoordinator = sourceCoordinator;
@@ -40,7 +40,7 @@ public class LeaderScheduler implements Runnable {
     public void run() {
         LOG.info("Starting Leader Scheduler for initialization.");
 
-        while (!shutDownRequested && !Thread.currentThread().isInterrupted()) {
+        while (!shutdownRequested && !Thread.currentThread().isInterrupted()) {
             try {
                 // Try to acquire the lease if not owned
                 if (leaderPartition == null) {
@@ -83,8 +83,8 @@ public class LeaderScheduler implements Runnable {
         }
     }
 
-    public void shutDown() {
-        shutDownRequested = true;
+    public void shutdown() {
+        shutdownRequested = true;
     }
 
     private void init() {

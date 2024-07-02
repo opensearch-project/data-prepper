@@ -124,7 +124,7 @@ class LeaderSchedulerTest {
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(leaderScheduler);
-        leaderScheduler.shutDown();
+        leaderScheduler.shutdown();
         verifyNoMoreInteractions(sourceCoordinator);
         executorService.shutdownNow();
     }

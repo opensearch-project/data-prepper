@@ -69,8 +69,8 @@ public class RdsService {
     public void shutdown() {
         if (executor != null) {
             LOG.info("shutdown RDS schedulers");
-            exportScheduler.shutDown();
-            leaderScheduler.shutDown();
+            exportScheduler.shutdown();
+            leaderScheduler.shutdown();
             executor.shutdownNow();
         }
     }

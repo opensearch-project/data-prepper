@@ -160,7 +160,7 @@ class ExportSchedulerTest {
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(exportScheduler);
-        exportScheduler.shutDown();
+        exportScheduler.shutdown();
         verifyNoMoreInteractions(sourceCoordinator, rdsClient);
         executorService.shutdownNow();
     }

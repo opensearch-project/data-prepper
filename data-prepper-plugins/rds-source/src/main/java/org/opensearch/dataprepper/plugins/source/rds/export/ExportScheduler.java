@@ -42,7 +42,7 @@ public class ExportScheduler implements Runnable {
     private final ExportTaskManager exportTaskManager;
     private final SnapshotManager snapshotManager;
 
-    private volatile boolean shutDownRequested = false;
+    private volatile boolean shutdownRequested = false;
 
     public ExportScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final RdsClient rdsClient,
@@ -58,7 +58,7 @@ public class ExportScheduler implements Runnable {
     @Override
     public void run() {
         LOG.debug("Start running Export Scheduler");
-        while (!shutDownRequested && !Thread.currentThread().isInterrupted()) {
+        while (!shutdownRequested && !Thread.currentThread().isInterrupted()) {
             try {
                 final Optional<EnhancedSourcePartition> sourcePartition = sourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE);
                 
@@ -97,8 +97,8 @@ public class ExportScheduler implements Runnable {
         executor.shutdownNow();
     }
 
-    public void shutDown() {
-        shutDownRequested = true;
+    public void shutdown() {
+        shutdownRequested = true;
     }
 
     private String getOrCreateExportTaskId(ExportPartition exportPartition) {
@@ -156,8 +156,7 @@ public class ExportScheduler implements Runnable {
     }
 
     private String checkSnapshotStatus(String snapshotId, Duration timeout) {
-        final Instant startTime = Instant.now();
-        final Instant endTime = startTime.plus(timeout);
+        final Instant endTime = Instant.now().plus(timeout);
 
         LOG.debug("Start checking status of snapshot {}", snapshotId);
         while (Instant.now().isBefore(endTime)) {
@@ -184,7 +183,7 @@ public class ExportScheduler implements Runnable {
         long lastCheckpointTime = System.currentTimeMillis();
         String exportTaskId = exportPartition.getProgressState().get().getExportTaskId();
 
-        LOG.debug("Start checking the status of export " + exportTaskId);
+        LOG.debug("Start checking the status of export {}", exportTaskId);
         while (true) {
             if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
                 sourceCoordinator.saveProgressStateForPartition(exportPartition, null);
@@ -194,7 +193,7 @@ public class ExportScheduler implements Runnable {
             // Valid statuses are: CANCELED, CANCELING, COMPLETE, FAILED, IN_PROGRESS, STARTING
             String status = exportTaskManager.checkExportStatus(exportTaskId);
             LOG.debug("Current export status is {}.", status);
-            if (ExportStatus.TERMINAL_STATUS_NAMES.contains(status)) {
+            if (ExportStatus.isTerminal(status)) {
                 LOG.info("Export {} is completed with final status {}", exportTaskId, status);
                 return status;
             }
