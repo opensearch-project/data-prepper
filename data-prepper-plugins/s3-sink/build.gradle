@@ -25,7 +25,7 @@ dependencies {
     }
     implementation 'org.apache.parquet:parquet-avro:1.14.0'
     implementation 'software.amazon.awssdk:apache-client'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:2.0.0'
     implementation libs.commons.lang3
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
