@@ -47,7 +47,7 @@ dependencies {
     testImplementation libs.avro.core
     testImplementation testLibs.hadoop.common
     testImplementation 'org.apache.parquet:parquet-avro:1.14.0'
-    testImplementation 'org.apache.parquet:parquet-column:1.14.0'
+    testImplementation 'org.apache.parquet:parquet-column:1.14.1'
     testImplementation 'org.apache.parquet:parquet-common:1.14.0'
     testImplementation 'org.apache.parquet:parquet-hadoop:1.14.0'
 }
