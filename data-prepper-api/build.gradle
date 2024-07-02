@@ -16,7 +16,7 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation libs.commons.lang3
     testImplementation project(':data-prepper-test-common')
-    testImplementation 'org.skyscreamer:jsonassert:1.5.1'
+    testImplementation 'org.skyscreamer:jsonassert:1.5.3'
     testImplementation libs.commons.io
 }
 
