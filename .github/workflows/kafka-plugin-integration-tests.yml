@@ -41,7 +41,7 @@ jobs:
         run: |
           echo 'KAFKA_VERSION=${{ matrix.kafka }}' > data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/.env
           docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/zookeeper --env-file  data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/.env up -d
-          sleep 10
+          sleep 2
       - name: Wait for Kafka
         run: |
           ./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaStartIT
