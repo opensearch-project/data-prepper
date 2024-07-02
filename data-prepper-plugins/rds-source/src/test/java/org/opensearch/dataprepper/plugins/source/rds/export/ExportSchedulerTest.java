@@ -37,10 +37,12 @@ import java.util.concurrent.Executors;
 
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 
@@ -150,6 +152,17 @@ class ExportSchedulerTest {
         verify(rdsClient).createDBSnapshot(any(CreateDbSnapshotRequest.class));
         verify(rdsClient).startExportTask(any(StartExportTaskRequest.class));
         verify(sourceCoordinator).completePartition(exportPartition);
+    }
+
+    @Test
+    void test_shutDown() {
+        lenient().when(sourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).thenReturn(Optional.empty());
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(exportScheduler);
+        exportScheduler.shutDown();
+        verifyNoMoreInteractions(sourceCoordinator, rdsClient);
+        executorService.shutdownNow();
     }
 
     private ExportScheduler createObjectUnderTest() {

@@ -8,6 +8,9 @@ package org.opensearch.dataprepper.plugins.source.rds.export;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -19,6 +22,7 @@ import software.amazon.awssdk.services.rds.model.StartExportTaskRequest;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -41,35 +45,14 @@ class ExportTaskManagerTest {
         exportTaskManager = createObjectUnderTest();
     }
 
-    @Test
-    void test_start_export_task_without_specifying_tables() {
-        final String snapshotArn = "arn:aws:rds:us-east-1:123456789012:snapshot:snapshot-0b5ae174";
-        final String iamRoleArn = "arn:aws:iam:us-east-1:123456789012:role:my-role";
-        final String bucket = "bucket";
-        final String prefix = "prefix";
+    @ParameterizedTest
+    @MethodSource("provideStartExportTaskTestParameters")
+    void test_start_export_task(List<String> exportOnly) {
+        final String snapshotArn = "arn:aws:rds:us-east-1:123456789012:snapshot:" + UUID.randomUUID();
+        final String iamRoleArn = "arn:aws:iam:us-east-1:123456789012:role:" +  UUID.randomUUID();
+        final String bucket = UUID.randomUUID().toString();
+        final String prefix = UUID.randomUUID().toString();
         final String kmsKey = UUID.randomUUID().toString();
-        final List<String> exportOnly = List.of();
-
-        exportTaskManager.startExportTask(snapshotArn, iamRoleArn, bucket, prefix, kmsKey, exportOnly);
-
-
-        final ArgumentCaptor<StartExportTaskRequest> exportTaskRequestArgumentCaptor =
-                ArgumentCaptor.forClass(StartExportTaskRequest.class);
-
-        verify(rdsClient).startExportTask(exportTaskRequestArgumentCaptor.capture());
-
-        final StartExportTaskRequest actualRequest = exportTaskRequestArgumentCaptor.getValue();
-        assertRequestParameters(actualRequest, snapshotArn, iamRoleArn, bucket, prefix, kmsKey, exportOnly);
-    }
-
-    @Test
-    void test_start_export_task_without_specifying_tables1() {
-        final String snapshotArn = "arn:aws:rds:us-east-1:123456789012:snapshot:snapshot-0b5ae174";
-        final String iamRoleArn = "arn:aws:iam:us-east-1:123456789012:role:my-role";
-        final String bucket = "bucket";
-        final String prefix = "prefix";
-        final String kmsKey = UUID.randomUUID().toString();
-        final List<String> exportOnly = List.of("my_db.cars", "my_db.houses");
 
         exportTaskManager.startExportTask(snapshotArn, iamRoleArn, bucket, prefix, kmsKey, exportOnly);
 
@@ -79,7 +62,12 @@ class ExportTaskManagerTest {
         verify(rdsClient).startExportTask(exportTaskRequestArgumentCaptor.capture());
 
         final StartExportTaskRequest actualRequest = exportTaskRequestArgumentCaptor.getValue();
-        assertRequestParameters(actualRequest, snapshotArn, iamRoleArn, bucket, prefix, kmsKey, exportOnly);
+        assertThat(actualRequest.sourceArn(), equalTo(snapshotArn));
+        assertThat(actualRequest.iamRoleArn(), equalTo(iamRoleArn));
+        assertThat(actualRequest.s3BucketName(), equalTo(bucket));
+        assertThat(actualRequest.s3Prefix(), equalTo(prefix));
+        assertThat(actualRequest.kmsKeyId(), equalTo(kmsKey));
+        assertThat(actualRequest.exportOnly(), equalTo(exportOnly));
     }
 
     @Test
@@ -100,22 +88,17 @@ class ExportTaskManagerTest {
         assertThat(actualRequest.exportTaskIdentifier(), equalTo(exportTaskId));
     }
 
-    private ExportTaskManager createObjectUnderTest() {
-        return new ExportTaskManager(rdsClient);
+    private static Stream<Arguments> provideStartExportTaskTestParameters() {
+        final String tableName1 = UUID.randomUUID().toString();
+        final String tableName2 = UUID.randomUUID().toString();
+        return Stream.of(
+                Arguments.of(List.of()),
+                Arguments.of(List.of(tableName1)),
+                Arguments.of(List.of(tableName1, tableName2))
+        );
     }
 
-    private void assertRequestParameters(final StartExportTaskRequest request,
-                                         final String sourceArn,
-                                         final String iamRoleArn,
-                                         final String bucket,
-                                         final String prefix,
-                                         final String kmsKey,
-                                         final List<String> exportOnly) {
-        assertThat(request.sourceArn(), equalTo(sourceArn));
-        assertThat(request.iamRoleArn(), equalTo(iamRoleArn));
-        assertThat(request.s3BucketName(), equalTo(bucket));
-        assertThat(request.s3Prefix(), equalTo(prefix));
-        assertThat(request.kmsKeyId(), equalTo(kmsKey));
-        assertThat(request.exportOnly(), equalTo(exportOnly));
+    private ExportTaskManager createObjectUnderTest() {
+        return new ExportTaskManager(rdsClient);
     }
 }

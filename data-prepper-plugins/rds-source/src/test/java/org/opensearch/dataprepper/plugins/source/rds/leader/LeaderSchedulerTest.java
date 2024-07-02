@@ -33,6 +33,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 
@@ -115,6 +116,17 @@ class LeaderSchedulerTest {
         verify(sourceCoordinator, never()).createPartition(any(GlobalState.class));
         verify(sourceCoordinator, never()).createPartition(any(ExportPartition.class));
         verify(sourceCoordinator).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
+    }
+
+    @Test
+    void test_shutDown() {
+        lenient().when(sourceCoordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).thenReturn(Optional.empty());
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(leaderScheduler);
+        leaderScheduler.shutDown();
+        verifyNoMoreInteractions(sourceCoordinator);
+        executorService.shutdownNow();
     }
 
     private LeaderScheduler createObjectUnderTest() {

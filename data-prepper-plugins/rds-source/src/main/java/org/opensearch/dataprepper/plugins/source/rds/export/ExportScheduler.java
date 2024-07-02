@@ -10,12 +10,15 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportProgressState;
+import org.opensearch.dataprepper.plugins.source.rds.model.ExportStatus;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
+import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.rds.RdsClient;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -30,17 +33,16 @@ public class ExportScheduler implements Runnable {
     private static final int DEFAULT_MAX_CLOSE_COUNT = 36;
     private static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 5 * 60_000;
     private static final int DEFAULT_CHECK_STATUS_INTERVAL_MILLS = 30 * 1000;
+    private static final Duration DEFAULT_SNAPSHOT_STATUS_CHECK_TIMEOUT = Duration.ofMinutes(60);
 
     private final RdsClient rdsClient;
-
     private final PluginMetrics pluginMetrics;
-
     private final EnhancedSourceCoordinator sourceCoordinator;
-
     private final ExecutorService executor;
-
     private final ExportTaskManager exportTaskManager;
     private final SnapshotManager snapshotManager;
+
+    private volatile boolean shutDownRequested = false;
 
     public ExportScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final RdsClient rdsClient,
@@ -56,13 +58,13 @@ public class ExportScheduler implements Runnable {
     @Override
     public void run() {
         LOG.debug("Start running Export Scheduler");
-        while (!Thread.currentThread().isInterrupted()) {
+        while (!shutDownRequested && !Thread.currentThread().isInterrupted()) {
             try {
                 final Optional<EnhancedSourcePartition> sourcePartition = sourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE);
                 
                 if (sourcePartition.isPresent()) {
                     ExportPartition exportPartition = (ExportPartition) sourcePartition.get();
-                    LOG.debug("Acquired an export partition: " + exportPartition.getPartitionKey());
+                    LOG.debug("Acquired an export partition: {}", exportPartition.getPartitionKey());
 
                     String exportTaskId = getOrCreateExportTaskId(exportPartition);
 
@@ -95,6 +97,10 @@ public class ExportScheduler implements Runnable {
         executor.shutdownNow();
     }
 
+    public void shutDown() {
+        shutDownRequested = true;
+    }
+
     private String getOrCreateExportTaskId(ExportPartition exportPartition) {
         ExportProgressState progressState = exportPartition.getProgressState().get();
 
@@ -117,10 +123,11 @@ public class ExportScheduler implements Runnable {
 
         final String snapshotId = snapshotInfo.getSnapshotId();
         try {
-            checkSnapshotStatus(snapshotId);
+            checkSnapshotStatus(snapshotId, DEFAULT_SNAPSHOT_STATUS_CHECK_TIMEOUT);
         } catch (Exception e) {
             LOG.warn("Check snapshot status for {} failed", snapshotId, e);
             sourceCoordinator.giveUpPartition(exportPartition);
+            return null;
         }
 
         LOG.info("Creating an export task for db {} from snapshot {}", exportPartition.getDbIdentifier(), snapshotId);
@@ -135,6 +142,7 @@ public class ExportScheduler implements Runnable {
         } else {
             LOG.error("The export task failed to create, it will be retried");
             closeExportPartitionWithError(exportPartition);
+            return null;
         }
 
         return exportTaskId;
@@ -147,14 +155,17 @@ public class ExportScheduler implements Runnable {
         sourceCoordinator.closePartition(exportPartition, DEFAULT_CLOSE_DURATION, DEFAULT_MAX_CLOSE_COUNT);
     }
 
-    private String checkSnapshotStatus(String snapshotId) {
+    private String checkSnapshotStatus(String snapshotId, Duration timeout) {
+        final Instant startTime = Instant.now();
+        final Instant endTime = startTime.plus(timeout);
+
         LOG.debug("Start checking status of snapshot {}", snapshotId);
-        while (true) {
+        while (Instant.now().isBefore(endTime)) {
             SnapshotInfo snapshotInfo = snapshotManager.checkSnapshotStatus(snapshotId);
             String status = snapshotInfo.getStatus();
             // Valid snapshot statuses are: available, copying, creating
             // The status should never be "copying" here
-            if ("available".equals(status)) {
+            if (SnapshotStatus.AVAILABLE.getStatusName().equals(status)) {
                 LOG.info("Snapshot {} is available.", snapshotId);
                 return status;
             }
@@ -166,6 +177,7 @@ public class ExportScheduler implements Runnable {
                 throw new RuntimeException(e);
             }
         }
+        throw new RuntimeException("Snapshot status check timed out.");
     }
 
     private String checkExportStatus(ExportPartition exportPartition) {
@@ -182,7 +194,7 @@ public class ExportScheduler implements Runnable {
             // Valid statuses are: CANCELED, CANCELING, COMPLETE, FAILED, IN_PROGRESS, STARTING
             String status = exportTaskManager.checkExportStatus(exportTaskId);
             LOG.debug("Current export status is {}.", status);
-            if ("COMPLETE".equals(status) || "FAILED".equals(status) || "CANCELED".equals(status)) {
+            if (ExportStatus.TERMINAL_STATUS_NAMES.contains(status)) {
                 LOG.info("Export {} is completed with final status {}", exportTaskId, status);
                 return status;
             }
@@ -201,7 +213,7 @@ public class ExportScheduler implements Runnable {
                 LOG.warn("Check export status for {} failed", exportPartition.getPartitionKey(), ex);
                 sourceCoordinator.giveUpPartition(exportPartition);
             } else {
-                if (!"COMPLETE".equals(status)) {
+                if (!ExportStatus.COMPLETE.name().equals(status)) {
                     LOG.error("Export failed with status {}", status);
                     closeExportPartitionWithError(exportPartition);
                     return;
