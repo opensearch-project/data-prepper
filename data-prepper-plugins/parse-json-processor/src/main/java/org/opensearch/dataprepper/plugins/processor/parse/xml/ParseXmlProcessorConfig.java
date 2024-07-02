@@ -65,6 +65,11 @@ public class ParseXmlProcessorConfig implements CommonParseConfig {
         if (Objects.isNull(destination)) return true;
 
         final String trimmedDestination = destination.trim();
-        return trimmedDestination.length() != 0 && !(trimmedDestination.equals("/"));
+        return !trimmedDestination.isEmpty() && !(trimmedDestination.equals("/"));
+    }
+
+    @Override
+    public boolean isDeleteSourceRequested() {
+        return false;
     }
 }

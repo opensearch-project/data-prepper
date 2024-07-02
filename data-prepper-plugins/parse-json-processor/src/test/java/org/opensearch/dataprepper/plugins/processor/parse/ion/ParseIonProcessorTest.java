@@ -48,6 +48,7 @@ class ParseIonProcessorTest extends ParseJsonProcessorTest {
         final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
 
         assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
+        assertThat(parsedEvent.get(processorConfig.getSource(), Object.class), equalTo(serializedMessage));
         assertThat(parsedEvent.get("bareKey", Integer.class), equalTo(1));
         assertThat(parsedEvent.get("symbol", String.class), equalTo("SYMBOL"));
         assertThat(parsedEvent.get("timestamp", String.class), equalTo("2023-11-30T21:05:23.383Z"));
