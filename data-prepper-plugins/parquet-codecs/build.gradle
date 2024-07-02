@@ -10,7 +10,7 @@ dependencies {
     implementation 'org.apache.commons:commons-text:1.11.0'
     implementation 'org.apache.parquet:parquet-avro:1.14.0'
     implementation 'org.apache.parquet:parquet-column:1.14.0'
-    implementation 'org.apache.parquet:parquet-common:1.14.0'
+    implementation 'org.apache.parquet:parquet-common:1.14.1'
     implementation 'org.apache.parquet:parquet-hadoop:1.14.0'
     runtimeOnly(libs.hadoop.common) {
         exclude group: 'org.eclipse.jetty'
