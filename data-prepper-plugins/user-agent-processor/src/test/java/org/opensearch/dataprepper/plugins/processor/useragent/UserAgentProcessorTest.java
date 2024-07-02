@@ -12,8 +12,10 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 
@@ -38,11 +40,13 @@ class UserAgentProcessorTest {
     @Mock
     private UserAgentProcessorConfig mockConfig;
 
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
+
     @ParameterizedTest
     @MethodSource("userAgentStringArguments")
     public void testParsingUserAgentStrings(
             String uaString, String uaName, String uaVersion, String osName, String osVersion, String osFull, String deviceName) {
-        when(mockConfig.getSource()).thenReturn("source");
+        when(mockConfig.getSource()).thenReturn(eventKeyFactory.createEventKey("source"));
         when(mockConfig.getTarget()).thenReturn("user_agent");
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
 
@@ -64,7 +68,7 @@ class UserAgentProcessorTest {
     @MethodSource("userAgentStringArguments")
     public void testParsingUserAgentStringsWithCustomTarget(
             String uaString, String uaName, String uaVersion, String osName, String osVersion, String osFull, String deviceName) {
-        when(mockConfig.getSource()).thenReturn("source");
+        when(mockConfig.getSource()).thenReturn(eventKeyFactory.createEventKey("source"));
         when(mockConfig.getTarget()).thenReturn("my_target");
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
 
@@ -86,7 +90,7 @@ class UserAgentProcessorTest {
     @MethodSource("userAgentStringArguments")
     public void testParsingUserAgentStringsExcludeOriginal(
             String uaString, String uaName, String uaVersion, String osName, String osVersion, String osFull, String deviceName) {
-        when(mockConfig.getSource()).thenReturn("source");
+        when(mockConfig.getSource()).thenReturn(eventKeyFactory.createEventKey("source"));
         when(mockConfig.getTarget()).thenReturn("user_agent");
         when(mockConfig.getExcludeOriginal()).thenReturn(true);
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
@@ -107,8 +111,9 @@ class UserAgentProcessorTest {
 
     @Test
     public void testParsingWhenUserAgentStringNotExist() {
-        when(mockConfig.getSource()).thenReturn("bad_source");
+        when(mockConfig.getSource()).thenReturn(eventKeyFactory.createEventKey("bad_source"));
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
+        when(mockConfig.getTarget()).thenReturn("user_agent");
 
         final UserAgentProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(UUID.randomUUID().toString());
@@ -120,8 +125,9 @@ class UserAgentProcessorTest {
 
     @Test
     public void testTagsAddedOnParseFailure() {
-        when(mockConfig.getSource()).thenReturn("bad_source");
+        when(mockConfig.getSource()).thenReturn(eventKeyFactory.createEventKey("bad_source"));
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
+        when(mockConfig.getTarget()).thenReturn("user_agent");
 
         final String tagOnFailure1 = UUID.randomUUID().toString();
         final String tagOnFailure2 = UUID.randomUUID().toString();
@@ -138,7 +144,7 @@ class UserAgentProcessorTest {
     }
 
     private UserAgentProcessor createObjectUnderTest() {
-        return new UserAgentProcessor(pluginMetrics, mockConfig);
+        return new UserAgentProcessor(mockConfig, eventKeyFactory, pluginMetrics);
     }
 
     private Record<Event> createTestRecord(String uaString) {

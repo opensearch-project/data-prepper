@@ -8,6 +8,9 @@ package org.opensearch.dataprepper.plugins.processor.useragent;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.util.List;
 
@@ -18,7 +21,8 @@ public class UserAgentProcessorConfig {
     @NotEmpty
     @NotNull
     @JsonProperty("source")
-    private String source;
+    @EventKeyConfiguration(EventKeyFactory.EventAction.GET)
+    private EventKey source;
 
     @NotNull
     @JsonProperty("target")
@@ -34,7 +38,7 @@ public class UserAgentProcessorConfig {
     @JsonProperty("tags_on_parse_failure")
     private List<String> tagsOnParseFailure;
 
-    public String getSource() {
+    public EventKey getSource() {
         return source;
     }
 
