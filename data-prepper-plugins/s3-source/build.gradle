@@ -45,7 +45,11 @@ dependencies {
     testImplementation project(':data-prepper-plugins:parquet-codecs')
     testImplementation project(':data-prepper-test-event')
     testImplementation libs.avro.core
-    testImplementation libs.hadoop.common
+    testImplementation(libs.hadoop.common)  {
+        exclude group: 'org.eclipse.jetty'
+        exclude group: 'org.apache.hadoop', module: 'hadoop-auth'
+        exclude group: 'org.apache.zookeeper', module: 'zookeeper'
+    }
     testImplementation libs.parquet.avro
     testImplementation libs.parquet.column
     testImplementation libs.parquet.hadoop

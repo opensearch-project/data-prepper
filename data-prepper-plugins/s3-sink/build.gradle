@@ -22,6 +22,7 @@ dependencies {
     implementation(libs.hadoop.common) {
         exclude group: 'org.eclipse.jetty'
         exclude group: 'org.apache.hadoop', module: 'hadoop-auth'
+        exclude group: 'org.apache.zookeeper', module: 'zookeeper'
     }
     implementation libs.parquet.avro
     implementation 'software.amazon.awssdk:apache-client'
