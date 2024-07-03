@@ -30,6 +30,9 @@ public class ParseXmlProcessorConfig implements CommonParseConfig {
     @JsonProperty("overwrite_if_destination_exists")
     private boolean overwriteIfDestinationExists = true;
 
+    @JsonProperty
+    private boolean deleteSource = false;
+
     @Override
     public String getSource() {
         return source;
@@ -70,6 +73,6 @@ public class ParseXmlProcessorConfig implements CommonParseConfig {
 
     @Override
     public boolean isDeleteSourceRequested() {
-        return false;
+        return deleteSource;
     }
 }
