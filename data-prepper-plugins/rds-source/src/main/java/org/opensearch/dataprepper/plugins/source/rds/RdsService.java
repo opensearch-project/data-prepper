@@ -29,6 +29,8 @@ public class RdsService {
     private final PluginMetrics pluginMetrics;
     private final RdsSourceConfig sourceConfig;
     private ExecutorService executor;
+    private LeaderScheduler leaderScheduler;
+    private ExportScheduler exportScheduler;
 
     public RdsService(final EnhancedSourceCoordinator sourceCoordinator,
                       final RdsSourceConfig sourceConfig,
@@ -51,8 +53,10 @@ public class RdsService {
     public void start(Buffer<Record<Event>> buffer) {
         LOG.info("Start running RDS service");
         final List<Runnable> runnableList = new ArrayList<>();
-        runnableList.add(new LeaderScheduler(sourceCoordinator, sourceConfig));
-        runnableList.add(new ExportScheduler(sourceCoordinator, rdsClient, pluginMetrics));
+        leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig);
+        exportScheduler = new ExportScheduler(sourceCoordinator, rdsClient, pluginMetrics);
+        runnableList.add(leaderScheduler);
+        runnableList.add(exportScheduler);
 
         executor = Executors.newFixedThreadPool(runnableList.size());
         runnableList.forEach(executor::submit);
@@ -65,6 +69,8 @@ public class RdsService {
     public void shutdown() {
         if (executor != null) {
             LOG.info("shutdown RDS schedulers");
+            exportScheduler.shutdown();
+            leaderScheduler.shutdown();
             executor.shutdownNow();
         }
     }
