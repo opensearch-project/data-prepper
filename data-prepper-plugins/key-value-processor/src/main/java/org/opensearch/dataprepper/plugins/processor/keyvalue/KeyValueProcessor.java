@@ -281,7 +281,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
     }
 
-    public int findInStartGroup(final String str, int idx) {
+    private int findInStartGroup(final String str, final int idx) {
         if (idx < 0 || idx >= str.length()) {
             return -1; // Invalid starting index
         }
