@@ -23,7 +23,7 @@ dependencies {
         exclude group: 'org.eclipse.jetty'
         exclude group: 'org.apache.hadoop', module: 'hadoop-auth'
     }
-    implementation 'org.apache.parquet:parquet-avro:1.14.0'
+    implementation libs.parquet.avro
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22'
     implementation libs.commons.lang3
