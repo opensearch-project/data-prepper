@@ -61,6 +61,22 @@ public class ParseXmlProcessorTest {
     }
 
     @Test
+    void test_when_deleteSourceFlagEnabled() {
+
+        final String tagOnFailure = UUID.randomUUID().toString();
+        when(processorConfig.getTagsOnFailure()).thenReturn(List.of(tagOnFailure));
+        when(processorConfig.isDeleteSourceRequested()).thenReturn(true);
+
+        parseXmlProcessor = createObjectUnderTest();
+
+        final String serializedMessage = "<Person><name>John Doe</name><age>30</age></Person>";
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(false));
+        assertThat(parsedEvent.get("name", String.class), equalTo("John Doe"));
+        assertThat(parsedEvent.get("age", String.class), equalTo("30"));
+    }
+
+    @Test
     void test_when_using_invalid_xml_tags_correctly() {
 
         final String tagOnFailure = UUID.randomUUID().toString();

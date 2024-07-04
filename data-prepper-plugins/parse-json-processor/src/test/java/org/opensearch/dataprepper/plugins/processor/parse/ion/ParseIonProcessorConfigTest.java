@@ -57,6 +57,9 @@ public class ParseIonProcessorConfigTest {
             setField(ParseIonProcessorConfig.class, config, "tagsOnFailure", tagsList);
 
             assertThat(config.getTagsOnFailure(), equalTo(tagsList));
+
+            setField(ParseIonProcessorConfig.class, config, "deleteSource", true);
+            assertThat(config.isDeleteSourceRequested(), equalTo(true));
         }
     }
 }
