@@ -30,12 +30,7 @@ dependencies {
     testImplementation testLibs.bundles.junit
     testImplementation testLibs.bundles.mockito
     testImplementation testLibs.hamcrest
-    testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
-    testImplementation 'org.powermock:powermock-api-mockito2:2.0.9'
     testImplementation 'org.assertj:assertj-core:3.20.2'
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
-    testImplementation 'org.powermock:powermock-api-mockito2:2.0.9'
     compileOnly 'org.projectlombok:lombok:1.18.20'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'
 }

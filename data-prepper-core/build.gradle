@@ -60,7 +60,6 @@ dependencies {
     implementation 'software.amazon.awssdk:servicediscovery'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation testLibs.junit.vintage
-    testImplementation testLibs.mockito.inline
     testImplementation libs.commons.lang3
     testImplementation project(':data-prepper-test-event')
     testImplementation project(':data-prepper-test-common')

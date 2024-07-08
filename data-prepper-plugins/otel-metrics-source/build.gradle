@@ -31,7 +31,6 @@ dependencies {
     implementation libs.bouncycastle.bcprov
     implementation libs.bouncycastle.bcpkix
     testImplementation 'org.assertj:assertj-core:3.25.3'
-    testImplementation testLibs.mockito.inline
     testImplementation libs.commons.io
 }
 

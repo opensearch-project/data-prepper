@@ -74,7 +74,7 @@ dependencyResolutionManagement {
         }
         testLibs {
             version('junit', '5.8.2')
-            version('mockito', '3.11.2')
+            version('mockito', '5.12.0')
             version('hamcrest', '2.2')
             version('awaitility', '4.2.0')
             version('spring', '5.3.28')
