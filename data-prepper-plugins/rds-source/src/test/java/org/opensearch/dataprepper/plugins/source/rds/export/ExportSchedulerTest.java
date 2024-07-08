@@ -15,6 +15,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportProgressState;
 import software.amazon.awssdk.services.rds.RdsClient;
@@ -27,9 +28,14 @@ import software.amazon.awssdk.services.rds.model.DescribeExportTasksRequest;
 import software.amazon.awssdk.services.rds.model.DescribeExportTasksResponse;
 import software.amazon.awssdk.services.rds.model.StartExportTaskRequest;
 import software.amazon.awssdk.services.rds.model.StartExportTaskResponse;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -44,6 +50,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler.PARQUET_SUFFIX;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -54,6 +61,9 @@ class ExportSchedulerTest {
 
     @Mock
     private RdsClient rdsClient;
+
+    @Mock
+    private S3Client s3Client;
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -96,6 +106,18 @@ class ExportSchedulerTest {
         when(describeExportTasksResponse.exportTasks().get(0).status()).thenReturn("COMPLETE");
         when(rdsClient.describeExportTasks(any(DescribeExportTasksRequest.class))).thenReturn(describeExportTasksResponse);
 
+        // Mock list s3 objects response
+        ListObjectsV2Response listObjectsV2Response = mock(ListObjectsV2Response.class);
+        String exportTaskId = UUID.randomUUID().toString();
+        String tableName = UUID.randomUUID().toString();
+        // objectKey needs to have this structure: "{prefix}/{export task ID}/{database name}/{table name}/..."
+        S3Object s3Object = S3Object.builder()
+                .key("prefix/" + exportTaskId + "/my_db/" + tableName + PARQUET_SUFFIX)
+                .build();
+        when(listObjectsV2Response.contents()).thenReturn(List.of(s3Object));
+        when(listObjectsV2Response.isTruncated()).thenReturn(false);
+        when(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).thenReturn(listObjectsV2Response);
+
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(exportScheduler);
         await().atMost(Duration.ofSeconds(1))
@@ -103,6 +125,7 @@ class ExportSchedulerTest {
         Thread.sleep(100);
         executorService.shutdownNow();
 
+        verify(sourceCoordinator).createPartition(any(DataFilePartition.class));
         verify(sourceCoordinator).completePartition(exportPartition);
         verify(rdsClient, never()).startExportTask(any(StartExportTaskRequest.class));
         verify(rdsClient, never()).createDBSnapshot(any(CreateDbSnapshotRequest.class));
@@ -110,7 +133,7 @@ class ExportSchedulerTest {
 
 
     @Test
-    void test_given_export_partition_and_no_task_id_then_start_and_complete_export() throws InterruptedException {
+    void test_given_export_partition_without_task_id_then_start_and_complete_export() throws InterruptedException {
         when(sourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).thenReturn(Optional.of(exportPartition));
         when(exportPartition.getPartitionKey()).thenReturn(UUID.randomUUID().toString());
         when(exportProgressState.getExportTaskId()).thenReturn(null).thenReturn(UUID.randomUUID().toString());
@@ -142,6 +165,18 @@ class ExportSchedulerTest {
         when(describeExportTasksResponse.exportTasks().get(0).status()).thenReturn("COMPLETE");
         when(rdsClient.describeExportTasks(any(DescribeExportTasksRequest.class))).thenReturn(describeExportTasksResponse);
 
+        // Mock list s3 objects response
+        ListObjectsV2Response listObjectsV2Response = mock(ListObjectsV2Response.class);
+        String exportTaskId = UUID.randomUUID().toString();
+        String tableName = UUID.randomUUID().toString();
+        // objectKey needs to have this structure: "{prefix}/{export task ID}/{database name}/{table name}/..."
+        S3Object s3Object = S3Object.builder()
+                .key("prefix/" + exportTaskId + "/my_db/" + tableName + PARQUET_SUFFIX)
+                .build();
+        when(listObjectsV2Response.contents()).thenReturn(List.of(s3Object));
+        when(listObjectsV2Response.isTruncated()).thenReturn(false);
+        when(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).thenReturn(listObjectsV2Response);
+
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(exportScheduler);
         await().atMost(Duration.ofSeconds(1))
@@ -151,6 +186,7 @@ class ExportSchedulerTest {
 
         verify(rdsClient).createDBSnapshot(any(CreateDbSnapshotRequest.class));
         verify(rdsClient).startExportTask(any(StartExportTaskRequest.class));
+        verify(sourceCoordinator).createPartition(any(DataFilePartition.class));
         verify(sourceCoordinator).completePartition(exportPartition);
     }
 
@@ -166,6 +202,6 @@ class ExportSchedulerTest {
     }
 
     private ExportScheduler createObjectUnderTest() {
-        return new ExportScheduler(sourceCoordinator, rdsClient, pluginMetrics);
+        return new ExportScheduler(sourceCoordinator, rdsClient, s3Client, pluginMetrics);
     }
 }

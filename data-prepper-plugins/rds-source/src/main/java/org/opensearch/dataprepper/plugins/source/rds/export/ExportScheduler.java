@@ -44,7 +44,7 @@ public class ExportScheduler implements Runnable {
     private static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 5 * 60_000;
     private static final int DEFAULT_CHECK_STATUS_INTERVAL_MILLS = 30 * 1000;
     private static final Duration DEFAULT_SNAPSHOT_STATUS_CHECK_TIMEOUT = Duration.ofMinutes(60);
-    private static final String PARQUET_SUFFIX = ".parquet";
+    static final String PARQUET_SUFFIX = ".parquet";
 
     private final RdsClient rdsClient;
     private final S3Client s3Client;

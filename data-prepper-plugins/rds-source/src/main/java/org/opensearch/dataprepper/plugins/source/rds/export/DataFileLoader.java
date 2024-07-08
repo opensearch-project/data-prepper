@@ -23,22 +23,6 @@ import java.time.Duration;
 public class DataFileLoader implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(DataFileLoader.class);
-
-    /**
-     * A flag to interrupt the process
-     */
-    private static volatile boolean shouldStop = false;
-
-    /**
-     * Number of lines to be read in a batch
-     */
-    private static final int DEFAULT_BATCH_SIZE = 1000;
-
-    /**
-     * Default regular checkpoint interval
-     */
-    private static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 2 * 60_000;
-
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
 
