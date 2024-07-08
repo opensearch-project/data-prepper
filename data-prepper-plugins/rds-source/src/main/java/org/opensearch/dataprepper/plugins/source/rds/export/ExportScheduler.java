@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -85,7 +86,8 @@ public class ExportScheduler implements Runnable {
                         LOG.error("The export to S3 failed, it will be retried");
                         closeExportPartitionWithError(exportPartition);
                     } else {
-                        CompletableFuture<String> checkStatus = CompletableFuture.supplyAsync(() -> checkExportStatus(exportPartition), executor);
+                        CheckExportStatusRunner checkExportStatusRunner = new CheckExportStatusRunner(sourceCoordinator, exportTaskManager, exportPartition);
+                        CompletableFuture<String> checkStatus = CompletableFuture.supplyAsync(checkExportStatusRunner::call, executor);
                         checkStatus.whenComplete(completeExport(exportPartition));
                     }
                 }
@@ -192,29 +194,46 @@ public class ExportScheduler implements Runnable {
         throw new RuntimeException("Snapshot status check timed out.");
     }
 
-    private String checkExportStatus(ExportPartition exportPartition) {
-        long lastCheckpointTime = System.currentTimeMillis();
-        String exportTaskId = exportPartition.getProgressState().get().getExportTaskId();
+    static class CheckExportStatusRunner implements Callable<String> {
+        private final EnhancedSourceCoordinator sourceCoordinator;
+        private final ExportTaskManager exportTaskManager;
+        private final ExportPartition exportPartition;
 
-        LOG.debug("Start checking the status of export {}", exportTaskId);
-        while (true) {
-            if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
-                sourceCoordinator.saveProgressStateForPartition(exportPartition, null);
-                lastCheckpointTime = System.currentTimeMillis();
-            }
+        CheckExportStatusRunner(EnhancedSourceCoordinator sourceCoordinator, ExportTaskManager exportTaskManager, ExportPartition exportPartition) {
+            this.sourceCoordinator = sourceCoordinator;
+            this.exportTaskManager = exportTaskManager;
+            this.exportPartition = exportPartition;
+        }
 
-            // Valid statuses are: CANCELED, CANCELING, COMPLETE, FAILED, IN_PROGRESS, STARTING
-            String status = exportTaskManager.checkExportStatus(exportTaskId);
-            LOG.debug("Current export status is {}.", status);
-            if (ExportStatus.isTerminal(status)) {
-                LOG.info("Export {} is completed with final status {}", exportTaskId, status);
-                return status;
-            }
-            LOG.debug("Export {} is still running in progress. Wait and check later", exportTaskId);
-            try {
-                Thread.sleep(DEFAULT_CHECK_STATUS_INTERVAL_MILLS);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+        @Override
+        public String call() {
+            return checkExportStatus(exportPartition);
+        }
+
+        private String checkExportStatus(ExportPartition exportPartition) {
+            long lastCheckpointTime = System.currentTimeMillis();
+            String exportTaskId = exportPartition.getProgressState().get().getExportTaskId();
+
+            LOG.debug("Start checking the status of export {}", exportTaskId);
+            while (true) {
+                if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
+                    sourceCoordinator.saveProgressStateForPartition(exportPartition, null);
+                    lastCheckpointTime = System.currentTimeMillis();
+                }
+
+                // Valid statuses are: CANCELED, CANCELING, COMPLETE, FAILED, IN_PROGRESS, STARTING
+                String status = exportTaskManager.checkExportStatus(exportTaskId);
+                LOG.debug("Current export status is {}.", status);
+                if (ExportStatus.isTerminal(status)) {
+                    LOG.info("Export {} is completed with final status {}", exportTaskId, status);
+                    return status;
+                }
+                LOG.debug("Export {} is still running in progress. Wait and check later", exportTaskId);
+                try {
+                    Thread.sleep(DEFAULT_CHECK_STATUS_INTERVAL_MILLS);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
     }
