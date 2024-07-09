@@ -23,16 +23,20 @@ public class MetricsTestUtil {
 
     public static synchronized void initMetrics() {
         final Set<MeterRegistry> registries = new HashSet<>(Metrics.globalRegistry.getRegistries());
-        registries.forEach(meterRegistry -> Metrics.globalRegistry.remove(meterRegistry));
+        registries.forEach(Metrics.globalRegistry::remove);
 
         final List<Meter> meters = new ArrayList<>(Metrics.globalRegistry.getMeters());
-        meters.forEach(meter -> Metrics.globalRegistry.remove(meter));
+        meters.forEach(Metrics.globalRegistry::remove);
 
         Metrics.addRegistry(new SimpleMeterRegistry());
     }
 
     public static synchronized List<Measurement> getMeasurementList(final String meterName) {
-        return StreamSupport.stream(getRegistry().find(meterName).meter().measure().spliterator(), false)
+        final Meter meter = getRegistry().find(meterName).meter();
+        if(meter == null)
+            throw new RuntimeException("No metrics meter is available for " + meterName);
+
+        return StreamSupport.stream(meter.measure().spliterator(), false)
                 .collect(Collectors.toList());
     }
 
