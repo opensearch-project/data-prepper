@@ -17,13 +17,13 @@ import java.util.stream.StreamSupport;
 
 public class MetricsTestUtil {
 
-    public static void initMetrics() {
+    public static synchronized void initMetrics() {
         Metrics.globalRegistry.getRegistries().forEach(meterRegistry -> Metrics.globalRegistry.remove(meterRegistry));
         Metrics.globalRegistry.getMeters().forEach(meter -> Metrics.globalRegistry.remove(meter));
         Metrics.addRegistry(new SimpleMeterRegistry());
     }
 
-    public static List<Measurement> getMeasurementList(final String meterName) {
+    public static synchronized List<Measurement> getMeasurementList(final String meterName) {
         return StreamSupport.stream(getRegistry().find(meterName).meter().measure().spliterator(), false)
                 .collect(Collectors.toList());
     }
