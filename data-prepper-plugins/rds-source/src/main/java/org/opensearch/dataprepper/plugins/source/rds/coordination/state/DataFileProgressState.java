@@ -9,40 +9,29 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class DataFileProgressState {
 
+    @JsonProperty("isLoaded")
+    private boolean isLoaded = false;
+
     @JsonProperty("totalRecords")
-    private int total;
-
-    @JsonProperty("loadedRecords")
-    private int loaded;
-
-    @JsonProperty("exportStartTime")
-    private long startTime;
+    private int totalRecords;
 
     @JsonProperty("sourceTable")
     private String sourceTable;
 
-    public int getTotal() {
-        return total;
+    public int getTotalRecords() {
+        return totalRecords;
     }
 
-    public void setTotal(int total) {
-        this.total = total;
+    public void setTotalRecords(int totalRecords) {
+        this.totalRecords = totalRecords;
     }
 
-    public int getLoaded() {
-        return loaded;
+    public boolean getLoaded() {
+        return isLoaded;
     }
 
-    public void setLoaded(int loaded) {
-        this.loaded = loaded;
-    }
-
-    public long getStartTime() {
-        return startTime;
-    }
-
-    public void setStartTime(long startTime) {
-        this.startTime = startTime;
+    public void setLoaded(boolean loaded) {
+        this.isLoaded = loaded;
     }
 
     public String getSourceTable() {

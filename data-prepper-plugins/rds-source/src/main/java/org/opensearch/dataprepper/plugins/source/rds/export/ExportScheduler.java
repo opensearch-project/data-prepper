@@ -10,9 +10,11 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.DataFileProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.ExportStatus;
+import org.opensearch.dataprepper.plugins.source.rds.model.LoadStatus;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotStatus;
 import org.slf4j.Logger;
@@ -32,6 +34,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -289,18 +292,21 @@ public class ExportScheduler implements Runnable {
 
     private void createDataFilePartitions(String bucket, String exportTaskId, List<String> dataFileObjectKeys) {
         LOG.info("Total of {} data files generated for export {}", dataFileObjectKeys.size(), exportTaskId);
-
+        AtomicInteger totalFiles = new AtomicInteger();
         for (final String objectKey : dataFileObjectKeys) {
             DataFileProgressState progressState = new DataFileProgressState();
-            progressState.setTotal(1);
-            progressState.setLoaded(0);
             // objectKey has this structure: "{prefix}/{export task ID}/{database name}/{table name}/...", table name is the 4th part
             String table = objectKey.split("/")[3];
             progressState.setSourceTable(table);
 
             DataFilePartition dataFilePartition = new DataFilePartition(exportTaskId, bucket, objectKey, Optional.of(progressState));
             sourceCoordinator.createPartition(dataFilePartition);
+            totalFiles.getAndIncrement();
         }
+
+        // Create a global state to track overall progress for data file processing
+        LoadStatus loadStatus = new LoadStatus(totalFiles.get(), 0);
+        sourceCoordinator.createPartition(new GlobalState(exportTaskId, loadStatus.toMap()));
     }
 
     private void completeExportPartition(ExportPartition exportPartition) {

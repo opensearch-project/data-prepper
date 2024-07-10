@@ -5,23 +5,32 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.export;
 
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
+import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
+import org.opensearch.dataprepper.plugins.source.rds.model.LoadStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.opensearch.dataprepper.plugins.source.rds.RdsService.DATA_LOADER_MAX_JOB_COUNT;
 
 public class DataFileScheduler implements Runnable {
 
@@ -30,14 +39,14 @@ public class DataFileScheduler implements Runnable {
     private final AtomicInteger numOfWorkers = new AtomicInteger(0);
 
     /**
-     * Maximum concurrent data loader per node
-     */
-    private static final int MAX_JOB_COUNT = 1;
-
-    /**
      * Default interval to acquire a lease from coordination store
      */
     private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 2_000;
+
+    private static final Duration DEFAULT_UPDATE_LOAD_STATUS_TIMEOUT = Duration.ofMinutes(30);
+
+    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
+    static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
 
 
     private final EnhancedSourceCoordinator sourceCoordinator;
@@ -59,7 +68,7 @@ public class DataFileScheduler implements Runnable {
         this.s3Client = s3Client;
         this.eventFactory = eventFactory;
         this.buffer = buffer;
-        executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
+        executor = Executors.newFixedThreadPool(DATA_LOADER_MAX_JOB_COUNT);
     }
 
     @Override
@@ -68,7 +77,7 @@ public class DataFileScheduler implements Runnable {
 
         while (!shutdownRequested && !Thread.currentThread().isInterrupted()) {
             try {
-                if (numOfWorkers.get() < MAX_JOB_COUNT) {
+                if (numOfWorkers.get() < DATA_LOADER_MAX_JOB_COUNT) {
                     final Optional<EnhancedSourcePartition> sourcePartition = sourceCoordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
 
                     if (sourcePartition.isPresent()) {
@@ -95,8 +104,7 @@ public class DataFileScheduler implements Runnable {
             }
         }
         LOG.warn("Data file scheduler is interrupted, stopping all data file loaders...");
-        // Cannot call executor.shutdownNow() here
-        // Otherwise the final checkpoint will fail due to SDK interruption.
+
         executor.shutdown();
     }
 
@@ -105,12 +113,18 @@ public class DataFileScheduler implements Runnable {
     }
 
     private void processDataFilePartition(DataFilePartition dataFilePartition) {
-        Runnable loader = new DataFileLoader(dataFilePartition, s3Client, eventFactory, buffer);
+        Runnable loader = DataFileLoader.create(
+                dataFilePartition,
+                new ParquetInputCodec(eventFactory),
+                BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT),
+                new S3ObjectReader(s3Client),
+                new ExportRecordConverter());
         CompletableFuture runLoader = CompletableFuture.runAsync(loader, executor);
 
         runLoader.whenComplete((v, ex) -> {
             if (ex == null) {
-                // TODO: update global state
+                // Update global state so we know if all s3 files have been loaded
+                updateLoadStatus(dataFilePartition.getExportTaskId(), DEFAULT_UPDATE_LOAD_STATUS_TIMEOUT);
                 sourceCoordinator.completePartition(dataFilePartition);
             } else {
                 LOG.error("There was an exception while processing an S3 data file: {}", ex);
@@ -119,5 +133,33 @@ public class DataFileScheduler implements Runnable {
             numOfWorkers.decrementAndGet();
         });
         numOfWorkers.incrementAndGet();
+    }
+
+    private void updateLoadStatus(String exportTaskId, Duration timeout) {
+
+        Instant endTime = Instant.now().plus(timeout);
+        // Keep retrying in case update fails due to conflicts until timed out
+        while (Instant.now().isBefore(endTime)) {
+            Optional<EnhancedSourcePartition> globalStatePartition = sourceCoordinator.getPartition(exportTaskId);
+            if (globalStatePartition.isEmpty()) {
+                LOG.error("Failed to get data file load status for {}", exportTaskId);
+                return;
+            }
+
+            GlobalState globalState = (GlobalState) globalStatePartition.get();
+            LoadStatus loadStatus = LoadStatus.fromMap(globalState.getProgressState().get());
+            loadStatus.setLoadedFiles(loadStatus.getLoadedFiles() + 1);
+            LOG.info("Current data file load status: total {} loaded {}", loadStatus.getTotalFiles(), loadStatus.getLoadedFiles());
+
+            globalState.setProgressState(loadStatus.toMap());
+
+            try {
+                sourceCoordinator.saveProgressStateForPartition(globalState, null);
+                // TODO: Stream is enabled and loadStatus.getLoadedFiles() == loadStatus.getTotalFiles(), create global state to indicate that stream can start
+                break;
+            } catch (Exception e) {
+                LOG.error("Failed to update the global status, looks like the status was out of date, will retry..");
+            }
+        }
     }
 }

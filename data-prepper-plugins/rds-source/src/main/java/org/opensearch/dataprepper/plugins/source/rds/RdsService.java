@@ -27,6 +27,11 @@ import java.util.concurrent.Executors;
 public class RdsService {
     private static final Logger LOG = LoggerFactory.getLogger(RdsService.class);
 
+    /**
+     * Maximum concurrent data loader per node
+     */
+    public static final int DATA_LOADER_MAX_JOB_COUNT = 1;
+
     private final RdsClient rdsClient;
     private final S3Client s3Client;
     private final EnhancedSourceCoordinator sourceCoordinator;
@@ -63,11 +68,15 @@ public class RdsService {
         LOG.info("Start running RDS service");
         final List<Runnable> runnableList = new ArrayList<>();
         leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig);
-        exportScheduler = new ExportScheduler(sourceCoordinator, rdsClient, s3Client, pluginMetrics);
-        dataFileScheduler = new DataFileScheduler(sourceCoordinator, sourceConfig, s3Client, eventFactory, buffer);
         runnableList.add(leaderScheduler);
-        runnableList.add(exportScheduler);
-        runnableList.add(dataFileScheduler);
+
+        if (sourceConfig.isExportEnabled()) {
+            exportScheduler = new ExportScheduler(sourceCoordinator, rdsClient, s3Client, pluginMetrics);
+            dataFileScheduler = new DataFileScheduler(
+                    sourceCoordinator, sourceConfig, s3Client, eventFactory, buffer);
+            runnableList.add(exportScheduler);
+            runnableList.add(dataFileScheduler);
+        }
 
         executor = Executors.newFixedThreadPool(runnableList.size());
         runnableList.forEach(executor::submit);
@@ -80,9 +89,11 @@ public class RdsService {
     public void shutdown() {
         if (executor != null) {
             LOG.info("shutdown RDS schedulers");
-            exportScheduler.shutdown();
+            if (sourceConfig.isExportEnabled()) {
+                exportScheduler.shutdown();
+                dataFileScheduler.shutdown();
+            }
             leaderScheduler.shutdown();
-            dataFileScheduler.shutdown();
             executor.shutdownNow();
         }
     }

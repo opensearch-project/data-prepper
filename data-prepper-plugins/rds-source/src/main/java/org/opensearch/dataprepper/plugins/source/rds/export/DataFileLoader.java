@@ -6,25 +6,19 @@
 package org.opensearch.dataprepper.plugins.source.rds.export;
 
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
-import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec;
+import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.InputStream;
-import java.time.Duration;
 
 public class DataFileLoader implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(DataFileLoader.class);
-    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
-    static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
 
     private final DataFilePartition dataFilePartition;
     private final String bucket;
@@ -32,17 +26,28 @@ public class DataFileLoader implements Runnable {
     private final S3ObjectReader objectReader;
     private final InputCodec codec;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
+    private final ExportRecordConverter recordConverter;
 
-    public DataFileLoader(final DataFilePartition dataFilePartition,
-                          final S3Client s3Client,
-                          final EventFactory eventFactory,
-                          final Buffer<Record<Event>> buffer) {
+    private DataFileLoader(final DataFilePartition dataFilePartition,
+                   final InputCodec codec,
+                   final BufferAccumulator<Record<Event>> bufferAccumulator,
+                   final S3ObjectReader objectReader,
+                   final ExportRecordConverter recordConverter) {
         this.dataFilePartition = dataFilePartition;
         bucket = dataFilePartition.getBucket();
         objectKey = dataFilePartition.getKey();
-        objectReader = new S3ObjectReader(s3Client);
-        codec = new ParquetInputCodec(eventFactory);
-        bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
+        this.objectReader = objectReader;
+        this.codec = codec;
+        this.bufferAccumulator = bufferAccumulator;
+        this.recordConverter = recordConverter;
+    }
+
+    public static DataFileLoader create(final DataFilePartition dataFilePartition,
+                                        final InputCodec codec,
+                                        final BufferAccumulator<Record<Event>> bufferAccumulator,
+                                        final S3ObjectReader objectReader,
+                                        final ExportRecordConverter recordConverter) {
+        return new DataFileLoader(dataFilePartition, codec, bufferAccumulator, objectReader, recordConverter);
     }
 
     @Override
@@ -53,7 +58,11 @@ public class DataFileLoader implements Runnable {
 
             codec.parse(inputStream, record -> {
                 try {
-                    bufferAccumulator.add(record);
+                    final String tableName = dataFilePartition.getProgressState().get().getSourceTable();
+                    // TODO: primary key to be obtained by querying database schema
+                    final String primaryKeyName = "id";
+                    Record<Event> transformedRecord = new Record<>(recordConverter.convert(record, tableName, primaryKeyName));
+                    bufferAccumulator.add(transformedRecord);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }

@@ -7,10 +7,8 @@ package org.opensearch.dataprepper.plugins.source.rds.export;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.io.InputStream;
 
@@ -25,17 +23,14 @@ public class S3ObjectReader {
     }
 
     public InputStream readFile(String bucketName, String s3Key) {
-        LOG.debug("Read file from s3://" + bucketName + "/" + s3Key);
+        LOG.debug("Read file from s3://{}/{}", bucketName, s3Key);
 
-        GetObjectRequest objectRequest = GetObjectRequest
-                .builder()
+        GetObjectRequest objectRequest = GetObjectRequest.builder()
                 .bucket(bucketName)
                 .key(s3Key)
                 .build();
 
-        ResponseInputStream<GetObjectResponse> object = s3Client.getObject(objectRequest);
-
-        return object;
+        return s3Client.getObject(objectRequest);
     }
 
 }
