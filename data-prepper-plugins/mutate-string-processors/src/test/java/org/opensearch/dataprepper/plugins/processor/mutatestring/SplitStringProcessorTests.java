@@ -5,10 +5,15 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutatestring;
 
+import org.opensearch.dataprepper.event.TestEventFactory;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.event.EventBuilder;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +41,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SplitStringProcessorTests {
+    private final EventFactory testEventFactory = TestEventFactory.getTestEventFactory();
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -115,13 +122,14 @@ class SplitStringProcessorTests {
 
 
     private SplitStringProcessorConfig.Entry createEntry(final String source, final String delimiterRegex, final String delimiter, final String splitWhen) {
-        return new SplitStringProcessorConfig.Entry(source, delimiterRegex, delimiter, splitWhen);
+        final EventKey sourceKey = eventKeyFactory.createEventKey(source);
+        return new SplitStringProcessorConfig.Entry(sourceKey, delimiterRegex, delimiter, splitWhen);
     }
 
     private Record<Event> createEvent(final String message) {
         final Map<String, Object> eventData = new HashMap<>();
         eventData.put("message", message);
-        return new Record<>(JacksonEvent.builder()
+        return new Record<>(testEventFactory.eventBuilder(EventBuilder.class)
                 .withEventType("event")
                 .withData(eventData)
                 .build());
