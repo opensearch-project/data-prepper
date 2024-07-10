@@ -27,6 +27,7 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-plugins:parse-json-processor')
+    testImplementation testLibs.slf4j.simple
 }
 
 test {
