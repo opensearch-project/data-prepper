@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.date;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
 
 import java.time.ZoneId;
@@ -14,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.time.format.DateTimeFormatter;
 
+@JsonClassDescription("https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/date/#configuration")
 public class DateProcessorConfig {
     static final Boolean DEFAULT_FROM_TIME_RECEIVED = false;
     static final Boolean DEFAULT_TO_ORIGINATION_METADATA = false;
@@ -24,8 +27,16 @@ public class DateProcessorConfig {
 
     public static class DateMatch {
         @JsonProperty("key")
+        @JsonPropertyDescription("Represents the event key against which to match patterns. " +
+                "Required if `match` is configured. ")
         private String key;
         @JsonProperty("patterns")
+        @JsonPropertyDescription("A list of possible patterns that the timestamp value of the key can have. The patterns " +
+                "are based on a sequence of letters and symbols. The `patterns` support all the patterns listed in the " +
+                "Java [DatetimeFormatter](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html) reference. " +
+                "The timestamp value also supports `epoch_second`, `epoch_milli`, and `epoch_nano` values, " +
+                "which represent the timestamp as the number of seconds, milliseconds, and nanoseconds since the epoch. " +
+                "Epoch values always use the UTC time zone.")
         private List<String> patterns;
 
         public DateMatch() {
@@ -82,30 +93,57 @@ public class DateProcessorConfig {
     }
 
     @JsonProperty("from_time_received")
+    @JsonPropertyDescription("When `true`, the timestamp from the event metadata, " +
+            "which is the time at which the source receives the event, is added to the event data. " +
+            "This option cannot be defined at the same time as `match`. Default is `false`.")
     private Boolean fromTimeReceived = DEFAULT_FROM_TIME_RECEIVED;
 
     @JsonProperty("to_origination_metadata")
+    @JsonPropertyDescription("When `true`, the matched time is also added to the event's metadata as an instance of " +
+            "`Instant`. Default is `false`.")
     private Boolean toOriginationMetadata = DEFAULT_TO_ORIGINATION_METADATA;
 
     @JsonProperty("match")
+    @JsonPropertyDescription("The date match configuration. " +
+            "This option cannot be defined at the same time as `from_time_received`. There is no default value.")
     private List<DateMatch> match;
 
     @JsonProperty("destination")
+    @JsonPropertyDescription("The field used to store the timestamp parsed by the date processor. " +
+            "Can be used with both `match` and `from_time_received`. Default is `@timestamp`.")
     private String destination = DEFAULT_DESTINATION;
 
     @JsonProperty("output_format")
+    @JsonPropertyDescription("Determines the format of the timestamp added to an event. " +
+            "Default is `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`.")
     private String outputFormat = DEFAULT_OUTPUT_FORMAT;
 
     @JsonProperty("source_timezone")
+    @JsonPropertyDescription("The time zone used to parse dates, including when the zone or offset cannot be extracted " +
+            "from the value. If the zone or offset are part of the value, then the time zone is ignored. " +
+            "A list of all the available time zones is contained in the **TZ database name** column of " +
+            "[the list of database time zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List).")
     private String sourceTimezone = DEFAULT_SOURCE_TIMEZONE;
 
     @JsonProperty("destination_timezone")
+    @JsonPropertyDescription("The time zone used for storing the timestamp in the `destination` field. " +
+            "A list of all the available time zones is contained in the **TZ database name** column of " +
+            "[the list of database time zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List).")
     private String destinationTimezone = DEFAULT_DESTINATION_TIMEZONE;
 
     @JsonProperty("locale")
+    @JsonPropertyDescription("The location used for parsing dates. Commonly used for parsing month names (`MMM`). " +
+            "The value can contain language, country, or variant fields in IETF BCP 47, such as `en-US`, " +
+            "or a string representation of the " +
+            "[locale](https://docs.oracle.com/javase/8/docs/api/java/util/Locale.html) object, such as `en_US`. " +
+            "A full list of locale fields, including language, country, and variant, can be found in " +
+            "[the language subtag registry](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry). " +
+            "Default is `Locale.ROOT`.")
     private String locale;
 
     @JsonProperty("date_when")
+    @JsonPropertyDescription("Specifies under what condition the `date` processor should perform matching. " +
+            "Default is no condition.")
     private String dateWhen;
 
     @JsonIgnore
