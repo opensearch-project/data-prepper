@@ -7,11 +7,9 @@ package org.opensearch.dataprepper.plugins.processor.otelmetrics;
 
 import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec.DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE;
 
-import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
-@JsonClassDescription("https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/otel-metrics/#configuration")
 public class OtelMetricsRawProcessorConfig {
 
     @JsonProperty("flatten_attributes")
