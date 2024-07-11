@@ -97,7 +97,6 @@ dependencyResolutionManagement {
 }
 
 include 'data-prepper-api'
-include 'data-prepper-validation-api'
 include 'data-prepper-plugins'
 include 'data-prepper-event'
 include 'data-prepper-test-event'
