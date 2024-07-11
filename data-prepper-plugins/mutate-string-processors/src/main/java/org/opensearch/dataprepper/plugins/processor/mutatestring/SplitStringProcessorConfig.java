@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutatestring;
 
-import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
@@ -17,7 +16,6 @@ import org.opensearch.dataprepper.model.event.EventKey;
 
 import java.util.List;
 
-@JsonClassDescription("https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/split-string/")
 public class SplitStringProcessorConfig implements StringProcessorConfig<SplitStringProcessorConfig.Entry> {
     public static class Entry {
 
