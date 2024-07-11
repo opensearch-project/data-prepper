@@ -176,5 +176,4 @@ include 'data-prepper-plugins:rds-source'
 include 'data-prepper-plugins:http-source-common'
 include 'data-prepper-plugins:http-common'
 include 'data-prepper-plugins:lambda-sink'
-include 'data-prepper-validation-api'
 
