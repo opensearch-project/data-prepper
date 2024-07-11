@@ -24,7 +24,6 @@ dependencies {
     testImplementation project(':data-prepper-plugins:blocking-buffer')
     testImplementation project(':data-prepper-test-event')
     testImplementation libs.commons.io
-    testImplementation testLibs.mockito.inline
 }
 
 jacocoTestCoverageVerification {

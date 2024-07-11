@@ -25,7 +25,6 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation libs.commons.lang3
     testImplementation testLibs.slf4j.simple
-    testImplementation testLibs.mockito.inline
 }
 
 generateGrammarSource {

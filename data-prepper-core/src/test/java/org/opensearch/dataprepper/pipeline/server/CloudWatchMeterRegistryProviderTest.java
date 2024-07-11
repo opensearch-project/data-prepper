@@ -9,7 +9,7 @@ import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 
 import static org.hamcrest.CoreMatchers.notNullValue;

@@ -24,5 +24,4 @@ dependencies {
     }
     implementation libs.reflections.core
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    testImplementation testLibs.mockito.inline
 }
