@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.truncate;
 
-import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.NotEmpty;
@@ -15,7 +14,6 @@ import jakarta.validation.Valid;
 
 import java.util.List;
 
-@JsonClassDescription("https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/truncate/#configuration")
 public class TruncateProcessorConfig {
     public static class Entry {
         @JsonProperty("source_keys")
