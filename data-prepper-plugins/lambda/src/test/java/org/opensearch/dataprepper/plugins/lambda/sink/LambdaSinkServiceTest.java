@@ -294,7 +294,7 @@ public class LambdaSinkServiceTest {
         when(lambdaSinkConfig.getBatchOptions()).thenReturn(mock(BatchOptions.class));
         when(lambdaSinkConfig.getBatchOptions().getBatchKey()).thenReturn(batchKey);
         when(lambdaSinkConfig.getBatchOptions().getThresholdOptions()).thenReturn(mock(ThresholdOptions.class));
-        when(lambdaSinkConfig.getBatchOptions().getThresholdOptions().getEventCount()).thenReturn(maxEvents);
+        when(lambdaSinkConfig.getBatchOptions().getThresholdOptions().getEventCount()).thenReturn(1);
         when(lambdaSinkConfig.getBatchOptions().getThresholdOptions().getMaximumSize()).thenReturn(ByteCount.parse(maxSize));
         when(lambdaSinkConfig.getBatchOptions().getThresholdOptions().getEventCollectTimeOut()).thenReturn(Duration.ofNanos(10L));
         when(lambdaSinkConfig.getAwsAuthenticationOptions()).thenReturn(mock(AwsAuthenticationOptions.class));
