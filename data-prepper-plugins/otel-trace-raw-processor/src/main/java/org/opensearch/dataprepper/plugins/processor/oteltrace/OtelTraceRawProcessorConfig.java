@@ -5,13 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltrace;
 
-import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
 import java.time.Duration;
 
-@JsonClassDescription("https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/otel-trace-raw/#configuration")
 public class OtelTraceRawProcessorConfig {
     static final long DEFAULT_TG_FLUSH_INTERVAL_SEC = 180L;
     static final Duration DEFAULT_TRACE_ID_TTL = Duration.ofSeconds(15L);
