@@ -89,8 +89,6 @@ task integrationTest(type: Test) {
 
     classpath = sourceSets.integrationTest.runtimeClasspath
 
-    systemProperty 'log4j.configurationFile', 'src/test/resources/log4j2.properties'
-
     filter {
         includeTestsMatching '*IT'
     }
