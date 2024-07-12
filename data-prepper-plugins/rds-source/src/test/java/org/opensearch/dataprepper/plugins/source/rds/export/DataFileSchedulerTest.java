@@ -120,7 +120,7 @@ class DataFileSchedulerTest {
     }
 
     @Test
-    void shutdown() {
+    void test_shutdown() {
         DataFileScheduler objectUnderTest = createObjectUnderTest();
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(objectUnderTest);

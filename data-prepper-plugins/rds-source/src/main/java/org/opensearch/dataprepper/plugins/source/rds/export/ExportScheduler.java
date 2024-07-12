@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.Expo
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.DataFileProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportProgressState;
+import org.opensearch.dataprepper.plugins.source.rds.model.ExportObjectKey;
 import org.opensearch.dataprepper.plugins.source.rds.model.ExportStatus;
 import org.opensearch.dataprepper.plugins.source.rds.model.LoadStatus;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
@@ -295,8 +296,8 @@ public class ExportScheduler implements Runnable {
         AtomicInteger totalFiles = new AtomicInteger();
         for (final String objectKey : dataFileObjectKeys) {
             DataFileProgressState progressState = new DataFileProgressState();
-            // objectKey has this structure: "{prefix}/{export task ID}/{database name}/{table name}/...", table name is the 4th part
-            String table = objectKey.split("/")[3];
+            ExportObjectKey exportObjectKey = ExportObjectKey.fromString(objectKey);
+            String table = exportObjectKey.getTableName();
             progressState.setSourceTable(table);
 
             DataFilePartition dataFilePartition = new DataFilePartition(exportTaskId, bucket, objectKey, Optional.of(progressState));

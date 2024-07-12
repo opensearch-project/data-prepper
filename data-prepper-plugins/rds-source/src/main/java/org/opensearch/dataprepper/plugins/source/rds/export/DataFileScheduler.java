@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.rds.export;
 
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
@@ -52,9 +53,10 @@ public class DataFileScheduler implements Runnable {
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final ExecutorService executor;
     private final RdsSourceConfig sourceConfig;
-    private final S3Client s3Client;
-    private final EventFactory eventFactory;
-    private final Buffer<Record<Event>> buffer;
+    private final S3ObjectReader objectReader;
+    private final InputCodec codec;
+    private final BufferAccumulator<Record<Event>> bufferAccumulator;
+    private final ExportRecordConverter recordConverter;
 
     private volatile boolean shutdownRequested = false;
 
@@ -65,9 +67,10 @@ public class DataFileScheduler implements Runnable {
                              final Buffer<Record<Event>> buffer) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
-        this.s3Client = s3Client;
-        this.eventFactory = eventFactory;
-        this.buffer = buffer;
+        codec = new ParquetInputCodec(eventFactory);
+        bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
+        objectReader = new S3ObjectReader(s3Client);
+        recordConverter = new ExportRecordConverter();
         executor = Executors.newFixedThreadPool(DATA_LOADER_MAX_JOB_COUNT);
     }
 
@@ -113,12 +116,7 @@ public class DataFileScheduler implements Runnable {
     }
 
     private void processDataFilePartition(DataFilePartition dataFilePartition) {
-        Runnable loader = DataFileLoader.create(
-                dataFilePartition,
-                new ParquetInputCodec(eventFactory),
-                BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT),
-                new S3ObjectReader(s3Client),
-                new ExportRecordConverter());
+        Runnable loader = DataFileLoader.create(dataFilePartition, codec, bufferAccumulator, objectReader, recordConverter);
         CompletableFuture runLoader = CompletableFuture.runAsync(loader, executor);
 
         runLoader.whenComplete((v, ex) -> {
@@ -127,7 +125,7 @@ public class DataFileScheduler implements Runnable {
                 updateLoadStatus(dataFilePartition.getExportTaskId(), DEFAULT_UPDATE_LOAD_STATUS_TIMEOUT);
                 sourceCoordinator.completePartition(dataFilePartition);
             } else {
-                LOG.error("There was an exception while processing an S3 data file: {}", ex);
+                LOG.error("There was an exception while processing an S3 data file", (Throwable) ex);
                 sourceCoordinator.giveUpPartition(dataFilePartition);
             }
             numOfWorkers.decrementAndGet();

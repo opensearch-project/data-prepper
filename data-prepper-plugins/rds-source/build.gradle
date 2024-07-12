@@ -24,4 +24,5 @@ dependencies {
     testImplementation testLibs.mockito.inline
     testImplementation project(path: ':data-prepper-test-common')
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    testImplementation project(path: ':data-prepper-test-event')
 }
