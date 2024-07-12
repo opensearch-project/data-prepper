@@ -328,7 +328,7 @@ public class BlockingBufferTests {
             return Stream.of(
                     Arguments.of(0, randomInt + 1, 0.0),
                     Arguments.of(1, 100, 1.0),
-                    Arguments.of(randomInt, randomInt, 100.0),
+                    Arguments.of(randomInt + 1, randomInt + 1, 100.0),
                     Arguments.of(randomInt, randomInt + 250, ((double) randomInt / (randomInt + 250)) * 100),
                     Arguments.of(6, 9, 66.66666666666666),
                     Arguments.of(531, 1000, 53.1),
