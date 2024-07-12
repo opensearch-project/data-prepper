@@ -42,8 +42,8 @@ public class GrokProcessorConfig {
     static final String DEFAULT_TARGET_KEY = null;
 
     @JsonProperty(BREAK_ON_MATCH)
-    @JsonPropertyDescription("Specifies under what condition the `grok` processor should perform matching. " +
-            "Default is no condition.")
+    @JsonPropertyDescription("Specifies whether to match all patterns (`true`) or stop once the first successful " +
+            "match is found (`false`). Default is `true`.")
     private boolean breakOnMatch = DEFAULT_BREAK_ON_MATCH;
     @JsonProperty(KEEP_EMPTY_CAPTURES)
     @JsonPropertyDescription("Enables the preservation of `null` captures from the processed output. Default is `false`.")
