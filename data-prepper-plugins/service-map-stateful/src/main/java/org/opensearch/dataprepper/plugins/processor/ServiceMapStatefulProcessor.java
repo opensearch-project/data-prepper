@@ -6,8 +6,11 @@
 package org.opensearch.dataprepper.plugins.processor;
 
 import org.apache.commons.codec.DecoderException;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -40,7 +43,8 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @SingleThread
-@DataPrepperPlugin(name = "service_map", deprecatedName = "service_map_stateful", pluginType = Processor.class)
+@DataPrepperPlugin(name = "service_map", deprecatedName = "service_map_stateful", pluginType = Processor.class,
+        pluginConfigurationType = ServiceMapProcessorConfig.class)
 public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>, Record<Event>> implements RequiresPeerForwarding {
 
     static final String SPANS_DB_SIZE = "spansDbSize";
@@ -75,20 +79,24 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
 
     private final int thisProcessorId;
 
-    public ServiceMapStatefulProcessor(final PluginSetting pluginSetting) {
-        this(pluginSetting.getIntegerOrDefault(ServiceMapProcessorConfig.WINDOW_DURATION, ServiceMapProcessorConfig.DEFAULT_WINDOW_DURATION) * TO_MILLIS,
+    @DataPrepperPluginConstructor
+    public ServiceMapStatefulProcessor(
+            final ServiceMapProcessorConfig serviceMapProcessorConfig,
+            final PluginMetrics pluginMetrics,
+            final PipelineDescription pipelineDescription) {
+        this((long) serviceMapProcessorConfig.getWindowDuration() * TO_MILLIS,
                 new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH),
                 Clock.systemUTC(),
-                pluginSetting.getNumberOfProcessWorkers(),
-                pluginSetting);
+                pipelineDescription.getNumberOfProcessWorkers(),
+                pluginMetrics);
     }
 
-    public ServiceMapStatefulProcessor(final long windowDurationMillis,
+    ServiceMapStatefulProcessor(final long windowDurationMillis,
                                        final File databasePath,
                                        final Clock clock,
                                        final int processWorkers,
-                                       final PluginSetting pluginSetting) {
-        super(pluginSetting);
+                                       final PluginMetrics pluginMetrics) {
+        super(pluginMetrics);
 
         ServiceMapStatefulProcessor.clock = clock;
         this.thisProcessorId = processorsCreated.getAndIncrement();
