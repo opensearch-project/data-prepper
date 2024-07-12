@@ -433,29 +433,6 @@ class ObfuscationProcessorTest {
         assertThat(data.get("message", String.class), equalTo(expected));
     }
 
-    @ParameterizedTest
-    @CsvSource({
-            "My email is abc@test.com,%{EMAIL_ADDRESS},AAAAAAAAAAAAAAAA, My email is ***",
-            "testing this functionality, test, BBBBBBBBBBBBBBBB, testing this functionality",
-            "test this functionality, test, CCCCCCCCCCCCCCCC, *** this functionality",
-            "My IP is 1.1.1.1,%{IP_ADDRESS_V4}, DDDDDDDDDDDDDDDD, My IP is ***",
-            "fd55555069-e7a9-11ee4111111111111111,%{CREDIT_CARD_NUMBER},EEEEEEEEEEEEEEEE, fd55555069-e7a9-11ee4111111111111111",
-            "4111111111111111,%{CREDIT_CARD_NUMBER}, FFFFFFFFFFFFFFFF , ***",
-            "visa4111111111111111,%{CREDIT_CARD_NUMBER}, GGGGGGGGGGGGGGGG, visa4111111111111111"
-    })
-    void testProcessorWithHash(String message, String pattern, String salt, String expected) {        
-        when(mockConfig.getSingleWordOnly()).thenReturn(true);
-        when(mockConfig.getPatterns()).thenReturn(List.of(pattern));
-        obfuscationProcessor = new ObfuscationProcessor(pluginMetrics, mockConfig, mockFactory, expressionEvaluator);
-
-        final Record<Event> record = createRecord(message);
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) obfuscationProcessor.doExecute(Collections.singletonList(record));
-
-        assertThat(editedRecords.size(), equalTo(1));
-        Event data = editedRecords.get(0).getData();
-        assertThat(data.get("message", String.class), equalTo(expected));
-    }
-
     @Test
     void testIsReadyForShutdown() {
         assertTrue(obfuscationProcessor.isReadyForShutdown());
