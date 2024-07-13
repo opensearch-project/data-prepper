@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.mutatestring;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.event.EventKey;
@@ -17,6 +18,7 @@ public class WithKeysConfig implements StringProcessorConfig<EventKey> {
     @NotNull
     @NotEmpty
     @JsonProperty("with_keys")
+    @JsonPropertyDescription("A list of keys to trim the white space from.")
     private List<EventKey> withKeys;
 
     @Override
