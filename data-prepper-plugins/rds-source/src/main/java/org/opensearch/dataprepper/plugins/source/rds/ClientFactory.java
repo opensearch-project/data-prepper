@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.services.rds.RdsClient;
+import software.amazon.awssdk.services.s3.S3Client;
 
 public class ClientFactory {
     private final AwsCredentialsProvider awsCredentialsProvider;
@@ -28,6 +29,13 @@ public class ClientFactory {
 
     public RdsClient buildRdsClient() {
         return RdsClient.builder()
+                .region(awsAuthenticationConfig.getAwsRegion())
+                .credentialsProvider(awsCredentialsProvider)
+                .build();
+    }
+
+    public S3Client buildS3Client() {
+        return S3Client.builder()
                 .region(awsAuthenticationConfig.getAwsRegion())
                 .credentialsProvider(awsCredentialsProvider)
                 .build();

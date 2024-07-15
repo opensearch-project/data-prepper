@@ -8,6 +8,7 @@ dependencies {
     implementation project(path: ':data-prepper-plugins:buffer-common')
     implementation project(path: ':data-prepper-plugins:http-common')
     implementation project(path: ':data-prepper-plugins:common')
+    implementation project(path: ':data-prepper-plugins:parquet-codecs')
 
     implementation 'io.micrometer:micrometer-core'
 
@@ -22,4 +23,5 @@ dependencies {
 
     testImplementation project(path: ':data-prepper-test-common')
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    testImplementation project(path: ':data-prepper-test-event')
 }

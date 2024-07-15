@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -26,6 +27,9 @@ class RdsSourceTest {
 
     @Mock
     private RdsSourceConfig sourceConfig;
+
+    @Mock
+    private EventFactory eventFactory;
 
     @Mock
     AwsCredentialsSupplier awsCredentialsSupplier;
@@ -45,6 +49,6 @@ class RdsSourceTest {
     }
 
     private RdsSource createObjectUnderTest() {
-        return new RdsSource(pluginMetrics, sourceConfig, awsCredentialsSupplier);
+        return new RdsSource(pluginMetrics, sourceConfig, eventFactory, awsCredentialsSupplier);
     }
 }

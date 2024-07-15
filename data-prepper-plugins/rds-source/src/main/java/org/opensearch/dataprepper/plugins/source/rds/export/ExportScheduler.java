@@ -8,22 +8,36 @@ package org.opensearch.dataprepper.plugins.source.rds.export;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.DataFileProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportProgressState;
+import org.opensearch.dataprepper.plugins.source.rds.model.ExportObjectKey;
 import org.opensearch.dataprepper.plugins.source.rds.model.ExportStatus;
+import org.opensearch.dataprepper.plugins.source.rds.model.LoadStatus;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.rds.RdsClient;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 public class ExportScheduler implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ExportScheduler.class);
@@ -34,8 +48,10 @@ public class ExportScheduler implements Runnable {
     private static final int DEFAULT_CHECKPOINT_INTERVAL_MILLS = 5 * 60_000;
     private static final int DEFAULT_CHECK_STATUS_INTERVAL_MILLS = 30 * 1000;
     private static final Duration DEFAULT_SNAPSHOT_STATUS_CHECK_TIMEOUT = Duration.ofMinutes(60);
+    static final String PARQUET_SUFFIX = ".parquet";
 
     private final RdsClient rdsClient;
+    private final S3Client s3Client;
     private final PluginMetrics pluginMetrics;
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final ExecutorService executor;
@@ -46,10 +62,12 @@ public class ExportScheduler implements Runnable {
 
     public ExportScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final RdsClient rdsClient,
+                           final S3Client s3Client,
                            final PluginMetrics pluginMetrics) {
         this.pluginMetrics = pluginMetrics;
         this.sourceCoordinator = sourceCoordinator;
         this.rdsClient = rdsClient;
+        this.s3Client = s3Client;
         this.executor = Executors.newCachedThreadPool();
         this.exportTaskManager = new ExportTaskManager(rdsClient);
         this.snapshotManager = new SnapshotManager(rdsClient);
@@ -72,7 +90,8 @@ public class ExportScheduler implements Runnable {
                         LOG.error("The export to S3 failed, it will be retried");
                         closeExportPartitionWithError(exportPartition);
                     } else {
-                        CompletableFuture<String> checkStatus = CompletableFuture.supplyAsync(() -> checkExportStatus(exportPartition), executor);
+                        CheckExportStatusRunner checkExportStatusRunner = new CheckExportStatusRunner(sourceCoordinator, exportTaskManager, exportPartition);
+                        CompletableFuture<String> checkStatus = CompletableFuture.supplyAsync(checkExportStatusRunner::call, executor);
                         checkStatus.whenComplete(completeExport(exportPartition));
                     }
                 }
@@ -179,29 +198,46 @@ public class ExportScheduler implements Runnable {
         throw new RuntimeException("Snapshot status check timed out.");
     }
 
-    private String checkExportStatus(ExportPartition exportPartition) {
-        long lastCheckpointTime = System.currentTimeMillis();
-        String exportTaskId = exportPartition.getProgressState().get().getExportTaskId();
+    static class CheckExportStatusRunner implements Callable<String> {
+        private final EnhancedSourceCoordinator sourceCoordinator;
+        private final ExportTaskManager exportTaskManager;
+        private final ExportPartition exportPartition;
 
-        LOG.debug("Start checking the status of export {}", exportTaskId);
-        while (true) {
-            if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
-                sourceCoordinator.saveProgressStateForPartition(exportPartition, null);
-                lastCheckpointTime = System.currentTimeMillis();
-            }
+        CheckExportStatusRunner(EnhancedSourceCoordinator sourceCoordinator, ExportTaskManager exportTaskManager, ExportPartition exportPartition) {
+            this.sourceCoordinator = sourceCoordinator;
+            this.exportTaskManager = exportTaskManager;
+            this.exportPartition = exportPartition;
+        }
 
-            // Valid statuses are: CANCELED, CANCELING, COMPLETE, FAILED, IN_PROGRESS, STARTING
-            String status = exportTaskManager.checkExportStatus(exportTaskId);
-            LOG.debug("Current export status is {}.", status);
-            if (ExportStatus.isTerminal(status)) {
-                LOG.info("Export {} is completed with final status {}", exportTaskId, status);
-                return status;
-            }
-            LOG.debug("Export {} is still running in progress. Wait and check later", exportTaskId);
-            try {
-                Thread.sleep(DEFAULT_CHECK_STATUS_INTERVAL_MILLS);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+        @Override
+        public String call() {
+            return checkExportStatus(exportPartition);
+        }
+
+        private String checkExportStatus(ExportPartition exportPartition) {
+            long lastCheckpointTime = System.currentTimeMillis();
+            String exportTaskId = exportPartition.getProgressState().get().getExportTaskId();
+
+            LOG.debug("Start checking the status of export {}", exportTaskId);
+            while (true) {
+                if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
+                    sourceCoordinator.saveProgressStateForPartition(exportPartition, null);
+                    lastCheckpointTime = System.currentTimeMillis();
+                }
+
+                // Valid statuses are: CANCELED, CANCELING, COMPLETE, FAILED, IN_PROGRESS, STARTING
+                String status = exportTaskManager.checkExportStatus(exportTaskId);
+                LOG.debug("Current export status is {}.", status);
+                if (ExportStatus.isTerminal(status)) {
+                    LOG.info("Export {} is completed with final status {}", exportTaskId, status);
+                    return status;
+                }
+                LOG.debug("Export {} is still running in progress. Wait and check later", exportTaskId);
+                try {
+                    Thread.sleep(DEFAULT_CHECK_STATUS_INTERVAL_MILLS);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
     }
@@ -219,9 +255,59 @@ public class ExportScheduler implements Runnable {
                 }
                 LOG.info("Export for {} completed successfully", exportPartition.getPartitionKey());
 
+                ExportProgressState state = exportPartition.getProgressState().get();
+                String bucket = state.getBucket();
+                String prefix = state.getPrefix();
+                String exportTaskId = state.getExportTaskId();
+
+                // Create data file partitions for processing S3 files
+                List<String> dataFileObjectKeys = getDataFileObjectKeys(bucket, prefix, exportTaskId);
+                createDataFilePartitions(bucket, exportTaskId, dataFileObjectKeys);
+
                 completeExportPartition(exportPartition);
             }
         };
+    }
+
+    private List<String> getDataFileObjectKeys(String bucket, String prefix, String exportTaskId) {
+        LOG.debug("Fetching object keys for export data files.");
+        ListObjectsV2Request.Builder requestBuilder = ListObjectsV2Request.builder()
+                .bucket(bucket)
+                .prefix(prefix + "/" + exportTaskId);
+
+        List<String> objectKeys = new ArrayList<>();
+        ListObjectsV2Response response = null;
+        do {
+            String nextToken = response == null ? null : response.nextContinuationToken();
+            response = s3Client.listObjectsV2(requestBuilder
+                    .continuationToken(nextToken)
+                    .build());
+            objectKeys.addAll(response.contents().stream()
+                    .map(S3Object::key)
+                    .filter(key -> key.endsWith(PARQUET_SUFFIX))
+                    .collect(Collectors.toList()));
+
+        } while (response.isTruncated());
+        return objectKeys;
+    }
+
+    private void createDataFilePartitions(String bucket, String exportTaskId, List<String> dataFileObjectKeys) {
+        LOG.info("Total of {} data files generated for export {}", dataFileObjectKeys.size(), exportTaskId);
+        AtomicInteger totalFiles = new AtomicInteger();
+        for (final String objectKey : dataFileObjectKeys) {
+            DataFileProgressState progressState = new DataFileProgressState();
+            ExportObjectKey exportObjectKey = ExportObjectKey.fromString(objectKey);
+            String table = exportObjectKey.getTableName();
+            progressState.setSourceTable(table);
+
+            DataFilePartition dataFilePartition = new DataFilePartition(exportTaskId, bucket, objectKey, Optional.of(progressState));
+            sourceCoordinator.createPartition(dataFilePartition);
+            totalFiles.getAndIncrement();
+        }
+
+        // Create a global state to track overall progress for data file processing
+        LoadStatus loadStatus = new LoadStatus(totalFiles.get(), 0);
+        sourceCoordinator.createPartition(new GlobalState(exportTaskId, loadStatus.toMap()));
     }
 
     private void completeExportPartition(ExportPartition exportPartition) {

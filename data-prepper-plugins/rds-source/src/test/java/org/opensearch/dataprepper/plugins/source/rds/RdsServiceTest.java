@@ -14,8 +14,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.leader.LeaderScheduler;
 import software.amazon.awssdk.services.rds.RdsClient;
@@ -48,6 +50,9 @@ class RdsServiceTest {
     private ExecutorService executor;
 
     @Mock
+    private EventFactory eventFactory;
+
+    @Mock
     private ClientFactory clientFactory;
 
     @Mock
@@ -59,8 +64,9 @@ class RdsServiceTest {
     }
 
     @Test
-    void test_normal_service_start() {
+    void test_normal_service_start_when_export_is_enabled() {
         RdsService rdsService = createObjectUnderTest();
+        when(sourceConfig.isExportEnabled()).thenReturn(true);
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executor);
             rdsService.start(buffer);
@@ -68,6 +74,7 @@ class RdsServiceTest {
 
         verify(executor).submit(any(LeaderScheduler.class));
         verify(executor).submit(any(ExportScheduler.class));
+        verify(executor).submit(any(DataFileScheduler.class));
     }
 
     @Test
@@ -83,6 +90,6 @@ class RdsServiceTest {
     }
 
     private RdsService createObjectUnderTest() {
-        return new RdsService(sourceCoordinator, sourceConfig, clientFactory, pluginMetrics);
+        return new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics);
     }
 }
