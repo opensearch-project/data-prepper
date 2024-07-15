@@ -12,10 +12,10 @@ import io.krakens.grok.api.Match;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -59,7 +59,7 @@ import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorCon
 
 
 @SingleThread
-@DataPrepperPlugin(name = "grok", pluginType = Processor.class)
+@DataPrepperPlugin(name = "grok", pluginType = Processor.class, pluginConfigurationType = GrokProcessorConfig.class)
 public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     static final long EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT = 300L;
 
@@ -89,20 +89,28 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public GrokProcessor(final PluginSetting pluginSetting, final ExpressionEvaluator expressionEvaluator) {
-        this(pluginSetting, GrokCompiler.newInstance(), Executors.newSingleThreadExecutor(), expressionEvaluator);
+    public GrokProcessor(final PluginMetrics pluginMetrics,
+                         final GrokProcessorConfig grokProcessorConfig,
+                         final ExpressionEvaluator expressionEvaluator) {
+        this(pluginMetrics, grokProcessorConfig, GrokCompiler.newInstance(),
+                Executors.newSingleThreadExecutor(), expressionEvaluator);
     }
 
-    GrokProcessor(final PluginSetting pluginSetting, final GrokCompiler grokCompiler, final ExecutorService executorService, final ExpressionEvaluator expressionEvaluator) {
-        super(pluginSetting);
-        this.grokProcessorConfig = GrokProcessorConfig.buildConfig(pluginSetting);
+    GrokProcessor(final PluginMetrics pluginMetrics,
+                  final GrokProcessorConfig grokProcessorConfig,
+                  final GrokCompiler grokCompiler,
+                  final ExecutorService executorService,
+                  final ExpressionEvaluator expressionEvaluator) {
+        super(pluginMetrics);
+        this.grokProcessorConfig = grokProcessorConfig;
         this.keysToOverwrite = new HashSet<>(grokProcessorConfig.getkeysToOverwrite());
         this.grokCompiler = grokCompiler;
         this.fieldToGrok = new LinkedHashMap<>();
         this.executorService = executorService;
         this.expressionEvaluator = expressionEvaluator;
         this.tagsOnMatchFailure = grokProcessorConfig.getTagsOnMatchFailure();
-        this.tagsOnTimeout = grokProcessorConfig.getTagsOnTimeout();
+        this.tagsOnTimeout = grokProcessorConfig.getTagsOnTimeout().isEmpty() ?
+                grokProcessorConfig.getTagsOnMatchFailure() : grokProcessorConfig.getTagsOnTimeout();
         grokProcessingMatchCounter = pluginMetrics.counter(GROK_PROCESSING_MATCH);
         grokProcessingMismatchCounter = pluginMetrics.counter(GROK_PROCESSING_MISMATCH);
         grokProcessingErrorsCounter = pluginMetrics.counter(GROK_PROCESSING_ERRORS);
