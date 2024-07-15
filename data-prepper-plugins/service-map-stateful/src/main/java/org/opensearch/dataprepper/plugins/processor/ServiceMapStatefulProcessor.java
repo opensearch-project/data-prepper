@@ -11,7 +11,6 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
