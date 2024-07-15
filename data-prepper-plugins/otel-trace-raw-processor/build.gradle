@@ -18,9 +18,8 @@ dependencies {
     implementation libs.armeria.grpc
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
+    implementation libs.caffeine
     testImplementation 'org.assertj:assertj-core:3.25.3'
-    testImplementation testLibs.mockito.inline
 }
 
 jacocoTestCoverageVerification {

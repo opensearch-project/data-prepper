@@ -21,7 +21,7 @@ import com.linecorp.armeria.server.annotation.Post;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
-import org.opensearch.dataprepper.plugins.source.loghttp.codec.JsonCodec;
+import org.opensearch.dataprepper.http.codec.JsonCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

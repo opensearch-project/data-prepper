@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.grok;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorCon
 import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.DEFAULT_TIMEOUT_MILLIS;
 
 public class GrokProcessorConfigTests {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String PLUGIN_NAME = "grok";
 
     private static final Map<String, List<String>> TEST_MATCH = new HashMap<>();
@@ -62,7 +64,8 @@ public class GrokProcessorConfigTests {
 
     @Test
     public void testDefault() {
-        final GrokProcessorConfig grokProcessorConfig = GrokProcessorConfig.buildConfig(new PluginSetting(PLUGIN_NAME, null));
+        final GrokProcessorConfig grokProcessorConfig = OBJECT_MAPPER.convertValue(
+                Collections.emptyMap(), GrokProcessorConfig.class);
 
         assertThat(grokProcessorConfig.isBreakOnMatch(), equalTo(DEFAULT_BREAK_ON_MATCH));
         assertThat(grokProcessorConfig.isKeepEmptyCaptures(), equalTo(DEFAULT_KEEP_EMPTY_CAPTURES));
@@ -95,7 +98,8 @@ public class GrokProcessorConfigTests {
                 TEST_TARGET_KEY,
                 true);
 
-        final GrokProcessorConfig grokProcessorConfig = GrokProcessorConfig.buildConfig(validPluginSetting);
+        final GrokProcessorConfig grokProcessorConfig = OBJECT_MAPPER.convertValue(
+                validPluginSetting.getSettings(), GrokProcessorConfig.class);
 
         assertThat(grokProcessorConfig.isBreakOnMatch(), equalTo(false));
         assertThat(grokProcessorConfig.isKeepEmptyCaptures(), equalTo(true));
@@ -127,7 +131,8 @@ public class GrokProcessorConfigTests {
 
         invalidPluginSetting.getSettings().put(GrokProcessorConfig.MATCH, TEST_INVALID_MATCH);
 
-        assertThrows(IllegalArgumentException.class, () -> GrokProcessorConfig.buildConfig(invalidPluginSetting));
+        assertThrows(IllegalArgumentException.class, () -> OBJECT_MAPPER.convertValue(
+                invalidPluginSetting.getSettings(), GrokProcessorConfig.class));
     }
 
     private PluginSetting completePluginSettingForGrokProcessor(final boolean breakOnMatch,
@@ -160,33 +165,22 @@ public class GrokProcessorConfigTests {
     @Test
     void getTagsOnMatchFailure_returns_tagOnMatch() {
         final List<String> tagsOnMatch = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        final GrokProcessorConfig objectUnderTest = GrokProcessorConfig.buildConfig(new PluginSetting(PLUGIN_NAME,
-                Map.of(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, tagsOnMatch)
-        ));
+        final GrokProcessorConfig objectUnderTest = OBJECT_MAPPER.convertValue(
+                Map.of(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, tagsOnMatch), GrokProcessorConfig.class);
 
         assertThat(objectUnderTest.getTagsOnMatchFailure(), equalTo(tagsOnMatch));
-    }
-
-    @Test
-    void getTagsOnTimeout_returns_tagsOnMatch_if_no_tagsOnTimeout() {
-        final List<String> tagsOnMatch = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        final GrokProcessorConfig objectUnderTest = GrokProcessorConfig.buildConfig(new PluginSetting(PLUGIN_NAME,
-                Map.of(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, tagsOnMatch)
-        ));
-
-        assertThat(objectUnderTest.getTagsOnTimeout(), equalTo(tagsOnMatch));
     }
 
     @Test
     void getTagsOnTimeout_returns_tagsOnTimeout_if_present() {
         final List<String> tagsOnMatch = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         final List<String> tagsOnTimeout = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        final GrokProcessorConfig objectUnderTest = GrokProcessorConfig.buildConfig(new PluginSetting(PLUGIN_NAME,
+        final GrokProcessorConfig objectUnderTest = OBJECT_MAPPER.convertValue(
                 Map.of(
                         GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, tagsOnMatch,
                         GrokProcessorConfig.TAGS_ON_TIMEOUT, tagsOnTimeout
-                )
-        ));
+                ),
+                GrokProcessorConfig.class);
 
         assertThat(objectUnderTest.getTagsOnTimeout(), equalTo(tagsOnTimeout));
     }
@@ -194,9 +188,8 @@ public class GrokProcessorConfigTests {
     @Test
     void getTagsOnTimeout_returns_tagsOnTimeout_if_present_and_no_tagsOnMatch() {
         final List<String> tagsOnTimeout = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        final GrokProcessorConfig objectUnderTest = GrokProcessorConfig.buildConfig(new PluginSetting(PLUGIN_NAME,
-                Map.of(GrokProcessorConfig.TAGS_ON_TIMEOUT, tagsOnTimeout)
-        ));
+        final GrokProcessorConfig objectUnderTest = OBJECT_MAPPER.convertValue(
+                Map.of(GrokProcessorConfig.TAGS_ON_TIMEOUT, tagsOnTimeout), GrokProcessorConfig.class);
 
         assertThat(objectUnderTest.getTagsOnTimeout(), equalTo(tagsOnTimeout));
     }

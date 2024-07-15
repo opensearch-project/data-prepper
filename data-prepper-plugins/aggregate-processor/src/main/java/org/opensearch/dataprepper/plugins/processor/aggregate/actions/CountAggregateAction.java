@@ -18,15 +18,21 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateProcessor;
+import static org.opensearch.dataprepper.plugins.processor.aggregate.AggregateProcessor.getTimeNanos;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import io.opentelemetry.proto.metrics.v1.AggregationTemporality;
+import org.opensearch.dataprepper.plugins.hasher.IdentificationKeysHasher;
 
 import java.time.Instant;
-import java.util.List;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
+
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * An AggregateAction that combines multiple Events into a single Event. This action will count the number of events with same keys and will create a combined event
@@ -36,28 +42,32 @@ import java.util.HashMap;
 @DataPrepperPlugin(name = "count", pluginType = AggregateAction.class, pluginConfigurationType = CountAggregateActionConfig.class)
 public class CountAggregateAction implements AggregateAction {
     private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
+    private static final String UNIQUE_KEYS_SETKEY = "__unique_keys";
     private static final String exemplarKey = "__exemplar";
     static final String EVENT_TYPE = "event";
-    static final String SUM_METRIC_NAME = "count";
     static final String SUM_METRIC_DESCRIPTION = "Number of events";
     static final String SUM_METRIC_UNIT = "1";
     static final boolean SUM_METRIC_IS_MONOTONIC = true;
     public final String countKey;
     public final String startTimeKey;
+    public final String endTimeKey;
     public final String outputFormat;
     private long startTimeNanos;
+    private final String metricName;
+    private final IdentificationKeysHasher uniqueKeysHasher;
 
     @DataPrepperPluginConstructor
     public CountAggregateAction(final CountAggregateActionConfig countAggregateActionConfig) {
         this.countKey = countAggregateActionConfig.getCountKey();
         this.startTimeKey = countAggregateActionConfig.getStartTimeKey();
+        this.endTimeKey = countAggregateActionConfig.getEndTimeKey();
         this.outputFormat = countAggregateActionConfig.getOutputFormat();
-    }
-
-    private long getTimeNanos(Instant time) {
-        final long NANO_MULTIPLIER = 1_000 * 1_000 * 1_000;
-        long currentTimeNanos = time.getEpochSecond() * NANO_MULTIPLIER + time.getNano();
-        return currentTimeNanos;
+        this.metricName = countAggregateActionConfig.getMetricName();
+        if (countAggregateActionConfig.getUniqueKeys() != null) {
+            this.uniqueKeysHasher = new IdentificationKeysHasher(countAggregateActionConfig.getUniqueKeys());
+        } else {
+            this.uniqueKeysHasher = null;
+        }
     }
 
     public Exemplar createExemplar(final Event event) {
@@ -81,15 +91,45 @@ public class CountAggregateAction implements AggregateAction {
     @Override
     public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
         final GroupState groupState = aggregateActionInput.getGroupState();
+        Instant eventStartTime = Instant.now();
+        Instant eventEndTime = eventStartTime;
+        Object startTime = event.get(startTimeKey, Object.class);
+        Object endTime = event.get(endTimeKey, Object.class);
+
+        if (startTime != null) {
+            eventStartTime = AggregateProcessor.convertObjectToInstant(startTime);
+        }
+        if (endTime != null) {
+            eventEndTime = AggregateProcessor.convertObjectToInstant(endTime);
+        }
         if (groupState.get(countKey) == null) {
-            groupState.put(startTimeKey, Instant.now());
             groupState.putAll(aggregateActionInput.getIdentificationKeys());
+            if (uniqueKeysHasher != null) {
+                Set<IdentificationKeysHasher.IdentificationKeysMap> uniqueKeysMapSet = new HashSet<>();
+            
+                uniqueKeysMapSet.add(uniqueKeysHasher.createIdentificationKeysMapFromEvent(event));
+                groupState.put(UNIQUE_KEYS_SETKEY, uniqueKeysMapSet);
+            } 
             groupState.put(countKey, 1);
             groupState.put(exemplarKey, createExemplar(event));
+            groupState.put(startTimeKey, eventStartTime);
+            groupState.put(endTimeKey, eventEndTime);
         } else {
             Integer v = (Integer)groupState.get(countKey) + 1;
+            
+            if (uniqueKeysHasher != null) {
+                Set<IdentificationKeysHasher.IdentificationKeysMap> uniqueKeysMapSet = (Set<IdentificationKeysHasher.IdentificationKeysMap>) groupState.get(UNIQUE_KEYS_SETKEY);
+                uniqueKeysMapSet.add(uniqueKeysHasher.createIdentificationKeysMapFromEvent(event));
+                v = uniqueKeysMapSet.size();
+            }
             groupState.put(countKey, v);
-        } 
+            Instant groupStartTime = (Instant)groupState.get(startTimeKey);
+            Instant groupEndTime = (Instant)groupState.get(endTimeKey);
+            if (eventStartTime.isBefore(groupStartTime))
+                groupState.put(startTimeKey, eventStartTime);
+            if (eventEndTime.isAfter(groupEndTime))
+                groupState.put(endTimeKey, eventEndTime);
+        }
         return AggregateActionResponse.nullEventResponse();
     }
 
@@ -98,6 +138,9 @@ public class CountAggregateAction implements AggregateAction {
         GroupState groupState = aggregateActionInput.getGroupState();
         Event event;
         Instant startTime = (Instant)groupState.get(startTimeKey);
+        Instant endTime = (Instant)groupState.get(endTimeKey);
+        groupState.remove(endTimeKey);
+        groupState.remove(UNIQUE_KEYS_SETKEY);
         if (outputFormat.equals(OutputFormat.RAW.toString())) {
             groupState.put(startTimeKey, startTime.atZone(ZoneId.of(ZoneId.systemDefault().toString())).format(DateTimeFormatter.ofPattern(DATE_FORMAT)));
             event = JacksonEvent.builder()
@@ -110,14 +153,14 @@ public class CountAggregateAction implements AggregateAction {
             groupState.remove(exemplarKey);
             groupState.remove(countKey);
             groupState.remove(startTimeKey);
-            long currentTimeNanos = getTimeNanos(Instant.now());
+            long endTimeNanos = getTimeNanos(endTime);
             long startTimeNanos = getTimeNanos(startTime);
             Map<String, Object> attr = new HashMap<String, Object>();
             groupState.forEach((k, v) -> attr.put((String)k, v));
             JacksonSum sum = JacksonSum.builder()
-                .withName(SUM_METRIC_NAME)
+                .withName(this.metricName)
                 .withDescription(SUM_METRIC_DESCRIPTION)
-                .withTime(OTelProtoCodec.convertUnixNanosToISO8601(currentTimeNanos))
+                .withTime(OTelProtoCodec.convertUnixNanosToISO8601(endTimeNanos))
                 .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(startTimeNanos))
                 .withIsMonotonic(SUM_METRIC_IS_MONOTONIC)
                 .withUnit(SUM_METRIC_UNIT)
@@ -128,7 +171,7 @@ public class CountAggregateAction implements AggregateAction {
                 .build(false);
             event = (Event)sum;
         }
-        
+
         return new AggregateActionOutput(List.of(event));
     }
 }

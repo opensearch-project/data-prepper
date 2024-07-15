@@ -441,7 +441,7 @@ class PipelineTests {
             Pipeline pipeline = createObjectUnderTest();
             when(mockSource.areAcknowledgementsEnabled()).thenReturn(true);
             pipeline.publishToSinks(records);
-            verify(acknowledgementSetManager).acquireEventReference(any(DefaultEventHandle.class));
+            verify(eventHandle).acquireReference();
 
             verify(router)
                     .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));

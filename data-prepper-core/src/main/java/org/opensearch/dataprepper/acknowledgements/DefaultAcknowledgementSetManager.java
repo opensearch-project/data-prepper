@@ -7,8 +7,6 @@ package org.opensearch.dataprepper.acknowledgements;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import javax.inject.Inject;
@@ -47,18 +45,6 @@ public class DefaultAcknowledgementSetManager implements AcknowledgementSetManag
         acknowledgementSetMonitor.add(acknowledgementSet);
         metrics.increment(DefaultAcknowledgementSetMetrics.CREATED_METRIC_NAME);
         return acknowledgementSet;
-    }
-
-    public void acquireEventReference(final Event event) {
-        acquireEventReference(event.getEventHandle());
-    }
-
-    public void acquireEventReference(final EventHandle eventHandle) {
-        acknowledgementSetMonitor.acquire(eventHandle);
-    }
-
-    public void releaseEventReference(final EventHandle eventHandle, final boolean success) {
-        acknowledgementSetMonitor.release(eventHandle, success);
     }
 
     public void shutdown() {

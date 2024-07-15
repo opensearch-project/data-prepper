@@ -21,6 +21,7 @@ class SerializedJsonNodeTest {
     private byte[] documentBytes;
     private String documentId;
     private String routingField;
+    private String pipelineField;
     private JsonNode jsonNode;
     private SerializedJson document;
     private String jsonString;
@@ -39,7 +40,8 @@ class SerializedJsonNodeTest {
         }
 	    documentId = RandomStringUtils.randomAlphabetic(10);
 	    routingField = RandomStringUtils.randomAlphabetic(10);
-        document = SerializedJson.fromStringAndOptionals(jsonString, documentId, routingField);
+        pipelineField = RandomStringUtils.randomAlphabetic(10);
+        document = SerializedJson.fromStringAndOptionals(jsonString, documentId, routingField, pipelineField);
     }
 
     private SerializedJsonNode createObjectUnderTest() {
@@ -56,6 +58,7 @@ class SerializedJsonNodeTest {
         assertThat(createObjectUnderTest().getSerializedJson(), equalTo(jsonString.getBytes()));
         assertThat(createObjectUnderTest().getDocumentId().get(), equalTo(documentId));
         assertThat(createObjectUnderTest().getRoutingField().get(), equalTo(routingField));
+        assertThat(createObjectUnderTest().getPipelineField().get(), equalTo(pipelineField));
     }
 }
 

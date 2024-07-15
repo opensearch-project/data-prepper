@@ -6,20 +6,19 @@
 package org.opensearch.dataprepper.plugins;
 
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.EventBuilder;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Provides a mechanism to write records to an in_memory source. This allows the pipeline to execute
@@ -62,8 +61,8 @@ public class InMemorySourceAccessor {
         for (int i = 0; i < numRecords; i++) {
             Map<String, Object> eventMap = Map.of("message", UUID.randomUUID().toString());
             EventBuilder eventBuilder = (EventBuilder) eventFactory.eventBuilder(EventBuilder.class).withData(eventMap);
-            JacksonEvent event = (JacksonEvent) eventBuilder.build();
-            records.add(new Record<Event>(event));
+            Event event = eventBuilder.build();
+            records.add(new Record<>(event));
         }
         submit(testingKey, records);
     }
@@ -79,8 +78,8 @@ public class InMemorySourceAccessor {
             int status = (int)(Math.random() * (max - min + 1) + min);
             Map<String, Object> eventMap = Map.of("message", UUID.randomUUID().toString(), "status", status);
             EventBuilder eventBuilder = (EventBuilder) eventFactory.eventBuilder(EventBuilder.class).withData(eventMap);
-            JacksonEvent event = (JacksonEvent) eventBuilder.build();
-            records.add(new Record<Event>(event));
+            Event event = eventBuilder.build();
+            records.add(new Record<>(event));
         }
         submit(testingKey, records);
     }

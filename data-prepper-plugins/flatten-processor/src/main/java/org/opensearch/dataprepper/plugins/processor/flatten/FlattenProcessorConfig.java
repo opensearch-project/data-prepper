@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.processor.flatten;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.ArrayList;
@@ -28,6 +30,9 @@ public class FlattenProcessorConfig {
 
     @JsonProperty("remove_list_indices")
     private boolean removeListIndices = false;
+
+    @JsonProperty("remove_brackets")
+    private boolean removeBrackets = false;
 
     @JsonProperty("exclude_keys")
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
@@ -54,6 +59,10 @@ public class FlattenProcessorConfig {
         return removeListIndices;
     }
 
+    public boolean isRemoveBrackets() {
+        return removeBrackets;
+    }
+
     public List<String> getExcludeKeys() {
         return excludeKeys;
     }
@@ -64,5 +73,10 @@ public class FlattenProcessorConfig {
 
     public List<String> getTagsOnFailure() {
         return tagsOnFailure;
+    }
+
+    @AssertTrue(message = "remove_brackets can not be true if remove_list_indices is false.")
+    boolean removeBracketsNotTrueWhenRemoveListIndicesFalse() {
+        return (!removeBrackets || removeListIndices);
     }
 }

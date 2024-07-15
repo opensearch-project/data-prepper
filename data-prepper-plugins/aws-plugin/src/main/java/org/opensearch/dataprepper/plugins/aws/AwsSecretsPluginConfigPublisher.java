@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.aws;
 
-import org.opensearch.dataprepper.model.plugin.PluginConfigPublisher;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.plugin.PluginConfigPublisher;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

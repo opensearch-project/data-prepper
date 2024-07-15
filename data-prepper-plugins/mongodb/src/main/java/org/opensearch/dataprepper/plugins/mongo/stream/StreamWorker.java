@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.mongo.stream;
 
+import com.mongodb.MongoClientException;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -26,6 +27,7 @@ import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPar
 import org.opensearch.dataprepper.plugins.mongo.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.mongo.model.S3PartitionStatus;
 import org.opensearch.dataprepper.plugins.mongo.model.StreamLoadStatus;
+import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +77,7 @@ public class StreamWorker {
     private final int checkPointIntervalInMs;
     private final int bufferWriteIntervalInMs;
     private final int streamBatchSize;
+    private final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics;
     private boolean stopWorker = false;
     private final ExecutorService executorService;
     private String lastLocalCheckpoint = null;
@@ -98,10 +101,11 @@ public class StreamWorker {
                          final int recordFlushBatchSize,
                          final int checkPointIntervalInMs,
                          final int bufferWriteIntervalInMs,
-                         final int streamBatchSize
+                         final int streamBatchSize,
+                         final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics
     ) {
         return new StreamWorker(recordBufferWriter, recordConverter, sourceConfig, streamAcknowledgementManager, partitionCheckpoint,
-                pluginMetrics, recordFlushBatchSize, checkPointIntervalInMs, bufferWriteIntervalInMs, streamBatchSize);
+                pluginMetrics, recordFlushBatchSize, checkPointIntervalInMs, bufferWriteIntervalInMs, streamBatchSize, documentDBAggregateMetrics);
     }
     public StreamWorker(final RecordBufferWriter recordBufferWriter,
                         final PartitionKeyRecordConverter recordConverter,
@@ -112,7 +116,8 @@ public class StreamWorker {
                         final int recordFlushBatchSize,
                         final int checkPointIntervalInMs,
                         final int bufferWriteIntervalInMs,
-                        final int streamBatchSize
+                        final int streamBatchSize,
+                        final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics
                         ) {
         this.recordBufferWriter = recordBufferWriter;
         this.recordConverter  = recordConverter;
@@ -124,6 +129,7 @@ public class StreamWorker {
         this.checkPointIntervalInMs = checkPointIntervalInMs;
         this.bufferWriteIntervalInMs = bufferWriteIntervalInMs;
         this.streamBatchSize = streamBatchSize;
+        this.documentDBAggregateMetrics = documentDBAggregateMetrics;
         this.successItemsCounter = pluginMetrics.counter(SUCCESS_ITEM_COUNTER_NAME);
         this.failureItemsCounter = pluginMetrics.counter(FAILURE_ITEM_COUNTER_NAME);
         this.bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
@@ -166,6 +172,8 @@ public class StreamWorker {
     }
 
     public void processStream(final StreamPartition streamPartition) {
+        documentDBAggregateMetrics.getStreamApiInvocations().increment();
+
         Optional<String> resumeToken = streamPartition.getProgressState().map(StreamProgressState::getResumeToken);
         resumeToken.ifPresent(token -> checkPointToken = token);
         Optional<Long> loadedRecords = streamPartition.getProgressState().map(StreamProgressState::getLoadedRecords);
@@ -174,10 +182,12 @@ public class StreamWorker {
         final String collectionDbName = streamPartition.getCollection();
         List<String> collectionDBNameList = List.of(collectionDbName.split(COLLECTION_SPLITTER));
         if (collectionDBNameList.size() < 2) {
+            documentDBAggregateMetrics.getStream4xxErrors().increment();
             throw new IllegalArgumentException("Invalid Collection Name. Must be in db.collection format");
         }
 
         try (MongoClient mongoClient = MongoDBConnection.getMongoClient(sourceConfig)) {
+
             // Access the database
             MongoDatabase database = mongoClient.getDatabase(collectionDBNameList.get(0));
 
@@ -186,7 +196,7 @@ public class StreamWorker {
 
             try (MongoCursor<ChangeStreamDocument<Document>> cursor = getChangeStreamCursor(collection, resumeToken.orElse(null))) {
                 while ((shouldWaitForExport(streamPartition) || shouldWaitForS3Partition(streamPartition.getCollection())) && !Thread.currentThread().isInterrupted()) {
-                    LOG.info("Initial load not complete for collection {}, waiting for initial lo be complete before resuming streams.", collectionDbName);
+                    LOG.info("Initial load not complete for collection {}, waiting for initial load to be complete before resuming streams.", collectionDbName);
                     try {
                         Thread.sleep(DEFAULT_EXPORT_COMPLETE_WAIT_INTERVAL_MILLIS);
                     } catch (final InterruptedException ex) {
@@ -198,9 +208,11 @@ public class StreamWorker {
                 final List<String> s3Partitions = s3PartitionStatus.get().getPartitions();
                 if (s3Partitions.isEmpty()) {
                     // This should not happen unless the S3 partition creator failed.
+                    documentDBAggregateMetrics.getStream5xxErrors().increment();
                     throw new IllegalStateException("S3 partitions are not created. Please check the S3 partition creator thread.");
                 }
                 recordConverter.initializePartitions(s3Partitions);
+                LOG.info("Starting to watch streams for change events.");
                 while (!Thread.currentThread().isInterrupted() && !stopWorker) {
                     if (cursor.hasNext()) {
                         try {
@@ -263,8 +275,15 @@ public class StreamWorker {
                     }
                 }
             }
+        } catch (final IllegalArgumentException | MongoClientException e) {
+            // IllegalArgumentException is thrown when database or collection name is not valid
+            // MongoClientException is thrown for exceptions indicating a failure condition with the MongoClient
+            documentDBAggregateMetrics.getStream4xxErrors().increment();
+            LOG.error("Client side exception connecting to cluster and processing stream", e);
+            throw new RuntimeException(e);
         } catch (final Exception e) {
-            LOG.error("Exception connecting to cluster and processing stream", e);
+            documentDBAggregateMetrics.getStream5xxErrors().increment();
+            LOG.error("Server side exception connecting to cluster and processing stream", e);
             throw new RuntimeException(e);
         } finally {
             if (!records.isEmpty()) {

@@ -6,19 +6,29 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
+
+import java.util.List;
 
 public class DeleteEntryProcessorConfig {
     @NotEmpty
     @NotNull
     @JsonProperty("with_keys")
-    private String[] withKeys;
+    @EventKeyConfiguration(EventKeyFactory.EventAction.DELETE)
+    @JsonPropertyDescription("An array of keys for the entries to be deleted.")
+    private List<@NotNull @NotEmpty EventKey> withKeys;
 
     @JsonProperty("delete_when")
+    @JsonPropertyDescription("Specifies under what condition the `delete_entries` processor should perform deletion. " +
+            "Default is no condition.")
     private String deleteWhen;
 
-    public String[] getWithKeys() {
+    public List<EventKey> getWithKeys() {
         return withKeys;
     }
 

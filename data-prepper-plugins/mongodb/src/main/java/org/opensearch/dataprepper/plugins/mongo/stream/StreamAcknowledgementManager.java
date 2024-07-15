@@ -57,7 +57,7 @@ public class StreamAcknowledgementManager {
             try {
                 CheckpointStatus checkpointStatus = checkpoints.peek();
                 if (checkpointStatus != null) {
-                    if (checkpointStatus.isAcknowledged()) {
+                    if (checkpointStatus.isPositiveAcknowledgement()) {
                         if (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) {
                             long ackCount = 0;
                             do {
@@ -69,17 +69,16 @@ public class StreamAcknowledgementManager {
                                 if (ackCount % CHECKPOINT_RECORD_INTERVAL == 0) {
                                     checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
                                 }
-                            } while (checkpointStatus != null && checkpointStatus.isAcknowledged());
+                            } while (checkpointStatus != null && checkpointStatus.isPositiveAcknowledgement());
                             checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
                             lastCheckpointTime = System.currentTimeMillis();
                         }
                     } else {
                         LOG.debug("Checkpoint not complete for resume token {}", checkpointStatus.getResumeToken());
                         final Duration ackWaitDuration = Duration.between(Instant.ofEpochMilli(checkpointStatus.getCreateTimestamp()), Instant.now());
-                        // Acknowledgement not received for the checkpoint after twice ack wait time
-                        if (ackWaitDuration.getSeconds() >= partitionAcknowledgmentTimeout.getSeconds() * 2) {
+                        if (checkpointStatus.isNegativeAcknowledgement()) {
                             // Give up partition and should interrupt parent thread to stop processing stream
-                            if (lastCheckpointStatus != null && lastCheckpointStatus.isAcknowledged()) {
+                            if (lastCheckpointStatus != null && lastCheckpointStatus.isPositiveAcknowledgement()) {
                                 partitionCheckpoint.checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
                             }
                             LOG.warn("Acknowledgement not received for the checkpoint {} past wait time. Giving up partition.", checkpointStatus.getResumeToken());
@@ -124,12 +123,13 @@ public class StreamAcknowledgementManager {
         ackStatus.put(resumeToken, checkpointStatus);
         LOG.debug("Creating acknowledgment for resumeToken {}", checkpointStatus.getResumeToken());
         return Optional.of(acknowledgementSetManager.create((result) -> {
+            final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);
+            ackCheckpointStatus.setAcknowledgedTimestamp(Instant.now().toEpochMilli());
             if (result) {
-                final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);
-                ackCheckpointStatus.setAcknowledgedTimestamp(Instant.now().toEpochMilli());
-                ackCheckpointStatus.setAcknowledged(true);
+                ackCheckpointStatus.setAcknowledged(CheckpointStatus.AcknowledgmentStatus.POSITIVE_ACK);
                 LOG.debug("Received acknowledgment of completion from sink for checkpoint {}", resumeToken);
             } else {
+                ackCheckpointStatus.setAcknowledged(CheckpointStatus.AcknowledgmentStatus.NEGATIVE_ACK);
                 LOG.warn("Negative acknowledgment received for checkpoint {}, resetting checkpoint", resumeToken);
                 // default CheckpointStatus acknowledged value is false. The monitorCheckpoints method will time out
                 // and reprocess stream from last successful checkpoint in the order.

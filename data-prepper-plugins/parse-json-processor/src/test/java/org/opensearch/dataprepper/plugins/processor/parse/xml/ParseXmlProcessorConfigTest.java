@@ -52,6 +52,9 @@ public class ParseXmlProcessorConfigTest {
             setField(ParseXmlProcessorConfig.class, config, "tagsOnFailure", tagsList);
 
             assertThat(config.getTagsOnFailure(), equalTo(tagsList));
+
+            setField(ParseXmlProcessorConfig.class, config, "deleteSource", true);
+            assertThat(config.isDeleteSourceRequested(), equalTo(true));
         }
     }
 }

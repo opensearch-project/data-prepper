@@ -25,6 +25,5 @@ dependencies {
     implementation project(path: ':data-prepper-plugins:buffer-common')
 
 
-    testImplementation testLibs.mockito.inline
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 }

@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.event;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Map;
@@ -48,6 +49,13 @@ public enum DataType {
      * @since 2.8
      */
     DOUBLE("double"),
+
+    /**
+     * Type of <i>BigDecimal</i>. No precision loss possible type. Compatible with the Java <b>BigDecimal</b> primitive data type.
+     *
+     * @since 2.8
+     */
+    BIG_DECIMAL("big_decimal"),
 
     /**
      * Type of <i>map</i>. Compatible with the Java <b>map</b> primitive data type.
@@ -96,20 +104,22 @@ public enum DataType {
         if (type == null)
             throw new IllegalArgumentException("Unknown DataType");
         switch (type) {
-          case MAP:
-            return (object instanceof Map);
-          case ARRAY:
-            return (object instanceof ArrayList || object.getClass().isArray());
-          case DOUBLE:
-            return (object instanceof Double);
-          case BOOLEAN:
-            return (object instanceof Boolean);
-          case INTEGER:
-            return (object instanceof Integer);
-          case LONG:
-            return (object instanceof Long);
-          default: // STRING
-            return (object instanceof String);
+            case MAP:
+                return (object instanceof Map);
+            case ARRAY:
+                return (object instanceof ArrayList || object.getClass().isArray());
+            case DOUBLE:
+                return (object instanceof Double);
+            case BOOLEAN:
+                return (object instanceof Boolean);
+            case INTEGER:
+                return (object instanceof Integer);
+            case LONG:
+                return (object instanceof Long);
+            case BIG_DECIMAL:
+                return (object instanceof BigDecimal);
+            default: // STRING
+                return (object instanceof String);
         }
     }
 }

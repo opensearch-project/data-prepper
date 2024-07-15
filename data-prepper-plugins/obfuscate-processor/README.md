@@ -63,7 +63,9 @@ Below are the list of configuration options.
   the source field will be updated with obfuscated value.
 * `patterns` - (optional) - A list of Regex patterns. You can define multiple patterns for the same field. Only the
   parts that matched the Regex patterns to be obfuscated. If not provided, the full field will be obfuscated.
+* `single_word_only` - (optional) - When set to `true`, a word boundary `\b` is added to the pattern, due to which obfuscation would be applied only to words that are standalone in the input text. By default, it is `false`, meaning obfuscation patterns are applied to all occurrences.
 * `action` - (optional) - Obfuscation action, default to `mask`. Currently, `mask` is the only supported action.
+
 
 ### Configuration - Mask Action
 

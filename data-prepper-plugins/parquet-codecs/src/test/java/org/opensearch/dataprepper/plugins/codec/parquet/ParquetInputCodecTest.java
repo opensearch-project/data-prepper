@@ -8,8 +8,17 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.parquet.avro.AvroParquetWriter;
+import org.apache.parquet.conf.PlainParquetConfiguration;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.NanoTime;
+import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,12 +42,15 @@ import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Paths;
+import java.time.OffsetDateTime;
+import java.time.temporal.JulianFields;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import static org.apache.parquet.avro.AvroWriteSupport.WRITE_FIXED_AS_INT96;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -162,6 +174,22 @@ public class ParquetInputCodecTest {
     }
 
     @Test
+    public void parseInputStream_parsesCorrectly_with_int96() throws IOException {
+        final File testDataFile = File.createTempFile(FILE_PREFIX + "-int96-", FILE_SUFFIX);
+        testDataFile.deleteOnExit();
+        generateTestDataInt96(testDataFile);
+        InputStream targetStream = new FileInputStream(testDataFile);
+
+        parquetInputCodec.parse(targetStream, mockConsumer);
+
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        verify(mockConsumer, times(10)).accept(recordArgumentCaptor.capture());
+
+        final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
+        assertThat(actualRecords.size(), equalTo(10));
+    }
+
+    @Test
     public void parseInputFile_snappyInputFile() throws IOException, URISyntaxException {
         URL resource = getClass().getClassLoader().getResource("sample.snappy.parquet");
         InputFile inputFile = new LocalInputFile(Paths.get(resource.toURI()).toFile());
@@ -203,8 +231,10 @@ public class ParquetInputCodecTest {
     private static void generateTestData(final File file) throws IOException {
         Schema schema = new Schema.Parser().parse(SCHEMA_JSON);
 
-        ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(new LocalOutputFile(file))
+        final ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(new LocalOutputFile(file))
                 .withSchema(schema)
+                .withConf(new PlainParquetConfiguration())
+                .withEncryption(null)
                 .build();
 
         for (int i = 0; i < 10; i++) {
@@ -216,6 +246,34 @@ public class ParquetInputCodecTest {
             record.put("lastUpdated", 1684509331977L);
 
             writer.write(record);
+        }
+        writer.close();
+    }
+
+    /**
+     * Generates a Parquet file with INT96 data. This must use the example
+     * schema rather than Avro, or it would not correctly reproduce possible INT96
+     * error.
+     *
+     * @param file The file for Parquet
+     */
+    private static void generateTestDataInt96(final File file) throws IOException {
+        final MessageType schema = new MessageType("test", List.of(
+                new PrimitiveType(Type.Repetition.OPTIONAL, PrimitiveType.PrimitiveTypeName.INT96, "my_timestamp_value")
+        ));
+        final PlainParquetConfiguration conf = new PlainParquetConfiguration();
+        conf.setStrings(WRITE_FIXED_AS_INT96,  "my_timestamp_value");
+        conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
+        final ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(file))
+                .withConf(conf)
+                .withEncryption(null)
+                .build();
+
+        for (int i = 0; i < 10; i++) {
+            final Group group = new SimpleGroup(schema);
+            group.add("my_timestamp_value", createInt96());
+
+            writer.write(group);
         }
         writer.close();
     }
@@ -239,6 +297,10 @@ public class ParquetInputCodecTest {
             assertThat(record.getData().getMetadata(), notNullValue());
             assertThat(record.getData().getMetadata().getEventType(), equalTo(EVENT_TYPE));
         }
+    }
+
+    private static NanoTime createInt96() {
+        return new NanoTime((int) OffsetDateTime.now().getLong(JulianFields.JULIAN_DAY), System.nanoTime());
     }
 }
 

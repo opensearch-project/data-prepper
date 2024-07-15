@@ -12,11 +12,13 @@ class SerializedJsonImpl implements SerializedJson, Serializable {
     private byte[] document;
     private String documentId = null;
     private String routingField = null;
+    private String pipelineField = null;
 
-    public SerializedJsonImpl(final byte[] document, String docId, String routingField) {
+    public SerializedJsonImpl(final byte[] document, String docId, String routingField, String pipelineField) {
         this.document = document;
         this.documentId = docId;
         this.routingField = routingField;
+        this.pipelineField = pipelineField;
     }
 
     public SerializedJsonImpl(final byte[] document) {
@@ -42,4 +44,7 @@ class SerializedJsonImpl implements SerializedJson, Serializable {
     public Optional<String> getRoutingField() {
         return Optional.ofNullable(routingField);
     }
+
+    @Override
+    public Optional<String> getPipelineField() { return Optional.ofNullable(pipelineField); }
 }

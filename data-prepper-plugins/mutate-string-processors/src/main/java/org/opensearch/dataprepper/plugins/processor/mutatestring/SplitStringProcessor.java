@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.processor.Processor;
 
 import java.util.HashMap;
@@ -64,7 +65,7 @@ public class SplitStringProcessor extends AbstractStringProcessor<SplitStringPro
     }
 
     @Override
-    protected String getKey(final SplitStringProcessorConfig.Entry entry) {
+    protected EventKey getKey(final SplitStringProcessorConfig.Entry entry) {
         return entry.getSource();
     }
 

@@ -70,6 +70,7 @@ public class KeyValueProcessorTests {
     void setup() {
         final KeyValueProcessorConfig defaultConfig = new KeyValueProcessorConfig();
         lenient().when(mockConfig.getSource()).thenReturn(defaultConfig.getSource());
+        lenient().when(mockConfig.getStringLiteralCharacter()).thenReturn(null);
         lenient().when(mockConfig.getDestination()).thenReturn(defaultConfig.getDestination());
         lenient().when(mockConfig.getFieldDelimiterRegex()).thenReturn(defaultConfig.getFieldDelimiterRegex());
         lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(defaultConfig.getFieldSplitCharacters());
@@ -187,6 +188,7 @@ public class KeyValueProcessorTests {
     @MethodSource("getKeyValueGroupingTestdata")
     void testMultipleKvToObjectKeyValueProcessorWithValueGrouping(String fieldDelimiters, String input, Map<String, Object> expectedResultMap) {
         lenient().when(mockConfig.getValueGrouping()).thenReturn(true);
+        lenient().when(mockConfig.getStringLiteralCharacter()).thenReturn('\"');
         lenient().when(mockConfig.getDropKeysWithNoValue()).thenReturn(true);
         lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(fieldDelimiters);
         final KeyValueProcessor objectUnderTest = createObjectUnderTest();
@@ -208,15 +210,82 @@ public class KeyValueProcessorTests {
                 Arguments.of(", ", "key1=value1, key2=value2", Map.of("key1", "value1", "key2", "value2")),
                 Arguments.of(", ", "key1=It\\'sValue1, key2=value2", Map.of("key1", "It\\'sValue1", "key2", "value2")),
                 Arguments.of(", ", "text1 text2 key1=value1, key2=value2 text3 text4", Map.of("key1", "value1", "key2", "value2")),
-                Arguments.of(", ", "text1 text2 foo key1=value1 url=http://foo.com?bar=text,text&foo=zoo  bar k2=\"http://bar.com?a=b&c=foo bar\" barr", Map.of("key1", "value1", "url", "http://foo.com?bar=text,text&foo=zoo", "k2", "\"http://bar.com?a=b&c=foo bar\"")),
+                Arguments.of(", ", "text1 text2 foo key1=value1 url=http://foo.com?bar=text,text&foo=zoo bar k2=\"http://bar.com?a=b&c=foo bar\" barr", Map.of("key1", "value1", "url", "http://foo.com?bar=text,text&foo=zoo", "k2", "\"http://bar.com?a=b&c=foo bar\"")),
                 Arguments.of(", ", "vendorMessage=VendorMessage(uid=1847060493-1712778523223, feedValue=https://syosetu.org/novel/147705/15.html, bundleId=, linkType=URL, vendor=DOUBLEVERIFY, platform=DESKTOP, deviceTypeId=1, bidCount=6, appStoreTld=, feedSource=DSP, regions=[APAC], timestamp=1712778523223, externalId=)", Map.of("vendorMessage", "VendorMessage(uid=1847060493-1712778523223, feedValue=https://syosetu.org/novel/147705/15.html, bundleId=, linkType=URL, vendor=DOUBLEVERIFY, platform=DESKTOP, deviceTypeId=1, bidCount=6, appStoreTld=, feedSource=DSP, regions=[APAC], timestamp=1712778523223, externalId=)")),
+                Arguments.of(", ()", "foo bar(key1=value1, key2=value2, key3=)", Map.of("key1", "value1", "key2", "value2", "key3","")),
+                Arguments.of(", ", "foo bar(key1=value1, key2=value2, key3=)", Map.of("bar(key1", "value1", "key2", "value2", "key3",")")),
+                Arguments.of(", ", "foo bar[key1=value1, key2=value2, key3=]", Map.of("bar[key1", "value1", "key2", "value2", "key3","]")),
+                Arguments.of(", ", "foo bar{key1=value1, key2=value2, key3=}", Map.of("bar{key1", "value1", "key2", "value2", "key3","}")),
+                Arguments.of(", ", "key1 \"key2=val2\" key3=\"value3,value4\"", Map.of("key3", "\"value3,value4\"")),
                 Arguments.of(", ", "key1=[value1,value2], key3=value3", Map.of("key1", "[value1,value2]", "key3", "value3")),
                 Arguments.of(", ", "key1=(value1, value2), key3=value3", Map.of("key1", "(value1, value2)", "key3", "value3")),
                 Arguments.of(", ", "key1=<value1 ,value2>, key3=value3", Map.of("key1", "<value1 ,value2>", "key3", "value3")),
                 Arguments.of(", ", "key1={value1,value2}, key3=value3", Map.of("key1", "{value1,value2}", "key3", "value3")),
                 Arguments.of(", ", "key1='value1,value2', key3=value3", Map.of("key1", "'value1,value2'", "key3", "value3")),
+                Arguments.of(", ", "foo  key1=val1, key2=val2,key3=val3 bar", Map.of("key1", "val1", "key2", "val2", "key3", "val3")),
+                Arguments.of(", ", "foo,key1=(val1,key2=val2,val3),key4=val4 bar", Map.of("key1", "(val1,key2=val2,val3)", "key4", "val4")),
+                Arguments.of(", ", "foo,key1=(val1,key2=val2,val3,key4=val4 bar", Map.of("key1", "(val1,key2=val2,val3,key4=val4 bar")),
+
+                Arguments.of(", ", "foo,key1=[val1,key2=val2,val3],key4=val4 bar", Map.of("key1", "[val1,key2=val2,val3]", "key4", "val4")),
+                Arguments.of(", ", "foo,key1=[val1,key2=val2,val3,key4=val4 bar", Map.of("key1", "[val1,key2=val2,val3,key4=val4 bar")),
+
+                Arguments.of(", ", "foo,key1={val1,key2=val2,val3},key4=val4 bar", Map.of("key1", "{val1,key2=val2,val3}", "key4", "val4")),
+                Arguments.of(", ", "foo,key1={val1,key2=val2,val3,key4=val4 bar", Map.of("key1", "{val1,key2=val2,val3,key4=val4 bar")),
+
+                Arguments.of(", ", "foo,key1=<val1,key2=val2,val3>,key4=val4 bar", Map.of("key1", "<val1,key2=val2,val3>", "key4", "val4")),
+                Arguments.of(", ", "foo,key1=<val1,key2=val2,val3,key4=val4 bar", Map.of("key1", "<val1,key2=val2,val3,key4=val4 bar")),
+
+                Arguments.of(", ", "foo,key1=\"val1,key2=val2,val3\",key4=val4 bar", Map.of("key1", "\"val1,key2=val2,val3\"", "key4", "val4")),
+                Arguments.of(", ", "foo,key1=\"val1,key2=val2,val3,key4=val4 bar", Map.of("key1", "\"val1,key2=val2,val3,key4=val4 bar")),
+
+                Arguments.of(", ", "foo,key1='val1,key2=val2,val3',key4=val4 bar", Map.of("key1", "'val1,key2=val2,val3'", "key4", "val4")),
+                Arguments.of(", ", "foo,key1='val1,key2=val2,val3,key4=val4 bar", Map.of("key1", "'val1,key2=val2,val3,key4=val4 bar")),
+
+                Arguments.of(", ", "foo \"key1=key2 bar\" key2=val2 baz", Map.of("key2", "val2")),
+                Arguments.of(", ", "foo  key1=https://bar.baz/?key2=val2&url=https://quz.fred/ bar", Map.of("key1","https://bar.baz/?key2=val2&url=https://quz.fred/")),
+                Arguments.of(", ", "foo key1=\"bar \" qux\" fred", Map.of("key1", "\"bar \"")),
+                Arguments.of(", ", "foo key1=\"bar \\\" qux\" fred", Map.of("key1", "\"bar \\\" qux\"")),
+
                 Arguments.of(", ", "key1=\"value1,value2\", key3=value3", Map.of("key1", "\"value1,value2\"", "key3", "value3"))
                );
+    }
+
+    @Test
+    void testValueGroupingWithOutStringLiterals() {
+        when(mockConfig.getDestination()).thenReturn(null);
+        String message = "text1 text2 [ key1=value1  value2";
+        lenient().when(mockConfig.getStringLiteralCharacter()).thenReturn(null);
+        lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(" ,");
+        lenient().when(mockConfig.getValueGrouping()).thenReturn(true);
+        final Record<Event> record = getMessage(message);
+        keyValueProcessor = createObjectUnderTest();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+
+        final Event event = editedRecords.get(0).getData();
+        assertThat(event.containsKey("parsed_message"), is(false));
+
+        assertThat(event.containsKey("key1"), is(true));
+        assertThat(event.get("key1", Object.class), is("value1"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"\"", "'"})
+    void testStringLiteralCharacter(String literalString) {
+        when(mockConfig.getDestination()).thenReturn(null);
+        String message = literalString+"ignore this "+literalString+" key1=value1&key2=value2 "+literalString+"ignore=this&too"+literalString;
+        lenient().when(mockConfig.getStringLiteralCharacter()).thenReturn(literalString.charAt(0));
+        lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(" &");
+        lenient().when(mockConfig.getValueGrouping()).thenReturn(true);
+        final Record<Event> record = getMessage(message);
+        keyValueProcessor = createObjectUnderTest();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+
+        final Event event = editedRecords.get(0).getData();
+        assertThat(event.containsKey("parsed_message"), is(false));
+
+        assertThat(event.containsKey("key1"), is(true));
+        assertThat(event.containsKey("key2"), is(true));
+        assertThat(event.get("key1", Object.class), is("value1"));
     }
 
     @Test

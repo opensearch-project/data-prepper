@@ -16,6 +16,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -38,6 +39,8 @@ import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorTes
 
 public class GrokProcessorIT {
     private PluginSetting pluginSetting;
+    private PluginMetrics pluginMetrics;
+    private GrokProcessorConfig grokProcessorConfig;
     private GrokProcessor grokProcessor;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
@@ -65,6 +68,8 @@ public class GrokProcessorIT {
                 null);
 
         pluginSetting.setPipelineName("grokPipeline");
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
 
         // This is a COMMONAPACHELOG pattern with the following format
         // COMMONAPACHELOG %{IPORHOST:clientip} %{USER:ident} %{USER:auth} \[%{HTTPDATE:timestamp}\] "(?:%{WORD:verb} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})" %{NUMBER:response} (?:%{NUMBER:bytes}|-)
@@ -115,7 +120,8 @@ public class GrokProcessorIT {
         matchConfig.put("bad_key", Collections.singletonList(nonMatchingPattern));
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", messageInput);
@@ -135,7 +141,8 @@ public class GrokProcessorIT {
         matchConfig.put("message", Collections.singletonList("%{COMMONAPACHELOG}"));
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", messageInput);
@@ -173,7 +180,8 @@ public class GrokProcessorIT {
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
         pluginSetting.getSettings().put(GrokProcessorConfig.BREAK_ON_MATCH, false);
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", messageInput);
@@ -208,7 +216,8 @@ public class GrokProcessorIT {
         matchConfig.put("message", Collections.singletonList("\"(?:%{WORD:verb} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})\" %{NUMBER:response:int} (?:%{NUMBER:bytes:float}|-)"));
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", messageInput);
@@ -240,7 +249,8 @@ public class GrokProcessorIT {
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
         pluginSetting.getSettings().put(GrokProcessorConfig.BREAK_ON_MATCH, false);
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", messageInput);
@@ -278,7 +288,8 @@ public class GrokProcessorIT {
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
         pluginSetting.getSettings().put(GrokProcessorConfig.KEEP_EMPTY_CAPTURES, true);
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", messageInput);
@@ -314,7 +325,8 @@ public class GrokProcessorIT {
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
         pluginSetting.getSettings().put(GrokProcessorConfig.NAMED_CAPTURES_ONLY, false);
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", "This is my greedy data before matching 192.0.2.1 123456");
@@ -346,7 +358,8 @@ public class GrokProcessorIT {
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
         pluginSetting.getSettings().put(GrokProcessorConfig.PATTERN_DEFINITIONS, patternDefinitions);
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", "This is my greedy data before matching with my phone number 123-456-789");
@@ -389,7 +402,8 @@ public class GrokProcessorIT {
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
         pluginSetting.getSettings().put(GrokProcessorConfig.PATTERNS_DIRECTORIES, patternsDirectories);
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
@@ -422,7 +436,8 @@ public class GrokProcessorIT {
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
         pluginSetting.getSettings().put(GrokProcessorConfig.PATTERNS_DIRECTORIES, patternsDirectories);
         pluginSetting.getSettings().put(GrokProcessorConfig.PATTERNS_FILES_GLOB, "*1.txt");
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
@@ -436,8 +451,10 @@ public class GrokProcessorIT {
         matchConfigWithPatterns2Pattern.put("message", Collections.singletonList("My birthday is %{CUSTOMBIRTHDAYPATTERN:my_birthday}"));
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfigWithPatterns2Pattern);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
 
-        Throwable throwable = assertThrows(IllegalArgumentException.class, () -> new GrokProcessor(pluginSetting, expressionEvaluator));
+        Throwable throwable = assertThrows(IllegalArgumentException.class, () -> new GrokProcessor(
+                pluginMetrics, grokProcessorConfig, expressionEvaluator));
         assertThat("No definition for key 'CUSTOMBIRTHDAYPATTERN' found, aborting", equalTo(throwable.getMessage()));
     }
 
@@ -447,7 +464,8 @@ public class GrokProcessorIT {
         matchConfig.put("message", Collections.singletonList("%{GREEDYDATA:greedy_data} (?<mynumber>\\d\\d\\d-\\d\\d\\d-\\d\\d\\d)"));
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", "This is my greedy data before matching with my phone number 123-456-789");
@@ -477,7 +495,8 @@ public class GrokProcessorIT {
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
         pluginSetting.getSettings().put(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, List.of(tagOnMatchFailure1, tagOnMatchFailure2));
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("log", "This is my greedy data before matching with my phone number 123-456-789");
@@ -495,14 +514,16 @@ public class GrokProcessorIT {
     @Test
     public void testCompileNonRegisteredPatternThrowsIllegalArgumentException() {
 
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("%{NONEXISTENTPATTERN}"));
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
 
-        assertThrows(IllegalArgumentException.class, () -> new GrokProcessor(pluginSetting, expressionEvaluator));
+        assertThrows(IllegalArgumentException.class, () -> new GrokProcessor(
+                pluginMetrics, grokProcessorConfig, expressionEvaluator));
     }
 
     @ParameterizedTest
@@ -512,7 +533,8 @@ public class GrokProcessorIT {
         matchConfig.put("message", Collections.singletonList(matchPattern));
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
-        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+        grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
+        grokProcessor = new GrokProcessor(pluginMetrics, grokProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", logInput);

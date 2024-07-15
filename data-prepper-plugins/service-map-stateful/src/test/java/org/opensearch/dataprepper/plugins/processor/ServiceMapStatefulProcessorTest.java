@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
@@ -43,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.processor.ServiceMapProcessorConfig.DEFAULT_WINDOW_DURATION;
 
 
 public class ServiceMapStatefulProcessorTest {
@@ -54,12 +57,20 @@ public class ServiceMapStatefulProcessorTest {
     private static final String PAYMENT_SERVICE = "PAY";
     private static final String CART_SERVICE = "CART";
     private PluginSetting pluginSetting;
+    private PluginMetrics pluginMetrics;
+    private PipelineDescription pipelineDescription;
+    private ServiceMapProcessorConfig serviceMapProcessorConfig;
 
     @BeforeEach
     public void setup() throws NoSuchFieldException, IllegalAccessException {
         resetServiceMapStatefulProcessorStatic();
         MetricsTestUtil.initMetrics();
         pluginSetting = mock(PluginSetting.class);
+        pipelineDescription = mock(PipelineDescription.class);
+        serviceMapProcessorConfig = mock(ServiceMapProcessorConfig.class);
+        when(serviceMapProcessorConfig.getWindowDuration()).thenReturn(DEFAULT_WINDOW_DURATION);
+        pluginMetrics = PluginMetrics.fromNames(
+                "testServiceMapProcessor", "testPipelineName");
         when(pluginSetting.getName()).thenReturn("testServiceMapProcessor");
         when(pluginSetting.getPipelineName()).thenReturn("testPipelineName");
     }
@@ -116,13 +127,11 @@ public class ServiceMapStatefulProcessorTest {
     }
 
     @Test
-    public void testPluginSettingConstructor() {
-
-        final PluginSetting pluginSetting = new PluginSetting("testPluginSetting", Collections.emptyMap());
-        pluginSetting.setProcessWorkers(4);
-        pluginSetting.setPipelineName("TestPipeline");
+    public void testDataPrepperConstructor() {
+        when(pipelineDescription.getNumberOfProcessWorkers()).thenReturn(4);
         //Nothing is accessible to validate, so just verify that no exception is thrown.
-        final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(pluginSetting);
+        final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(
+                serviceMapProcessorConfig, pluginMetrics, pipelineDescription);
     }
 
     @Test
@@ -132,8 +141,8 @@ public class ServiceMapStatefulProcessorTest {
         Mockito.when(clock.instant()).thenReturn(Instant.now());
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
-        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginSetting);
-        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginSetting);
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginMetrics);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginMetrics);
 
         final byte[] rootSpanId1Bytes = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] rootSpanId2Bytes = ServiceMapTestUtils.getRandomBytes(8);
@@ -327,8 +336,8 @@ public class ServiceMapStatefulProcessorTest {
         Mockito.when(clock.instant()).thenReturn(Instant.now());
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
-        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginSetting);
-        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginSetting);
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginMetrics);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginMetrics);
 
         final byte[] rootSpanIdBytes = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] traceIdBytes = ServiceMapTestUtils.getRandomBytes(16);
@@ -383,7 +392,7 @@ public class ServiceMapStatefulProcessorTest {
     @Test
     public void testPrepareForShutdownWithEventRecordData() {
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
-        final ServiceMapStatefulProcessor serviceMapStateful = new ServiceMapStatefulProcessor(100, path, Clock.systemUTC(), 1, pluginSetting);
+        final ServiceMapStatefulProcessor serviceMapStateful = new ServiceMapStatefulProcessor(100, path, Clock.systemUTC(), 1, pluginMetrics);
 
         final byte[] rootSpanId1Bytes = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] traceId1Bytes = ServiceMapTestUtils.getRandomBytes(16);
@@ -411,11 +420,9 @@ public class ServiceMapStatefulProcessorTest {
 
     @Test
     public void testGetIdentificationKeys() {
-        final PluginSetting pluginSetting = new PluginSetting("testPluginSetting", Collections.emptyMap());
-        pluginSetting.setProcessWorkers(4);
-        pluginSetting.setPipelineName("TestPipeline");
-
-        final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(pluginSetting);
+        when(pipelineDescription.getNumberOfProcessWorkers()).thenReturn(4);
+        final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(
+                serviceMapProcessorConfig, pluginMetrics, pipelineDescription);
         final Collection<String> expectedIdentificationKeys = serviceMapStatefulProcessor.getIdentificationKeys();
 
         assertThat(expectedIdentificationKeys, equalTo(Collections.singleton("traceId")));

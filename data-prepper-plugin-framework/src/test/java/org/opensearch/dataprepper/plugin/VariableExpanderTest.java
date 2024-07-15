@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
@@ -133,6 +134,7 @@ class VariableExpanderTest {
                 Arguments.of(Long.class, "200", 200L),
                 Arguments.of(Double.class, "1.23", 1.23d),
                 Arguments.of(Float.class, "2.15", 2.15f),
+                Arguments.of(BigDecimal.class, "2.15", BigDecimal.valueOf(2.15)),
                 Arguments.of(Map.class, "{}", Collections.emptyMap()));
     }
 
@@ -147,6 +149,7 @@ class VariableExpanderTest {
                 Arguments.of(Long.class, "\"200\"", 200L),
                 Arguments.of(Double.class, "\"1.23\"", 1.23d),
                 Arguments.of(Float.class, "\"2.15\"", 2.15f),
+                Arguments.of(BigDecimal.class, "\"2.15\"", BigDecimal.valueOf(2.15)),
                 Arguments.of(Character.class, "\"c\"", 'c'));
     }
 }

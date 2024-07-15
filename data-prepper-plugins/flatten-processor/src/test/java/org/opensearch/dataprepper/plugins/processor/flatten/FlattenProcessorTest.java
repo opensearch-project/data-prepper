@@ -52,6 +52,7 @@ class FlattenProcessorTest {
         lenient().when(mockConfig.getTarget()).thenReturn("");
         lenient().when(mockConfig.isRemoveProcessedFields()).thenReturn(false);
         lenient().when(mockConfig.isRemoveListIndices()).thenReturn(false);
+        lenient().when(mockConfig.isRemoveBrackets()).thenReturn(false);
         lenient().when(mockConfig.getFlattenWhen()).thenReturn(null);
         lenient().when(mockConfig.getTagsOnFailure()).thenReturn(new ArrayList<>());
         lenient().when(mockConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
@@ -120,6 +121,35 @@ class FlattenProcessorTest {
     }
 
     @Test
+    void testFlattenEntireEventDataAndRemoveListIndicesAndRemoveBrackets() {
+        when(mockConfig.isRemoveListIndices()).thenReturn(true);
+        when(mockConfig.isRemoveBrackets()).thenReturn(true);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord(createTestData());
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        Map<String, Object> resultData = resultEvent.get("", Map.class);
+
+        assertThat(resultData.containsKey("key1"), is(true));
+        assertThat(resultData.get("key1"), is("val1"));
+
+        assertThat(resultData.containsKey("key1"), is(true));
+        assertThat(resultData.get("key2.key3.key.4"), is("val2"));
+
+        assertThat(resultData.containsKey("list1[].list2[].name"), is(false));
+        assertThat(resultData.containsKey("list1.list2.name"), is(true));
+        assertThat(resultData.get("list1.list2.name"), is(List.of("name1", "name2")));
+
+        assertThat(resultData.containsKey("list1[].list2[].value"), is(false));
+        assertThat(resultData.containsKey("list1.list2.value"), is(true));
+        assertThat(resultData.get("list1.list2.value"), is(List.of("value1", "value2")));
+    }
+
+    @Test
     void testFlattenWithSpecificFieldsAsSourceAndTarget() {
         when(mockConfig.getSource()).thenReturn(SOURCE_KEY);
         when(mockConfig.getTarget()).thenReturn(TARGET_KEY);
@@ -185,6 +215,37 @@ class FlattenProcessorTest {
 
         assertThat(resultData.containsKey("list1[].list2[].value"), is(true));
         assertThat(resultData.get("list1[].list2[].value"), is(List.of("value1", "value2")));
+    }
+
+    @Test
+    void testFlattenWithSpecificFieldsAsSourceAndTargetAndRemoveListIndicesAndRemoveBrackets() {
+        when(mockConfig.getSource()).thenReturn(SOURCE_KEY);
+        when(mockConfig.getTarget()).thenReturn(TARGET_KEY);
+        when(mockConfig.isRemoveListIndices()).thenReturn(true);
+        when(mockConfig.isRemoveBrackets()).thenReturn(true);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord(Map.of(SOURCE_KEY, createTestData()));
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        Map<String, Object> resultData = resultEvent.get(TARGET_KEY, Map.class);
+
+        assertThat(resultData.containsKey("key1"), is(true));
+        assertThat(resultData.get("key1"), is("val1"));
+
+        assertThat(resultData.containsKey("key1"), is(true));
+        assertThat(resultData.get("key2.key3.key.4"), is("val2"));
+
+        assertThat(resultData.containsKey("list1[].list2[].name"), is(false));
+        assertThat(resultData.containsKey("list1.list2.name"), is(true));
+        assertThat(resultData.get("list1.list2.name"), is(List.of("name1", "name2")));
+
+        assertThat(resultData.containsKey("list1[].list2[].value"), is(false));
+        assertThat(resultData.containsKey("list1.list2.value"), is(true));
+        assertThat(resultData.get("list1.list2.value"), is(List.of("value1", "value2")));
     }
 
     @Test

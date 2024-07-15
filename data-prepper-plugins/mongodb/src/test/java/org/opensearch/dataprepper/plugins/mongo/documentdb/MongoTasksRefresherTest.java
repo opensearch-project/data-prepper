@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfi
 import org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.mongo.export.ExportWorker;
 import org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler;
+import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 
 import java.util.List;
 import java.util.UUID;
@@ -76,6 +77,9 @@ class MongoTasksRefresherTest {
     private CollectionConfig collectionConfig;
 
     @Mock
+    private DocumentDBSourceAggregateMetrics documentDBSourceAggregateMetrics;
+
+    @Mock
     private Counter credentialsChangeCounter;
 
     @Mock
@@ -84,7 +88,7 @@ class MongoTasksRefresherTest {
     private MongoTasksRefresher createObjectUnderTest() {
         return new MongoTasksRefresher(
                 buffer, enhancedSourceCoordinator, pluginMetrics, acknowledgementSetManager,
-                executorServiceFunction, S3_PATH_PREFIX);
+                executorServiceFunction, S3_PATH_PREFIX, documentDBSourceAggregateMetrics);
     }
 
     @BeforeEach
@@ -248,6 +252,20 @@ class MongoTasksRefresherTest {
     void testTaskRefreshWithNullS3PathPrefix() {
         assertThrows(IllegalArgumentException.class, () -> new MongoTasksRefresher(
                 buffer, enhancedSourceCoordinator, pluginMetrics, acknowledgementSetManager,
-                executorServiceFunction, null));
+                executorServiceFunction, null, documentDBSourceAggregateMetrics));
+    }
+
+    @Test
+    void testTaskRefreshShutdown() {
+        final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(sourceConfig);
+        objectUnderTest.shutdown();
+        verify(executorServiceFunction).apply(eq(3));
+        verify(executorService).submit(any(ExportScheduler.class));
+        verify(executorService).submit(any(ExportWorker.class));
+        verify(executorService).submit(any(StreamScheduler.class));
+        verify(executorService).shutdownNow();
+        verifyNoMoreInteractions(executorServiceFunction);
+
     }
 }

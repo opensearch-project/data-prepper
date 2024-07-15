@@ -83,7 +83,7 @@ public class RouterCopyRecordStrategyTests {
                 int v = handleRefCount.getOrDefault(handle, 0);
                 handleRefCount.put(handle, v+1);
                 return null;
-            }).when(acknowledgementSetManager).acquireEventReference(any(DefaultEventHandle.class));
+            }).when(acknowledgementSet1).acquire(any(DefaultEventHandle.class));
         } catch (Exception e){}
         mockRecordsIn = IntStream.range(0, 10)
                 .mapToObj(i -> mock(Record.class))
@@ -103,7 +103,7 @@ public class RouterCopyRecordStrategyTests {
         while (iter.hasNext()) {
             Record r = (Record) iter.next();
             DefaultEventHandle handle = (DefaultEventHandle)((JacksonEvent)r.getData()).getEventHandle();
-            handle.setAcknowledgementSet(acknowledgementSet1);
+            handle.addAcknowledgementSet(acknowledgementSet1);
             eventHandles.add(handle);
         }
     }
@@ -195,6 +195,7 @@ public class RouterCopyRecordStrategyTests {
         assertTrue(getRecordStrategy.getReferencedRecords().contains(firstRecord));
         recordOut = getRecordStrategy.getRecord(firstRecord);
         assertThat(recordOut, sameInstance(firstRecord));
+        firstHandle.addAcknowledgementSet(acknowledgementSet1);
         assertThat(handleRefCount.get(firstHandle), equalTo(1));
         recordOut = getRecordStrategy.getRecord(firstRecord);
         assertThat(recordOut, sameInstance(firstRecord));
@@ -242,7 +243,7 @@ public class RouterCopyRecordStrategyTests {
         try {
             doAnswer((i) -> {
                 JacksonEvent e1 = (JacksonEvent) i.getArgument(0);
-                ((DefaultEventHandle)e1.getEventHandle()).setAcknowledgementSet(acknowledgementSet1);
+                ((DefaultEventHandle)e1.getEventHandle()).addAcknowledgementSet(acknowledgementSet1);
                 return null;
             }).when(acknowledgementSet1).add(any(JacksonEvent.class));
         } catch (Exception e){}
@@ -280,7 +281,7 @@ public class RouterCopyRecordStrategyTests {
         try {
             doAnswer((i) -> {
                 JacksonEvent e1 = (JacksonEvent) i.getArgument(0);
-                ((DefaultEventHandle)e1.getEventHandle()).setAcknowledgementSet(acknowledgementSet1);
+                ((DefaultEventHandle)e1.getEventHandle()).addAcknowledgementSet(acknowledgementSet1);
                 return null;
             }).when(acknowledgementSet1).add(any(JacksonEvent.class));
         } catch (Exception e){}

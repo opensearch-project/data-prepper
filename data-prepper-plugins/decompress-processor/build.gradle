@@ -9,5 +9,4 @@ dependencies {
     implementation project(':data-prepper-plugins:common')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
-    testImplementation testLibs.mockito.inline
 }

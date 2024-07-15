@@ -238,6 +238,8 @@ the flush timeout and instead flush whatever is present at the end of each batch
       bulk_size: 4
 ```
 
+- `pipeline` (optional): A string which is used to represent the pipeline Id for preprocessing documents. Each incoming record is searched for this field and if it is present, it is used as the pipeline field for the document. Standard Data Prepper Json pointer syntax is used for retrieving the value. If the field has "/" in it then the incoming record is searched in the json sub-objects instead of just in the root of the json object. For example, if the field is specified as `info/id`, then the root of the event is searched for `info` and if it is found, then `id` is searched inside it. The value specified for `id` is used as the pipeline id. This field can also be a Data Prepper expression that is evaluated to determine the `pipeline_id`. For example, setting to `getMetadata(\"some_metadata_key\")` will use the value of the metadata key as the pipeline_id.
+
 - `ism_policy_file` (optional): A String of absolute file path or AWS S3 URI for an ISM (Index State Management) policy JSON file. This policy file is effective only when there is no built-in policy file for the index type. For example, `custom` index type is currently the only one without a built-in policy file, thus it would use the policy file here if it's provided through this parameter. OpenSearch documentation has more about [ISM policies.](https://opensearch.org/docs/latest/im-plugin/ism/policies/)
 
 - `s3_aws_region` (optional): A String represents the region of S3 bucket to read `template_file` or `ism_policy_file`, e.g. us-west-2. Only applies to Amazon OpenSearch Service. Defaults to `us-east-1`.

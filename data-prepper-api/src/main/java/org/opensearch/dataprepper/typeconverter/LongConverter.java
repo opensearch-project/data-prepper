@@ -7,6 +7,11 @@
 
  import java.math.BigDecimal;
  public class LongConverter implements TypeConverter<Long> {
+
+     public Long convert(Object source, ConverterArguments arguments) throws IllegalArgumentException {
+         return this.convert(source);
+     }
+
      public Long convert(Object source) throws IllegalArgumentException {
          if (source instanceof String) {
              return Long.parseLong((String)source);
