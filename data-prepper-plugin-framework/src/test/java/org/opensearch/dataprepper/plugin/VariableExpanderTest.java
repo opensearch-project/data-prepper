@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -83,7 +84,7 @@ class VariableExpanderTest {
     @Test
     void testTranslateJsonParserWithStringValue_no_key_match() throws IOException {
         final String testSecretKey = "testSecretKey";
-        final String testSecretReference = String.format("${{unknown.%s}}", testSecretKey);
+        final String testSecretReference = String.format("${{unknown-%s.%s}}", UUID.randomUUID(), testSecretKey);
         final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
         jsonParser.nextToken();
         when(pluginConfigValueTranslator.getPrefix()).thenReturn("test_prefix");
