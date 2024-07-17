@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.StreamConfig;
 
 import java.util.List;
 
@@ -70,6 +71,12 @@ public class RdsSourceConfig {
     @Valid
     private ExportConfig exportConfig;
 
+    @JsonProperty("stream")
+    private StreamConfig streamConfig;
+
+    @JsonProperty("authentication")
+    private AuthenticationConfig authenticationConfig;
+
     public String getDbIdentifier() {
         return dbIdentifier;
     }
@@ -116,5 +123,34 @@ public class RdsSourceConfig {
 
     public boolean isExportEnabled() {
         return exportConfig != null;
+    }
+
+    public StreamConfig getStream() {
+        return streamConfig;
+    }
+
+    public boolean isStreamEnabled() {
+        return streamConfig != null;
+    }
+
+    public AuthenticationConfig getAuthenticationConfig() {
+        return this.authenticationConfig;
+    }
+
+    public static class AuthenticationConfig {
+        @JsonProperty("username")
+        private String username;
+
+        @JsonProperty("password")
+        private String password;
+
+        public String getUsername() {
+            return username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
     }
 }

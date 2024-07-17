@@ -11,6 +11,12 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Global State is a special type of partition. The partition type is null.
+ * You can't acquire (own) a Global State.
+ * However, you can read and update Global State whenever required.
+ * The progress state is a Map object.
+ */
 public class GlobalState extends EnhancedSourcePartition<Map<String, Object>> {
 
     private final String stateName;

@@ -17,4 +17,6 @@ public class MetadataKeyAttributes {
     static final String EVENT_TABLE_NAME_METADATA_ATTRIBUTE = "table_name";
 
     static final String INGESTION_EVENT_TYPE_ATTRIBUTE = "ingestion_type";
+
+    static final String EVENT_S3_PARTITION_KEY = "s3_partition_key";
 }
