@@ -183,12 +183,16 @@ public class KeyValueProcessorConfig {
     private String keyValueWhen;
 
     @JsonProperty("strict_grouping")
-    @JsonPropertyDescription("Specifies whether strict grouping should be enabled when the `value_grouping` " +
+    @JsonPropertyDescription("When enabled, groups with unmatched end characters yield errors. " +
+            "The event is ignored after the errors are logged. " +
+            "Specifies whether strict grouping should be enabled when the `value_grouping` " +
             "or `string_literal_character` options are used. Default is `false`.")
     private boolean strictGrouping = false;
 
     @JsonProperty("string_literal_character")
-    @JsonPropertyDescription("Can be set to either a single quotation mark (`'`) or a double quotation mark (`\"`). " +
+    @JsonPropertyDescription("When this option is used, any text contained within the specified quotation " +
+            "mark character will be ignored and excluded from key-value parsing. " +
+            "Can be set to either a single quotation mark (`'`) or a double quotation mark (`\"`). " +
             "Default is `null`.")
     @Size(min = 0, max = 1, message = "string_literal_character may only have character")
     private String stringLiteralCharacter = null;
