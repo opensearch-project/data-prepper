@@ -27,7 +27,8 @@ public class OneWayHashActionConfig {
     private String hashFormat = "SHA-512";
 
     @JsonProperty("salt_key")
-    @JsonPropertyDescription("A key to compute salt based on a value provided as part of a record.")
+    @JsonPropertyDescription("A key to compute salt based on a value provided as part of a record." + 
+        "If key or value was not found in the record(s), a salt defined in the pipeline configuration will be used instead.")
     private String saltKey;
 
     public OneWayHashActionConfig() {        
