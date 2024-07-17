@@ -63,7 +63,6 @@ public class HistogramAggregateAction implements AggregateAction {
     private double maxValue;
     private final String metricName;
 
-    private long startTimeNanos;
     private double[] buckets;
 
     @DataPrepperPluginConstructor
@@ -147,8 +146,8 @@ public class HistogramAggregateAction implements AggregateAction {
         Instant eventTime = Instant.now();
         Instant eventStartTime = eventTime;
         Instant eventEndTime = eventTime;
-        Object startTime = event.get(startTimeKey, Object.class);
-        Object endTime = event.get(endTimeKey, Object.class);
+        final Object startTime = event.get(startTimeKey, Object.class);
+        final Object endTime = event.get(endTimeKey, Object.class);
         if (startTime != null) {
             eventStartTime = AggregateProcessor.convertObjectToInstant(startTime);
         }
@@ -161,7 +160,6 @@ public class HistogramAggregateAction implements AggregateAction {
             Long[] bucketCountsList = new Long[buckets.length-1];
             Arrays.fill(bucketCountsList, (long)0);
             bucketCountsList[idx]++;
-            groupState.put(startTimeKey, eventTime);
             groupState.putAll(aggregateActionInput.getIdentificationKeys());
             groupState.put(sumKey, doubleValue);
             groupState.put(countKey, 1);
@@ -195,12 +193,14 @@ public class HistogramAggregateAction implements AggregateAction {
                     maxValue = doubleValue;
                 }
             }
-            Instant groupStartTime = (Instant)groupState.get(startTimeKey);
-            Instant groupEndTime = (Instant)groupState.get(endTimeKey);
-            if (eventStartTime.isBefore(groupStartTime))
+            final Instant groupStartTime = (Instant)groupState.get(startTimeKey);
+            final Instant groupEndTime = (Instant)groupState.get(endTimeKey);
+            if (eventStartTime.isBefore(groupStartTime)) {
                 groupState.put(startTimeKey, eventStartTime);
-            if (eventEndTime.isAfter(groupEndTime))
+            }
+            if (eventEndTime.isAfter(groupEndTime)) {
                 groupState.put(endTimeKey, eventEndTime);
+            }
         }
         return AggregateActionResponse.nullEventResponse();
     }
@@ -233,8 +233,7 @@ public class HistogramAggregateAction implements AggregateAction {
                 explicitBoundsList.add(this.buckets[i]);
             }
             List<Bucket> buckets = createBuckets(bucketCounts, explicitBoundsList);
-            Integer countValue = (Integer)groupState.get(countKey);
-            Map<String, Object> attr = new HashMap<String, Object>();
+            Map<String, Object> attr = new HashMap<>();
             aggregateActionInput.getIdentificationKeys().forEach((k, v) -> {
                 attr.put((String)k, v);
             });
