@@ -81,8 +81,51 @@ There are some additional configuration options for One Way Hash action.
 
 * `format` - (optional) - Default to SHA-512. Format of One Way Hash to use. 
 * `salt` - (optional) - Default to generate random salt.
+* `salt_key` - (optional) - Instructs to generate salt for each record based on a value of a specified field in the message
 
+```yaml
+pipeline:
+  source:
+    http:
+  processor:
+    - obfuscate:
+        source: "log"
+        target: "new_log"
+        patterns:
+          - "[A-Za-z0-9+_.-]+@([\\w-]+\\.)+[\\w-]{2,4}"
+        action:
+          hash:
+            salt_key: "/<key>"
+            salt: "<salt>"
+    - obfuscate:
+        source: "phone"
+        action:
+          hash:
+            salt: "<salt>"
+  sink:
+    - stdout:
+```
 
+Take below input
+
+```json
+{
+  "id": 1,
+  "phone": "(555) 555 5555",
+  "log": "My name is Bob and my email address is abc@example.com"
+}
+```
+
+When run, the processor will parse the message into the following output:
+
+```json
+{
+  "id": 1,
+  "phone": "***",
+  "log": "My name is Bob and my email address is <hash>",
+  "newLog": "My name is Bob and my email address is <hash>"
+}
+```
 ---
 
 ## FAQ:

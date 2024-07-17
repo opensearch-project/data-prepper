@@ -126,7 +126,7 @@ public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Recor
                 String rawValue = recordEvent.get(source, String.class);
 
                 // Call obfuscation action
-                String newValue = this.action.obfuscate(rawValue, patterns);
+                String newValue = this.action.obfuscate(rawValue, patterns, record);
 
                 // No changes means it does not match any patterns
                 if (rawValue.equals(newValue)) {

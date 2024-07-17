@@ -10,38 +10,35 @@ import java.security.SecureRandom;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
+
 
 public class OneWayHashActionConfig {
 
 
     @JsonProperty("salt")
-    @NotEmpty
     private byte[] salt;
 
     @JsonProperty("format")
     @Pattern(regexp = "SHA-512", message = "Valid values SHA-512")
     private String hashFormat = "SHA-512";
 
-    public OneWayHashActionConfig() {
-        byte [] saltBytes = new byte[64];
-        SecureRandom secureRandom = new SecureRandom();
-        secureRandom.nextBytes(saltBytes);
-        this.salt = saltBytes;   
+    @JsonProperty("salt_key")
+    private String saltKey;
+
+    public OneWayHashActionConfig() {        
+        this.salt = generateSalt();   
     }
 
-    public OneWayHashActionConfig(String hashFormat, String salt) {
+    public OneWayHashActionConfig(String hashFormat, String salt, String saltKey) {
 
         this.hashFormat = hashFormat;
-        
+        this.saltKey = saltKey;
+
         if (salt == null || salt.isEmpty() ) {
-            byte [] saltBytes = new byte[64];
-            SecureRandom secureRandom = new SecureRandom();
-            secureRandom.nextBytes(saltBytes);
-            this.salt = saltBytes;
+            this.salt = generateSalt();
         } else {
-            this.salt = salt.getBytes(StandardCharsets.UTF_8);;
+            this.salt = salt.getBytes(StandardCharsets.UTF_8);
         }
     }
 
@@ -55,6 +52,17 @@ public class OneWayHashActionConfig {
 
     public String getHashFormat(){
         return hashFormat;
+    }
+
+    public String getSaltKey(){
+        return saltKey;
+    }
+
+    private byte[] generateSalt(){
+        byte [] saltBytes = new byte[64];
+        SecureRandom secureRandom = new SecureRandom();
+        secureRandom.nextBytes(saltBytes);        
+        return saltBytes;
     }
 }
 
