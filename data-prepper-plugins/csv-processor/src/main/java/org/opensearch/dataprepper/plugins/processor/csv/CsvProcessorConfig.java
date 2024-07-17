@@ -57,6 +57,9 @@ public class CsvProcessorConfig {
     private List<String> columnNames;
 
     @JsonProperty("csv_when")
+    @JsonPropertyDescription("Allows you to specify a [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
+            "such as `/some-key == \"test\"`, that will be evaluated to determine whether " +
+            "the processor should be applied to the event.")
     private String csvWhen;
 
     /**
