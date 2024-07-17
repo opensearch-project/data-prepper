@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.plugins.source.s3.S3EventNotification;
 import software.amazon.awssdk.services.sqs.model.Message;
 
 import java.util.List;
+import java.util.Objects;
 
 public class ParsedMessage {
     private final Message message;
@@ -24,14 +25,14 @@ public class ParsedMessage {
     private String detailType;
 
     public ParsedMessage(final Message message, final boolean failedParsing) {
-        this.message = message;
+        this.message = Objects.requireNonNull(message);
         this.failedParsing = failedParsing;
         this.emptyNotification = true;
     }
 
-    // S3EventNotification contains only one S3EventNotificationRecord
      ParsedMessage(final Message message, final List<S3EventNotification.S3EventNotificationRecord> notificationRecords) {
-        this.message = message;
+        this.message = Objects.requireNonNull(message);
+         // S3EventNotification contains only one S3EventNotificationRecord
         this.bucketName = notificationRecords.get(0).getS3().getBucket().getName();
         this.objectKey = notificationRecords.get(0).getS3().getObject().getUrlDecodedKey();
         this.objectSize = notificationRecords.get(0).getS3().getObject().getSizeAsLong();
@@ -42,7 +43,7 @@ public class ParsedMessage {
     }
 
     ParsedMessage(final Message message, final S3EventBridgeNotification eventBridgeNotification) {
-        this.message = message;
+        this.message = Objects.requireNonNull(message);
         this.bucketName = eventBridgeNotification.getDetail().getBucket().getName();
         this.objectKey = eventBridgeNotification.getDetail().getObject().getUrlDecodedKey();
         this.objectSize = eventBridgeNotification.getDetail().getObject().getSize();
@@ -84,5 +85,13 @@ public class ParsedMessage {
 
     public String getDetailType() {
         return detailType;
+    }
+
+    @Override
+    public String toString() {
+        return "Message{" +
+                "messageId=" + message.messageId() +
+                ", objectKey=" + objectKey +
+                '}';
     }
 }
