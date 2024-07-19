@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.obfuscation.action;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -22,24 +23,33 @@ import org.opensearch.dataprepper.plugins.processor.obfuscation.ObfuscationProce
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.opensearch.dataprepper.model.event.EventKey;
+
 @DataPrepperPlugin(name = "hash", pluginType = ObfuscationAction.class, pluginConfigurationType = OneWayHashActionConfig.class)
 public class OneWayHashAction implements ObfuscationAction {
     
 
-    private MessageDigest messageDigest = null;
-    private byte[] salt;
-    private String saltKey;
+    private final  MessageDigest messageDigest;
+    private final byte[] salt;
+    private EventKey saltKey;
     private static final Logger LOG = LoggerFactory.getLogger(ObfuscationProcessor.class);
 
     @DataPrepperPluginConstructor
     public OneWayHashAction(final OneWayHashActionConfig config) {
         
-        this.salt = config.getSalt();
-        this.saltKey = config.getSaltKey();
-        try{
-            messageDigest = MessageDigest.getInstance(config.getHashFormat());            
+        this.saltKey = config.getSaltKey();        
+
+        if (config.getSalt() == null || config.getSalt().isEmpty() ) {
+            this.salt = generateSalt();
+        } else {
+            this.salt = config.getSalt().getBytes(StandardCharsets.UTF_8);
+        }
+
+        try {
+            messageDigest = MessageDigest.getInstance(config.getFormat());            
         } catch (NoSuchAlgorithmException noSuchAlgorithmException){
-            LOG.error("There was an exception while processing Event [{}]", noSuchAlgorithmException);
+            LOG.error("The hash format provided ({}) is not a known algorithm [{}]", config.getFormat(), noSuchAlgorithmException);
+            throw new RuntimeException(noSuchAlgorithmException);
         }
     }
 
@@ -51,9 +61,12 @@ public class OneWayHashAction implements ObfuscationAction {
         // Resolve salt to compute based on a path provided in the configuration.  
         // For records where path was not found, the salt value defined in the pipeline configuration will be used, if salt value was not configured, one will be generated.        
 
-        if(saltKey != null && saltKey.equals("") == false){                
+        if(saltKey != null && saltKey.equals("") == false) {       
+
             final Event recordEvent = record.getData();                        
-            if(recordEvent.containsKey(saltKey)){
+
+            if (recordEvent.containsKey(saltKey)) {
+
                 saltToApply = computeSaltBasedOnKeyValue(recordEvent.get(saltKey, String.class));
             } else {
                 LOG.info("Unable to find a key '{}' for using as salt, using default salt pipeline configuration for the record instead", saltKey);
@@ -65,18 +78,20 @@ public class OneWayHashAction implements ObfuscationAction {
             return oneWayHashString(source,saltToApply);
         }
         
-        String replacementString = source;
+        String replacementString = source;   
 
         for (Pattern pattern : patterns) {
+            
             Matcher matcher = Pattern.compile(pattern.pattern()).matcher(replacementString);
             StringBuffer stringBuffer = new StringBuffer();
+
             while (matcher.find()) {
 
-                String stringToHash = source.substring(matcher.start(),matcher.end());
-
-                matcher.appendReplacement(stringBuffer, oneWayHashString(stringToHash,saltToApply));
+                String stringToHash = replacementString.substring(matcher.start(),matcher.end());                
+                matcher.appendReplacement(stringBuffer, oneWayHashString(stringToHash,saltToApply));                
             }
-            matcher.appendTail(stringBuffer);
+
+            matcher.appendTail(stringBuffer);            
             replacementString = stringBuffer.toString();
         }
         return replacementString;
@@ -84,7 +99,8 @@ public class OneWayHashAction implements ObfuscationAction {
         
     }
 
-    private String oneWayHashString(String source, byte[] salt){
+    private String oneWayHashString(String source, byte[] salt) {
+
         String oneWayHashedSource = "";
 
         try {
@@ -95,14 +111,15 @@ public class OneWayHashAction implements ObfuscationAction {
             
             oneWayHashedSource =  Base64.getEncoder().encodeToString(bytes);
 
-        } catch (CloneNotSupportedException cloneNotSupportedException){
+        } catch (CloneNotSupportedException cloneNotSupportedException) {
             LOG.error("There was an exception while processing Event [{}]", cloneNotSupportedException);
+            throw new RuntimeException(cloneNotSupportedException);
         } 
-    
+
         return oneWayHashedSource;
     }
 
-    private byte [] computeSaltBasedOnKeyValue(String saltValue){
+    private byte [] computeSaltBasedOnKeyValue(String saltValue) {
 
         byte [] value = saltValue.getBytes(StandardCharsets.UTF_8);
         byte [] result = new byte [64];
@@ -115,4 +132,11 @@ public class OneWayHashAction implements ObfuscationAction {
         return result;
     }
 
+    private byte[] generateSalt() {
+
+        byte [] saltBytes = new byte[64];
+        SecureRandom secureRandom = new SecureRandom();
+        secureRandom.nextBytes(saltBytes);        
+        return saltBytes;
+    }
 }
