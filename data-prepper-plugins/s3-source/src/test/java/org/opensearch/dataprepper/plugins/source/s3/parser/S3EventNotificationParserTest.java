@@ -16,8 +16,8 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class S3EventNotificationParserTest {
-    private static final String DIRECT_SQS_MESSAGE =
+public class S3EventNotificationParserTest {
+    static final String DIRECT_SQS_MESSAGE =
             "{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"us-east-1\",\"eventTime\":\"2023-04-28T16:00:11.324Z\"," +
                     "\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"AWS:xyz\"},\"requestParameters\":{\"sourceIPAddress\":\"127.0.0.1\"}," +
                     "\"responseElements\":{\"x-amz-request-id\":\"xyz\",\"x-amz-id-2\":\"xyz\"},\"s3\":{\"s3SchemaVersion\":\"1.0\"," +
@@ -25,7 +25,7 @@ class S3EventNotificationParserTest {
                     "\"arn\":\"arn:aws:s3:::my-bucket\"},\"object\":{\"key\":\"path/to/myfile.log.gz\",\"size\":3159112,\"eTag\":\"abcd123\"," +
                     "\"sequencer\":\"000\"}}}]}";
 
-    private static final String SNS_BASED_MESSAGE = "{\n" +
+    public static final String SNS_BASED_MESSAGE = "{\n" +
             "  \"Type\" : \"Notification\",\n" +
             "  \"MessageId\" : \"4e01e115-5b91-5096-8a74-bee95ed1e123\",\n" +
             "  \"TopicArn\" : \"arn:aws:sns:us-east-1:123456789012:notifications\",\n" +
