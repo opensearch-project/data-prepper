@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.keyvalue;
 
-import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.NotEmpty;
