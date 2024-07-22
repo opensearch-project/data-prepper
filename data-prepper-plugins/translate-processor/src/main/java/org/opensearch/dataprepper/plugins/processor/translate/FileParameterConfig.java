@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.translate;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
@@ -13,10 +14,12 @@ import java.util.List;
 public class FileParameterConfig {
 
     @JsonProperty("name")
+    @JsonPropertyDescription("The full path to a local file or key name for an S3 object.")
     @NotNull
     private String fileName;
 
     @JsonProperty("aws")
+    @JsonPropertyDescription("The AWS configuration when the file is an S3 object. ")
     @Valid
     private S3ObjectConfig awsConfig;
 
