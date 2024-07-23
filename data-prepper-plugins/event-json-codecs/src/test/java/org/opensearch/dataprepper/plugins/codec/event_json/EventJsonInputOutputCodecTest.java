@@ -6,12 +6,9 @@ package org.opensearch.dataprepper.plugins.codec.event_json;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
-
 import org.mockito.Mock;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -25,7 +22,6 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.LinkedList;
 import java.util.Map;
@@ -68,7 +64,7 @@ public class EventJsonInputOutputCodecTest {
         final String value = UUID.randomUUID().toString();
         Map<String, Object> data = Map.of(key, value);
 
-        Instant startTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        Instant startTime = Instant.now();
         Event event = createEvent(data, startTime);
         outputCodec = createOutputCodec();
         inputCodec = createInputCodec();
@@ -79,8 +75,8 @@ public class EventJsonInputOutputCodecTest {
         inputCodec.parse(new ByteArrayInputStream(outputStream.toByteArray()), records::add);
 
         assertThat(records.size(), equalTo(1));
-        for (Record record : records) {
-            Event e = (Event) record.getData();
+        for(Record record : records) {
+            Event e = (Event)record.getData();
             assertThat(e.get(key, String.class), equalTo(value));
             assertThat(e.getMetadata().getTimeReceived(), equalTo(startTime));
             assertThat(e.getMetadata().getTags().size(), equalTo(0));
@@ -94,7 +90,7 @@ public class EventJsonInputOutputCodecTest {
         final String value = UUID.randomUUID().toString();
         Map<String, Object> data = Map.of(key, value);
 
-        Instant startTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        Instant startTime = Instant.now();
         Event event = createEvent(data, startTime);
         outputCodec = createOutputCodec();
         inputCodec = createInputCodec();
@@ -107,8 +103,8 @@ public class EventJsonInputOutputCodecTest {
         inputCodec.parse(new ByteArrayInputStream(outputStream.toByteArray()), records::add);
 
         assertThat(records.size(), equalTo(3));
-        for (Record record : records) {
-            Event e = (Event) record.getData();
+        for(Record record : records) {
+            Event e = (Event)record.getData();
             assertThat(e.get(key, String.class), equalTo(value));
             assertThat(e.getMetadata().getTimeReceived(), equalTo(startTime));
             assertThat(e.getMetadata().getTags().size(), equalTo(0));
@@ -126,7 +122,7 @@ public class EventJsonInputOutputCodecTest {
 
         Set<String> tags = Set.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         List<String> tagsList = tags.stream().collect(Collectors.toList());
-        Instant startTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        Instant startTime = Instant.now();
         Event event = createEvent(data, startTime);
         Instant origTime = startTime.minusSeconds(5);
         event.getMetadata().setExternalOriginationTime(origTime);
@@ -139,11 +135,11 @@ public class EventJsonInputOutputCodecTest {
         outputCodec.complete(outputStream);
         assertThat(outputCodec.getExtension(), equalTo(EventJsonOutputCodec.EVENT_JSON));
         List<Record<Event>> records = new LinkedList<>();
-        inputCodec.parse(new ByteArrayInputStream(outputStream.toByteArray()), records::add);
+inputCodec.parse(new ByteArrayInputStream(outputStream.toByteArray()), records::add);
 
         assertThat(records.size(), equalTo(1));
-        for (Record record : records) {
-            Event e = (Event) record.getData();
+        for(Record record : records) {
+            Event e = (Event)record.getData();
             assertThat(e.get(key, String.class), equalTo(value));
             assertThat(e.getMetadata().getTimeReceived(), equalTo(startTime));
             assertThat(e.getMetadata().getTags(), equalTo(tags));
@@ -161,7 +157,7 @@ public class EventJsonInputOutputCodecTest {
         if (timeReceived != null) {
             logBuilder.withTimeReceived(timeReceived);
         }
-        final JacksonEvent event = (JacksonEvent) logBuilder.build();
+        final JacksonEvent event = (JacksonEvent)logBuilder.build();
 
         return event;
     }

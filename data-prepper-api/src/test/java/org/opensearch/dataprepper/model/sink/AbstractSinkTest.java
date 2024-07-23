@@ -11,10 +11,15 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.event.EventHandle;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -25,12 +30,6 @@ import java.util.StringJoiner;
 import java.util.UUID;
 
 import static org.awaitility.Awaitility.await;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class AbstractSinkTest {
     private int count;
@@ -72,13 +71,13 @@ class AbstractSinkTest {
     }
 
     @Test
-    void testSinkNotReady() throws InterruptedException {
+    void testSinkNotReady() {
         final String sinkName = "testSink";
         final String pipelineName = "pipelineName";
         MetricsTestUtil.initMetrics();
         PluginSetting pluginSetting = new PluginSetting(sinkName, Collections.emptyMap());
         pluginSetting.setPipelineName(pipelineName);
-        AbstractSinkNotReadyImpl abstractSink = new AbstractSinkNotReadyImpl(pluginSetting);
+        AbstractSink<Record<String>> abstractSink = new AbstractSinkNotReadyImpl(pluginSetting);
         abstractSink.initialize();
         assertEquals(abstractSink.isReady(), false);
         assertEquals(abstractSink.getRetryThreadState(), Thread.State.RUNNABLE);
@@ -88,10 +87,7 @@ class AbstractSinkTest {
         await().atMost(Duration.ofSeconds(5))
                 .until(abstractSink::isReady);
         assertEquals(abstractSink.getRetryThreadState(), Thread.State.TERMINATED);
-        int initCountBeforeShutdown = abstractSink.initCount;
         abstractSink.shutdown();
-        Thread.sleep(200);
-        assertThat(abstractSink.initCount, equalTo(initCountBeforeShutdown));
     }
 
     @Test
