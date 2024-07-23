@@ -20,7 +20,6 @@ import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
@@ -50,7 +49,6 @@ public class ExportScheduler implements Runnable {
     private static final Duration DEFAULT_SNAPSHOT_STATUS_CHECK_TIMEOUT = Duration.ofMinutes(60);
     static final String PARQUET_SUFFIX = ".parquet";
 
-    private final RdsClient rdsClient;
     private final S3Client s3Client;
     private final PluginMetrics pluginMetrics;
     private final EnhancedSourceCoordinator sourceCoordinator;
@@ -61,16 +59,16 @@ public class ExportScheduler implements Runnable {
     private volatile boolean shutdownRequested = false;
 
     public ExportScheduler(final EnhancedSourceCoordinator sourceCoordinator,
-                           final RdsClient rdsClient,
+                           final SnapshotManager snapshotManager,
+                           final ExportTaskManager exportTaskManager,
                            final S3Client s3Client,
                            final PluginMetrics pluginMetrics) {
         this.pluginMetrics = pluginMetrics;
         this.sourceCoordinator = sourceCoordinator;
-        this.rdsClient = rdsClient;
         this.s3Client = s3Client;
         this.executor = Executors.newCachedThreadPool();
-        this.exportTaskManager = new ExportTaskManager(rdsClient);
-        this.snapshotManager = new SnapshotManager(rdsClient);
+        this.snapshotManager = snapshotManager;
+        this.exportTaskManager = exportTaskManager;
     }
 
     @Override
