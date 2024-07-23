@@ -28,7 +28,6 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
     private Thread retryThread;
     private int maxRetries;
     private int waitTimeMs;
-    private SinkThread sinkThread;
 
     public AbstractSink(final PluginSetting pluginSetting, int numRetries, int waitTimeMs) {
         this.pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
@@ -52,8 +51,7 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
         // the exceptions which are not retryable.
         doInitialize();
         if (!isReady() && retryThread == null) {
-            sinkThread = new SinkThread(this, maxRetries, waitTimeMs);
-            retryThread = new Thread(sinkThread);
+            retryThread = new Thread(new SinkThread(this, maxRetries, waitTimeMs));
             retryThread.start();
         }
     }
@@ -78,7 +76,7 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
     @Override
     public void shutdown() {
         if (retryThread != null) {
-            sinkThread.stop();
+            retryThread.stop();
         }
     }
 

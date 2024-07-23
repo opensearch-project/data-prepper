@@ -11,12 +11,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
-
 import org.mockito.Mock;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
@@ -31,7 +28,6 @@ import org.opensearch.dataprepper.model.log.JacksonLog;
 import java.io.ByteArrayInputStream;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.LinkedList;
 import java.util.Map;
@@ -60,7 +56,7 @@ public class EventJsonInputCodecTest {
     @ParameterizedTest
     @ValueSource(strings = {"", "{}"})
     public void emptyTest(String input) throws Exception {
-        input = "{\"" + EventJsonDefines.VERSION + "\":\"" + DataPrepperVersion.getCurrentVersion().toString() + "\", \"" + EventJsonDefines.EVENTS + "\":[" + input + "]}";
+        input = "{\""+EventJsonDefines.VERSION+"\":\""+DataPrepperVersion.getCurrentVersion().toString()+"\", \""+EventJsonDefines.EVENTS+"\":["+input+"]}";
         ByteArrayInputStream inputStream = new ByteArrayInputStream(input.getBytes());
         inputCodec = createInputCodec();
         Consumer<Record<Event>> consumer = mock(Consumer.class);
@@ -74,15 +70,15 @@ public class EventJsonInputCodecTest {
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
         Map<String, Object> data = Map.of(key, value);
-        Instant startTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        Instant startTime = Instant.now();
         Event event = createEvent(data, startTime);
 
         Map<String, Object> dataMap = event.toMap();
         Map<String, Object> metadataMap = objectMapper.convertValue(event.getMetadata(), Map.class);
-        String input = "{\"" + EventJsonDefines.VERSION + "\":\"3.0\", \"" + EventJsonDefines.EVENTS + "\":[";
+        String input = "{\""+EventJsonDefines.VERSION+"\":\"3.0\", \""+EventJsonDefines.EVENTS+"\":[";
         String comma = "";
         for (int i = 0; i < 2; i++) {
-            input += comma + "{\"data\":" + objectMapper.writeValueAsString(dataMap) + "," + "\"metadata\":" + objectMapper.writeValueAsString(metadataMap) + "}";
+            input += comma+"{\"data\":"+objectMapper.writeValueAsString(dataMap)+","+"\"metadata\":"+objectMapper.writeValueAsString(metadataMap)+"}";
             comma = ",";
         }
         input += "]}";
@@ -99,15 +95,15 @@ public class EventJsonInputCodecTest {
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
         Map<String, Object> data = Map.of(key, value);
-        Instant startTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        Instant startTime = Instant.now();
         Event event = createEvent(data, startTime);
 
         Map<String, Object> dataMap = event.toMap();
         Map<String, Object> metadataMap = objectMapper.convertValue(event.getMetadata(), Map.class);
-        String input = "{\"" + EventJsonDefines.VERSION + "\":\"" + DataPrepperVersion.getCurrentVersion().toString() + "\", \"" + EventJsonDefines.EVENTS + "\":[";
+        String input = "{\""+EventJsonDefines.VERSION+"\":\""+DataPrepperVersion.getCurrentVersion().toString()+"\", \""+EventJsonDefines.EVENTS+"\":[";
         String comma = "";
         for (int i = 0; i < 2; i++) {
-            input += comma + "{\"data\":" + objectMapper.writeValueAsString(dataMap) + "," + "\"metadata\":" + objectMapper.writeValueAsString(metadataMap) + "}";
+            input += comma+"{\"data\":"+objectMapper.writeValueAsString(dataMap)+","+"\"metadata\":"+objectMapper.writeValueAsString(metadataMap)+"}";
             comma = ",";
         }
         input += "]}";
@@ -115,8 +111,8 @@ public class EventJsonInputCodecTest {
         List<Record<Event>> records = new LinkedList<>();
         inputCodec.parse(inputStream, records::add);
         assertThat(records.size(), equalTo(2));
-        for (Record record : records) {
-            Event e = (Event) record.getData();
+        for(Record record : records) {
+            Event e = (Event)record.getData();
             assertThat(e.get(key, String.class), equalTo(value));
             assertThat(e.getMetadata().getTimeReceived(), equalTo(startTime));
             assertThat(e.getMetadata().getTags().size(), equalTo(0));
@@ -130,15 +126,15 @@ public class EventJsonInputCodecTest {
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
         Map<String, Object> data = Map.of(key, value);
-        Instant startTime = Instant.now().truncatedTo(ChronoUnit.MICROS).minusSeconds(5);
+        Instant startTime = Instant.now().minusSeconds(5);
         Event event = createEvent(data, startTime);
 
         Map<String, Object> dataMap = event.toMap();
         Map<String, Object> metadataMap = objectMapper.convertValue(event.getMetadata(), Map.class);
-        String input = "{\"" + EventJsonDefines.VERSION + "\":\"" + DataPrepperVersion.getCurrentVersion().toString() + "\", \"" + EventJsonDefines.EVENTS + "\":[";
+        String input = "{\""+EventJsonDefines.VERSION+"\":\""+DataPrepperVersion.getCurrentVersion().toString()+"\", \""+EventJsonDefines.EVENTS+"\":[";
         String comma = "";
         for (int i = 0; i < 2; i++) {
-            input += comma + "{\"data\":" + objectMapper.writeValueAsString(dataMap) + "," + "\"metadata\":" + objectMapper.writeValueAsString(metadataMap) + "}";
+            input += comma+"{\"data\":"+objectMapper.writeValueAsString(dataMap)+","+"\"metadata\":"+objectMapper.writeValueAsString(metadataMap)+"}";
             comma = ",";
         }
         input += "]}";
@@ -146,8 +142,8 @@ public class EventJsonInputCodecTest {
         List<Record<Event>> records = new LinkedList<>();
         inputCodec.parse(inputStream, records::add);
         assertThat(records.size(), equalTo(2));
-        for (Record record : records) {
-            Event e = (Event) record.getData();
+        for(Record record : records) {
+            Event e = (Event)record.getData();
             assertThat(e.get(key, String.class), equalTo(value));
             assertThat(e.getMetadata().getTimeReceived(), not(equalTo(startTime)));
             assertThat(e.getMetadata().getTags().size(), equalTo(0));
@@ -163,7 +159,7 @@ public class EventJsonInputCodecTest {
         if (timeReceived != null) {
             logBuilder.withTimeReceived(timeReceived);
         }
-        final JacksonEvent event = (JacksonEvent) logBuilder.build();
+        final JacksonEvent event = (JacksonEvent)logBuilder.build();
 
         return event;
     }

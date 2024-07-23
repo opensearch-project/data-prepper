@@ -10,8 +10,6 @@ class SinkThread implements Runnable {
     private int maxRetries;
     private int waitTimeMs;
 
-    private volatile boolean isStopped = false;
-
     public SinkThread(AbstractSink sink, int maxRetries, int waitTimeMs) {
         this.sink = sink;
         this.maxRetries = maxRetries;
@@ -21,15 +19,11 @@ class SinkThread implements Runnable {
     @Override
     public void run() {
         int numRetries = 0;
-        while (!sink.isReady() && numRetries++ < maxRetries && !isStopped) {
+        while (!sink.isReady() && numRetries++ < maxRetries) {
             try {
                 Thread.sleep(waitTimeMs);
                 sink.doInitialize();
             } catch (InterruptedException e){}
         }
-    }
-
-    public void stop() {
-        isStopped = true;
     }
 }
