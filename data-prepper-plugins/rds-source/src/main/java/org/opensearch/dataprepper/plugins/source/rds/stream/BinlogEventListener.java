@@ -102,8 +102,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             return;
         }
         final TableMetadata tableMetadata = tableMetadataMap.get(data.getTableId());
-        final String tableName = tableMetadata.getFullTableName();
-        if (!isTableOfInterest(tableName)) {
+        final String fullTableName = tableMetadata.getFullTableName();
+        if (!isTableOfInterest(fullTableName)) {
             LOG.debug("The event is not from a table of interest");
             return;
         }
@@ -117,7 +117,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                 rowDataMap.put(columnNames.get(i), rowDataArray[i]);
             }
 
-            Event pipelineEvent = recordConverter.convert(rowDataMap, tableName, OpenSearchBulkActions.INDEX, primaryKeys, s3Prefix);
+            Event pipelineEvent = recordConverter.convert(
+                    rowDataMap, tableMetadata.getDatabaseName(), tableMetadata.getTableName(), OpenSearchBulkActions.INDEX, primaryKeys, s3Prefix);
             addToBuffer(new Record<>(pipelineEvent));
         }
 
@@ -131,8 +132,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             return;
         }
         final TableMetadata tableMetadata = tableMetadataMap.get(data.getTableId());
-        final String tableName = tableMetadata.getFullTableName();
-        if (!isTableOfInterest(tableName)) {
+        final String fullTableName = tableMetadata.getFullTableName();
+        if (!isTableOfInterest(fullTableName)) {
             LOG.debug("The event is not from a table of interest");
             return;
         }
@@ -148,7 +149,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                 dataMap.put(columnNames.get(i), rowData[i]);
             }
 
-            final Event pipelineEvent = recordConverter.convert(dataMap, tableName, OpenSearchBulkActions.INDEX, primaryKeys, s3Prefix);
+            final Event pipelineEvent = recordConverter.convert(
+                    dataMap, tableMetadata.getDatabaseName(), tableMetadata.getTableName(), OpenSearchBulkActions.INDEX, primaryKeys, s3Prefix);
             addToBuffer(new Record<>(pipelineEvent));
         }
 
@@ -163,8 +165,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             return;
         }
         final TableMetadata tableMetadata = tableMetadataMap.get(data.getTableId());
-        final String tableName = tableMetadata.getFullTableName();
-        if (!isTableOfInterest(tableName)) {
+        final String fullTableName = tableMetadata.getFullTableName();
+        if (!isTableOfInterest(fullTableName)) {
             LOG.debug("The event is not from a table of interest");
             return;
         }
@@ -177,7 +179,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                 rowDataMap.put(columnNames.get(i), rowDataArray[i]);
             }
 
-            final Event pipelineEvent = recordConverter.convert(rowDataMap, tableName, OpenSearchBulkActions.DELETE, primaryKeys, s3Prefix);
+            final Event pipelineEvent = recordConverter.convert(
+                    rowDataMap, tableMetadata.getDatabaseName(), tableMetadata.getTableName(), OpenSearchBulkActions.DELETE, primaryKeys, s3Prefix);
             addToBuffer(new Record<>(pipelineEvent));
         }
 

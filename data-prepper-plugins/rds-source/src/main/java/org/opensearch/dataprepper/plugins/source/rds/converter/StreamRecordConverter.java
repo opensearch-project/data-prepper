@@ -12,12 +12,14 @@ import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_DATABASE_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_TABLE_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.INGESTION_EVENT_TYPE_ATTRIBUTE;
@@ -41,7 +43,12 @@ public class StreamRecordConverter {
         folderNames = s3PartitionCreator.createPartitions();
     }
 
-    public Event convert(Map<String, Object> rowData, String tableName, OpenSearchBulkActions bulkAction, List<String> primaryKeys, String s3Prefix) {
+    public Event convert(Map<String, Object> rowData,
+                         String databaseName,
+                         String tableName,
+                         OpenSearchBulkActions bulkAction,
+                         List<String> primaryKeys,
+                         String s3Prefix) {
         final Event event = JacksonEvent.builder()
                 .withEventType("event")
                 .withData(rowData)
@@ -49,6 +56,7 @@ public class StreamRecordConverter {
 
         EventMetadata eventMetadata = event.getMetadata();
 
+        eventMetadata.setAttribute(EVENT_DATABASE_NAME_METADATA_ATTRIBUTE, databaseName);
         eventMetadata.setAttribute(EVENT_TABLE_NAME_METADATA_ATTRIBUTE, tableName);
         eventMetadata.setAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, bulkAction.toString());
         eventMetadata.setAttribute(INGESTION_EVENT_TYPE_ATTRIBUTE, STREAM_EVENT_TYPE);
@@ -76,17 +84,11 @@ public class StreamRecordConverter {
             int hashValue = bytesToInt(hashBytes);
             // Map the hash value to an index in the list
             return Math.abs(hashValue) % folderNames.size();
-        } catch (final NoSuchAlgorithmException
-                e) {
+        } catch (final NoSuchAlgorithmException e) {
             return -1;
         }
     }
-    private static int bytesToInt(byte[] bytes) {
-        int result = 0;
-        for (int i = 0; i < 4 && i < bytes.length; i++) {
-            result <<= 8;
-            result |= (bytes[i] & 0xFF);
-        }
-        return result;
+    private int bytesToInt(byte[] bytes) {
+        return ByteBuffer.wrap(bytes).getInt();
     }
 }

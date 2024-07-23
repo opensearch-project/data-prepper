@@ -128,8 +128,6 @@ public class LeaderScheduler implements Runnable {
     private void createStreamPartition(RdsSourceConfig sourceConfig) {
         final StreamProgressState progressState = new StreamProgressState();
         progressState.setWaitForExport(sourceConfig.isExportEnabled());
-        // For testing
-//        progressState.setCurrentPosition(new BinlogCoordinate("mysql-bin-changelog.001891", 1003));
         StreamPartition streamPartition = new StreamPartition(sourceConfig.getDbIdentifier(), progressState);
         sourceCoordinator.createPartition(streamPartition);
     }

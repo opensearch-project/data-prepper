@@ -152,7 +152,7 @@ public class ScanObjectWorker implements Runnable {
 
         }
         for (String partitionKey: partitionKeys) {
-            LOG.info("Scan object worker is stopped, giving up partitions.");
+            LOG.debug("Scan object worker is stopped, giving up partitions.");
             sourceCoordinator.giveUpPartition(partitionKey);
         }
     }
@@ -204,7 +204,7 @@ public class ScanObjectWorker implements Runnable {
                         deleteObjectsForPartition.forEach(s3ObjectDeleteWorker::deleteS3Object);
                         objectsToDeleteForAcknowledgmentSets.remove(objectToProcess.get().getPartitionKey());
                     } else {
-                        LOG.info("Did not receive positive acknowledgement, giving up partition.");
+                        LOG.debug("Did not receive positive acknowledgement, giving up partition.");
                         sourceCoordinator.giveUpPartition(objectToProcess.get().getPartitionKey());
                     }
                     partitionKeys.remove(objectToProcess.get().getPartitionKey());
@@ -270,7 +270,7 @@ public class ScanObjectWorker implements Runnable {
                 sourceCoordinator.deletePartition(folderPartition.getPartitionKey());
                 return;
             }
-            LOG.info("No objects to process, giving up partition");
+            LOG.debug("No objects to process, giving up partition");
             sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now());
             return;
         }
