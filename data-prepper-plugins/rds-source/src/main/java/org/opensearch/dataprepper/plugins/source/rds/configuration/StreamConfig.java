@@ -11,7 +11,7 @@ import jakarta.validation.constraints.Min;
 
 public class StreamConfig {
 
-    private static final int DEFAULT_S3_FOLDER_PARTITION_COUNT = 20;
+    private static final int DEFAULT_S3_FOLDER_PARTITION_COUNT = 100;
 
     @JsonProperty("partition_count")
     @Min(1)
