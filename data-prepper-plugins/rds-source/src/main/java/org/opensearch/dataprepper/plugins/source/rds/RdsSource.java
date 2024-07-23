@@ -52,6 +52,7 @@ public class RdsSource implements Source<Record<Event>>, UsesEnhancedSourceCoord
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
+        LOG.info("Starting RDS source");
         Objects.requireNonNull(sourceCoordinator);
         sourceCoordinator.createPartition(new LeaderPartition());
 

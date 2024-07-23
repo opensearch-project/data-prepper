@@ -125,7 +125,7 @@ public class DataFileScheduler implements Runnable {
                 updateLoadStatus(dataFilePartition.getExportTaskId(), DEFAULT_UPDATE_LOAD_STATUS_TIMEOUT);
                 sourceCoordinator.completePartition(dataFilePartition);
             } else {
-                LOG.error("There was an exception while processing an S3 data file", (Throwable) ex);
+                LOG.error("There was an exception while processing an S3 data file", ex);
                 sourceCoordinator.giveUpPartition(dataFilePartition);
             }
             numOfWorkers.decrementAndGet();
@@ -153,7 +153,10 @@ public class DataFileScheduler implements Runnable {
 
             try {
                 sourceCoordinator.saveProgressStateForPartition(globalState, null);
-                // TODO: Stream is enabled and loadStatus.getLoadedFiles() == loadStatus.getTotalFiles(), create global state to indicate that stream can start
+                if (sourceConfig.isStreamEnabled() && loadStatus.getLoadedFiles() == loadStatus.getTotalFiles()) {
+                    LOG.info("All exports are done, streaming can continue...");
+                    sourceCoordinator.createPartition(new GlobalState("stream-for-" + sourceConfig.getDbIdentifier(), null));
+                }
                 break;
             } catch (Exception e) {
                 LOG.error("Failed to update the global status, looks like the status was out of date, will retry..");

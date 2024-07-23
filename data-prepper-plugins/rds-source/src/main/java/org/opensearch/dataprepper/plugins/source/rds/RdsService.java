@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.rds;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
@@ -14,6 +15,8 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.leader.LeaderScheduler;
+import org.opensearch.dataprepper.plugins.source.rds.stream.BinlogClientFactory;
+import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.rds.RdsClient;
@@ -42,6 +45,7 @@ public class RdsService {
     private LeaderScheduler leaderScheduler;
     private ExportScheduler exportScheduler;
     private DataFileScheduler dataFileScheduler;
+    private StreamScheduler streamScheduler;
 
     public RdsService(final EnhancedSourceCoordinator sourceCoordinator,
                       final RdsSourceConfig sourceConfig,
@@ -78,6 +82,12 @@ public class RdsService {
             runnableList.add(dataFileScheduler);
         }
 
+        if (sourceConfig.isStreamEnabled()) {
+            BinaryLogClient binaryLogClient = new BinlogClientFactory(sourceConfig, rdsClient).create();
+            streamScheduler = new StreamScheduler(sourceCoordinator, sourceConfig, binaryLogClient, buffer, pluginMetrics);
+            runnableList.add(streamScheduler);
+        }
+
         executor = Executors.newFixedThreadPool(runnableList.size());
         runnableList.forEach(executor::submit);
     }
@@ -93,6 +103,11 @@ public class RdsService {
                 exportScheduler.shutdown();
                 dataFileScheduler.shutdown();
             }
+
+            if (sourceConfig.isStreamEnabled()) {
+                streamScheduler.shutdown();
+            }
+
             leaderScheduler.shutdown();
             executor.shutdownNow();
         }
