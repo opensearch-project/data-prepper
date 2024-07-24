@@ -59,6 +59,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.kafka.buffer.ReadBufferHelper.awaitRead;
 
 @ExtendWith(MockitoExtension.class)
 public class KafkaBuffer_KmsIT {
@@ -177,7 +178,7 @@ public class KafkaBuffer_KmsIT {
             Record<Event> record = createRecord();
             objectUnderTest.write(record, 1_000);
 
-            Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = objectUnderTest.read(10_000);
+            final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = awaitRead(objectUnderTest);
 
             assertThat(readResult, notNullValue());
             assertThat(readResult.getKey(), notNullValue());
@@ -216,7 +217,7 @@ public class KafkaBuffer_KmsIT {
 
             testProducer.publishRecord(keyData.toByteArray(), bufferedData.toByteArray());
 
-            final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = objectUnderTest.read(10_000);
+            final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = awaitRead(objectUnderTest);
 
             assertThat(readResult, notNullValue());
             assertThat(readResult.getKey(), notNullValue());
