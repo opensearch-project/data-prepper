@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin.DEFAULT_DEPRECATED_ROOT_KEY_JSON_PATH;
+
 @Named
 public class ExtensionLoader {
     private final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter;
@@ -51,9 +53,24 @@ public class ExtensionLoader {
         } else {
             final Class<?> pluginConfigurationType = pluginAnnotation.modelType();
             final String rootKey = pluginAnnotation.rootKeyJsonPath();
+            final String deprecatedRootKey = pluginAnnotation.deprecatedRootKeyJsonPath();
             final Object configuration = extensionPluginConfigurationConverter.convert(
                     pluginAnnotation.allowInPipelineConfigurations(),
                     pluginConfigurationType, rootKey);
+            if (!DEFAULT_DEPRECATED_ROOT_KEY_JSON_PATH.equals(deprecatedRootKey)) {
+                final Object deprecatedConfiguration = extensionPluginConfigurationConverter.convert(
+                        pluginAnnotation.allowInPipelineConfigurations(),
+                        pluginConfigurationType, deprecatedRootKey);
+                if (deprecatedConfiguration != null) {
+                    if (configuration != null) {
+                        throw new InvalidPluginDefinitionException(
+                                String.format(
+                                        "Deprecated extension json path [%s] cannot be configured together with " +
+                                                "the current extension json path [%s].", deprecatedRootKey, rootKey));
+                    }
+                    return new SingleConfigArgumentArgumentsContext(deprecatedConfiguration);
+                }
+            }
             return new SingleConfigArgumentArgumentsContext(configuration);
         }
     }
