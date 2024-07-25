@@ -65,7 +65,7 @@ public class StreamWorker {
         }
 
         try {
-            LOG.info("Connecting to binary log stream.");
+            LOG.info("Connect to database to read change events.");
             binaryLogClient.connect();
         } catch (IOException e) {
             throw new RuntimeException(e);

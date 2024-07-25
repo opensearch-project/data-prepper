@@ -8,7 +8,10 @@ package org.opensearch.dataprepper.plugins.source.rds.stream;
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import software.amazon.awssdk.services.rds.RdsClient;
+import software.amazon.awssdk.services.rds.model.DBCluster;
 import software.amazon.awssdk.services.rds.model.DBInstance;
+import software.amazon.awssdk.services.rds.model.DescribeDbClustersRequest;
+import software.amazon.awssdk.services.rds.model.DescribeDbClustersResponse;
 import software.amazon.awssdk.services.rds.model.DescribeDbInstancesRequest;
 import software.amazon.awssdk.services.rds.model.DescribeDbInstancesResponse;
 
@@ -24,13 +27,20 @@ public class BinlogClientFactory {
     }
 
     public BinaryLogClient create() {
-        DBInstance dbInstance = describeDbInstance(sourceConfig.getDbIdentifier());
+        String hostName;
+        int port;
+        if (sourceConfig.isCluster()) {
+            DBCluster dbCluster = describeDbCluster(sourceConfig.getDbIdentifier());
+            hostName = dbCluster.endpoint();
+            port = dbCluster.port();
+        } else {
+            DBInstance dbInstance = describeDbInstance(sourceConfig.getDbIdentifier());
+            hostName = dbInstance.endpoint().address();
+            port = dbInstance.endpoint().port();
+        }
         return new BinaryLogClient(
-                dbInstance.endpoint().address(),
-                dbInstance.endpoint().port(),
-                // For test
-                // "127.0.0.1",
-                // 3306,
+                hostName,
+                port,
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword());
     }
@@ -42,5 +52,14 @@ public class BinlogClientFactory {
 
         DescribeDbInstancesResponse response = rdsClient.describeDBInstances(request);
         return response.dbInstances().get(0);
+    }
+
+    private DBCluster describeDbCluster(final String dbClusterIdentifier) {
+        DescribeDbClustersRequest request = DescribeDbClustersRequest.builder()
+                .dbClusterIdentifier(dbClusterIdentifier)
+                .build();
+
+        DescribeDbClustersResponse response = rdsClient.describeDBClusters(request);
+        return response.dbClusters().get(0);
     }
 }
