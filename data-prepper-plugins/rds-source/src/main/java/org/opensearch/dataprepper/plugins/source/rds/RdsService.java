@@ -95,7 +95,7 @@ public class RdsService {
 
         if (sourceConfig.isStreamEnabled()) {
             BinaryLogClient binaryLogClient = new BinlogClientFactory(sourceConfig, rdsClient).create();
-            if (!sourceConfig.getTlsConfig().isInsecure()) {
+            if (sourceConfig.getTlsConfig() == null || !sourceConfig.getTlsConfig().isInsecure()) {
                 binaryLogClient.setSSLMode(SSLMode.REQUIRED);
             } else {
                 binaryLogClient.setSSLMode(SSLMode.DISABLED);

@@ -204,7 +204,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                     tableMetadata.getDatabaseName(),
                     tableMetadata.getTableName(),
                     event.getHeader().getEventType(),
-                    OpenSearchBulkActions.INDEX,
+                    OpenSearchBulkActions.DELETE,
                     primaryKeys,
                     s3Prefix,
                     eventTimestampMillis,
@@ -236,7 +236,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     }
 
     private void handleEventAndErrors(com.github.shyiko.mysql.binlog.event.Event event,
-                              Consumer<com.github.shyiko.mysql.binlog.event.Event> function) {
+                                      Consumer<com.github.shyiko.mysql.binlog.event.Event> function) {
         try {
             function.accept(event);
         } catch (Exception e) {
