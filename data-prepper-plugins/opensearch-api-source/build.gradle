@@ -22,7 +22,6 @@ dependencies {
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-api').sourceSets.test.output
     testImplementation 'org.assertj:assertj-core:3.25.3'
-    testImplementation testLibs.mockito.inline
     compileOnly 'org.projectlombok:lombok:1.18.20'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'
 }
