@@ -12,8 +12,13 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.rds.export.ClusterSnapshotStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
+import org.opensearch.dataprepper.plugins.source.rds.export.ExportTaskManager;
+import org.opensearch.dataprepper.plugins.source.rds.export.InstanceSnapshotStrategy;
+import org.opensearch.dataprepper.plugins.source.rds.export.SnapshotManager;
+import org.opensearch.dataprepper.plugins.source.rds.export.SnapshotStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.leader.LeaderScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.stream.BinlogClientFactory;
 import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
@@ -75,7 +80,12 @@ public class RdsService {
         runnableList.add(leaderScheduler);
 
         if (sourceConfig.isExportEnabled()) {
-            exportScheduler = new ExportScheduler(sourceCoordinator, rdsClient, s3Client, pluginMetrics);
+            final SnapshotStrategy snapshotStrategy = sourceConfig.isCluster() ?
+                    new ClusterSnapshotStrategy(rdsClient) : new InstanceSnapshotStrategy(rdsClient);
+            final SnapshotManager snapshotManager = new SnapshotManager(snapshotStrategy);
+            final ExportTaskManager exportTaskManager = new ExportTaskManager(rdsClient);
+            exportScheduler = new ExportScheduler(
+                    sourceCoordinator, snapshotManager, exportTaskManager, s3Client, pluginMetrics);
             dataFileScheduler = new DataFileScheduler(
                     sourceCoordinator, sourceConfig, s3Client, eventFactory, buffer);
             runnableList.add(exportScheduler);

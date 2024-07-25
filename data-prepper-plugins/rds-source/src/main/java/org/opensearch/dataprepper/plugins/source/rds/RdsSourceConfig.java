@@ -82,7 +82,7 @@ public class RdsSourceConfig {
     }
 
     public boolean isCluster() {
-        return isCluster;
+        return isCluster || isAurora;
     }
 
     public EngineType getEngine() {
