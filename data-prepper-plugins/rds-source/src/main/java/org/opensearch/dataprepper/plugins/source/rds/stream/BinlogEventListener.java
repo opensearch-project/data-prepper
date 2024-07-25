@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class BinlogEventListener implements BinaryLogClient.EventListener {
@@ -62,19 +63,19 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
         switch (eventType) {
             case TABLE_MAP:
-                handleTableMapEvent(event);
+                handleEventAndErrors(event, this::handleTableMapEvent);
                 break;
             case WRITE_ROWS:
             case EXT_WRITE_ROWS:
-                handleInsertEvent(event);
+                handleEventAndErrors(event, this::handleInsertEvent);
                 break;
             case UPDATE_ROWS:
             case EXT_UPDATE_ROWS:
-                handleUpdateEvent(event);
+                handleEventAndErrors(event, this::handleUpdateEvent);
                 break;
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:
-                handleDeleteEvent(event);
+                handleEventAndErrors(event, this::handleDeleteEvent);
                 break;
         }
     }
@@ -204,6 +205,15 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             bufferAccumulator.flush();
         } catch (Exception e) {
             LOG.error("Failed to flush buffer", e);
+        }
+    }
+
+    private void handleEventAndErrors(com.github.shyiko.mysql.binlog.event.Event event,
+                              Consumer<com.github.shyiko.mysql.binlog.event.Event> function) {
+        try {
+            function.accept(event);
+        } catch (Exception e) {
+            LOG.error("Failed to process change event", e);
         }
     }
 }
