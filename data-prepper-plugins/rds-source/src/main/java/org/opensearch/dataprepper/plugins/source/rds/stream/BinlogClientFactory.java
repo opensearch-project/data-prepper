@@ -27,6 +27,7 @@ public class BinlogClientFactory {
     }
 
     public BinaryLogClient create() {
+        // TODO: expand SnapshotStrategy to RdsApiStrategy to accommodate more APIs for clusters and instances
         String hostName;
         int port;
         if (sourceConfig.isCluster()) {

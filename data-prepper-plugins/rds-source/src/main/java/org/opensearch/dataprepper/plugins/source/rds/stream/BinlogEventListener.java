@@ -119,7 +119,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             }
 
             Event pipelineEvent = recordConverter.convert(
-                    rowDataMap, tableMetadata.getDatabaseName(), tableMetadata.getTableName(), OpenSearchBulkActions.INDEX, primaryKeys, s3Prefix);
+                    rowDataMap, tableMetadata.getDatabaseName(), tableMetadata.getTableName(), event.getHeader().getEventType(),
+                    OpenSearchBulkActions.INDEX, primaryKeys, s3Prefix);
             addToBuffer(new Record<>(pipelineEvent));
         }
 
@@ -151,7 +152,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             }
 
             final Event pipelineEvent = recordConverter.convert(
-                    dataMap, tableMetadata.getDatabaseName(), tableMetadata.getTableName(), OpenSearchBulkActions.INDEX, primaryKeys, s3Prefix);
+                    dataMap, tableMetadata.getDatabaseName(), tableMetadata.getTableName(), event.getHeader().getEventType(),
+                    OpenSearchBulkActions.INDEX, primaryKeys, s3Prefix);
             addToBuffer(new Record<>(pipelineEvent));
         }
 
@@ -181,7 +183,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             }
 
             final Event pipelineEvent = recordConverter.convert(
-                    rowDataMap, tableMetadata.getDatabaseName(), tableMetadata.getTableName(), OpenSearchBulkActions.DELETE, primaryKeys, s3Prefix);
+                    rowDataMap, tableMetadata.getDatabaseName(), tableMetadata.getTableName(), event.getHeader().getEventType(),
+                    OpenSearchBulkActions.DELETE, primaryKeys, s3Prefix);
             addToBuffer(new Record<>(pipelineEvent));
         }
 

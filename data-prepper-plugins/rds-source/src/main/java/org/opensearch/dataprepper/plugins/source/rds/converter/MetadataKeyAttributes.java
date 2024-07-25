@@ -14,6 +14,8 @@ public class MetadataKeyAttributes {
 
     static final String EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE = "opensearch_action";
 
+    static final String CHANGE_EVENT_TYPE_METADATA_ATTRIBUTE = "change_event_type";
+
     static final String EVENT_DATABASE_NAME_METADATA_ATTRIBUTE = "database_name";
 
     static final String EVENT_TABLE_NAME_METADATA_ATTRIBUTE = "table_name";

@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.converter;
 
+import com.github.shyiko.mysql.binlog.event.EventType;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.CHANGE_EVENT_TYPE_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_DATABASE_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_TABLE_NAME_METADATA_ATTRIBUTE;
@@ -46,6 +48,7 @@ public class StreamRecordConverter {
     public Event convert(Map<String, Object> rowData,
                          String databaseName,
                          String tableName,
+                         EventType eventType,
                          OpenSearchBulkActions bulkAction,
                          List<String> primaryKeys,
                          String s3Prefix) {
@@ -60,6 +63,7 @@ public class StreamRecordConverter {
         eventMetadata.setAttribute(EVENT_TABLE_NAME_METADATA_ATTRIBUTE, tableName);
         eventMetadata.setAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, bulkAction.toString());
         eventMetadata.setAttribute(INGESTION_EVENT_TYPE_ATTRIBUTE, STREAM_EVENT_TYPE);
+        eventMetadata.setAttribute(CHANGE_EVENT_TYPE_METADATA_ATTRIBUTE, eventType.toString());
 
         final String primaryKeyValue = primaryKeys.stream()
                 .map(rowData::get)
