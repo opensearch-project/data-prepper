@@ -110,6 +110,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         }
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
+        final long eventTimestampMillis = event.getHeader().getTimestamp();
 
         // Construct data prepper JacksonEvent
         for (final Object[] rowDataArray : data.getRows()) {
@@ -119,8 +120,15 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             }
 
             Event pipelineEvent = recordConverter.convert(
-                    rowDataMap, tableMetadata.getDatabaseName(), tableMetadata.getTableName(), event.getHeader().getEventType(),
-                    OpenSearchBulkActions.INDEX, primaryKeys, s3Prefix);
+                    rowDataMap,
+                    tableMetadata.getDatabaseName(),
+                    tableMetadata.getTableName(),
+                    event.getHeader().getEventType(),
+                    OpenSearchBulkActions.INDEX,
+                    primaryKeys,
+                    s3Prefix,
+                    eventTimestampMillis,
+                    eventTimestampMillis);
             addToBuffer(new Record<>(pipelineEvent));
         }
 
@@ -141,6 +149,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         }
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
+        final long eventTimestampMillis = event.getHeader().getTimestamp();
 
         for (Map.Entry<Serializable[], Serializable[]> updatedRow : data.getRows()) {
             // updatedRow contains data before update as key and data after update as value
@@ -152,8 +161,15 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             }
 
             final Event pipelineEvent = recordConverter.convert(
-                    dataMap, tableMetadata.getDatabaseName(), tableMetadata.getTableName(), event.getHeader().getEventType(),
-                    OpenSearchBulkActions.INDEX, primaryKeys, s3Prefix);
+                    dataMap,
+                    tableMetadata.getDatabaseName(),
+                    tableMetadata.getTableName(),
+                    event.getHeader().getEventType(),
+                    OpenSearchBulkActions.INDEX,
+                    primaryKeys,
+                    s3Prefix,
+                    eventTimestampMillis,
+                    eventTimestampMillis);
             addToBuffer(new Record<>(pipelineEvent));
         }
 
@@ -175,6 +191,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         }
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
+        final long eventTimestampMillis = event.getHeader().getTimestamp();
 
         for (Object[] rowDataArray : data.getRows()) {
             final Map<String, Object> rowDataMap = new HashMap<>();
@@ -183,8 +200,15 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             }
 
             final Event pipelineEvent = recordConverter.convert(
-                    rowDataMap, tableMetadata.getDatabaseName(), tableMetadata.getTableName(), event.getHeader().getEventType(),
-                    OpenSearchBulkActions.DELETE, primaryKeys, s3Prefix);
+                    rowDataMap,
+                    tableMetadata.getDatabaseName(),
+                    tableMetadata.getTableName(),
+                    event.getHeader().getEventType(),
+                    OpenSearchBulkActions.INDEX,
+                    primaryKeys,
+                    s3Prefix,
+                    eventTimestampMillis,
+                    eventTimestampMillis);
             addToBuffer(new Record<>(pipelineEvent));
         }
 

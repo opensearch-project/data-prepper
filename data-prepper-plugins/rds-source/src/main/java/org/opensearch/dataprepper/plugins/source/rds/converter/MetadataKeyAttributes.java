@@ -12,7 +12,7 @@ public class MetadataKeyAttributes {
 
     static final String EVENT_TIMESTAMP_METADATA_ATTRIBUTE = "event_timestamp";
 
-    static final String EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE = "opensearch_action";
+    static final String BULK_ACTION_METADATA_ATTRIBUTE = "opensearch_action";
 
     static final String CHANGE_EVENT_TYPE_METADATA_ATTRIBUTE = "change_event_type";
 

@@ -140,12 +140,13 @@ public class ExportScheduler implements Runnable {
 
         final String snapshotId = snapshotInfo.getSnapshotId();
         try {
-            checkSnapshotStatus(snapshotId, DEFAULT_SNAPSHOT_STATUS_CHECK_TIMEOUT);
+            snapshotInfo = checkSnapshotStatus(snapshotId, DEFAULT_SNAPSHOT_STATUS_CHECK_TIMEOUT);
         } catch (Exception e) {
             LOG.warn("Check snapshot status for {} failed", snapshotId, e);
             sourceCoordinator.giveUpPartition(exportPartition);
             return null;
         }
+        progressState.setSnapshotTime(snapshotInfo.getCreateTime().toEpochMilli());
 
         LOG.info("Creating an export task for db {} from snapshot {}", exportPartition.getDbIdentifier(), snapshotId);
         String exportTaskId = exportTaskManager.startExportTask(
@@ -172,7 +173,7 @@ public class ExportScheduler implements Runnable {
         sourceCoordinator.closePartition(exportPartition, DEFAULT_CLOSE_DURATION, DEFAULT_MAX_CLOSE_COUNT);
     }
 
-    private String checkSnapshotStatus(String snapshotId, Duration timeout) {
+    private SnapshotInfo checkSnapshotStatus(String snapshotId, Duration timeout) {
         final Instant endTime = Instant.now().plus(timeout);
 
         LOG.debug("Start checking status of snapshot {}", snapshotId);
@@ -183,7 +184,7 @@ public class ExportScheduler implements Runnable {
             // The status should never be "copying" here
             if (SnapshotStatus.AVAILABLE.getStatusName().equals(status)) {
                 LOG.info("Snapshot {} is available.", snapshotId);
-                return status;
+                return snapshotInfo;
             }
 
             LOG.debug("Snapshot {} is still creating. Wait and check later", snapshotId);
@@ -254,13 +255,14 @@ public class ExportScheduler implements Runnable {
                 LOG.info("Export for {} completed successfully", exportPartition.getPartitionKey());
 
                 ExportProgressState state = exportPartition.getProgressState().get();
-                String bucket = state.getBucket();
-                String prefix = state.getPrefix();
-                String exportTaskId = state.getExportTaskId();
+                final String bucket = state.getBucket();
+                final String prefix = state.getPrefix();
+                final String exportTaskId = state.getExportTaskId();
+                final long snapshotTime = state.getSnapshotTime();
 
                 // Create data file partitions for processing S3 files
                 List<String> dataFileObjectKeys = getDataFileObjectKeys(bucket, prefix, exportTaskId);
-                createDataFilePartitions(bucket, exportTaskId, dataFileObjectKeys);
+                createDataFilePartitions(bucket, exportTaskId, dataFileObjectKeys, snapshotTime);
 
                 completeExportPartition(exportPartition);
             }
@@ -289,14 +291,18 @@ public class ExportScheduler implements Runnable {
         return objectKeys;
     }
 
-    private void createDataFilePartitions(String bucket, String exportTaskId, List<String> dataFileObjectKeys) {
+    private void createDataFilePartitions(String bucket, String exportTaskId, List<String> dataFileObjectKeys, long snapshotTime) {
         LOG.info("Total of {} data files generated for export {}", dataFileObjectKeys.size(), exportTaskId);
         AtomicInteger totalFiles = new AtomicInteger();
         for (final String objectKey : dataFileObjectKeys) {
-            DataFileProgressState progressState = new DataFileProgressState();
-            ExportObjectKey exportObjectKey = ExportObjectKey.fromString(objectKey);
-            String table = exportObjectKey.getTableName();
+            final DataFileProgressState progressState = new DataFileProgressState();
+            final ExportObjectKey exportObjectKey = ExportObjectKey.fromString(objectKey);
+            final String database = exportObjectKey.getDatabaseName();
+            final String table = exportObjectKey.getTableName();
+
+            progressState.setSourceDatabase(database);
             progressState.setSourceTable(table);
+            progressState.setSnapshotTime(snapshotTime);
 
             DataFilePartition dataFilePartition = new DataFilePartition(exportTaskId, bucket, objectKey, Optional.of(progressState));
             sourceCoordinator.createPartition(dataFilePartition);
