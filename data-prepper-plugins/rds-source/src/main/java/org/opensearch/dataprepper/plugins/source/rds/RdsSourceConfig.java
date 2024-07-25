@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.rds;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;

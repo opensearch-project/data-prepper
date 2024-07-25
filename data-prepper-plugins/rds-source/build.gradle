@@ -26,4 +26,7 @@ dependencies {
     testImplementation project(path: ':data-prepper-test-common')
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation project(path: ':data-prepper-test-event')
+    testImplementation libs.avro.core
+    testImplementation libs.parquet.hadoop
+    testImplementation libs.parquet.avro
 }

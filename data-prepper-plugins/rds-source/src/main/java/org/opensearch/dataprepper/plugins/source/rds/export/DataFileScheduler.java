@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.export;
 
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
@@ -48,6 +50,8 @@ public class DataFileScheduler implements Runnable {
 
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+    static final String EXPORT_S3_OBJECTS_PROCESSED_COUNT = "exportS3ObjectsProcessed";
+    static final String ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE = "activeExportS3ObjectConsumers";
 
 
     private final EnhancedSourceCoordinator sourceCoordinator;
@@ -57,6 +61,10 @@ public class DataFileScheduler implements Runnable {
     private final InputCodec codec;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final ExportRecordConverter recordConverter;
+    private final PluginMetrics pluginMetrics;
+
+    private final Counter exportFileSuccessCounter;
+    private final AtomicInteger activeExportS3ObjectConsumersGauge;
 
     private volatile boolean shutdownRequested = false;
 
@@ -64,7 +72,8 @@ public class DataFileScheduler implements Runnable {
                              final RdsSourceConfig sourceConfig,
                              final S3Client s3Client,
                              final EventFactory eventFactory,
-                             final Buffer<Record<Event>> buffer) {
+                             final Buffer<Record<Event>> buffer,
+                             final PluginMetrics pluginMetrics) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         codec = new ParquetInputCodec(eventFactory);
@@ -72,6 +81,11 @@ public class DataFileScheduler implements Runnable {
         objectReader = new S3ObjectReader(s3Client);
         recordConverter = new ExportRecordConverter();
         executor = Executors.newFixedThreadPool(DATA_LOADER_MAX_JOB_COUNT);
+        this.pluginMetrics = pluginMetrics;
+
+        this.exportFileSuccessCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT);
+        this.activeExportS3ObjectConsumersGauge = pluginMetrics.gauge(
+                ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE, numOfWorkers, AtomicInteger::get);
     }
 
     @Override
@@ -116,11 +130,13 @@ public class DataFileScheduler implements Runnable {
     }
 
     private void processDataFilePartition(DataFilePartition dataFilePartition) {
-        Runnable loader = DataFileLoader.create(dataFilePartition, codec, bufferAccumulator, objectReader, recordConverter);
+        Runnable loader = DataFileLoader.create(
+                dataFilePartition, codec, bufferAccumulator, objectReader, recordConverter, pluginMetrics);
         CompletableFuture runLoader = CompletableFuture.runAsync(loader, executor);
 
         runLoader.whenComplete((v, ex) -> {
             if (ex == null) {
+                exportFileSuccessCounter.increment();
                 // Update global state so we know if all s3 files have been loaded
                 updateLoadStatus(dataFilePartition.getExportTaskId(), DEFAULT_UPDATE_LOAD_STATUS_TIMEOUT);
                 sourceCoordinator.completePartition(dataFilePartition);

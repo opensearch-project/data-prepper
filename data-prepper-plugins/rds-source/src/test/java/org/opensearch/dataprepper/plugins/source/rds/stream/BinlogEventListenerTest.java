@@ -14,6 +14,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -32,6 +33,9 @@ class BinlogEventListenerTest {
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private RdsSourceConfig sourceConfig;
+
+    @Mock
+    private PluginMetrics pluginMetrics;
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private com.github.shyiko.mysql.binlog.event.Event binlogEvent;
@@ -87,6 +91,6 @@ class BinlogEventListenerTest {
     }
 
     private BinlogEventListener createObjectUnderTest() {
-        return new BinlogEventListener(buffer, sourceConfig);
+        return new BinlogEventListener(buffer, sourceConfig, pluginMetrics);
     }
 }

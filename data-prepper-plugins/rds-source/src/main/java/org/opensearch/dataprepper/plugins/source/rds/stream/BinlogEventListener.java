@@ -12,7 +12,10 @@ import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
@@ -38,6 +41,10 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+    static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
+    static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
+    static final String BYTES_RECEIVED = "bytesReceived";
+    static final String BYTES_PROCESSED = "bytesProcessed";
 
     /**
      * TableId to TableMetadata mapping
@@ -48,13 +55,27 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final List<String> tableNames;
     private final String s3Prefix;
+    private final PluginMetrics pluginMetrics;
 
-    public BinlogEventListener(final Buffer<Record<Event>> buffer, final RdsSourceConfig sourceConfig) {
+    private final Counter changeEventSuccessCounter;
+    private final Counter changeEventErrorCounter;
+    private final DistributionSummary bytesReceivedSummary;
+    private final DistributionSummary bytesProcessedSummary;
+
+    public BinlogEventListener(final Buffer<Record<Event>> buffer,
+                               final RdsSourceConfig sourceConfig,
+                               final PluginMetrics pluginMetrics) {
         tableMetadataMap = new HashMap<>();
         recordConverter = new StreamRecordConverter(sourceConfig.getStream().getPartitionCount());
         bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
         s3Prefix = sourceConfig.getS3Prefix();
         tableNames = sourceConfig.getTableNames();
+        this.pluginMetrics = pluginMetrics;
+
+        changeEventSuccessCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSED_COUNT);
+        changeEventErrorCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT);
+        bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
+        bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
     }
 
     @Override
@@ -95,7 +116,9 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     }
 
     void handleInsertEvent(com.github.shyiko.mysql.binlog.event.Event event) {
-        // get new row data from the event
+        final long bytes = event.toString().getBytes().length;
+        bytesReceivedSummary.record(bytes);
+
         LOG.debug("Handling insert event");
         final WriteRowsEventData data = event.getData();
         if (!tableMetadataMap.containsKey(data.getTableId())) {
@@ -113,6 +136,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         final long eventTimestampMillis = event.getHeader().getTimestamp();
 
         // Construct data prepper JacksonEvent
+        int eventCount = 0;
         for (final Object[] rowDataArray : data.getRows()) {
             final Map<String, Object> rowDataMap = new HashMap<>();
             for (int i = 0; i < rowDataArray.length; i++) {
@@ -130,12 +154,17 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                     eventTimestampMillis,
                     eventTimestampMillis);
             addToBuffer(new Record<>(pipelineEvent));
+            eventCount++;
         }
+        bytesProcessedSummary.record(bytes);
 
-        flushBuffer();
+        flushBuffer(eventCount);
     }
 
     void handleUpdateEvent(com.github.shyiko.mysql.binlog.event.Event event) {
+        final long bytes = event.toString().getBytes().length;
+        bytesReceivedSummary.record(bytes);
+
         LOG.debug("Handling update event");
         final UpdateRowsEventData data = event.getData();
         if (!tableMetadataMap.containsKey(data.getTableId())) {
@@ -151,6 +180,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = event.getHeader().getTimestamp();
 
+        int eventCount = 0;
         for (Map.Entry<Serializable[], Serializable[]> updatedRow : data.getRows()) {
             // updatedRow contains data before update as key and data after update as value
             final Object[] rowData = updatedRow.getValue();
@@ -171,12 +201,17 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                     eventTimestampMillis,
                     eventTimestampMillis);
             addToBuffer(new Record<>(pipelineEvent));
+            eventCount++;
         }
+        bytesProcessedSummary.record(bytes);
 
-        flushBuffer();
+        flushBuffer(eventCount);
     }
 
     void handleDeleteEvent(com.github.shyiko.mysql.binlog.event.Event event) {
+        final long bytes = event.toString().getBytes().length;
+        bytesReceivedSummary.record(bytes);
+
         LOG.debug("Handling delete event");
         final DeleteRowsEventData data = event.getData();
         if (!tableMetadataMap.containsKey(data.getTableId())) {
@@ -193,6 +228,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = event.getHeader().getTimestamp();
 
+        int eventCount = 0;
         for (Object[] rowDataArray : data.getRows()) {
             final Map<String, Object> rowDataMap = new HashMap<>();
             for (int i = 0; i < rowDataArray.length; i++) {
@@ -210,9 +246,11 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                     eventTimestampMillis,
                     eventTimestampMillis);
             addToBuffer(new Record<>(pipelineEvent));
+            eventCount++;
         }
+        bytesProcessedSummary.record(bytes);
 
-        flushBuffer();
+        flushBuffer(eventCount);
     }
 
     private boolean isTableOfInterest(String tableName) {
@@ -227,11 +265,13 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         }
     }
 
-    private void flushBuffer() {
+    private void flushBuffer(int eventCount) {
         try {
             bufferAccumulator.flush();
+            changeEventSuccessCounter.increment(eventCount);
         } catch (Exception e) {
             LOG.error("Failed to flush buffer", e);
+            changeEventErrorCounter.increment(eventCount);
         }
     }
 
