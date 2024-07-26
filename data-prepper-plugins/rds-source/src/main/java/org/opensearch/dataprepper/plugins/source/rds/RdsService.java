@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.rds;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
+import com.github.shyiko.mysql.binlog.network.SSLMode;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
@@ -94,6 +95,11 @@ public class RdsService {
 
         if (sourceConfig.isStreamEnabled()) {
             BinaryLogClient binaryLogClient = new BinlogClientFactory(sourceConfig, rdsClient).create();
+            if (sourceConfig.getTlsConfig() == null || !sourceConfig.getTlsConfig().isInsecure()) {
+                binaryLogClient.setSSLMode(SSLMode.REQUIRED);
+            } else {
+                binaryLogClient.setSSLMode(SSLMode.DISABLED);
+            }
             streamScheduler = new StreamScheduler(sourceCoordinator, sourceConfig, binaryLogClient, buffer, pluginMetrics);
             runnableList.add(streamScheduler);
         }

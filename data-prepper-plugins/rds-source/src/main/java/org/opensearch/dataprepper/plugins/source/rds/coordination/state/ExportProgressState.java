@@ -35,8 +35,8 @@ public class ExportProgressState {
     @JsonProperty("kmsKeyId")
     private String kmsKeyId;
 
-    @JsonProperty("exportTime")
-    private String exportTime;
+    @JsonProperty("snapshotTime")
+    private long snapshotTime;
 
     @JsonProperty("status")
     private String status;
@@ -97,12 +97,12 @@ public class ExportProgressState {
         this.kmsKeyId = kmsKeyId;
     }
 
-    public String getExportTime() {
-        return exportTime;
+    public long getSnapshotTime() {
+        return snapshotTime;
     }
 
-    public void setExportTime(String exportTime) {
-        this.exportTime = exportTime;
+    public void setSnapshotTime(long snapshotTime) {
+        this.snapshotTime = snapshotTime;
     }
 
     public String getStatus() {

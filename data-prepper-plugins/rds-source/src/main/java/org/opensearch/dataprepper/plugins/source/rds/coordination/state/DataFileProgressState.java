@@ -15,8 +15,14 @@ public class DataFileProgressState {
     @JsonProperty("totalRecords")
     private int totalRecords;
 
+    @JsonProperty("sourceDatabase")
+    private String sourceDatabase;
+
     @JsonProperty("sourceTable")
     private String sourceTable;
+
+    @JsonProperty("snapshotTime")
+    private long snapshotTime;
 
     public int getTotalRecords() {
         return totalRecords;
@@ -34,11 +40,27 @@ public class DataFileProgressState {
         this.isLoaded = loaded;
     }
 
+    public String getSourceDatabase() {
+        return sourceDatabase;
+    }
+
+    public void setSourceDatabase(String sourceDatabase) {
+        this.sourceDatabase = sourceDatabase;
+    }
+
     public String getSourceTable() {
         return sourceTable;
     }
 
     public void setSourceTable(String sourceTable) {
         this.sourceTable = sourceTable;
+    }
+
+    public long getSnapshotTime() {
+        return snapshotTime;
+    }
+
+    public void setSnapshotTime(long snapshotTime) {
+        this.snapshotTime = snapshotTime;
     }
 }

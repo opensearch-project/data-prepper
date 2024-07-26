@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthentica
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.StreamConfig;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.TlsConfig;
 
 import java.util.List;
 
@@ -55,9 +56,6 @@ public class RdsSourceConfig {
     @JsonProperty("acknowledgments")
     private boolean acknowledgments = false;
 
-    /**
-     * S3 bucket for holding both export and stream data
-     */
     @JsonProperty("s3_bucket")
     private String s3Bucket;
 
@@ -76,6 +74,9 @@ public class RdsSourceConfig {
 
     @JsonProperty("authentication")
     private AuthenticationConfig authenticationConfig;
+
+    @JsonProperty("tls")
+    private TlsConfig tlsConfig;
 
     public String getDbIdentifier() {
         return dbIdentifier;
@@ -133,6 +134,10 @@ public class RdsSourceConfig {
         return streamConfig != null;
     }
 
+    public TlsConfig getTlsConfig() {
+        return tlsConfig;
+    }
+
     public AuthenticationConfig getAuthenticationConfig() {
         return this.authenticationConfig;
     }
@@ -151,6 +156,5 @@ public class RdsSourceConfig {
         public String getPassword() {
             return password;
         }
-
     }
 }

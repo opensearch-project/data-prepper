@@ -19,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Optional;
 
 public class LeaderScheduler implements Runnable {
@@ -98,9 +97,8 @@ public class LeaderScheduler implements Runnable {
         sourceCoordinator.createPartition(new GlobalState(sourceConfig.getDbIdentifier(), null));
 
         if (sourceConfig.isExportEnabled()) {
-            Instant startTime = Instant.now();
             LOG.debug("Export is enabled. Creating export partition in the source coordination store.");
-            createExportPartition(sourceConfig, startTime);
+            createExportPartition(sourceConfig);
         }
 
         if (sourceConfig.isStreamEnabled()) {
@@ -113,14 +111,13 @@ public class LeaderScheduler implements Runnable {
         leaderProgressState.setInitialized(true);
     }
 
-    private void createExportPartition(RdsSourceConfig sourceConfig, Instant exportTime) {
+    private void createExportPartition(RdsSourceConfig sourceConfig) {
         ExportProgressState progressState = new ExportProgressState();
         progressState.setIamRoleArn(sourceConfig.getAwsAuthenticationConfig().getAwsStsRoleArn());
         progressState.setBucket(sourceConfig.getS3Bucket());
         progressState.setPrefix(sourceConfig.getS3Prefix());
         progressState.setTables(sourceConfig.getTableNames());
         progressState.setKmsKeyId(sourceConfig.getExport().getKmsKeyId());
-        progressState.setExportTime(exportTime.toString());
         ExportPartition exportPartition = new ExportPartition(sourceConfig.getDbIdentifier(), sourceConfig.isCluster(), progressState);
         sourceCoordinator.createPartition(exportPartition);
     }
