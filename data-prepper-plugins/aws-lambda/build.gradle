@@ -65,10 +65,6 @@ task integrationTest(type: Test) {
     systemProperty 'tests.lambda.sink.functionName', System.getProperty('tests.lambda.sink.functionName')
     systemProperty 'tests.lambda.sink.sts_role_arn', System.getProperty('tests.lambda.sink.sts_role_arn')
 
-    systemProperty 'tests.lambda.processor.region', System.getProperty('tests.lambda.processor.region')
-    systemProperty 'tests.lambda.processor.functionName', System.getProperty('tests.lambda.processor.functionName')
-    systemProperty 'tests.lambda.processor.sts_role_arn', System.getProperty('tests.lambda.processor.sts_role_arn')
-
     filter {
         includeTestsMatching '*IT'
     }
