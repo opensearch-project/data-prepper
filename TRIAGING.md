@@ -19,7 +19,7 @@ However, should we run out of time before your issue is discussed, you are alway
 Meetings are hosted regularly Tuesdays at 2:30 PM US Central Time (12:30 PM Pacific Time) and can be joined via the links posted on the [OpenSearch Meetup Group](https://www.meetup.com/opensearch/events/) list of events.
 The event will be titled `Data Prepper Triage Meeting`.
 
-After joining the Zoom meeting, you can enable your video / voice to join the discussion.
+After joining the video meeting, you can enable your video / voice to join the discussion.
 If you do not have a webcam or microphone available, you can still join in via the text chat.
 
 If you have an issue you'd like to bring forth please consider getting a link to the issue so it can be presented to everyone in the meeting.
