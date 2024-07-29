@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.translate;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 
@@ -19,10 +20,12 @@ import java.util.Objects;
 public class TranslateProcessorConfig {
 
     @JsonProperty("file")
+    @JsonPropertyDescription("Points to the file that contains mapping configurations. For more information, see [file](#file).")
     @Valid
     private FileParameterConfig fileParameterConfig;
 
     @JsonProperty("mappings")
+    @JsonPropertyDescription("Defines inline mappings. For more information, see [mappings](#mappings).")
     @Valid
     private List<MappingsParameterConfig> mappingsParameterConfigs = new ArrayList<>();
 

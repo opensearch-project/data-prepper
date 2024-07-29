@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.processor.translate;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -22,18 +23,28 @@ public class TargetsParameterConfig {
     private final Map<String, Object> individualMappings = new HashMap<>();
     private final Map<Pattern, Object> compiledPatterns = new HashMap<>();
     @JsonProperty("target")
+    @JsonPropertyDescription("The key that specifies the field in the output in which the translated value will be placed.")
     @NotNull
     @NotEmpty
     private String target;
     @JsonProperty("map")
+    @JsonPropertyDescription("A list of key-value pairs that define the translations. Each key represents a possible " +
+            "value in the source field, and the corresponding value represents what it should be translated to. " +
+            "For examples, see [map option](#map-option). At least one of `map` and `regex` should be configured.")
     private Map<String, Object> map;
     @JsonProperty("translate_when")
+    @JsonPropertyDescription("Uses a [Data Prepper expression]({{site.url}}{{site.baseurl}}/data-prepper/pipelines/expression-syntax/) " +
+            "to specify a condition for performing the translation. When specified, the expression will only translate when the condition is met.")
     private String translateWhen;
     @JsonProperty("regex")
+    @JsonPropertyDescription("A map of keys that defines the translation map. For more options, see [regex option](#regex-option). " +
+            "At least one of `map` and `regex` should be configured.")
     private RegexParameterConfiguration regexParameterConfig;
     @JsonProperty("default")
+    @JsonPropertyDescription("The default value to use when no match is found during translation.")
     private String defaultValue;
     @JsonProperty("type")
+    @JsonPropertyDescription("Specifies the data type for the target value.")
     private TargetType targetType = TargetType.STRING;
 
     public TargetsParameterConfig(){
