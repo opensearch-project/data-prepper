@@ -186,6 +186,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.bulkRequestMap = new ConcurrentHashMap<>();
     this.lastFlushTimeMap = new ConcurrentHashMap<>();
     this.pluginConfigObservable = pluginConfigObservable;
+    this.objectMapper = new ObjectMapper();
 
     final Optional<PluginModel> dlqConfig = openSearchSinkConfig.getRetryConfiguration().getDlq();
     if (dlqConfig.isPresent()) {
@@ -201,7 +202,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         doInitializeInternal();
     } catch (IOException e) {
         LOG.warn("Failed to initialize OpenSearch sink, retrying: {} ", e.getMessage());
-        closeFiles();
+        this.shutdown();
     } catch (InvalidPluginConfigurationException e) {
         LOG.error("Failed to initialize OpenSearch sink due to a configuration error.", e);
         this.shutdown();
@@ -212,7 +213,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         throw e;
     } catch (Exception e) {
         LOG.warn("Failed to initialize OpenSearch sink with a retryable exception. ", e);
-        closeFiles();
+        this.shutdown();
     }
   }
 
@@ -279,7 +280,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             bulkRequestSupplier,
             pluginSetting);
 
-    objectMapper = new ObjectMapper();
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
   }
@@ -615,6 +615,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public void shutdown() {
     super.shutdown();
     closeFiles();
+    openSearchClient.shutdown();
   }
 
   private void maybeUpdateServerlessNetworkPolicy() {

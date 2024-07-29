@@ -71,6 +71,7 @@ class OpenSearchClientRefresherTest {
     @Test
     void testGetAfterUpdateWithDeprecatedBasicAuthUnchanged() {
         final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
+        assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         verify(clientFunction, times(1)).apply(any());
         when(connectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(connectionConfiguration.getPassword()).thenReturn(TEST_PASSWORD);
@@ -91,6 +92,7 @@ class OpenSearchClientRefresherTest {
     @Test
     void testGetAfterUpdateWithBasicAuthUnchanged() {
         final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
+        assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         verify(clientFunction, times(1)).apply(any());
         when(connectionConfiguration.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getUsername()).thenReturn(TEST_USERNAME);
@@ -115,6 +117,7 @@ class OpenSearchClientRefresherTest {
     void testGetAfterUpdateWithDeprecatedUsernameChanged() {
         when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
         final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
+        assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         verify(clientFunction, times(1)).apply(any());
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         when(connectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
@@ -138,6 +141,7 @@ class OpenSearchClientRefresherTest {
     void testGetAfterUpdateWithUsernameChanged() {
         when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
         final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
+        assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         verify(clientFunction, times(1)).apply(any());
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         when(connectionConfiguration.getAuthConfig()).thenReturn(authConfig);
@@ -165,6 +169,7 @@ class OpenSearchClientRefresherTest {
     void testGetAfterUpdateWithDeprecatedPasswordChanged() {
         when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
         final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
+        assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         verify(clientFunction, times(1)).apply(any());
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         when(connectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
@@ -190,6 +195,7 @@ class OpenSearchClientRefresherTest {
     void testGetAfterUpdateWithPasswordChanged() {
         when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
         final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
+        assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         verify(clientFunction, times(1)).apply(any());
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         when(connectionConfiguration.getAuthConfig()).thenReturn(authConfig);
@@ -219,6 +225,7 @@ class OpenSearchClientRefresherTest {
         when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
         when(pluginMetrics.counter(CLIENT_REFRESH_ERRORS)).thenReturn(clientRefreshErrorsCounter);
         final OpenSearchClientRefresher objectUnderTest = createObjectUnderTest();
+        assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         verify(clientFunction, times(1)).apply(any());
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         when(connectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
