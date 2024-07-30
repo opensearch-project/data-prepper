@@ -4,6 +4,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test-event') 
 }
 
 test {

@@ -64,7 +64,7 @@ Below are the list of configuration options.
 * `patterns` - (optional) - A list of Regex patterns. You can define multiple patterns for the same field. Only the
   parts that matched the Regex patterns to be obfuscated. If not provided, the full field will be obfuscated.
 * `single_word_only` - (optional) - When set to `true`, a word boundary `\b` is added to the pattern, due to which obfuscation would be applied only to words that are standalone in the input text. By default, it is `false`, meaning obfuscation patterns are applied to all occurrences.
-* `action` - (optional) - Obfuscation action, default to `mask`. Currently, `mask` is the only supported action.
+* `action` - (optional) - Obfuscation action, `mask` or `hash` to use one way hashing. Default to `mask` 
 
 
 ### Configuration - Mask Action
@@ -75,6 +75,57 @@ There are some additional configuration options for Mask action.
 * `mask_character_length` - (optional) - Default to 3. The value must be between 1 and 10. There will be n numbers of
   obfuscation characters, e.g. '***'
 
+### Configuration - One Way Hash Action
+
+There are some additional configuration options for One Way Hash action.
+
+* `format` - (optional) - Default to SHA-512. Format of One Way Hash to use. 
+* `salt` - (optional) - Default to generate random salt.
+* `salt_key` - (optional) - Instructs to generate salt for each record based on a value of a specified field in the message
+
+```yaml
+pipeline:
+  source:
+    http:
+  processor:
+    - obfuscate:
+        source: "log"
+        target: "new_log"
+        patterns:
+          - "[A-Za-z0-9+_.-]+@([\\w-]+\\.)+[\\w-]{2,4}"
+        action:
+          hash:
+            salt_key: "/<key>"
+            salt: "<salt>"
+    - obfuscate:
+        source: "phone"
+        action:
+          hash:
+            salt: "<salt>"
+  sink:
+    - stdout:
+```
+
+Take below input
+
+```json
+{
+  "id": 1,
+  "phone": "(555) 555 5555",
+  "log": "My name is Bob and my email address is abc@example.com"
+}
+```
+
+When run, the processor will parse the message into the following output:
+
+```json
+{
+  "id": 1,
+  "phone": "***",
+  "log": "My name is Bob and my email address is <hash>",
+  "newLog": "My name is Bob and my email address is <hash>"
+}
+```
 ---
 
 ## FAQ:

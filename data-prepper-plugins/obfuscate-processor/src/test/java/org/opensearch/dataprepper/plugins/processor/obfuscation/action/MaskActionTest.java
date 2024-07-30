@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
-class MaskActionTest {
+class MaskActionTest implements ObfuscationActionTest {
 
     private MaskAction maskAction;
 
@@ -25,7 +25,7 @@ class MaskActionTest {
     void testObfuscateWithPatternAsNull() {
         String message = "Hello";
         maskAction = createMaskAction("*", 3);
-        String result = maskAction.obfuscate(message, null);
+        String result = maskAction.obfuscate(message, null, createRecord(message));
         assertThat(result, equalTo("***"));
     }
 
@@ -39,7 +39,7 @@ class MaskActionTest {
     void testObfuscateWithDifferentConfig(String message, String maskCharacter, int maskCharacterLength, String expected) {
         maskAction = createMaskAction(maskCharacter, maskCharacterLength);
         List<Pattern> patterns = new ArrayList<>();
-        String result = maskAction.obfuscate(message, patterns);
+        String result = maskAction.obfuscate(message, patterns,createRecord(message));
         assertThat(result, equalTo(expected));
     }
 
