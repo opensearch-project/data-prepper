@@ -41,8 +41,9 @@ public class StreamScheduler implements Runnable {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.binaryLogClient = binaryLogClient;
-        this.binaryLogClient.registerEventListener(new BinlogEventListener(buffer, sourceConfig));
+        this.binaryLogClient.registerEventListener(new BinlogEventListener(buffer, sourceConfig, pluginMetrics));
         this.pluginMetrics = pluginMetrics;
+
     }
 
     @Override

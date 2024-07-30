@@ -88,7 +88,7 @@ public class RdsService {
             exportScheduler = new ExportScheduler(
                     sourceCoordinator, snapshotManager, exportTaskManager, s3Client, pluginMetrics);
             dataFileScheduler = new DataFileScheduler(
-                    sourceCoordinator, sourceConfig, s3Client, eventFactory, buffer);
+                    sourceCoordinator, sourceConfig, s3Client, eventFactory, buffer, pluginMetrics);
             runnableList.add(exportScheduler);
             runnableList.add(dataFileScheduler);
         }
