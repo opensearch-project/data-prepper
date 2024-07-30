@@ -55,7 +55,7 @@ dependencies {
     implementation 'software.amazon.awssdk:acm'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
-    implementation 'commons-validator:commons-validator:1.8.0'
+    implementation 'commons-validator:commons-validator:1.9.0'
     implementation 'software.amazon.awssdk:servicediscovery'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation testLibs.junit.vintage
