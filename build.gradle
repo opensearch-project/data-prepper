@@ -226,6 +226,9 @@ subprojects {
 
     test {
         useJUnitPlatform()
+        javaLauncher = javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.current()
+        }
         reports {
             junitXml.required
             html.required

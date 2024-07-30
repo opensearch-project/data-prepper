@@ -11,6 +11,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -22,6 +23,7 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.UUID;
 
@@ -49,7 +51,7 @@ public class EventJsonOutputCodecTest {
         final String value = UUID.randomUUID().toString();
         Map<String, Object> data = Map.of(key, value);
 
-        Instant startTime = Instant.now();
+        Instant startTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
         Event event = createEvent(data, startTime);
         outputCodec = createOutputCodec();
         outputCodec.start(outputStream, null, null);
@@ -59,10 +61,10 @@ public class EventJsonOutputCodecTest {
         Map<String, Object> dataMap = event.toMap();
         Map<String, Object> metadataMap = objectMapper.convertValue(event.getMetadata(), Map.class);
         //String expectedOutput = "{\"version\":\""+DataPrepperVersion.getCurrentVersion().toString()+"\",\""+EventJsonDefines.EVENTS+"\":[";
-        String expectedOutput = "{\""+EventJsonDefines.VERSION+"\":\""+DataPrepperVersion.getCurrentVersion().toString()+"\",\""+EventJsonDefines.EVENTS+"\":[";
+        String expectedOutput = "{\"" + EventJsonDefines.VERSION + "\":\"" + DataPrepperVersion.getCurrentVersion().toString() + "\",\"" + EventJsonDefines.EVENTS + "\":[";
         String comma = "";
         for (int i = 0; i < 2; i++) {
-            expectedOutput += comma+"{\""+EventJsonDefines.DATA+"\":"+objectMapper.writeValueAsString(dataMap)+","+"\""+EventJsonDefines.METADATA+"\":"+objectMapper.writeValueAsString(metadataMap)+"}";
+            expectedOutput += comma + "{\"" + EventJsonDefines.DATA + "\":" + objectMapper.writeValueAsString(dataMap) + "," + "\"" + EventJsonDefines.METADATA + "\":" + objectMapper.writeValueAsString(metadataMap) + "}";
             comma = ",";
         }
         expectedOutput += "]}";
@@ -78,7 +80,7 @@ public class EventJsonOutputCodecTest {
         if (timeReceived != null) {
             logBuilder.withTimeReceived(timeReceived);
         }
-        final JacksonEvent event = (JacksonEvent)logBuilder.build();
+        final JacksonEvent event = (JacksonEvent) logBuilder.build();
 
         return event;
     }
