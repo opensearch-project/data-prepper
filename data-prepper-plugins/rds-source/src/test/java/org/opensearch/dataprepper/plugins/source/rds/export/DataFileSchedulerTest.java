@@ -40,8 +40,10 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -77,6 +79,9 @@ class DataFileSchedulerTest {
     private Counter exportFileSuccessCounter;
 
     @Mock
+    private Counter exportFileErrorCounter;
+
+    @Mock
     private AtomicInteger activeExportS3ObjectConsumersGauge;
 
     private Random random;
@@ -85,6 +90,7 @@ class DataFileSchedulerTest {
     void setUp() {
         random = new Random();
         when(pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT)).thenReturn(exportFileSuccessCounter);
+        when(pluginMetrics.counter(eq(DataFileScheduler.EXPORT_S3_OBJECTS_ERROR_COUNT))).thenReturn(exportFileErrorCounter);
         when(pluginMetrics.gauge(eq(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE), any(AtomicInteger.class), any()))
                 .thenReturn(activeExportS3ObjectConsumersGauge);
     }
@@ -136,7 +142,36 @@ class DataFileSchedulerTest {
         executorService.shutdownNow();
 
         verify(exportFileSuccessCounter).increment();
+        verify(exportFileErrorCounter, never()).increment();
         verify(sourceCoordinator).completePartition(dataFilePartition);
+    }
+
+    @Test
+    void test_data_file_loader_throws_exception_then_give_up_partition() {
+
+        when(sourceCoordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE)).thenReturn(Optional.of(dataFilePartition));
+
+        DataFileScheduler objectUnderTest = createObjectUnderTest();
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> {
+            // MockedStatic needs to be created on the same thread it's used
+            try (MockedStatic<DataFileLoader> dataFileLoaderMockedStatic = mockStatic(DataFileLoader.class)) {
+                DataFileLoader dataFileLoader = mock(DataFileLoader.class);
+                dataFileLoaderMockedStatic.when(() -> DataFileLoader.create(
+                                eq(dataFilePartition), any(InputCodec.class), any(BufferAccumulator.class), any(S3ObjectReader.class),
+                                any(ExportRecordConverter.class), any(PluginMetrics.class)))
+                        .thenReturn(dataFileLoader);
+                doThrow(new RuntimeException()).when(dataFileLoader).run();
+                objectUnderTest.run();
+            }
+        });
+        await().atMost(Duration.ofSeconds(1))
+                .untilAsserted(() -> verify(sourceCoordinator).giveUpPartition(dataFilePartition));
+        executorService.shutdownNow();
+
+        verify(exportFileSuccessCounter, never()).increment();
+        verify(exportFileErrorCounter).increment();
+        verify(sourceCoordinator).giveUpPartition(dataFilePartition);
     }
 
     @Test

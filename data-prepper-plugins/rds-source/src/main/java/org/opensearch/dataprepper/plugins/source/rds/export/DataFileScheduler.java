@@ -51,6 +51,7 @@ public class DataFileScheduler implements Runnable {
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
     static final String EXPORT_S3_OBJECTS_PROCESSED_COUNT = "exportS3ObjectsProcessed";
+    static final String EXPORT_S3_OBJECTS_ERROR_COUNT = "exportS3ObjectsErrors";
     static final String ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE = "activeExportS3ObjectConsumers";
 
 
@@ -64,6 +65,7 @@ public class DataFileScheduler implements Runnable {
     private final PluginMetrics pluginMetrics;
 
     private final Counter exportFileSuccessCounter;
+    private final Counter exportFileErrorCounter;
     private final AtomicInteger activeExportS3ObjectConsumersGauge;
 
     private volatile boolean shutdownRequested = false;
@@ -84,6 +86,7 @@ public class DataFileScheduler implements Runnable {
         this.pluginMetrics = pluginMetrics;
 
         this.exportFileSuccessCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT);
+        this.exportFileErrorCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_ERROR_COUNT);
         this.activeExportS3ObjectConsumersGauge = pluginMetrics.gauge(
                 ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE, numOfWorkers, AtomicInteger::get);
     }
@@ -141,6 +144,7 @@ public class DataFileScheduler implements Runnable {
                 updateLoadStatus(dataFilePartition.getExportTaskId(), DEFAULT_UPDATE_LOAD_STATUS_TIMEOUT);
                 sourceCoordinator.completePartition(dataFilePartition);
             } else {
+                exportFileErrorCounter.increment();
                 LOG.error("There was an exception while processing an S3 data file", ex);
                 sourceCoordinator.giveUpPartition(dataFilePartition);
             }
