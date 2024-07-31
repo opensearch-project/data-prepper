@@ -14,4 +14,6 @@
     <suppress files="data-prepper-expression[\\/]build[\\/]generated-src[\\/]antlr[\\/]main[\\/]*" checks="[a-zA-Z0-9]*"/>
     <!-- The stdout sink must call System.out.println -->
     <suppress files="data-prepper-plugins[\\/]common[\\/]src[\\/]main[\\/]java[\\/]org[\\/]opensearch[\\/]dataprepper[\\/]plugins[\\/]sink[\\/]StdOutSink.java" checks="Regexp"/>
+    <!-- The DataPrepperPluginSchemaExecute must call System.out.println -->
+    <suppress files="data-prepper-plugin-schema[\\/]src[\\/]main[\\/]java[\\/]org[\\/]opensearch[\\/]dataprepper[\\/]schemas[\\/]DataPrepperPluginSchemaExecute.java" checks="Regexp"/>
 </suppressions>
