@@ -16,12 +16,6 @@ class TableUtilTest {
     private final String streamArn = tableArn + "/stream/2023-09-14T05:46:45.367";
 
     @Test
-    void test_getTableNameFromArn_should_return_tableName() {
-        String result = TableUtil.getTableNameFromArn(tableArn);
-        assertThat(result, equalTo(tableName));
-    }
-
-    @Test
     void test_getTableArnFromStreamArn_should_return_tableArn() {
         String result = TableUtil.getTableArnFromStreamArn(streamArn);
         assertThat(result, equalTo(tableArn));

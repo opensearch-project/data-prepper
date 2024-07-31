@@ -14,7 +14,6 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.Lea
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
-import org.opensearch.dataprepper.plugins.source.dynamodb.utils.TableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -230,8 +229,8 @@ public class LeaderScheduler implements Runnable {
      * Conduct Metadata info for table and also perform validation on configuration.
      * Once created, the info should not be changed.
      */
-    private TableInfo getTableInfo(TableConfig tableConfig) {
-        String tableName = TableUtil.getTableNameFromArn(tableConfig.getTableArn());
+    private TableInfo getTableInfo(final TableConfig tableConfig) {
+        final String tableName = tableConfig.getTableArn();
         DescribeTableResponse describeTableResult;
         try {
             // Need to call describe table to get the Key schema for table

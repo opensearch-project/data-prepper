@@ -1,14 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.utils;
 
-import software.amazon.awssdk.arns.Arn;
-
 public class TableUtil {
-
-    public static String getTableNameFromArn(String tableArn) {
-        Arn arn = Arn.fromString(tableArn);
-        // resourceAsString is table/xxx
-        return arn.resourceAsString().substring("table/".length());
-    }
 
     public static String getTableArnFromStreamArn(String streamArn) {
         // e.g. Given a stream arn: arn:aws:dynamodb:us-west-2:xxx:table/test-table/stream/2023-07-31T04:59:58.190
@@ -21,6 +13,4 @@ public class TableUtil {
         // returns: arn:aws:dynamodb:us-west-2:123456789012:table/Thread
         return exportArn.substring(0, exportArn.lastIndexOf("/export/"));
     }
-
-
 }
