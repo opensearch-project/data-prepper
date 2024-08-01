@@ -31,7 +31,7 @@ dependencies {
     implementation project(':data-prepper-plugins:aws-plugin-api')
     // bump io.confluent:* dependencies correspondingly when bumping org.apache.kafka.*
     // https://docs.confluent.io/platform/current/release-notes/index.html
-    implementation 'org.apache.kafka:kafka-clients:3.6.1'
+    implementation 'org.apache.kafka:kafka-clients:3.8.0'
     implementation 'org.apache.kafka:connect-json:3.6.1'
     implementation project(':data-prepper-plugins:http-common')
     implementation libs.avro.core
