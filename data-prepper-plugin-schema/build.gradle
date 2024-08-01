@@ -1,5 +1,10 @@
 plugins {
     id 'data-prepper.publish'
+    id 'application'
+}
+
+application {
+    mainClass = 'org.opensearch.dataprepper.schemas.DataPrepperPluginSchemaExecute'
 }
 
 dependencies {
@@ -12,6 +17,7 @@ dependencies {
     implementation 'com.github.victools:jsonschema-module-jackson:4.35.0'
     implementation 'com.github.victools:jsonschema-module-jakarta-validation:4.35.0'
     implementation 'javax.inject:javax.inject:1'
+    implementation 'info.picocli:picocli:4.6.1'
     implementation(libs.spring.core) {
         exclude group: 'commons-logging', module: 'commons-logging'
     }

@@ -12,6 +12,7 @@ import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import picocli.CommandLine;
 
 import java.util.List;
 import java.util.Map;
@@ -21,13 +22,23 @@ import java.util.stream.Stream;
 
 import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_REQUIRED;
 
-public class DataPrepperPluginSchemaExecute {
+public class DataPrepperPluginSchemaExecute implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperPluginSchemaExecute.class);
     static final String DEFAULT_PLUGINS_CLASSPATH = "org.opensearch.dataprepper.plugins";
 
+    @CommandLine.Option(names = {"--plugin_type"}, required = true)
+    private String pluginTypeName;
+
+    @CommandLine.Option(names = {"--plugin_names"})
+    private String pluginNames;
+
     public static void main(String[] args) {
-        final String pluginTypeName = System.getProperty("plugin_type");
-        final String pluginNames = System.getProperty("plugin_names");
+        final int exitCode = new CommandLine(new DataPrepperPluginSchemaExecute()).execute(args);
+        System.exit(exitCode);
+    }
+
+    @Override
+    public void run() {
         final List<Module> modules = List.of(
                 new JacksonModule(RESPECT_JSONPROPERTY_REQUIRED),
                 new JakartaValidationModule(JakartaValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED,
@@ -40,7 +51,7 @@ public class DataPrepperPluginSchemaExecute {
                 reflections, new JsonSchemaConverter(modules));
         final Class<?> pluginType = pluginConfigsJsonSchemaConverter.pluginTypeNameToPluginType(pluginTypeName);
         final Map<String, String> pluginNameToJsonSchemaMap = pluginConfigsJsonSchemaConverter.convertPluginConfigsIntoJsonSchemas(
-                        SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, pluginType);
+                SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, pluginType);
         if (pluginNames == null) {
             System.out.println(pluginNameToJsonSchemaMap.values());
         } else {
