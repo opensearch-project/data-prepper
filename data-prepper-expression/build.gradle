@@ -30,7 +30,7 @@ dependencies {
     implementation platform('org.apache.logging.log4j:log4j-bom:2.23.0')
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
-    implementation 'com.github.seancfoley:ipaddress:5.4.2'
+    implementation 'com.github.seancfoley:ipaddress:5.5.0'
     testImplementation testLibs.spring.test
     testImplementation libs.commons.lang3
     testImplementation 'com.fasterxml.jackson.core:jackson-databind'
