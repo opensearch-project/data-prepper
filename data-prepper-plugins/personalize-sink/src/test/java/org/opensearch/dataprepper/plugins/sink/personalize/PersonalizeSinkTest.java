@@ -64,14 +64,14 @@ class PersonalizeSinkTest {
         personalizeSink = createObjectUnderTest();
         Assertions.assertNotNull(personalizeSink);
         personalizeSink.doInitialize();
-        assertTrue(personalizeSink.isReady(), "personalize sink is not initialized and not ready to work");
+        assertTrue(personalizeSink.isReady(), "Expected the personalize sink to be ready, but it is reporting it is not ready.");
     }
 
     @Test
     void test_personalize_Sink_plugin_isReady_negative() {
         personalizeSink = createObjectUnderTest();
         Assertions.assertNotNull(personalizeSink);
-        assertFalse(personalizeSink.isReady(), "personalize sink is initialized and ready to work");
+        assertFalse(personalizeSink.isReady(), "Expected the personalize sink to report that it is not ready, but it is reporting it is ready.");
     }
 
     @Test

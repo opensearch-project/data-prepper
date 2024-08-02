@@ -23,7 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * Class responsible for creating PersonalizeEventsClient object, check thresholds,
  * get new buffer and write records into buffer.
  */
-public class PersonalizeSinkService {
+class PersonalizeSinkService {
 
     private static final Logger LOG = LoggerFactory.getLogger(PersonalizeSinkService.class);
     public static final String RECORDS_SUCCEEDED = "personalizeRecordsSucceeded";
@@ -63,7 +63,7 @@ public class PersonalizeSinkService {
      * @param records received records and add into buffer.
      */
     void output(Collection<Record<Event>> records) {
-        LOG.info("{} records received", records.size());
+        LOG.trace("{} records received", records.size());
         return;
     }
 }

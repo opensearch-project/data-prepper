@@ -31,7 +31,7 @@ import java.util.List;
  * Implementation class of personalize-sink plugin. It is responsible for receiving the collection of
  * {@link Event} and uploading to amazon personalize.
  */
-@DataPrepperPlugin(name = "personalize", pluginType = Sink.class, pluginConfigurationType = PersonalizeSinkConfiguration.class)
+@DataPrepperPlugin(name = "aws_personalize", pluginType = Sink.class, pluginConfigurationType = PersonalizeSinkConfiguration.class)
 public class PersonalizeSink extends AbstractSink<Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(PersonalizeSink.class);
@@ -58,7 +58,7 @@ public class PersonalizeSink extends AbstractSink<Record<Event>> {
         this.personalizeSinkConfig = personalizeSinkConfig;
         this.sinkContext = sinkContext;
 
-        sinkInitialized = Boolean.FALSE;
+        sinkInitialized = false;
 
         final PersonalizeEventsClient personalizeEventsClient = ClientFactory.createPersonalizeEventsClient(personalizeSinkConfig, awsCredentialsSupplier);
 
@@ -75,11 +75,11 @@ public class PersonalizeSink extends AbstractSink<Record<Event>> {
         try {
             doInitializeInternal();
         } catch (InvalidPluginConfigurationException e) {
-            LOG.error("Invalid plugin configuration, Hence failed to initialize personalize-sink plugin.");
+            LOG.error("The personalize sink has an invalid configuration and cannot initialize.");
             this.shutdown();
             throw e;
         } catch (Exception e) {
-            LOG.error("Failed to initialize personalize-sink plugin.");
+            LOG.error("Failed to initialize personalize sink.");
             this.shutdown();
             throw e;
         }
@@ -89,7 +89,7 @@ public class PersonalizeSink extends AbstractSink<Record<Event>> {
      * Initialize {@link PersonalizeSinkService}
      */
     private void doInitializeInternal() {
-        sinkInitialized = Boolean.TRUE;
+        sinkInitialized = true;
     }
 
     /**

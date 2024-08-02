@@ -14,7 +14,7 @@ import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.personalizeevents.PersonalizeEventsClient;
 
-public final class ClientFactory {
+final class ClientFactory {
     private ClientFactory() { }
 
     static PersonalizeEventsClient createPersonalizeEventsClient(final PersonalizeSinkConfiguration personalizeSinkConfig, final AwsCredentialsSupplier awsCredentialsSupplier) {
