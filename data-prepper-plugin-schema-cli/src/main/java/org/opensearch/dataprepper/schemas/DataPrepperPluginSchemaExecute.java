@@ -69,7 +69,7 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
                 }
                 return Stream.of(pluginNameToJsonSchemaMap.get(name));
             }).collect(Collectors.toList());
-            System.out.println(result);
+            result.forEach(System.out::println);
         }
     }
 }
