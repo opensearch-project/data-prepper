@@ -30,6 +30,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -272,7 +273,7 @@ public class ExportScheduler implements Runnable {
 
                 // Create data file partitions for processing S3 files
                 List<String> dataFileObjectKeys = getDataFileObjectKeys(bucket, prefix, exportTaskId);
-                createDataFilePartitions(bucket, exportTaskId, dataFileObjectKeys, snapshotTime);
+                createDataFilePartitions(bucket, exportTaskId, dataFileObjectKeys, snapshotTime, state.getPrimaryKeyMap());
 
                 completeExportPartition(exportPartition);
             }
@@ -301,7 +302,11 @@ public class ExportScheduler implements Runnable {
         return objectKeys;
     }
 
-    private void createDataFilePartitions(String bucket, String exportTaskId, List<String> dataFileObjectKeys, long snapshotTime) {
+    private void createDataFilePartitions(String bucket,
+                                          String exportTaskId,
+                                          List<String> dataFileObjectKeys,
+                                          long snapshotTime,
+                                          Map<String, List<String>> primaryKeyMap) {
         LOG.info("Total of {} data files generated for export {}", dataFileObjectKeys.size(), exportTaskId);
         AtomicInteger totalFiles = new AtomicInteger();
         for (final String objectKey : dataFileObjectKeys) {
@@ -313,6 +318,7 @@ public class ExportScheduler implements Runnable {
             progressState.setSourceDatabase(database);
             progressState.setSourceTable(table);
             progressState.setSnapshotTime(snapshotTime);
+            progressState.setPrimaryKeyMap(primaryKeyMap);
 
             DataFilePartition dataFilePartition = new DataFilePartition(exportTaskId, bucket, objectKey, Optional.of(progressState));
             sourceCoordinator.createPartition(dataFilePartition);

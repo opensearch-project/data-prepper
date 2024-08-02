@@ -20,7 +20,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class LeaderScheduler implements Runnable {
 
@@ -123,8 +126,17 @@ public class LeaderScheduler implements Runnable {
         progressState.setPrefix(sourceConfig.getS3Prefix());
         progressState.setTables(sourceConfig.getTableNames());
         progressState.setKmsKeyId(sourceConfig.getExport().getKmsKeyId());
+        progressState.setPrimaryKeyMap(getPrimaryKeyMap());
         ExportPartition exportPartition = new ExportPartition(sourceConfig.getDbIdentifier(), sourceConfig.isCluster(), progressState);
         sourceCoordinator.createPartition(exportPartition);
+    }
+
+    private Map<String, List<String>> getPrimaryKeyMap() {
+        return sourceConfig.getTableNames().stream()
+                .collect(Collectors.toMap(
+                        fullTableName -> fullTableName,
+                        fullTableName -> schemaManager.getPrimaryKeys(fullTableName.split("\\.")[0], fullTableName.split("\\.")[1])
+                ));
     }
 
     private void createStreamPartition(RdsSourceConfig sourceConfig) {

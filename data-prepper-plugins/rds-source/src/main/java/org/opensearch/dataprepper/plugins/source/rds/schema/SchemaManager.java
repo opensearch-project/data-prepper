@@ -28,16 +28,15 @@ public class SchemaManager {
         this.connectionManager = connectionManager;
     }
 
-    public List<String> getPrimaryKeys(String tableName) {
+    public List<String> getPrimaryKeys(final String database, final String table) {
         final List<String> primaryKeys = new ArrayList<>();
         try (final Connection connection = connectionManager.getConnection()) {
-            final ResultSet rs = connection.getMetaData().getPrimaryKeys(null, null, tableName);
+            final ResultSet rs = connection.getMetaData().getPrimaryKeys(database, null, table);
             while (rs.next()) {
                 primaryKeys.add(rs.getString(COLUMN_NAME));
             }
         } catch (SQLException e) {
-            LOG.error("Failed to get primary keys for table {}", tableName, e);
-            throw new RuntimeException(e);
+            LOG.error("Failed to get primary keys for table {}", table, e);
         }
         return primaryKeys;
     }
@@ -49,10 +48,9 @@ public class SchemaManager {
             if (rs.next()) {
                 return Optional.of(new BinlogCoordinate(rs.getString(BINLOG_FILE), rs.getLong(BINLOG_POSITION)));
             }
-            return Optional.empty();
         } catch (SQLException e) {
             LOG.error("Failed to get current binary log position", e);
-            throw new RuntimeException(e);
         }
+        return Optional.empty();
     }
 }

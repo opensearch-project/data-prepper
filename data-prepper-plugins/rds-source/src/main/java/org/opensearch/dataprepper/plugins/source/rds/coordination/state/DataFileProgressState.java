@@ -7,6 +7,9 @@ package org.opensearch.dataprepper.plugins.source.rds.coordination.state;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.List;
+import java.util.Map;
+
 public class DataFileProgressState {
 
     @JsonProperty("isLoaded")
@@ -20,6 +23,12 @@ public class DataFileProgressState {
 
     @JsonProperty("sourceTable")
     private String sourceTable;
+
+    /**
+     * Map of table name to primary keys
+     */
+    @JsonProperty("primaryKeyMap")
+    private Map<String, List<String>> primaryKeyMap;
 
     @JsonProperty("snapshotTime")
     private long snapshotTime;
@@ -62,5 +71,13 @@ public class DataFileProgressState {
 
     public void setSnapshotTime(long snapshotTime) {
         this.snapshotTime = snapshotTime;
+    }
+
+    public Map<String, List<String>> getPrimaryKeyMap() {
+        return primaryKeyMap;
+    }
+
+    public void setPrimaryKeyMap(Map<String, List<String>> primaryKeyMap) {
+        this.primaryKeyMap = primaryKeyMap;
     }
 }
