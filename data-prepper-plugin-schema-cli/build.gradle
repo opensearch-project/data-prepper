@@ -1,0 +1,29 @@
+plugins {
+    id 'data-prepper.publish'
+    id 'application'
+}
+
+application {
+    mainClass = 'org.opensearch.dataprepper.schemas.DataPrepperPluginSchemaExecute'
+}
+
+dependencies {
+    implementation project(':data-prepper-plugins')
+    implementation project(':data-prepper-plugin-framework')
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'org.reflections:reflections:0.10.2'
+    implementation 'com.github.victools:jsonschema-maven-plugin:4.35.0'
+    implementation 'com.github.victools:jsonschema-generator:4.35.0'
+    implementation 'com.github.victools:jsonschema-module-jackson:4.35.0'
+    implementation 'com.github.victools:jsonschema-module-jakarta-validation:4.35.0'
+    implementation 'javax.inject:javax.inject:1'
+    implementation 'info.picocli:picocli:4.6.1'
+    implementation(libs.spring.core) {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+    implementation(libs.spring.context) {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+    testImplementation(platform("org.junit:junit-bom:5.9.1"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+}
