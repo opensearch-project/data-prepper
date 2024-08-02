@@ -110,6 +110,7 @@ public class DataFileLoader implements Runnable {
                     eventCount.getAndIncrement();
                     bytesProcessedSummary.record(bytes);
                 } catch (Exception e) {
+                    LOG.error("Failed to process record from object s3://{}/{}", bucket, objectKey, e);
                     throw new RuntimeException(e);
                 }
             });

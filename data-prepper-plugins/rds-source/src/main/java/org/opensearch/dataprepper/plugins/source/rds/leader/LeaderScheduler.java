@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.Stre
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
+import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,13 +29,17 @@ public class LeaderScheduler implements Runnable {
     private static final Duration DEFAULT_LEASE_INTERVAL = Duration.ofMinutes(1);
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final RdsSourceConfig sourceConfig;
+    private final SchemaManager schemaManager;
 
     private LeaderPartition leaderPartition;
     private volatile boolean shutdownRequested = false;
 
-    public LeaderScheduler(final EnhancedSourceCoordinator sourceCoordinator, final RdsSourceConfig sourceConfig) {
+    public LeaderScheduler(final EnhancedSourceCoordinator sourceCoordinator,
+                           final RdsSourceConfig sourceConfig,
+                           final SchemaManager schemaManager) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
+        this.schemaManager = schemaManager;
     }
 
     @Override
