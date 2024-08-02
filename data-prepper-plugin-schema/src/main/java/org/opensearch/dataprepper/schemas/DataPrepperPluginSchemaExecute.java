@@ -6,6 +6,7 @@ import com.github.victools.jsonschema.generator.SchemaVersion;
 import com.github.victools.jsonschema.module.jackson.JacksonModule;
 import com.github.victools.jsonschema.module.jakarta.validation.JakartaValidationModule;
 import com.github.victools.jsonschema.module.jakarta.validation.JakartaValidationOption;
+import org.opensearch.dataprepper.schemas.module.CustomJacksonModule;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 import org.reflections.util.ClasspathHelper;
@@ -32,6 +33,11 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
     @CommandLine.Option(names = {"--plugin_names"})
     private String pluginNames;
 
+    @CommandLine.Option(names = {"--site.url"}, defaultValue = "https://opensearch.org")
+    private String siteUrl;
+    @CommandLine.Option(names = {"--site.baseurl"}, defaultValue = "/docs/latest")
+    private String siteBaseUrl;
+
     public static void main(String[] args) {
         final int exitCode = new CommandLine(new DataPrepperPluginSchemaExecute()).execute(args);
         System.exit(exitCode);
@@ -40,7 +46,7 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
     @Override
     public void run() {
         final List<Module> modules = List.of(
-                new JacksonModule(RESPECT_JSONPROPERTY_REQUIRED),
+                new CustomJacksonModule(RESPECT_JSONPROPERTY_REQUIRED),
                 new JakartaValidationModule(JakartaValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED,
                         JakartaValidationOption.INCLUDE_PATTERN_EXPRESSIONS)
         );
@@ -48,7 +54,7 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
                 .setUrls(ClasspathHelper.forPackage(DEFAULT_PLUGINS_CLASSPATH))
                 .setScanners(Scanners.TypesAnnotated, Scanners.SubTypes));
         final PluginConfigsJsonSchemaConverter pluginConfigsJsonSchemaConverter = new PluginConfigsJsonSchemaConverter(
-                reflections, new JsonSchemaConverter(modules));
+                reflections, new JsonSchemaConverter(modules), siteUrl, siteBaseUrl);
         final Class<?> pluginType = pluginConfigsJsonSchemaConverter.pluginTypeNameToPluginType(pluginTypeName);
         final Map<String, String> pluginNameToJsonSchemaMap = pluginConfigsJsonSchemaConverter.convertPluginConfigsIntoJsonSchemas(
                 SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, pluginType);

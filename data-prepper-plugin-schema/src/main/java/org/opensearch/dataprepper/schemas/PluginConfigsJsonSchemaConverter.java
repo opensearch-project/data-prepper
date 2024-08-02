@@ -20,12 +20,20 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.opensearch.dataprepper.model.configuration.PipelineModel.BUFFER_PLUGIN_TYPE;
+import static org.opensearch.dataprepper.model.configuration.PipelineModel.PROCESSOR_PLUGIN_TYPE;
+import static org.opensearch.dataprepper.model.configuration.PipelineModel.ROUTE_PLUGIN_TYPE;
+import static org.opensearch.dataprepper.model.configuration.PipelineModel.SINK_PLUGIN_TYPE;
+import static org.opensearch.dataprepper.model.configuration.PipelineModel.SOURCE_PLUGIN_TYPE;
+
 public class PluginConfigsJsonSchemaConverter {
     private static final Logger LOG = LoggerFactory.getLogger(PluginConfigsJsonSchemaConverter.class);
+    static final String SITE_URL_PLACEHOLDER = "{{site.url}}";
+    static final String SITE_BASE_URL_PLACEHOLDER = "{{site.baseurl}}";
     static final String DOCUMENTATION_LINK_KEY = "documentation";
     static final String PLUGIN_NAME_KEY = "name";
     static final String PLUGIN_DOCUMENTATION_URL_FORMAT =
-            "https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/%s/%s/";
+            "%s%s/data-prepper/pipelines/configuration/%s/%s/";
     static final Map<Class<?>, String> PLUGIN_TYPE_TO_URI_PARAMETER_MAP = Map.of(
             Source.class, "sources",
             Processor.class, "processors",
@@ -35,20 +43,26 @@ public class PluginConfigsJsonSchemaConverter {
     );
     static final String CONDITIONAL_ROUTE_PROCESSOR_NAME = "routes";
     static final Map<String, Class<?>> PLUGIN_TYPE_NAME_TO_CLASS_MAP = Map.of(
-            "source", Source.class,
-            "processor", Processor.class,
-            "route", ConditionalRoute.class,
-            "buffer", Buffer.class,
-            "sink", Sink.class);
+            SOURCE_PLUGIN_TYPE, Source.class,
+            PROCESSOR_PLUGIN_TYPE, Processor.class,
+            ROUTE_PLUGIN_TYPE, ConditionalRoute.class,
+            BUFFER_PLUGIN_TYPE, Buffer.class,
+            SINK_PLUGIN_TYPE, Sink.class);
 
+    private final String siteUrl;
+    private final String siteBaseUrl;
     private final Reflections reflections;
     private final JsonSchemaConverter jsonSchemaConverter;
 
     public PluginConfigsJsonSchemaConverter(
             final Reflections reflections,
-            final JsonSchemaConverter jsonSchemaConverter) {
+            final JsonSchemaConverter jsonSchemaConverter,
+            final String siteUrl,
+            final String siteBaseUrl) {
         this.reflections = reflections;
         this.jsonSchemaConverter = jsonSchemaConverter;
+        this.siteUrl = siteUrl == null ? SITE_URL_PLACEHOLDER : siteUrl;
+        this.siteBaseUrl = siteBaseUrl == null ? SITE_BASE_URL_PLACEHOLDER : siteBaseUrl;
     }
 
     public Set<String> validPluginTypeNames() {
@@ -108,6 +122,8 @@ public class PluginConfigsJsonSchemaConverter {
         jsonSchemaNode.put(DOCUMENTATION_LINK_KEY,
                 String.format(
                         PLUGIN_DOCUMENTATION_URL_FORMAT,
+                        siteUrl,
+                        siteBaseUrl,
                         PLUGIN_TYPE_TO_URI_PARAMETER_MAP.get(pluginType),
                         pluginName));
     }

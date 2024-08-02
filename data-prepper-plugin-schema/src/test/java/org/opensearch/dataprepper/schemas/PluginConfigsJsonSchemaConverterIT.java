@@ -20,6 +20,7 @@ import org.reflections.util.ConfigurationBuilder;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_REQUIRED;
@@ -31,9 +32,10 @@ import static org.opensearch.dataprepper.schemas.PluginConfigsJsonSchemaConverte
 
 class PluginConfigsJsonSchemaConverterIT {
     static final String DEFAULT_PLUGINS_CLASSPATH = "org.opensearch.dataprepper.plugins";
+    private static final String TEST_URL = String.format("https://%s/", UUID.randomUUID());
+    private static final String TEST_BASE_URL = String.format("/%s", UUID.randomUUID());
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {};
-
 
     private PluginConfigsJsonSchemaConverter objectUnderTest;
 
@@ -47,12 +49,13 @@ class PluginConfigsJsonSchemaConverterIT {
         final Reflections reflections = new Reflections(new ConfigurationBuilder()
                 .setUrls(ClasspathHelper.forPackage(DEFAULT_PLUGINS_CLASSPATH))
                 .setScanners(Scanners.TypesAnnotated, Scanners.SubTypes));
-        objectUnderTest = new PluginConfigsJsonSchemaConverter(reflections, new JsonSchemaConverter(modules));
+        objectUnderTest = new PluginConfigsJsonSchemaConverter(
+                reflections, new JsonSchemaConverter(modules), TEST_URL, TEST_BASE_URL);
     }
 
     @ParameterizedTest
     @MethodSource("getValidPluginTypes")
-    void testConvertPluginConfigsIntoJsonSchemas(final Class<?> pluginType) throws JsonProcessingException {
+    void testConvertPluginConfigsIntoJsonSchemas(final Class<?> pluginType) {
         final Map<String, String> result = objectUnderTest.convertPluginConfigsIntoJsonSchemas(
                 SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, pluginType);
         assertThat(result.isEmpty(), is(false));
@@ -64,8 +67,9 @@ class PluginConfigsJsonSchemaConverterIT {
                 throw new RuntimeException(e);
             }
             assertThat(schemaMap, notNullValue());
-            assertThat(schemaMap.containsKey(DOCUMENTATION_LINK_KEY), is(true));
             assertThat(schemaMap.containsKey(PLUGIN_NAME_KEY), is(true));
+            assertThat(((String) schemaMap.get(DOCUMENTATION_LINK_KEY)).startsWith(TEST_URL + TEST_BASE_URL),
+                    is(true));
         });
     }
 

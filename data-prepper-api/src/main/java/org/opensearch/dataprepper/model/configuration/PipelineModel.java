@@ -24,25 +24,30 @@ import static com.google.common.base.Preconditions.checkArgument;
  * @since 1.2
  */
 public class PipelineModel {
+    public static final String SOURCE_PLUGIN_TYPE = "source";
+    public static final String PROCESSOR_PLUGIN_TYPE = "processor";
+    public static final String BUFFER_PLUGIN_TYPE = "buffer";
+    public static final String ROUTE_PLUGIN_TYPE = "route";
+    public static final String SINK_PLUGIN_TYPE = "sink";
     private static final Logger LOG = LoggerFactory.getLogger(PipelineModel.class);
 
-    @JsonProperty("source")
+    @JsonProperty(SOURCE_PLUGIN_TYPE)
     private final PluginModel source;
 
-    @JsonProperty("processor")
+    @JsonProperty(PROCESSOR_PLUGIN_TYPE)
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private final List<PluginModel> processors;
 
-    @JsonProperty("buffer")
+    @JsonProperty(BUFFER_PLUGIN_TYPE)
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private final PluginModel buffer;
 
     @JsonProperty("routes")
-    @JsonAlias("route")
+    @JsonAlias(ROUTE_PLUGIN_TYPE)
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private final List<ConditionalRoute> routes;
 
-    @JsonProperty("sink")
+    @JsonProperty(SINK_PLUGIN_TYPE)
     private final List<SinkModel> sinks;
 
     @JsonProperty("workers")

@@ -76,7 +76,9 @@ class PluginConfigsJsonSchemaConverterTest {
         assertThat(result.size(), equalTo(1));
         final Map<String, Object> schemaMap = OBJECT_MAPPER.readValue(result.get("test_plugin"), MAP_TYPE_REFERENCE);
         assertThat(schemaMap, notNullValue());
-        assertThat(schemaMap.containsKey(DOCUMENTATION_LINK_KEY), is(true));
+        assertThat(schemaMap.get(DOCUMENTATION_LINK_KEY), equalTo(
+                "{{site.url}}{{site.baseurl}}/data-prepper/pipelines/configuration/null/test_plugin/"
+        ));
         assertThat(schemaMap.containsKey(PLUGIN_NAME_KEY), is(true));
     }
 
