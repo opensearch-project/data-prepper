@@ -58,7 +58,7 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
         final Map<String, String> pluginNameToJsonSchemaMap = pluginConfigsJsonSchemaConverter.convertPluginConfigsIntoJsonSchemas(
                 SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, pluginType);
         if (pluginNames == null) {
-            System.out.println(pluginNameToJsonSchemaMap.values());
+            pluginNameToJsonSchemaMap.values().forEach(System.out::println);
         } else {
             final Set<String> pluginNamesSet = Set.of(pluginNames.split(","));
             final List<String> result = pluginNamesSet.stream().flatMap(name -> {
