@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.Stre
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
+import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -142,7 +143,12 @@ public class LeaderScheduler implements Runnable {
     private void createStreamPartition(RdsSourceConfig sourceConfig) {
         final StreamProgressState progressState = new StreamProgressState();
         progressState.setWaitForExport(sourceConfig.isExportEnabled());
+        getCurrentBinlogPosition().ifPresent(progressState::setStartPosition);
         StreamPartition streamPartition = new StreamPartition(sourceConfig.getDbIdentifier(), progressState);
         sourceCoordinator.createPartition(streamPartition);
+    }
+
+    private Optional<BinlogCoordinate> getCurrentBinlogPosition() {
+        return schemaManager.getCurrentBinaryLogPosition();
     }
 }
