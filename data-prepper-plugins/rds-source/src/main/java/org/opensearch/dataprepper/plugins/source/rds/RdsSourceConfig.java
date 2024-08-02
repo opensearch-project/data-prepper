@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TlsConfig;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -55,6 +56,9 @@ public class RdsSourceConfig {
 
     @JsonProperty("acknowledgments")
     private boolean acknowledgments = false;
+
+    @JsonProperty("stream_acknowledgment_timeout")
+    private Duration streamAcknowledgmentTimeout = Duration.ofMinutes(10);
 
     @JsonProperty("s3_bucket")
     private String s3Bucket;
@@ -104,6 +108,10 @@ public class RdsSourceConfig {
 
     public boolean isAcknowledgmentsEnabled() {
         return acknowledgments;
+    }
+
+    public Duration getStreamAcknowledgmentTimeout() {
+        return streamAcknowledgmentTimeout;
     }
 
     public String getS3Bucket() {

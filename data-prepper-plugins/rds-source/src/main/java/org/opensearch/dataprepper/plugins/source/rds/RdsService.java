@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.source.rds;
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
@@ -50,6 +51,7 @@ public class RdsService {
     private final EventFactory eventFactory;
     private final PluginMetrics pluginMetrics;
     private final RdsSourceConfig sourceConfig;
+    private final AcknowledgementSetManager acknowledgementSetManager;
     private ExecutorService executor;
     private LeaderScheduler leaderScheduler;
     private ExportScheduler exportScheduler;
@@ -60,11 +62,13 @@ public class RdsService {
                       final RdsSourceConfig sourceConfig,
                       final EventFactory eventFactory,
                       final ClientFactory clientFactory,
-                      final PluginMetrics pluginMetrics) {
+                      final PluginMetrics pluginMetrics,
+                      final AcknowledgementSetManager acknowledgementSetManager) {
         this.sourceCoordinator = sourceCoordinator;
         this.eventFactory = eventFactory;
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
+        this.acknowledgementSetManager = acknowledgementSetManager;
 
         rdsClient = clientFactory.buildRdsClient();
         s3Client = clientFactory.buildS3Client();
@@ -106,7 +110,8 @@ public class RdsService {
             } else {
                 binaryLogClient.setSSLMode(SSLMode.DISABLED);
             }
-            streamScheduler = new StreamScheduler(sourceCoordinator, sourceConfig, binaryLogClient, buffer, pluginMetrics);
+            streamScheduler = new StreamScheduler(
+                    sourceCoordinator, sourceConfig, binaryLogClient, buffer, pluginMetrics, acknowledgementSetManager);
             runnableList.add(streamScheduler);
         }
 

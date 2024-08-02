@@ -21,7 +21,6 @@ public class StreamAcknowledgementManager {
     private static final Logger LOG = LoggerFactory.getLogger(StreamAcknowledgementManager.class);
     private static final int CHECKPOINT_RECORD_INTERVAL = 50;
     private final ConcurrentLinkedQueue<CheckpointStatus> checkpoints = new ConcurrentLinkedQueue<>();
-    private final ConcurrentHashMap<String, CheckpointStatus> ackStatus = new ConcurrentHashMap<>();
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final DataStreamPartitionCheckpoint partitionCheckpoint;
 
@@ -62,7 +61,6 @@ public class StreamAcknowledgementManager {
                             long ackCount = 0;
                             do {
                                 lastCheckpointStatus = checkpoints.poll();
-                                ackStatus.remove(checkpointStatus.getResumeToken());
                                 checkpointStatus = checkpoints.peek();
                                 ackCount++;
                                 // at high TPS each ack contains 100 records. This should checkpoint every 100*50 = 5000 records.
@@ -120,16 +118,14 @@ public class StreamAcknowledgementManager {
 
         final CheckpointStatus checkpointStatus = new CheckpointStatus(resumeToken, recordNumber, Instant.now().toEpochMilli());
         checkpoints.add(checkpointStatus);
-        ackStatus.put(resumeToken, checkpointStatus);
         LOG.debug("Creating acknowledgment for resumeToken {}", checkpointStatus.getResumeToken());
         return Optional.of(acknowledgementSetManager.create((result) -> {
-            final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);
-            ackCheckpointStatus.setAcknowledgedTimestamp(Instant.now().toEpochMilli());
+            checkpointStatus.setAcknowledgedTimestamp(Instant.now().toEpochMilli());
             if (result) {
-                ackCheckpointStatus.setAcknowledged(CheckpointStatus.AcknowledgmentStatus.POSITIVE_ACK);
+                checkpointStatus.setAcknowledged(CheckpointStatus.AcknowledgmentStatus.POSITIVE_ACK);
                 LOG.debug("Received acknowledgment of completion from sink for checkpoint {}", resumeToken);
             } else {
-                ackCheckpointStatus.setAcknowledged(CheckpointStatus.AcknowledgmentStatus.NEGATIVE_ACK);
+                checkpointStatus.setAcknowledged(CheckpointStatus.AcknowledgmentStatus.NEGATIVE_ACK);
                 LOG.warn("Negative acknowledgment received for checkpoint {}, resetting checkpoint", resumeToken);
                 // default CheckpointStatus acknowledged value is false. The monitorCheckpoints method will time out
                 // and reprocess stream from last successful checkpoint in the order.
@@ -139,11 +135,6 @@ public class StreamAcknowledgementManager {
 
     void shutdown() {
         executorService.shutdown();
-    }
-
-    @VisibleForTesting
-    ConcurrentHashMap<String, CheckpointStatus> getAcknowledgementStatus() {
-        return ackStatus;
     }
 
     @VisibleForTesting
