@@ -13,14 +13,15 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.rds.export.ClusterSnapshotStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportTaskManager;
-import org.opensearch.dataprepper.plugins.source.rds.export.InstanceSnapshotStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.export.SnapshotManager;
-import org.opensearch.dataprepper.plugins.source.rds.export.SnapshotStrategy;
+import org.opensearch.dataprepper.plugins.source.rds.leader.ClusterApiStrategy;
+import org.opensearch.dataprepper.plugins.source.rds.leader.InstanceApiStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.leader.LeaderScheduler;
+import org.opensearch.dataprepper.plugins.source.rds.leader.RdsApiStrategy;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.stream.BinlogClientFactory;
@@ -28,12 +29,6 @@ import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.rds.RdsClient;
-import software.amazon.awssdk.services.rds.model.DBCluster;
-import software.amazon.awssdk.services.rds.model.DBInstance;
-import software.amazon.awssdk.services.rds.model.DescribeDbClustersRequest;
-import software.amazon.awssdk.services.rds.model.DescribeDbClustersResponse;
-import software.amazon.awssdk.services.rds.model.DescribeDbInstancesRequest;
-import software.amazon.awssdk.services.rds.model.DescribeDbInstancesResponse;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.ArrayList;
@@ -86,13 +81,15 @@ public class RdsService {
         LOG.info("Start running RDS service");
         final List<Runnable> runnableList = new ArrayList<>();
 
-        leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig, getSchemaManager(sourceConfig));
+        final RdsApiStrategy rdsApiStrategy = sourceConfig.isCluster() ?
+                new ClusterApiStrategy(rdsClient) : new InstanceApiStrategy(rdsClient);
+        final DbMetadata dbMetadata = rdsApiStrategy.describeDb(sourceConfig.getDbIdentifier());
+        leaderScheduler = new LeaderScheduler(
+                sourceCoordinator, sourceConfig, getSchemaManager(sourceConfig, dbMetadata), dbMetadata);
         runnableList.add(leaderScheduler);
 
         if (sourceConfig.isExportEnabled()) {
-            final SnapshotStrategy snapshotStrategy = sourceConfig.isCluster() ?
-                    new ClusterSnapshotStrategy(rdsClient) : new InstanceSnapshotStrategy(rdsClient);
-            final SnapshotManager snapshotManager = new SnapshotManager(snapshotStrategy);
+            final SnapshotManager snapshotManager = new SnapshotManager(rdsApiStrategy);
             final ExportTaskManager exportTaskManager = new ExportTaskManager(rdsClient);
             exportScheduler = new ExportScheduler(
                     sourceCoordinator, snapshotManager, exportTaskManager, s3Client, pluginMetrics);
@@ -103,7 +100,7 @@ public class RdsService {
         }
 
         if (sourceConfig.isStreamEnabled()) {
-            BinaryLogClient binaryLogClient = new BinlogClientFactory(sourceConfig, rdsClient).create();
+            BinaryLogClient binaryLogClient = new BinlogClientFactory(sourceConfig, rdsClient, dbMetadata).create();
             if (sourceConfig.getTlsConfig() == null || !sourceConfig.getTlsConfig().isInsecure()) {
                 binaryLogClient.setSSLMode(SSLMode.REQUIRED);
             } else {
@@ -138,42 +135,13 @@ public class RdsService {
         }
     }
 
-    private SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig) {
-        String hostName;
-        int port;
-        if (sourceConfig.isCluster()) {
-            DBCluster dbCluster = describeDbCluster(sourceConfig.getDbIdentifier());
-            hostName = dbCluster.endpoint();
-            port = dbCluster.port();
-        } else {
-            DBInstance dbInstance = describeDbInstance(sourceConfig.getDbIdentifier());
-            hostName = dbInstance.endpoint().address();
-            port = dbInstance.endpoint().port();
-        }
+    private SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
         final ConnectionManager connectionManager = new ConnectionManager(
-                hostName,
-                port,
+                dbMetadata.getHostName(),
+                dbMetadata.getPort(),
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword(),
                 !sourceConfig.getTlsConfig().isInsecure());
         return new SchemaManager(connectionManager);
-    }
-
-    private DBInstance describeDbInstance(final String dbInstanceIdentifier) {
-        DescribeDbInstancesRequest request = DescribeDbInstancesRequest.builder()
-                .dbInstanceIdentifier(dbInstanceIdentifier)
-                .build();
-
-        DescribeDbInstancesResponse response = rdsClient.describeDBInstances(request);
-        return response.dbInstances().get(0);
-    }
-
-    private DBCluster describeDbCluster(final String dbClusterIdentifier) {
-        DescribeDbClustersRequest request = DescribeDbClustersRequest.builder()
-                .dbClusterIdentifier(dbClusterIdentifier)
-                .build();
-
-        DescribeDbClustersResponse response = rdsClient.describeDBClusters(request);
-        return response.dbClusters().get(0);
     }
 }

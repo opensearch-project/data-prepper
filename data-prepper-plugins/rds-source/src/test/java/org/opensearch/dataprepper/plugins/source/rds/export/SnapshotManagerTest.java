@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.rds.leader.RdsApiStrategy;
 
 import java.util.UUID;
 
@@ -21,7 +22,7 @@ import static org.mockito.Mockito.verify;
 class SnapshotManagerTest {
 
     @Mock
-    private SnapshotStrategy snapshotStrategy;
+    private RdsApiStrategy snapshotStrategy;
 
     private SnapshotManager snapshotManager;
 

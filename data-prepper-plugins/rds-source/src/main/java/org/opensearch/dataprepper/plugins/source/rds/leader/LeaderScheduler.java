@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportPr
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,16 +35,19 @@ public class LeaderScheduler implements Runnable {
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final RdsSourceConfig sourceConfig;
     private final SchemaManager schemaManager;
+    private final DbMetadata dbMetadata;
 
     private LeaderPartition leaderPartition;
     private volatile boolean shutdownRequested = false;
 
     public LeaderScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final RdsSourceConfig sourceConfig,
-                           final SchemaManager schemaManager) {
+                           final SchemaManager schemaManager,
+                           final DbMetadata dbMetadata) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.schemaManager = schemaManager;
+        this.dbMetadata = dbMetadata;
     }
 
     @Override
@@ -100,10 +104,11 @@ public class LeaderScheduler implements Runnable {
     private void init() {
         LOG.info("Initializing RDS source service...");
 
-        // Create a Global state in the coordination table for the configuration.
+        // Create a Global state in the coordination table for rds cluster/instance information.
         // Global State here is designed to be able to read whenever needed
         // So that the jobs can refer to the configuration.
-        sourceCoordinator.createPartition(new GlobalState(sourceConfig.getDbIdentifier(), null));
+        sourceCoordinator.createPartition(new GlobalState(sourceConfig.getDbIdentifier(), dbMetadata.toMap()));
+        LOG.debug("Created global state for DB: {}", sourceConfig.getDbIdentifier());
 
         if (sourceConfig.isExportEnabled()) {
             LOG.debug("Export is enabled. Creating export partition in the source coordination store.");

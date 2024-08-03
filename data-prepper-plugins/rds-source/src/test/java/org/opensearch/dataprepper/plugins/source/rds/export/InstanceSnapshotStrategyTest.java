@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.rds.leader.InstanceApiStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
 import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.rds.model.CreateDbSnapshotRequest;
@@ -37,7 +38,7 @@ class InstanceSnapshotStrategyTest {
     @Mock
     private RdsClient rdsClient;
 
-    private InstanceSnapshotStrategy objectUnderTest;
+    private InstanceApiStrategy objectUnderTest;
 
     @BeforeEach
     void setUp() {
@@ -112,7 +113,7 @@ class InstanceSnapshotStrategyTest {
         assertThat(snapshotInfo.getCreateTime(), equalTo(createTime));
     }
 
-    private InstanceSnapshotStrategy createObjectUnderTest() {
-        return new InstanceSnapshotStrategy(rdsClient);
+    private InstanceApiStrategy createObjectUnderTest() {
+        return new InstanceApiStrategy(rdsClient);
     }
 }

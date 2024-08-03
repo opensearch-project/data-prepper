@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.rds.leader.ClusterApiStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
 import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.rds.model.CreateDbClusterSnapshotRequest;
@@ -37,7 +38,7 @@ class ClusterSnapshotStrategyTest {
     @Mock
     private RdsClient rdsClient;
 
-    private ClusterSnapshotStrategy objectUnderTest;
+    private ClusterApiStrategy objectUnderTest;
 
     @BeforeEach
     void setUp() {
@@ -112,7 +113,7 @@ class ClusterSnapshotStrategyTest {
         assertThat(snapshotInfo.getCreateTime(), equalTo(createTime));
     }
 
-    private ClusterSnapshotStrategy createObjectUnderTest() {
-        return new ClusterSnapshotStrategy(rdsClient);
+    private ClusterApiStrategy createObjectUnderTest() {
+        return new ClusterApiStrategy(rdsClient);
     }
 }
