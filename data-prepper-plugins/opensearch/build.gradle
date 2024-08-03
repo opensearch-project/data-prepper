@@ -42,7 +42,7 @@ dependencies {
     testImplementation testLibs.junit.vintage
     testImplementation libs.commons.io
     testImplementation 'net.bytebuddy:byte-buddy:1.14.17'
-    testImplementation 'net.bytebuddy:byte-buddy-agent:1.14.17'
+    testImplementation 'net.bytebuddy:byte-buddy-agent:1.14.18'
     testImplementation testLibs.slf4j.simple
 }
 
