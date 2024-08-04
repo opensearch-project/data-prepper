@@ -76,9 +76,23 @@ class RdsServiceTest {
 
     @Test
     void test_normal_service_start_when_export_is_enabled() {
-        RdsService rdsService = createObjectUnderTest();
+        final String dbIdentifier = UUID.randomUUID().toString();
+        final String host = UUID.randomUUID().toString();
+        final int port = 3306;
+        final DescribeDbInstancesResponse describeDbInstancesResponse = DescribeDbInstancesResponse.builder()
+                .dbInstances(DBInstance.builder()
+                        .endpoint(Endpoint.builder()
+                                .address(host)
+                                .port(port)
+                                .build())
+                        .build())
+                .build();
         when(sourceConfig.isExportEnabled()).thenReturn(true);
         when(sourceConfig.isStreamEnabled()).thenReturn(false);
+        when(sourceConfig.getDbIdentifier()).thenReturn(dbIdentifier);
+        when(rdsClient.describeDBInstances(any(DescribeDbInstancesRequest.class))).thenReturn(describeDbInstancesResponse);
+
+        final RdsService rdsService = createObjectUnderTest();
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executor);
             rdsService.start(buffer);
@@ -92,7 +106,6 @@ class RdsServiceTest {
 
     @Test
     void test_normal_service_start_when_stream_is_enabled() {
-        RdsService rdsService = createObjectUnderTest();
         when(sourceConfig.isStreamEnabled()).thenReturn(true);
         when(sourceConfig.isExportEnabled()).thenReturn(false);
         final String dbIdentifier = UUID.randomUUID().toString();
@@ -107,12 +120,14 @@ class RdsServiceTest {
                         .endpoint(hostEndpoint)
                         .build());
         when(rdsClient.describeDBInstances(any(DescribeDbInstancesRequest.class))).thenReturn(describeDbInstancesResponse);
+
         final RdsSourceConfig.AuthenticationConfig authConfig = mock(RdsSourceConfig.AuthenticationConfig.class);
         when(authConfig.getUsername()).thenReturn(UUID.randomUUID().toString());
         when(authConfig.getPassword()).thenReturn(UUID.randomUUID().toString());
         when(sourceConfig.getAuthenticationConfig()).thenReturn(authConfig);
         when(sourceConfig.getTlsConfig()).thenReturn(mock(TlsConfig.class));
 
+        final RdsService rdsService = createObjectUnderTest();
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executor);
             rdsService.start(buffer);
@@ -126,6 +141,20 @@ class RdsServiceTest {
 
     @Test
     void test_service_shutdown_calls_executor_shutdownNow() {
+        final String dbIdentifier = UUID.randomUUID().toString();
+        final String host = UUID.randomUUID().toString();
+        final int port = 3306;
+        final DescribeDbInstancesResponse describeDbInstancesResponse = DescribeDbInstancesResponse.builder()
+                .dbInstances(DBInstance.builder()
+                        .endpoint(Endpoint.builder()
+                                .address(host)
+                                .port(port)
+                                .build())
+                        .build())
+                .build();
+        when(sourceConfig.getDbIdentifier()).thenReturn(dbIdentifier);
+        when(rdsClient.describeDBInstances(any(DescribeDbInstancesRequest.class))).thenReturn(describeDbInstancesResponse);
+
         RdsService rdsService = createObjectUnderTest();
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executor);

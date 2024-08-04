@@ -19,9 +19,10 @@ import java.util.Optional;
 
 public class SchemaManager {
     private static final Logger LOG = LoggerFactory.getLogger(SchemaManager.class);
-    private static final String COLUMN_NAME = "COLUMN_NAME";
-    private static final String BINLOG_FILE = "File";
-    private static final String BINLOG_POSITION = "Position";
+    static final String COLUMN_NAME = "COLUMN_NAME";
+    static final String BINLOG_STATUS_QUERY = "SHOW MASTER STATUS";
+    static final String BINLOG_FILE = "File";
+    static final String BINLOG_POSITION = "Position";
     private final ConnectionManager connectionManager;
 
     public SchemaManager(ConnectionManager connectionManager) {
@@ -44,7 +45,7 @@ public class SchemaManager {
     public Optional<BinlogCoordinate> getCurrentBinaryLogPosition() {
         try (final Connection connection = connectionManager.getConnection()) {
             final Statement statement = connection.createStatement();
-            final ResultSet rs = statement.executeQuery("SHOW MASTER STATUS");
+            final ResultSet rs = statement.executeQuery(BINLOG_STATUS_QUERY);
             if (rs.next()) {
                 return Optional.of(new BinlogCoordinate(rs.getString(BINLOG_FILE), rs.getLong(BINLOG_POSITION)));
             }

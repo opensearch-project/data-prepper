@@ -11,14 +11,16 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 public class ConnectionManager {
-    private static final String JDBC_URL_FORMAT = "jdbc:mysql://%s:%d";
-    private final String jdbcUrl;
+    static final String JDBC_URL_FORMAT = "jdbc:mysql://%s:%d";
+    private final String hostName;
+    private final int port;
     private final String username;
     private final String password;
     private final boolean requireSSL;
 
     public ConnectionManager(String hostName, int port, String username, String password, boolean requireSSL) {
-        this.jdbcUrl = String.format(JDBC_URL_FORMAT, hostName, port);
+        this.hostName = hostName;
+        this.port = port;
         this.username = username;
         this.password = password;
         this.requireSSL = requireSSL;
@@ -34,6 +36,12 @@ public class ConnectionManager {
         } else {
             props.setProperty("useSSL", "false");
         }
+        final String jdbcUrl = String.format(JDBC_URL_FORMAT, hostName, port);
+        return doGetConnection(jdbcUrl, props);
+    }
+
+    // VisibleForTesting
+    Connection doGetConnection(String jdbcUrl, Properties props) throws SQLException {
         return DriverManager.getConnection(jdbcUrl, props);
     }
 }
