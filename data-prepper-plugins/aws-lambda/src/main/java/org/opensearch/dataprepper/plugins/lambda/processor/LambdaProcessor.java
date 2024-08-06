@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
+import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.codec.LambdaJsonCodec;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
@@ -114,14 +115,16 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         if (mode != null && mode.equalsIgnoreCase(LambdaProcessorConfig.SYNCHRONOUS_MODE)) {
             invocationType = SYNC_INVOCATION_TYPE;
         } else {
-            throw new RuntimeException("mode has to be synchronous or asynchronous");
+            throw new RuntimeException("Unsupported mode " + mode);
         }
 
         codec = new LambdaJsonCodec(batchKey);
         bufferedEventHandles = new LinkedList<>();
         events = new ArrayList();
 
-        lambdaClient = LambdaClientFactory.createLambdaClient(lambdaProcessorConfig, awsCredentialsSupplier);
+        lambdaClient = LambdaClientFactory.createLambdaClient(lambdaProcessorConfig.getAwsAuthenticationOptions(),
+                lambdaProcessorConfig.getMaxConnectionRetries()
+                , awsCredentialsSupplier);
 
         this.bufferFactory = new InMemoryBufferFactory();
         try {

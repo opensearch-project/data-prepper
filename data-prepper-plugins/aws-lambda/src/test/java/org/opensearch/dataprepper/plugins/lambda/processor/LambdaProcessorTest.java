@@ -36,6 +36,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
+import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
@@ -60,8 +61,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @ExtendWith(MockitoExtension.class)
 public class LambdaProcessorTest {
-    private static final String PROCESSOR_PLUGIN_NAME = "aws_lambda";
-    private static final String PROCESSOR_PIPELINE_NAME = "lambda-processor-pipeline";
     private static final String RESPONSE_PAYLOAD = "{\"k1\":\"v1\",\"k2\":\"v2\"}";
     private static MockedStatic<LambdaClientFactory> lambdaClientFactoryMockedStatic;
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
@@ -143,7 +142,9 @@ public class LambdaProcessorTest {
 
         InvokeResponse resp = InvokeResponse.builder().statusCode(200).payload(SdkBytes.fromUtf8String(RESPONSE_PAYLOAD)).build();
         lambdaClientFactoryMockedStatic = Mockito.mockStatic(LambdaClientFactory.class);
-        when(LambdaClientFactory.createLambdaClient(any(LambdaProcessorConfig.class), any(AwsCredentialsSupplier.class))).thenReturn(lambdaClient);
+        when(LambdaClientFactory.createLambdaClient(any(AwsAuthenticationOptions.class),
+                eq(3),
+                any(AwsCredentialsSupplier.class))).thenReturn(lambdaClient);
         lenient().when(lambdaClient.invoke(any(InvokeRequest.class))).thenReturn(resp);
         try {
             lenient().when(bufferFactory.getBuffer(lambdaClient, lambdaProcessorConfig.getFunctionName(), "RequestResponse")).thenReturn(buffer);
