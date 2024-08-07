@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import static org.opensearch.dataprepper.pipeline.parser.PipelineTransformationConfiguration.RULES_DIRECTORY_PATH;
 import static org.opensearch.dataprepper.pipeline.parser.PipelineTransformationConfiguration.TEMPLATES_DIRECTORY_PATH;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleInputStream;
 
 import javax.inject.Named;
 import java.io.File;
@@ -22,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -67,6 +69,51 @@ public class TransformersFactory implements PipelineTransformationPathProvider {
         InputStream filestream = classLoader.getResourceAsStream("templates" + "/" + pluginName + TEMPLATE_FILE_NAME_PATTERN);
         return filestream;
     }
+
+    public Collection<RuleInputStream> loadRules() {
+        URI uri;
+        try {
+            uri = getClass().getClassLoader().getResource("rules").toURI();
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+
+        List<RuleInputStream> ruleInputStreams = new ArrayList<>();
+
+        if ("jar".equals(uri.getScheme())) {
+            try (FileSystem fileSystem = FileSystems.newFileSystem(uri, Collections.emptyMap())) {
+                Path rulesFolderPath = fileSystem.getPath("rules");
+                try (Stream<Path> paths = Files.walk(rulesFolderPath)) {
+                    paths.filter(Files::isRegularFile)
+                            .forEach(path -> {
+                                InputStream ruleStream = getClass().getClassLoader().getResourceAsStream("rules" + "/" + path.getFileName().toString());
+                                if (ruleStream != null) {
+                                    ruleInputStreams.add(new RuleInputStream(path.getFileName().toString(), ruleStream));
+                                }
+                            });
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            Path rulesFolderPath = Paths.get(uri);
+            try (Stream<Path> paths = Files.walk(rulesFolderPath)) {
+                paths.filter(Files::isRegularFile)
+                        .forEach(path -> {
+                            try {
+                                InputStream ruleStream = Files.newInputStream(path);
+                                ruleInputStreams.add(new RuleInputStream(path.getFileName().toString(), ruleStream));
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return ruleInputStreams;
+    }
+
 
     public List<Path> getRuleFiles() {
         // Get the URI of the rules folder

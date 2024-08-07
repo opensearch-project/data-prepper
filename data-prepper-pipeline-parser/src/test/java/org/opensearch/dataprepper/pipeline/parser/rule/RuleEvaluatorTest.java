@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
@@ -23,7 +22,6 @@ import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactor
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,10 +39,10 @@ class RuleEvaluatorTest {
         String pluginName = "documentdb";
         String pipelineName = "test-pipeline";
         Map<String, Object> sourceOptions = new HashMap<>();
-        Map<String, Object> s3_bucket = new HashMap<>();
-        s3_bucket.put("s3_bucket", "bucket-name");
+        Map<String, Object> s3Bucket = new HashMap<>();
+        s3Bucket.put("s3_bucket", "bucket-name");
         List<Map<String, Object>> collections = new ArrayList<>();
-        collections.add(s3_bucket);
+        collections.add(s3Bucket);
         sourceOptions.put("collections", collections);
         final PluginModel source = new PluginModel(pluginName, sourceOptions);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", null));
@@ -56,13 +54,12 @@ class RuleEvaluatorTest {
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
 
-        Path ruleFile = mock(Path.class);
-        List<Path> ruleFiles = Collections.singletonList(ruleFile);
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(ruleDocDBTemplatePath);
-        when(ruleFile.getFileName()).thenReturn(Paths.get("documentdb-rule.yaml").getFileName());
-        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
-        when(transformersFactory.readRuleFile(eq(ruleFile))).thenReturn(ruleStream);
+        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+
+        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
 
         RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
@@ -79,10 +76,10 @@ class RuleEvaluatorTest {
         String pluginName = "http";
         String pipelineName = "test-pipeline";
         Map<String, Object> sourceOptions = new HashMap<>();
-        Map<String, Object> s3_bucket = new HashMap<>();
-        s3_bucket.put("s3_bucket", "bucket-name");
+        Map<String, Object> s3Bucket = new HashMap<>();
+        s3Bucket.put("s3_bucket", "bucket-name");
         List<Map<String, Object>> collections = new ArrayList<>();
-        collections.add(s3_bucket);
+        collections.add(s3Bucket);
         sourceOptions.put("collections", collections);
         final PluginModel source = new PluginModel(pluginName, sourceOptions);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", null));
@@ -118,7 +115,7 @@ class RuleEvaluatorTest {
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
                 (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
 
-        when(transformersFactory.getRuleFiles()).thenThrow(new RuntimeException("File not found"));
+        when(transformersFactory.loadRules()).thenThrow(new RuntimeException("File not found"));
 
         RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
 

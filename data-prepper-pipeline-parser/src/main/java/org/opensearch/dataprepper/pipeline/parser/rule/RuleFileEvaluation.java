@@ -8,9 +8,9 @@ import lombok.Data;
 @AllArgsConstructor
 @Data
 public class RuleFileEvaluation {
-    Boolean result;
-    String ruleFileName;
-    String pluginName;
+    private Boolean result;
+    private String ruleFileName;
+    private String pluginName;
 
     public RuleFileEvaluation() {
 
