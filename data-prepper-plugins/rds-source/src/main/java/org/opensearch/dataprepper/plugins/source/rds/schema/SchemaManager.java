@@ -31,10 +31,9 @@ public class SchemaManager {
     }
 
     public List<String> getPrimaryKeys(final String database, final String table) {
-        final List<String> primaryKeys = new ArrayList<>();
-
         int retry = 0;
         while (retry <= NUM_OF_RETRIES) {
+            final List<String> primaryKeys = new ArrayList<>();
             try (final Connection connection = connectionManager.getConnection()) {
                 final ResultSet rs = connection.getMetaData().getPrimaryKeys(database, null, table);
                 while (rs.next()) {
@@ -48,7 +47,7 @@ public class SchemaManager {
             retry++;
         }
         LOG.warn("Failed to get primary keys for table {}", table);
-        return primaryKeys;
+        return List.of();
     }
 
     public Optional<BinlogCoordinate> getCurrentBinaryLogPosition() {
