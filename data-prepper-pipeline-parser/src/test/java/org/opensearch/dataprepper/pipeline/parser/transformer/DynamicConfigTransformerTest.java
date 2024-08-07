@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.pipeline.parser.TestConfigurationProvider;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleInputStream;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -42,29 +43,24 @@ class DynamicConfigTransformerTest {
 
     @Test
     void test_successful_transformation_with_only_source_and_sink() throws IOException {
-
         String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCDB1_CONFIG_FILE;
         String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCDB1_CONFIG_FILE;
         String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
         String expectedDocDBFilePath = TestConfigurationProvider.EXPECTED_TRANSFORMATION_DOCDB1_CONFIG_FILE;
-        String pluginName = "documentdb";
+                    String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
-
-        Path ruleFile = mock(Path.class);
-        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
-        List<Path> ruleFiles = Collections.singletonList(ruleFile);
-        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
+        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
 
         RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
-
 
         // Load the original and template YAML files from the test resources directory
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
@@ -94,9 +90,9 @@ class DynamicConfigTransformerTest {
         when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
-        List<Path> ruleFiles = Collections.singletonList(ruleFile);
-        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
+        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
@@ -112,7 +108,6 @@ class DynamicConfigTransformerTest {
     }
 
     @RepeatedTest(5)
-    @Test
     void test_successful_transformation_with_subpipelines() throws IOException {
 
         String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_CONFIG_FILE;
@@ -125,17 +120,19 @@ class DynamicConfigTransformerTest {
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
-        Path ruleFile = mock(Path.class);
-        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
-        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+
         InputStream ruleStream1 = new FileInputStream(ruleDocDBFilePath);
         InputStream ruleStream2 = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream).thenReturn(ruleStream1).thenReturn(ruleStream2);
-        List<Path> ruleFiles = Collections.singletonList(ruleFile);
-        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
+        RuleInputStream ruleInputStream1 = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream1);
+        RuleInputStream ruleInputStream2 = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream2);
+
+        List<RuleInputStream> ruleStreams1 = Collections.singletonList(ruleInputStream1);
+        List<RuleInputStream> ruleStreams2 = Collections.singletonList(ruleInputStream2);
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams1).thenReturn(ruleStreams2);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
-        ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
@@ -150,7 +147,6 @@ class DynamicConfigTransformerTest {
 
     @Test
     void test_successful_transformation_with_functionPlaceholder() throws IOException {
-
         String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_FUNCTION_CONFIG_FILE;
         String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCUMENTDB_FUNCTION_CONFIG_FILE;
         String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
@@ -161,15 +157,16 @@ class DynamicConfigTransformerTest {
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
-        Path ruleFile = mock(Path.class);
-        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
+
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
-        List<Path> ruleFiles = Collections.singletonList(ruleFile);
-        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
+        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+
+        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
-        ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
@@ -182,10 +179,8 @@ class DynamicConfigTransformerTest {
         assertThat(expectedYamlasMap).usingRecursiveComparison().isEqualTo(transformedYamlasMap);
     }
 
-
     @Test
     void test_successful_transformation_with_complete_template() throws IOException {
-
         String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCDB2_CONFIG_FILE;
         String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCDB2_CONFIG_FILE;
         String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
@@ -196,15 +191,16 @@ class DynamicConfigTransformerTest {
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
-        Path ruleFile = mock(Path.class);
-        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
+
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
-        List<Path> ruleFiles = Collections.singletonList(ruleFile);
-        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
+        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+
+        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
-        ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
@@ -218,9 +214,9 @@ class DynamicConfigTransformerTest {
         assertThat(expectedYamlasMap).usingRecursiveComparison().isEqualTo(transformedYamlasMap);
     }
 
+
     @Test
     void test_successful_transformation_with_routes_keyword() throws IOException {
-
         String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_ROUTES_CONFIG_FILE;
         String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCUMENTDB_FINAL_CONFIG_FILE;
         String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
@@ -231,15 +227,16 @@ class DynamicConfigTransformerTest {
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
-        Path ruleFile = mock(Path.class);
-        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
+
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
-        List<Path> ruleFiles = Collections.singletonList(ruleFile);
-        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
+        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+
+        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
-        ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
@@ -253,10 +250,8 @@ class DynamicConfigTransformerTest {
         assertThat(expectedYamlasMap).usingRecursiveComparison().isEqualTo(transformedYamlasMap);
     }
 
-
     @Test
     void test_successful_transformation_with_route_keyword() throws IOException {
-
         String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_ROUTE_CONFIG_FILE;
         String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCUMENTDB_FINAL_CONFIG_FILE;
         String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
@@ -268,15 +263,16 @@ class DynamicConfigTransformerTest {
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
-        Path ruleFile = mock(Path.class);
-        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
+
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
-        List<Path> ruleFiles = Collections.singletonList(ruleFile);
-        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
+        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+
+        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
-        ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
@@ -290,10 +286,8 @@ class DynamicConfigTransformerTest {
         assertThat(expectedYamlasMap).usingRecursiveComparison().isEqualTo(transformedYamlasMap);
     }
 
-
     @Test
     void test_successful_transformation_with_routes_and_subpipelines() throws IOException {
-
         String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_ROUTES_CONFIG_FILE;
         String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCUMENTDB_FINAL_CONFIG_FILE;
         String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
@@ -304,17 +298,23 @@ class DynamicConfigTransformerTest {
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
-        Path ruleFile = mock(Path.class);
-        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
-        InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
+
+        InputStream ruleStream1 = new FileInputStream(ruleDocDBFilePath);
         InputStream ruleStream2 = new FileInputStream(ruleDocDBFilePath);
         InputStream ruleStream3 = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream).thenReturn(ruleStream2).thenReturn(ruleStream3);
-        List<Path> ruleFiles = Collections.singletonList(ruleFile);
-        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles).thenReturn(ruleFiles);
+        RuleInputStream ruleInputStream1 = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream1);
+        RuleInputStream ruleInputStream2 = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream2);
+        RuleInputStream ruleInputStream3 = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream3);
+
+        List<RuleInputStream> ruleStreams1 = Collections.singletonList(ruleInputStream1);
+        List<RuleInputStream> ruleStreams2 = Collections.singletonList(ruleInputStream2);
+        List<RuleInputStream> ruleStreams3 = Collections.singletonList(ruleInputStream3);
+
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams1).thenReturn(ruleStreams2).thenReturn(ruleStreams3);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
-        ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
@@ -339,14 +339,15 @@ class DynamicConfigTransformerTest {
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
-        Path ruleFile = mock(Path.class);
-        when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
+
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        when(transformersFactory.readRuleFile(ruleFile)).thenReturn(ruleStream);
-        List<Path> ruleFiles = Collections.singletonList(ruleFile);
-        when(transformersFactory.getRuleFiles()).thenReturn(ruleFiles);
+        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+
+        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
+
         ruleEvaluator = new RuleEvaluator(transformersFactory);
 
         // Load the original and template YAML files from the test resources directory

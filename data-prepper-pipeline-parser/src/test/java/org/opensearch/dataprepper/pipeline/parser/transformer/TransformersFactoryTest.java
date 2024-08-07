@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.pipeline.parser.transformer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -65,17 +64,6 @@ public class TransformersFactoryTest {
         assertThrows(RuntimeException.class, () -> transformersFactory.getTemplateModel(invalidPluginName),
                 "Should throw a RuntimeException for empty plugin name.");
     }
-
-    @Test
-    public void testGetRuleFiles() throws IOException {
-        List<Path> mockRuleFiles = Arrays.asList(
-                Paths.get("src/test/resources/transformation/rules/documentdb-rule1.yaml"),
-                Paths.get("src/test/resources/transformation/rules/documentdb-rule.yaml")
-        );
-        doReturn(mockRuleFiles).when(transformersFactory).getRuleFiles();
-        assertTrue(mockRuleFiles.size() > 0, "There should be at least one rule file.");
-    }
-
 
     @Test
     public void testReadFile() throws IOException {
