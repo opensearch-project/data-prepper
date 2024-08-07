@@ -10,7 +10,6 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
@@ -68,17 +67,7 @@ public class PersonalizeSink extends AbstractSink<Record<Event>> {
 
     @Override
     public void doInitialize() {
-        try {
-            sinkInitialized = true;
-        } catch (InvalidPluginConfigurationException e) {
-            LOG.error("The personalize sink has an invalid configuration and cannot initialize.");
-            this.shutdown();
-            throw e;
-        } catch (Exception e) {
-            LOG.error("Failed to initialize personalize sink.");
-            this.shutdown();
-            throw e;
-        }
+        sinkInitialized = true;
     }
 
     /**
