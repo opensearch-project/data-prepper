@@ -37,9 +37,13 @@ public class InstanceApiStrategy implements RdsApiStrategy {
                 .dbInstanceIdentifier(dbIdentifier)
                 .build();
 
-        final DescribeDbInstancesResponse response = rdsClient.describeDBInstances(request);
-        final DBInstance dbInstance = response.dbInstances().get(0);
-        return new DbMetadata(dbIdentifier, dbInstance.endpoint().address(), dbInstance.endpoint().port());
+        try {
+            final DescribeDbInstancesResponse response = rdsClient.describeDBInstances(request);
+            final DBInstance dbInstance = response.dbInstances().get(0);
+            return new DbMetadata(dbIdentifier, dbInstance.endpoint().address(), dbInstance.endpoint().port());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to describe DB " + dbIdentifier, e);
+        }
     }
 
     @Override
@@ -69,11 +73,15 @@ public class InstanceApiStrategy implements RdsApiStrategy {
                 .dbSnapshotIdentifier(snapshotId)
                 .build();
 
-        DescribeDbSnapshotsResponse response = rdsClient.describeDBSnapshots(request);
-        String snapshotArn = response.dbSnapshots().get(0).dbSnapshotArn();
-        String status = response.dbSnapshots().get(0).status();
-        Instant createTime = response.dbSnapshots().get(0).snapshotCreateTime();
-
-        return new SnapshotInfo(snapshotId, snapshotArn, createTime, status);
+        try {
+            DescribeDbSnapshotsResponse response = rdsClient.describeDBSnapshots(request);
+            String snapshotArn = response.dbSnapshots().get(0).dbSnapshotArn();
+            String status = response.dbSnapshots().get(0).status();
+            Instant createTime = response.dbSnapshots().get(0).snapshotCreateTime();
+            return new SnapshotInfo(snapshotId, snapshotArn, createTime, status);
+        } catch (Exception e) {
+            LOG.error("Failed to describe snapshot {}", snapshotId, e);
+            return null;
+        }
     }
 }

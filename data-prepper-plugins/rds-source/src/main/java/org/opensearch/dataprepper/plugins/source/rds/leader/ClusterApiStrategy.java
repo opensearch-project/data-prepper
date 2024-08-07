@@ -36,10 +36,13 @@ public class ClusterApiStrategy implements RdsApiStrategy {
         final DescribeDbClustersRequest request = DescribeDbClustersRequest.builder()
                 .dbClusterIdentifier(dbIdentifier)
                 .build();
-
-        final DescribeDbClustersResponse response = rdsClient.describeDBClusters(request);
-        final DBCluster dbCluster = response.dbClusters().get(0);
-        return new DbMetadata(dbIdentifier, dbCluster.endpoint(), dbCluster.port());
+        try {
+            final DescribeDbClustersResponse response = rdsClient.describeDBClusters(request);
+            final DBCluster dbCluster = response.dbClusters().get(0);
+            return new DbMetadata(dbIdentifier, dbCluster.endpoint(), dbCluster.port());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to describe DB " + dbIdentifier, e);
+        }
     }
 
     @Override
@@ -69,11 +72,15 @@ public class ClusterApiStrategy implements RdsApiStrategy {
                 .dbClusterSnapshotIdentifier(snapshotId)
                 .build();
 
-        DescribeDbClusterSnapshotsResponse response = rdsClient.describeDBClusterSnapshots(request);
-        String snapshotArn = response.dbClusterSnapshots().get(0).dbClusterSnapshotArn();
-        String status = response.dbClusterSnapshots().get(0).status();
-        Instant createTime = response.dbClusterSnapshots().get(0).snapshotCreateTime();
-
-        return new SnapshotInfo(snapshotId, snapshotArn, createTime, status);
+        try {
+            DescribeDbClusterSnapshotsResponse response = rdsClient.describeDBClusterSnapshots(request);
+            String snapshotArn = response.dbClusterSnapshots().get(0).dbClusterSnapshotArn();
+            String status = response.dbClusterSnapshots().get(0).status();
+            Instant createTime = response.dbClusterSnapshots().get(0).snapshotCreateTime();
+            return new SnapshotInfo(snapshotId, snapshotArn, createTime, status);
+        } catch (Exception e) {
+            LOG.error("Failed to describe snapshot {}", snapshotId, e);
+            return null;
+        }
     }
 }

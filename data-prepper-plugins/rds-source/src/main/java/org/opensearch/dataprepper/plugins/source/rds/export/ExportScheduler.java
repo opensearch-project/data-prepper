@@ -190,12 +190,15 @@ public class ExportScheduler implements Runnable {
         LOG.debug("Start checking status of snapshot {}", snapshotId);
         while (Instant.now().isBefore(endTime)) {
             SnapshotInfo snapshotInfo = snapshotManager.checkSnapshotStatus(snapshotId);
-            String status = snapshotInfo.getStatus();
-            // Valid snapshot statuses are: available, copying, creating
-            // The status should never be "copying" here
-            if (SnapshotStatus.AVAILABLE.getStatusName().equals(status)) {
-                LOG.info("Snapshot {} is available.", snapshotId);
-                return snapshotInfo;
+
+            if (snapshotInfo != null) {
+                String status = snapshotInfo.getStatus();
+                // Valid snapshot statuses are: available, copying, creating
+                // The status should never be "copying" here
+                if (SnapshotStatus.AVAILABLE.getStatusName().equals(status)) {
+                    LOG.info("Snapshot {} is available.", snapshotId);
+                    return snapshotInfo;
+                }
             }
 
             LOG.debug("Snapshot {} is still creating. Wait and check later", snapshotId);
