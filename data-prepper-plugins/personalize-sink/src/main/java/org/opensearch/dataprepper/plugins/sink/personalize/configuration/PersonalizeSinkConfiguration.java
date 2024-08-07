@@ -15,8 +15,6 @@ import software.amazon.awssdk.arns.Arn;
 import java.util.List;
 import java.util.Optional;
 
-interface PersonalizeAdvancedValidation {}
-
 /**
  * personalize sink configuration class contains properties, used to read yaml configuration.
  */

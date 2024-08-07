@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.sink.personalize;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -18,14 +17,11 @@ import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.personalize.configuration.PersonalizeSinkConfiguration;
-import org.opensearch.dataprepper.plugins.sink.personalize.dataset.DatasetTypeOptions;
 import software.amazon.awssdk.services.personalizeevents.PersonalizeEventsClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.Collection;
-import java.util.List;
 
 /**
  * Implementation class of personalize-sink plugin. It is responsible for receiving the collection of
@@ -73,7 +69,7 @@ public class PersonalizeSink extends AbstractSink<Record<Event>> {
     @Override
     public void doInitialize() {
         try {
-            doInitializeInternal();
+            sinkInitialized = true;
         } catch (InvalidPluginConfigurationException e) {
             LOG.error("The personalize sink has an invalid configuration and cannot initialize.");
             this.shutdown();
@@ -83,13 +79,6 @@ public class PersonalizeSink extends AbstractSink<Record<Event>> {
             this.shutdown();
             throw e;
         }
-    }
-
-    /**
-     * Initialize {@link PersonalizeSinkService}
-     */
-    private void doInitializeInternal() {
-        sinkInitialized = true;
     }
 
     /**
