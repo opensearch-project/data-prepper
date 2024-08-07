@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +22,8 @@ public class SchemaManager {
     static final String BINLOG_STATUS_QUERY = "SHOW MASTER STATUS";
     static final String BINLOG_FILE = "File";
     static final String BINLOG_POSITION = "Position";
+    static final int NUM_OF_RETRIES = 3;
+    static final int BACKOFF_IN_MILLIS = 500;
     private final ConnectionManager connectionManager;
 
     public SchemaManager(ConnectionManager connectionManager) {
@@ -31,27 +32,49 @@ public class SchemaManager {
 
     public List<String> getPrimaryKeys(final String database, final String table) {
         final List<String> primaryKeys = new ArrayList<>();
-        try (final Connection connection = connectionManager.getConnection()) {
-            final ResultSet rs = connection.getMetaData().getPrimaryKeys(database, null, table);
-            while (rs.next()) {
-                primaryKeys.add(rs.getString(COLUMN_NAME));
+
+        int retry = 0;
+        while (retry <= NUM_OF_RETRIES) {
+            try (final Connection connection = connectionManager.getConnection()) {
+                final ResultSet rs = connection.getMetaData().getPrimaryKeys(database, null, table);
+                while (rs.next()) {
+                    primaryKeys.add(rs.getString(COLUMN_NAME));
+                }
+                return primaryKeys;
+            } catch (Exception e) {
+                LOG.error("Failed to get primary keys for table {}, retrying", table, e);
             }
-        } catch (SQLException e) {
-            LOG.error("Failed to get primary keys for table {}", table, e);
+            applyBackoff();
+            retry++;
         }
+        LOG.warn("Failed to get primary keys for table {}", table);
         return primaryKeys;
     }
 
     public Optional<BinlogCoordinate> getCurrentBinaryLogPosition() {
-        try (final Connection connection = connectionManager.getConnection()) {
-            final Statement statement = connection.createStatement();
-            final ResultSet rs = statement.executeQuery(BINLOG_STATUS_QUERY);
-            if (rs.next()) {
-                return Optional.of(new BinlogCoordinate(rs.getString(BINLOG_FILE), rs.getLong(BINLOG_POSITION)));
+        int retry = 0;
+        while (retry <= NUM_OF_RETRIES) {
+            try (final Connection connection = connectionManager.getConnection()) {
+                final Statement statement = connection.createStatement();
+                final ResultSet rs = statement.executeQuery(BINLOG_STATUS_QUERY);
+                if (rs.next()) {
+                    return Optional.of(new BinlogCoordinate(rs.getString(BINLOG_FILE), rs.getLong(BINLOG_POSITION)));
+                }
+            } catch (Exception e) {
+                LOG.error("Failed to get current binary log position, retrying", e);
             }
-        } catch (SQLException e) {
-            LOG.error("Failed to get current binary log position", e);
+            applyBackoff();
+            retry++;
         }
+        LOG.warn("Failed to get current binary log position");
         return Optional.empty();
+    }
+
+    private void applyBackoff() {
+        try {
+            Thread.sleep(BACKOFF_IN_MILLIS);
+        } catch (final InterruptedException e){
+            Thread.currentThread().interrupt();
+        }
     }
 }
