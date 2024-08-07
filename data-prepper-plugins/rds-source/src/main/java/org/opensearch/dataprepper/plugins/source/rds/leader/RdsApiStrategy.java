@@ -9,7 +9,7 @@ import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
 
 /**
- * Provides a strategy for creating and describing RDS snapshots.
+ * Provides a strategy for running RDS APIs.
  */
 public interface RdsApiStrategy {
     /**

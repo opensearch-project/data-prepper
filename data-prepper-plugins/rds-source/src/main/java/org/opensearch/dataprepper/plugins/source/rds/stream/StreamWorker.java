@@ -52,17 +52,7 @@ public class StreamWorker {
             }
         }
 
-        // get binlog position to start streaming
-        final BinlogCoordinate startBinlogPosition = streamPartition.getProgressState().get().getStartPosition();
-
-        // set start of binlog stream to current position if exists
-        if (startBinlogPosition != null) {
-            final String binlogFilename = startBinlogPosition.getBinlogFilename();
-            final long binlogPosition = startBinlogPosition.getBinlogPosition();
-            LOG.debug("Will start binlog stream from binlog file {} and position {}.", binlogFilename, binlogPosition);
-            binaryLogClient.setBinlogFilename(binlogFilename);
-            binaryLogClient.setBinlogPosition(binlogPosition);
-        }
+        setStartBinlogPosition(streamPartition);
 
         try {
             LOG.info("Connect to database to read change events.");
@@ -91,5 +81,18 @@ public class StreamWorker {
         final String dbIdentifier = streamPartition.getPartitionKey();
         Optional<EnhancedSourcePartition> globalStatePartition = sourceCoordinator.getPartition("stream-for-" + dbIdentifier);
         return globalStatePartition.isPresent();
+    }
+
+    private void setStartBinlogPosition(final StreamPartition streamPartition) {
+        final BinlogCoordinate startBinlogPosition = streamPartition.getProgressState().get().getStartPosition();
+
+        // set start of binlog stream to current position if exists
+        if (startBinlogPosition != null) {
+            final String binlogFilename = startBinlogPosition.getBinlogFilename();
+            final long binlogPosition = startBinlogPosition.getBinlogPosition();
+            LOG.debug("Will start binlog stream from binlog file {} and position {}.", binlogFilename, binlogPosition);
+            binaryLogClient.setBinlogFilename(binlogFilename);
+            binaryLogClient.setBinlogPosition(binlogPosition);
+        }
     }
 }
