@@ -7,7 +7,10 @@ package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
+import org.opensearch.dataprepper.validation.PluginError;
+import org.opensearch.dataprepper.validation.PluginErrorCollector;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -21,26 +24,46 @@ public class ExtensionLoader {
     private final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter;
     private final ExtensionClassProvider extensionClassProvider;
     private final PluginCreator extensionPluginCreator;
+    private final PluginErrorCollector pluginErrorCollector;
 
     @Inject
     ExtensionLoader(
             final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter,
             final ExtensionClassProvider extensionClassProvider,
-            @Named("extensionPluginCreator") final PluginCreator extensionPluginCreator) {
+            @Named("extensionPluginCreator") final PluginCreator extensionPluginCreator,
+            final PluginErrorCollector pluginErrorCollector) {
         this.extensionPluginConfigurationConverter = extensionPluginConfigurationConverter;
         this.extensionClassProvider = extensionClassProvider;
         this.extensionPluginCreator = extensionPluginCreator;
+        this.pluginErrorCollector = pluginErrorCollector;
     }
 
-    List<? extends ExtensionPlugin> loadExtensions() {
-        return extensionClassProvider.loadExtensionPluginClasses()
+    public List<? extends ExtensionPlugin> loadExtensions() {
+        final List<? extends ExtensionPlugin> result = extensionClassProvider.loadExtensionPluginClasses()
                 .stream()
                 .map(extensionClass -> {
-                    final PluginArgumentsContext pluginArgumentsContext = getConstructionContext(extensionClass);
-                    return extensionPluginCreator.newPluginInstance(
-                            extensionClass, pluginArgumentsContext, convertClassToName(extensionClass));
+                    final String pluginName = convertClassToName(extensionClass);
+                    try {
+                        final PluginArgumentsContext pluginArgumentsContext = getConstructionContext(extensionClass);
+                        return extensionPluginCreator.newPluginInstance(
+                                extensionClass, pluginArgumentsContext, pluginName);
+                    } catch (Exception e) {
+                        final PluginError pluginError = PluginError.builder()
+                                .pluginName(pluginName)
+                                .exception(e)
+                                .build();
+                        pluginErrorCollector.collectPluginError(pluginError);
+                        return null;
+                    }
                 })
                 .collect(Collectors.toList());
+        if (!pluginErrorCollector.getPluginErrors().isEmpty()) {
+            throw new InvalidPluginConfigurationException(
+                    "One or more extension plugins are not configured correctly.\n"
+                            + pluginErrorCollector.getConsolidatedErrorMessage());
+        } else {
+            return result;
+        }
     }
 
     private PluginArgumentsContext getConstructionContext(final Class<?> extensionPluginClass) {
