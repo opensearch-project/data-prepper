@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-@Getter
 @Named
+@Getter
 public class PluginErrorCollector {
     private final List<PluginError> pluginErrors = new ArrayList<>();
 
