@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -49,11 +50,11 @@ class StreamWorkerTest {
 
     @Test
     void test_processStream_with_given_binlog_coordinates() throws IOException {
-        StreamProgressState streamProgressState = mock(StreamProgressState.class);
+        final StreamProgressState streamProgressState = mock(StreamProgressState.class);
+        final String binlogFilename = UUID.randomUUID().toString();
+        final long binlogPosition = 100L;
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
-        final String binlogFilename = "binlog-001";
-        final Long binlogPosition = 100L;
-        when(streamProgressState.getCurrentPosition()).thenReturn(new BinlogCoordinate(binlogFilename, binlogPosition));
+        when(streamProgressState.getStartPosition()).thenReturn(new BinlogCoordinate(binlogFilename, binlogPosition));
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
 
         streamWorker.processStream(streamPartition);
@@ -69,7 +70,7 @@ class StreamWorkerTest {
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
         final String binlogFilename = "binlog-001";
         final Long binlogPosition = 100L;
-        when(streamProgressState.getCurrentPosition()).thenReturn(null);
+        when(streamProgressState.getStartPosition()).thenReturn(null);
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
 
         streamWorker.processStream(streamPartition);

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.rds.export;
+package org.opensearch.dataprepper.plugins.source.rds.leader;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,16 +11,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
 import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.rds.model.CreateDbClusterSnapshotRequest;
 import software.amazon.awssdk.services.rds.model.CreateDbClusterSnapshotResponse;
+import software.amazon.awssdk.services.rds.model.DBCluster;
 import software.amazon.awssdk.services.rds.model.DBClusterSnapshot;
 import software.amazon.awssdk.services.rds.model.DescribeDbClusterSnapshotsRequest;
 import software.amazon.awssdk.services.rds.model.DescribeDbClusterSnapshotsResponse;
+import software.amazon.awssdk.services.rds.model.DescribeDbClustersRequest;
+import software.amazon.awssdk.services.rds.model.DescribeDbClustersResponse;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -32,16 +37,41 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class ClusterSnapshotStrategyTest {
+class ClusterApiStrategyTest {
 
     @Mock
     private RdsClient rdsClient;
 
-    private ClusterSnapshotStrategy objectUnderTest;
+    private ClusterApiStrategy objectUnderTest;
+
+    private final Random random = new Random();
 
     @BeforeEach
     void setUp() {
         objectUnderTest = createObjectUnderTest();
+    }
+
+    @Test
+    void test_describeDb_returns_correct_results() {
+        final String dbClusterId = UUID.randomUUID().toString();
+        final String host = UUID.randomUUID().toString();
+        final int port = random.nextInt();
+        final DescribeDbClustersRequest describeDbClustersRequest = DescribeDbClustersRequest.builder()
+                .dbClusterIdentifier(dbClusterId)
+                .build();
+        final DescribeDbClustersResponse describeDbClustersResponse = DescribeDbClustersResponse.builder()
+                .dbClusters(DBCluster.builder()
+                        .endpoint(host)
+                        .port(port)
+                        .build())
+                .build();
+        when(rdsClient.describeDBClusters(describeDbClustersRequest)).thenReturn(describeDbClustersResponse);
+
+        DbMetadata dbMetadata = objectUnderTest.describeDb(dbClusterId);
+
+        assertThat(dbMetadata.getDbIdentifier(), equalTo(dbClusterId));
+        assertThat(dbMetadata.getHostName(), equalTo(host));
+        assertThat(dbMetadata.getPort(), equalTo(port));
     }
 
     @Test
@@ -112,7 +142,7 @@ class ClusterSnapshotStrategyTest {
         assertThat(snapshotInfo.getCreateTime(), equalTo(createTime));
     }
 
-    private ClusterSnapshotStrategy createObjectUnderTest() {
-        return new ClusterSnapshotStrategy(rdsClient);
+    private ClusterApiStrategy createObjectUnderTest() {
+        return new ClusterApiStrategy(rdsClient);
     }
 }

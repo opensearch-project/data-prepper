@@ -93,8 +93,8 @@ public class DataFileLoader implements Runnable {
 
                     DataFileProgressState progressState = dataFilePartition.getProgressState().get();
 
-                    // TODO: primary key to be obtained by querying database schema
-                    final String primaryKeyName = "id";
+                    final String fullTableName = progressState.getSourceDatabase() + "." + progressState.getSourceTable();
+                    final List<String> primaryKeys = progressState.getPrimaryKeyMap().getOrDefault(fullTableName, List.of());
 
                     final long snapshotTime = progressState.getSnapshotTime();
                     final long eventVersionNumber = snapshotTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis();
@@ -103,13 +103,14 @@ public class DataFileLoader implements Runnable {
                                     record,
                                     progressState.getSourceDatabase(),
                                     progressState.getSourceTable(),
-                                    List.of(primaryKeyName),
+                                    primaryKeys,
                                     snapshotTime,
                                     eventVersionNumber));
                     bufferAccumulator.add(transformedRecord);
                     eventCount.getAndIncrement();
                     bytesProcessedSummary.record(bytes);
                 } catch (Exception e) {
+                    LOG.error("Failed to process record from object s3://{}/{}", bucket, objectKey, e);
                     throw new RuntimeException(e);
                 }
             });

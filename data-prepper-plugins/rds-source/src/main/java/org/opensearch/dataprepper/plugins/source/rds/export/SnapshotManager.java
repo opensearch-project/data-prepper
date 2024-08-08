@@ -5,14 +5,15 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.export;
 
+import org.opensearch.dataprepper.plugins.source.rds.leader.RdsApiStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
 
 import java.util.UUID;
 
 public class SnapshotManager {
-    private final SnapshotStrategy snapshotStrategy;
+    private final RdsApiStrategy snapshotStrategy;
 
-    public SnapshotManager(final SnapshotStrategy snapshotStrategy) {
+    public SnapshotManager(final RdsApiStrategy snapshotStrategy) {
         this.snapshotStrategy = snapshotStrategy;
     }
 

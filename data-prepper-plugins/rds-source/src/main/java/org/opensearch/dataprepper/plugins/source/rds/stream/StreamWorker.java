@@ -41,28 +41,18 @@ public class StreamWorker {
     }
 
     public void processStream(final StreamPartition streamPartition) {
-        // get current binlog position
-        BinlogCoordinate currentBinlogCoords = streamPartition.getProgressState().get().getCurrentPosition();
-
-        // set start of binlog stream to current position if exists
-        if (currentBinlogCoords != null) {
-            final String binlogFilename = currentBinlogCoords.getBinlogFilename();
-            final long binlogPosition = currentBinlogCoords.getBinlogPosition();
-            LOG.debug("Will start binlog stream from binlog file {} and position {}.", binlogFilename, binlogPosition);
-            binaryLogClient.setBinlogFilename(binlogFilename);
-            binaryLogClient.setBinlogPosition(binlogPosition);
-        }
-
         while (shouldWaitForExport(streamPartition) && !Thread.currentThread().isInterrupted()) {
             LOG.info("Initial load not completed yet for {}, waiting...", streamPartition.getPartitionKey());
             try {
                 Thread.sleep(DEFAULT_EXPORT_COMPLETE_WAIT_INTERVAL_MILLIS);
             } catch (final InterruptedException ex) {
-                LOG.info("The StreamScheduler was interrupted while waiting to retry, stopping processing");
+                LOG.info("The Stream Scheduler was interrupted while waiting to retry, stopping processing");
                 Thread.currentThread().interrupt();
                 break;
             }
         }
+
+        setStartBinlogPosition(streamPartition);
 
         try {
             LOG.info("Connect to database to read change events.");
@@ -91,5 +81,18 @@ public class StreamWorker {
         final String dbIdentifier = streamPartition.getPartitionKey();
         Optional<EnhancedSourcePartition> globalStatePartition = sourceCoordinator.getPartition("stream-for-" + dbIdentifier);
         return globalStatePartition.isPresent();
+    }
+
+    private void setStartBinlogPosition(final StreamPartition streamPartition) {
+        final BinlogCoordinate startBinlogPosition = streamPartition.getProgressState().get().getStartPosition();
+
+        // set start of binlog stream to current position if exists
+        if (startBinlogPosition != null) {
+            final String binlogFilename = startBinlogPosition.getBinlogFilename();
+            final long binlogPosition = startBinlogPosition.getBinlogPosition();
+            LOG.debug("Will start binlog stream from binlog file {} and position {}.", binlogFilename, binlogPosition);
+            binaryLogClient.setBinlogFilename(binlogFilename);
+            binaryLogClient.setBinlogPosition(binlogPosition);
+        }
     }
 }

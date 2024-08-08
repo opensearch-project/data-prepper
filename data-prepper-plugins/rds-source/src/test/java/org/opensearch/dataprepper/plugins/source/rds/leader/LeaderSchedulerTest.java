@@ -19,6 +19,8 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.Expo
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.LeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -45,6 +47,12 @@ class LeaderSchedulerTest {
 
     @Mock(answer = Answers.RETURNS_DEFAULTS)
     private RdsSourceConfig sourceConfig;
+
+    @Mock
+    private SchemaManager schemaManager;
+
+    @Mock
+    private DbMetadata dbMetadata;
 
     @Mock
     private LeaderPartition leaderPartition;
@@ -130,6 +138,6 @@ class LeaderSchedulerTest {
     }
 
     private LeaderScheduler createObjectUnderTest() {
-        return new LeaderScheduler(sourceCoordinator, sourceConfig);
+        return new LeaderScheduler(sourceCoordinator, sourceConfig, schemaManager, dbMetadata);
     }
 }

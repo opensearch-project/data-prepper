@@ -3,14 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.rds.export;
+package org.opensearch.dataprepper.plugins.source.rds.leader;
 
+import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.rds.model.CreateDbSnapshotRequest;
 import software.amazon.awssdk.services.rds.model.CreateDbSnapshotResponse;
+import software.amazon.awssdk.services.rds.model.DBInstance;
+import software.amazon.awssdk.services.rds.model.DescribeDbInstancesRequest;
+import software.amazon.awssdk.services.rds.model.DescribeDbInstancesResponse;
 import software.amazon.awssdk.services.rds.model.DescribeDbSnapshotsRequest;
 import software.amazon.awssdk.services.rds.model.DescribeDbSnapshotsResponse;
 
@@ -19,12 +23,27 @@ import java.time.Instant;
 /**
  * This snapshot strategy works with RDS Instances
  */
-public class InstanceSnapshotStrategy implements SnapshotStrategy {
-    private static final Logger LOG = LoggerFactory.getLogger(InstanceSnapshotStrategy.class);
+public class InstanceApiStrategy implements RdsApiStrategy {
+    private static final Logger LOG = LoggerFactory.getLogger(InstanceApiStrategy.class);
     private final RdsClient rdsClient;
 
-    public InstanceSnapshotStrategy(final RdsClient rdsClient) {
+    public InstanceApiStrategy(final RdsClient rdsClient) {
         this.rdsClient = rdsClient;
+    }
+
+    @Override
+    public DbMetadata describeDb(String dbIdentifier) {
+        final DescribeDbInstancesRequest request = DescribeDbInstancesRequest.builder()
+                .dbInstanceIdentifier(dbIdentifier)
+                .build();
+
+        try {
+            final DescribeDbInstancesResponse response = rdsClient.describeDBInstances(request);
+            final DBInstance dbInstance = response.dbInstances().get(0);
+            return new DbMetadata(dbIdentifier, dbInstance.endpoint().address(), dbInstance.endpoint().port());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to describe DB " + dbIdentifier, e);
+        }
     }
 
     @Override
@@ -54,11 +73,15 @@ public class InstanceSnapshotStrategy implements SnapshotStrategy {
                 .dbSnapshotIdentifier(snapshotId)
                 .build();
 
-        DescribeDbSnapshotsResponse response = rdsClient.describeDBSnapshots(request);
-        String snapshotArn = response.dbSnapshots().get(0).dbSnapshotArn();
-        String status = response.dbSnapshots().get(0).status();
-        Instant createTime = response.dbSnapshots().get(0).snapshotCreateTime();
-
-        return new SnapshotInfo(snapshotId, snapshotArn, createTime, status);
+        try {
+            DescribeDbSnapshotsResponse response = rdsClient.describeDBSnapshots(request);
+            String snapshotArn = response.dbSnapshots().get(0).dbSnapshotArn();
+            String status = response.dbSnapshots().get(0).status();
+            Instant createTime = response.dbSnapshots().get(0).snapshotCreateTime();
+            return new SnapshotInfo(snapshotId, snapshotArn, createTime, status);
+        } catch (Exception e) {
+            LOG.error("Failed to describe snapshot {}", snapshotId, e);
+            return null;
+        }
     }
 }

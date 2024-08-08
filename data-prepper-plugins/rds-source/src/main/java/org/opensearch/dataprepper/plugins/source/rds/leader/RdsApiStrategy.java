@@ -3,14 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.rds.export;
+package org.opensearch.dataprepper.plugins.source.rds.leader;
 
+import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
 
 /**
- * Provides a strategy for creating and describing RDS snapshots.
+ * Provides a strategy for running RDS APIs.
  */
-public interface SnapshotStrategy {
+public interface RdsApiStrategy {
+    /**
+     * Describes an RDS instance or cluster.
+     * @param dbIdentifier The identifier of the RDS instance or cluster to describe
+     * @return An {@link DbMetadata} object describing the instance or cluster
+     */
+    DbMetadata describeDb(String dbIdentifier);
+
     /**
      * Creates a snapshot of an RDS instance or cluster.
      *

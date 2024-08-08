@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.rds.export;
+package org.opensearch.dataprepper.plugins.source.rds.leader;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,16 +11,22 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.SnapshotInfo;
 import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.rds.model.CreateDbSnapshotRequest;
 import software.amazon.awssdk.services.rds.model.CreateDbSnapshotResponse;
+import software.amazon.awssdk.services.rds.model.DBInstance;
 import software.amazon.awssdk.services.rds.model.DBSnapshot;
+import software.amazon.awssdk.services.rds.model.DescribeDbInstancesRequest;
+import software.amazon.awssdk.services.rds.model.DescribeDbInstancesResponse;
 import software.amazon.awssdk.services.rds.model.DescribeDbSnapshotsRequest;
 import software.amazon.awssdk.services.rds.model.DescribeDbSnapshotsResponse;
+import software.amazon.awssdk.services.rds.model.Endpoint;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -32,16 +38,42 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class InstanceSnapshotStrategyTest {
+class InstanceApiStrategyTest {
 
     @Mock
     private RdsClient rdsClient;
 
-    private InstanceSnapshotStrategy objectUnderTest;
+    private InstanceApiStrategy objectUnderTest;
+    private final Random random = new Random();
 
     @BeforeEach
     void setUp() {
         objectUnderTest = createObjectUnderTest();
+    }
+
+    @Test
+    void test_describeDb_returns_correct_results() {
+        final String dbInstanceId = UUID.randomUUID().toString();
+        final String host = UUID.randomUUID().toString();
+        final int port = random.nextInt();
+        final DescribeDbInstancesRequest describeDbInstancesRequest = DescribeDbInstancesRequest.builder()
+                .dbInstanceIdentifier(dbInstanceId)
+                .build();
+        final DescribeDbInstancesResponse describeDbInstancesResponse = DescribeDbInstancesResponse.builder()
+                .dbInstances(DBInstance.builder()
+                        .endpoint(Endpoint.builder()
+                                .address(host)
+                                .port(port)
+                                .build())
+                        .build())
+                .build();
+        when(rdsClient.describeDBInstances(describeDbInstancesRequest)).thenReturn(describeDbInstancesResponse);
+
+        DbMetadata dbMetadata = objectUnderTest.describeDb(dbInstanceId);
+
+        assertThat(dbMetadata.getDbIdentifier(), equalTo(dbInstanceId));
+        assertThat(dbMetadata.getHostName(), equalTo(host));
+        assertThat(dbMetadata.getPort(), equalTo(port));
     }
 
     @Test
@@ -112,7 +144,7 @@ class InstanceSnapshotStrategyTest {
         assertThat(snapshotInfo.getCreateTime(), equalTo(createTime));
     }
 
-    private InstanceSnapshotStrategy createObjectUnderTest() {
-        return new InstanceSnapshotStrategy(rdsClient);
+    private InstanceApiStrategy createObjectUnderTest() {
+        return new InstanceApiStrategy(rdsClient);
     }
 }
