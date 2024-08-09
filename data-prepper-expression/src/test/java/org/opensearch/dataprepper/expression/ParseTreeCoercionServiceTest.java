@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -246,6 +247,28 @@ class ParseTreeCoercionServiceTest {
     void testCoerceFailure() {
         final Object testObj = new TestObject("");
         assertThrows(ExpressionCoercionException.class, () -> objectUnderTest.coerce(testObj, String.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings={"{\"val1\", \"val2\"}", "{ \"val1\"  ,  \"val2\"}"})
+    void testCoerceTerminalNodeSet(final String value) {
+        final String key = RandomStringUtils.randomAlphabetic(5);
+        final Event testEvent = createTestEvent(Map.of(key, "\"val1\""));
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(value);
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.SetInitializer);
+        assertThat(objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent), equalTo(Set.of("val1", "val2")));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings={"{1, \"val2\"}", "{ \"val1  ,  \"val2\"}", "{val1\", \"val2\"}", "{1a1, 222}", "{222.22, 3s33.1}"})
+    void testCoerceTerminalNodeInvalidSet(final String value) {
+        final String key = RandomStringUtils.randomAlphabetic(5);
+        final Event testEvent = createTestEvent(Map.of(key, "\"val1\""));
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(value);
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.SetInitializer);
+        assertThrows(RuntimeException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
     }
 
     @Test

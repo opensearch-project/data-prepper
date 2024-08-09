@@ -214,6 +214,19 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("/sourceIp != null", event("{\"sourceIp\": [10, 20]}"), true),
                 Arguments.of("/sourceIp == null", event("{\"sourceIp\": [\"test\", \"test_two\"]}"), false),
                 Arguments.of("/sourceIp == null", event("{\"sourceIp\": {\"test\": \"test_two\"}}"), false),
+                Arguments.of("/value in {200.222, 300.333, 400}", event("{\"value\": 400.0}"), true),
+                Arguments.of("/value in {200.222, 300.333, 400}", event("{\"value\": 400.222}"), false),
+                Arguments.of("/value not in {200.222, 300.333, 400}", event("{\"value\": 400.0}"), false),
+                Arguments.of("/value not in {200.222, 300.333, 400}", event("{\"value\": 800.222}"), true),
+                Arguments.of("/color in {\"blue\", \"red\", \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}"), true),
+                Arguments.of("/color in {\"blue\", \"red\", \"yellow\", \"green\"}", event("{\"color\": \"gray\"}"), false),
+                Arguments.of("/color not in {\"blue\", \"red\", \"yellow\", \"green\"}", event("{\"color\": \"gray\"}"), true),
+                Arguments.of("/color not in {\"blue\", \"red\", \"yellow\", \"green\"}", event("{\"color\": \"blue\"}"), false),
+                Arguments.of("/color in {\"blue\", \"\", \"red\", \"yellow\", \"green\"}", event("{\"color\": \"\"}"), true),
+                Arguments.of("/status_code in {200 , 300}", event("{\"status_code\": 200}"), true),
+                Arguments.of("/status_code in {2 , 3}", event("{\"status_code\": 2}"), true),
+                Arguments.of("/status_code not in {200 , 300}", event("{\"status_code\": 400}"), true),
+                Arguments.of("/status_code in {200 , 300}", event("{\"status_code\": 500}"), false),
                 Arguments.of("/sourceIp != null", event("{\"sourceIp\": {\"test\": \"test_two\"}}"), true)
         );
     }
@@ -271,6 +284,18 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("getMetadata(10)", tagEvent),
                 Arguments.of("getMetadata("+ testMetadataKey+ ")", tagEvent),
                 Arguments.of("getMetadata(\""+ testMetadataKey+")", tagEvent),
+                Arguments.of("/color in {\"blue\", 222.0, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
+                Arguments.of("/color in {\"blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
+                Arguments.of("/color in {\"blue\", yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
+                Arguments.of("/color in {\", \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
+                Arguments.of("/color in { \", \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
+                Arguments.of("/color in {, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
+                Arguments.of("/color in { , \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
+                Arguments.of("/color in {blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
+                Arguments.of("/color in { blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
+                Arguments.of("/color in {\"\",blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
+                Arguments.of("/value in {22a2.0, 100}", event("{\"value\": 100}")),
+                Arguments.of("/value in {222, 10a0}", event("{\"value\": 100}")),
                 Arguments.of("cidrContains(/sourceIp)", event("{\"sourceIp\": \"192.0.2.3\"}")),
                 Arguments.of("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}"))
         );

@@ -95,7 +95,7 @@ typeOfOperatorExpression
     ;
 
 setOperatorExpression
-    : setOperatorExpression setOperator setInitializer
+    : setOperatorExpression setOperator SetInitializer
     | unaryOperatorExpression
     | arithmeticUnaryExpression
     ;
@@ -107,7 +107,7 @@ setOperator
 
 unaryOperatorExpression
     : primary
-    | setInitializer
+    | SetInitializer
     | parenthesesExpression
     | unaryOperator (primary | unaryOperatorExpression)
     ;
@@ -121,8 +121,13 @@ regexPattern
     | String
     ;
 
-setInitializer
-    : LBRACE primary (SET_DELIMITER primary)* RBRACE
+SetInitializer
+    : LBRACE SetMembers RBRACE
+    ;
+
+fragment
+SetMembers
+    : SetLiteral (SPACE* COMMA SPACE* SetLiteral)*
     ;
 
 unaryOperator
@@ -137,7 +142,7 @@ primary
     : jsonPointer
     | function
     | variableIdentifier
-    | setInitializer
+    | SetInitializer
     | literal
     ;
 
@@ -179,6 +184,13 @@ literal
     | Boolean
     | String
     | Null
+    ;
+
+fragment
+SetLiteral
+    : Float
+    | Integer
+    | String
     ;
 
 Integer
