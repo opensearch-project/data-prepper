@@ -54,7 +54,7 @@ class StreamWorkerTest {
         final String binlogFilename = UUID.randomUUID().toString();
         final long binlogPosition = 100L;
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
-        when(streamProgressState.getStartPosition()).thenReturn(new BinlogCoordinate(binlogFilename, binlogPosition));
+        when(streamProgressState.getCurrentPosition()).thenReturn(new BinlogCoordinate(binlogFilename, binlogPosition));
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
 
         streamWorker.processStream(streamPartition);
@@ -70,7 +70,7 @@ class StreamWorkerTest {
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
         final String binlogFilename = "binlog-001";
         final Long binlogPosition = 100L;
-        when(streamProgressState.getStartPosition()).thenReturn(null);
+        when(streamProgressState.getCurrentPosition()).thenReturn(null);
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
 
         streamWorker.processStream(streamPartition);

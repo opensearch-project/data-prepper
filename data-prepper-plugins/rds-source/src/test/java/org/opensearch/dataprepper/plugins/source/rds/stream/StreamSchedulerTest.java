@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -27,12 +28,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.awaitility.Awaitility.await;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
@@ -53,6 +54,9 @@ class StreamSchedulerTest {
     @Mock
     private Buffer<Record<Event>> buffer;
 
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+
     private StreamScheduler objectUnderTest;
 
     @BeforeEach
@@ -71,8 +75,7 @@ class StreamSchedulerTest {
         Thread.sleep(100);
         executorService.shutdownNow();
 
-        verify(binaryLogClient).registerEventListener(any(BinlogEventListener.class));
-        verifyNoMoreInteractions(binaryLogClient);
+        verifyNoInteractions(binaryLogClient);
     }
 
     @Test
@@ -111,6 +114,6 @@ class StreamSchedulerTest {
     }
 
     private StreamScheduler createObjectUnderTest() {
-        return new StreamScheduler(sourceCoordinator, sourceConfig, binaryLogClient, buffer, pluginMetrics);
+        return new StreamScheduler(sourceCoordinator, sourceConfig, binaryLogClient, buffer, pluginMetrics, acknowledgementSetManager);
     }
 }

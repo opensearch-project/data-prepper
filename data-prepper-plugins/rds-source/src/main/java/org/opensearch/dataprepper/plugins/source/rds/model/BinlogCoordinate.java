@@ -30,4 +30,12 @@ public class BinlogCoordinate {
     public long getBinlogPosition() {
         return binlogPosition;
     }
+
+    @Override
+    public String toString() {
+        return "BinlogCoordinate{" +
+                "binlogFilename='" + binlogFilename + '\'' +
+                ", binlogPosition=" + binlogPosition +
+                '}';
+    }
 }

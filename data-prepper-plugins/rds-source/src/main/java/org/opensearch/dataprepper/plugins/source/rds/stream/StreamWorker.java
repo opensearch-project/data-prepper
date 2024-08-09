@@ -84,7 +84,7 @@ public class StreamWorker {
     }
 
     private void setStartBinlogPosition(final StreamPartition streamPartition) {
-        final BinlogCoordinate startBinlogPosition = streamPartition.getProgressState().get().getStartPosition();
+        final BinlogCoordinate startBinlogPosition = streamPartition.getProgressState().get().getCurrentPosition();
 
         // set start of binlog stream to current position if exists
         if (startBinlogPosition != null) {

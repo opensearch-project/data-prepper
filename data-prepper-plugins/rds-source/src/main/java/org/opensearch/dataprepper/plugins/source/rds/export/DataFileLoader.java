@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -41,6 +42,8 @@ public class DataFileLoader implements Runnable {
     private final InputCodec codec;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final ExportRecordConverter recordConverter;
+    private final AcknowledgementSet acknowledgementSet;
+    private final Duration acknowledgmentTimeout;
     private final Counter exportRecordsTotalCounter;
     private final Counter exportRecordSuccessCounter;
     private final Counter exportRecordErrorCounter;
@@ -52,7 +55,9 @@ public class DataFileLoader implements Runnable {
                            final BufferAccumulator<Record<Event>> bufferAccumulator,
                            final S3ObjectReader objectReader,
                            final ExportRecordConverter recordConverter,
-                           final PluginMetrics pluginMetrics) {
+                           final PluginMetrics pluginMetrics,
+                           final AcknowledgementSet acknowledgementSet,
+                           final Duration acknowledgmentTimeout) {
         this.dataFilePartition = dataFilePartition;
         bucket = dataFilePartition.getBucket();
         objectKey = dataFilePartition.getKey();
@@ -60,6 +65,8 @@ public class DataFileLoader implements Runnable {
         this.codec = codec;
         this.bufferAccumulator = bufferAccumulator;
         this.recordConverter = recordConverter;
+        this.acknowledgementSet = acknowledgementSet;
+        this.acknowledgmentTimeout = acknowledgmentTimeout;
 
         exportRecordsTotalCounter = pluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT);
         exportRecordSuccessCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT);
@@ -73,8 +80,11 @@ public class DataFileLoader implements Runnable {
                                         final BufferAccumulator<Record<Event>> bufferAccumulator,
                                         final S3ObjectReader objectReader,
                                         final ExportRecordConverter recordConverter,
-                                        final PluginMetrics pluginMetrics) {
-        return new DataFileLoader(dataFilePartition, codec, bufferAccumulator, objectReader, recordConverter, pluginMetrics);
+                                        final PluginMetrics pluginMetrics,
+                                        final AcknowledgementSet acknowledgementSet,
+                                        final Duration acknowledgmentTimeout) {
+        return new DataFileLoader(dataFilePartition, codec, bufferAccumulator, objectReader, recordConverter,
+                pluginMetrics, acknowledgementSet, acknowledgmentTimeout);
     }
 
     @Override
@@ -98,15 +108,19 @@ public class DataFileLoader implements Runnable {
 
                     final long snapshotTime = progressState.getSnapshotTime();
                     final long eventVersionNumber = snapshotTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis();
-                    Record<Event> transformedRecord = new Record<>(
-                            recordConverter.convert(
-                                    record,
-                                    progressState.getSourceDatabase(),
-                                    progressState.getSourceTable(),
-                                    primaryKeys,
-                                    snapshotTime,
-                                    eventVersionNumber));
-                    bufferAccumulator.add(transformedRecord);
+                    final Event transformedEvent = recordConverter.convert(
+                            record,
+                            progressState.getSourceDatabase(),
+                            progressState.getSourceTable(),
+                            primaryKeys,
+                            snapshotTime,
+                            eventVersionNumber);
+
+                    if (acknowledgementSet != null) {
+                        acknowledgementSet.add(transformedEvent);
+                    }
+
+                    bufferAccumulator.add(new Record<>(transformedEvent));
                     eventCount.getAndIncrement();
                     bytesProcessedSummary.record(bytes);
                 } catch (Exception e) {
@@ -123,6 +137,7 @@ public class DataFileLoader implements Runnable {
 
         try {
             bufferAccumulator.flush();
+            acknowledgementSet.complete();
             exportRecordSuccessCounter.increment(eventCount.get());
         } catch (Exception e) {
             LOG.error("Failed to write events to buffer", e);

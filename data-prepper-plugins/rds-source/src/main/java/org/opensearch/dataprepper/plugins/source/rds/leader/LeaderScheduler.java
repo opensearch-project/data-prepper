@@ -148,7 +148,7 @@ public class LeaderScheduler implements Runnable {
     private void createStreamPartition(RdsSourceConfig sourceConfig) {
         final StreamProgressState progressState = new StreamProgressState();
         progressState.setWaitForExport(sourceConfig.isExportEnabled());
-        getCurrentBinlogPosition().ifPresent(progressState::setStartPosition);
+        getCurrentBinlogPosition().ifPresent(progressState::setCurrentPosition);
         StreamPartition streamPartition = new StreamPartition(sourceConfig.getDbIdentifier(), progressState);
         sourceCoordinator.createPartition(streamPartition);
     }
