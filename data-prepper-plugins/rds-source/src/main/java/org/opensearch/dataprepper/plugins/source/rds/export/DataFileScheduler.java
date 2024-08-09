@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.plugins.source.rds.export;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
@@ -32,6 +34,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 
 import static org.opensearch.dataprepper.plugins.source.rds.RdsService.DATA_LOADER_MAX_JOB_COUNT;
 
@@ -63,6 +66,7 @@ public class DataFileScheduler implements Runnable {
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final ExportRecordConverter recordConverter;
     private final PluginMetrics pluginMetrics;
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
     private final Counter exportFileSuccessCounter;
     private final Counter exportFileErrorCounter;
@@ -75,7 +79,8 @@ public class DataFileScheduler implements Runnable {
                              final S3Client s3Client,
                              final EventFactory eventFactory,
                              final Buffer<Record<Event>> buffer,
-                             final PluginMetrics pluginMetrics) {
+                             final PluginMetrics pluginMetrics,
+                             final AcknowledgementSetManager acknowledgementSetManager) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         codec = new ParquetInputCodec(eventFactory);
@@ -84,6 +89,7 @@ public class DataFileScheduler implements Runnable {
         recordConverter = new ExportRecordConverter();
         executor = Executors.newFixedThreadPool(DATA_LOADER_MAX_JOB_COUNT);
         this.pluginMetrics = pluginMetrics;
+        this.acknowledgementSetManager = acknowledgementSetManager;
 
         this.exportFileSuccessCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT);
         this.exportFileErrorCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_ERROR_COUNT);
@@ -133,23 +139,38 @@ public class DataFileScheduler implements Runnable {
     }
 
     private void processDataFilePartition(DataFilePartition dataFilePartition) {
+        // Create AcknowledgmentSet
+        final boolean isAcknowledgmentsEnabled = sourceConfig.isAcknowledgmentsEnabled();
+        AcknowledgementSet acknowledgementSet = null;
+        if (sourceConfig.isAcknowledgmentsEnabled()) {
+            acknowledgementSet = acknowledgementSetManager.create((result) -> {
+                if (result) {
+                    completeDataLoader(dataFilePartition).accept(null, null);
+                    LOG.info("Received acknowledgment of completion from sink for data file {}", dataFilePartition.getKey());
+                } else {
+                    LOG.warn("Negative acknowledgment received for data file {}, retrying", dataFilePartition.getKey());
+                    sourceCoordinator.giveUpPartition(dataFilePartition);
+                }
+            }, sourceConfig.getDataFileAcknowledgmentTimeout());
+        }
+
         Runnable loader = DataFileLoader.create(
-                dataFilePartition, codec, bufferAccumulator, objectReader, recordConverter, pluginMetrics);
+                dataFilePartition, codec, bufferAccumulator, objectReader, recordConverter, pluginMetrics,
+                acknowledgementSet, sourceConfig.getDataFileAcknowledgmentTimeout());
         CompletableFuture runLoader = CompletableFuture.runAsync(loader, executor);
 
-        runLoader.whenComplete((v, ex) -> {
-            if (ex == null) {
-                exportFileSuccessCounter.increment();
-                // Update global state so we know if all s3 files have been loaded
-                updateLoadStatus(dataFilePartition.getExportTaskId(), DEFAULT_UPDATE_LOAD_STATUS_TIMEOUT);
-                sourceCoordinator.completePartition(dataFilePartition);
-            } else {
-                exportFileErrorCounter.increment();
-                LOG.error("There was an exception while processing an S3 data file", ex);
-                sourceCoordinator.giveUpPartition(dataFilePartition);
-            }
-            numOfWorkers.decrementAndGet();
-        });
+        if (isAcknowledgmentsEnabled) {
+            runLoader.whenComplete((v, ex) -> {
+                if (ex != null) {
+                    exportFileErrorCounter.increment();
+                    LOG.error("There was an exception while processing an S3 data file: {}", ex);
+                    sourceCoordinator.giveUpPartition(dataFilePartition);
+                }
+                numOfWorkers.decrementAndGet();
+            });
+        } else {
+            runLoader.whenComplete(completeDataLoader(dataFilePartition));
+        }
         numOfWorkers.incrementAndGet();
     }
 
@@ -182,5 +203,21 @@ public class DataFileScheduler implements Runnable {
                 LOG.error("Failed to update the global status, looks like the status was out of date, will retry..");
             }
         }
+    }
+
+    private BiConsumer<Void, Throwable> completeDataLoader(DataFilePartition dataFilePartition) {
+        return (v, ex) -> {
+            if (ex == null) {
+                exportFileSuccessCounter.increment();
+                // Update global state, so we know if all s3 files have been loaded
+                updateLoadStatus(dataFilePartition.getExportTaskId(), DEFAULT_UPDATE_LOAD_STATUS_TIMEOUT);
+                sourceCoordinator.completePartition(dataFilePartition);
+            } else {
+                exportFileErrorCounter.increment();
+                LOG.error("There was an exception while processing an S3 data file", ex);
+                sourceCoordinator.giveUpPartition(dataFilePartition);
+            }
+            numOfWorkers.decrementAndGet();
+        };
     }
 }

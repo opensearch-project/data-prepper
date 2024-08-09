@@ -84,4 +84,9 @@ public class RdsSource implements Source<Record<Event>>, UsesEnhancedSourceCoord
     public Function<SourcePartitionStoreItem, EnhancedSourcePartition> getPartitionFactory() {
         return new PartitionFactory();
     }
+
+    @Override
+    public boolean areAcknowledgementsEnabled() {
+        return sourceConfig.isAcknowledgmentsEnabled();
+    }
 }
