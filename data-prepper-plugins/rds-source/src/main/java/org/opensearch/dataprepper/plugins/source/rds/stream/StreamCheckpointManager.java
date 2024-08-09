@@ -44,10 +44,10 @@ public class StreamCheckpointManager {
     }
 
     public void start() {
-        executorService.submit(this::run);
+        executorService.submit(this::runCheckpointing);
     }
 
-    private void run() {
+    void runCheckpointing() {
         long lastCheckpointTime = System.currentTimeMillis();
         RowChangeEventStatus changeEventStatus;
 
@@ -103,10 +103,10 @@ public class StreamCheckpointManager {
         }
 
         stopStreamRunnable.run();
-        executorService.shutdownNow();
+        stop();
     }
 
-    public void shutdown() {
+    public void stop() {
         executorService.shutdownNow();
     }
 
@@ -126,5 +126,10 @@ public class StreamCheckpointManager {
                changeEventStatus.setAcknowledgmentStatus(RowChangeEventStatus.AcknowledgmentStatus.NEGATIVE_ACK);
            }
         }, acknowledgmentTimeout);
+    }
+
+    //VisibleForTesting
+    ConcurrentLinkedQueue<RowChangeEventStatus> getChangeEventStatuses() {
+        return changeEventStatuses;
     }
 }

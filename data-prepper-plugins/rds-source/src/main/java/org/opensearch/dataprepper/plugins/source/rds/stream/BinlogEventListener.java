@@ -24,16 +24,13 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConverter;
-import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -41,7 +38,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -192,6 +188,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                               List<Serializable[]> rows,
                               OpenSearchBulkActions bulkAction) {
 
+        // Update binlog coordinate after it's first assigned in rotate event handler
         if (currentBinlogCoordinate != null) {
             final EventHeaderV4 eventHeader = event.getHeader();
             currentBinlogCoordinate = new BinlogCoordinate(currentBinlogCoordinate.getBinlogFilename(), eventHeader.getNextPosition());
@@ -236,14 +233,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                     eventTimestampMillis,
                     eventTimestampMillis);
             pipelineEvents.add(pipelineEvent);
-
-            // if accumulated events or time passed reach threshold, write to buffer
-            if (shouldWriteToBuffer()) {
-                writeToBuffer(acknowledgementSet);
-            }
         }
 
-        // write remaining events to buffer
         writeToBuffer(acknowledgementSet);
         bytesProcessedSummary.record(bytes);
 
@@ -254,9 +245,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         }
     }
 
-    private boolean shouldWriteToBuffer() {
-        return pipelineEvents.size() >= DEFAULT_BUFFER_BATCH_SIZE ||
-                System.currentTimeMillis() - lastBufferWriteTime > DEFAULT_BUFFER_FLUSH_TIMEOUT_MILLIS;
+    private boolean isTableOfInterest(String tableName) {
+        return new HashSet<>(tableNames).contains(tableName);
     }
 
     private void writeToBuffer(AcknowledgementSet acknowledgementSet) {
@@ -269,10 +259,6 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
         flushBufferAccumulator(pipelineEvents.size());
         pipelineEvents.clear();
-    }
-
-    private boolean isTableOfInterest(String tableName) {
-        return new HashSet<>(tableNames).contains(tableName);
     }
 
     private void addToBufferAccumulator(final Record<Event> record) {

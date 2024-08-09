@@ -22,6 +22,7 @@ public class RowChangeEventStatus {
     public RowChangeEventStatus(final BinlogCoordinate binlogCoordinate, final long timestamp) {
         this.binlogCoordinate = binlogCoordinate;
         this.timestamp = timestamp;
+        acknowledgmentStatus = AcknowledgmentStatus.NO_ACK;
     }
 
     public void setAcknowledgmentStatus(final AcknowledgmentStatus acknowledgmentStatus) {

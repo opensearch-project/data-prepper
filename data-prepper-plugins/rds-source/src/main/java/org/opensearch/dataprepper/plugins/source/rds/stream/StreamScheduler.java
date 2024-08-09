@@ -52,9 +52,6 @@ public class StreamScheduler implements Runnable {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         executorService = Executors.newCachedThreadPool();
-
-
-
     }
 
     @Override
@@ -68,7 +65,8 @@ public class StreamScheduler implements Runnable {
 
                     final StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
                     final StreamCheckpointer streamCheckpointer = new StreamCheckpointer(sourceCoordinator, streamPartition);
-                    this.binaryLogClient.registerEventListener(new BinlogEventListener(buffer, sourceConfig, pluginMetrics, this.binaryLogClient, streamCheckpointer, acknowledgementSetManager));
+                    binaryLogClient.registerEventListener(new BinlogEventListener(
+                            buffer, sourceConfig, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager));
                     final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, binaryLogClient, pluginMetrics);
                     executorService.submit(() -> streamWorker.processStream(streamPartition));
                 }
