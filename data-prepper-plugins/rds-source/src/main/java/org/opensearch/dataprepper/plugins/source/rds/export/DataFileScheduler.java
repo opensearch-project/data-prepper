@@ -148,6 +148,7 @@ public class DataFileScheduler implements Runnable {
                     completeDataLoader(dataFilePartition).accept(null, null);
                     LOG.info("Received acknowledgment of completion from sink for data file {}", dataFilePartition.getKey());
                 } else {
+                    exportFileErrorCounter.increment();
                     LOG.warn("Negative acknowledgment received for data file {}, retrying", dataFilePartition.getKey());
                     sourceCoordinator.giveUpPartition(dataFilePartition);
                 }

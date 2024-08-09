@@ -19,7 +19,6 @@ import java.util.concurrent.Executors;
 
 public class StreamCheckpointManager {
     private static final Logger LOG = LoggerFactory.getLogger(StreamCheckpointManager.class);
-    static final int QUEUE_MONITORING_INTERVAL_MILLIS = 15_000;
     static final int REGULAR_CHECKPOINT_INTERVAL_MILLIS = 60_000;
 
     private final ConcurrentLinkedQueue<RowChangeEventStatus> changeEventStatuses = new ConcurrentLinkedQueue<>();
@@ -48,46 +47,37 @@ public class StreamCheckpointManager {
     }
 
     void runCheckpointing() {
-        long lastCheckpointTime = System.currentTimeMillis();
-        RowChangeEventStatus changeEventStatus;
+        RowChangeEventStatus currentChangeEventStatus;
 
         while (!Thread.currentThread().isInterrupted()) {
             try {
-                if (!changeEventStatuses.isEmpty()) {
+                if (changeEventStatuses.isEmpty()) {
+                    LOG.debug("No records processed. Extend the lease on stream partition.");
+                    streamCheckpointer.extendLease();
+                } else {
                     if (isAcknowledgmentEnabled) {
-                        if (System.currentTimeMillis() - lastCheckpointTime > REGULAR_CHECKPOINT_INTERVAL_MILLIS) {
-                            RowChangeEventStatus lastChangeEventStatus = null;
-                            changeEventStatus = changeEventStatuses.peek();
-                            while (changeEventStatus.isPositiveAcknowledgment()) {
-                                lastChangeEventStatus = changeEventStatus;
-                                changeEventStatus = changeEventStatuses.poll();
-                            }
-                            if (lastChangeEventStatus != null) {
-                                streamCheckpointer.checkpoint(lastChangeEventStatus.getBinlogCoordinate());
-                            } else {
-                                // The ChangeEventStatus at the front of the queue is not positively ack'ed
-                                if (changeEventStatus.isNegativeAcknowledgment()) {
-                                    LOG.info("Received negative acknowledgement for change event at {}. Will restart from most recent checkpoint", changeEventStatus.getBinlogCoordinate());
-                                    //
-                                    streamCheckpointer.giveUpPartition();
-                                    break;
-                                }
-                            }
+                        RowChangeEventStatus lastChangeEventStatus = null;
+                        currentChangeEventStatus = changeEventStatuses.peek();
+                        while (currentChangeEventStatus != null && currentChangeEventStatus.isPositiveAcknowledgment()) {
+                            lastChangeEventStatus = currentChangeEventStatus;
+                            currentChangeEventStatus = changeEventStatuses.poll();
+                        }
+
+                        if (lastChangeEventStatus != null) {
+                            streamCheckpointer.checkpoint(lastChangeEventStatus.getBinlogCoordinate());
+                        }
+
+                        // If negative ack is seen, give up partition and exit loop to stop processing stream
+                        if (currentChangeEventStatus != null && currentChangeEventStatus.isNegativeAcknowledgment()) {
+                            LOG.info("Received negative acknowledgement for change event at {}. Will restart from most recent checkpoint", currentChangeEventStatus.getBinlogCoordinate());
+                            streamCheckpointer.giveUpPartition();
+                            break;
                         }
                     } else {
-                        if (System.currentTimeMillis() - lastCheckpointTime > REGULAR_CHECKPOINT_INTERVAL_MILLIS) {
-                            do {
-                                changeEventStatus = changeEventStatuses.poll();
-                            } while (!changeEventStatuses.isEmpty());
-                            streamCheckpointer.checkpoint(changeEventStatus.getBinlogCoordinate());
-                            lastCheckpointTime = System.currentTimeMillis();
-                        }
-                    }
-                } else {
-                    if (System.currentTimeMillis() - lastCheckpointTime > REGULAR_CHECKPOINT_INTERVAL_MILLIS) {
-                        LOG.debug("No records processed. Extend the lease on stream partition.");
-                        streamCheckpointer.extendLease();
-                        lastCheckpointTime = System.currentTimeMillis();
+                        do {
+                            currentChangeEventStatus = changeEventStatuses.poll();
+                        } while (!changeEventStatuses.isEmpty());
+                        streamCheckpointer.checkpoint(currentChangeEventStatus.getBinlogCoordinate());
                     }
                 }
             } catch (Exception e) {
@@ -96,7 +86,7 @@ public class StreamCheckpointManager {
             }
 
             try {
-                Thread.sleep(QUEUE_MONITORING_INTERVAL_MILLIS);
+                Thread.sleep(REGULAR_CHECKPOINT_INTERVAL_MILLIS);
             } catch (InterruptedException ex) {
                 break;
             }
