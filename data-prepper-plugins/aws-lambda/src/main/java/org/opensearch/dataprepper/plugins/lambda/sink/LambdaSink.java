@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
+import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,9 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
         super(pluginSetting);
         sinkInitialized = Boolean.FALSE;
         OutputCodecContext outputCodecContext = OutputCodecContext.fromSinkContext(sinkContext);
-        LambdaClient lambdaClient = LambdaClientFactory.createLambdaClient(lambdaSinkConfig, awsCredentialsSupplier);
+        LambdaClient lambdaClient = LambdaClientFactory.createLambdaClient(lambdaSinkConfig.getAwsAuthenticationOptions(),
+                lambdaSinkConfig.getMaxConnectionRetries()
+                , awsCredentialsSupplier);
         if(lambdaSinkConfig.getDlqPluginSetting() != null) {
             this.dlqPushHandler = new DlqPushHandler(pluginFactory,
                     String.valueOf(lambdaSinkConfig.getDlqPluginSetting().get(BUCKET)),
