@@ -47,7 +47,6 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
-    static final int DEFAULT_BUFFER_FLUSH_TIMEOUT_MILLIS = 5_000;
     static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
     static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
@@ -71,8 +70,6 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     private final Counter changeEventErrorCounter;
     private final DistributionSummary bytesReceivedSummary;
     private final DistributionSummary bytesProcessedSummary;
-    private long recordCount = 0;
-    private long lastBufferWriteTime;
 
     /**
      * currentBinlogCoordinate is the coordinate where next event will start
@@ -143,6 +140,14 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     void handleRotateEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         final RotateEventData data = event.getData();
         currentBinlogCoordinate = new BinlogCoordinate(data.getBinlogFilename(), data.getBinlogPosition());
+
+        // Trigger a checkpoint update for this rotate when there're no row mutation events being processed
+        if (streamCheckpointManager.getChangeEventStatuses().isEmpty()) {
+            ChangeEventStatus changeEventStatus = streamCheckpointManager.saveChangeEventsStatus(currentBinlogCoordinate);
+            if (isAcknowledgmentsEnabled) {
+                changeEventStatus.setAcknowledgmentStatus(ChangeEventStatus.AcknowledgmentStatus.POSITIVE_ACK);
+            }
+        }
     }
     void handleTableMapEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         final TableMapEventData data = event.getData();
@@ -192,6 +197,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         if (currentBinlogCoordinate != null) {
             final EventHeaderV4 eventHeader = event.getHeader();
             currentBinlogCoordinate = new BinlogCoordinate(currentBinlogCoordinate.getBinlogFilename(), eventHeader.getNextPosition());
+            LOG.debug("Current binlog coordinate after receiving a row change event: " + currentBinlogCoordinate);
         }
 
         AcknowledgementSet acknowledgementSet = null;

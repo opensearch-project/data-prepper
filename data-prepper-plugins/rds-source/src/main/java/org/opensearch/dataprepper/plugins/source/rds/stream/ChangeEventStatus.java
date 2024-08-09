@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.source.rds.stream;
 
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 
-public class RowChangeEventStatus {
+public class ChangeEventStatus {
 
     private final BinlogCoordinate binlogCoordinate;
     private final long timestamp;
@@ -19,7 +19,7 @@ public class RowChangeEventStatus {
         NO_ACK
     }
 
-    public RowChangeEventStatus(final BinlogCoordinate binlogCoordinate, final long timestamp) {
+    public ChangeEventStatus(final BinlogCoordinate binlogCoordinate, final long timestamp) {
         this.binlogCoordinate = binlogCoordinate;
         this.timestamp = timestamp;
         acknowledgmentStatus = AcknowledgmentStatus.NO_ACK;

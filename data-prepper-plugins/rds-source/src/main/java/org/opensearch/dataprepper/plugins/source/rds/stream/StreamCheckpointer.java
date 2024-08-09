@@ -30,7 +30,7 @@ public class StreamCheckpointer {
     }
 
     public void checkpoint(final BinlogCoordinate binlogCoordinate) {
-        LOG.debug("Checkpointing stream partition {}", streamPartition.getPartitionKey());
+        LOG.debug("Checkpointing stream partition {} with binlog coordinate {}", streamPartition.getPartitionKey(), binlogCoordinate);
         Optional<StreamProgressState> progressState = streamPartition.getProgressState();
         progressState.get().setCurrentPosition(binlogCoordinate);
         sourceCoordinator.saveProgressStateForPartition(streamPartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);

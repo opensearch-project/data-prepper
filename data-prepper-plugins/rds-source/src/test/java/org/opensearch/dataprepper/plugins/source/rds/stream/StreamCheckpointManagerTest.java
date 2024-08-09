@@ -92,7 +92,7 @@ class StreamCheckpointManagerTest {
         streamCheckpointManager.createAcknowledgmentSet(binlogCoordinate);
 
         assertThat(streamCheckpointManager.getChangeEventStatuses().size(), is(1));
-        RowChangeEventStatus changeEventStatus = streamCheckpointManager.getChangeEventStatuses().peek();
+        ChangeEventStatus changeEventStatus = streamCheckpointManager.getChangeEventStatuses().peek();
         assertThat(changeEventStatus.getBinlogCoordinate(), is(binlogCoordinate));
         verify(acknowledgementSetManager).create(any(Consumer.class), eq(ACK_TIMEOUT));
     }

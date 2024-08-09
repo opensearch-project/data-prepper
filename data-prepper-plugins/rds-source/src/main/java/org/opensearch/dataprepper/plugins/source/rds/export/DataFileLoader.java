@@ -137,7 +137,9 @@ public class DataFileLoader implements Runnable {
 
         try {
             bufferAccumulator.flush();
-            acknowledgementSet.complete();
+            if (acknowledgementSet != null) {
+                acknowledgementSet.complete();
+            }
             exportRecordSuccessCounter.increment(eventCount.get());
         } catch (Exception e) {
             LOG.error("Failed to write events to buffer", e);

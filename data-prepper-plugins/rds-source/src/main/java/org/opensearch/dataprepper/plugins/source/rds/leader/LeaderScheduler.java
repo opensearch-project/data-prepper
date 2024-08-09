@@ -154,6 +154,8 @@ public class LeaderScheduler implements Runnable {
     }
 
     private Optional<BinlogCoordinate> getCurrentBinlogPosition() {
-        return schemaManager.getCurrentBinaryLogPosition();
+        Optional<BinlogCoordinate> binlogCoordinate = schemaManager.getCurrentBinaryLogPosition();
+        LOG.debug("Current binlog position: {}", binlogCoordinate.orElse(null));
+        return binlogCoordinate;
     }
 }

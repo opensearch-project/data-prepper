@@ -21,7 +21,7 @@ public class StreamCheckpointManager {
     private static final Logger LOG = LoggerFactory.getLogger(StreamCheckpointManager.class);
     static final int REGULAR_CHECKPOINT_INTERVAL_MILLIS = 60_000;
 
-    private final ConcurrentLinkedQueue<RowChangeEventStatus> changeEventStatuses = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<ChangeEventStatus> changeEventStatuses = new ConcurrentLinkedQueue<>();
     private final StreamCheckpointer streamCheckpointer;
     private final ExecutorService executorService;
     private final Runnable stopStreamRunnable;
@@ -47,7 +47,7 @@ public class StreamCheckpointManager {
     }
 
     void runCheckpointing() {
-        RowChangeEventStatus currentChangeEventStatus;
+        ChangeEventStatus currentChangeEventStatus;
 
         while (!Thread.currentThread().isInterrupted()) {
             try {
@@ -56,7 +56,7 @@ public class StreamCheckpointManager {
                     streamCheckpointer.extendLease();
                 } else {
                     if (isAcknowledgmentEnabled) {
-                        RowChangeEventStatus lastChangeEventStatus = null;
+                        ChangeEventStatus lastChangeEventStatus = null;
                         currentChangeEventStatus = changeEventStatuses.peek();
                         while (currentChangeEventStatus != null && currentChangeEventStatus.isPositiveAcknowledgment()) {
                             lastChangeEventStatus = currentChangeEventStatus;
@@ -100,26 +100,27 @@ public class StreamCheckpointManager {
         executorService.shutdownNow();
     }
 
-    public void saveChangeEventsStatus(BinlogCoordinate binlogCoordinate) {
-        final RowChangeEventStatus changeEventStatus = new RowChangeEventStatus(binlogCoordinate, Instant.now().toEpochMilli());
+    public ChangeEventStatus saveChangeEventsStatus(BinlogCoordinate binlogCoordinate) {
+        final ChangeEventStatus changeEventStatus = new ChangeEventStatus(binlogCoordinate, Instant.now().toEpochMilli());
         changeEventStatuses.add(changeEventStatus);
+        return changeEventStatus;
     }
 
     public AcknowledgementSet createAcknowledgmentSet(BinlogCoordinate binlogCoordinate) {
         LOG.debug("Create acknowledgment set for events receive prior to {}", binlogCoordinate);
-        final RowChangeEventStatus changeEventStatus = new RowChangeEventStatus(binlogCoordinate, Instant.now().toEpochMilli());
+        final ChangeEventStatus changeEventStatus = new ChangeEventStatus(binlogCoordinate, Instant.now().toEpochMilli());
         changeEventStatuses.add(changeEventStatus);
         return acknowledgementSetManager.create((result) -> {
            if (result) {
-               changeEventStatus.setAcknowledgmentStatus(RowChangeEventStatus.AcknowledgmentStatus.POSITIVE_ACK);
+               changeEventStatus.setAcknowledgmentStatus(ChangeEventStatus.AcknowledgmentStatus.POSITIVE_ACK);
            } else {
-               changeEventStatus.setAcknowledgmentStatus(RowChangeEventStatus.AcknowledgmentStatus.NEGATIVE_ACK);
+               changeEventStatus.setAcknowledgmentStatus(ChangeEventStatus.AcknowledgmentStatus.NEGATIVE_ACK);
            }
         }, acknowledgmentTimeout);
     }
 
     //VisibleForTesting
-    ConcurrentLinkedQueue<RowChangeEventStatus> getChangeEventStatuses() {
+    ConcurrentLinkedQueue<ChangeEventStatus> getChangeEventStatuses() {
         return changeEventStatuses;
     }
 }
