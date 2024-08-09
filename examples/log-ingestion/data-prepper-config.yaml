@@ -1,0 +1,6 @@
+ssl: false
+serverPort: 4900
+authentication:
+  http_basic:
+    username: admin
+    password: admin

@@ -11,5 +11,5 @@ log-pipeline:
         hosts: [ "https://opensearch:9200" ]
         insecure: true
         username: admin
-        password: admin
+        password: Developer@123
         index: apache_logs
