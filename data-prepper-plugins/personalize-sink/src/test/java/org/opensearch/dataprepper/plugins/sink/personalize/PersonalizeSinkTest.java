@@ -16,6 +16,7 @@ import software.amazon.awssdk.regions.Region;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -49,7 +50,7 @@ class PersonalizeSinkTest {
         when(personalizeSinkConfig.getDatasetArn()).thenReturn(DATASET_ARN);
         when(personalizeSinkConfig.getDatasetType()).thenReturn(DatasetTypeOptions.USERS);
         when(personalizeSinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
-        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of(REGION));
+        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Optional.of(Region.of(REGION)));
         when(pluginSetting.getName()).thenReturn(SINK_PLUGIN_NAME);
         when(pluginSetting.getPipelineName()).thenReturn(SINK_PIPELINE_NAME);
     }

@@ -38,6 +38,9 @@ public class AwsAuthenticationOptions {
 
     @AssertTrue(message = "sts_role_arn must be an IAM Role", groups = PersonalizeAdvancedValidation.class)
     boolean isValidStsRoleArn() {
+        if (awsStsRoleArn == null) {
+            return true;
+        }
         final Arn arn = getArn();
         boolean status = true;
         if (!AWS_IAM.equals(arn.service())) {
@@ -58,8 +61,9 @@ public class AwsAuthenticationOptions {
         }
     }
 
-    public Region getAwsRegion() {
-        return awsRegion != null ? Region.of(awsRegion) : null;
+    public Optional<Region> getAwsRegion() {
+        Region region = awsRegion != null ? Region.of(awsRegion) : null;
+        return Optional.ofNullable(region);
     }
 
     public String getAwsStsRoleArn() {

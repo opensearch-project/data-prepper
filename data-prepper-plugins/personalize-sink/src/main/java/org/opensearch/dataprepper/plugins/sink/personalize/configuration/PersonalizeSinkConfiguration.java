@@ -26,7 +26,6 @@ public class PersonalizeSinkConfiguration {
     private static final List<DatasetTypeOptions> DATASET_ARN_REQUIRED_LIST = List.of(DatasetTypeOptions.USERS, DatasetTypeOptions.ITEMS);
 
     @JsonProperty("aws")
-    @NotNull
     @Valid
     private AwsAuthenticationOptions awsAuthenticationOptions;
 

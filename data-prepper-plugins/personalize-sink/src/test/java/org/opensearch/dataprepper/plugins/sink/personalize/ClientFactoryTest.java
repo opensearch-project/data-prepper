@@ -19,11 +19,14 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.personalizeevents.PersonalizeEventsClient;
 import software.amazon.awssdk.services.personalizeevents.PersonalizeEventsClientBuilder;
 
+import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -48,10 +51,44 @@ class ClientFactoryTest {
 
     @Test
     void createPersonalizeEventsClient_with_real_PersonalizeEventsClient() {
-        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
+        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Optional.of(Region.US_EAST_1));
         final PersonalizeEventsClient personalizeEventsClient = ClientFactory.createPersonalizeEventsClient(personalizeSinkConfig, awsCredentialsSupplier);
 
         assertThat(personalizeEventsClient, notNullValue());
+    }
+
+    @Test
+    void createPersonalizeEventsClient_provides_correct_inputs_for_null_awsAuthenticationOptions() {
+        when(personalizeSinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
+        final AwsCredentialsProvider expectedCredentialsProvider = mock(AwsCredentialsProvider.class);
+        when(awsCredentialsSupplier.getProvider(any())).thenReturn(expectedCredentialsProvider);
+
+        final PersonalizeEventsClientBuilder personalizeEventsClientBuilder = mock(PersonalizeEventsClientBuilder.class);
+        when(personalizeEventsClientBuilder.region(any())).thenReturn(personalizeEventsClientBuilder);
+        when(personalizeEventsClientBuilder.credentialsProvider(any())).thenReturn(personalizeEventsClientBuilder);
+        when(personalizeEventsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(personalizeEventsClientBuilder);
+        try(final MockedStatic<PersonalizeEventsClient> personalizeEventsClientMockedStatic = mockStatic(PersonalizeEventsClient.class)) {
+            personalizeEventsClientMockedStatic.when(PersonalizeEventsClient::builder)
+                    .thenReturn(personalizeEventsClientBuilder);
+            ClientFactory.createPersonalizeEventsClient(personalizeSinkConfig, awsCredentialsSupplier);
+        }
+
+        final ArgumentCaptor<AwsCredentialsProvider> credentialsProviderArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsProvider.class);
+        verify(personalizeEventsClientBuilder).credentialsProvider(credentialsProviderArgumentCaptor.capture());
+
+        final AwsCredentialsProvider actualCredentialsProvider = credentialsProviderArgumentCaptor.getValue();
+
+        assertThat(actualCredentialsProvider, equalTo(expectedCredentialsProvider));
+
+        final ArgumentCaptor<AwsCredentialsOptions> optionsArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsOptions.class);
+        verify(awsCredentialsSupplier).getProvider(optionsArgumentCaptor.capture());
+
+        final AwsCredentialsOptions actualCredentialsOptions = optionsArgumentCaptor.getValue();
+        assertThat(actualCredentialsOptions, is(notNullValue()));
+        assertThat(actualCredentialsOptions.getRegion(), equalTo(null));
+        assertThat(actualCredentialsOptions.getStsRoleArn(), equalTo(null));
+        assertThat(actualCredentialsOptions.getStsExternalId(), equalTo(null));
+        assertThat(actualCredentialsOptions.getStsHeaderOverrides(), equalTo(Collections.emptyMap()));
     }
 
     @ParameterizedTest
@@ -61,7 +98,7 @@ class ClientFactoryTest {
         final String stsRoleArn = UUID.randomUUID().toString();
         final String externalId = UUID.randomUUID().toString();
         final Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(region);
+        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Optional.of(region));
         when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn(stsRoleArn);
         when(awsAuthenticationOptions.getAwsStsExternalId()).thenReturn(externalId);
         when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);

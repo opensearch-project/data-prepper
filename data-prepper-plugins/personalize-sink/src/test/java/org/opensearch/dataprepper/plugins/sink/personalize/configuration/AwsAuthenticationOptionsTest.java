@@ -9,6 +9,7 @@ import software.amazon.awssdk.regions.Region;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -29,7 +30,7 @@ class AwsAuthenticationOptionsTest {
     @ParameterizedTest
     @ValueSource(strings = {"us-east-1", "us-west-2", "eu-central-1"})
     void getAwsRegion_returns_Region_of(final String regionString) {
-        final Region expectedRegionObject = Region.of(regionString);
+        final Optional<Region> expectedRegionObject = Optional.of(Region.of(regionString));
         final Map<String, Object> jsonMap = Map.of("region", regionString);
         final AwsAuthenticationOptions objectUnderTest = objectMapper.convertValue(jsonMap, AwsAuthenticationOptions.class);
         assertThat(objectUnderTest.getAwsRegion(), equalTo(expectedRegionObject));
@@ -39,7 +40,7 @@ class AwsAuthenticationOptionsTest {
     void getAwsRegion_returns_null_when_region_is_null() {
         final Map<String, Object> jsonMap = Collections.emptyMap();
         final AwsAuthenticationOptions objectUnderTest = objectMapper.convertValue(jsonMap, AwsAuthenticationOptions.class);
-        assertThat(objectUnderTest.getAwsRegion(), nullValue());
+        assertThat(objectUnderTest.getAwsRegion(), equalTo(Optional.empty()));
     }
 
     @Test
@@ -61,6 +62,13 @@ class AwsAuthenticationOptionsTest {
     void isValidStsRoleArn_returns_true_for_valid_IAM_role() {
         final String stsRoleArn = "arn:aws:iam::123456789012:role/test";
         final Map<String, Object> jsonMap = Map.of("sts_role_arn", stsRoleArn);
+        final AwsAuthenticationOptions objectUnderTest = objectMapper.convertValue(jsonMap, AwsAuthenticationOptions.class);
+        assertTrue(objectUnderTest.isValidStsRoleArn());
+    }
+
+    @Test
+    void isValidStsRoleArn_returns_true_for_null() {
+        final Map<String, Object> jsonMap = Collections.emptyMap();
         final AwsAuthenticationOptions objectUnderTest = objectMapper.convertValue(jsonMap, AwsAuthenticationOptions.class);
         assertTrue(objectUnderTest.isValidStsRoleArn());
     }
