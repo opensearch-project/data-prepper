@@ -12,6 +12,9 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
@@ -76,6 +79,55 @@ class ParseTreeCoercionService {
                     return longValue;
                 }
                 return Integer.valueOf(nodeStringValue);
+            case DataPrepperExpressionParser.SetInitializer:
+                String[] setMembers = nodeStringValue.trim().substring(1,nodeStringValue.length()-1).split(",");
+                int stringMemberCount = 0;
+                boolean floatMember = false;
+                for (int i= 0; i < setMembers.length; i++) {
+                    String s = setMembers[i].trim();
+                    if (s.length() > 1 && s.charAt(0) == '"' && s.charAt(s.length()-1) == '"') {
+                        stringMemberCount++;
+                    } else if (s.contains(".")) {
+                        floatMember = true;
+                    }
+                }
+                if (stringMemberCount > 0 && stringMemberCount != setMembers.length) {
+                    throw new RuntimeException("All set members should be of same type");
+                }
+                if (stringMemberCount == setMembers.length) {
+                    Set<String> stringSet = Arrays.stream(setMembers)
+                    .map(s -> {
+                        s = s.trim();
+                        return s.substring(1,s.length()-1);
+                     })
+                     .collect(Collectors.toSet());
+                    return stringSet;
+                } else if (floatMember) {
+                    Set<Float> doubleSet = Arrays.stream(setMembers)
+                    .map(s -> {
+                        s = s.trim();
+                        try {
+                            return Float.parseFloat(s);
+                        } catch (NumberFormatException e) {
+                            throw new RuntimeException("Invalid Float member");
+                        }
+                     })
+                     .collect(Collectors.toSet());
+                     return doubleSet;
+                } else {
+                    Set<Integer> integerSet = Arrays.stream(setMembers)
+                    .map(s -> {
+                        s = s.trim();
+                        try {
+                            return Integer.parseInt(s);
+                        } catch (NumberFormatException e) {
+                            throw new RuntimeException("Invalid Integer member");
+                        }
+                     })
+                     .collect(Collectors.toSet());
+                     return integerSet;
+                }
+
             case DataPrepperExpressionParser.Float:
                 return Float.valueOf(nodeStringValue);
             case DataPrepperExpressionParser.Boolean:
