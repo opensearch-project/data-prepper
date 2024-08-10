@@ -97,6 +97,11 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     }
 
     @Override
+    public Optional<Integer> getOptimalRequestSize() {
+        return Optional.of(producer.getMaxRequestSize() / 4);
+    }
+
+    @Override
     public void writeBytes(final byte[] bytes, final String key, int timeoutInMillis) throws Exception {
         try {
             setMdc();

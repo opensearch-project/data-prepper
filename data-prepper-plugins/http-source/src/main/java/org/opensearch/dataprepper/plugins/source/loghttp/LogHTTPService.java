@@ -101,7 +101,7 @@ public class LogHTTPService {
         List<List<String>> jsonList;
 
         try {
-            jsonList = (maxRequestLength == null) ? jsonCodec.parse(content) : jsonCodec.parse(content, maxRequestLength - SERIALIZATION_OVERHEAD);
+            jsonList = (maxRequestLength == null) ? jsonCodec.parse(content) : jsonCodec.parse(content, buffer.getOptimalRequestSize().get() - SERIALIZATION_OVERHEAD);
         } catch (IOException e) {
             LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
             throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
