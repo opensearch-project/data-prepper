@@ -242,7 +242,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
                 }
 
                 final String traceGroupName = getTraceGroupName(child.traceId);
-                if (traceGroupName == null || parent == null || parent.serviceName.equals(child.serviceName)) {
+                if (parent == null || parent.serviceName.equals(child.serviceName)) {
                     return;
                 }
 

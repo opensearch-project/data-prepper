@@ -40,6 +40,7 @@ import java.util.stream.Collectors;
 
 import static io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -301,7 +302,6 @@ public class ServiceMapStatefulProcessorTest {
         assertThat(relationshipCountMeasurement.getValue(), equalTo((double)relationshipsFound.size()));
 
 
-        //Make sure that future relationships that are equivalent are caught by cache
         final byte[] rootSpanId3Bytes = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] traceId3Bytes = ServiceMapTestUtils.getRandomBytes(16);
         final String rootSpanId3 = Hex.encodeHexString(rootSpanId3Bytes);
@@ -312,19 +312,24 @@ public class ServiceMapStatefulProcessorTest {
                 AUTHENTICATION_SERVICE, "reset", Hex.encodeHexString(ServiceMapTestUtils.getRandomBytes(8)),
                 frontendSpans3.getSpanId(), traceId3, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER);
 
+        // relationship missing traceGroupName
         when(clock.millis()).thenReturn(450L);
         Future<Set<ServiceMapRelationship>> r7 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
                 Collections.singletonList(new Record<>(frontendSpans3)));
         Future<Set<ServiceMapRelationship>> r8 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
                 Collections.singletonList(new Record<>(authenticationSpansServer2)));
-        assertTrue(r7.get().isEmpty());
-        assertTrue(r8.get().isEmpty());
+        final Set<ServiceMapRelationship> relationshipsFoundWithNoTraceGroupName = new HashSet<>();
+        relationshipsFoundWithNoTraceGroupName.addAll(r7.get());
+        relationshipsFoundWithNoTraceGroupName.addAll(r8.get());
 
         when(clock.millis()).thenReturn(560L);
         Future<Set<ServiceMapRelationship>> r9 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1, Arrays.asList());
         Future<Set<ServiceMapRelationship>> r10 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2, Arrays.asList());
-        assertTrue(r9.get().isEmpty());
-        assertTrue(r10.get().isEmpty());
+        relationshipsFoundWithNoTraceGroupName.addAll(r9.get());
+        relationshipsFoundWithNoTraceGroupName.addAll(r10.get());
+        assertThat(relationshipsFoundWithNoTraceGroupName.size(), equalTo(4));
+        relationshipsFoundWithNoTraceGroupName.forEach(
+                relationship -> assertThat(relationship.getTraceGroupName(), nullValue()));
         serviceMapStateful1.shutdown();
         serviceMapStateful2.shutdown();
     }
