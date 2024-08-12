@@ -7,9 +7,11 @@ package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
 
 public class PercentSamplerAggregateActionConfig {
+    @JsonPropertyDescription("Percent value of the sampling to be done.")
     @JsonProperty("percent")
     @NotNull
     private double percent;

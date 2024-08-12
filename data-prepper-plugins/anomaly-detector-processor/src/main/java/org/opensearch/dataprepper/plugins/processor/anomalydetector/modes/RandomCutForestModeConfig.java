@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.anomalydetector.modes;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
 
 import java.util.Set;
@@ -25,22 +26,27 @@ public class RandomCutForestModeConfig {
 
     public static final String VERSION_1_0 = "1.0";
 
+    @JsonPropertyDescription("The algorithm version number.")
     @JsonProperty("version")
     private String version = VERSION_1_0;
     
     public static final Set<String> validVersions = new HashSet<>(Set.of(VERSION_1_0));
 
+    @JsonPropertyDescription("The type of data sent to the algorithm.")
     @JsonProperty("type")
     private String type = RandomCutForestType.METRICS.toString();
 
     public static final Set<String> validTypes = new HashSet<>(Set.of(RandomCutForestType.METRICS.toString()));
 
+    @JsonPropertyDescription("The shingle size used in the ML algorithm.")
     @JsonProperty("shingle_size")
     private int shingleSize = DEFAULT_SHINGLE_SIZE;
 
+    @JsonPropertyDescription("The sample size used in the ML algorithm.")
     @JsonProperty("sample_size")
     private int sampleSize = DEFAULT_SAMPLE_SIZE;
 
+    @JsonPropertyDescription("The time decay value used in the ML algorithm. Used as the mathematical expression timeDecay divided by SampleSize in the ML algorithm.")
     @JsonProperty("time_decay")
     private double timeDecay = DEFAULT_TIME_DECAY;
 
