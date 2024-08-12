@@ -62,6 +62,10 @@ public class CsvProcessorConfig {
             "the processor should be applied to the event.")
     private String csvWhen;
 
+    @JsonPropertyDescription("If true, the configured source field will be deleted after the CSV data is parsed into separate fields.")
+    @JsonProperty
+    private boolean deleteSource = false;
+
     /**
      * The field of the Event that contains the CSV data to be processed.
      *
@@ -119,6 +123,8 @@ public class CsvProcessorConfig {
     }
 
     public String getCsvWhen() { return csvWhen; }
+
+    public Boolean isDeleteSource() { return deleteSource; }
 
     @AssertTrue(message = "delimiter must be exactly one character.")
     boolean isValidDelimiter() {

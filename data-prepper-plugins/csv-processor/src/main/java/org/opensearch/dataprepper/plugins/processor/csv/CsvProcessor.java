@@ -99,6 +99,10 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
                 if (thisEventHasHeaderSource && Boolean.TRUE.equals(config.isDeleteHeader())) {
                     event.delete(config.getColumnNamesSourceKey());
                 }
+
+                if (config.isDeleteSource()) {
+                    event.delete(config.getSource());
+                }
             } catch (final IOException e) {
                 csvInvalidEventsCounter.increment();
                 LOG.error(EVENT, "An exception occurred while reading event [{}]", event, e);
