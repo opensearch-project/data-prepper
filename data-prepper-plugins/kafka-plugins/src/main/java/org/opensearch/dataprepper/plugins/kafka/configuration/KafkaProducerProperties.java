@@ -53,9 +53,8 @@ public class KafkaProducerProperties {
     @JsonProperty("max_block")
     private Duration maxBlockMs = DEFAULT_MAX_BLOCK_MS;
 
-    // Initialize maxRequestSize to higher value to support larger messages
     @JsonProperty("max_request_size")
-    private int maxRequestSize = 4*DEFAULT_MAX_REQUEST_SIZE;
+    private int maxRequestSize = DEFAULT_MAX_REQUEST_SIZE;
 
     @JsonProperty("partitioner_class")
     private Class partitionerClass;
