@@ -69,14 +69,14 @@ class JsonCodecTest {
     @ParameterizedTest
     @ArgumentsSource(JsonArrayWithKnownFirstArgumentsProvider.class)
     public void parse_should_return_lists_smaller_than_provided_length(
-            final String inputJsonArray, final String knownFirstPart) throws IOException {
+            final String inputJsonArray, final String knownFirstPart, int expectedChunks) throws IOException {
         final int knownSingleBodySize = knownFirstPart.getBytes(Charset.defaultCharset()).length;
         final int maxSize = (knownSingleBodySize * 2) + 3;
         final List<List<String>> chunkedBodies = objectUnderTest.parse(HttpData.ofUtf8(inputJsonArray),
                 maxSize);
 
         assertThat(chunkedBodies, notNullValue());
-        assertThat(chunkedBodies.size(), greaterThanOrEqualTo(1));
+        assertThat(chunkedBodies.size(), equalTo(expectedChunks));
         final String firstReconstructed = chunkedBodies.get(0).stream().collect(Collectors.joining(",", "[", "]"));
         assertThat(firstReconstructed.getBytes(Charset.defaultCharset()).length,
                 lessThanOrEqualTo(maxSize));
@@ -105,11 +105,11 @@ class JsonCodecTest {
         public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
             return Stream.of(
                     arguments(
-                            "[{\"ὊὊὊ1\":\"ὊὊὊ1\"}, {\"ὊὊὊ2\":\"ὊὊὊ2\"}, {\"a3\":\"b3\"}, {\"ὊὊὊ4\":\"ὊὊὊ4\"}]",
-                            "{\"ὊὊὊ1\":\"ὊὊὊ1\"}"),
+                            "[{\"ὊὊὊ1\":\"ὊὊὊ1\"}, {\"ὊὊὊ2\":\"ὊὊὊO2\"}, {\"a3\":\"b3\"}, {\"ὊὊὊ4\":\"ὊὊὊ4\"}]",
+                            "{\"ὊὊὊ1\":\"ὊὊὊ1\"}", 3),
                     arguments(
                             "[{\"aaa1\":\"aaa1\"}, {\"aaa2\":\"aaa2\"}, {\"a3\":\"b3\"}, {\"bbb4\":\"bbb4\"}]",
-                            "{\"aaa1\":\"aaa1\"}")
+                            "{\"aaa1\":\"aaa1\"}", 2)
             );
         }
     }
