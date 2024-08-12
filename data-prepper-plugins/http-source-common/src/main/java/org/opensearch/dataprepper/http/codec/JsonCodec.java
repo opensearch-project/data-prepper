@@ -53,8 +53,12 @@ public class JsonCodec implements Codec<List<List<String>>> {
             final String recordString = mapper.writeValueAsString(log);
             int nextRecordLength = recordString.getBytes(Charset.defaultCharset()).length;
             if (size + nextRecordLength > maxSize) {
-                jsonList.add(innerJsonList);
-                innerJsonList = new ArrayList<>();
+                // It is possible that the first record is larger than maxSize, then
+                // innerJsonList size would be zero.
+                if (innerJsonList.size() > 0) {
+                    jsonList.add(innerJsonList);
+                    innerJsonList = new ArrayList<>();
+                }
                 size = OVERHEAD_CHARACTERS.length();
             }
             // The following may result in a innerJsonList with larger than "maxSize" length recordString
