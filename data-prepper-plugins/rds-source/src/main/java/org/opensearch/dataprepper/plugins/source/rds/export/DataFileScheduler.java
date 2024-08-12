@@ -157,7 +157,7 @@ public class DataFileScheduler implements Runnable {
 
         Runnable loader = DataFileLoader.create(
                 dataFilePartition, codec, bufferAccumulator, objectReader, recordConverter, pluginMetrics,
-                acknowledgementSet, sourceConfig.getDataFileAcknowledgmentTimeout());
+                sourceCoordinator, acknowledgementSet, sourceConfig.getDataFileAcknowledgmentTimeout());
         CompletableFuture runLoader = CompletableFuture.runAsync(loader, executor);
 
         if (isAcknowledgmentsEnabled) {

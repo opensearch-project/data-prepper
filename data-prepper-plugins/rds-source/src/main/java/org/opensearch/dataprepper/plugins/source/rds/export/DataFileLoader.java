@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.DataFileProgressState;
@@ -42,6 +43,7 @@ public class DataFileLoader implements Runnable {
     private final InputCodec codec;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final ExportRecordConverter recordConverter;
+    private final EnhancedSourceCoordinator sourceCoordinator;
     private final AcknowledgementSet acknowledgementSet;
     private final Duration acknowledgmentTimeout;
     private final Counter exportRecordsTotalCounter;
@@ -56,6 +58,7 @@ public class DataFileLoader implements Runnable {
                            final S3ObjectReader objectReader,
                            final ExportRecordConverter recordConverter,
                            final PluginMetrics pluginMetrics,
+                           final EnhancedSourceCoordinator sourceCoordinator,
                            final AcknowledgementSet acknowledgementSet,
                            final Duration acknowledgmentTimeout) {
         this.dataFilePartition = dataFilePartition;
@@ -65,6 +68,7 @@ public class DataFileLoader implements Runnable {
         this.codec = codec;
         this.bufferAccumulator = bufferAccumulator;
         this.recordConverter = recordConverter;
+        this.sourceCoordinator = sourceCoordinator;
         this.acknowledgementSet = acknowledgementSet;
         this.acknowledgmentTimeout = acknowledgmentTimeout;
 
@@ -81,10 +85,11 @@ public class DataFileLoader implements Runnable {
                                         final S3ObjectReader objectReader,
                                         final ExportRecordConverter recordConverter,
                                         final PluginMetrics pluginMetrics,
+                                        final EnhancedSourceCoordinator sourceCoordinator,
                                         final AcknowledgementSet acknowledgementSet,
                                         final Duration acknowledgmentTimeout) {
         return new DataFileLoader(dataFilePartition, codec, bufferAccumulator, objectReader, recordConverter,
-                pluginMetrics, acknowledgementSet, acknowledgmentTimeout);
+                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout);
     }
 
     @Override
@@ -138,6 +143,7 @@ public class DataFileLoader implements Runnable {
         try {
             bufferAccumulator.flush();
             if (acknowledgementSet != null) {
+                sourceCoordinator.saveProgressStateForPartition(dataFilePartition, acknowledgmentTimeout);
                 acknowledgementSet.complete();
             }
             exportRecordSuccessCounter.increment(eventCount.get());

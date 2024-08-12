@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
@@ -72,6 +73,9 @@ class DataFileLoaderTest {
 
     @Mock
     private PluginMetrics pluginMetrics;
+
+    @Mock
+    private EnhancedSourceCoordinator sourceCoordinator;
 
     @Mock
     private AcknowledgementSet acknowledgementSet;
@@ -197,6 +201,6 @@ class DataFileLoaderTest {
     private DataFileLoader createObjectUnderTest() {
         final InputCodec codec = new ParquetInputCodec(eventFactory);
         return DataFileLoader.create(dataFilePartition, codec, bufferAccumulator, s3ObjectReader, recordConverter,
-                pluginMetrics, acknowledgementSet, acknowledgmentTimeout);
+                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout);
     }
 }

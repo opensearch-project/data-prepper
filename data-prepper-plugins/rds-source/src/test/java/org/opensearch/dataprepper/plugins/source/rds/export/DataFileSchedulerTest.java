@@ -136,7 +136,7 @@ class DataFileSchedulerTest {
                         dataFileLoaderMockedStatic.when(() -> DataFileLoader.create(eq(dataFilePartition), any(InputCodec.class),
                                         any(BufferAccumulator.class), any(S3ObjectReader.class),
                                         any(ExportRecordConverter.class), any(PluginMetrics.class),
-                                        any(), any(Duration.class)))
+                                        any(EnhancedSourceCoordinator.class), any(), any(Duration.class)))
                                 .thenReturn(dataFileLoader);
                         doNothing().when(dataFileLoader).run();
                         objectUnderTest.run();
@@ -165,7 +165,7 @@ class DataFileSchedulerTest {
                 dataFileLoaderMockedStatic.when(() -> DataFileLoader.create(eq(dataFilePartition), any(InputCodec.class),
                                 any(BufferAccumulator.class), any(S3ObjectReader.class),
                                 any(ExportRecordConverter.class), any(PluginMetrics.class),
-                                any(), any(Duration.class)))
+                                any(EnhancedSourceCoordinator.class), any(), any(Duration.class)))
                         .thenReturn(dataFileLoader);
                 doThrow(new RuntimeException()).when(dataFileLoader).run();
                 objectUnderTest.run();
