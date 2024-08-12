@@ -89,9 +89,8 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
     }
 
     private void translateSource(Object sourceObject, Event recordEvent, TargetsParameterConfig targetConfig) {
-        Map<String, Object> recordObject =  recordEvent.toMap();
         List<String> sourceKeysPaths = getSourceKeys(sourceObject);
-        if(Objects.isNull(recordObject) || sourceKeysPaths.isEmpty()){
+        if(sourceKeysPaths.isEmpty()){
             return;
         }
 
@@ -107,14 +106,15 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         }
 
         String rootField = jsonExtractor.getRootField(commonPath);
-        if(!recordObject.containsKey(rootField)){
+        Object rootFieldObject = recordEvent.get(rootField, Object.class);
+        if (rootFieldObject == null) {
             return;
         }
-
+        Map<String, Object> recordObject =  recordEvent.toMap();
         List<Object> targetObjects = jsonExtractor.getObjectFromPath(commonPath, recordObject);
         if(!targetObjects.isEmpty()) {
             targetObjects.forEach(targetObj -> performMappings(targetObj, sourceKeys, sourceObject, targetConfig));
-            recordEvent.put(rootField, recordObject.get(rootField));
+            recordEvent.put(rootField,recordObject.get(rootField));
         }
     }
 
