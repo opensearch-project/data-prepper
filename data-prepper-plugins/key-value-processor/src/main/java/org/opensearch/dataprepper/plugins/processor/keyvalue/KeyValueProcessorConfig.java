@@ -176,7 +176,7 @@ public class KeyValueProcessorConfig {
     private boolean dropKeysWithNoValue = false;
 
     @JsonProperty("key_value_when")
-    @JsonPropertyDescription("Allows you to specify a [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
+    @JsonPropertyDescription("Allows you to specify a Data Prepper conditional expression (https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
             "such as `/some-key == \"test\"`, that will be evaluated to determine whether " +
             "the processor should be applied to the event.")
     private String keyValueWhen;

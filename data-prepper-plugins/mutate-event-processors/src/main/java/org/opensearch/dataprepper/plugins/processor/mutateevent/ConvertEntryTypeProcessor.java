@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -55,6 +56,12 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                 .orElse(List.of());
         this.expressionEvaluator = expressionEvaluator;
         this.tagsOnFailure = convertEntryTypeProcessorConfig.getTagsOnFailure();
+
+        if (convertWhen != null
+                && !expressionEvaluator.isValidExpressionStatement(convertWhen)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("convert_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", convertWhen));
+        }
     }
 
     @Override

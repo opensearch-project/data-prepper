@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -30,9 +31,13 @@ public class RenameKeyProcessorConfig {
         private EventKey toKey;
 
         @JsonProperty("overwrite_if_to_key_exists")
+        @JsonPropertyDescription("When set to true, the existing value is overwritten if key already exists in the event. The default value is false.")
         private boolean overwriteIfToKeyExists = false;
 
         @JsonProperty("rename_when")
+        @JsonPropertyDescription("A Data Prepper conditional expression (https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
+                "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be " +
+                "run on the event. Default is `null`. All events will be processed unless otherwise stated.")
         private String renameWhen;
 
         public EventKey getFromKey() {

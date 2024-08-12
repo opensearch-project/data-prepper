@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
@@ -41,6 +42,7 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -153,6 +155,16 @@ public class AggregateProcessorTest {
     }
 
     @Test
+    void invalid_aggregate_when_statement_throws_InvalidPluginConfigurationException() {
+        final String whenCondition = UUID.randomUUID().toString();
+        when(aggregateProcessorConfig.getWhenCondition()).thenReturn(whenCondition);
+
+        when(expressionEvaluator.isValidExpressionStatement(whenCondition)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+
+    @Test
     void getIdentificationKeys_should_return_configured_identification_keys() {
         final List<String> keys = List.of("key");
         when(aggregateProcessorConfig.getIdentificationKeys()).thenReturn(keys);
@@ -218,6 +230,7 @@ public class AggregateProcessorTest {
             when(identificationKeysHasher.createIdentificationKeysMapFromEvent(firstEvent))
                     .thenReturn(identificationKeysMap);
             when(aggregateActionSynchronizer.handleEventForGroup(firstEvent, identificationKeysMap, aggregateGroup)).thenReturn(firstAggregateActionResponse);
+            when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, event)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, firstEvent)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, secondEvent)).thenReturn(false);
@@ -280,6 +293,7 @@ public class AggregateProcessorTest {
             when(identificationKeysHasher.createIdentificationKeysMapFromEvent(firstEvent))
                     .thenReturn(identificationKeysMap);
             when(aggregateActionSynchronizer.handleEventForGroup(firstEvent, identificationKeysMap, aggregateGroup)).thenReturn(firstAggregateActionResponse);
+            when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, event)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, firstEvent)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, secondEvent)).thenReturn(false);

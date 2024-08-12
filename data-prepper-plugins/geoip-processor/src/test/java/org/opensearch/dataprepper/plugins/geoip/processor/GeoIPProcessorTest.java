@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
 import org.opensearch.dataprepper.plugins.geoip.exception.EngineFailureException;
@@ -43,6 +44,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -91,7 +93,7 @@ class GeoIPProcessorTest {
 
     @BeforeEach
     void setUp() {
-        when(geoIpConfigSupplier.getGeoIPProcessorService()).thenReturn(Optional.of(geoIPProcessorService));
+        lenient().when(geoIpConfigSupplier.getGeoIPProcessorService()).thenReturn(Optional.of(geoIPProcessorService));
         lenient().when(geoIPProcessorService.getGeoIPDatabaseReader()).thenReturn(geoIPDatabaseReader);
         lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_PROCESSED)).thenReturn(geoIpEventsProcessed);
         lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_SUCCEEDED)).thenReturn(geoIpEventsSucceeded);
@@ -114,11 +116,23 @@ class GeoIPProcessorTest {
     }
 
     @Test
+    void invalid_geoip_when_condition_throws_InvalidPluginConfigurationException() {
+        final String geoipWhen = UUID.randomUUID().toString();
+
+        when(geoIPProcessorConfig.getWhenCondition()).thenReturn(geoipWhen);
+
+        when(expressionEvaluator.isValidExpressionStatement(geoipWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+
+    @Test
     void doExecuteTest_with_when_condition_should_enrich_events_that_match_when_condition() {
         final String whenCondition = "/peer/status == success";
 
         when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
         when(geoIPProcessorConfig.getWhenCondition()).thenReturn(whenCondition);
+        when(expressionEvaluator.isValidExpressionStatement(whenCondition)).thenReturn(true);
         when(entry.getSource()).thenReturn("/peer/ip");
         when(entry.getTarget()).thenReturn(TARGET);
         when(entry.getGeoIPFields()).thenReturn(setFields());
@@ -150,6 +164,7 @@ class GeoIPProcessorTest {
 
         when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
         when(geoIPProcessorConfig.getWhenCondition()).thenReturn(whenCondition);
+        when(expressionEvaluator.isValidExpressionStatement(whenCondition)).thenReturn(true);
 
         final GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 

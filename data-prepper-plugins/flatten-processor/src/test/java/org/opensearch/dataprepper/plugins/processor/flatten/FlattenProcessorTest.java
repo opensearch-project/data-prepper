@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -56,6 +58,17 @@ class FlattenProcessorTest {
         lenient().when(mockConfig.getFlattenWhen()).thenReturn(null);
         lenient().when(mockConfig.getTagsOnFailure()).thenReturn(new ArrayList<>());
         lenient().when(mockConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
+    }
+
+    @Test
+    void invalid_flatten_when_expression_throws_InvalidPluginConfigurationException() {
+        final String flattenWhen = UUID.randomUUID().toString();
+
+        when(mockConfig.getFlattenWhen()).thenReturn(flattenWhen);
+
+        when(expressionEvaluator.isValidExpressionStatement(flattenWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
     @Test
@@ -252,6 +265,7 @@ class FlattenProcessorTest {
     public void testEventNotProcessedWhenTheWhenConditionIsFalse() {
         final String whenCondition = UUID.randomUUID().toString();
         when(mockConfig.getFlattenWhen()).thenReturn(whenCondition);
+        when(expressionEvaluator.isValidExpressionStatement(whenCondition)).thenReturn(true);
 
         final FlattenProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(createTestData());

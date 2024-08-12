@@ -24,6 +24,7 @@ public class ObfuscationProcessorConfig {
     private String source;
 
     @JsonProperty("patterns")
+    @JsonPropertyDescription("A list of regex patterns that allow you to obfuscate specific parts of a field. Only parts that match the regex pattern will obfuscate. When not provided, the processor obfuscates the whole field.")
     private List<String> patterns;
     
     @JsonProperty("target")
@@ -33,7 +34,7 @@ public class ObfuscationProcessorConfig {
     private String target;
 
     @JsonProperty("action")
-    @JsonPropertyDescription("The obfuscation action. As of Data Prepper 2.3, only the `mask` action is supported.")
+    @JsonPropertyDescription("The obfuscation action. Available actions include 'hash' and 'mask'.")
     private PluginModel action;
 
     @JsonProperty("obfuscate_when")
@@ -94,7 +95,7 @@ public class ObfuscationProcessorConfig {
 
     void validateObfuscateWhen(final ExpressionEvaluator expressionEvaluator) {
         if (obfuscateWhen != null && !expressionEvaluator.isValidExpressionStatement(obfuscateWhen)) {
-            throw new InvalidPluginConfigurationException(String.format("obfuscate_when value %s is not a valid Data Prepper expression statement", obfuscateWhen));
+            throw new InvalidPluginConfigurationException(String.format("obfuscate_when value %s is not a valid Data Prepper expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", obfuscateWhen));
         }
     }
 }

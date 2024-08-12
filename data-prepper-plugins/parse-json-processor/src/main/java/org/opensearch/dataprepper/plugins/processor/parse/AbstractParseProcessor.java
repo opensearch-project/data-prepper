@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
@@ -67,6 +68,13 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
         processingFailuresCounter = pluginMetrics.counter(PROCESSING_FAILURES);
         this.expressionEvaluator = expressionEvaluator;
         this.eventKeyFactory = eventKeyFactory;
+
+        if (commonParseConfig.getParseWhen() != null
+                && !expressionEvaluator.isValidExpressionStatement(commonParseConfig.getParseWhen())) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("parse_when value of %s is not a valid expression statement. " +
+                            "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.", commonParseConfig.getParseWhen()));
+        }
     }
 
     /**

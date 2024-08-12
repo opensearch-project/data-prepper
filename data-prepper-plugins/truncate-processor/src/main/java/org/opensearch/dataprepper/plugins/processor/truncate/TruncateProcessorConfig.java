@@ -32,6 +32,7 @@ public class TruncateProcessorConfig {
         private Integer length;
 
         @JsonProperty("recursive")
+        @JsonPropertyDescription("Recursively truncates the fields. If the value of a field is a map (json object), then it recursively applies truncate operation on the fields in the map.")
         private Boolean recurse = false;
 
         @JsonProperty("truncate_when")

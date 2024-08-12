@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -51,6 +53,16 @@ class MapToListProcessorTest {
         lenient().when(mockConfig.getRemoveProcessedFields()).thenReturn(false);
         lenient().when(mockConfig.getConvertFieldToList()).thenReturn(false);
         lenient().when(mockConfig.getTagsOnFailure()).thenReturn(new ArrayList<>());
+    }
+
+    @Test
+    void invalid_map_to_list_when_throws_InvalidPluginConfigurationException() {
+        final String mapToListWhen = UUID.randomUUID().toString();
+        when(mockConfig.getMapToListWhen()).thenReturn(mapToListWhen);
+
+        when(expressionEvaluator.isValidExpressionStatement(mapToListWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
     @Test
@@ -312,6 +324,7 @@ class MapToListProcessorTest {
     public void testEventNotProcessedWhenTheWhenConditionIsFalse() {
         final String whenCondition = UUID.randomUUID().toString();
         when(mockConfig.getMapToListWhen()).thenReturn(whenCondition);
+        when(expressionEvaluator.isValidExpressionStatement(whenCondition)).thenReturn(true);
 
         final MapToListProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();

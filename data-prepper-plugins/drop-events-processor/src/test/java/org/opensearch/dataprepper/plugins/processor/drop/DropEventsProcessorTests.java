@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,11 +29,15 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class DropEventsProcessorTests {
@@ -49,9 +54,21 @@ public class DropEventsProcessorTests {
     @BeforeEach
     void beforeEach() {
         whenSetting = UUID.randomUUID().toString();
-        doReturn(HandleFailedEventsOption.SKIP)
+        when(expressionEvaluator.isValidExpressionStatement(anyString())).thenReturn(true);
+        lenient().doReturn(HandleFailedEventsOption.SKIP)
                 .when(dropEventProcessorConfig)
                 .getHandleFailedEventsOption();
+    }
+
+    @Test
+    void invalid_drop_when_throws_InvalidPluginConfigurationException() {
+
+        final String dropWhen = UUID.randomUUID().toString();
+
+        when(dropEventProcessorConfig.getDropWhen()).thenReturn(dropWhen);
+        when(expressionEvaluator.isValidExpressionStatement(dropWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, () -> new DropEventsProcessor(pluginMetrics, dropEventProcessorConfig, expressionEvaluator));
     }
 
     @Test
