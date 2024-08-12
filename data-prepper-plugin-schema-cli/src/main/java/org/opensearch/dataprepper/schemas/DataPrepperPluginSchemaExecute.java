@@ -14,11 +14,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_REQUIRED;
 
@@ -36,6 +41,9 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
     private String siteUrl;
     @CommandLine.Option(names = {"--site.baseurl"}, defaultValue = "/docs/latest")
     private String siteBaseUrl;
+
+    @CommandLine.Option(names = {"--output_folder"})
+    private String folderPath;
 
     public static void main(String[] args) {
         final int exitCode = new CommandLine(new DataPrepperPluginSchemaExecute()).execute(args);
@@ -57,18 +65,59 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
         final Class<?> pluginType = pluginConfigsJsonSchemaConverter.pluginTypeNameToPluginType(pluginTypeName);
         final Map<String, String> pluginNameToJsonSchemaMap = pluginConfigsJsonSchemaConverter.convertPluginConfigsIntoJsonSchemas(
                 SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, pluginType);
+        Map<String, String> filteredPluginNameToJsonSchemaMap;
         if (pluginNames == null) {
-            pluginNameToJsonSchemaMap.values().forEach(System.out::println);
+            filteredPluginNameToJsonSchemaMap = pluginNameToJsonSchemaMap;
         } else {
             final Set<String> pluginNamesSet = Set.of(pluginNames.split(","));
-            final List<String> result = pluginNamesSet.stream().flatMap(name -> {
-                if (!pluginNameToJsonSchemaMap.containsKey(name)) {
-                    LOG.error("plugin name: {} not found", name);
-                    return Stream.empty();
-                }
-                return Stream.of(pluginNameToJsonSchemaMap.get(name));
-            }).collect(Collectors.toList());
-            result.forEach(System.out::println);
+            filteredPluginNameToJsonSchemaMap = pluginNamesSet.stream()
+                    .filter(name -> {
+                        if (!pluginNameToJsonSchemaMap.containsKey(name)) {
+                            LOG.error("plugin name: {} not found", name);
+                            return false;
+                        }
+                        return true;
+                    })
+                    .collect(Collectors.toMap(
+                            Function.identity(),
+                            pluginNameToJsonSchemaMap::get
+                    ));
+        }
+
+        if (folderPath == null) {
+            writeCollectionToConsole(filteredPluginNameToJsonSchemaMap.values());
+        } else {
+            writeMapToFiles(filteredPluginNameToJsonSchemaMap, folderPath);
+        }
+    }
+
+    private static void writeCollectionToConsole(final Collection<String> values) {
+        values.forEach(System.out::println);
+    }
+
+    private static void writeMapToFiles(final Map<String, String> map, final String folderPath) {
+        // Ensure the directory exists
+        final Path directory = Paths.get(folderPath);
+        if (!Files.exists(directory)) {
+            try {
+                Files.createDirectories(directory);
+            } catch (IOException e) {
+                System.err.println("Error creating directory: " + e.getMessage());
+                return;
+            }
+        }
+
+        // Iterate through the map and write each entry to a file
+        for (final Map.Entry<String, String> entry : map.entrySet()) {
+            final String fileName = entry.getKey() + ".json";
+            final Path filePath = directory.resolve(fileName);
+
+            try {
+                Files.write(filePath, entry.getValue().getBytes());
+                System.out.println("Written file: " + filePath);
+            } catch (IOException e) {
+                System.err.println("Error writing file " + fileName + ": " + e.getMessage());
+            }
         }
     }
 }
