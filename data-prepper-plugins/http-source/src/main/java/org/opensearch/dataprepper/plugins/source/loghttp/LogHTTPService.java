@@ -107,7 +107,7 @@ public class LogHTTPService {
         buffer.writeBytes(sb.toString().getBytes(), key, bufferWriteTimeoutInMillis);
     }
 
-    private HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) throws Exception {
+    HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) throws Exception {
         final HttpData content = aggregatedHttpRequest.content();
         List<List<String>> jsonList;
         boolean jsonListSplitSuccess = false;
@@ -125,7 +125,7 @@ public class LogHTTPService {
         }
         try {
             if (buffer.isByteBuffer()) {
-                if (jsonListSplitSuccess && content.array().length > maxRequestLength) {
+                if (jsonListSplitSuccess && content.array().length > optimalRequestLength) {
                     for (final List<String> innerJsonList: jsonList) {
                         sendJsonList(innerJsonList);
                     }
