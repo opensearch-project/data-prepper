@@ -39,6 +39,8 @@ public class LogHTTPService {
     private static final int SERIALIZATION_OVERHEAD = 1024;
     public static final String REQUESTS_RECEIVED = "requestsReceived";
     public static final String SUCCESS_REQUESTS = "successRequests";
+    public static final String REQUESTS_OVER_OPTIMAL_SIZE = "requestsOverOptimalSize";
+    public static final String REQUESTS_OVER_MAXIMUM_SIZE = "requestsOverMaximumSize";
     public static final String PAYLOAD_SIZE = "payloadSize";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
@@ -50,9 +52,12 @@ public class LogHTTPService {
     private final int bufferWriteTimeoutInMillis;
     private final Counter requestsReceivedCounter;
     private final Counter successRequestsCounter;
+    private final Counter requestsOverOptimalSizeCounter;
+    private final Counter requestsOverMaximumSizeCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
     private Integer maxRequestLength;
+    private Integer optimalRequestLength;
 
     public LogHTTPService(final int bufferWriteTimeoutInMillis,
                           final Buffer<Record<Log>> buffer,
@@ -61,8 +66,11 @@ public class LogHTTPService {
         this.buffer = buffer;
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.maxRequestLength = buffer.getMaxRequestSize().isPresent() ? buffer.getMaxRequestSize().get(): null;
+        this.optimalRequestLength = buffer.getOptimalRequestSize().isPresent() ? buffer.getOptimalRequestSize().get(): null;
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
+        requestsOverOptimalSizeCounter = pluginMetrics.counter(REQUESTS_OVER_OPTIMAL_SIZE);
+        requestsOverMaximumSizeCounter = pluginMetrics.counter(REQUESTS_OVER_MAXIMUM_SIZE);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
     }
@@ -91,7 +99,10 @@ public class LogHTTPService {
         }
         sb.append("]");
         if (sb.toString().getBytes().length > maxRequestLength) {
+            requestsOverMaximumSizeCounter.increment();
             throw new RuntimeException("Request length "+ sb.toString().getBytes().length + " exceeds maxRequestLength "+ maxRequestLength);
+        } else if (sb.toString().getBytes().length > optimalRequestLength) {
+            requestsOverOptimalSizeCounter.increment();
         }
         buffer.writeBytes(sb.toString().getBytes(), key, bufferWriteTimeoutInMillis);
     }
@@ -99,16 +110,22 @@ public class LogHTTPService {
     private HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) throws Exception {
         final HttpData content = aggregatedHttpRequest.content();
         List<List<String>> jsonList;
+        boolean jsonListSplitSuccess = false;
 
         try {
-            jsonList = (maxRequestLength == null) ? jsonCodec.parse(content) : jsonCodec.parse(content, buffer.getOptimalRequestSize().get() - SERIALIZATION_OVERHEAD);
+            if (buffer.isByteBuffer() && maxRequestLength != null && optimalRequestLength != null) {
+                jsonList = jsonCodec.parse(content, optimalRequestLength - SERIALIZATION_OVERHEAD);
+                jsonListSplitSuccess = true;
+            } else {
+                jsonList = jsonCodec.parse(content);
+            }
         } catch (IOException e) {
             LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
             throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
         }
         try {
             if (buffer.isByteBuffer()) {
-                if (maxRequestLength != null && content.array().length > maxRequestLength) {
+                if (jsonListSplitSuccess && content.array().length > maxRequestLength) {
                     for (final List<String> innerJsonList: jsonList) {
                         sendJsonList(innerJsonList);
                     }
