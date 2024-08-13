@@ -192,6 +192,7 @@ class LogHTTPServiceTest {
         logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, byteBuffer, null, pluginMetrics);
         AggregatedHttpRequest aggregatedHttpRequest = mock(AggregatedHttpRequest.class);
         HttpData httpData = mock(HttpData.class);
+        // Test small json data
         String testString ="{\"key1\":\"value1\"},{\"key2\":\"value2\"},{\"key3\":\"value3\"},{\"key4\":\"value4\"},{\"key5\":\"value5\"}";
         String exampleString = "[ " + testString + "]";
         when(httpData.array()).thenReturn(exampleString.getBytes());
@@ -202,6 +203,7 @@ class LogHTTPServiceTest {
         logHTTPService.processRequest(aggregatedHttpRequest);
         verify(byteBuffer, times(1)).writeBytes(any(), (String)isNull(), any(Integer.class));
 
+        // Test more than 1MB json data
         StringBuilder sb = new StringBuilder(1024*1024+10240);
         for (int i =0; i < 12500; i++) {
             sb.append(testString);
@@ -217,6 +219,7 @@ class LogHTTPServiceTest {
         when(aggregatedHttpRequest.content()).thenReturn(httpData);
         logHTTPService.processRequest(aggregatedHttpRequest);
         verify(byteBuffer, times(2)).writeBytes(any(), anyString(), any(Integer.class));
+        // Test more than 4MB json data
         exampleString = "[" + largeTestString + "," + largeTestString + ","+largeTestString +","+largeTestString+"]";
         when(httpData.array()).thenReturn(exampleString.getBytes());
         stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
@@ -226,6 +229,7 @@ class LogHTTPServiceTest {
         logHTTPService.processRequest(aggregatedHttpRequest);
         verify(byteBuffer, times(7)).writeBytes(any(), anyString(), any(Integer.class));
 
+        // Test more than 4MB single json object, should throw exception
         int length = 3*1024*1024;
         sb = new StringBuilder(length);
         for (int i = 0; i < length; i++) {
