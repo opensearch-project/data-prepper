@@ -38,7 +38,7 @@ public class CountAggregateActionConfig {
     @JsonProperty("end_time_key")
     String endTimeKey = DEFAULT_END_TIME_KEY;
 
-    @JsonPropertyDescription("Format of the aggregated event.otel_metrics: Default output format. Outputs in OTel metrics SUM type with count as value.raw - Generates a JSON object with the count_key field as a count value and the start_time_key field with aggregation start time as value.")
+    @JsonPropertyDescription("Format of the aggregated event. otel_metrics is the default output format which outputs in OTel metrics SUM type with count as value. Other options is - raw - which generates a JSON object with the count_key field as a count value and the start_time_key field with aggregation start time as value.")
     @JsonProperty("output_format")
     String outputFormat = OutputFormat.OTEL_METRICS.toString();
 

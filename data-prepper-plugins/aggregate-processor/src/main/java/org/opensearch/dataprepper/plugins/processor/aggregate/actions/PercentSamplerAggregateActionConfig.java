@@ -11,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
 
 public class PercentSamplerAggregateActionConfig {
-    @JsonPropertyDescription("Percent value of the sampling to be done.")
+    @JsonPropertyDescription("Percent value of the sampling to be done.  0.0 < percent < 100.0")
     @JsonProperty("percent")
     @NotNull
     private double percent;

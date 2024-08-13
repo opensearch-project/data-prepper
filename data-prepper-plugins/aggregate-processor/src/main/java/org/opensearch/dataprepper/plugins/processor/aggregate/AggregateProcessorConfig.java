@@ -46,9 +46,7 @@ public class AggregateProcessorConfig {
     @JsonProperty("aggregated_events_tag")
     private String aggregatedEventsTag;
 
-    @JsonPropertyDescription("A [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
-            "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be " +
-            "run on the event. Default is `null`. All events will be processed unless otherwise stated.")
+    @JsonPropertyDescription("A Data Prepper conditional expression (https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as '/some-key == \"test\"', that will be evaluated to determine whether the processor will be run on the event."
     @JsonProperty("aggregate_when")
     private String whenCondition;
 

@@ -13,17 +13,17 @@ import jakarta.validation.constraints.AssertTrue;
 import java.time.Duration;
 
 public class TailSamplerAggregateActionConfig {
-    @JsonPropertyDescription("period to wait before considering that a trace event is complete")
+    @JsonPropertyDescription("Period to wait before considering that a trace event is complete")
     @JsonProperty("wait_period")
     @NotNull
     private Duration waitPeriod;
     
-    @JsonPropertyDescription("percent value to use for sampling non error events.")
+    @JsonPropertyDescription("Percent value to use for sampling non error events. 0.0 < percent < 100.0"")
     @JsonProperty("percent")
     @NotNull
     private Integer percent;
     
-    @JsonPropertyDescription("condition that determines if an event is error event or not")
+    @JsonPropertyDescription("A Data Prepper conditional expression (https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as '/some-key == \"test\"', that will be evaluated to determine whether the event is an error event or not")
     @JsonProperty("condition")
     private String condition;
 

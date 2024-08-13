@@ -31,7 +31,7 @@ public class HistogramAggregateActionConfig {
     @NotNull
     String key;
 
-    @JsonPropertyDescription("The units for the values in the key.")
+    @JsonPropertyDescription("The name of units for the values in the key. For example, bytes, traces etc")
     @JsonProperty("units")
     @NotNull
     String units;
@@ -40,7 +40,7 @@ public class HistogramAggregateActionConfig {
     @JsonProperty("metric_name")
     String metricName = HISTOGRAM_METRIC_NAME;
 
-    @JsonPropertyDescription("key_prefix used by all the fields created in the aggregated event. Having a prefix ensures that the names of the histogram event do not conflict with the field names in the event.")
+    @JsonPropertyDescription("Key prefix used by all the fields created in the aggregated event. Having a prefix ensures that the names of the histogram event do not conflict with the field names in the event.")
     @JsonProperty("generated_key_prefix")
     String generatedKeyPrefix = DEFAULT_GENERATED_KEY_PREFIX;
 
@@ -49,7 +49,7 @@ public class HistogramAggregateActionConfig {
     @NotNull
     List<Number> buckets;
 
-    @JsonPropertyDescription("Format of the aggregated event.otel_metrics: Default output format. Outputs in OTel metrics SUM type with count as value.raw - Generates a JSON object with the count_key field as a count value and the start_time_key field with aggregation start time as value.")
+    @JsonPropertyDescription("Format of the aggregated event. otel_metrics is the default output format which outputs in OTel metrics SUM type with count as value. Other options is - raw - which generates a JSON object with the count_key field as a count value and the start_time_key field with aggregation start time as value.")
     @JsonProperty("output_format")
     String outputFormat = OutputFormat.OTEL_METRICS.toString();
 

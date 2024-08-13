@@ -12,7 +12,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
 public class AppendAggregateActionConfig {
 
-    @JsonPropertyDescription("list of keys to append.")
+    @JsonPropertyDescription("List of keys to append.")
     @JsonProperty("keys_to_append")
     List<String> keysToAppend;
 
