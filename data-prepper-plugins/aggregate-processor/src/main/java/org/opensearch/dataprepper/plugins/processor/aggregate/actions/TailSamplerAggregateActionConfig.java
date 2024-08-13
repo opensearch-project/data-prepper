@@ -18,7 +18,7 @@ public class TailSamplerAggregateActionConfig {
     @NotNull
     private Duration waitPeriod;
     
-    @JsonPropertyDescription("Percent value to use for sampling non error events. 0.0 < percent < 100.0"")
+    @JsonPropertyDescription("Percent value to use for sampling non error events. 0.0 < percent < 100.0")
     @JsonProperty("percent")
     @NotNull
     private Integer percent;
