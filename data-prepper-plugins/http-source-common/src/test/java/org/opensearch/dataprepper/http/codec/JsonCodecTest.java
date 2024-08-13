@@ -72,7 +72,6 @@ class JsonCodecTest {
     public void parse_should_return_lists_smaller_than_provided_length(
             final String inputJsonArray, final String knownFirstPart, final int maxSize, final List<List<String>> expectedChunks, final List<Boolean> exceedsMaxSize) throws IOException {
         final int knownSingleBodySize = knownFirstPart.getBytes(Charset.defaultCharset()).length;
-        //final int maxSize = (knownSingleBodySize * 2) + 3;
         final List<List<String>> chunkedBodies = objectUnderTest.parse(HttpData.ofUtf8(inputJsonArray),
                 maxSize);
 
@@ -113,32 +112,32 @@ class JsonCodecTest {
     static class JsonArrayWithKnownFirstArgumentsProvider implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
-            // First test, all chunks smaller than maxSize, but output has 3 lists
+            // First test, all chunks smaller than maxSize, output has 3 lists, all smaller than maxSize
             String chunk11 = "{\"ὊὊὊ1\":\"ὊὊὊ1\"}";
             String chunk12 = "{\"ὊὊὊ2\":\"ὊὊὊO2\"}";
             String chunk13 = "{\"a3\":\"b3\"}";
             String chunk14 = "{\"ὊὊὊ4\":\"ὊὊὊ4\"}";
-            // Second test, all chunks smaller than maxSize, but output has 2 lists
+            // Second test, all chunks smaller than maxSize, output has 2 lists, all smaller than maxSize
             String chunk21 = "{\"aaa1\":\"aaa1\"}";
             String chunk22 = "{\"aaa2\":\"aaa2\"}";
             String chunk23 = "{\"a3\":\"b3\"}";
             String chunk24 = "{\"bbb4\":\"bbb4\"}";
-            // Third test, all chunks larger than maxSize, output has 4 lists
+            // Third test, all chunks larger than maxSize, output has 4 lists, all larger than maxSize
             String chunk31 = "{\"ὊὊὊ1\":\"ὊὊὊ01\"}";
             String chunk32 = "{\"ὊὊὊ2\":\"ὊὊὊO2\"}";
             String chunk33 = "{\"ὊὊὊ3\":\"ὊὊὊO3\"}";
             String chunk34 = "{\"ὊὊὊ4\":\"ὊὊὊO4\"}"; 
-            // Fourth test, only first chunk larger than maxSize, output has 3 lists
+            // Fourth test, only first chunk larger than maxSize, output has 3 lists, with first chunk larger than maxSize and others smaller
             String chunk41 = "{\"aaaaaaaaaaa1\":\"aaaaaaaaaaa1\"}";
             String chunk42 = "{\"aaa2\":\"aaa2\"}";
             String chunk43 = "{\"a3\":\"b3\"}";
             String chunk44 = "{\"bbb4\":\"bbb4\"}";
-            // Fifth test, only second chunk larger than maxSize, output has 3 lists
+            // Fifth test, only second chunk larger than maxSize, output has 3 lists, with second chunk larger than maxSize and others smaller
             String chunk51 = "{\"aaa2\":\"aaa2\"}";
             String chunk52 = "{\"aaaaaaaaaaa1\":\"aaaaaaaaaaa1\"}";
             String chunk53 = "{\"a3\":\"b3\"}";
             String chunk54 = "{\"bb4\":\"bb4\"}";
-            // Sixth test, only last chunk larger than maxSize, output has 3 lists
+            // Sixth test, only last chunk larger than maxSize, output has 3 lists, with last chunk larger than maxSize and others smaller
             String chunk61 = "{\"aaa2\":\"aaa2\"}";
             String chunk62 = "{\"a3\":\"b3\"}";
             String chunk63 = "{\"bbb4\":\"bbb4\"}";

@@ -110,12 +110,12 @@ public class LogHTTPService {
     HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) throws Exception {
         final HttpData content = aggregatedHttpRequest.content();
         List<List<String>> jsonList;
-        boolean jsonListSplitSuccess = false;
+        boolean isJsonListSplit = false;
 
         try {
             if (buffer.isByteBuffer() && maxRequestLength != null && optimalRequestLength != null) {
                 jsonList = jsonCodec.parse(content, optimalRequestLength - SERIALIZATION_OVERHEAD);
-                jsonListSplitSuccess = true;
+                isJsonListSplit = true;
             } else {
                 jsonList = jsonCodec.parse(content);
             }
@@ -125,7 +125,7 @@ public class LogHTTPService {
         }
         try {
             if (buffer.isByteBuffer()) {
-                if (jsonListSplitSuccess && content.array().length > optimalRequestLength) {
+                if (isJsonListSplit && content.array().length > optimalRequestLength) {
                     for (final List<String> innerJsonList: jsonList) {
                         sendJsonList(innerJsonList);
                     }
