@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -63,5 +64,10 @@ class RegexEqualOperatorTest {
     @Test
     void testEvalInValidPattern() {
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate("a", "*"));
+    }
+
+    @Test
+    void evaluate_with_null_lhs_returns_false() {
+        assertThat(objectUnderTest.evaluate(null, "a*"), equalTo(false));
     }
 }
