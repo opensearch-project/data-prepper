@@ -280,8 +280,6 @@ public class ScanObjectWorker implements Runnable {
         sourceCoordinator.saveProgressStateForPartition(folderPartition.getPartitionKey(), folderPartitionState.get());
 
         processObjectsForFolderPartition(objectsToProcess, folderPartition);
-
-        sourceCoordinator.updatePartitionForAcknowledgmentWait(folderPartition.getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
     }
 
     private List<S3ObjectReference> getObjectsForPrefix(final String bucket, final String s3Prefix) {
@@ -364,7 +362,8 @@ public class ScanObjectWorker implements Runnable {
             objectIndex++;
         }
 
-        // Complete the final acknowledgment set
+        sourceCoordinator.updatePartitionForAcknowledgmentWait(folderPartition.getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
+
         if (acknowledgementSet != null) {
             acknowledgementSet.complete();
         }
