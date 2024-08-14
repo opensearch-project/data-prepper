@@ -12,6 +12,9 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
@@ -80,6 +83,9 @@ class ParseTreeCoercionService {
                 return Float.valueOf(nodeStringValue);
             case DataPrepperExpressionParser.Boolean:
                 return Boolean.valueOf(nodeStringValue);
+            case DataPrepperExpressionParser.COMMA:
+            case DataPrepperExpressionParser.SET_DELIMITER:
+                return nodeType;
             case DataPrepperExpressionParser.Null:
                 return null;
             case DataPrepperExpressionParser.DataTypes:
