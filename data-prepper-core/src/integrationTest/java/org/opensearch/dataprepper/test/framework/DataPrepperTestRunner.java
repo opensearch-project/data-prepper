@@ -66,6 +66,7 @@ public class DataPrepperTestRunner {
     public void stop() {
         final DataPrepper dataPrepper = contextManager.getDataPrepperBean();
         dataPrepper.shutdown();
+        contextManager.shutdown();
     }
 
     /**

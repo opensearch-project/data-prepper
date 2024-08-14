@@ -55,6 +55,7 @@ public class ListPipelinesHandler implements HttpHandler {
                     .stream()
                     .map(PipelineListing::new)
                     .collect(Collectors.toList());
+            LOG.debug("List pipelines request responding with {} pipelines.", pipelines.size());
             final byte[] response = OBJECT_MAPPER.writeValueAsString(Collections.singletonMap("pipelines", pipelines)).getBytes();
             exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=UTF-8");
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);

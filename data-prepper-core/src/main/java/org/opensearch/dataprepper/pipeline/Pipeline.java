@@ -54,6 +54,7 @@ import static java.lang.String.format;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Pipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
+    private static final int SINK_LOGGING_FREQUENCY = (int) Duration.ofSeconds(60).toMillis();
     private volatile AtomicBoolean stopRequested;
 
     private final String name;
@@ -249,12 +250,13 @@ public class Pipeline {
 
             sinkExecutorService.submit(() -> {
                 long retryCount = 0;
+                final long sleepIfNotReadyTime = 200;
                 while (!isReady() && !isStopRequested()) {
-                    if (retryCount++ % 60 == 0) {
+                    if (retryCount++ % (SINK_LOGGING_FREQUENCY / sleepIfNotReadyTime) == 0) {
                         LOG.info("Pipeline [{}] Waiting for Sink to be ready", name);
                     }
                     try {
-                        Thread.sleep(1000);
+                        Thread.sleep(sleepIfNotReadyTime);
                     } catch (Exception e){}
                 }
                 startSourceAndProcessors();

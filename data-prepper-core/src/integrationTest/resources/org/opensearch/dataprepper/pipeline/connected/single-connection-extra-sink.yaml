@@ -1,0 +1,19 @@
+entry-pipeline:
+  delay: 5
+  source:
+    in_memory:
+      testing_key: Connected_SingleExtraSinkIT
+  sink:
+    - pipeline:
+        name: exit-pipeline
+    - in_memory:
+        testing_key: Connected_SingleExtraSinkIT_Entry
+
+exit-pipeline:
+  delay: 5
+  source:
+    pipeline:
+      name: entry-pipeline
+  sink:
+    - in_memory:
+        testing_key: Connected_SingleExtraSinkIT_Exit

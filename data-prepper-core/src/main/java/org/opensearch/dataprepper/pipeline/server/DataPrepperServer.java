@@ -33,8 +33,8 @@ public class DataPrepperServer {
     private final ShutdownHandler shutdownHandler;
     private final PrometheusMeterRegistry prometheusMeterRegistry;
     private final Authenticator authenticator;
+    private final ExecutorService executorService;
     private HttpServer server;
-    static final ExecutorService EXECUTOR_SERVICE = Executors.newFixedThreadPool(3);
 
     @Inject
     public DataPrepperServer(
@@ -49,6 +49,7 @@ public class DataPrepperServer {
         this.shutdownHandler = shutdownHandler;
         this.prometheusMeterRegistry = prometheusMeterRegistry;
         this.authenticator = authenticator;
+        executorService = Executors.newFixedThreadPool(3);
     }
 
     /**
@@ -56,7 +57,7 @@ public class DataPrepperServer {
      */
     public void start() {
         server = createServer();
-        server.setExecutor(EXECUTOR_SERVICE);
+        server.setExecutor(executorService);
         server.start();
         LOG.info("Data Prepper server running at :{}", server.getAddress().getPort());
     }
@@ -95,7 +96,7 @@ public class DataPrepperServer {
      */
     public void stop() {
         server.stop(0);
-        EXECUTOR_SERVICE.shutdownNow();
+        executorService.shutdownNow();
         LOG.info("Data Prepper server stopped");
     }
 }
