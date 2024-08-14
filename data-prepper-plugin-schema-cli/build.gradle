@@ -27,3 +27,14 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }
+
+jacocoTestCoverageVerification {
+    afterEvaluate {
+        classDirectories.from = files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    // Exclude main class
+                    'org/opensearch/dataprepper/schemas/DataPrepperPluginSchemaExecute.class'
+            ])
+        })
+    }
+}
