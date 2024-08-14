@@ -448,9 +448,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       }
 
       SerializedJson serializedJsonNode = null;
-      if (StringUtils.equals(action, OpenSearchBulkActions.UPDATE.toString()) ||
-          StringUtils.equals(action, OpenSearchBulkActions.UPSERT.toString()) ||
-          StringUtils.equals(action, OpenSearchBulkActions.DELETE.toString())) {
+      if (StringUtils.equals(eventAction, OpenSearchBulkActions.UPDATE.toString()) ||
+          StringUtils.equals(eventAction, OpenSearchBulkActions.UPSERT.toString()) ||
+          StringUtils.equals(eventAction, OpenSearchBulkActions.DELETE.toString())) {
             serializedJsonNode = SerializedJson.fromJsonNode(event.getJsonNode(), document);
       }
       BulkOperation bulkOperation;
