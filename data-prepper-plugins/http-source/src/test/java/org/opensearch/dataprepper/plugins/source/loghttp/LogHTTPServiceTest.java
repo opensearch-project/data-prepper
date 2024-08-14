@@ -40,10 +40,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.nio.charset.StandardCharsets;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -51,6 +55,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 
 @ExtendWith(MockitoExtension.class)
 class LogHTTPServiceTest {
@@ -78,14 +87,17 @@ class LogHTTPServiceTest {
 
     private LogHTTPService logHTTPService;
 
+    @Mock
+    private Buffer<Record<Log>> byteBuffer;
+
     @BeforeEach
     public void setUp() throws Exception {
         when(pluginMetrics.counter(LogHTTPService.REQUESTS_RECEIVED)).thenReturn(requestsReceivedCounter);
         when(pluginMetrics.counter(LogHTTPService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
         when(pluginMetrics.summary(LogHTTPService.PAYLOAD_SIZE)).thenReturn(payloadSizeSummary);
         when(pluginMetrics.timer(LogHTTPService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
-        when(serviceRequestContext.isTimedOut()).thenReturn(false);
-        when(requestProcessDuration.recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any())).thenAnswer(
+        lenient().when(serviceRequestContext.isTimedOut()).thenReturn(false);
+        lenient().when(requestProcessDuration.recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any())).thenAnswer(
                 (Answer<HttpResponse>) invocation -> {
                     final Object[] args = invocation.getArguments();
                     @SuppressWarnings("unchecked")
@@ -168,6 +180,71 @@ class LogHTTPServiceTest {
         verify(payloadSizeSummary, times(2)).record(payloadLengthCaptor.capture());
         assertEquals(timeoutRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
         verify(requestProcessDuration, times(2)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
+    }
+
+    @Test
+    public void testChunking() throws Exception {
+        byteBuffer = mock(Buffer.class);
+        when(byteBuffer.isByteBuffer()).thenReturn(true);
+        when(byteBuffer.getMaxRequestSize()).thenReturn(Optional.of(4*1024*1024));
+        when(byteBuffer.getOptimalRequestSize()).thenReturn(Optional.of(1024*1024));
+
+        logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, byteBuffer, null, pluginMetrics);
+        AggregatedHttpRequest aggregatedHttpRequest = mock(AggregatedHttpRequest.class);
+        HttpData httpData = mock(HttpData.class);
+        // Test small json data
+        String testString ="{\"key1\":\"value1\"},{\"key2\":\"value2\"},{\"key3\":\"value3\"},{\"key4\":\"value4\"},{\"key5\":\"value5\"}";
+        String exampleString = "[ " + testString + "]";
+        when(httpData.array()).thenReturn(exampleString.getBytes());
+        InputStream stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
+        when(httpData.toInputStream()).thenReturn(stream);
+
+        when(aggregatedHttpRequest.content()).thenReturn(httpData);
+        logHTTPService.processRequest(aggregatedHttpRequest);
+        verify(byteBuffer, times(1)).writeBytes(any(), (String)isNull(), any(Integer.class));
+
+        // Test more than 1MB json data
+        StringBuilder sb = new StringBuilder(1024*1024+10240);
+        for (int i =0; i < 12500; i++) {
+            sb.append(testString);
+            if (i+1 != 12500)
+                sb.append(",");
+        }
+        String largeTestString = sb.toString();
+        exampleString = "[" + largeTestString + "]";
+        when(httpData.array()).thenReturn(exampleString.getBytes());
+        stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
+        when(httpData.toInputStream()).thenReturn(stream);
+
+        when(aggregatedHttpRequest.content()).thenReturn(httpData);
+        logHTTPService.processRequest(aggregatedHttpRequest);
+        verify(byteBuffer, times(2)).writeBytes(any(), anyString(), any(Integer.class));
+        // Test more than 4MB json data
+        exampleString = "[" + largeTestString + "," + largeTestString + ","+largeTestString +","+largeTestString+"]";
+        when(httpData.array()).thenReturn(exampleString.getBytes());
+        stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
+        when(httpData.toInputStream()).thenReturn(stream);
+
+        when(aggregatedHttpRequest.content()).thenReturn(httpData);
+        logHTTPService.processRequest(aggregatedHttpRequest);
+        verify(byteBuffer, times(7)).writeBytes(any(), anyString(), any(Integer.class));
+
+        // Test more than 4MB single json object, should throw exception
+        int length = 3*1024*1024;
+        sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+             sb.append('A');
+        }
+        String value = sb.toString();
+        exampleString = "[{\"key\":\""+value+"\"}]";
+
+        when(httpData.array()).thenReturn(exampleString.getBytes());
+        stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
+        when(httpData.toInputStream()).thenReturn(stream);
+
+        when(aggregatedHttpRequest.content()).thenReturn(httpData);
+        assertThrows(RuntimeException.class, () -> logHTTPService.processRequest(aggregatedHttpRequest));
+
     }
 
     private AggregatedHttpRequest generateRandomValidHTTPRequest(int numJson) throws JsonProcessingException,

@@ -51,6 +51,12 @@ class MultiBufferDecorator<T extends Record<?>> extends DelegatingBuffer<T> impl
     }
 
     @Override
+    public Optional<Integer> getOptimalRequestSize() {
+        OptionalInt optimalRequestSize = allBuffers.stream().filter(b -> b.getOptimalRequestSize().isPresent()).mapToInt(b -> (Integer)b.getOptimalRequestSize().get()).min();
+        return  optimalRequestSize.isPresent()  ? Optional.of(optimalRequestSize.getAsInt()) : Optional.empty();
+    }
+
+    @Override
     public void shutdown() {
         allBuffers.forEach(Buffer::shutdown);
     }
