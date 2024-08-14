@@ -14,6 +14,8 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionBaseList
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionListener;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Stack;
 
 /**
@@ -35,6 +37,8 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
     private final Stack<Integer> operatorSymbolStack;
     private final Stack<Object> operandStack;
     private final Event event;
+    private boolean listStart;
+    private Set<Object> setMembers;
 
     public ParseTreeEvaluatorListener(final OperatorProvider operatorProvider,
                                       final ParseTreeCoercionService coercionService,
@@ -42,6 +46,7 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
         this.coercionService = coercionService;
         this.operatorProvider = operatorProvider;
         this.event = event;
+        this.listStart = false;
         operatorSymbolStack = new Stack<>();
         operandStack = new Stack<>();
     }
@@ -54,6 +59,24 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
         return operandStack.peek();
     }
 
+    private void validateSetMembers(Set<Object> setMembers) {
+        int numbers = 0;
+        int strings = 0;
+        int booleans = 0;
+        for (Object member: setMembers) {
+            if (member instanceof Number) {
+                numbers++;
+            } else if (member instanceof String) {
+                strings++;
+            } else if (member instanceof Boolean) {
+                booleans++;
+            }
+        }
+        if (numbers != setMembers.size() && strings != setMembers.size() && booleans != setMembers.size()) {
+            throw new RuntimeException("All set members should be of same type");
+        }
+    }
+
     @Override
     public void visitTerminal(TerminalNode node) {
         final int nodeType = node.getSymbol().getType();
@@ -62,12 +85,25 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
         }
         if (operatorProvider.containsOperator(nodeType) || nodeType == DataPrepperExpressionParser.LPAREN) {
             operatorSymbolStack.push(nodeType);
+        } else if (nodeType == DataPrepperExpressionParser.LBRACE) {
+            listStart = true;
+            setMembers = new HashSet<>();
+        } else if (nodeType == DataPrepperExpressionParser.RBRACE) {
+            listStart = false;
+            validateSetMembers(setMembers);
+            operandStack.push(setMembers);
         } else if (nodeType == DataPrepperExpressionParser.RPAREN) {
             // pop LPAREN at operatorSymbolStack top
             operatorSymbolStack.pop();
         } else {
             final Object arg = coercionService.coercePrimaryTerminalNode(node, event);
-            operandStack.push(arg);
+            if (listStart) {
+                if (!(arg instanceof Integer) || (((int)arg) != DataPrepperExpressionParser.COMMA && ((int)arg) != DataPrepperExpressionParser.SET_DELIMITER)) {
+                    setMembers.add(arg);
+                }
+            } else {
+                operandStack.push(arg);
+            }
         }
     }
 
