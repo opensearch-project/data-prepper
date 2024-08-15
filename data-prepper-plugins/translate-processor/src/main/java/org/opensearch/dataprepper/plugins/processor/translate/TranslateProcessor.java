@@ -106,8 +106,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         }
 
         String rootField = jsonExtractor.getRootField(commonPath);
-        Object rootFieldObject = recordEvent.get(rootField, Object.class);
-        if (rootFieldObject == null) {
+        if (!recordEvent.containsKey(rootField)) {
             return;
         }
         Map<String, Object> recordObject =  recordEvent.toMap();
