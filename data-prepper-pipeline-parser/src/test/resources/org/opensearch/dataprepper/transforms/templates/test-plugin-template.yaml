@@ -1,0 +1,4 @@
+"<<pipeline-name>>-transformed":
+  source: "<<$.<<pipeline-name>>.source>>"
+  sink:
+    - noop:

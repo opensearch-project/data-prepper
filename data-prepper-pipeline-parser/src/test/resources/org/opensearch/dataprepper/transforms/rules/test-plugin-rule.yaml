@@ -1,0 +1,3 @@
+plugin_name: "test-plugin"
+apply_when:
+  - "$..source.documentdb"

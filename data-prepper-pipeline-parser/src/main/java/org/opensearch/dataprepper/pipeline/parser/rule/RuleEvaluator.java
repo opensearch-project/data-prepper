@@ -91,11 +91,12 @@ public class RuleEvaluator {
         RuleTransformerModel rulesModel = null;
 
         try {
-            Collection<RuleInputStream> ruleStreams = transformersFactory.loadRules();
+            Collection<RuleStream> ruleStreams = transformersFactory.loadRules();
 
-            for (RuleInputStream ruleStream : ruleStreams) {
+            //walk through all rules and return first valid
+            for (RuleStream ruleStream : ruleStreams) {
                 try {
-                    rulesModel = yamlMapper.readValue(ruleStream.getInputStream(), RuleTransformerModel.class);
+                    rulesModel = yamlMapper.readValue(ruleStream.getRuleStream(), RuleTransformerModel.class);
                     List<String> rules = rulesModel.getApplyWhen();
                     String pluginName = rulesModel.getPluginName();
                     boolean allRulesValid = true;

@@ -1,4 +1,4 @@
 plugin_name: "documentdb"
 apply_when:
   - "$..source.documentdb"
-  - "$..source.documentdb.collections[0].s3_bucket"
+  - "$..source.documentdb.s3_bucket"

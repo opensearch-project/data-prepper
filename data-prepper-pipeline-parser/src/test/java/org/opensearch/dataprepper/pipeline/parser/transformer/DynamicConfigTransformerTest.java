@@ -19,7 +19,7 @@ import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.pipeline.parser.TestConfigurationProvider;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
-import org.opensearch.dataprepper.pipeline.parser.rule.RuleInputStream;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleStream;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -35,8 +35,6 @@ class DynamicConfigTransformerTest {
 
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory()
             .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER));
-    private final String RULES_DIRECTORY_PATH = "src/test/resources/transformation/rules";
-    private final String TEMPLATES_DIRECTORY_PATH = "src/test/resources/transformation/templates/testSource";
 
     TransformersFactory transformersFactory;
     RuleEvaluator ruleEvaluator;
@@ -47,7 +45,7 @@ class DynamicConfigTransformerTest {
         String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCDB1_CONFIG_FILE;
         String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
         String expectedDocDBFilePath = TestConfigurationProvider.EXPECTED_TRANSFORMATION_DOCDB1_CONFIG_FILE;
-                    String pluginName = "documentdb";
+        String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(pipelineConfigurationReader);
@@ -55,8 +53,8 @@ class DynamicConfigTransformerTest {
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
-        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        RuleStream ruleInputStream = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+        List<RuleStream> ruleStreams = Collections.singletonList(ruleInputStream);
         when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
 
@@ -78,7 +76,7 @@ class DynamicConfigTransformerTest {
 
         String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE;
         String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE;
-        String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE;
+        String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
         String expectedDocDBFilePath = TestConfigurationProvider.EXPECTED_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE;
         String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
@@ -90,8 +88,8 @@ class DynamicConfigTransformerTest {
         when(ruleFile.getFileName()).thenReturn(Paths.get(ruleDocDBFilePath).getFileName());
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
-        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        RuleStream ruleInputStream = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+        List<RuleStream> ruleStreams = Collections.singletonList(ruleInputStream);
         when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
         ruleEvaluator = new RuleEvaluator(transformersFactory);
@@ -112,7 +110,7 @@ class DynamicConfigTransformerTest {
 
         String docDBUserConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_CONFIG_FILE;
         String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_CONFIG_FILE;
-        String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE;
+        String ruleDocDBFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
         String expectedDocDBFilePath = TestConfigurationProvider.EXPECTED_TRANSFORMATION_DOCUMENTDB_SUBPIPLINES_CONFIG_FILE;
         String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
@@ -124,11 +122,11 @@ class DynamicConfigTransformerTest {
         InputStream ruleStream1 = new FileInputStream(ruleDocDBFilePath);
         InputStream ruleStream2 = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        RuleInputStream ruleInputStream1 = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream1);
-        RuleInputStream ruleInputStream2 = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream2);
+        RuleStream ruleInputStream1 = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream1);
+        RuleStream ruleInputStream2 = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream2);
 
-        List<RuleInputStream> ruleStreams1 = Collections.singletonList(ruleInputStream1);
-        List<RuleInputStream> ruleStreams2 = Collections.singletonList(ruleInputStream2);
+        List<RuleStream> ruleStreams1 = Collections.singletonList(ruleInputStream1);
+        List<RuleStream> ruleStreams2 = Collections.singletonList(ruleInputStream2);
         when(transformersFactory.loadRules()).thenReturn(ruleStreams1).thenReturn(ruleStreams2);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
 
@@ -160,9 +158,9 @@ class DynamicConfigTransformerTest {
 
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+        RuleStream ruleInputStream = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
 
-        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        List<RuleStream> ruleStreams = Collections.singletonList(ruleInputStream);
         when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
 
@@ -194,9 +192,9 @@ class DynamicConfigTransformerTest {
 
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+        RuleStream ruleInputStream = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
 
-        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        List<RuleStream> ruleStreams = Collections.singletonList(ruleInputStream);
         when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
 
@@ -230,9 +228,9 @@ class DynamicConfigTransformerTest {
 
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+        RuleStream ruleInputStream = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
 
-        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        List<RuleStream> ruleStreams = Collections.singletonList(ruleInputStream);
         when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
 
@@ -266,9 +264,9 @@ class DynamicConfigTransformerTest {
 
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+        RuleStream ruleInputStream = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
 
-        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        List<RuleStream> ruleStreams = Collections.singletonList(ruleInputStream);
         when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
 
@@ -303,13 +301,13 @@ class DynamicConfigTransformerTest {
         InputStream ruleStream2 = new FileInputStream(ruleDocDBFilePath);
         InputStream ruleStream3 = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        RuleInputStream ruleInputStream1 = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream1);
-        RuleInputStream ruleInputStream2 = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream2);
-        RuleInputStream ruleInputStream3 = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream3);
+        RuleStream ruleInputStream1 = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream1);
+        RuleStream ruleInputStream2 = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream2);
+        RuleStream ruleInputStream3 = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream3);
 
-        List<RuleInputStream> ruleStreams1 = Collections.singletonList(ruleInputStream1);
-        List<RuleInputStream> ruleStreams2 = Collections.singletonList(ruleInputStream2);
-        List<RuleInputStream> ruleStreams3 = Collections.singletonList(ruleInputStream3);
+        List<RuleStream> ruleStreams1 = Collections.singletonList(ruleInputStream1);
+        List<RuleStream> ruleStreams2 = Collections.singletonList(ruleInputStream2);
+        List<RuleStream> ruleStreams3 = Collections.singletonList(ruleInputStream3);
 
         when(transformersFactory.loadRules()).thenReturn(ruleStreams1).thenReturn(ruleStreams2).thenReturn(ruleStreams3);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
@@ -342,9 +340,9 @@ class DynamicConfigTransformerTest {
 
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(templateDocDBFilePath);
-        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+        RuleStream ruleInputStream = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
 
-        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        List<RuleStream> ruleStreams = Collections.singletonList(ruleInputStream);
         when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
 

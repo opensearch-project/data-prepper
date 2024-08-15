@@ -4,20 +4,16 @@
  */
 package org.opensearch.dataprepper.pipeline.parser.transformer;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import static org.opensearch.dataprepper.pipeline.parser.PipelineTransformationConfiguration.RULES_DIRECTORY_PATH;
-import static org.opensearch.dataprepper.pipeline.parser.PipelineTransformationConfiguration.TEMPLATES_DIRECTORY_PATH;
-import org.opensearch.dataprepper.pipeline.parser.rule.RuleInputStream;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import javax.inject.Named;
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,149 +22,96 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class TransformersFactory implements PipelineTransformationPathProvider {
+public class TransformersFactory {
 
-    private static final ObjectMapper YAML_MAPPER = new ObjectMapper(new YAMLFactory());
-
+    private static final Logger LOG = LoggerFactory.getLogger(TransformersFactory.class);
+    private static final String TEMPLATES_PATH = "org/opensearch/dataprepper/transforms/templates/";
+    private static final String RULES_PATH = "org/opensearch/dataprepper/transforms/rules/";
     private final String TEMPLATE_FILE_NAME_PATTERN = "-template.yaml";
     private final String RULE_FILE_NAME_PATTERN = "-rule.yaml";
-    private final String templatesDirectoryPath;
-    private final String rulesDirectoryPath;
 
-    public TransformersFactory(@Named(RULES_DIRECTORY_PATH) final String rulesDirectoryPath,
-                               @Named(TEMPLATES_DIRECTORY_PATH) final String templatesDirectoryPath) {
-        this.templatesDirectoryPath = templatesDirectoryPath;
-        this.rulesDirectoryPath = rulesDirectoryPath;
+    public TransformersFactory(){
     }
 
-    @Override
-    public String getTransformationTemplateDirectoryLocation() {
-        return templatesDirectoryPath;
-    }
-
-    @Override
-    public String getTransformationRulesDirectoryLocation() {
-        return rulesDirectoryPath;
-    }
-
-    public String getPluginTemplateFileLocation(String pluginName) {
-        if (pluginName == null || pluginName.isEmpty()) {
-            throw new RuntimeException("Transformation plugin not found");
-        }
-        return templatesDirectoryPath + "/" + pluginName + TEMPLATE_FILE_NAME_PATTERN;
-    }
 
     public InputStream getPluginTemplateFileStream(String pluginName) {
         if (pluginName == null || pluginName.isEmpty()) {
             throw new RuntimeException("Transformation plugin not found");
         }
-        ClassLoader classLoader = TransformersFactory.class.getClassLoader();
-        InputStream filestream = classLoader.getResourceAsStream("templates" + "/" + pluginName + TEMPLATE_FILE_NAME_PATTERN);
-        return filestream;
-    }
 
-    public Collection<RuleInputStream> loadRules() {
-        URI uri;
-        try {
-            uri = getClass().getClassLoader().getResource("rules").toURI();
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
+        // Construct the expected file name
+        String templateFileName = pluginName + TEMPLATE_FILE_NAME_PATTERN;
+
+        // Use the ClassLoader to find the template file on the classpath
+        ClassLoader classLoader = getClass().getClassLoader();
+        URL templateURL = classLoader.getResource(TEMPLATES_PATH + templateFileName);
+
+        if (templateURL == null) {
+            throw new RuntimeException("Template file not found for plugin: " + pluginName);
         }
 
-        List<RuleInputStream> ruleInputStreams = new ArrayList<>();
-
-        if ("jar".equals(uri.getScheme())) {
-            try (FileSystem fileSystem = FileSystems.newFileSystem(uri, Collections.emptyMap())) {
-                Path rulesFolderPath = fileSystem.getPath("rules");
-                try (Stream<Path> paths = Files.walk(rulesFolderPath)) {
-                    paths.filter(Files::isRegularFile)
-                            .forEach(path -> {
-                                InputStream ruleStream = getClass().getClassLoader().getResourceAsStream("rules" + "/" + path.getFileName().toString());
-                                if (ruleStream != null) {
-                                    ruleInputStreams.add(new RuleInputStream(path.getFileName().toString(), ruleStream));
-                                }
-                            });
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+        try {
+            // Convert the URL to a URI, then to a Path to read the file
+            Path templatePath;
+            try {
+                templatePath = Paths.get(templateURL.toURI());
+            } catch (FileSystemNotFoundException e) {
+                // Handle the case where the file system is not accessible (e.g., in a JAR)
+                FileSystem fileSystem = FileSystems.newFileSystem(templateURL.toURI(), Collections.emptyMap());
+                templatePath = fileSystem.getPath(TEMPLATES_PATH + templateFileName);
             }
-        } else {
-            Path rulesFolderPath = Paths.get(uri);
-            try (Stream<Path> paths = Files.walk(rulesFolderPath)) {
+
+            // Return an InputStream for the found file
+            return Files.newInputStream(templatePath);
+
+        } catch (IOException | URISyntaxException e) {
+            throw new RuntimeException("Failed to load template file for plugin: " + pluginName, e);
+        }
+    }
+
+    public Collection<RuleStream> loadRules() {
+        List<RuleStream> ruleStreams = new ArrayList<>();
+
+        // Use the ClassLoader to find resources on the classpath
+        ClassLoader classLoader = getClass().getClassLoader();
+
+        // Assume 'rules' directory is in 'data-prepper-plugins' project's resources folder
+        URL rulesURL = classLoader.getResource(RULES_PATH);
+
+        if (rulesURL == null) {
+            throw new RuntimeException("Rules directory not found in classpath.");
+        }
+
+        try {
+            // Convert the URL to a URI, then to a Path to read the directory contents
+            Path rulesPath;
+            try {
+                rulesPath = Paths.get(rulesURL.toURI());
+            } catch (FileSystemNotFoundException e) {
+                // Handle the case where the file system is not accessible (e.g., in a JAR)
+                // In this case, create a new FileSystem for the JAR and access the file
+                FileSystem fileSystem = FileSystems.newFileSystem(rulesURL.toURI(), Collections.emptyMap());
+                rulesPath = fileSystem.getPath(RULES_PATH);
+            }
+
+            // Scan the directory for rule files
+            try (Stream<Path> paths = Files.walk(rulesPath)) {
                 paths.filter(Files::isRegularFile)
-                        .forEach(path -> {
+                        .forEach(rulePath -> {
                             try {
-                                InputStream ruleStream = Files.newInputStream(path);
-                                ruleInputStreams.add(new RuleInputStream(path.getFileName().toString(), ruleStream));
+                                InputStream ruleInputStream = Files.newInputStream(rulePath);
+                                ruleStreams.add(new RuleStream(rulePath.getFileName().toString(), ruleInputStream));
                             } catch (IOException e) {
-                                throw new RuntimeException(e);
+                                throw new RuntimeException("Failed to load rule: " + rulePath, e);
                             }
                         });
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             }
-        }
-        return ruleInputStreams;
-    }
-
-
-    public List<Path> getRuleFiles() {
-        // Get the URI of the rules folder
-        URI uri = null;
-        try {
-            uri = getClass().getClassLoader().getResource("rules").toURI();
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
+        } catch (IOException | URISyntaxException e) {
+            throw new RuntimeException("Failed to scan rules directory on classpath.", e);
         }
 
-        Path rulesFolderPath;
-
-        if ("jar".equals(uri.getScheme())) {
-            // File is inside a JAR, create a filesystem for it
-            try (FileSystem fileSystem = FileSystems.newFileSystem(uri, Collections.emptyMap())) {
-                rulesFolderPath = fileSystem.getPath("rules");
-                return scanFolder(rulesFolderPath);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        } else {
-            // File is not inside a JAR
-            rulesFolderPath = Paths.get(uri);
-            return scanFolder(rulesFolderPath);
-        }
-    }
-
-    private List<Path> scanFolder(Path folderPath) {
-        List<Path> pathsList = new ArrayList<>();
-        try (Stream<Path> paths = Files.walk(folderPath)) {
-            pathsList = paths
-                    .filter(Files::isRegularFile) // Filter to include only regular files
-                    .collect(Collectors.toList()); // Collect paths into the list
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        return pathsList;
-    }
-
-    public InputStream readRuleFile(Path ruleFile) throws IOException {
-        ClassLoader classLoader = TransformersFactory.class.getClassLoader();
-        InputStream ruleStream = classLoader.getResourceAsStream("rules" + "/" + ruleFile.getFileName().toString());
-        return ruleStream;
-    }
-
-    public PipelineTemplateModel getTemplateModel(String pluginName) {
-        String templatePath = getPluginTemplateFileLocation(pluginName);
-
-        try {
-            PipelineTemplateModel pipelineTemplateModel = YAML_MAPPER.readValue(new File(templatePath), PipelineTemplateModel.class);
-            return pipelineTemplateModel;
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return ruleStreams;
     }
 }

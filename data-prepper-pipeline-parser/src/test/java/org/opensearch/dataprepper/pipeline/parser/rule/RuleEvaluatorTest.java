@@ -23,7 +23,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -41,9 +40,7 @@ class RuleEvaluatorTest {
         Map<String, Object> sourceOptions = new HashMap<>();
         Map<String, Object> s3Bucket = new HashMap<>();
         s3Bucket.put("s3_bucket", "bucket-name");
-        List<Map<String, Object>> collections = new ArrayList<>();
-        collections.add(s3Bucket);
-        sourceOptions.put("collections", collections);
+        sourceOptions.put("s3_bucket", s3Bucket);
         final PluginModel source = new PluginModel(pluginName, sourceOptions);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", null));
         final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null));
@@ -53,12 +50,13 @@ class RuleEvaluatorTest {
                 (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
+//        TransformersFactory transformersFactory = spy(new TransformersFactory("", ""));
 
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
         InputStream templateStream = new FileInputStream(ruleDocDBTemplatePath);
-        RuleInputStream ruleInputStream = new RuleInputStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
+        RuleStream ruleInputStream = new RuleStream(Paths.get(ruleDocDBFilePath).getFileName().toString(), ruleStream);
 
-        List<RuleInputStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        List<RuleStream> ruleStreams = Collections.singletonList(ruleInputStream);
         when(transformersFactory.loadRules()).thenReturn(ruleStreams);
         when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
 
@@ -78,18 +76,13 @@ class RuleEvaluatorTest {
         Map<String, Object> sourceOptions = new HashMap<>();
         Map<String, Object> s3Bucket = new HashMap<>();
         s3Bucket.put("s3_bucket", "bucket-name");
-        List<Map<String, Object>> collections = new ArrayList<>();
-        collections.add(s3Bucket);
-        sourceOptions.put("collections", collections);
+        sourceOptions.put("s3_bucket", s3Bucket);
         final PluginModel source = new PluginModel(pluginName, sourceOptions);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", null));
         final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null));
         final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
-
-        when(transformersFactory.getRuleFiles()).thenReturn(List.of());
-
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
                 (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));

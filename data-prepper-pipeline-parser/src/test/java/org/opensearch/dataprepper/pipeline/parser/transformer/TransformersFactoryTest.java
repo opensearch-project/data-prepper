@@ -1,86 +1,92 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
 package org.opensearch.dataprepper.pipeline.parser.transformer;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
+import org.opensearch.dataprepper.pipeline.parser.rule.RuleStream;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
+import java.io.InputStream;
+import java.util.Collection;
 
-public class TransformersFactoryTest {
+class TransformersFactoryTest {
 
-    private final String templatesDirectoryPath = "src/test/resources/transformation/templates";
-    private final String rulesDirectoryPath = "src/test/resources/transformation/rules";
-    private final String validPluginName = "testPlugin";
-    private final String invalidPluginName = "";
     private TransformersFactory transformersFactory;
 
     @BeforeEach
-    public void setUp() {
-        transformersFactory = spy(new TransformersFactory(rulesDirectoryPath, templatesDirectoryPath));
+    void setUp() {
+        transformersFactory = new TransformersFactory();
     }
 
     @Test
-    public void testGetPluginTemplateFileLocation_validPluginName() {
-        String expectedPath = templatesDirectoryPath + "/" + validPluginName + "-template.yaml";
-        assertEquals(expectedPath, transformersFactory.getPluginTemplateFileLocation(validPluginName));
+    void testGetPluginTemplateFileStream_whenTemplateExists_shouldReturnInputStream() throws Exception {
+        String pluginName = "test-plugin";
+
+        // Load the actual resource
+        InputStream inputStream = transformersFactory.getPluginTemplateFileStream(pluginName);
+
+        assertNotNull(inputStream);
+        inputStream.close();
     }
 
     @Test
-    public void testGetPluginTemplateFileLocation_invalidPluginName() {
+    void testGetPluginTemplateFileStream_whenTemplateDoesNotExist_shouldThrowException() {
+        String pluginName = "non-existent-plugin";
+
         Exception exception = assertThrows(RuntimeException.class, () -> {
-            transformersFactory.getPluginTemplateFileLocation(invalidPluginName);
+            transformersFactory.getPluginTemplateFileStream(pluginName);
         });
+
+        assertEquals("Template file not found for plugin: " + pluginName, exception.getMessage());
+    }
+
+    @Test
+    void testLoadRules_whenRulesExist_shouldReturnRuleStreams() throws Exception {
+        Collection<RuleStream> ruleStreams = transformersFactory.loadRules();
+
+        assertNotNull(ruleStreams);
+        assertFalse(ruleStreams.isEmpty());
+
+        for (RuleStream ruleStream : ruleStreams) {
+            assertNotNull(ruleStream.getRuleStream());
+            assertNotNull(ruleStream.getName());
+        }
+    }
+
+    @Test
+    void testLoadRules_whenFilesExist_shouldReturnRuleStreams() throws Exception {
+        // Ensure the rules directory has at least one file
+        Collection<RuleStream> ruleStreams = transformersFactory.loadRules();
+
+        assertNotNull(ruleStreams);
+        assertFalse(ruleStreams.isEmpty());
+
+        for (RuleStream ruleStream : ruleStreams) {
+            assertNotNull(ruleStream.getRuleStream());
+            assertNotNull(ruleStream.getName());
+            assertTrue(ruleStream.getName().endsWith("-rule.yaml"));
+        }
+    }
+
+    @Test
+    void testGetPluginTemplateFileStream_whenPluginNameIsNull_shouldThrowException() {
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            transformersFactory.getPluginTemplateFileStream(null);
+        });
+
         assertEquals("Transformation plugin not found", exception.getMessage());
     }
 
     @Test
-    public void testGetTemplateModel_throwsRuntimeExceptionOnIOException() throws IOException {
-        ObjectMapper mockedYamlMapper = Mockito.mock(ObjectMapper.class);
-        String templatePath = templatesDirectoryPath + "/" + validPluginName + "-template.yaml";
-        File expectedFile = new File(templatePath);
+    void testGetPluginTemplateFileStream_whenPluginNameIsEmpty_shouldThrowException() {
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            transformersFactory.getPluginTemplateFileStream("");
+        });
 
-        Mockito.when(mockedYamlMapper.readValue(Mockito.eq(expectedFile), Mockito.eq(PipelineTemplateModel.class)))
-                .thenThrow(new IOException("Test exception"));
-
-        assertThrows(RuntimeException.class, () -> transformersFactory.getTemplateModel(validPluginName));
-    }
-
-    @Test
-    public void testGetTemplateModel_invalidPluginNameThrowsRuntimeException() {
-        assertThrows(RuntimeException.class, () -> transformersFactory.getTemplateModel(invalidPluginName),
-                "Should throw a RuntimeException for empty plugin name.");
-    }
-
-    @Test
-    public void testReadFile() throws IOException {
-        // Mocking the getRuleFiles method
-        List<Path> mockRuleFiles = Arrays.asList(
-                Paths.get("src/test/resources/transformation/rules/documentdb-rule1.yaml"),
-                Paths.get("src/test/resources/transformation/rules/documentdb-rule.yaml")
-        );
-        doReturn(mockRuleFiles).when(transformersFactory).getRuleFiles();
-
-        List<Path> ruleFiles = transformersFactory.getRuleFiles();
-        assertEquals(ruleFiles.size(), 2);
-        Path firstRuleFile = ruleFiles.get(0);
-        Path secondRuleFile = ruleFiles.get(1);
-
-        assertEquals(firstRuleFile.getFileName().toString(), "documentdb-rule1.yaml");
+        assertEquals("Transformation plugin not found", exception.getMessage());
     }
 
 }
-
