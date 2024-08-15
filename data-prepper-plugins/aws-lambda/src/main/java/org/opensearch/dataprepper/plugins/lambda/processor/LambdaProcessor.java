@@ -57,8 +57,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     public static final String LAMBDA_LATENCY_METRIC = "lambdaLatency";
     public static final String REQUEST_PAYLOAD_SIZE = "requestPayloadSize";
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
-    private static final String SYNC_INVOCATION_TYPE = "RequestResponse";
-    private static final String ASYNC_INVOCATION_TYPE = "Event";
     private static final Logger LOG = LoggerFactory.getLogger(LambdaProcessor.class);
 
     private final String functionName;
@@ -83,7 +81,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private ByteCount maxBytes = null;
     private Duration maxCollectionDuration = null;
     private int maxRetries = 0;
-    private String mode = null;
     private OutputCodec codec = null;
 
     @DataPrepperPluginConstructor
@@ -110,12 +107,11 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             batchKey = null;
             isBatchEnabled = false;
         }
-        mode = lambdaProcessorConfig.getMode();
-        // TODO - Support for Async mode to be added.
-        if (mode != null && mode.equalsIgnoreCase(LambdaProcessorConfig.SYNCHRONOUS_MODE)) {
-            invocationType = SYNC_INVOCATION_TYPE;
-        } else {
-            throw new RuntimeException("Unsupported mode " + mode);
+        invocationType = lambdaProcessorConfig.getInvocationType();
+        // TODO - Support for Event invocation type to be added.
+        if(invocationType.equals(LambdaProcessorConfig.EVENT) ||
+        invocationType.equals(LambdaProcessorConfig.REQUEST_RESPONSE)){
+            throw new RuntimeException("Unsupported invocation type " + invocationType);
         }
 
         codec = new LambdaJsonCodec(batchKey);

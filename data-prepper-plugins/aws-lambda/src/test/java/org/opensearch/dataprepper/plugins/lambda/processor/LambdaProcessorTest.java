@@ -121,7 +121,7 @@ public class LambdaProcessorTest {
 
         lenient().when(lambdaProcessorConfig.getFunctionName()).thenReturn("test-function1");
         lenient().when(lambdaProcessorConfig.getMaxConnectionRetries()).thenReturn(3);
-        lenient().when(lambdaProcessorConfig.getMode()).thenReturn("requestresponse");
+        lenient().when(lambdaProcessorConfig.getInvocationType()).thenReturn("requestresponse");
 
         lenient().when(thresholdOptions.getEventCount()).thenReturn(10);
         lenient().when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.ofBytes(6));
@@ -264,7 +264,7 @@ public class LambdaProcessorTest {
 
     @Test
     public void testDoExecute_WithConfig() throws JsonProcessingException {
-        final String config = "        function_name: test_function\n" + "        mode: requestresponse\n" + "        aws:\n" + "          region: us-east-1\n" + "          sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" + "          sts_header_overrides: {\"test\":\"test\"}\n" + "        max_retries: 3\n";
+        final String config = "        function_name: test_function\n" + "        invocation_type: requestresponse\n" + "        aws:\n" + "          region: us-east-1\n" + "          sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" + "          sts_header_overrides: {\"test\":\"test\"}\n" + "        max_retries: 3\n";
 
         this.lambdaProcessorConfig = objectMapper.readValue(config, LambdaProcessorConfig.class);
 

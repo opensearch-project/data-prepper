@@ -14,8 +14,8 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 
 public class LambdaProcessorConfig {
 
-    public static final String SYNCHRONOUS_MODE = "RequestResponse";
-    public static final String ASYNCHRONOUS_MODE = "Event";
+    public static final String REQUEST_RESPONSE = "RequestResponse";
+    public static final String EVENT = "Event";
     private static final int DEFAULT_CONNECTION_RETRIES = 3;
 
     @JsonProperty("aws")
@@ -32,8 +32,8 @@ public class LambdaProcessorConfig {
     @JsonProperty("max_retries")
     private int maxConnectionRetries = DEFAULT_CONNECTION_RETRIES;
 
-    @JsonProperty("mode")
-    private String mode = SYNCHRONOUS_MODE;
+    @JsonProperty("invocation_type")
+    private String invocationType = REQUEST_RESPONSE;
 
     @JsonProperty("batch")
     private BatchOptions batchOptions;
@@ -55,7 +55,7 @@ public class LambdaProcessorConfig {
         return maxConnectionRetries;
     }
 
-    public String getMode(){return mode;}
+    public String getInvocationType(){return invocationType;}
 
     public String getWhenCondition() {
         return whenCondition;

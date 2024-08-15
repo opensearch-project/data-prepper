@@ -131,7 +131,7 @@ public class LambdaProcessorServiceIT {
 
         when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
         when(lambdaProcessorConfig.getMaxConnectionRetries()).thenReturn(3);
-        when(lambdaProcessorConfig.getMode()).thenReturn("synchronous");
+        when(lambdaProcessorConfig.getInvocationType()).thenReturn("RequestResponse");
 
         LambdaProcessor objectUnderTest = createObjectUnderTest(lambdaProcessorConfig);
 
@@ -148,7 +148,7 @@ public class LambdaProcessorServiceIT {
 
         when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
         when(lambdaProcessorConfig.getMaxConnectionRetries()).thenReturn(3);
-        when(lambdaProcessorConfig.getMode()).thenReturn("synchronous");
+        when(lambdaProcessorConfig.getInvocationType()).thenReturn("RequestResponse");
         when(thresholdOptions.getEventCount()).thenReturn(1);
         when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("2mb"));
         when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.parse("PT10s"));
