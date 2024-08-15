@@ -16,6 +16,7 @@ dependencies {
     implementation libs.parquet.common
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-test-event')
+    testImplementation testLibs.slf4j.simple
 }
 
 test {
