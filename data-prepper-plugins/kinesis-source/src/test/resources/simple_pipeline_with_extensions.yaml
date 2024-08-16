@@ -1,0 +1,3 @@
+extensions:
+  kinesis_lease_config:
+    lease_coordination_table: "kinesis-pipeline-kcl"
