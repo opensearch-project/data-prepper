@@ -128,15 +128,20 @@ public final class BulkRetryStrategy {
     static class BulkOperationRequestResponse {
         final AccumulatingBulkRequest bulkRequest;
         final BulkResponse response;
-        public BulkOperationRequestResponse(final AccumulatingBulkRequest bulkRequest, final BulkResponse response) {
+        final Exception exception;
+        public BulkOperationRequestResponse(final AccumulatingBulkRequest bulkRequest, final BulkResponse response, final Exception exception) {
             this.bulkRequest = bulkRequest;
             this.response = response;
+            this.exception = exception;
         }
         AccumulatingBulkRequest getBulkRequest() {
             return bulkRequest;
         }
         BulkResponse getResponse() {
             return response;
+        }
+        String getExceptionMessage() {
+            return exception.getMessage();
         }
     }
 
@@ -194,6 +199,7 @@ public final class BulkRetryStrategy {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY_MS, MAXIMUM_DELAY_MS).withMaxAttempts(maxRetries);
         BulkOperationRequestResponse operationResponse;
         BulkResponse response = null;
+        String exceptionMessage = "";
         AccumulatingBulkRequest request = bulkRequest;
         int attempt = 1;
         do {
@@ -201,9 +207,9 @@ public final class BulkRetryStrategy {
             if (operationResponse != null) {
                 final long delayMillis = backoff.nextDelayMillis(attempt++);
                 request = operationResponse.getBulkRequest();
-                response = operationResponse.getResponse();
+                exceptionMessage = operationResponse.getExceptionMessage();
                 if (delayMillis < 0) {
-                    RuntimeException e = new RuntimeException(String.format("Number of retries reached the limit of max retries (configured value %d)", maxRetries));
+                    RuntimeException e = new RuntimeException(String.format("Index : %s, Number of retries reached the limit of max retries (configured value %d. Last exception message: %s)", maxRetries, exceptionMessage));
                     handleFailures(request, null, e);
                     break;
                 }
@@ -251,13 +257,13 @@ public final class BulkRetryStrategy {
                     for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                         if(isItemInError(bulkItemResponse)) {
                             final ErrorCause error = bulkItemResponse.error();
-                            LOG.warn("operation = {}, error = {}", bulkItemResponse.operationType(), error != null ? error.reason() : "");
+                            LOG.warn("index = {} operation = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), error != null ? error.reason() : "");
                         }
                     }
                 }
             }
             bulkRequestNumberOfRetries.increment();
-            return new BulkOperationRequestResponse(bulkRequestForRetry, bulkResponse);
+            return new BulkOperationRequestResponse(bulkRequestForRetry, bulkResponse, exceptionFromRequest);
         } else {
             handleFailures(bulkRequestForRetry, bulkResponse, exceptionFromRequest);
         }
@@ -273,7 +279,7 @@ public final class BulkRetryStrategy {
                     if (error != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(error.type())) {
                         continue;
                     }
-                    LOG.warn("operation = {}, status = {}, error = {}", bulkItemResponse.operationType(), bulkItemResponse.status(), error != null ? error.reason() : "");
+                    LOG.warn("index = {}, operation = {}, status = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), bulkItemResponse.status(), error != null ? error.reason() : "");
                 }
             }
             handleFailures(bulkRequest, bulkResponse.items());
@@ -332,7 +338,7 @@ public final class BulkRetryStrategy {
                         requestToReissue.addOperation(bulkOperation);
                     } else if (bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
                         documentsVersionConflictErrors.increment();
-                        LOG.debug("Received version conflict from OpenSearch: {}", bulkItemResponse.error().reason());
+                        LOG.debug("Index: {}, Received version conflict from OpenSearch: {}", bulkItemResponse.index(), bulkItemResponse.error().reason());
                         bulkOperation.releaseEventHandle(true);
                     } else {
                         nonRetryableFailures.add(FailedBulkOperation.builder()
@@ -368,7 +374,7 @@ public final class BulkRetryStrategy {
             if (isItemInError(bulkItemResponse)) {
                 if (bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
                     documentsVersionConflictErrors.increment();
-                    LOG.debug("Received version conflict from OpenSearch: {}", bulkItemResponse.error().reason());
+                    LOG.debug("Index: {}, Received version conflict from OpenSearch: {}", bulkOperation.getIndex(), bulkItemResponse.error().reason());
                     bulkOperation.releaseEventHandle(true);
                 } else {
                     failures.add(FailedBulkOperation.builder()
