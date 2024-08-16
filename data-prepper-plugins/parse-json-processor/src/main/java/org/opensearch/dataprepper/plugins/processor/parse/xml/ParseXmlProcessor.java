@@ -8,6 +8,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.plugins.processor.parse.AbstractParseProcessor;
 import org.slf4j.Logger;
@@ -27,8 +28,9 @@ public class ParseXmlProcessor extends AbstractParseProcessor {
     @DataPrepperPluginConstructor
     public ParseXmlProcessor(final PluginMetrics pluginMetrics,
                               final ParseXmlProcessorConfig parseXmlProcessorConfig,
-                              final ExpressionEvaluator expressionEvaluator) {
-        super(pluginMetrics, parseXmlProcessorConfig, expressionEvaluator);
+                              final ExpressionEvaluator expressionEvaluator,
+                              final EventKeyFactory eventKeyFactory) {
+        super(pluginMetrics, parseXmlProcessorConfig, expressionEvaluator, eventKeyFactory);
     }
 
     @Override

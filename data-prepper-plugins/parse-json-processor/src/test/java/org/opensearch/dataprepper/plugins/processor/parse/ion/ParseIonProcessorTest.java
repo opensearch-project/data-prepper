@@ -37,7 +37,7 @@ class ParseIonProcessorTest extends ParseJsonProcessorTest {
 
     @Override
     protected AbstractParseProcessor createObjectUnderTest() {
-        return new ParseIonProcessor(pluginMetrics, ionProcessorConfig, expressionEvaluator);
+        return new ParseIonProcessor(pluginMetrics, ionProcessorConfig, expressionEvaluator, testEventKeyFactory);
     }
 
     @Test
@@ -58,7 +58,7 @@ class ParseIonProcessorTest extends ParseJsonProcessorTest {
     @Test
     void test_when_deleteSourceFlagEnabled() {
         when(processorConfig.isDeleteSourceRequested()).thenReturn(true);
-        parseJsonProcessor = new ParseIonProcessor(pluginMetrics, ionProcessorConfig, expressionEvaluator);
+        parseJsonProcessor = createObjectUnderTest();
 
         final String serializedMessage = "{bareKey: 1, symbol: SYMBOL, timestamp: 2023-11-30T21:05:23.383Z, attribute: dollars::100.0 }";
         final Event parsedEvent = createAndParseMessageEvent(serializedMessage);

@@ -5,16 +5,20 @@
 
 package org.opensearch.dataprepper.plugins.processor.parse.json;
 
-import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventFactory;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventBuilder;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.parse.AbstractParseProcessor;
 import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 
@@ -48,6 +52,8 @@ public class ParseJsonProcessorTest {
     protected ExpressionEvaluator expressionEvaluator;
 
     protected AbstractParseProcessor parseJsonProcessor;
+    private final EventFactory testEventFactory = TestEventFactory.getTestEventFactory();
+    protected final EventKeyFactory testEventKeyFactory = TestEventKeyFactory.getTestEventFactory();
 
     @BeforeEach
     public void setup() {
@@ -61,7 +67,7 @@ public class ParseJsonProcessorTest {
     }
 
     protected AbstractParseProcessor createObjectUnderTest() {
-        return new ParseJsonProcessor(pluginMetrics, jsonProcessorConfig, expressionEvaluator);
+        return new ParseJsonProcessor(pluginMetrics, jsonProcessorConfig, expressionEvaluator, testEventKeyFactory);
     }
 
     @Test
@@ -197,7 +203,7 @@ public class ParseJsonProcessorTest {
     @Test
     void test_when_deleteSourceFlagEnabled() {
         when(processorConfig.isDeleteSourceRequested()).thenReturn(true);
-        parseJsonProcessor = new ParseJsonProcessor(pluginMetrics, jsonProcessorConfig, expressionEvaluator);
+        parseJsonProcessor = createObjectUnderTest();
 
         final String key = "key";
         final ArrayList<String> value = new ArrayList<>(List.of("Element0","Element1","Element2"));
@@ -434,10 +440,7 @@ public class ParseJsonProcessorTest {
     }
 
     private Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
-        return new Record<>(JacksonEvent.builder()
-                .withData(data)
-                .withEventType("event")
-                .build());
+        return new Record<>(testEventFactory.eventBuilder(EventBuilder.class).withData(data).build());
     }
 
     private void assertThatKeyEquals(final Event parsedEvent, final String key, final Object value) {
