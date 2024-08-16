@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Optional;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
 @DataPrepperPlugin(name = "parse_ion", pluginType = Processor.class, pluginConfigurationType = ParseIonProcessorConfig.class)
 public class ParseIonProcessor extends AbstractParseProcessor {
@@ -45,10 +45,10 @@ public class ParseIonProcessor extends AbstractParseProcessor {
             // We need to do a two-step process here, read the value in, then convert away any Ion types like Timestamp
             return Optional.of(objectMapper.convertValue(objectMapper.readValue(message, new TypeReference<>() {}), new TypeReference<>() {}));
         } catch (JsonProcessingException e) {
-            LOG.error(EVENT, "An exception occurred due to invalid Ion while reading event [{}]", context, e);
+            LOG.error(SENSITIVE, "An exception occurred due to invalid Ion while parsing [{}] due to {}", message, e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
-            LOG.error(EVENT, "An exception occurred while using the parse_ion processor on Event [{}]", context, e);
+            LOG.error(SENSITIVE, "An exception occurred while using the parse_ion processor while parsing [{}]", message, e);
             return Optional.empty();
         }
     }

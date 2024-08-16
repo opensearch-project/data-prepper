@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Optional;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
 @DataPrepperPlugin(name = "parse_xml", pluginType =Processor.class, pluginConfigurationType =ParseXmlProcessorConfig.class)
 public class ParseXmlProcessor extends AbstractParseProcessor {
@@ -36,10 +36,10 @@ public class ParseXmlProcessor extends AbstractParseProcessor {
         try {
             return Optional.of(xmlMapper.readValue(message, new TypeReference<>() {}));
         } catch (JsonProcessingException e) {
-            LOG.error(EVENT, "An exception occurred due to invalid XML while reading event [{}]", context, e);
+            LOG.error(SENSITIVE, "An exception occurred due to invalid XML while parsing [{}] due to {}", message, e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
-            LOG.error(EVENT, "An exception occurred while using the parse_xml processor on Event [{}]", context, e);
+            LOG.error(SENSITIVE, "An exception occurred while using the parse_xml processor while parsing [{}]", message, e);
             return Optional.empty();
         }
     }
