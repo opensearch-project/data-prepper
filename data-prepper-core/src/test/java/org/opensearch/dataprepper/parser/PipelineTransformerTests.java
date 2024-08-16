@@ -112,6 +112,7 @@ class PipelineTransformerTests {
 
     @AfterEach
     void tearDown() {
+        verify(dataPrepperConfiguration).getEventConfiguration();
         verifyNoMoreInteractions(dataPrepperConfiguration);
     }
 

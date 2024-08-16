@@ -11,7 +11,7 @@ import org.opensearch.dataprepper.model.event.InternalOnlyEventKeyBridge;
 
 import javax.inject.Named;
 
-@Named
+@Named("innerEventKeyFactory")
 public class DefaultEventKeyFactory implements EventKeyFactory {
     @Override
     public EventKey createEventKey(final String key, final EventAction... forActions) {
