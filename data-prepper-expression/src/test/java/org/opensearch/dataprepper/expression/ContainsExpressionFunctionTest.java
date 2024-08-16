@@ -56,8 +56,7 @@ class ContainsExpressionFunctionTest {
     }
 
     @Test
-    void testContainsBasic() {
-        containsExpressionFunction = createObjectUnderTest();
+    void testContainsBasic() {containsExpressionFunction = createObjectUnderTest();
         assertThat(containsExpressionFunction.evaluate(List.of("\"abcde\"", "\"abcd\""), testEvent, testFunction), equalTo(true));
         assertThat(containsExpressionFunction.evaluate(List.of("/"+testKey, "/"+testKey2), testEvent, testFunction), equalTo(true));
         assertThat(containsExpressionFunction.evaluate(List.of("\""+testValue+"\"", "/"+testKey2), testEvent, testFunction), equalTo(true));
