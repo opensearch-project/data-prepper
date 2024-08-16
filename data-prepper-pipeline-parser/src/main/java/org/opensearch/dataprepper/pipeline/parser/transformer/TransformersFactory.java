@@ -21,6 +21,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -70,48 +71,49 @@ public class TransformersFactory {
             throw new RuntimeException("Failed to load template file for plugin: " + pluginName, e);
         }
     }
-
     public Collection<RuleStream> loadRules() {
         List<RuleStream> ruleStreams = new ArrayList<>();
-
-        // Use the ClassLoader to find resources on the classpath
         ClassLoader classLoader = getClass().getClassLoader();
 
-        // Assume 'rules' directory is in 'data-prepper-plugins' project's resources folder
-        URL rulesURL = classLoader.getResource(RULES_PATH);
-
-        if (rulesURL == null) {
-            throw new RuntimeException("Rules directory not found in classpath.");
-        }
-
         try {
-            // Convert the URL to a URI, then to a Path to read the directory contents
-            Path rulesPath;
-            try {
-                rulesPath = Paths.get(rulesURL.toURI());
-            } catch (FileSystemNotFoundException e) {
-                // Handle the case where the file system is not accessible (e.g., in a JAR)
-                // In this case, create a new FileSystem for the JAR and access the file
-                FileSystem fileSystem = FileSystems.newFileSystem(rulesURL.toURI(), Collections.emptyMap());
-                rulesPath = fileSystem.getPath(RULES_PATH);
-            }
+            // Use ClassLoader to find all resources that match the RULES_PATH pattern
+            Enumeration<URL> rulesURLs = classLoader.getResources(RULES_PATH);
 
-            // Scan the directory for rule files
-            try (Stream<Path> paths = Files.walk(rulesPath)) {
-                paths.filter(Files::isRegularFile)
-                        .forEach(rulePath -> {
-                            try {
-                                InputStream ruleInputStream = Files.newInputStream(rulePath);
-                                ruleStreams.add(new RuleStream(rulePath.getFileName().toString(), ruleInputStream));
-                            } catch (IOException e) {
-                                throw new RuntimeException("Failed to load rule: " + rulePath, e);
-                            }
-                        });
+            while (rulesURLs.hasMoreElements()) {
+                URL rulesURL = rulesURLs.nextElement();
+
+                try {
+                    // Convert the URL to a URI, then to a Path to read the directory contents
+                    Path rulesPath;
+                    try {
+                        rulesPath = Paths.get(rulesURL.toURI());
+                    } catch (FileSystemNotFoundException e) {
+                        // Handle the case where the file system is not accessible (e.g., in a JAR)
+                        FileSystem fileSystem = FileSystems.newFileSystem(rulesURL.toURI(), Collections.emptyMap());
+                        rulesPath = fileSystem.getPath(RULES_PATH);
+                    }
+
+                    // Scan the directory for rule files
+                    try (Stream<Path> paths = Files.walk(rulesPath)) {
+                        paths.filter(Files::isRegularFile)
+                                .forEach(rulePath -> {
+                                    try {
+                                        InputStream ruleInputStream = Files.newInputStream(rulePath);
+                                        ruleStreams.add(new RuleStream(rulePath.getFileName().toString(), ruleInputStream));
+                                    } catch (IOException e) {
+                                        throw new RuntimeException("Failed to load rule: " + rulePath, e);
+                                    }
+                                });
+                    }
+                } catch (IOException | URISyntaxException e) {
+                    throw new RuntimeException("Failed to scan rules directory on classpath: " + rulesURL, e);
+                }
             }
-        } catch (IOException | URISyntaxException e) {
-            throw new RuntimeException("Failed to scan rules directory on classpath.", e);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load rules from classpath.", e);
         }
 
         return ruleStreams;
     }
+
 }
