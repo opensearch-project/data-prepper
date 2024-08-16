@@ -35,6 +35,7 @@ public class RuleEvaluator {
     private static final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
     private final TransformersFactory transformersFactory;
 
+
     public RuleEvaluator(TransformersFactory transformersFactory) {
         this.transformersFactory = transformersFactory;
     }
@@ -63,9 +64,6 @@ public class RuleEvaluator {
                             .withPipelineName(entry.getKey())
                             .build();
                 }
-            } catch (FileNotFoundException e) {
-                LOG.error("Template File Not Found");
-                throw new RuntimeException(e);
             } catch (JsonProcessingException e) {
                 LOG.error("Error processing json");
                 throw new RuntimeException(e);
@@ -128,7 +126,7 @@ public class RuleEvaluator {
             }
 
         } catch (FileNotFoundException e) {
-            LOG.debug("Rule File Not Found");
+            LOG.debug("Rule File Not Found", e);
             return RuleFileEvaluation.builder()
                     .withPluginName(null)
                     .withRuleFileName(null)
