@@ -5,7 +5,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 
-@DataPrepperExtensionPlugin(modelType = KinesisLeaseConfig.class, rootKeyJsonPath = "/kinesis_lease_config", allowInPipelineConfigurations = true)
+@DataPrepperExtensionPlugin(modelType = KinesisLeaseConfig.class, rootKeyJsonPath = "/kinesis", allowInPipelineConfigurations = true)
 public class KinesisLeaseConfigExtension implements ExtensionPlugin {
 
     private KinesisLeaseConfigSupplier kinesisLeaseConfigSupplier;

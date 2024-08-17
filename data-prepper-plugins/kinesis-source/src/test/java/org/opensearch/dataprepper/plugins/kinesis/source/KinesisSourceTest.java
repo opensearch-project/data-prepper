@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseConfig;
 import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseConfigSupplier;
+import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseCoordinationTableConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.AwsAuthenticationConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisStreamConfig;
@@ -67,6 +68,9 @@ public class KinesisSourceTest {
     @Mock
     KinesisLeaseConfig kinesisLeaseConfig;
 
+    @Mock
+    KinesisLeaseCoordinationTableConfig kinesisLeaseCoordinationTableConfig;
+
     @BeforeEach
     void setup() {
         pluginMetrics = mock(PluginMetrics.class);
@@ -79,7 +83,9 @@ public class KinesisSourceTest {
         kinesisService = mock(KinesisService.class);
         kinesisLeaseConfigSupplier = mock(KinesisLeaseConfigSupplier.class);
         kinesisLeaseConfig = mock(KinesisLeaseConfig.class);
-        when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn("kinesis-lease-table");
+        kinesisLeaseCoordinationTableConfig = mock(KinesisLeaseCoordinationTableConfig.class);
+        when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn(kinesisLeaseCoordinationTableConfig);
+        when(kinesisLeaseCoordinationTableConfig.getTableName()).thenReturn("us-east-1");
         when(kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig()).thenReturn(Optional.ofNullable(kinesisLeaseConfig));
         when(awsAuthenticationConfig.getAwsRegion()).thenReturn(Region.of("us-west-2"));
         when(awsAuthenticationConfig.getAwsStsRoleArn()).thenReturn(UUID.randomUUID().toString());

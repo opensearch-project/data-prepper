@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseConfig;
 import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseConfigSupplier;
+import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseCoordinationTableConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.AwsAuthenticationConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.ConsumerStrategy;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
@@ -107,6 +108,9 @@ public class KinesisServiceTest {
     @Mock
     KinesisLeaseConfig kinesisLeaseConfig;
 
+    @Mock
+    KinesisLeaseCoordinationTableConfig kinesisLeaseCoordinationTableConfig;
+
     @BeforeEach
     void setup() {
         awsAuthenticationConfig = mock(AwsAuthenticationConfig.class);
@@ -122,7 +126,11 @@ public class KinesisServiceTest {
         buffer = mock(Buffer.class);
         kinesisLeaseConfigSupplier = mock(KinesisLeaseConfigSupplier.class);
         kinesisLeaseConfig = mock(KinesisLeaseConfig.class);
-        when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn("kinesis-lease-table");
+        kinesisLeaseCoordinationTableConfig = mock(KinesisLeaseCoordinationTableConfig.class);
+        when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn(kinesisLeaseCoordinationTableConfig);
+        when(kinesisLeaseCoordinationTableConfig.getTableName()).thenReturn("kinesis-lease-table");
+        when(kinesisLeaseCoordinationTableConfig.getRegion()).thenReturn("us-east-1");
+        when(kinesisLeaseCoordinationTableConfig.getAwsRegion()).thenReturn(Region.US_EAST_1);
         when(kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig()).thenReturn(Optional.ofNullable(kinesisLeaseConfig));
 
         when(awsAuthenticationConfig.getAwsRegion()).thenReturn(Region.of("us-west-2"));
@@ -160,9 +168,9 @@ public class KinesisServiceTest {
         when(kinesisSourceConfig.getStreams()).thenReturn(streamConfigs);
         when(kinesisSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(NUMBER_OF_RECORDS_TO_ACCUMULATE);
 
-        when(clientFactory.buildDynamoDBClient()).thenReturn(dynamoDbClient);
+        when(clientFactory.buildDynamoDBClient(kinesisLeaseCoordinationTableConfig.getAwsRegion())).thenReturn(dynamoDbClient);
         when(clientFactory.buildKinesisAsyncClient()).thenReturn(kinesisClient);
-        when(clientFactory.buildCloudWatchAsyncClient()).thenReturn(cloudWatchClient);
+        when(clientFactory.buildCloudWatchAsyncClient(kinesisLeaseCoordinationTableConfig.getAwsRegion())).thenReturn(cloudWatchClient);
         when(kinesisClient.serviceClientConfiguration()).thenReturn(KinesisServiceClientConfiguration.builder().region(Region.US_EAST_1).build());
         when(scheduler.startGracefulShutdown()).thenReturn(CompletableFuture.completedFuture(true));
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);

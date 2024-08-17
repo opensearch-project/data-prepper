@@ -33,7 +33,7 @@ public class KinesisLeaseConfigTest {
         assertThat(dataPrepperConfiguration, notNullValue());
         assertThat(dataPrepperConfiguration.getPipelineExtensions(), notNullValue());
         final Map<String, Object> kinesisLeaseConfigMap =
-                (Map<String, Object>) dataPrepperConfiguration.getPipelineExtensions().getExtensionMap().get("kinesis_lease_config");
+                (Map<String, Object>) dataPrepperConfiguration.getPipelineExtensions().getExtensionMap().get("kinesis");
         String json = OBJECT_MAPPER.writeValueAsString(kinesisLeaseConfigMap);
         Reader reader = new StringReader(json);
         return OBJECT_MAPPER.readValue(reader, KinesisLeaseConfig.class);
@@ -46,7 +46,8 @@ public class KinesisLeaseConfigTest {
                 "src/test/resources/simple_pipeline_with_extensions.yaml");
 
         assertNotNull(kinesisLeaseConfig.getLeaseCoordinationTable());
-        assertEquals(kinesisLeaseConfig.getLeaseCoordinationTable(), "kinesis-pipeline-kcl");
+        assertEquals(kinesisLeaseConfig.getLeaseCoordinationTable().getTableName(), "kinesis-pipeline-kcl");
+        assertEquals(kinesisLeaseConfig.getLeaseCoordinationTable().getRegion(), "us-east-1");
 
     }
 

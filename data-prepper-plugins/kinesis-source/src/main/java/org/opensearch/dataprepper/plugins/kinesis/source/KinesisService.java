@@ -8,6 +8,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseConfig;
 import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseConfigSupplier;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.ConsumerStrategy;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
@@ -39,6 +40,7 @@ public class KinesisService {
 
     private final String applicationName;
     private final String tableName;
+    private final String kclMetricsNamespaceName;
     private final String pipelineName;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final KinesisSourceConfig sourceConfig;
@@ -63,15 +65,18 @@ public class KinesisService {
         this.pluginMetrics = pluginMetrics;
         this.pluginFactory = pluginFactory;
         this.acknowledgementSetManager = acknowledgementSetManager;
-        this.dynamoDbClient = clientFactory.buildDynamoDBClient();
-        this.kinesisClient = clientFactory.buildKinesisAsyncClient();
-        this.cloudWatchClient = clientFactory.buildCloudWatchAsyncClient();
-        this.pipelineName = pipelineDescription.getPipelineName();
-        this.applicationName = pipelineName;
         if (kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig().isEmpty()) {
             throw new IllegalStateException("Lease Coordination table should be provided!");
         }
-        this.tableName = kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig().get().getLeaseCoordinationTable();
+        KinesisLeaseConfig kinesisLeaseConfig =
+                kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig().get();
+        this.tableName = kinesisLeaseConfig.getLeaseCoordinationTable().getTableName();
+        this.kclMetricsNamespaceName = this.tableName;
+        this.dynamoDbClient = clientFactory.buildDynamoDBClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
+        this.kinesisClient = clientFactory.buildKinesisAsyncClient();
+        this.cloudWatchClient = clientFactory.buildCloudWatchAsyncClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
+        this.pipelineName = pipelineDescription.getPipelineName();
+        this.applicationName = pipelineName;
         this.executorService = Executors.newFixedThreadPool(1);
     }
 
@@ -118,7 +123,9 @@ public class KinesisService {
                         new KinesisMultiStreamTracker(kinesisClient, sourceConfig, applicationName),
                         applicationName, kinesisClient, dynamoDbClient, cloudWatchClient,
                         new WorkerIdentifierGenerator().generate(), processorFactory
-                ).tableName(tableName);
+                )
+                .tableName(tableName)
+                .namespace(kclMetricsNamespaceName);
 
         ConsumerStrategy consumerStrategy = sourceConfig.getConsumerStrategy();
         if (consumerStrategy == ConsumerStrategy.POLLING) {

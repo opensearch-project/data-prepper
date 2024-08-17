@@ -5,6 +5,6 @@ import lombok.Getter;
 
 @Getter
 public class KinesisLeaseConfig {
-    @JsonProperty("lease_coordination_table")
-    private String leaseCoordinationTable;
+    @JsonProperty("lease_coordination")
+    private KinesisLeaseCoordinationTableConfig leaseCoordinationTable;
 }

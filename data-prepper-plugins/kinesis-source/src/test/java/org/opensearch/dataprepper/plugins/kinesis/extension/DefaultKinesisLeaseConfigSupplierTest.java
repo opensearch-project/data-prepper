@@ -17,15 +17,21 @@ public class DefaultKinesisLeaseConfigSupplierTest {
     @Mock
     KinesisLeaseConfig kinesisLeaseConfig;
 
+    @Mock
+    KinesisLeaseCoordinationTableConfig kinesisLeaseCoordinationTableConfig;
+
     private DefaultKinesisLeaseConfigSupplier createObjectUnderTest() {
         return new DefaultKinesisLeaseConfigSupplier(kinesisLeaseConfig);
     }
 
     @Test
     void testGetters() {
-        when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn(LEASE_COORDINATION_TABLE);
+        when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn(kinesisLeaseCoordinationTableConfig);
+        when(kinesisLeaseCoordinationTableConfig.getTableName()).thenReturn(LEASE_COORDINATION_TABLE);
+        when(kinesisLeaseCoordinationTableConfig.getRegion()).thenReturn("us-east-1");
         KinesisLeaseConfigSupplier kinesisLeaseConfigSupplier = createObjectUnderTest();
-        assertThat(kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig().get().getLeaseCoordinationTable(), equalTo(LEASE_COORDINATION_TABLE));
+        assertThat(kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig().get().getLeaseCoordinationTable().getTableName(), equalTo(LEASE_COORDINATION_TABLE));
+        assertThat(kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig().get().getLeaseCoordinationTable().getRegion(), equalTo("us-east-1"));
     }
 
     @Test

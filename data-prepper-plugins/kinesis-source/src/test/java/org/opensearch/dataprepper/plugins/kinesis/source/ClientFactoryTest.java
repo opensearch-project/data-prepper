@@ -35,13 +35,13 @@ public class ClientFactoryTest {
 
         ClientFactory clientFactory = new ClientFactory(awsCredentialsSupplier, awsAuthenticationOptionsConfig);
 
-        final DynamoDbAsyncClient dynamoDbAsyncClient = clientFactory.buildDynamoDBClient();
+        final DynamoDbAsyncClient dynamoDbAsyncClient = clientFactory.buildDynamoDBClient(Region.US_EAST_1);
         assertNotNull(dynamoDbAsyncClient);
 
         final KinesisAsyncClient kinesisAsyncClient = clientFactory.buildKinesisAsyncClient();
         assertNotNull(kinesisAsyncClient);
 
-        final CloudWatchAsyncClient cloudWatchAsyncClient = clientFactory.buildCloudWatchAsyncClient();
+        final CloudWatchAsyncClient cloudWatchAsyncClient = clientFactory.buildCloudWatchAsyncClient(Region.US_EAST_1);
         assertNotNull(cloudWatchAsyncClient);
     }
 }

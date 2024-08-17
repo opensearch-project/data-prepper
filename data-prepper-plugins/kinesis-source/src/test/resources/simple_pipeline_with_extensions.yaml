@@ -1,3 +1,5 @@
 extensions:
-  kinesis_lease_config:
-    lease_coordination_table: "kinesis-pipeline-kcl"
+  kinesis:
+    lease_coordination:
+      table_name: "kinesis-pipeline-kcl"
+      region: "us-east-1"
