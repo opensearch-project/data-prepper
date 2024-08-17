@@ -1,3 +1,4 @@
+plugin_name: "documentdb"
 apply_when:
   - "$..source.documentdb"
   - "$..source.documentdb.s3_bucket"

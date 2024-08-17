@@ -5,15 +5,14 @@
 package org.opensearch.dataprepper.pipeline.parser.rule;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.Option;
-import com.jayway.jsonpath.ParseContext;
 import com.jayway.jsonpath.PathNotFoundException;
-import com.jayway.jsonpath.ReadContext;
-import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
+import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
@@ -25,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -34,40 +34,29 @@ public class RuleEvaluator {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
     private final TransformersFactory transformersFactory;
-    private String PLUGIN_NAME = null;
+
 
     public RuleEvaluator(TransformersFactory transformersFactory) {
         this.transformersFactory = transformersFactory;
     }
 
     public RuleEvaluatorResult isTransformationNeeded(PipelinesDataFlowModel pipelineModel) {
-        //TODO - Dynamically scan the rules folder and get the corresponding template.
-        return isDocDBSource(pipelineModel);
-    }
 
-    /**
-     * Evaluates model based on pre defined rules and
-     * result contains the name of the pipeline that will need transformation,
-     * evaluated boolean result and the corresponding template model
-     * Assumption: only one pipeline can have transformation.
-     *
-     * @param pipelinesModel
-     * @return RuleEvaluatorResult
-     */
-    private RuleEvaluatorResult isDocDBSource(PipelinesDataFlowModel pipelinesModel) {
-        PLUGIN_NAME = "documentdb";
-
-        Map<String, PipelineModel> pipelines = pipelinesModel.getPipelines();
+        Map<String, PipelineModel> pipelines = pipelineModel.getPipelines();
         for (Map.Entry<String, PipelineModel> entry : pipelines.entrySet()) {
             try {
                 String pipelineJson = OBJECT_MAPPER.writeValueAsString(entry);
-                if (evaluate(pipelineJson, PLUGIN_NAME)) {
-                    LOG.info("Rule for {} is evaluated true for pipelineJson {}", PLUGIN_NAME, pipelineJson);
+                RuleFileEvaluation ruleFileEvaluation = evaluate(pipelineJson);
 
-                    InputStream templateStream = transformersFactory.getPluginTemplateFileStream(PLUGIN_NAME);
+                if (ruleFileEvaluation.getResult()) {
+                    String pluginName = ruleFileEvaluation.getPluginName();
+                    LOG.info("Applying rule {}",ruleFileEvaluation.getRuleFileName().toString());
+                    LOG.info("Rule for {} is evaluated true for pipelineJson {}", pluginName, pipelineJson);
+
+                    InputStream templateStream = transformersFactory.getPluginTemplateFileStream(pluginName);
                     PipelineTemplateModel templateModel = yamlMapper.readValue(templateStream,
                             PipelineTemplateModel.class);
-                    LOG.info("Template is chosen for {}", PLUGIN_NAME);
+                    LOG.info("Template is chosen for {}", pluginName);
 
                     return RuleEvaluatorResult.builder()
                             .withEvaluatedResult(true)
@@ -75,11 +64,7 @@ public class RuleEvaluator {
                             .withPipelineName(entry.getKey())
                             .build();
                 }
-            } catch (FileNotFoundException e){
-                LOG.error("Template File Not Found for {}", PLUGIN_NAME);
-                throw new RuntimeException(e);
-            }
-            catch (JsonProcessingException e) {
+            } catch (JsonProcessingException e) {
                 LOG.error("Error processing json");
                 throw new RuntimeException(e);
             } catch (IOException e) {
@@ -94,47 +79,68 @@ public class RuleEvaluator {
                 .build();
     }
 
-    private Boolean evaluate(String pipelinesJson,
-                             String pluginName) {
-
+    private RuleFileEvaluation evaluate(String pipelinesJson) {
         Configuration parseConfig = Configuration.builder()
-                .jsonProvider(new JacksonJsonProvider())
+                .jsonProvider(new JacksonJsonNodeJsonProvider())
                 .mappingProvider(new JacksonMappingProvider())
-                .options(Option.AS_PATH_LIST)
+                .options(Option.SUPPRESS_EXCEPTIONS)
                 .build();
-        ParseContext parseContext = JsonPath.using(parseConfig);
-        ReadContext readPathContext = parseContext.parse(pipelinesJson);
 
         RuleTransformerModel rulesModel = null;
-        InputStream ruleStream = null;
+
         try {
-            ruleStream = transformersFactory.getPluginRuleFileStream(pluginName);
+            Collection<RuleStream> ruleStreams = transformersFactory.loadRules();
 
-            rulesModel = yamlMapper.readValue(ruleStream, RuleTransformerModel.class);
-            List<String> rules = rulesModel.getApplyWhen();
-            for (String rule : rules) {
+            //walk through all rules and return first valid
+            for (RuleStream ruleStream : ruleStreams) {
                 try {
-                    Object result = readPathContext.read(rule);
-                } catch (PathNotFoundException e) {
-                    LOG.warn("Json Path not found for {}", pluginName);
-                    return false;
-                }
-            }
-        } catch (FileNotFoundException e){
-            LOG.warn("Rule File Not Found for {}", pluginName);
-            return false;
-        } catch(IOException e){
-            throw new RuntimeException(e);
-        }finally {
-            if (ruleStream != null) {
-                try {
+                    rulesModel = yamlMapper.readValue(ruleStream.getRuleStream(), RuleTransformerModel.class);
+                    List<String> rules = rulesModel.getApplyWhen();
+                    String pluginName = rulesModel.getPluginName();
+                    boolean allRulesValid = true;
+
+                    for (String rule : rules) {
+                        try {
+                            JsonNode result = JsonPath.using(parseConfig).parse(pipelinesJson).read(rule);
+                            if (result == null || result.size() == 0) {
+                                allRulesValid = false;
+                                break;
+                            }
+                        } catch (PathNotFoundException e) {
+                            LOG.debug("Json Path not found for {}", ruleStream.getName());
+                            allRulesValid = false;
+                            break;
+                        }
+                    }
+
+                    if (allRulesValid) {
+                        return RuleFileEvaluation.builder()
+                                .withPluginName(pluginName)
+                                .withRuleFileName(ruleStream.getName())
+                                .withResult(true)
+                                .build();
+                    }
+                } finally {
                     ruleStream.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
                 }
             }
-        }
-        return true;
-    }
-}
 
+        } catch (FileNotFoundException e) {
+            LOG.debug("Rule File Not Found", e);
+            return RuleFileEvaluation.builder()
+                    .withPluginName(null)
+                    .withRuleFileName(null)
+                    .withResult(false)
+                    .build();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return RuleFileEvaluation.builder()
+                .withPluginName(null)
+                .withRuleFileName(null)
+                .withResult(false)
+                .build();
+    }
+
+}

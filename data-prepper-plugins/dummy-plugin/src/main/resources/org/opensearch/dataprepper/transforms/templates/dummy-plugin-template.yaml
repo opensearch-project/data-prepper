@@ -1,0 +1,9 @@
+test-pipeline:
+  source:
+    file:
+      path: "/tmp/input-file.log"
+  processor:
+    - string_converter:
+        upper_case: true
+  sink:
+    - noop:
