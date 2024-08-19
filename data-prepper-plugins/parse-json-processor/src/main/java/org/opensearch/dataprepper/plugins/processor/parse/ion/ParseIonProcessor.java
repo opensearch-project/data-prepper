@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.plugins.processor.parse.AbstractParseProcessor;
 import org.slf4j.Logger;
@@ -32,8 +33,9 @@ public class ParseIonProcessor extends AbstractParseProcessor {
     @DataPrepperPluginConstructor
     public ParseIonProcessor(final PluginMetrics pluginMetrics,
                              final ParseIonProcessorConfig parseIonProcessorConfig,
-                             final ExpressionEvaluator expressionEvaluator) {
-        super(pluginMetrics, parseIonProcessorConfig, expressionEvaluator);
+                             final ExpressionEvaluator expressionEvaluator,
+                             final EventKeyFactory eventKeyFactory) {
+        super(pluginMetrics, parseIonProcessorConfig, expressionEvaluator, eventKeyFactory);
 
         // Convert Timestamps to ISO-8601 Z strings
         objectMapper.registerModule(new IonTimestampConverterModule());
