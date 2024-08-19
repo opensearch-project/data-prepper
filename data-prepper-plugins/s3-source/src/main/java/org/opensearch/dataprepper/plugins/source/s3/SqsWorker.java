@@ -270,7 +270,7 @@ public class SqsWorker implements Runnable {
         }
         
         if (endToEndAcknowledgementsEnabled) {
-            LOG.info("Created acknowledgement sets for {} messages.", parsedMessagesToRead.size());
+            LOG.debug("Created acknowledgement sets for {} messages.", parsedMessagesToRead.size());
         }
 
         // Use a separate loop for processing the S3 objects
