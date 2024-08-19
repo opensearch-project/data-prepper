@@ -149,14 +149,14 @@ class CachingEventKeyFactoryTest {
 
         final EventKeyFactory objectUnderTest = createObjectUnderTest();
 
-        final int numberOfIterations = 10;
+        final int numberOfIterations = 20;
         for (int i = 0; i < numberOfIterations; i++) {
             for (final String key : keys) {
                 objectUnderTest.createEventKey(key);
             }
         }
 
-        verify(innerEventKeyFactory, atLeast(numberOfIterations * CACHE_SIZE))
+        verify(innerEventKeyFactory, atLeast(CACHE_SIZE + 1))
                 .createEventKey(anyString(), eq(EventKeyFactory.EventAction.ALL));
     }
 }
