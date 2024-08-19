@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.s3;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -36,9 +37,17 @@ public class S3SinkConfig {
     private AwsAuthenticationOptions awsAuthenticationOptions;
 
     @JsonProperty("bucket")
-    @NotEmpty
     @Size(min = 3, max = 500, message = "bucket length should be at least 3 characters")
     private String bucketName;
+
+    @JsonProperty("bucket_selector")
+    private PluginModel bucketSelector;
+
+    @AssertTrue(message = "Only one of bucket or bucket_selector option should be specified")
+    private boolean isValidBucketConfig() {
+        return (bucketName != null && bucketSelector == null) ||
+               (bucketName == null && bucketSelector != null);
+    }
 
     /**
      * The default bucket to send to if using a dynamic bucket name and failures occur
@@ -125,6 +134,14 @@ public class S3SinkConfig {
             objectKeyOptions = new ObjectKeyOptions();
         }
         return objectKeyOptions;
+    }
+
+    /**
+     * Bucket selector configuration options.
+     * @return bucketSelector plugin model.
+     */
+    public PluginModel getBucketSelector() {
+        return bucketSelector;
     }
 
     /**

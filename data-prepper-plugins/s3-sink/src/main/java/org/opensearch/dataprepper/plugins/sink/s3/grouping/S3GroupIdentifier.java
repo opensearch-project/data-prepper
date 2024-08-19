@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3.grouping;
 
+import org.opensearch.dataprepper.plugins.sink.s3.S3BucketSelector;
 import java.util.Map;
 import java.util.Objects;
 
@@ -12,13 +13,16 @@ class S3GroupIdentifier {
     private final Map<String, Object> groupIdentifierHash;
     private final String groupIdentifierFullObjectKey;
 
+    private final S3BucketSelector s3BucketSelector;
     private final String fullBucketName;
 
     public S3GroupIdentifier(final Map<String, Object> groupIdentifierHash,
                              final String groupIdentifierFullObjectKey,
+                             final S3BucketSelector s3BucketSelector,
                              final String fullBucketName) {
         this.groupIdentifierHash = groupIdentifierHash;
         this.groupIdentifierFullObjectKey = groupIdentifierFullObjectKey;
+        this.s3BucketSelector = s3BucketSelector;
         this.fullBucketName = fullBucketName;
     }
 
@@ -39,5 +43,6 @@ class S3GroupIdentifier {
 
     public Map<String, Object> getGroupIdentifierHash() { return groupIdentifierHash; }
 
+    public Map<String, String> getMetadata(int eventCount) { return s3BucketSelector != null ? s3BucketSelector.getMetadata(eventCount) : null; }
     public String getFullBucketName() { return fullBucketName; }
 }

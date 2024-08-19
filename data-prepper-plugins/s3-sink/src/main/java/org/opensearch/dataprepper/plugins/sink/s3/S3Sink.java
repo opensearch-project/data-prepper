@@ -94,7 +94,17 @@ public class S3Sink extends AbstractSink<Record<Event>> {
         bufferFactory = new CompressionBufferFactory(innerBufferFactory, compressionEngine, testCodec);
 
         ExtensionProvider extensionProvider = StandardExtensionProvider.create(testCodec, compressionOption);
-        KeyGenerator keyGenerator = new KeyGenerator(s3SinkConfig, extensionProvider, expressionEvaluator);
+        String bucketName;
+        S3BucketSelector s3BucketSelector = null;
+        if (s3SinkConfig.getBucketSelector() != null) {
+            s3BucketSelector = loadS3BucketSelector(pluginFactory);
+            s3BucketSelector.initialize(s3SinkConfig);
+            bucketName = s3BucketSelector.getBucketName();
+        } else {
+            bucketName = s3SinkConfig.getBucketName();
+        }
+
+        KeyGenerator keyGenerator = new KeyGenerator(s3SinkConfig, s3BucketSelector, extensionProvider, expressionEvaluator);
 
         if (s3SinkConfig.getObjectKeyOptions().getPathPrefix() != null &&
             !expressionEvaluator.isValidFormatExpression(s3SinkConfig.getObjectKeyOptions().getPathPrefix())) {
@@ -106,8 +116,8 @@ public class S3Sink extends AbstractSink<Record<Event>> {
             throw new InvalidPluginConfigurationException("name_pattern is not a valid format expression");
         }
 
-        if (s3SinkConfig.getBucketName() != null &&
-                !expressionEvaluator.isValidFormatExpression(s3SinkConfig.getBucketName())) {
+        if (bucketName != null &&
+                !expressionEvaluator.isValidFormatExpression(bucketName)) {
             throw new InvalidPluginConfigurationException("bucket name is not a valid format expression");
         }
 
@@ -115,11 +125,17 @@ public class S3Sink extends AbstractSink<Record<Event>> {
 
         testCodec.validateAgainstCodecContext(s3OutputCodecContext);
 
-        final S3GroupIdentifierFactory s3GroupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig);
-        final S3GroupManager s3GroupManager = new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, codecFactory, s3Client, bucketOwnerProvider);
+        final S3GroupIdentifierFactory s3GroupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig, s3BucketSelector);
+        final S3GroupManager s3GroupManager = new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, codecFactory, s3Client, s3BucketSelector, bucketOwnerProvider);
 
 
         s3SinkService = new S3SinkService(s3SinkConfig, s3OutputCodecContext, RETRY_FLUSH_BACKOFF, pluginMetrics, s3GroupManager);
+    }
+
+    private S3BucketSelector loadS3BucketSelector(PluginFactory pluginFactory) {
+        final PluginModel modeConfiguration = s3SinkConfig.getBucketSelector();
+        final PluginSetting modePluginSetting = new PluginSetting(modeConfiguration.getPluginName(), modeConfiguration.getPluginSettings());
+        return pluginFactory.loadPlugin(S3BucketSelector.class, modePluginSetting);
     }
 
     @Override

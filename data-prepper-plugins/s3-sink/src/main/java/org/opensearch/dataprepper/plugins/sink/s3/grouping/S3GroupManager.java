@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink.s3.grouping;
 import com.google.common.collect.Maps;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.plugins.sink.s3.S3BucketSelector;
 import org.opensearch.dataprepper.plugins.sink.s3.S3SinkConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
@@ -36,6 +37,8 @@ public class S3GroupManager {
 
     private final BucketOwnerProvider bucketOwnerProvider;
 
+    private final S3BucketSelector s3BucketSelector;
+
     private long totalGroupSize;
 
 
@@ -44,11 +47,13 @@ public class S3GroupManager {
                           final BufferFactory bufferFactory,
                           final CodecFactory codecFactory,
                           final S3AsyncClient s3Client,
+                          final S3BucketSelector s3BucketSelector,
                           final BucketOwnerProvider bucketOwnerProvider) {
         this.s3SinkConfig = s3SinkConfig;
         this.s3GroupIdentifierFactory = s3GroupIdentifierFactory;
         this.bufferFactory = bufferFactory;
         this.codecFactory = codecFactory;
+        this.s3BucketSelector = s3BucketSelector;
         this.s3Client = s3Client;
         totalGroupSize = 0;
         this.bucketOwnerProvider = bucketOwnerProvider;
@@ -79,7 +84,7 @@ public class S3GroupManager {
         if (allGroups.containsKey(s3GroupIdentifier)) {
             return allGroups.get(s3GroupIdentifier);
         } else {
-            final Buffer bufferForNewGroup =  bufferFactory.getBuffer(s3Client, s3GroupIdentifier::getFullBucketName, s3GroupIdentifier::getGroupIdentifierFullObjectKey, s3SinkConfig.getDefaultBucket(), bucketOwnerProvider);
+            final Buffer bufferForNewGroup =  bufferFactory.getBuffer(s3Client, s3GroupIdentifier::getFullBucketName, s3GroupIdentifier::getGroupIdentifierFullObjectKey, s3SinkConfig.getDefaultBucket(), s3BucketSelector::getMetadata, bucketOwnerProvider);
             final OutputCodec outputCodec = codecFactory.provideCodec();
             final S3Group s3Group = new S3Group(s3GroupIdentifier, bufferForNewGroup, outputCodec);
             allGroups.put(s3GroupIdentifier, s3Group);
