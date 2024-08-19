@@ -9,16 +9,14 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
-import org.springframework.context.annotation.Primary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
-import javax.inject.Named;
 import java.util.Arrays;
 import java.util.Objects;
 
-@Named
-@Primary
 class CachingEventKeyFactory implements EventKeyFactory {
+    private static final Logger log = LoggerFactory.getLogger(CachingEventKeyFactory.class);
     private final EventKeyFactory delegateEventKeyFactory;
     private final Cache<CacheKey, EventKey> cache;
 
@@ -47,8 +45,12 @@ class CachingEventKeyFactory implements EventKeyFactory {
         }
     }
 
-    @Inject
     CachingEventKeyFactory(final EventKeyFactory delegateEventKeyFactory, final EventConfiguration eventConfiguration) {
+        Objects.requireNonNull(delegateEventKeyFactory);
+        Objects.requireNonNull(eventConfiguration);
+
+        log.debug("Configured to cache a maximum of {} event keys.", eventConfiguration.getMaximumCachedKeys());
+
         this.delegateEventKeyFactory = delegateEventKeyFactory;
         cache = Caffeine.newBuilder()
                 .maximumSize(eventConfiguration.getMaximumCachedKeys())

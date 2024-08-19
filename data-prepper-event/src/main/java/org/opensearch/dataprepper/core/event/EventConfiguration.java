@@ -26,4 +26,8 @@ public class EventConfiguration {
     Integer getMaximumCachedKeys() {
         return maximumCachedKeys;
     }
+
+    void setMaximumCachedKeys(final Integer maximumCachedKeys) {
+        this.maximumCachedKeys = maximumCachedKeys;
+    }
 }

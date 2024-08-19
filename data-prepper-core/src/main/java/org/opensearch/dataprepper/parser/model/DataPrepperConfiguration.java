@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import org.opensearch.dataprepper.core.event.EventConfiguration;
+import org.opensearch.dataprepper.core.event.EventConfigurationContainer;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.parser.config.MetricTagFilter;
@@ -30,7 +31,7 @@ import java.util.Objects;
 /**
  * Class to hold configuration for DataPrepper, including server port and Log4j settings
  */
-public class DataPrepperConfiguration implements ExtensionsConfiguration {
+public class DataPrepperConfiguration implements ExtensionsConfiguration, EventConfigurationContainer {
     static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(30L);
 
     private static final String DEFAULT_SOURCE_COORDINATION_STORE = "in_memory";
