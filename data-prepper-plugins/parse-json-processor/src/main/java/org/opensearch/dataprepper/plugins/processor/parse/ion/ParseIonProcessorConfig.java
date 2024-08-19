@@ -6,8 +6,11 @@
 package org.opensearch.dataprepper.plugins.processor.parse.ion;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 
 import java.util.List;
@@ -37,6 +40,14 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
 
     @JsonProperty
     private boolean deleteSource = false;
+
+    @JsonProperty("handle_failed_events")
+    @JsonPropertyDescription("Determines how to handle events with ION processing errors. Options include 'skip', " +
+            "which will log the error and send the Event downstream to the next processor, and 'skip_silently', " +
+            "which will send the Event downstream to the next processor without logging the error. " +
+            "Default is 'skip'.")
+    @NotNull
+    private HandleFailedEventsOption handleFailedEventsOption = HandleFailedEventsOption.SKIP;
 
     @Override
     public String getSource() {
@@ -77,5 +88,23 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
     @Override
     public boolean isDeleteSourceRequested() {
         return deleteSource;
+    }
+
+    @Override
+    public HandleFailedEventsOption getHandleFailedEventsOption() {
+        return handleFailedEventsOption;
+    }
+
+    @AssertTrue(message = "handled_failed_events must be set to 'skip' or 'skip_silently'.")
+    boolean isHandleFailedEventsOptionValid() {
+        if (handleFailedEventsOption == null) {
+            return true;
+        }
+
+        if (handleFailedEventsOption.shouldDropEvent()) {
+            return false;
+        }
+
+        return true;
     }
 }

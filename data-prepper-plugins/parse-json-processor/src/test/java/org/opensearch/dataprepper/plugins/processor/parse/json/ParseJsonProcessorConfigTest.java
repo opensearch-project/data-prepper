@@ -7,12 +7,13 @@ package org.opensearch.dataprepper.plugins.processor.parse.json;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
+
+import java.util.List;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
-
-import java.util.List;
 
 public class ParseJsonProcessorConfigTest {
 
@@ -30,6 +31,8 @@ public class ParseJsonProcessorConfigTest {
         assertThat(objectUnderTest.getTagsOnFailure(), equalTo(null));
         assertThat(objectUnderTest.getOverwriteIfDestinationExists(), equalTo(true));
         assertThat(objectUnderTest.isDeleteSourceRequested(), equalTo(false));
+        assertThat(objectUnderTest.getHandleFailedEventsOption(), equalTo(HandleFailedEventsOption.SKIP));
+        assertThat(objectUnderTest.isHandleFailedEventsOptionValid(), equalTo(true));
     }
 
     @Nested
@@ -61,6 +64,20 @@ public class ParseJsonProcessorConfigTest {
 
             setField(ParseJsonProcessorConfig.class, config, "deleteSource", true);
             assertThat(config.isDeleteSourceRequested(), equalTo(true));
+        }
+
+        @Test
+        void isHandleFailedEventsOptionValid_returns_false_with_drop_option() throws NoSuchFieldException, IllegalAccessException {
+            setField(ParseJsonProcessorConfig.class, config, "handleFailedEventsOption", HandleFailedEventsOption.DROP);
+
+            assertThat(config.isHandleFailedEventsOptionValid(), equalTo(false));
+        }
+
+        @Test
+        void isHandleFailedEventsOptionValid_returns_true_with_null_handle_events() throws NoSuchFieldException, IllegalAccessException {
+            setField(ParseJsonProcessorConfig.class, config, "handleFailedEventsOption", null);
+
+            assertThat(config.isHandleFailedEventsOptionValid(), equalTo(true));
         }
     }
 }

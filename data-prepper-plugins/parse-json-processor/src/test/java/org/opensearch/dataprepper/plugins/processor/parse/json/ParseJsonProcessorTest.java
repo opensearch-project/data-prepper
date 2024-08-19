@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.parse.json;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +19,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.parse.AbstractParseProcessor;
 import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
@@ -34,6 +36,9 @@ import static java.util.Map.entry;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,6 +56,15 @@ public class ParseJsonProcessorTest {
     @Mock
     protected ExpressionEvaluator expressionEvaluator;
 
+    @Mock
+    protected HandleFailedEventsOption handleFailedEventsOption;
+
+    @Mock
+    protected Counter processingFailuresCounter;
+
+    @Mock
+    protected Counter parseErrorsCounter;
+
     protected AbstractParseProcessor parseJsonProcessor;
     private final EventFactory testEventFactory = TestEventFactory.getTestEventFactory();
     protected final EventKeyFactory testEventKeyFactory = TestEventKeyFactory.getTestEventFactory();
@@ -64,6 +78,12 @@ public class ParseJsonProcessorTest {
         when(processorConfig.getPointer()).thenReturn(defaultConfig.getPointer());
         when(processorConfig.getParseWhen()).thenReturn(null);
         when(processorConfig.getOverwriteIfDestinationExists()).thenReturn(true);
+
+        when(pluginMetrics.counter("recordsIn")).thenReturn(mock(Counter.class));
+        when(pluginMetrics.counter("recordsOut")).thenReturn(mock(Counter.class));
+        when(pluginMetrics.counter("processingFailures")).thenReturn(processingFailuresCounter);
+        when(pluginMetrics.counter("parseErrors")).thenReturn(parseErrorsCounter);
+        when(processorConfig.getHandleFailedEventsOption()).thenReturn(handleFailedEventsOption);
     }
 
     protected AbstractParseProcessor createObjectUnderTest() {
@@ -86,6 +106,10 @@ public class ParseJsonProcessorTest {
         assertThat(parsedEvent.containsKey(destination), equalTo(true));
 
         assertThatFirstMapIsSubsetOfSecondMap(data, parsedEvent.get(destination, Map.class));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -104,6 +128,10 @@ public class ParseJsonProcessorTest {
 
         assertThatKeyEquals(parsedEvent, source, "value_that_will_overwrite_source");
         assertThatKeyEquals(parsedEvent, "key", "value");
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -119,6 +147,10 @@ public class ParseJsonProcessorTest {
         final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
 
         assertThatKeyEquals(parsedEvent, source, "{\"root_source\":\"value_that_will_not_be_overwritten\"}");
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -136,6 +168,10 @@ public class ParseJsonProcessorTest {
 
         assertThatKeyEquals(parsedEvent, source, "{\"key\":\"value\"}");
         assertThat(parsedEvent.containsKey("key"), equalTo(false));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -149,6 +185,8 @@ public class ParseJsonProcessorTest {
 
         assertThatKeyEquals(parsedEvent, processorConfig.getSource(), serializedMessage);
         assertThat(parsedEvent.toMap().size(), equalTo(1));
+
+        verify(parseErrorsCounter).increment();
     }
 
     @Test
@@ -164,6 +202,10 @@ public class ParseJsonProcessorTest {
         assertThatKeyEquals(parsedEvent, DEEPLY_NESTED_KEY_NAME, messageMap.get(DEEPLY_NESTED_KEY_NAME));
         final String jsonPointerToValue = constructDeeplyNestedJsonPointer(numberOfLayers);
         assertThat(parsedEvent.get(jsonPointerToValue, String.class), equalTo("value"));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -183,6 +225,10 @@ public class ParseJsonProcessorTest {
         final String jsonPointerToValue = destination + constructDeeplyNestedJsonPointer(numberOfLayers);
 
         assertThat(parsedEvent.get(jsonPointerToValue, String.class), equalTo("value"));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -198,6 +244,10 @@ public class ParseJsonProcessorTest {
         assertThat(parsedEvent.get(key, ArrayList.class), equalTo(value));
         final String pointerToFirstElement = key + "/0";
         assertThat(parsedEvent.get(pointerToFirstElement, String.class), equalTo(value.get(0)));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -214,6 +264,10 @@ public class ParseJsonProcessorTest {
         assertThat(parsedEvent.get(key, ArrayList.class), equalTo(value));
         final String pointerToFirstElement = key + "/0";
         assertThat(parsedEvent.get(pointerToFirstElement, String.class), equalTo(value.get(0)));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -232,6 +286,10 @@ public class ParseJsonProcessorTest {
 
         final String pointerToInternalValue = key + "/0/key0";
         assertThat(parsedEvent.get(pointerToInternalValue, String.class), equalTo("value0"));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -250,6 +308,10 @@ public class ParseJsonProcessorTest {
 
         assertThat(parsedEvent.get("key0", String.class), equalTo("value0"));
         assertThat(parsedEvent.containsKey("key1"),equalTo(false));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -263,6 +325,10 @@ public class ParseJsonProcessorTest {
 
         assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
         assertThat(parsedEvent.get("key.0", String.class), equalTo(value.get(0)));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -283,6 +349,10 @@ public class ParseJsonProcessorTest {
         assertThatKeyEquals(parsedEvent, "s3", data.get("s3"));
 
         assertThatKeyEquals(parsedEvent, "log.s3", Collections.singletonMap("data", "sample data"));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -298,6 +368,10 @@ public class ParseJsonProcessorTest {
 
         assertThat(parsedEvent.get(location, String.class), equalTo("value"));
         assertThat(parsedEvent.get(destination, Map.class), equalTo(data));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
     }
 
     @Test
@@ -346,10 +420,16 @@ public class ParseJsonProcessorTest {
 
         assertThat(parsedEvent.toMap(), equalTo(testEvent.getData().toMap()));
 
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
+
     }
 
     @Test
     void test_tags_when_json_parse_fails() {
+        when(handleFailedEventsOption.shouldLog()).thenReturn(true);
+
         final String source = "different_source";
         final String destination = "destination_key";
         when(processorConfig.getSource()).thenReturn(source);
@@ -364,10 +444,14 @@ public class ParseJsonProcessorTest {
 
         final Event parsedEvent = createAndParseMessageEvent(testEvent);
         assertTrue(parsedEvent.getMetadata().hasTags(testTags));
+
+        verify(parseErrorsCounter).increment();
     }
 
     @Test
     void when_evaluate_conditional_throws_RuntimeException_events_are_not_dropped() {
+        when(handleFailedEventsOption.shouldLog()).thenReturn(true);
+
         final String source = "different_source";
         final String destination = "destination_key";
         when(processorConfig.getSource()).thenReturn(source);
@@ -383,6 +467,9 @@ public class ParseJsonProcessorTest {
         final Event parsedEvent = createAndParseMessageEvent(testEvent);
 
         assertThat(parsedEvent.toMap(), equalTo(testEvent.getData().toMap()));
+
+        verify(processingFailuresCounter).increment();
+        verifyNoInteractions(parseErrorsCounter);
     }
 
     private String constructDeeplyNestedJsonPointer(final int numberOfLayers) {

@@ -11,9 +11,11 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.record.Record;
+import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +33,7 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractParseProcessor.class);
+    private static final String PROCESSING_FAILURES = "processingFailures";
 
     private final EventKey source;
     private final EventKey destination;
@@ -39,6 +42,10 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
     private final List<String> tagsOnFailure;
     private final boolean overwriteIfDestinationExists;
     private final boolean deleteSourceRequested;
+
+    private final HandleFailedEventsOption handleFailedEventsOption;
+
+    protected final Counter processingFailuresCounter;
 
     private final ExpressionEvaluator expressionEvaluator;
     private final EventKeyFactory eventKeyFactory;
@@ -56,6 +63,8 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
         tagsOnFailure = commonParseConfig.getTagsOnFailure();
         overwriteIfDestinationExists = commonParseConfig.getOverwriteIfDestinationExists();
         deleteSourceRequested = commonParseConfig.isDeleteSourceRequested();
+        handleFailedEventsOption = commonParseConfig.getHandleFailedEventsOption();
+        processingFailuresCounter = pluginMetrics.counter(PROCESSING_FAILURES);
         this.expressionEvaluator = expressionEvaluator;
         this.eventKeyFactory = eventKeyFactory;
     }
@@ -104,8 +113,11 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                 if(deleteSourceRequested) {
                     event.delete(this.source);
                 }
-            } catch (final Exception e) {
-                LOG.error(EVENT, "An exception occurred while using the {} processor on Event [{}]", getProcessorName(), record.getData(), e);
+            } catch (Exception e) {
+                processingFailuresCounter.increment();
+                if (handleFailedEventsOption.shouldLog()) {
+                    LOG.error(EVENT, "An exception occurred while using the {} processor on Event [{}]", getProcessorName(), record.getData(), e);
+                }
             }
         }
         return records;
