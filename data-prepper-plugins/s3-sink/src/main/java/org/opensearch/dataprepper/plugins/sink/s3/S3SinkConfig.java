@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.sink.s3;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.aws.validator.AwsAccountId;

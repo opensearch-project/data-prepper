@@ -1,11 +1,11 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.sink.s3;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-import java.util.Arrays;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public interface S3BucketSelector {
     /**

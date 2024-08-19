@@ -199,7 +199,7 @@ class S3SinkServiceIT {
 
     void configureNewLineCodec() {
         codec = new NdjsonOutputCodec(ndjsonOutputConfig);
-        keyGenerator = new KeyGenerator(s3SinkConfig, StandardExtensionProvider.create(codec, CompressionOption.NONE), expressionEvaluator);
+        keyGenerator = new KeyGenerator(s3SinkConfig, null, StandardExtensionProvider.create(codec, CompressionOption.NONE), expressionEvaluator);
     }
 
     @Test
@@ -272,8 +272,8 @@ class S3SinkServiceIT {
 
     private S3SinkService createObjectUnderTest() {
         OutputCodecContext codecContext = new OutputCodecContext("Tag", Collections.emptyList(), Collections.emptyList());
-        final S3GroupIdentifierFactory groupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig);
-        s3GroupManager = new S3GroupManager(s3SinkConfig, groupIdentifierFactory, bufferFactory, codecFactory, s3AsyncClient, bucketOwnerProvider);
+        final S3GroupIdentifierFactory groupIdentifierFactory = new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig, null);
+        s3GroupManager = new S3GroupManager(s3SinkConfig, groupIdentifierFactory, bufferFactory, codecFactory, s3AsyncClient, null, bucketOwnerProvider);
 
         return new S3SinkService(s3SinkConfig, codecContext, Duration.ofSeconds(5), pluginMetrics, s3GroupManager);
     }
@@ -389,7 +389,7 @@ class S3SinkServiceIT {
         parquetOutputCodecConfig = new ParquetOutputCodecConfig();
         parquetOutputCodecConfig.setSchema(parseSchema().toString());
         codec = new ParquetOutputCodec(parquetOutputCodecConfig);
-        keyGenerator = new KeyGenerator(s3SinkConfig, StandardExtensionProvider.create(codec, CompressionOption.NONE), expressionEvaluator);
+        keyGenerator = new KeyGenerator(s3SinkConfig, null, StandardExtensionProvider.create(codec, CompressionOption.NONE), expressionEvaluator);
     }
 
     private Collection<Record<Event>> getRecordList() {

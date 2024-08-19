@@ -15,7 +15,6 @@ import software.amazon.awssdk.services.securitylake.model.CustomLogSourceProvide
 import software.amazon.awssdk.services.securitylake.model.CustomLogSourceConfiguration;
 import software.amazon.awssdk.services.securitylake.model.CreateCustomLogSourceResponse;
 import software.amazon.awssdk.services.securitylake.model.CustomLogSourceCrawlerConfiguration;
-//import software.amazon.awssdk.services.securitylake.model.*;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -23,7 +22,7 @@ import java.util.Map;
 
 @DataPrepperPlugin(name = "aws_security_lake", pluginType = S3BucketSelector.class, pluginConfigurationType = SecurityLakeBucketSelectorConfig.class)
 public class SecurityLakeBucketSelector implements S3BucketSelector {
-    final private SecurityLakeBucketSelectorConfig securityLakeBucketSelectorConfig;
+    private final SecurityLakeBucketSelectorConfig securityLakeBucketSelectorConfig;
 
     private S3SinkConfig s3SinkConfig;
 
