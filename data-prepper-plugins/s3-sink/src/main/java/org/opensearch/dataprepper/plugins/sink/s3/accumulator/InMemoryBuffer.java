@@ -96,7 +96,7 @@ public class InMemoryBuffer implements Buffer {
         if (metadataSupplier != null) {
             return metadataSupplier.apply(getEventCount());
         } else {
-            return Map.of();
+            return null;
         }
     }
 

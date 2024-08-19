@@ -21,6 +21,7 @@ import software.amazon.awssdk.services.s3.S3AsyncClient;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class S3GroupManager {
@@ -84,7 +85,7 @@ public class S3GroupManager {
         if (allGroups.containsKey(s3GroupIdentifier)) {
             return allGroups.get(s3GroupIdentifier);
         } else {
-            final Buffer bufferForNewGroup =  bufferFactory.getBuffer(s3Client, s3GroupIdentifier::getFullBucketName, s3GroupIdentifier::getGroupIdentifierFullObjectKey, s3SinkConfig.getDefaultBucket(), s3BucketSelector::getMetadata, bucketOwnerProvider);
+            final Buffer bufferForNewGroup =  bufferFactory.getBuffer(s3Client, s3GroupIdentifier::getFullBucketName, s3GroupIdentifier::getGroupIdentifierFullObjectKey, s3SinkConfig.getDefaultBucket(), s3BucketSelector != null ? s3BucketSelector::getMetadata : (Function<Integer, Map<String, String>>) null, bucketOwnerProvider);
             final OutputCodec outputCodec = codecFactory.provideCodec();
             final S3Group s3Group = new S3Group(s3GroupIdentifier, bufferForNewGroup, outputCodec);
             allGroups.put(s3GroupIdentifier, s3Group);

@@ -22,7 +22,7 @@ class InMemoryBufferFactoryTest {
     void test_buffer_notNull(){
         InMemoryBufferFactory inMemoryBufferFactory = new InMemoryBufferFactory();
         Assertions.assertNotNull(inMemoryBufferFactory);
-        Buffer buffer = inMemoryBufferFactory.getBuffer(null, null, null, null, null);
+        Buffer buffer = inMemoryBufferFactory.getBuffer(null, null, null, null, null, null);
         Assertions.assertNotNull(buffer);
         assertThat(buffer, instanceOf(Buffer.class));
     }

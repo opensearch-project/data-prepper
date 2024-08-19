@@ -42,7 +42,7 @@ class KeyGeneratorTest {
     }
 
     private KeyGenerator createObjectUnderTest() {
-        return new KeyGenerator(s3SinkConfig, extensionProvider, expressionEvaluator);
+        return new KeyGenerator(s3SinkConfig, null, extensionProvider, expressionEvaluator);
     }
 
     @Test

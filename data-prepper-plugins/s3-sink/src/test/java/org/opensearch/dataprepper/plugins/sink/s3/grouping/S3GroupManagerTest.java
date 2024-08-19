@@ -55,7 +55,7 @@ public class S3GroupManagerTest {
     private BucketOwnerProvider bucketOwnerProvider;
 
     private S3GroupManager createObjectUnderTest() {
-        return new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, codecFactory, s3Client, bucketOwnerProvider);
+        return new S3GroupManager(s3SinkConfig, s3GroupIdentifierFactory, bufferFactory, codecFactory, s3Client, null, bucketOwnerProvider);
     }
 
     @Test
@@ -74,7 +74,7 @@ public class S3GroupManagerTest {
         when(s3SinkConfig.getDefaultBucket()).thenReturn(defaultBucket);
 
         final Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), eq(bucketOwnerProvider)))
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), eq(null), eq(bucketOwnerProvider)))
                 .thenAnswer(invocation -> {
                     Supplier<String> bucketSupplier = invocation.getArgument(1);
                     Supplier<String> objectKeySupplier = invocation.getArgument(2);
@@ -116,7 +116,7 @@ public class S3GroupManagerTest {
 
         final Buffer buffer = mock(Buffer.class);
         final OutputCodec outputCodec = mock(OutputCodec.class);
-        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), eq(bucketOwnerProvider)))
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), eq(null), eq(bucketOwnerProvider)))
                 .thenReturn(buffer);
         when(codecFactory.provideCodec()).thenReturn(outputCodec);
 
@@ -137,7 +137,7 @@ public class S3GroupManagerTest {
         assertThat(secondResult.getS3GroupIdentifier(), equalTo(s3GroupIdentifier));
         assertThat(secondResult.getBuffer(), equalTo(buffer));
 
-        verify(bufferFactory, times(1)).getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), eq(bucketOwnerProvider));
+        verify(bufferFactory, times(1)).getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), eq(null), eq(bucketOwnerProvider));
 
         final Collection<S3Group> groups = objectUnderTest.getS3GroupEntries();
         assertThat(groups, notNullValue());
@@ -177,7 +177,7 @@ public class S3GroupManagerTest {
         final Buffer thirdBuffer = mock(Buffer.class);
         when(thirdBuffer.getSize()).thenReturn(bufferSizeBase * 3);
 
-        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), eq(bucketOwnerProvider)))
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), eq(null), eq(bucketOwnerProvider)))
                 .thenReturn(buffer).thenReturn(secondBuffer).thenReturn(thirdBuffer);
 
         final OutputCodec outputCodec = mock(OutputCodec.class);
@@ -223,7 +223,7 @@ public class S3GroupManagerTest {
         final Buffer thirdBuffer = mock(Buffer.class);
         when(thirdBuffer.getSize()).thenReturn(bufferSizeBase * 3);
 
-        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), eq(bucketOwnerProvider)))
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), eq(null), eq(bucketOwnerProvider)))
                 .thenReturn(buffer).thenReturn(secondBuffer).thenReturn(thirdBuffer);
 
         final OutputCodec firstOutputCodec = mock(OutputCodec.class);
