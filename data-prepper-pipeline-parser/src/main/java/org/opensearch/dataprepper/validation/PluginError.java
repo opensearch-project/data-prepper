@@ -10,6 +10,7 @@ public class PluginError {
     static final String PIPELINE_DELIMITER = ":";
     static final String CAUSED_BY_DELIMITER = " caused by: ";
     private final String pipelineName;
+    private final String componentType;
     @NonNull
     private final String pluginName;
     @NonNull
@@ -19,6 +20,10 @@ public class PluginError {
         final StringBuilder message = new StringBuilder();
         if (pipelineName != null) {
             message.append(pipelineName);
+            message.append(PIPELINE_DELIMITER);
+        }
+        if (componentType != null) {
+            message.append(componentType);
             message.append(PIPELINE_DELIMITER);
         }
         message.append(pluginName);

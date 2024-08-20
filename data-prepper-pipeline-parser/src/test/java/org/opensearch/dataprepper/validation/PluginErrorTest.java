@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 class PluginErrorTest {
     private static final String TEST_PIPELINE_NAME = "test-pipeline";
+    private static final String TEST_COMPONENT_TYPE = "test-plugin-type";
     private static final String TEST_PLUGIN_NAME = "test-plugin";
     private static final String TEST_ERROR_MESSAGE = "test error message";
     private static final String TEST_CAUSE_ERROR_MESSAGE = "test cause error message";
@@ -19,11 +20,12 @@ class PluginErrorTest {
         when(exception.getMessage()).thenReturn(TEST_ERROR_MESSAGE);
         final PluginError pluginError = PluginError.builder()
                 .pipelineName(TEST_PIPELINE_NAME)
+                .componentType(TEST_COMPONENT_TYPE)
                 .pluginName(TEST_PLUGIN_NAME)
                 .exception(exception)
                 .build();
         assertThat(pluginError.getErrorMessage(), equalTo(
-                "test-pipeline:test-plugin: caused by: test error message"));
+                "test-pipeline:test-plugin-type:test-plugin: caused by: test error message"));
     }
 
     @Test
@@ -32,10 +34,11 @@ class PluginErrorTest {
         when(exception.getMessage()).thenReturn(TEST_ERROR_MESSAGE);
         final PluginError pluginError = PluginError.builder()
                 .pluginName(TEST_PLUGIN_NAME)
+                .componentType(TEST_COMPONENT_TYPE)
                 .exception(exception)
                 .build();
         assertThat(pluginError.getErrorMessage(), equalTo(
-                "test-plugin: caused by: test error message"));
+                "test-plugin-type:test-plugin: caused by: test error message"));
     }
 
     @Test

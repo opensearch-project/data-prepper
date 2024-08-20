@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.parser;
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
@@ -124,6 +125,7 @@ public class PipelineTransformer {
                     return pluginFactory.loadPlugin(Source.class, sourceSetting);
                 } catch (Exception e) {
                     final PluginError pluginError = PluginError.builder()
+                            .componentType(PipelineModel.SOURCE_PLUGIN_TYPE)
                             .pipelineName(pipelineName)
                             .pluginName(sourceSetting.getName())
                             .exception(e)
@@ -140,6 +142,7 @@ public class PipelineTransformer {
                 pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, bufferPluginSetting, source.getDecoder());
             } catch (Exception e) {
                 final PluginError pluginError = PluginError.builder()
+                        .componentType(PipelineModel.BUFFER_PLUGIN_TYPE)
                         .pipelineName(pipelineName)
                         .pluginName(bufferPluginSetting.getName())
                         .build();
@@ -217,6 +220,7 @@ public class PipelineTransformer {
                     .collect(Collectors.toList());
         } catch (Exception e) {
             final PluginError pluginError = PluginError.builder()
+                    .componentType(PipelineModel.PROCESSOR_PLUGIN_TYPE)
                     .pipelineName(pluginSetting.getPipelineName())
                     .pluginName(pluginSetting.getName())
                     .exception(e)
@@ -266,6 +270,7 @@ public class PipelineTransformer {
             return new DataFlowComponent<>(sink, pluginSetting.getSinkContext().getRoutes());
         } catch (Exception e) {
             final PluginError pluginError = PluginError.builder()
+                    .componentType(PipelineModel.SINK_PLUGIN_TYPE)
                     .pipelineName(pluginSetting.getPipelineName())
                     .pluginName(pluginSetting.getName())
                     .exception(e)
