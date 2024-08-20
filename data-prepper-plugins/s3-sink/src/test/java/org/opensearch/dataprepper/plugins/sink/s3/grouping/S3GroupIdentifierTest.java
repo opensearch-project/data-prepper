@@ -24,8 +24,8 @@ public class S3GroupIdentifierTest {
         final String groupTwoFullObjectKey = UUID.randomUUID().toString();
         final String fullBucketName = UUID.randomUUID().toString();
 
-        final S3GroupIdentifier s3GroupIdentifier = new S3GroupIdentifier(identificationHash, groupOneFullObjectKey, fullBucketName);
-        final S3GroupIdentifier seconds3GroupIdentifier = new S3GroupIdentifier(identificationHash, groupTwoFullObjectKey, fullBucketName);
+        final S3GroupIdentifier s3GroupIdentifier = new S3GroupIdentifier(identificationHash, groupOneFullObjectKey, null, fullBucketName);
+        final S3GroupIdentifier seconds3GroupIdentifier = new S3GroupIdentifier(identificationHash, groupTwoFullObjectKey, null, fullBucketName);
 
         assertThat(s3GroupIdentifier.equals(seconds3GroupIdentifier), equalTo(true));
         assertThat(s3GroupIdentifier.hashCode(), equalTo(seconds3GroupIdentifier.hashCode()));
@@ -39,8 +39,8 @@ public class S3GroupIdentifierTest {
         final String groupTwoFullObjectKey = UUID.randomUUID().toString();
         final String fullBucketName = UUID.randomUUID().toString();
 
-        final S3GroupIdentifier s3GroupIdentifier = new S3GroupIdentifier(identificationHashOne, groupOneFullObjectKey, fullBucketName);
-        final S3GroupIdentifier seconds3GroupIdentifier = new S3GroupIdentifier(identificationHashTwo, groupTwoFullObjectKey, fullBucketName);
+        final S3GroupIdentifier s3GroupIdentifier = new S3GroupIdentifier(identificationHashOne, groupOneFullObjectKey, null, fullBucketName);
+        final S3GroupIdentifier seconds3GroupIdentifier = new S3GroupIdentifier(identificationHashTwo, groupTwoFullObjectKey, null, fullBucketName);
 
         assertThat(s3GroupIdentifier.equals(seconds3GroupIdentifier), equalTo(false));
         assertNotEquals(s3GroupIdentifier.hashCode(), seconds3GroupIdentifier.hashCode());

@@ -12,7 +12,9 @@ import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 import java.util.function.Supplier;
+import java.util.function.Function;
 
 public class LocalFileBufferFactory implements BufferFactory {
 
@@ -25,6 +27,7 @@ public class LocalFileBufferFactory implements BufferFactory {
                             final Supplier<String> bucketSupplier,
                             final Supplier<String> keySupplier,
                             final String defaultBucket,
+                            final Function<Integer, Map<String, String>> metadataSupplier,
                             final BucketOwnerProvider bucketOwnerProvider) {
         File tempFile = null;
         Buffer localfileBuffer = null;

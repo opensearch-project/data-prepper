@@ -52,7 +52,6 @@ public class S3SinkService {
     private final int maxEvents;
     private final ByteCount maxBytes;
     private final Duration maxCollectionDuration;
-    private final String bucket;
     private final int maxRetries;
     private final Counter objectsSucceededCounter;
     private final Counter objectsFailedCounter;
@@ -84,7 +83,6 @@ public class S3SinkService {
         maxBytes = s3SinkConfig.getThresholdOptions().getMaximumSize();
         maxCollectionDuration = s3SinkConfig.getThresholdOptions().getEventCollectTimeOut();
 
-        bucket = s3SinkConfig.getBucketName();
         maxRetries = s3SinkConfig.getMaxUploadRetries();
 
         objectsSucceededCounter = pluginMetrics.counter(OBJECTS_SUCCEEDED);
