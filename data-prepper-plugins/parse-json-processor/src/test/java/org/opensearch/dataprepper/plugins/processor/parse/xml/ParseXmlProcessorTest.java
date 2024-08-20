@@ -33,6 +33,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -74,7 +75,7 @@ public class ParseXmlProcessorTest {
         when(pluginMetrics.counter("recordsIn")).thenReturn(mock(Counter.class));
         when(pluginMetrics.counter("recordsOut")).thenReturn(mock(Counter.class));
         when(pluginMetrics.counter("processingFailures")).thenReturn(processingFailuresCounter);
-        when(pluginMetrics.counter("parseErrors")).thenReturn(parseErrorsCounter);
+        lenient().when(pluginMetrics.counter("parseErrors")).thenReturn(parseErrorsCounter);
         when(processorConfig.getHandleFailedEventsOption()).thenReturn(handleFailedEventsOption);
     }
 

@@ -38,6 +38,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -84,7 +85,7 @@ public class ParseJsonProcessorTest {
         when(pluginMetrics.counter("recordsIn")).thenReturn(mock(Counter.class));
         when(pluginMetrics.counter("recordsOut")).thenReturn(mock(Counter.class));
         when(pluginMetrics.counter("processingFailures")).thenReturn(processingFailuresCounter);
-        when(pluginMetrics.counter("parseErrors")).thenReturn(parseErrorsCounter);
+        lenient().when(pluginMetrics.counter("parseErrors")).thenReturn(parseErrorsCounter);
         when(processorConfig.getHandleFailedEventsOption()).thenReturn(handleFailedEventsOption);
     }
 

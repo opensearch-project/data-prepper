@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -44,7 +45,7 @@ class ParseIonProcessorTest extends ParseJsonProcessorTest {
         when(pluginMetrics.counter("recordsIn")).thenReturn(mock(Counter.class));
         when(pluginMetrics.counter("recordsOut")).thenReturn(mock(Counter.class));
         when(pluginMetrics.counter("processingFailures")).thenReturn(this.processingFailuresCounter);
-        when(pluginMetrics.counter("parseErrors")).thenReturn(this.parseErrorsCounter);
+        lenient().when(pluginMetrics.counter("parseErrors")).thenReturn(this.parseErrorsCounter);
         when(processorConfig.getHandleFailedEventsOption()).thenReturn(handleFailedEventsOption);
     }
 
