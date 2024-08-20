@@ -33,7 +33,7 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
     private String pointer;
 
     @JsonProperty("parse_when")
-    @JsonPropertyDescription("A Data Prepper conditional expression (https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as '/some-key == \"test\"', that will be evaluated to determine whether the processor will be run on the event.")
+    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as '/some-key == \"test\"', that will be evaluated to determine whether the processor will be run on the event.")
     private String parseWhen;
 
     @JsonProperty("tags_on_failure")

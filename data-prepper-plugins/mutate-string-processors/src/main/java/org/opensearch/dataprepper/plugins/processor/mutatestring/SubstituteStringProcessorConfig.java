@@ -24,7 +24,7 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
         private String to;
 
         @JsonProperty("substitute_when")
-        @JsonPropertyDescription("A Data Prepper conditional expression (https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
+        @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
                 "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be " +
                 "run on the event. Default is `null`. All events will be processed unless otherwise stated.")
         private String substituteWhen;

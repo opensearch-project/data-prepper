@@ -50,7 +50,7 @@ public class FlattenProcessorConfig {
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     @JsonProperty("flatten_when")
-    @JsonPropertyDescription("A Data Prepper conditional expression (https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
+    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
             "such as `/some-key == \"test\"'`, that determines whether the `flatten` processor will be run on the " +
             "event. Default is `null`, which means that all events will be processed unless otherwise stated.")
     private String flattenWhen;

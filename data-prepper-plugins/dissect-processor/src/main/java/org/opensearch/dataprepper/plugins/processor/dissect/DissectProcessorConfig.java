@@ -18,7 +18,7 @@ public class DissectProcessorConfig {
             "`double`, `string`, `long`, `big_decimal`, and `boolean`. By default, all fields are of the `string` type.")
     private Map<String, TargetType> targetTypes;
     @JsonProperty("dissect_when")
-    @JsonPropertyDescription("Specifies a condition for performing the `dissect` operation using a Data Prepper conditional expression " +
+    @JsonPropertyDescription("Specifies a condition for performing the `dissect` operation using a Data Prepper [conditional expression]" +
             "(https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/). " +
             "If specified, the `dissect` operation will only run when the expression evaluates to true.")
     private String dissectWhen;
