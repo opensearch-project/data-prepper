@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3;
 
-import java.util.Map;
-
 public interface S3BucketSelector {
     /**
      * initialize - initializes the selector
@@ -27,13 +25,5 @@ public interface S3BucketSelector {
      * @return path prefix
      */
     String getPathPrefix();
-
-    /**
-     * getMetadata - returns metadata to be used when creating the objects
-     * @param eventCount - count of number of events
-     *
-     * @return - returns a map of metadata
-     */
-    Map<String, String> getMetadata(int eventCount);
 }
 

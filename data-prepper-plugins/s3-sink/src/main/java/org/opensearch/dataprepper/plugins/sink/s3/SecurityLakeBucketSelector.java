@@ -18,10 +18,10 @@ import software.amazon.awssdk.services.securitylake.model.CustomLogSourceCrawler
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @DataPrepperPlugin(name = "aws_security_lake", pluginType = S3BucketSelector.class, pluginConfigurationType = SecurityLakeBucketSelectorConfig.class)
 public class SecurityLakeBucketSelector implements S3BucketSelector {
+    private static final String EXT_PATH = "/ext/";
     private final SecurityLakeBucketSelectorConfig securityLakeBucketSelectorConfig;
 
     private S3SinkConfig s3SinkConfig;
@@ -44,7 +44,7 @@ public class SecurityLakeBucketSelector implements S3BucketSelector {
         CreateCustomLogSourceResponse response =
                 securityLakeClient.createCustomLogSource(
                         CreateCustomLogSourceRequest.builder()
-                                .sourceName(sourceName+"_KK_"+RandomStringUtils.randomAlphabetic(4))
+                                .sourceName(sourceName+RandomStringUtils.randomAlphabetic(4))
                                 .eventClasses(List.of(securityLakeBucketSelectorConfig.getLogClass()))
                                 .sourceVersion(securityLakeBucketSelectorConfig.getSourceVersion())
                                 .configuration(CustomLogSourceConfiguration.builder()
@@ -61,10 +61,11 @@ public class SecurityLakeBucketSelector implements S3BucketSelector {
         this.sourceLocation = provider.location();
         final String region=s3SinkConfig.getAwsAuthenticationOptions().getAwsRegion().toString();
         final String accountId=arn.split(":")[4];
+
         final LocalDate now = LocalDate.now();
         final String eventDay = String.format("%d%02d%02d", now.getYear(), now.getMonthValue(), now.getDayOfMonth());
-        int locIdx = sourceLocation.indexOf("/ext/");
-        pathPrefix = sourceLocation.substring(locIdx+1)+"region="+region+"/accountId="+accountId+"/eventDay="+eventDay+"/";
+        int locIndex = sourceLocation.indexOf(EXT_PATH);
+        pathPrefix = String.format("%sregion=%s/accountId=%s/eventDay=%s/",sourceLocation.substring(locIndex+1), region, accountId, eventDay);
     }
 
     public String getPathPrefix() {
@@ -72,13 +73,8 @@ public class SecurityLakeBucketSelector implements S3BucketSelector {
     }
 
     @Override
-    public Map<String, String> getMetadata(int eventCount) {
-        return Map.of("asl_rows", Integer.toString(eventCount));
-    }
-
-    @Override
     public String getBucketName() {
-        int locIndex = sourceLocation.indexOf("/ext/");
-        return sourceLocation.substring(5, locIndex);
+        int locIndex = sourceLocation.indexOf(EXT_PATH);
+        return sourceLocation.substring(EXT_PATH.length(), locIndex);
     }
 }

@@ -13,7 +13,6 @@ import org.mockito.MockedStatic;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -28,7 +27,6 @@ import software.amazon.awssdk.services.securitylake.model.CustomLogSourceProvide
 import software.amazon.awssdk.services.securitylake.model.CustomLogSourceResource;
 import software.amazon.awssdk.services.securitylake.model.CreateCustomLogSourceResponse;
 
-import java.util.Map;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -89,7 +87,6 @@ public class SecurityLakeBucketSelectorTest {
             String formattedDate = today.format(formatter);
             String expectedPathPrefix = testLocation.substring(index+1)+"region="+regionStr+"/accountId="+accountId+"/eventDay="+formattedDate+"/";
             assertThat(securityLakeBucketSelector.getPathPrefix(), equalTo(expectedPathPrefix));
-            assertThat(securityLakeBucketSelector.getMetadata(10), is(Map.of("asl_rows", "10")));
         }
     }
 }
