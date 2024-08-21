@@ -5,9 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.processor.date;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 
 import java.time.ZoneId;
@@ -15,6 +17,10 @@ import java.util.List;
 import java.util.Locale;
 import java.time.format.DateTimeFormatter;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `date` processor adds a default timestamp to an event, parses timestamp fields, " +
+        "and converts timestamp information to the International Organization for Standardization (ISO) 8601 format. " +
+        "This timestamp information can be used as an event timestamp.")
 public class DateProcessorConfig {
     static final Boolean DEFAULT_FROM_TIME_RECEIVED = false;
     static final Boolean DEFAULT_TO_ORIGINATION_METADATA = false;

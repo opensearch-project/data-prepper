@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
-import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonClassDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
@@ -15,6 +17,10 @@ import jakarta.validation.constraints.NotNull;
 import java.time.Duration;
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `aggregate` processor groups events based on the values of identification_keys. " +
+        "Then, the processor performs an action on each group, helping reduce unnecessary log volume and " +
+        "creating aggregated logs over time.")
 public class AggregateProcessorConfig {
 
     static int DEFAULT_GROUP_DURATION_SECONDS = 180;

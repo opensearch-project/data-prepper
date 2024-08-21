@@ -5,9 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.processor;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `service_map` processor uses OpenTelemetry data to create a distributed service map for " +
+        "visualization in OpenSearch Dashboards.")
 public class ServiceMapProcessorConfig {
     private static final String WINDOW_DURATION = "window_duration";
     static final int DEFAULT_WINDOW_DURATION = 180;

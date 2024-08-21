@@ -5,11 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltrace;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.time.Duration;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `otel_trace` processor completes trace-group-related fields in all incoming Data Prepper " +
+        "span records by state caching the root span information for each `traceId`.")
 public class OtelTraceRawProcessorConfig {
     static final long DEFAULT_TG_FLUSH_INTERVAL_SEC = 180L;
     static final Duration DEFAULT_TRACE_ID_TTL = Duration.ofSeconds(15L);

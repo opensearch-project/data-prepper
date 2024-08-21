@@ -5,12 +5,17 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutatestring;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.opensearch.dataprepper.model.event.EventKey;
 
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `substitute_string` processor matches a key’s value against a regular expression and " +
+        "replaces all matches with a replacement string.")
 public class SubstituteStringProcessorConfig implements StringProcessorConfig<SubstituteStringProcessorConfig.Entry> {
     public static class Entry {
         @JsonPropertyDescription("The key to modify.")

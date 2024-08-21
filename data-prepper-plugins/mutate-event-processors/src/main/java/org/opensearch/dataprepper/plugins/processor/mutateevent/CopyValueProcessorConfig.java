@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
@@ -14,6 +16,9 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `copy_values` processor copies values within an event and is a [mutate event]" +
+        "(https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/mutate-event/) processor.")
 public class CopyValueProcessorConfig {
     public static class Entry {
         @NotEmpty

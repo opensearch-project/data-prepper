@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.processor.parse.json;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
@@ -16,6 +18,9 @@ import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 import java.util.Objects;
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `parse_json` processor parses JSON data for an event, including any nested fields. " +
+        "The processor extracts the JSON pointer data and adds the input event to the extracted fields.")
 public class ParseJsonProcessorConfig implements CommonParseConfig {
     static final String DEFAULT_SOURCE = "message";
 

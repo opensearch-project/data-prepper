@@ -5,11 +5,15 @@
 
 package org.opensearch.dataprepper.plugins.processor.drop;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.NotEmpty;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `drop_events` processor drops all the events that are passed into it.")
 public class DropEventProcessorConfig {
 
     @JsonPropertyDescription("Accepts a Data Prepper conditional expression string following the [Data Prepper Expression Syntax](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/). Configuring drop_events with drop_when: true drops all the events received.")

@@ -5,13 +5,18 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import org.opensearch.dataprepper.typeconverter.ConverterArguments;
 
 import java.util.List;
 import java.util.Optional;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `convert_entry_type` processor converts a value type associated with the specified key in " +
+        "a event to the specified type. It is a casting processor that changes the types of some fields in events.")
 public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     @JsonProperty("key")
     @JsonPropertyDescription("Key whose value needs to be converted to a different type.")

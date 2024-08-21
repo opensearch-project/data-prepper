@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.anomalydetector;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -14,6 +16,9 @@ import jakarta.validation.constraints.NotNull;
 import java.util.Collections;
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The anomaly detector processor takes structured data and runs anomaly detection algorithms " +
+        "on fields that you can configure in that data.")
 public class AnomalyDetectorProcessorConfig {
     @JsonPropertyDescription("The ML algorithm (or model) used to detect anomalies. You must provide a mode. See random_cut_forest mode.")
     @JsonProperty("mode")

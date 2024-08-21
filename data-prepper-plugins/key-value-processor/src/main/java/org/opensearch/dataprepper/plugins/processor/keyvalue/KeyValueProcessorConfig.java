@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.keyvalue;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.AssertTrue;
@@ -16,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@JsonPropertyOrder
+@JsonClassDescription("You can use the `key_value` processor to parse the specified field into key-value pairs.")
 public class KeyValueProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
     static final String DEFAULT_DESTINATION = "parsed_message";

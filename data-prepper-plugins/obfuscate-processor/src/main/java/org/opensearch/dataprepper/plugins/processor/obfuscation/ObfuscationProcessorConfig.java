@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.obfuscation;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -15,6 +17,9 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `obfuscate` process enables obfuscation of fields inside your documents in order to " +
+        "protect sensitive data.")
 public class ObfuscationProcessorConfig {
 
     @JsonProperty("source")

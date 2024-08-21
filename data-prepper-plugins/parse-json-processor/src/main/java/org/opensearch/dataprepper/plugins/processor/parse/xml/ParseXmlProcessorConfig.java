@@ -1,6 +1,8 @@
 package org.opensearch.dataprepper.plugins.processor.parse.xml;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
@@ -11,6 +13,8 @@ import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 import java.util.List;
 import java.util.Objects;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `parse_xml` processor parses XML data for an event.")
 public class ParseXmlProcessorConfig implements CommonParseConfig {
     static final String DEFAULT_SOURCE = "message";
 

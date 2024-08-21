@@ -1,12 +1,18 @@
 package org.opensearch.dataprepper.plugins.processor.dissect;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 
 import java.util.Map;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `dissect` processor extracts values from an event and maps them to individual fields " +
+        "based on user-defined `dissect` patterns. The processor is well suited for field extraction from log " +
+        "messages with a known structure.")
 public class DissectProcessorConfig {
     @NotNull
     @JsonProperty("map")
