@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +30,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,6 +45,17 @@ public class RenameKeyProcessorTests {
     private ExpressionEvaluator expressionEvaluator;
 
     private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
+
+    @Test
+    void invalid_rename_when_throws_InvalidPluginConfigurationException() {
+        final String renameWhen = UUID.randomUUID().toString();
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true, renameWhen)));
+
+
+        when(expressionEvaluator.isValidExpressionStatement(renameWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
 
     @Test
     public void testSingleOverwriteRenameProcessorTests() {
@@ -123,6 +136,7 @@ public class RenameKeyProcessorTests {
         final String renameWhen = UUID.randomUUID().toString();
 
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false, renameWhen)));
+        when(expressionEvaluator.isValidExpressionStatement(renameWhen)).thenReturn(true);
 
         final RenameKeyProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");

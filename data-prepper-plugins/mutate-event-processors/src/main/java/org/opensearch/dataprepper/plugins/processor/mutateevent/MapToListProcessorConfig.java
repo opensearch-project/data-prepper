@@ -45,7 +45,7 @@ public class MapToListProcessorConfig {
     private String valueName = DEFAULT_VALUE_NAME;
 
     @JsonProperty("map_to_list_when")
-    @JsonPropertyDescription("A [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
+    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
             "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will " +
             "be run on the event. Default is `null`. All events will be processed unless otherwise stated.")
     private String mapToListWhen;

@@ -47,17 +47,21 @@ public class JsonCodec implements Codec<List<List<String>>> {
         List<List<String>> jsonList = new ArrayList<>();
         final List<Map<String, Object>> logList = mapper.readValue(httpData.toInputStream(),
                 LIST_OF_MAP_TYPE_REFERENCE);
-        int size = OVERHEAD_CHARACTERS.length();
         List<String> innerJsonList = new ArrayList<>();
-        for (final Map<String, Object> log: logList) {
+        int size = OVERHEAD_CHARACTERS.length();
+        for (Map<String, Object> log: logList) {
             final String recordString = mapper.writeValueAsString(log);
-            if (size + recordString.length() > maxSize) {
+            final int nextRecordLength = recordString.getBytes(Charset.defaultCharset()).length;
+            // It is possible that the first record is larger than maxSize, then
+            // innerJsonList size would be zero.
+            if (size + nextRecordLength > maxSize && !innerJsonList.isEmpty()) {
                 jsonList.add(innerJsonList);
                 innerJsonList = new ArrayList<>();
                 size = OVERHEAD_CHARACTERS.length();
             }
+            // The following may result in a innerJsonList with larger than "maxSize" length recordString
             innerJsonList.add(recordString);
-            size += recordString.getBytes(Charset.defaultCharset()).length + COMMA_OVERHEAD_LENGTH;
+            size += nextRecordLength + COMMA_OVERHEAD_LENGTH;
         }
         if (size > OVERHEAD_CHARACTERS.length()) {
             jsonList.add(innerJsonList);

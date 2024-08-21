@@ -21,7 +21,7 @@ class LocalFileBufferFactoryTest {
     void test_buffer_notNull() {
         LocalFileBufferFactory localFileBufferFactory = new LocalFileBufferFactory();
         Assertions.assertNotNull(localFileBufferFactory);
-        Buffer buffer = localFileBufferFactory.getBuffer(null, null, null, null, null);
+        Buffer buffer = localFileBufferFactory.getBuffer(null, null, null, null, null, null);
         Assertions.assertNotNull(buffer);
         assertThat(buffer, instanceOf(LocalFileBuffer.class));
     }

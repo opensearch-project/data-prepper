@@ -34,7 +34,7 @@ public class AggregateProcessorConfig {
     @JsonProperty("group_duration")
     private Duration groupDuration = Duration.ofSeconds(DEFAULT_GROUP_DURATION_SECONDS);
 
-    @JsonPropertyDescription("The action to be performed on each group. One of the available aggregate actions must be provided, or you can create custom aggregate actions. remove_duplicates and put_all are the available actions. For more information, see Creating New Aggregate Actions.")
+    @JsonPropertyDescription("The action to be performed on each group. One of the available aggregate actions must be provided.")
     @JsonProperty("action")
     @NotNull
     private PluginModel aggregateAction;
@@ -52,7 +52,7 @@ public class AggregateProcessorConfig {
     @JsonProperty("aggregated_events_tag")
     private String aggregatedEventsTag;
 
-    @JsonPropertyDescription("A Data Prepper conditional expression (https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as '/some-key == \"test\"', that will be evaluated to determine whether the processor will be run on the event.")
+    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as '/some-key == \"test\"', that will be evaluated to determine whether the processor will be run on the event.")
     @JsonProperty("aggregate_when")
     private String whenCondition;
 
@@ -80,7 +80,7 @@ public class AggregateProcessorConfig {
         return localMode;
     }
 
-    @AssertTrue(message="Aggragated Events Tag must be set when output_unaggregated_events is set")
+    @AssertTrue(message="Aggregated Events Tag must be set when output_unaggregated_events is set")
     boolean isValidConfig() {
         return (!outputUnaggregatedEvents || (outputUnaggregatedEvents && aggregatedEventsTag != null));
     }

@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,6 +56,17 @@ class SplitStringProcessorTests {
 
     private SplitStringProcessor createObjectUnderTest() {
         return new SplitStringProcessor(pluginMetrics, config, expressionEvaluator);
+    }
+
+    @Test
+    void invalid_split_when_throws_InvalidPluginConfigurationException() {
+        final String splitWhen = UUID.randomUUID().toString();
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", ",", null, splitWhen)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", ",", null, splitWhen)));
+
+        when(expressionEvaluator.isValidExpressionStatement(splitWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
     @ParameterizedTest
@@ -111,6 +123,7 @@ class SplitStringProcessorTests {
 
         when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", ",", null, splitWhen)));
         when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", ",", null, splitWhen)));
+        when(expressionEvaluator.isValidExpressionStatement(splitWhen)).thenReturn(true);
 
         final SplitStringProcessor splitStringProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent(message);

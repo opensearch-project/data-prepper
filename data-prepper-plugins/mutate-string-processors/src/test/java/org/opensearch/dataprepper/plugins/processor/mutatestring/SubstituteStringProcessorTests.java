@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,16 @@ public class SubstituteStringProcessorTests {
     public void setup() {
         lenient().when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", "a", "b", null)));
         lenient().when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", "a", "b", null)));
+    }
+
+    @Test
+    void invalid_substitute_when_throws_InvalidPluginConfigurationException() {
+        final String substituteWhen = UUID.randomUUID().toString();
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", "a", "b", substituteWhen)));
+
+        when(expressionEvaluator.isValidExpressionStatement(substituteWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
     @Test
@@ -151,6 +162,7 @@ public class SubstituteStringProcessorTests {
 
         when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", "[?\\\\+]", "b", substituteWhen)));
         when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", "[?\\\\+]", "b", substituteWhen)));
+        when(expressionEvaluator.isValidExpressionStatement(substituteWhen)).thenReturn(true);
 
         final SubstituteStringProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("abcd");

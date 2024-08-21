@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.drop;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;

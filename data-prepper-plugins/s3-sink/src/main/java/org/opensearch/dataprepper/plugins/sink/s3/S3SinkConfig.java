@@ -6,8 +6,8 @@
 package org.opensearch.dataprepper.plugins.sink.s3;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.aws.validator.AwsAccountId;
@@ -36,9 +36,20 @@ public class S3SinkConfig {
     private AwsAuthenticationOptions awsAuthenticationOptions;
 
     @JsonProperty("bucket")
-    @NotEmpty
     @Size(min = 3, max = 500, message = "bucket length should be at least 3 characters")
     private String bucketName;
+
+    @JsonProperty("bucket_selector")
+    private PluginModel bucketSelector;
+
+    @JsonProperty("predefined_object_metadata")
+    private PredefinedObjectMetadata predefinedObjectMetadata;
+
+    @AssertTrue(message = "You may not use both bucket and bucket_selector together in one S3 sink.")
+    private boolean isValidBucketConfig() {
+        return (bucketName != null && bucketSelector == null) ||
+               (bucketName == null && bucketSelector != null);
+    }
 
     /**
      * The default bucket to send to if using a dynamic bucket name and failures occur
@@ -125,6 +136,18 @@ public class S3SinkConfig {
             objectKeyOptions = new ObjectKeyOptions();
         }
         return objectKeyOptions;
+    }
+
+    public PredefinedObjectMetadata getPredefinedObjectMetadata() {
+        return predefinedObjectMetadata;
+    }
+
+    /**
+     * Bucket selector configuration options.
+     * @return bucketSelector plugin model.
+     */
+    public PluginModel getBucketSelector() {
+        return bucketSelector;
     }
 
     /**

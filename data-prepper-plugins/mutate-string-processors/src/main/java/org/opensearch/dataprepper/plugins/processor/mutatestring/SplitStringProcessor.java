@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.Processor;
 
 import java.util.HashMap;
@@ -42,6 +43,12 @@ public class SplitStringProcessor extends AbstractStringProcessor<SplitStringPro
                 patternMap.put(entry.getDelimiterRegex(), Pattern.compile(entry.getDelimiterRegex()));
             } else {
                 patternMap.put(entry.getDelimiter(), Pattern.compile(Pattern.quote(entry.getDelimiter())));
+            }
+
+            if (entry.getSplitWhen() != null
+                    && !expressionEvaluator.isValidExpressionStatement(entry.getSplitWhen())) {
+                throw new InvalidPluginConfigurationException(
+                        String.format("split_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", entry.getSplitWhen()));
             }
         }
     }

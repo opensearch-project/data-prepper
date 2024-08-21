@@ -9,12 +9,15 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
@@ -48,6 +51,16 @@ class TruncateProcessorTests {
 
     private TruncateProcessor createObjectUnderTest() {
         return new TruncateProcessor(pluginMetrics, config, expressionEvaluator);
+    }
+
+    @Test
+    void invalid_truncate_when_throws_InvalidPluginConfigurationException() {
+        final String truncateWhen = UUID.randomUUID().toString();
+        when(expressionEvaluator.isValidExpressionStatement(truncateWhen)).thenReturn(false);
+
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry(List.of("message"), null, null, truncateWhen, false)));
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
     @ParameterizedTest
@@ -84,6 +97,7 @@ class TruncateProcessorTests {
         final String message = UUID.randomUUID().toString();
 
         when(config.getEntries()).thenReturn(Collections.singletonList(createEntry(List.of("message"), null, 5, truncateWhen, false)));
+        when(expressionEvaluator.isValidExpressionStatement(truncateWhen)).thenReturn(true);
 
         final TruncateProcessor truncateProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent("message", message);

@@ -48,7 +48,7 @@ public class S3GroupIdentifierFactoryTest {
     }
 
     private S3GroupIdentifierFactory createObjectUnderTest() {
-        return new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig);
+        return new S3GroupIdentifierFactory(keyGenerator, expressionEvaluator, s3SinkConfig, null);
     }
 
     @Test

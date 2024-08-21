@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -119,6 +120,11 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
         registerPatterns();
         compileMatchPatterns();
+
+        if (grokProcessorConfig.getGrokWhen() != null &&
+                (!expressionEvaluator.isValidExpressionStatement(grokProcessorConfig.getGrokWhen()))) {
+            throw new InvalidPluginConfigurationException("grok_when {} is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax");
+        }
     }
 
     /**

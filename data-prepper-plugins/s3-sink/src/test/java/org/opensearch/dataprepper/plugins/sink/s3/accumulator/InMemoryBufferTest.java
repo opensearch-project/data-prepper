@@ -65,7 +65,7 @@ class InMemoryBufferTest {
 
     @Test
     void test_with_write_event_into_buffer() throws IOException {
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, bucketOwnerProvider);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, null, bucketOwnerProvider);
 
         while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
             OutputStream outputStream = inMemoryBuffer.getOutputStream();
@@ -93,7 +93,7 @@ class InMemoryBufferTest {
      */
     void getDuration_provides_duration_within_expected_range() throws IOException, InterruptedException {
         Instant startTime = Instant.now();
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, bucketOwnerProvider);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, null,  bucketOwnerProvider);
         Instant endTime = Instant.now();
 
 
@@ -122,7 +122,7 @@ class InMemoryBufferTest {
         when(keySupplier.get()).thenReturn(key);
         when(bucketSupplier.get()).thenReturn(bucket);
 
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, bucketOwnerProvider);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, null, bucketOwnerProvider);
         Assertions.assertNotNull(inMemoryBuffer);
 
         final CompletableFuture<PutObjectResponse> expectedFuture = mock(CompletableFuture.class);
@@ -130,7 +130,7 @@ class InMemoryBufferTest {
         try (final MockedStatic<BufferUtilities> bufferUtilitiesMockedStatic = mockStatic(BufferUtilities.class)) {
             bufferUtilitiesMockedStatic.when(() ->
                             BufferUtilities.putObjectOrSendToDefaultBucket(eq(s3Client), any(AsyncRequestBody.class),
-                                    eq(mockRunOnCompletion), eq(mockRunOnFailure), eq(key), eq(bucket), eq(null), eq(bucketOwnerProvider)))
+                                    eq(mockRunOnCompletion), eq(mockRunOnFailure), eq(key), eq(bucket), eq(null), eq(null), eq(bucketOwnerProvider)))
                             .thenReturn(expectedFuture);
 
             final Optional<CompletableFuture<?>> result = inMemoryBuffer.flushToS3(mockRunOnCompletion, mockRunOnFailure);
@@ -143,14 +143,14 @@ class InMemoryBufferTest {
 
     @Test
     void getOutputStream_is_PositionOutputStream() {
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, bucketOwnerProvider);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, null, bucketOwnerProvider);
 
         assertThat(inMemoryBuffer.getOutputStream(), instanceOf(PositionOutputStream.class));
     }
 
     @Test
     void getOutputStream_getPos_equals_written_size() throws IOException {
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, bucketOwnerProvider);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, null, bucketOwnerProvider);
 
         while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
             OutputStream outputStream = inMemoryBuffer.getOutputStream();
@@ -167,7 +167,7 @@ class InMemoryBufferTest {
 
     @Test
     void getSize_across_multiple_in_sequence() throws IOException {
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, bucketOwnerProvider);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, null, bucketOwnerProvider);
 
         while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
             OutputStream outputStream = inMemoryBuffer.getOutputStream();
@@ -177,7 +177,7 @@ class InMemoryBufferTest {
         }
         assertThat(inMemoryBuffer.getSize(), equalTo((long) MAX_EVENTS * 1000));
 
-        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, bucketOwnerProvider);
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier, null, null, bucketOwnerProvider);
         assertThat(inMemoryBuffer.getSize(), equalTo(0L));
 
         while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {

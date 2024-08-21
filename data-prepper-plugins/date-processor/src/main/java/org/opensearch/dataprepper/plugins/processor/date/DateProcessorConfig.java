@@ -37,7 +37,7 @@ public class DateProcessorConfig {
         @JsonProperty("patterns")
         @JsonPropertyDescription("A list of possible patterns that the timestamp value of the key can have. The patterns " +
                 "are based on a sequence of letters and symbols. The `patterns` support all the patterns listed in the " +
-                "Java [DatetimeFormatter](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html) reference. " +
+                "Java DateTimeFormatter (https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html) reference. " +
                 "The timestamp value also supports `epoch_second`, `epoch_milli`, and `epoch_nano` values, " +
                 "which represent the timestamp as the number of seconds, milliseconds, and nanoseconds since the epoch. " +
                 "Epoch values always use the UTC time zone.")
@@ -60,6 +60,7 @@ public class DateProcessorConfig {
         }
 
         @JsonIgnore
+        @AssertTrue
         public boolean isValidPatterns() {
             // For now, allow only one of the three "epoch_" pattern
             int count = 0;
@@ -125,23 +126,23 @@ public class DateProcessorConfig {
     @JsonProperty("source_timezone")
     @JsonPropertyDescription("The time zone used to parse dates, including when the zone or offset cannot be extracted " +
             "from the value. If the zone or offset are part of the value, then the time zone is ignored. " +
-            "A list of all the available time zones is contained in the **TZ database name** column of " +
-            "[the list of database time zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List).")
+            "A list of all the available time zones is contained in the TZ database name column of " +
+            "(https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List).")
     private String sourceTimezone = DEFAULT_SOURCE_TIMEZONE;
 
     @JsonProperty("destination_timezone")
     @JsonPropertyDescription("The time zone used for storing the timestamp in the `destination` field. " +
-            "A list of all the available time zones is contained in the **TZ database name** column of " +
-            "[the list of database time zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List).")
+            "A list of all the available time zones is contained in the TZ database name column of " +
+            "(https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List).")
     private String destinationTimezone = DEFAULT_DESTINATION_TIMEZONE;
 
     @JsonProperty("locale")
     @JsonPropertyDescription("The location used for parsing dates. Commonly used for parsing month names (`MMM`). " +
             "The value can contain language, country, or variant fields in IETF BCP 47, such as `en-US`, " +
             "or a string representation of the " +
-            "[locale](https://docs.oracle.com/javase/8/docs/api/java/util/Locale.html) object, such as `en_US`. " +
+            "locale (https://docs.oracle.com/javase/8/docs/api/java/util/Locale.html) object, such as `en_US`. " +
             "A full list of locale fields, including language, country, and variant, can be found in " +
-            "[the language subtag registry](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry). " +
+            "(https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry). " +
             "Default is `Locale.ROOT`.")
     private String locale;
 

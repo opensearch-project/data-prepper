@@ -84,7 +84,21 @@ public interface Buffer<T extends Record<?>> {
         return false;
     }
 
+    /**
+     * returns max request size of an entry in the buffer
+     *
+     * @return Optional value of the buffer's max request size
+     */
     default Optional<Integer> getMaxRequestSize() {
+        return Optional.empty();
+    }
+
+    /**
+     * returns optimal request size of an entry in the buffer
+     *
+     * @return Optional value of the buffer's optimal request size
+     */
+    default Optional<Integer> getOptimalRequestSize() {
         return Optional.empty();
     }
 

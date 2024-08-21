@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.math.BigDecimal;
@@ -87,6 +88,18 @@ public class ConvertEntryTypeProcessorTests {
         Event event = processedRecords.get(0).getData();
         assertThat(event, notNullValue());
         return event;
+    }
+
+    @Test
+    void invalid_convert_when_throws_InvalidPluginConfigurationException() {
+        final String convertWhen = UUID.randomUUID().toString();
+
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+        when(mockConfig.getConvertWhen()).thenReturn(convertWhen);
+
+        when(expressionEvaluator.isValidExpressionStatement(convertWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, () -> new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator));
     }
 
     @Test
@@ -289,6 +302,7 @@ public class ConvertEntryTypeProcessorTests {
         final String convertWhen = UUID.randomUUID().toString();
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
         when(mockConfig.getConvertWhen()).thenReturn(convertWhen);
+        when(expressionEvaluator.isValidExpressionStatement(convertWhen)).thenReturn(true);
 
         final Record<Event> record = getMessage(UUID.randomUUID().toString(), testValue);
         when(expressionEvaluator.evaluateConditional(convertWhen, record.getData())).thenReturn(false);

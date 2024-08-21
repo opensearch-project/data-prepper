@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collections;
@@ -25,6 +26,7 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +41,17 @@ public class DeleteEntryProcessorTests {
     private ExpressionEvaluator expressionEvaluator;
 
     private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
+
+    @Test
+    void invalid_delete_when_throws_InvalidPluginConfigurationException() {
+        final String deleteWhen = UUID.randomUUID().toString();
+
+        when(mockConfig.getDeleteWhen()).thenReturn(deleteWhen);
+
+        when(expressionEvaluator.isValidExpressionStatement(deleteWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
 
     @Test
     public void testSingleDeleteProcessorTest() {
@@ -92,6 +105,7 @@ public class DeleteEntryProcessorTests {
         when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey("message", EventKeyFactory.EventAction.DELETE)));
         final String deleteWhen = UUID.randomUUID().toString();
         when(mockConfig.getDeleteWhen()).thenReturn(deleteWhen);
+        when(expressionEvaluator.isValidExpressionStatement(deleteWhen)).thenReturn(true);
 
         final DeleteEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");

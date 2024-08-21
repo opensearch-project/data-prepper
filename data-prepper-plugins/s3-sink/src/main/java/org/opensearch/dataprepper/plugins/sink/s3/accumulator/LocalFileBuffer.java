@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -98,7 +99,7 @@ public class LocalFileBuffer implements Buffer {
         final CompletableFuture<PutObjectResponse> putObjectResponseCompletableFuture = BufferUtilities.putObjectOrSendToDefaultBucket(s3Client,
                 AsyncRequestBody.fromFile(localFile),
                 consumeOnCompletion, consumeOnException,
-                getKey(), getBucket(), defaultBucket, bucketOwnerProvider)
+                getKey(), getBucket(), defaultBucket, null, bucketOwnerProvider)
                 .whenComplete(((response, throwable) -> removeTemporaryFile()));
         return Optional.of(putObjectResponseCompletableFuture);
     }
@@ -136,6 +137,10 @@ public class LocalFileBuffer implements Buffer {
     @Override
     public OutputStream getOutputStream() {
         return outputStream;
+    }
+
+    private Map<String, String> getMetadata() {
+        return null;
     }
 
 

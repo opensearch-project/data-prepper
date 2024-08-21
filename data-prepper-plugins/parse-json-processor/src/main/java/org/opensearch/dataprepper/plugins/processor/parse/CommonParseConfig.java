@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.parse;
 
 import java.util.List;
+import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 
 public interface CommonParseConfig {
     /**
@@ -59,4 +60,10 @@ public interface CommonParseConfig {
      * Defaults to false.
      */
     boolean isDeleteSourceRequested();
+
+    /**
+     * An optional setting used to determine how to handle parsing errors. Default is skip, which includes logging the error
+     * and passing the failed Event downstream to the next processor.
+     */
+    HandleFailedEventsOption getHandleFailedEventsOption();
 }

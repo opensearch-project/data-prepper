@@ -14,6 +14,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -32,15 +33,18 @@ class BufferUtilities {
                                                                                final String objectKey,
                                                                                final String targetBucket,
                                                                                final String defaultBucket,
+                                                                               final Map<String, String> objectMetadata,
                                                                                final BucketOwnerProvider bucketOwnerProvider) {
 
         final boolean[] defaultBucketAttempted = new boolean[1];
-        return s3Client.putObject(
-                PutObjectRequest.builder()
-                        .bucket(targetBucket)
-                        .key(objectKey)
-                        .expectedBucketOwner(bucketOwnerProvider.getBucketOwner(targetBucket).orElse(null))
-                        .build(), requestBody)
+        PutObjectRequest.Builder builder =  PutObjectRequest.builder()
+                .bucket(targetBucket)
+                .key(objectKey)
+                .expectedBucketOwner(bucketOwnerProvider.getBucketOwner(targetBucket).orElse(null));
+        if (objectMetadata != null) {
+            builder = builder.metadata(objectMetadata);
+        }
+        return s3Client.putObject(builder.build(), requestBody)
                 .handle((result, ex) -> {
                     if (ex != null) {
                         runOnFailure.accept(ex);
