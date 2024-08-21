@@ -4,12 +4,17 @@
  */
 package org.opensearch.dataprepper.plugins.codec.csv;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `csv` processor parses comma-separated values (CSVs) from the event into columns.")
 public class CsvOutputCodecConfig {
     static final String DEFAULT_DELIMITER = ",";
 

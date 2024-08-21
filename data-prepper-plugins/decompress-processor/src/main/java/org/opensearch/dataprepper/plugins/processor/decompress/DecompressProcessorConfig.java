@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.decompress;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.processor.decompress.encoding.EncodingType;
@@ -14,6 +16,9 @@ import org.opensearch.dataprepper.plugins.processor.decompress.encoding.DecoderE
 
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `decompress` processor decompresses any Base64-encoded " +
+        "compressed fields inside of an event.")
 public class DecompressProcessorConfig {
 
     @JsonProperty("keys")

@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.model.configuration;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -27,6 +29,9 @@ import java.util.Map;
  *
  * @since 2.0
  */
+@JsonPropertyOrder
+@JsonClassDescription("The key-value pair defines routing condition, where the key is the name of a route and the " +
+        "value is a Data Prepper expression representing the routing condition.")
 @JsonSerialize(using = ConditionalRoute.ConditionalRouteSerializer.class)
 @JsonDeserialize(using = ConditionalRoute.ConditionalRouteDeserializer.class)
 public class ConditionalRoute {

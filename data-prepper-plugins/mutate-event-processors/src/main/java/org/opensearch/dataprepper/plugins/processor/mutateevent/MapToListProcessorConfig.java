@@ -5,14 +5,19 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `map_to_list` processor converts a map of key-value pairs to a list of objects. " +
+        "Each object contains the key and value in separate fields.")
 public class MapToListProcessorConfig {
     private static final String DEFAULT_KEY_NAME = "key";
     private static final String DEFAULT_VALUE_NAME = "value";

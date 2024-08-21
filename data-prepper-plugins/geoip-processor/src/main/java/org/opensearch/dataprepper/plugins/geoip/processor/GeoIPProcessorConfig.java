@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.geoip.processor;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -15,6 +17,9 @@ import java.util.List;
 /**
  * An implementation class of GeoIP Processor configuration
  */
+@JsonPropertyOrder
+@JsonClassDescription("The `geoip` processor enriches events with geographic information extracted from IP addresses " +
+        "contained in the events.")
 public class GeoIPProcessorConfig {
 
     @Valid

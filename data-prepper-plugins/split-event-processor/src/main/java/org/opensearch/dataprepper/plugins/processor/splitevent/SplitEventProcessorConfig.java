@@ -10,13 +10,17 @@
 
 package org.opensearch.dataprepper.plugins.processor.splitevent;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size; 
+import jakarta.validation.constraints.Size;
 
-
+@JsonPropertyOrder
+@JsonClassDescription("The `split_event` processor is used to split events based on a delimiter and " +
+        "generates multiple events from a user-specified field.")
 public class SplitEventProcessorConfig {
     @NotEmpty
     @NotNull

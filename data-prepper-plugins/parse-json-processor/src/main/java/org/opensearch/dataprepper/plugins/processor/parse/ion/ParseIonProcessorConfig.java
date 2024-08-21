@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.processor.parse.ion;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
@@ -13,6 +15,8 @@ import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 import java.util.List;
 import java.util.Objects;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `parse_ion` processor parses [Amazon Ion](https://amazon-ion.github.io/ion-docs/) data.")
 public class ParseIonProcessorConfig implements CommonParseConfig {
     static final String DEFAULT_SOURCE = "message";
 

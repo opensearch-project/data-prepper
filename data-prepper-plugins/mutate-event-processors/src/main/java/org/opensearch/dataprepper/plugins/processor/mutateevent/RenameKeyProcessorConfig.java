@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -15,6 +17,8 @@ import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `rename_keys` processor renames keys in an event.")
 public class RenameKeyProcessorConfig {
     public static class Entry {
         @NotEmpty

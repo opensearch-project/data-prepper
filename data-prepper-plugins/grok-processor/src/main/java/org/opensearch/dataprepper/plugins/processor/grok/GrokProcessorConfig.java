@@ -5,13 +5,18 @@
 
 package org.opensearch.dataprepper.plugins.processor.grok;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `grok` processor uses pattern matching to structure and extract important keys from " +
+        "unstructured data.")
 public class GrokProcessorConfig {
 
     static final String TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY = "_total_grok_patterns_attempted";

@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.processor;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -40,6 +42,8 @@ public class StringProcessor implements Processor<Record<Event>, Record<Event>> 
 
     private final boolean upperCase;
 
+    @JsonPropertyOrder
+    @JsonClassDescription("The `string_converter` processor converts a string to uppercase or lowercase.")
     public static class Configuration {
         @JsonPropertyDescription("Whether to convert to uppercase (`true`) or lowercase (`false`).")
         private boolean upperCase = true;

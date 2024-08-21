@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_ORDER;
 import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_REQUIRED;
 
 public class DataPrepperPluginSchemaExecute implements Runnable {
@@ -53,7 +54,7 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
     @Override
     public void run() {
         final List<Module> modules = List.of(
-                new CustomJacksonModule(RESPECT_JSONPROPERTY_REQUIRED),
+                new CustomJacksonModule(RESPECT_JSONPROPERTY_REQUIRED, RESPECT_JSONPROPERTY_ORDER),
                 new JakartaValidationModule(JakartaValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED,
                         JakartaValidationOption.INCLUDE_PATTERN_EXPRESSIONS)
         );

@@ -5,12 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `select_entries` processor selects entries from a Data Prepper event.")
 public class SelectEntriesProcessorConfig {
     @NotEmpty
     @NotNull
