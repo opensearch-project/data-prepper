@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
@@ -17,9 +18,11 @@ public class TableConfig {
     private String tableArn;
 
     @JsonProperty("export")
+    @Valid
     private ExportConfig exportConfig;
 
     @JsonProperty(value = "stream")
+    @Valid
     private StreamConfig streamConfig;
 
 

@@ -221,6 +221,7 @@ public class AggregateProcessorIT {
         String condition = "/firstRandomNumber < 100";
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
+        when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(true);
         int count = 0;
         for (Record<Event> record: eventBatch) {
             Event event = record.getData();
@@ -410,6 +411,7 @@ public class AggregateProcessorIT {
         final String condition = "/firstRandomNumber < 100";
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
+        when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(true);
         int count = 0;
         eventBatch = getBatchOfEvents(true);
         for (Record<Event> record: eventBatch) {

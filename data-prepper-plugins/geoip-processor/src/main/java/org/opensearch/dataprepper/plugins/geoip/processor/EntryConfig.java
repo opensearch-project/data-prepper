@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.geoip.processor;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
@@ -16,16 +17,21 @@ import java.util.List;
 
 public class EntryConfig {
     static final String DEFAULT_TARGET = "geo";
+
+    @JsonPropertyDescription("The key of the source field containing the IP address to geolocate.")
     @JsonProperty("source")
     @NotEmpty
     private String source;
 
+    @JsonPropertyDescription("The key of the target field in which to save the geolocation data. Default is geo.")
     @JsonProperty("target")
     private String target = DEFAULT_TARGET;
 
+    @JsonPropertyDescription("The list of geolocation fields to include in the target object. By default, this is all the fields provided by the configured databases.")
     @JsonProperty("include_fields")
     private List<String> includeFields;
 
+    @JsonPropertyDescription("The list of geolocation fields to exclude from the target object.")
     @JsonProperty("exclude_fields")
     private List<String> excludeFields;
 

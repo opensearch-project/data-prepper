@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -38,6 +39,13 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
         super(pluginMetrics);
         this.config = config;
         this.expressionEvaluator = expressionEvaluator;
+
+        if (config.getListToMapWhen() != null
+                && !expressionEvaluator.isValidExpressionStatement(config.getListToMapWhen())) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("list_to_map_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                            config.getListToMapWhen()));
+        }
     }
 
     @Override

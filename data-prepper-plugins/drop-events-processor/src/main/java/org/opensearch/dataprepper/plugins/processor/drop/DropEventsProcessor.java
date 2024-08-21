@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -32,6 +33,11 @@ public class DropEventsProcessor extends AbstractProcessor<Record<Event>, Record
             final ExpressionEvaluator expressionEvaluator
     ) {
         super(pluginMetrics);
+
+        if (dropEventProcessorConfig.getDropWhen() != null &&
+                (!expressionEvaluator.isValidExpressionStatement(dropEventProcessorConfig.getDropWhen()))) {
+            throw new InvalidPluginConfigurationException("drop_when {} is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax");
+        }
 
         whenCondition = new DropEventsWhenCondition.Builder()
                 .withDropEventsProcessorConfig(dropEventProcessorConfig)

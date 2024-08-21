@@ -24,6 +24,9 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
         private String to;
 
         @JsonProperty("substitute_when")
+        @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
+                "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be " +
+                "run on the event. Default is `null`. All events will be processed unless otherwise stated.")
         private String substituteWhen;
 
         public EventKey getSource() {
@@ -50,7 +53,7 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
         public Entry() {}
     }
 
-    @JsonPropertyDescription("List of entries. Valid values are `source`, `from`, and `to`.")
+    @JsonPropertyDescription("List of entries. Valid values are `source`, `from`, and `to`, and `substitute_when`.")
     private List<Entry> entries;
 
     public List<Entry> getEntries() {

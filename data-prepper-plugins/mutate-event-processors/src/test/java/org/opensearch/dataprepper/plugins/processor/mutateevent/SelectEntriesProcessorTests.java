@@ -40,6 +40,16 @@ public class SelectEntriesProcessorTests {
     private ExpressionEvaluator expressionEvaluator;
 
     @Test
+    void invalid_select_when_throws_InvalidPluginConfigurationException() {
+        final String selectWhen = UUID.randomUUID().toString();
+
+        when(mockConfig.getSelectWhen()).thenReturn(selectWhen);
+
+        when(expressionEvaluator.isValidExpressionStatement(selectWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+    @Test
     public void testSelectEntriesProcessor() {
         when(mockConfig.getIncludeKeys()).thenReturn(List.of("key1", "key2"));
         when(mockConfig.getSelectWhen()).thenReturn(null);

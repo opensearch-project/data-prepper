@@ -6,14 +6,17 @@
 package org.opensearch.dataprepper.plugins.processor.write_json;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.NotNull;
 
 public class WriteJsonProcessorConfig {
     @JsonProperty("source")
+    @JsonPropertyDescription("Specifies the name of the field in the event containing the message or object to be parsed.")
     @NotNull
     private String source;
 
     @JsonProperty("target")
+    @JsonPropertyDescription("Specifies the name of the field in which the resulting JSON string should be stored. If target is not specified, then the source field is used.")
     private String target;
 
     public String getSource() {

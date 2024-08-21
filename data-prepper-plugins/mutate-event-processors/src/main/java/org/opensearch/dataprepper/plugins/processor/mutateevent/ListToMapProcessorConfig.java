@@ -84,7 +84,7 @@ public class ListToMapProcessorConfig {
     private FlattenedElement flattenedElement = FlattenedElement.FIRST;
 
     @JsonProperty("list_to_map_when")
-    @JsonPropertyDescription("A [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
+    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
             "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be " +
             "run on the event. Default is `null`. All events will be processed unless otherwise stated.")
     private String listToMapWhen;

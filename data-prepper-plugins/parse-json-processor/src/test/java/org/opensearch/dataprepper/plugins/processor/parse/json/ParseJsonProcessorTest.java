@@ -6,6 +6,11 @@
 package org.opensearch.dataprepper.plugins.processor.parse.json;
 
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,14 +18,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.event.TestEventKeyFactory;
-import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.parse.AbstractParseProcessor;
 import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 
@@ -35,7 +36,9 @@ import java.util.UUID;
 import static java.util.Map.entry;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -82,12 +85,22 @@ public class ParseJsonProcessorTest {
         when(pluginMetrics.counter("recordsIn")).thenReturn(mock(Counter.class));
         when(pluginMetrics.counter("recordsOut")).thenReturn(mock(Counter.class));
         when(pluginMetrics.counter("processingFailures")).thenReturn(processingFailuresCounter);
-        when(pluginMetrics.counter("parseErrors")).thenReturn(parseErrorsCounter);
+        lenient().when(pluginMetrics.counter("parseErrors")).thenReturn(parseErrorsCounter);
         when(processorConfig.getHandleFailedEventsOption()).thenReturn(handleFailedEventsOption);
     }
 
     protected AbstractParseProcessor createObjectUnderTest() {
         return new ParseJsonProcessor(pluginMetrics, jsonProcessorConfig, expressionEvaluator, testEventKeyFactory);
+    }
+
+    @Test
+    void invalid_parse_when_throws_InvalidPluginConfigurationException() {
+        final String parseWhen = UUID.randomUUID().toString();
+
+        when(processorConfig.getParseWhen()).thenReturn(parseWhen);
+        when(expressionEvaluator.isValidExpressionStatement(parseWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
     @Test
@@ -413,6 +426,7 @@ public class ParseJsonProcessorTest {
         final Map<String, Object> data = Collections.singletonMap("key", "value");
         final String serializedMessage = convertMapToJSONString(data);
         final Record<Event> testEvent = createMessageEvent(serializedMessage);
+        when(expressionEvaluator.isValidExpressionStatement(whenCondition)).thenReturn(true);
         when(expressionEvaluator.evaluateConditional(whenCondition, testEvent.getData())).thenReturn(false);
         parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
 
@@ -439,6 +453,7 @@ public class ParseJsonProcessorTest {
         List<String> testTags = List.of("tag1", "tag2");
         when(processorConfig.getTagsOnFailure()).thenReturn(testTags);
         final Record<Event> testEvent = createMessageEvent("{key:}");
+        when(expressionEvaluator.isValidExpressionStatement(whenCondition)).thenReturn(true);
         when(expressionEvaluator.evaluateConditional(whenCondition, testEvent.getData())).thenReturn(true);
         parseJsonProcessor = createObjectUnderTest();
 
@@ -461,6 +476,7 @@ public class ParseJsonProcessorTest {
         final Map<String, Object> data = Collections.singletonMap("key", "value");
         final String serializedMessage = convertMapToJSONString(data);
         final Record<Event> testEvent = createMessageEvent(serializedMessage);
+        when(expressionEvaluator.isValidExpressionStatement(whenCondition)).thenReturn(true);
         when(expressionEvaluator.evaluateConditional(whenCondition, testEvent.getData())).thenThrow(RuntimeException.class);
         parseJsonProcessor = createObjectUnderTest();
 

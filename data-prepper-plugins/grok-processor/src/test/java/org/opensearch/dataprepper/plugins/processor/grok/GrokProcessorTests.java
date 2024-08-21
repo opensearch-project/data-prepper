@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
@@ -153,6 +155,16 @@ public class GrokProcessorTests {
     private GrokProcessor createObjectUnderTest() {
         return new GrokProcessor(
                 pluginMetrics, grokProcessorConfig, grokCompiler, executorService, expressionEvaluator);
+    }
+
+    @Test
+    void invalid_grok_when_throws_InvalidPluginConfigurationException() {
+        final String grokWhen = UUID.randomUUID().toString();
+
+        when(grokProcessorConfig.getGrokWhen()).thenReturn(grokWhen);
+        when(expressionEvaluator.isValidExpressionStatement(grokWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
     @Test
@@ -798,6 +810,7 @@ public class GrokProcessorTests {
     public void testNoGrok_when_GrokWhen_returns_false() throws JsonProcessingException {
         final String grokWhen = UUID.randomUUID().toString();
         when(grokProcessorConfig.getGrokWhen()).thenReturn(grokWhen);
+        when(expressionEvaluator.isValidExpressionStatement(grokWhen)).thenReturn(true);
         grokProcessor = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");

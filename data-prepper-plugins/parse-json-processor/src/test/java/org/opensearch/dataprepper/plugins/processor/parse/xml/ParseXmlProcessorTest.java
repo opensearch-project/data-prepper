@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.parse.AbstractParseProcessor;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
@@ -32,9 +33,11 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.processor.parse.xml.ParseXmlProcessorConfig.DEFAULT_SOURCE;
 
@@ -72,12 +75,22 @@ public class ParseXmlProcessorTest {
         when(pluginMetrics.counter("recordsIn")).thenReturn(mock(Counter.class));
         when(pluginMetrics.counter("recordsOut")).thenReturn(mock(Counter.class));
         when(pluginMetrics.counter("processingFailures")).thenReturn(processingFailuresCounter);
-        when(pluginMetrics.counter("parseErrors")).thenReturn(parseErrorsCounter);
+        lenient().when(pluginMetrics.counter("parseErrors")).thenReturn(parseErrorsCounter);
         when(processorConfig.getHandleFailedEventsOption()).thenReturn(handleFailedEventsOption);
     }
 
     protected AbstractParseProcessor createObjectUnderTest() {
         return new ParseXmlProcessor(pluginMetrics, processorConfig, expressionEvaluator, testEventKeyFactory);
+    }
+
+    @Test
+    void invalid_parse_when_throws_InvalidPluginConfigurationException() {
+        final String parseWhen = UUID.randomUUID().toString();
+
+        when(processorConfig.getParseWhen()).thenReturn(parseWhen);
+        when(expressionEvaluator.isValidExpressionStatement(parseWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
     @Test
