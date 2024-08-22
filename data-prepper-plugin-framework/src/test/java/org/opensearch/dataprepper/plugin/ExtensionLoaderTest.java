@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.plugins.test.TestExtensionConfig;
 import org.opensearch.dataprepper.plugins.test.TestExtensionWithConfig;
 import org.opensearch.dataprepper.validation.PluginError;
 import org.opensearch.dataprepper.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.validation.PluginErrorsConsolidator;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -60,15 +61,17 @@ class ExtensionLoaderTest {
     @Captor
     private ArgumentCaptor<PluginArgumentsContext> pluginArgumentsContextArgumentCaptor;
     private PluginErrorCollector pluginErrorCollector;
+    private PluginErrorsConsolidator pluginErrorsConsolidator;
 
     private ExtensionLoader createObjectUnderTest() {
         return new ExtensionLoader(extensionPluginConfigurationConverter, extensionClassProvider,
-                extensionPluginCreator, pluginErrorCollector);
+                extensionPluginCreator, pluginErrorCollector, pluginErrorsConsolidator);
     }
 
     @BeforeEach
     void setUp() {
         pluginErrorCollector = new PluginErrorCollector();
+        pluginErrorsConsolidator = new PluginErrorsConsolidator();
     }
 
     @Test

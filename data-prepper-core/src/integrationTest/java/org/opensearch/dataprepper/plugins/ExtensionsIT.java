@@ -32,6 +32,7 @@ import org.opensearch.dataprepper.plugin.TestPluggableInterface;
 import org.opensearch.dataprepper.plugins.test.TestExtension;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.validation.PluginErrorsConsolidator;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.ArrayList;
@@ -70,6 +71,7 @@ public class ExtensionsIT {
     private AnnotationConfigApplicationContext coreContext;
     private PluginFactory pluginFactory;
     private PluginErrorCollector pluginErrorCollector;
+    private PluginErrorsConsolidator pluginErrorsConsolidator;
     private String pluginName;
     private String pipelineName;
 
@@ -78,6 +80,7 @@ public class ExtensionsIT {
         pluginName = "test_plugin_using_extension";
         pipelineName = UUID.randomUUID().toString();
         pluginErrorCollector = new PluginErrorCollector();
+        pluginErrorsConsolidator = new PluginErrorsConsolidator();
         publicContext = new AnnotationConfigApplicationContext();
         publicContext.refresh();
 
@@ -108,6 +111,7 @@ public class ExtensionsIT {
         coreContext.registerBean(ObjectMapper.class, () -> new ObjectMapper(new YAMLFactory()));
         coreContext.register(PipelineParserConfiguration.class);
         coreContext.registerBean(PluginErrorCollector.class, () -> pluginErrorCollector);
+        coreContext.registerBean(PluginErrorsConsolidator.class, () -> pluginErrorsConsolidator);
         coreContext.refresh();
 
         pluginFactory = coreContext.getBean(DefaultPluginFactory.class);

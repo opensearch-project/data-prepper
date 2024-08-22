@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineConfigurat
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.validation.PluginErrorsConsolidator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -46,7 +47,8 @@ public class PipelineParserConfiguration {
             final EventFactory eventFactory,
             final AcknowledgementSetManager acknowledgementSetManager,
             final SourceCoordinatorFactory sourceCoordinatorFactory,
-            final PluginErrorCollector pluginErrorCollector
+            final PluginErrorCollector pluginErrorCollector,
+            final PluginErrorsConsolidator pluginErrorsConsolidator
             ) {
         return new PipelineTransformer(pipelinesDataFlowModel,
                 pluginFactory,
@@ -57,7 +59,8 @@ public class PipelineParserConfiguration {
                 eventFactory,
                 acknowledgementSetManager,
                 sourceCoordinatorFactory,
-                pluginErrorCollector);
+                pluginErrorCollector,
+                pluginErrorsConsolidator);
     }
 
     @Bean

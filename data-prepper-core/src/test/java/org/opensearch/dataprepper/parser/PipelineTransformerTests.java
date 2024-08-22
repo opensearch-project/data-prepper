@@ -39,6 +39,7 @@ import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.validation.PluginError;
 import org.opensearch.dataprepper.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.validation.PluginErrorsConsolidator;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.Duration;
@@ -87,6 +88,8 @@ class PipelineTransformerTests {
 
     private PluginErrorCollector pluginErrorCollector;
 
+    private PluginErrorsConsolidator pluginErrorsConsolidator;
+
     private EventFactory eventFactory;
 
     private DefaultAcknowledgementSetManager acknowledgementSetManager;
@@ -99,6 +102,7 @@ class PipelineTransformerTests {
         eventFactory = mock(EventFactory.class);
         acknowledgementSetManager = mock(DefaultAcknowledgementSetManager.class);
         pluginErrorCollector = new PluginErrorCollector();
+        pluginErrorsConsolidator = new PluginErrorsConsolidator();
         final AnnotationConfigApplicationContext publicContext = new AnnotationConfigApplicationContext();
         publicContext.refresh();
 
@@ -126,9 +130,11 @@ class PipelineTransformerTests {
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataflowModelParser(
                 new PipelineConfigurationFileReader(pipelineConfigurationFileLocation)).parseConfiguration();
-        return new PipelineTransformer(pipelinesDataFlowModel, pluginFactory, peerForwarderProvider,
-                                  routerFactory, dataPrepperConfiguration, circuitBreakerManager, eventFactory,
-                                  acknowledgementSetManager, sourceCoordinatorFactory, pluginErrorCollector);
+        return new PipelineTransformer(
+                pipelinesDataFlowModel, pluginFactory, peerForwarderProvider,
+                routerFactory, dataPrepperConfiguration, circuitBreakerManager, eventFactory,
+                acknowledgementSetManager, sourceCoordinatorFactory, pluginErrorCollector,
+                pluginErrorsConsolidator);
     }
 
     @Test
