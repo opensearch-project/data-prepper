@@ -115,6 +115,7 @@ class PipelineTransformerTests {
 
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
         coreContext.registerBean(PluginErrorCollector.class, () -> pluginErrorCollector);
+        coreContext.registerBean(PluginErrorsConsolidator.class, () -> pluginErrorsConsolidator);
         coreContext.registerBean(DataPrepperConfiguration.class, () -> dataPrepperConfiguration);
         coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
         coreContext.refresh();
