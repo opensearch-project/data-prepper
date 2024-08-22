@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
+import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
@@ -20,13 +22,20 @@ public class StreamCheckpointer {
     private static final Logger LOG = LoggerFactory.getLogger(StreamCheckpointer.class);
 
     static final Duration CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE = Duration.ofMinutes(5);
+    static final String CHECKPOINT_COUNT = "checkpoints";
 
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final StreamPartition streamPartition;
+    private final PluginMetrics pluginMetrics;
+    private final Counter checkpointCounter;
 
-    public StreamCheckpointer(final EnhancedSourceCoordinator sourceCoordinator, final StreamPartition streamPartition) {
+    public StreamCheckpointer(final EnhancedSourceCoordinator sourceCoordinator,
+                              final StreamPartition streamPartition,
+                              final PluginMetrics pluginMetrics) {
         this.sourceCoordinator = sourceCoordinator;
         this.streamPartition = streamPartition;
+        this.pluginMetrics = pluginMetrics;
+        checkpointCounter = pluginMetrics.counter(CHECKPOINT_COUNT);
     }
 
     public void checkpoint(final BinlogCoordinate binlogCoordinate) {
@@ -34,6 +43,7 @@ public class StreamCheckpointer {
         Optional<StreamProgressState> progressState = streamPartition.getProgressState();
         progressState.get().setCurrentPosition(binlogCoordinate);
         sourceCoordinator.saveProgressStateForPartition(streamPartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
+        checkpointCounter.increment();
     }
 
     public void extendLease() {

@@ -58,7 +58,7 @@ public class RdsSourceConfig {
     private boolean acknowledgments = false;
 
     @JsonProperty("s3_data_file_acknowledgment_timeout")
-    private Duration dataFileAcknowledgmentTimeout = Duration.ofMinutes(5);
+    private Duration dataFileAcknowledgmentTimeout = Duration.ofMinutes(30);
 
     @JsonProperty("stream_acknowledgment_timeout")
     private Duration streamAcknowledgmentTimeout = Duration.ofMinutes(10);

@@ -64,7 +64,7 @@ public class StreamScheduler implements Runnable {
                     LOG.info("Acquired partition to read from stream");
 
                     final StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
-                    final StreamCheckpointer streamCheckpointer = new StreamCheckpointer(sourceCoordinator, streamPartition);
+                    final StreamCheckpointer streamCheckpointer = new StreamCheckpointer(sourceCoordinator, streamPartition, pluginMetrics);
                     binaryLogClient.registerEventListener(new BinlogEventListener(
                             buffer, sourceConfig, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager));
                     final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, binaryLogClient, pluginMetrics);

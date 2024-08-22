@@ -20,6 +20,7 @@ import java.util.concurrent.Executors;
 public class StreamCheckpointManager {
     private static final Logger LOG = LoggerFactory.getLogger(StreamCheckpointManager.class);
     static final int REGULAR_CHECKPOINT_INTERVAL_MILLIS = 60_000;
+    static final int CHANGE_EVENT_COUNT_PER_CHECKPOINT_BATCH = 1000;
 
     private final ConcurrentLinkedQueue<ChangeEventStatus> changeEventStatuses = new ConcurrentLinkedQueue<>();
     private final StreamCheckpointer streamCheckpointer;
@@ -74,8 +75,14 @@ public class StreamCheckpointManager {
                             break;
                         }
                     } else {
+                        int changeEventCount = 0;
                         do {
                             currentChangeEventStatus = changeEventStatuses.poll();
+                            changeEventCount++;
+                            // In case queue are populated faster than the poll, checkpoint when reaching certain count
+                            if (changeEventCount % CHANGE_EVENT_COUNT_PER_CHECKPOINT_BATCH == 0) {
+                                streamCheckpointer.checkpoint(currentChangeEventStatus.getBinlogCoordinate());
+                            }
                         } while (!changeEventStatuses.isEmpty());
                         streamCheckpointer.checkpoint(currentChangeEventStatus.getBinlogCoordinate());
                     }
