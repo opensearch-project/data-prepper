@@ -5,12 +5,17 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutatestring;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.opensearch.dataprepper.model.event.EventKey;
 
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `substitute_string` processor matches a key’s value against a regular expression and " +
+        "replaces all matches with a replacement string.")
 public class SubstituteStringProcessorConfig implements StringProcessorConfig<SubstituteStringProcessorConfig.Entry> {
     public static class Entry {
         @JsonPropertyDescription("The key to modify.")
@@ -24,6 +29,9 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
         private String to;
 
         @JsonProperty("substitute_when")
+        @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
+                "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be " +
+                "run on the event. Default is `null`. All events will be processed unless otherwise stated.")
         private String substituteWhen;
 
         public EventKey getSource() {
@@ -50,7 +58,7 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
         public Entry() {}
     }
 
-    @JsonPropertyDescription("List of entries. Valid values are `source`, `from`, and `to`.")
+    @JsonPropertyDescription("List of entries. Valid values are `source`, `from`, and `to`, and `substitute_when`.")
     private List<Entry> entries;
 
     public List<Entry> getEntries() {

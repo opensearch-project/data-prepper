@@ -5,9 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
@@ -16,6 +18,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `list_to_map` processor converts a list of objects from an event, " +
+        "where each object contains a `key` field, into a map of target keys.")
 public class ListToMapProcessorConfig {
     enum FlattenedElement {
         FIRST("first"),
@@ -84,7 +89,7 @@ public class ListToMapProcessorConfig {
     private FlattenedElement flattenedElement = FlattenedElement.FIRST;
 
     @JsonProperty("list_to_map_when")
-    @JsonPropertyDescription("A [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
+    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
             "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be " +
             "run on the event. Default is `null`. All events will be processed unless otherwise stated.")
     private String listToMapWhen;

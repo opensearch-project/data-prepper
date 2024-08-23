@@ -23,7 +23,7 @@ public class TailSamplerAggregateActionConfig {
     @NotNull
     private Integer percent;
     
-    @JsonPropertyDescription("A Data Prepper conditional expression (https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as '/some-key == \"test\"', that will be evaluated to determine whether the event is an error event or not")
+    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as '/some-key == \"test\"', that will be evaluated to determine whether the event is an error event or not")
     @JsonProperty("condition")
     private String condition;
 

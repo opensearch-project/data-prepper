@@ -5,9 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutatestring;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -16,6 +18,9 @@ import org.opensearch.dataprepper.model.event.EventKey;
 
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `split_string` processor splits a field into an array using a delimiting character and is a " +
+        "[mutate string](https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/mutate-string-processors#mutate-string-processors) processor.")
 public class SplitStringProcessorConfig implements StringProcessorConfig<SplitStringProcessorConfig.Entry> {
     public static class Entry {
 

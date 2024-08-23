@@ -15,6 +15,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 
 import java.util.UUID;
 import java.util.stream.Stream;

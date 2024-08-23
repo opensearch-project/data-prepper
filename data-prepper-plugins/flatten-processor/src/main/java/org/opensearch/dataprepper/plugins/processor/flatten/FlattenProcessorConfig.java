@@ -5,15 +5,19 @@
 
 package org.opensearch.dataprepper.plugins.processor.flatten;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `flatten` processor transforms nested objects inside of events into flattened structures.")
 public class FlattenProcessorConfig {
 
     private static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
@@ -50,7 +54,7 @@ public class FlattenProcessorConfig {
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     @JsonProperty("flatten_when")
-    @JsonPropertyDescription("A [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
+    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
             "such as `/some-key == \"test\"'`, that determines whether the `flatten` processor will be run on the " +
             "event. Default is `null`, which means that all events will be processed unless otherwise stated.")
     private String flattenWhen;

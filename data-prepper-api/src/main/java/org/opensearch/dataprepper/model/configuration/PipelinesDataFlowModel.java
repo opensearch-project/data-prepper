@@ -27,12 +27,13 @@ import java.util.Objects;
  * @since 1.2
  */
 public class PipelinesDataFlowModel {
+    public static final String EXTENSION_PLUGIN_TYPE = "extension";
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private DataPrepperVersion version;
 
     @JsonAlias("pipeline_configurations")
-    @JsonProperty("extension")
+    @JsonProperty(EXTENSION_PLUGIN_TYPE)
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonSetter(nulls = Nulls.SKIP)
     private PipelineExtensions pipelineExtensions;

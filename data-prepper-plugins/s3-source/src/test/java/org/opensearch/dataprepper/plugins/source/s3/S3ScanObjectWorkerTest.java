@@ -460,8 +460,8 @@ class S3ScanObjectWorkerTest {
         inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, firstObject.key());
         inOrder.verify(acknowledgementSet1).complete();
         inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, secondObject.key());
-        inOrder.verify(acknowledgementSet2).complete();
         inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        inOrder.verify(acknowledgementSet2).complete();
 
         final Consumer<Boolean> firstAckCallback = ackCallbacks.get(0);
         firstAckCallback.accept(true);
@@ -532,8 +532,8 @@ class S3ScanObjectWorkerTest {
         final InOrder inOrder = inOrder(sourceCoordinator, acknowledgementSet1, s3ObjectDeleteWorker);
 
         inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, firstObject.key());
-        inOrder.verify(acknowledgementSet1).complete();
         inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        inOrder.verify(acknowledgementSet1).complete();
 
         final Consumer<Boolean> ackCallback = consumerArgumentCaptor.getValue();
         ackCallback.accept(true);

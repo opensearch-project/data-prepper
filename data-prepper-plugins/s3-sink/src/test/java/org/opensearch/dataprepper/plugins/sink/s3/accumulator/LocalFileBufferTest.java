@@ -123,7 +123,7 @@ class LocalFileBufferTest {
         try (final MockedStatic<BufferUtilities> bufferUtilitiesMockedStatic = mockStatic(BufferUtilities.class)) {
             bufferUtilitiesMockedStatic.when(() ->
                             BufferUtilities.putObjectOrSendToDefaultBucket(eq(s3Client), any(AsyncRequestBody.class),
-                                    eq(mockRunOnCompletion), eq(mockRunOnFailure), eq(KEY), eq(BUCKET_NAME), eq(defaultBucket), eq(bucketOwnerProvider)))
+                                    eq(mockRunOnCompletion), eq(mockRunOnFailure), eq(KEY), eq(BUCKET_NAME), eq(defaultBucket), eq(null), eq(bucketOwnerProvider)))
                     .thenReturn(expectedFuture);
 
             final Optional<CompletableFuture<?>> result = localFileBuffer.flushToS3(mockRunOnCompletion, mockRunOnFailure);

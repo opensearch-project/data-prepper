@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.truncate;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.AssertTrue; 
@@ -14,6 +16,9 @@ import jakarta.validation.Valid;
 
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `truncate` processor truncates a key’s value at the beginning, the end, " +
+        "or on both sides of the value string, based on the processor’s configuration.")
 public class TruncateProcessorConfig {
     public static class Entry {
         @JsonProperty("source_keys")
@@ -32,6 +37,7 @@ public class TruncateProcessorConfig {
         private Integer length;
 
         @JsonProperty("recursive")
+        @JsonPropertyDescription("Recursively truncates the fields. If the value of a field is a map (json object), then it recursively applies truncate operation on the fields in the map.")
         private Boolean recurse = false;
 
         @JsonProperty("truncate_when")

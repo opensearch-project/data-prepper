@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.obfuscation;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -15,6 +17,9 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `obfuscate` process enables obfuscation of fields inside your documents in order to " +
+        "protect sensitive data.")
 public class ObfuscationProcessorConfig {
 
     @JsonProperty("source")
@@ -24,6 +29,7 @@ public class ObfuscationProcessorConfig {
     private String source;
 
     @JsonProperty("patterns")
+    @JsonPropertyDescription("A list of regex patterns that allow you to obfuscate specific parts of a field. Only parts that match the regex pattern will obfuscate. When not provided, the processor obfuscates the whole field.")
     private List<String> patterns;
     
     @JsonProperty("target")
@@ -33,7 +39,7 @@ public class ObfuscationProcessorConfig {
     private String target;
 
     @JsonProperty("action")
-    @JsonPropertyDescription("The obfuscation action. As of Data Prepper 2.3, only the `mask` action is supported.")
+    @JsonPropertyDescription("The obfuscation action. Available actions include 'hash' and 'mask'.")
     private PluginModel action;
 
     @JsonProperty("obfuscate_when")
@@ -94,7 +100,7 @@ public class ObfuscationProcessorConfig {
 
     void validateObfuscateWhen(final ExpressionEvaluator expressionEvaluator) {
         if (obfuscateWhen != null && !expressionEvaluator.isValidExpressionStatement(obfuscateWhen)) {
-            throw new InvalidPluginConfigurationException(String.format("obfuscate_when value %s is not a valid Data Prepper expression statement", obfuscateWhen));
+            throw new InvalidPluginConfigurationException(String.format("obfuscate_when value %s is not a valid Data Prepper expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", obfuscateWhen));
         }
     }
 }

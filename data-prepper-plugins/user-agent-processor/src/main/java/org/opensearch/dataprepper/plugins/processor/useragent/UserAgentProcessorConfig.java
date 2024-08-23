@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.useragent;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.event.EventKey;
@@ -15,6 +17,9 @@ import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("The `user_agent` processor parses any user agent (UA) string in an event and then adds the " +
+        "parsing results to the event’s write data.")
 public class UserAgentProcessorConfig {
 
     private static final int DEFAULT_CACHE_SIZE = 1000;

@@ -9,9 +9,14 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.record.Record;
+import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,30 +34,47 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractParseProcessor.class);
+    private static final String PROCESSING_FAILURES = "processingFailures";
 
-    private final String source;
-    private final String destination;
+    private final EventKey source;
+    private final EventKey destination;
     private final String pointer;
     private final String parseWhen;
     private final List<String> tagsOnFailure;
     private final boolean overwriteIfDestinationExists;
     private final boolean deleteSourceRequested;
 
-    private final ExpressionEvaluator expressionEvaluator;
+    private final HandleFailedEventsOption handleFailedEventsOption;
 
-    protected AbstractParseProcessor(PluginMetrics pluginMetrics,
-                                     CommonParseConfig commonParseConfig,
-                                     ExpressionEvaluator expressionEvaluator) {
+    protected final Counter processingFailuresCounter;
+
+    private final ExpressionEvaluator expressionEvaluator;
+    private final EventKeyFactory eventKeyFactory;
+
+    protected AbstractParseProcessor(final PluginMetrics pluginMetrics,
+                                     final CommonParseConfig commonParseConfig,
+                                     final ExpressionEvaluator expressionEvaluator,
+                                     final EventKeyFactory eventKeyFactory) {
         super(pluginMetrics);
 
-        source = commonParseConfig.getSource();
-        destination = commonParseConfig.getDestination();
+        source = eventKeyFactory.createEventKey(commonParseConfig.getSource(), EventKeyFactory.EventAction.GET, EventKeyFactory.EventAction.DELETE);
+        destination = commonParseConfig.getDestination() != null ? eventKeyFactory.createEventKey(commonParseConfig.getDestination(), EventKeyFactory.EventAction.PUT, EventKeyFactory.EventAction.GET) : null;
         pointer = commonParseConfig.getPointer();
         parseWhen = commonParseConfig.getParseWhen();
         tagsOnFailure = commonParseConfig.getTagsOnFailure();
         overwriteIfDestinationExists = commonParseConfig.getOverwriteIfDestinationExists();
         deleteSourceRequested = commonParseConfig.isDeleteSourceRequested();
+        handleFailedEventsOption = commonParseConfig.getHandleFailedEventsOption();
+        processingFailuresCounter = pluginMetrics.counter(PROCESSING_FAILURES);
         this.expressionEvaluator = expressionEvaluator;
+        this.eventKeyFactory = eventKeyFactory;
+
+        if (commonParseConfig.getParseWhen() != null
+                && !expressionEvaluator.isValidExpressionStatement(commonParseConfig.getParseWhen())) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("parse_when value of %s is not a valid expression statement. " +
+                            "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.", commonParseConfig.getParseWhen()));
+        }
     }
 
     /**
@@ -100,7 +122,10 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                     event.delete(this.source);
                 }
             } catch (Exception e) {
-                LOG.error(EVENT, "An exception occurred while using the {} processor on Event [{}]", getProcessorName(), record.getData(), e);
+                processingFailuresCounter.increment();
+                if (handleFailedEventsOption.shouldLog()) {
+                    LOG.error(EVENT, "An exception occurred while using the {} processor on Event [{}]", getProcessorName(), record.getData(), e);
+                }
             }
         }
         return records;
@@ -128,7 +153,8 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
     private Map<String, Object> parseUsingPointer(final Event event, final Map<String, Object> parsedJson, final String pointer,
                                                   final boolean doWriteToRoot) {
         final Event temporaryEvent = JacksonEvent.builder().withEventType("event").build();
-        temporaryEvent.put(source, parsedJson);
+        final EventKey temporaryPutKey = eventKeyFactory.createEventKey(source.getKey(), EventKeyFactory.EventAction.PUT);
+        temporaryEvent.put(temporaryPutKey, parsedJson);
 
         final String trimmedPointer = trimPointer(pointer);
         final String actualPointer = source + "/" + trimmedPointer;
@@ -170,15 +196,15 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
         return pointer.replace('/','.');
     }
 
-    private String trimPointer(String pointer) {
+    private String trimPointer(final String pointer) {
         final String trimmedLeadingSlash = pointer.startsWith("/") ? pointer.substring(1) : pointer;
         return trimmedLeadingSlash.endsWith("/") ? trimmedLeadingSlash.substring(0, trimmedLeadingSlash.length() - 1) : trimmedLeadingSlash;
     }
 
     private void writeToRoot(final Event event, final Map<String, Object> parsedJson) {
-        for (Map.Entry<String, Object> entry : parsedJson.entrySet()) {
+        for (final Map.Entry<String, Object> entry : parsedJson.entrySet()) {
             if (overwriteIfDestinationExists || !event.containsKey(entry.getKey())) {
-                event.put(entry.getKey(), entry.getValue());
+                event.put(eventKeyFactory.createEventKey(entry.getKey(), EventKeyFactory.EventAction.PUT), entry.getValue());
             }
         }
     }

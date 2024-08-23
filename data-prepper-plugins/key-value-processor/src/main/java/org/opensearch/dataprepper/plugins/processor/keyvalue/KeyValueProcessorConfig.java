@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.keyvalue;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.AssertTrue;
@@ -16,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@JsonPropertyOrder
+@JsonClassDescription("You can use the `key_value` processor to parse the specified field into key-value pairs.")
 public class KeyValueProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
     static final String DEFAULT_DESTINATION = "parsed_message";
@@ -176,7 +180,7 @@ public class KeyValueProcessorConfig {
     private boolean dropKeysWithNoValue = false;
 
     @JsonProperty("key_value_when")
-    @JsonPropertyDescription("Allows you to specify a [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
+    @JsonPropertyDescription("Allows you to specify a Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
             "such as `/some-key == \"test\"`, that will be evaluated to determine whether " +
             "the processor should be applied to the event.")
     private String keyValueWhen;

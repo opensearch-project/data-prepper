@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -73,6 +74,12 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
                         final GeoIpConfigSupplier geoIpConfigSupplier,
                         final ExpressionEvaluator expressionEvaluator) {
     super(pluginMetrics);
+
+    if (geoIPProcessorConfig.getWhenCondition() != null &&
+            (!expressionEvaluator.isValidExpressionStatement(geoIPProcessorConfig.getWhenCondition()))) {
+      throw new InvalidPluginConfigurationException("geoip_when {} is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax");
+    }
+
     this.geoIPProcessorService = geoIpConfigSupplier.getGeoIPProcessorService().orElseThrow(() ->
             new IllegalStateException("geoip_service configuration is required when using geoip processor."));
     this.geoIPProcessorConfig = geoIPProcessorConfig;

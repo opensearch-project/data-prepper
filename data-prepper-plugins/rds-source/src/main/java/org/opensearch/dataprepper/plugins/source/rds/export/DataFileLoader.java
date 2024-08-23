@@ -23,6 +23,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
+
 public class DataFileLoader implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(DataFileLoader.class);
@@ -79,7 +81,7 @@ public class DataFileLoader implements Runnable {
 
     @Override
     public void run() {
-        LOG.info("Start loading s3://{}/{}", bucket, objectKey);
+        LOG.info(SENSITIVE, "Start loading s3://{}/{}", bucket, objectKey);
 
         AtomicLong eventCount = new AtomicLong();
         try (InputStream inputStream = objectReader.readFile(bucket, objectKey)) {
@@ -110,14 +112,14 @@ public class DataFileLoader implements Runnable {
                     eventCount.getAndIncrement();
                     bytesProcessedSummary.record(bytes);
                 } catch (Exception e) {
-                    LOG.error("Failed to process record from object s3://{}/{}", bucket, objectKey, e);
+                    LOG.error(SENSITIVE, "Failed to process record from object s3://{}/{}", bucket, objectKey, e);
                     throw new RuntimeException(e);
                 }
             });
 
-            LOG.info("Completed loading object s3://{}/{} to buffer", bucket, objectKey);
+            LOG.info(SENSITIVE, "Completed loading object s3://{}/{} to buffer", bucket, objectKey);
         } catch (Exception e) {
-            LOG.error("Failed to load object s3://{}/{} to buffer", bucket, objectKey, e);
+            LOG.error(SENSITIVE, "Failed to load object s3://{}/{} to buffer", bucket, objectKey, e);
             throw new RuntimeException(e);
         }
 

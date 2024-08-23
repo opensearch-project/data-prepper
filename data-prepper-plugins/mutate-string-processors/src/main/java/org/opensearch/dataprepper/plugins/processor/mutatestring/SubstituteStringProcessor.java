@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.Processor;
 
 import java.util.HashMap;
@@ -35,6 +36,12 @@ public class SubstituteStringProcessor extends AbstractStringProcessor<Substitut
 
         for(final SubstituteStringProcessorConfig.Entry entry : config.getEntries()) {
             patternMap.put(entry.getFrom(), Pattern.compile(entry.getFrom()));
+
+            if (entry.getSubstituteWhen() != null
+                    && !expressionEvaluator.isValidExpressionStatement(entry.getSubstituteWhen())) {
+                throw new InvalidPluginConfigurationException(
+                        String.format("substitute_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", entry.getSubstituteWhen()));
+            }
         }
     }
 
