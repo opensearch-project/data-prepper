@@ -501,6 +501,69 @@ opensearch-source-pipeline:
         index: "${getMetadata(\"opensearch-index\"}"
 ```
 
+### MSK source to Opensearch Service pipeline
+The following example will read from MSK topic and ingest into OpenSearch Service domain. This example reads the date
+field from an incoming record and create date based indices based on the specified timestamp.
+
+```yaml
+msk-pipeline:
+  source:
+    kafka:
+      acknowledgement: true
+      topics:
+        - name: "TestTopic.Name"
+          group_id: "group-your-preferred-name"
+      aws:
+        sts_role_arn: "arn:aws:iam::123456789012:role/my-domain-role"
+        region: "us-east-1"
+        msk:
+          arn: "arn:aws:kafka:us-east-1:123456789012:cluster/my-cluster-name"
+      schema:
+          type: "aws_glue"
+          registry_url: "arn:aws:kafka:us-east-1:123456789012:registry/my-schema-registry"
+
+  processor:
+    - date:
+        match:
+          - key: "created_at"
+            patterns: ["epoch_milli"]
+        destination: "created_at_formatted"
+        output_format: "yyyy-MM-dd"
+
+  sink:
+    - opensearch:
+        hosts: [ "https://search-my-domain-soopywaovobopgs8ywurr3utsu.us-east-1.es.amazonaws.com" ]
+        aws:
+          region: "us-east-1"
+          sts_role_arn: "arn:aws:iam::123456789012:role/my-domain-role"
+        index: "index-prefix-${/created_at_formatted}"
+        document_id_field: "id"
+```
+The above example will parse the `created_at` timestamp field from the incoming record, parse it in the format
+`yyyy-MM-dd` and store it in the field `created_at_formatted`. You can then use this field to create date based
+indices by using the field in `index: "index-prefix-${/created_at_formatted}"`. If you have monthly based indices use
+` output_format: "yyyy-MM-dd"`
+
+For example, lets say you have following 2 records coming from source:
+```
+{
+  "message": "hello",
+  "created_at": 1723542856,
+  "type": "greeting"
+}
+```
+```
+{
+  "message": "how are you",
+  "created_at": 1723629256,
+  "type": "greeting"
+}
+```
+The first record will be ingested into the index with name `index-prefix-2024-08-13` and the second record would be 
+indexed into `index-prefix-2024-08-13`. This could be useful when replaying older data from kafka.
+
+
+
 ## Configuration
 
 - `hosts` (Required) : A list of IP addresses of OpenSearch or Elasticsearch nodes.
