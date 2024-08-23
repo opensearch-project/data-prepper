@@ -154,7 +154,9 @@ CopySpec archiveToTar() {
             fileMode 0755
         }
         into('examples') {
-            from("${rootDir}/examples")
+            from("${rootDir}/examples") {
+                exclude 'trace-analytics-sample-app'
+            }
             dirMode 0750
             fileMode 0755
         }
