@@ -123,4 +123,3 @@ Finally, head into OpenSearch Dashboards ([http://localhost:5601](http://localho
 You will need to create an index pattern for the index provided in your `pipeline.yaml` (i.e. `apache_logs`) in order to see them. You can do this by selecting the `Manage` menu with the gear icon at the top of the home page and then the `Index Patterns` menu on the left side of the page. Select the `Create index pattern` button and then start typing in the name of the index you sent logs to in the `Index pattern name` field (in this guide it was `apache_logs`). You should see that the index pattern matches 1 source (This will only be seen if data-prepper is working well with the opensource).
 
 Click `Next Step` and then `Create index pattern`. After, you should be able to go to the `Discover` page with a link on the menu to the left, and see your processed logs.
-
