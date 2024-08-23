@@ -44,7 +44,7 @@ and send the processed logs to a local [OpenSearch sink](../../data-prepper-plug
 2. And [data-prepper-config.yaml](data-prepper-config.yaml) is also mounted in [docker-compose-dataprepper.yaml](docker-compose-dataprepper.yaml) which will help us to configure our data-prepper server. 
 
 
-3. Run the Data Prepper docker compose file where we are using `log_pipeline.yaml`. Now fluentBit is able to send logs to the http source of Data Prepper.
+3. Run the Data Prepper docker compose file where we are using `log_pipeline.yaml`. Now FluentBit is able to send logs to the http source of Data Prepper.
 
 Run the following to start Data Prepper:
 
