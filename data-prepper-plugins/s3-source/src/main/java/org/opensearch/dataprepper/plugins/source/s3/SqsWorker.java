@@ -192,6 +192,8 @@ public class SqsWorker implements Runnable {
     private List<DeleteMessageBatchRequestEntry> processS3EventNotificationRecords(final Collection<ParsedMessage> s3EventNotificationRecords) {
         final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection = new ArrayList<>();
         final List<ParsedMessage> parsedMessagesToRead = new ArrayList<>();
+        final Map<ParsedMessage, AcknowledgementSet> messageAcknowledgementSetMap = new HashMap<>();
+        final Map<ParsedMessage, List<DeleteMessageBatchRequestEntry>> messageWaitingForAcknowledgementsMap = new HashMap<>();
 
         for (ParsedMessage parsedMessage : s3EventNotificationRecords) {
             if (parsedMessage.isFailedParsing()) {
@@ -224,7 +226,7 @@ public class SqsWorker implements Runnable {
         }
 
         LOG.info("Received {} messages from SQS. Processing {} messages.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
-
+        
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
             List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
@@ -262,7 +264,19 @@ public class SqsWorker implements Runnable {
                         },
                         Duration.ofSeconds(progressCheckInterval));
                 }
+                messageAcknowledgementSetMap.put(parsedMessage, acknowledgementSet);
+                messageWaitingForAcknowledgementsMap.put(parsedMessage, waitingForAcknowledgements);
             }
+        }
+        
+        if (endToEndAcknowledgementsEnabled) {
+            LOG.debug("Created acknowledgement sets for {} messages.", parsedMessagesToRead.size());
+        }
+
+        // Use a separate loop for processing the S3 objects
+        for (ParsedMessage parsedMessage : parsedMessagesToRead) {
+            final AcknowledgementSet acknowledgementSet = messageAcknowledgementSetMap.get(parsedMessage);
+            final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = messageWaitingForAcknowledgementsMap.get(parsedMessage);
             final S3ObjectReference s3ObjectReference = populateS3Reference(parsedMessage.getBucketName(), parsedMessage.getObjectKey());
             final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(parsedMessage, s3ObjectReference, acknowledgementSet);
             if (endToEndAcknowledgementsEnabled) {
@@ -271,7 +285,7 @@ public class SqsWorker implements Runnable {
             } else {
                 deleteMessageBatchRequestEntry.ifPresent(deleteMessageBatchRequestEntryCollection::add);
             }
-        }
+        }         
 
         return deleteMessageBatchRequestEntryCollection;
     }
