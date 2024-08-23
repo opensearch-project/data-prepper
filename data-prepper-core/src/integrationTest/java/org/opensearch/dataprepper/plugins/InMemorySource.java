@@ -68,7 +68,11 @@ public class InMemorySource implements Source<Record<Event>> {
     @Override
     public void stop() {
         isStopped = true;
-        runningThread.interrupt();
+        try {
+            runningThread.join(1000);
+        } catch (final InterruptedException e) {
+            runningThread.interrupt();
+        }
     }
 
     private class SourceRunner implements Runnable {
