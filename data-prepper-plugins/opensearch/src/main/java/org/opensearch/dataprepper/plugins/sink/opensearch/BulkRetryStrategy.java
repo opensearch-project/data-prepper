@@ -141,7 +141,7 @@ public final class BulkRetryStrategy {
             return response;
         }
         String getExceptionMessage() {
-            return exception.getMessage();
+            return exception != null ? exception.getMessage() : "-";
         }
     }
 
@@ -199,14 +199,15 @@ public final class BulkRetryStrategy {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY_MS, MAXIMUM_DELAY_MS).withMaxAttempts(maxRetries);
         BulkOperationRequestResponse operationResponse;
         BulkResponse response = null;
-        String exceptionMessage = "";
         AccumulatingBulkRequest request = bulkRequest;
         int attempt = 1;
         do {
             operationResponse = handleRetry(request, response, attempt);
             if (operationResponse != null) {
                 final long delayMillis = backoff.nextDelayMillis(attempt++);
+                String exceptionMessage = "";
                 request = operationResponse.getBulkRequest();
+                response = operationResponse.getResponse();
                 exceptionMessage = operationResponse.getExceptionMessage();
                 if (delayMillis < 0) {
                     RuntimeException e = new RuntimeException(String.format("Number of retries reached the limit of max retries (configured value %d. Last exception message: %s)", maxRetries, exceptionMessage));
