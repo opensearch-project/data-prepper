@@ -49,7 +49,7 @@ dependencyResolutionManagement {
             version('spring', '5.3.28')
             library('spring-core', 'org.springframework', 'spring-core').versionRef('spring')
             library('spring-context', 'org.springframework', 'spring-context').versionRef('spring')
-            version('bouncycastle', '1.76')
+            version('bouncycastle', '1.78.1')
             library('bouncycastle-bcprov', 'org.bouncycastle', 'bcprov-jdk18on').versionRef('bouncycastle')
             library('bouncycastle-bcpkix', 'org.bouncycastle', 'bcpkix-jdk18on').versionRef('bouncycastle')
             version('guava', '32.1.2-jre')

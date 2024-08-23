@@ -226,6 +226,10 @@ subprojects {
                 }
             } else if (details.requested.group == 'log4j' && details.requested.name == 'log4j') {
                 details.useTarget group: 'org.apache.logging.log4j', name: 'log4j-1.2-api', version: '2.17.1'
+            } else if (details.requested.group == 'org.bouncycastle' && details.requested.name.endsWith('-jdk15on')) {
+                def java8Name = details.requested.name.replace('-jdk15on', '-jdk18on')
+                details.useTarget group: 'org.bouncycastle', name: java8Name, version: libs.bouncycastle.bcprov.get().version
+                details.because 'Use only the Java 8 artifacts of BouncyCastle'
             }
         }
     }
