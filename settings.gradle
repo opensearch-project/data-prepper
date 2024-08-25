@@ -182,3 +182,5 @@ include 'data-prepper-plugins:http-source-common'
 include 'data-prepper-plugins:http-common'
 include 'data-prepper-plugins:aws-lambda'
 //include 'data-prepper-plugins:dummy-plugin'
+include 'data-prepper-plugin-schema'
+
