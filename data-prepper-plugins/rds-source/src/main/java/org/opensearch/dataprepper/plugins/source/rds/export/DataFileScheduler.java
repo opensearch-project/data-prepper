@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.source.rds.export;
 
 import io.micrometer.core.instrument.Counter;
-import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -51,8 +50,7 @@ public class DataFileScheduler implements Runnable {
 
     private static final Duration DEFAULT_UPDATE_LOAD_STATUS_TIMEOUT = Duration.ofMinutes(30);
 
-    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
-    static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+
     static final String EXPORT_S3_OBJECTS_PROCESSED_COUNT = "exportS3ObjectsProcessed";
     static final String EXPORT_S3_OBJECTS_ERROR_COUNT = "exportS3ObjectsErrors";
     static final String ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE = "activeExportS3ObjectConsumers";
@@ -63,8 +61,8 @@ public class DataFileScheduler implements Runnable {
     private final RdsSourceConfig sourceConfig;
     private final S3ObjectReader objectReader;
     private final InputCodec codec;
-    private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final ExportRecordConverter recordConverter;
+    private final Buffer<Record<Event>> buffer;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
 
@@ -84,10 +82,10 @@ public class DataFileScheduler implements Runnable {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         codec = new ParquetInputCodec(eventFactory);
-        bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
         objectReader = new S3ObjectReader(s3Client);
         recordConverter = new ExportRecordConverter();
         executor = Executors.newFixedThreadPool(DATA_LOADER_MAX_JOB_COUNT);
+        this.buffer = buffer;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
 
@@ -156,7 +154,7 @@ public class DataFileScheduler implements Runnable {
         }
 
         Runnable loader = DataFileLoader.create(
-                dataFilePartition, codec, bufferAccumulator, objectReader, recordConverter, pluginMetrics,
+                dataFilePartition, codec, buffer, objectReader, recordConverter, pluginMetrics,
                 sourceCoordinator, acknowledgementSet, sourceConfig.getDataFileAcknowledgmentTimeout());
         CompletableFuture runLoader = CompletableFuture.runAsync(loader, executor);
 

@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -30,6 +31,8 @@ public class DataFileLoader implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(DataFileLoader.class);
 
     static final Duration VERSION_OVERLAP_TIME_FOR_EXPORT = Duration.ofMinutes(5);
+    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
+    static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
     static final String EXPORT_RECORDS_TOTAL_COUNT = "exportRecordsTotal";
     static final String EXPORT_RECORDS_PROCESSED_COUNT = "exportRecordsProcessed";
     static final String EXPORT_RECORDS_PROCESSING_ERROR_COUNT = "exportRecordsProcessingErrors";
@@ -41,7 +44,7 @@ public class DataFileLoader implements Runnable {
     private final String objectKey;
     private final S3ObjectReader objectReader;
     private final InputCodec codec;
-    private final BufferAccumulator<Record<Event>> bufferAccumulator;
+    private final Buffer<Record<Event>> buffer;
     private final ExportRecordConverter recordConverter;
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final AcknowledgementSet acknowledgementSet;
@@ -54,7 +57,7 @@ public class DataFileLoader implements Runnable {
 
     private DataFileLoader(final DataFilePartition dataFilePartition,
                            final InputCodec codec,
-                           final BufferAccumulator<Record<Event>> bufferAccumulator,
+                           final Buffer<Record<Event>> buffer,
                            final S3ObjectReader objectReader,
                            final ExportRecordConverter recordConverter,
                            final PluginMetrics pluginMetrics,
@@ -66,7 +69,7 @@ public class DataFileLoader implements Runnable {
         objectKey = dataFilePartition.getKey();
         this.objectReader = objectReader;
         this.codec = codec;
-        this.bufferAccumulator = bufferAccumulator;
+        this.buffer = buffer;
         this.recordConverter = recordConverter;
         this.sourceCoordinator = sourceCoordinator;
         this.acknowledgementSet = acknowledgementSet;
@@ -81,20 +84,22 @@ public class DataFileLoader implements Runnable {
 
     public static DataFileLoader create(final DataFilePartition dataFilePartition,
                                         final InputCodec codec,
-                                        final BufferAccumulator<Record<Event>> bufferAccumulator,
+                                        final Buffer<Record<Event>> buffer,
                                         final S3ObjectReader objectReader,
                                         final ExportRecordConverter recordConverter,
                                         final PluginMetrics pluginMetrics,
                                         final EnhancedSourceCoordinator sourceCoordinator,
                                         final AcknowledgementSet acknowledgementSet,
                                         final Duration acknowledgmentTimeout) {
-        return new DataFileLoader(dataFilePartition, codec, bufferAccumulator, objectReader, recordConverter,
+        return new DataFileLoader(dataFilePartition, codec, buffer, objectReader, recordConverter,
                 pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout);
     }
 
     @Override
     public void run() {
         LOG.info("Start loading s3://{}/{}", bucket, objectKey);
+
+        final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
 
         AtomicLong eventCount = new AtomicLong();
         try (InputStream inputStream = objectReader.readFile(bucket, objectKey)) {
