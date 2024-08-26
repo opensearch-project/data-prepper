@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
@@ -68,6 +69,9 @@ class RdsServiceTest {
 
     @Mock
     private Buffer<Record<Event>> buffer;
+
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
 
     @BeforeEach
     void setUp() {
@@ -166,6 +170,6 @@ class RdsServiceTest {
     }
 
     private RdsService createObjectUnderTest() {
-        return new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics);
+        return new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics, acknowledgementSetManager);
     }
 }

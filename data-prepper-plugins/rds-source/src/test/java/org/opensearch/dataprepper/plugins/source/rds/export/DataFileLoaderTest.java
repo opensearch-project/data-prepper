@@ -19,6 +19,8 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.BaseEventBuilder;
 import org.opensearch.dataprepper.model.event.Event;
@@ -26,16 +28,20 @@ import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.DataFileProgressState;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -56,7 +62,7 @@ class DataFileLoaderTest {
     private DataFilePartition dataFilePartition;
 
     @Mock
-    private BufferAccumulator<Record<Event>> bufferAccumulator;
+    private Buffer<Record<Event>> buffer;
 
     @Mock
     private EventFactory eventFactory;
@@ -69,6 +75,15 @@ class DataFileLoaderTest {
 
     @Mock
     private PluginMetrics pluginMetrics;
+
+    @Mock
+    private EnhancedSourceCoordinator sourceCoordinator;
+
+    @Mock
+    private AcknowledgementSet acknowledgementSet;
+
+    @Mock
+    private Duration acknowledgmentTimeout;
 
     @Mock
     private Counter exportRecordsTotalCounter;
@@ -115,19 +130,26 @@ class DataFileLoaderTest {
         when(eventFactory.eventBuilder(any())).thenReturn(eventBuilder);
         when(eventBuilder.withEventType(any()).withData(any()).build()).thenReturn(event);
         when(event.toJsonString()).thenReturn(randomString);
+        when(recordConverter.convert(any(), any(), any(), any(), anyLong(), anyLong())).thenReturn(event);
 
-        try (MockedStatic<AvroParquetReader> readerMockedStatic = mockStatic(AvroParquetReader.class)) {
-            ParquetReader<GenericRecord> parquetReader = mock(ParquetReader.class);
-            AvroParquetReader.Builder<GenericRecord> builder = mock(AvroParquetReader.Builder.class);
+        AvroParquetReader.Builder<GenericRecord> builder = mock(AvroParquetReader.Builder.class);
+        ParquetReader<GenericRecord> parquetReader = mock(ParquetReader.class);
+        BufferAccumulator<Record<Event>> bufferAccumulator = mock(BufferAccumulator.class);
+        when(builder.build()).thenReturn(parquetReader);
+        when(parquetReader.read()).thenReturn(mock(GenericRecord.class, RETURNS_DEEP_STUBS), null);
+        try (MockedStatic<AvroParquetReader> readerMockedStatic = mockStatic(AvroParquetReader.class);
+             MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+
             readerMockedStatic.when(() -> AvroParquetReader.<GenericRecord>builder(any(InputFile.class), any())).thenReturn(builder);
-            when(builder.build()).thenReturn(parquetReader);
-            when(parquetReader.read()).thenReturn(mock(GenericRecord.class, RETURNS_DEEP_STUBS), null);
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(any(Buffer.class), anyInt(), any(Duration.class))).thenReturn(bufferAccumulator);
 
             dataFileLoader.run();
         }
 
         verify(bufferAccumulator).add(any(Record.class));
         verify(bufferAccumulator).flush();
+        verify(acknowledgementSet).add(event);
+        verify(acknowledgementSet).complete();
 
         verify(exportRecordsTotalCounter).increment();
         verify(bytesReceivedSummary).record(sizeBytes);
@@ -157,20 +179,27 @@ class DataFileLoaderTest {
         when(eventFactory.eventBuilder(any())).thenReturn(eventBuilder);
         when(eventBuilder.withEventType(any()).withData(any()).build()).thenReturn(event);
         when(event.toJsonString()).thenReturn(randomString);
-        doThrow(new RuntimeException("testing")).when(bufferAccumulator).flush();
 
-        try (MockedStatic<AvroParquetReader> readerMockedStatic = mockStatic(AvroParquetReader.class)) {
-            ParquetReader<GenericRecord> parquetReader = mock(ParquetReader.class);
-            AvroParquetReader.Builder<GenericRecord> builder = mock(AvroParquetReader.Builder.class);
+        when(recordConverter.convert(any(), any(), any(), any(), anyLong(), anyLong())).thenReturn(event);
+
+        ParquetReader<GenericRecord> parquetReader = mock(ParquetReader.class);
+        AvroParquetReader.Builder<GenericRecord> builder = mock(AvroParquetReader.Builder.class);
+        BufferAccumulator<Record<Event>> bufferAccumulator = mock(BufferAccumulator.class);
+        doThrow(new RuntimeException("testing")).when(bufferAccumulator).flush();
+        when(builder.build()).thenReturn(parquetReader);
+        when(parquetReader.read()).thenReturn(mock(GenericRecord.class, RETURNS_DEEP_STUBS), null);
+        try (MockedStatic<AvroParquetReader> readerMockedStatic = mockStatic(AvroParquetReader.class);
+             MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             readerMockedStatic.when(() -> AvroParquetReader.<GenericRecord>builder(any(InputFile.class), any())).thenReturn(builder);
-            when(builder.build()).thenReturn(parquetReader);
-            when(parquetReader.read()).thenReturn(mock(GenericRecord.class, RETURNS_DEEP_STUBS), null);
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(any(Buffer.class), anyInt(), any(Duration.class))).thenReturn(bufferAccumulator);
 
             dataFileLoader.run();
         }
 
         verify(bufferAccumulator).add(any(Record.class));
         verify(bufferAccumulator).flush();
+        verify(acknowledgementSet).add(event);
+        verify(acknowledgementSet, never()).complete();
 
         verify(exportRecordsTotalCounter).increment();
         verify(bytesReceivedSummary).record(sizeBytes);
@@ -181,6 +210,7 @@ class DataFileLoaderTest {
 
     private DataFileLoader createObjectUnderTest() {
         final InputCodec codec = new ParquetInputCodec(eventFactory);
-        return DataFileLoader.create(dataFilePartition, codec, bufferAccumulator, s3ObjectReader, recordConverter, pluginMetrics);
+        return DataFileLoader.create(dataFilePartition, codec, buffer, s3ObjectReader, recordConverter,
+                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout);
     }
 }

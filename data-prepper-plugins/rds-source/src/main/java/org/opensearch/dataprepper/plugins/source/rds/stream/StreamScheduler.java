@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.rds.stream;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -18,6 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public class StreamScheduler implements Runnable {
@@ -29,7 +32,10 @@ public class StreamScheduler implements Runnable {
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final RdsSourceConfig sourceConfig;
     private final BinaryLogClient binaryLogClient;
+    private final Buffer<Record<Event>> buffer;
     private final PluginMetrics pluginMetrics;
+    private final AcknowledgementSetManager acknowledgementSetManager;
+    private final ExecutorService executorService;
 
     private volatile boolean shutdownRequested = false;
 
@@ -37,13 +43,15 @@ public class StreamScheduler implements Runnable {
                            final RdsSourceConfig sourceConfig,
                            final BinaryLogClient binaryLogClient,
                            final Buffer<Record<Event>> buffer,
-                           final PluginMetrics pluginMetrics) {
+                           final PluginMetrics pluginMetrics,
+                           final AcknowledgementSetManager acknowledgementSetManager) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.binaryLogClient = binaryLogClient;
-        this.binaryLogClient.registerEventListener(new BinlogEventListener(buffer, sourceConfig, pluginMetrics));
+        this.buffer = buffer;
         this.pluginMetrics = pluginMetrics;
-
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        executorService = Executors.newCachedThreadPool();
     }
 
     @Override
@@ -56,12 +64,15 @@ public class StreamScheduler implements Runnable {
                     LOG.info("Acquired partition to read from stream");
 
                     final StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
+                    final StreamCheckpointer streamCheckpointer = new StreamCheckpointer(sourceCoordinator, streamPartition, pluginMetrics);
+                    binaryLogClient.registerEventListener(new BinlogEventListener(
+                            buffer, sourceConfig, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager));
                     final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, binaryLogClient, pluginMetrics);
-                    streamWorker.processStream(streamPartition);
+                    executorService.submit(() -> streamWorker.processStream(streamPartition));
                 }
 
                 try {
-                    LOG.debug("Waiting to acquire stream partition.");
+                    LOG.debug("Looping to acquire new stream partition or idle while stream worker is working");
                     Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
                 } catch (final InterruptedException e) {
                     LOG.info("The StreamScheduler was interrupted while waiting to retry, stopping processing");
@@ -81,6 +92,7 @@ public class StreamScheduler implements Runnable {
     }
 
     public void shutdown() {
+        executorService.shutdownNow();
         shutdownRequested = true;
     }
 }
