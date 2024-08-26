@@ -1,0 +1,4 @@
+plugin_name: "rds"
+apply_when:
+  - "$..source.rds"
+  - "$..source.documentdb.s3_bucket"
