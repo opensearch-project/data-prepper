@@ -79,6 +79,12 @@ subprojects {
         testImplementation testLibs.hamcrest
         testImplementation testLibs.awaitility
         constraints {
+            implementation('dnsjava:dnsjava') {
+                version {
+                    require '3.6.1'
+                }
+                because 'Fixes CVE-2023-39410.'
+            }
             implementation('org.apache.avro:avro') {
                 version {
                     require '1.11.3'
