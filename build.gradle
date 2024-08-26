@@ -91,6 +91,12 @@ subprojects {
                 }
                 because 'Fixes CVE-2023-39410.'
             }
+            implementation('org.apache.commons:commons-configuration2') {
+                version {
+                    require '2.11.0'
+                }
+                because 'Fixes CVE-2024-29131 and CVE-2024-29133.'
+            }
             implementation('org.apache.httpcomponents:httpclient') {
                 version {
                     require '4.5.14'
