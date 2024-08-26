@@ -18,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
@@ -25,13 +26,15 @@ import org.opensearch.dataprepper.plugins.test.TestExtensionConfig;
 import org.opensearch.dataprepper.plugins.test.TestExtensionWithConfig;
 import org.opensearch.dataprepper.validation.PluginError;
 import org.opensearch.dataprepper.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.validation.PluginErrorsConsolidator;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -58,20 +61,22 @@ class ExtensionLoaderTest {
     private ExtensionClassProvider extensionClassProvider;
     @Mock
     private PluginCreator extensionPluginCreator;
+    @Mock
+    private PluginErrorsHandler pluginErrorsHandler;
     @Captor
     private ArgumentCaptor<PluginArgumentsContext> pluginArgumentsContextArgumentCaptor;
+    @Captor
+    private ArgumentCaptor<Collection<PluginError>> pluginErrorsArgumentCaptor;
     private PluginErrorCollector pluginErrorCollector;
-    private PluginErrorsConsolidator pluginErrorsConsolidator;
 
     private ExtensionLoader createObjectUnderTest() {
         return new ExtensionLoader(extensionPluginConfigurationConverter, extensionClassProvider,
-                extensionPluginCreator, pluginErrorCollector, pluginErrorsConsolidator);
+                extensionPluginCreator, pluginErrorCollector, pluginErrorsHandler);
     }
 
     @BeforeEach
     void setUp() {
         pluginErrorCollector = new PluginErrorCollector();
-        pluginErrorsConsolidator = new PluginErrorsConsolidator();
     }
 
     @Test
@@ -108,6 +113,12 @@ class ExtensionLoaderTest {
 
     @Test
     void loadExtensions_throws_InvalidPluginConfigurationException_when_invoking_newPluginInstance_throws_exception() {
+        pluginErrorCollector.collectPluginError(
+                PluginError.builder()
+                        .componentType("non-extension")
+                        .pluginName("preexisting-plugin")
+                        .exception(new RuntimeException())
+                        .build());
         final Class<ExtensionPlugin> pluginClass = (Class<ExtensionPlugin>) mock(ExtensionPlugin.class).getClass();
 
         when(extensionClassProvider.loadExtensionPluginClasses()).thenReturn(Collections.singleton(pluginClass));
@@ -119,11 +130,16 @@ class ExtensionLoaderTest {
                 .thenThrow(TestException.class);
 
         assertThrows(InvalidPluginConfigurationException.class, () -> createObjectUnderTest().loadExtensions());
-        assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(1));
-        final PluginError pluginError = pluginErrorCollector.getPluginErrors().get(0);
+        assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(2));
+        final PluginError pluginError = pluginErrorCollector.getPluginErrors().get(1);
         assertThat(pluginError.getPipelineName(), nullValue());
         assertThat(pluginError.getPluginName(), CoreMatchers.startsWith("extension_plugin"));
         assertThat(pluginError.getException(), instanceOf(TestException.class));
+        verify(pluginErrorsHandler).handleErrors(pluginErrorsArgumentCaptor.capture());
+        final Collection<PluginError> pluginErrorCollection = pluginErrorsArgumentCaptor.getValue();
+        assertThat(pluginErrorCollection.size(), equalTo(1));
+        final PluginError capturedPluginError = new ArrayList<>(pluginErrorCollection).get(0);
+        assertThat(capturedPluginError.getComponentType(), equalTo(PipelinesDataFlowModel.EXTENSION_PLUGIN_TYPE));
     }
 
     @ParameterizedTest

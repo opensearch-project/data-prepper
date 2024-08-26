@@ -12,7 +12,7 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import org.opensearch.dataprepper.validation.PluginError;
 import org.opensearch.dataprepper.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.validation.PluginErrorsConsolidator;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -27,7 +27,7 @@ public class ExtensionLoader {
     private final ExtensionClassProvider extensionClassProvider;
     private final PluginCreator extensionPluginCreator;
     private final PluginErrorCollector pluginErrorCollector;
-    private final PluginErrorsConsolidator pluginErrorsConsolidator;
+    private final PluginErrorsHandler pluginErrorsHandler;
 
     @Inject
     ExtensionLoader(
@@ -35,12 +35,12 @@ public class ExtensionLoader {
             final ExtensionClassProvider extensionClassProvider,
             @Named("extensionPluginCreator") final PluginCreator extensionPluginCreator,
             final PluginErrorCollector pluginErrorCollector,
-            final PluginErrorsConsolidator pluginErrorsConsolidator) {
+            final PluginErrorsHandler pluginErrorsHandler) {
         this.extensionPluginConfigurationConverter = extensionPluginConfigurationConverter;
         this.extensionClassProvider = extensionClassProvider;
         this.extensionPluginCreator = extensionPluginCreator;
         this.pluginErrorCollector = pluginErrorCollector;
-        this.pluginErrorsConsolidator = pluginErrorsConsolidator;
+        this.pluginErrorsHandler = pluginErrorsHandler;
     }
 
     public List<? extends ExtensionPlugin> loadExtensions() {
@@ -68,9 +68,9 @@ public class ExtensionLoader {
                         .equals(pluginError.getComponentType()))
                 .collect(Collectors.toList());
         if (!extensionPluginErrors.isEmpty()) {
+            pluginErrorsHandler.handleErrors(extensionPluginErrors);
             throw new InvalidPluginConfigurationException(
-                    "One or more extension plugins are not configured correctly.\n"
-                            + pluginErrorsConsolidator.consolidatedErrorMessage(extensionPluginErrors));
+                    "One or more extension plugins are not configured correctly.");
         } else {
             return result;
         }
