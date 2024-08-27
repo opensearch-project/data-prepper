@@ -40,7 +40,6 @@ import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
-import org.opensearch.dataprepper.validation.LoggingPluginErrorsHandler;
 import org.opensearch.dataprepper.validation.PluginError;
 import org.opensearch.dataprepper.validation.PluginErrorCollector;
 import org.opensearch.dataprepper.validation.PluginErrorsHandler;
