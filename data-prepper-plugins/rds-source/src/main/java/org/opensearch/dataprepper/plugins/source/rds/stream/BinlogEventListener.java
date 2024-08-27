@@ -93,7 +93,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         this.buffer = buffer;
         this.binaryLogClient = binaryLogClient;
         tableMetadataMap = new HashMap<>();
-        recordConverter = new StreamRecordConverter(sourceConfig.getStream().getPartitionCount());
+        recordConverter = new StreamRecordConverter(sourceConfig.getPartitionCount());
         s3Prefix = sourceConfig.getS3Prefix();
         tableNames = sourceConfig.getTableNames();
         isAcknowledgmentsEnabled = sourceConfig.isAcknowledgmentsEnabled();

@@ -7,12 +7,15 @@ package org.opensearch.dataprepper.plugins.source.rds;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TlsConfig;
+import software.amazon.awssdk.regions.Region;
 
 import java.time.Duration;
 import java.util.List;
@@ -21,6 +24,7 @@ import java.util.List;
  * Configuration for RDS Source
  */
 public class RdsSourceConfig {
+    private static final int DEFAULT_S3_FOLDER_PARTITION_COUNT = 100;
 
     /**
      * Identifier for RDS instance/cluster or Aurora cluster
@@ -71,6 +75,14 @@ public class RdsSourceConfig {
 
     @JsonProperty("s3_region")
     private String s3Region;
+
+    /**
+     * The number of folder partitions in S3 buffer
+     */
+    @JsonProperty("partition_count")
+    @Min(1)
+    @Max(1000)
+    private int s3FolderPartitionCount = DEFAULT_S3_FOLDER_PARTITION_COUNT;
 
     @JsonProperty("export")
     @Valid
@@ -132,8 +144,12 @@ public class RdsSourceConfig {
         return s3Prefix;
     }
 
-    public String getS3Region() {
-        return s3Region;
+    public Region getS3Region() {
+        return s3Region != null ? Region.of(s3Region) : null;
+    }
+
+    public int getPartitionCount() {
+        return s3FolderPartitionCount;
     }
 
     public ExportConfig getExport() {
