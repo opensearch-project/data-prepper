@@ -54,7 +54,7 @@ public class KinesisService {
     private final ExecutorService executorService;
 
     public KinesisService(final KinesisSourceConfig sourceConfig,
-                          final ClientFactory clientFactory,
+                          final KinesisClientFactory kinesisClientFactory,
                           final PluginMetrics pluginMetrics,
                           final PluginFactory pluginFactory,
                           final PipelineDescription pipelineDescription,
@@ -72,9 +72,9 @@ public class KinesisService {
                 kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig().get();
         this.tableName = kinesisLeaseConfig.getLeaseCoordinationTable().getTableName();
         this.kclMetricsNamespaceName = this.tableName;
-        this.dynamoDbClient = clientFactory.buildDynamoDBClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
-        this.kinesisClient = clientFactory.buildKinesisAsyncClient();
-        this.cloudWatchClient = clientFactory.buildCloudWatchAsyncClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
+        this.dynamoDbClient = kinesisClientFactory.buildDynamoDBClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
+        this.kinesisClient = kinesisClientFactory.buildKinesisAsyncClient();
+        this.cloudWatchClient = kinesisClientFactory.buildCloudWatchAsyncClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
         this.pipelineName = pipelineDescription.getPipelineName();
         this.applicationName = pipelineName;
         this.executorService = Executors.newFixedThreadPool(1);

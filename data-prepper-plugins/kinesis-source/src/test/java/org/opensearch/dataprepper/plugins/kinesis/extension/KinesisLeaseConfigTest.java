@@ -8,6 +8,7 @@ import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.pipeline.parser.ByteCountDeserializer;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import software.amazon.awssdk.regions.Region;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,7 +49,7 @@ public class KinesisLeaseConfigTest {
         assertNotNull(kinesisLeaseConfig.getLeaseCoordinationTable());
         assertEquals(kinesisLeaseConfig.getLeaseCoordinationTable().getTableName(), "kinesis-pipeline-kcl");
         assertEquals(kinesisLeaseConfig.getLeaseCoordinationTable().getRegion(), "us-east-1");
-
+        assertEquals(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion(), Region.US_EAST_1);
     }
 
 }

@@ -11,12 +11,12 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 import software.amazon.kinesis.common.KinesisClientUtil;
 
-public class ClientFactory {
+public class KinesisClientFactory {
     private final AwsCredentialsProvider awsCredentialsProvider;
     private final AwsAuthenticationConfig awsAuthenticationConfig;
 
-    public ClientFactory(final AwsCredentialsSupplier awsCredentialsSupplier,
-                         final AwsAuthenticationConfig awsAuthenticationConfig) {
+    public KinesisClientFactory(final AwsCredentialsSupplier awsCredentialsSupplier,
+                                final AwsAuthenticationConfig awsAuthenticationConfig) {
         awsCredentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
                 .withRegion(awsAuthenticationConfig.getAwsRegion())
                 .withStsRoleArn(awsAuthenticationConfig.getAwsStsRoleArn())

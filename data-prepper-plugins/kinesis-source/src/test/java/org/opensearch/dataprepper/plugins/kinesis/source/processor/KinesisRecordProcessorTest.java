@@ -36,18 +36,22 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_CHECKPOINT_FAILURES;
 import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_PROCESSING_ERRORS;
 import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_STREAM_TAG_KEY;
@@ -100,6 +104,9 @@ public class KinesisRecordProcessorTest {
     @Mock
     private Counter checkpointFailures;
 
+    @Mock
+    private Counter acknowledgementSetCallbackCounter;
+
     @BeforeEach
     public void setup() {
         MockitoAnnotations.initMocks(this);
@@ -121,6 +128,7 @@ public class KinesisRecordProcessorTest {
         when(kinesisSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(NUMBER_OF_RECORDS_TO_ACCUMULATE);
         when(kinesisSourceConfig.getStreams()).thenReturn(List.of(kinesisStreamConfig));
         when(processRecordsInput.checkpointer()).thenReturn(checkpointer);
+        when(pluginMetrics.counterWithTags(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(acknowledgementSetCallbackCounter);
     }
 
     @Test
@@ -141,6 +149,68 @@ public class KinesisRecordProcessorTest {
         verify(checkpointer).checkpoint();
         verify(buffer).writeAll(anyCollection(), anyInt());
         verify(acknowledgementSetManager, times(0)).create(any(), any(Duration.class));
+    }
+
+    @Test
+    void testProcessRecordsWithAcknowledgementsCheckpointsEnabled()
+            throws Exception {
+        List<KinesisClientRecord> kinesisClientRecords = createInputKinesisClientRecords();
+        when(processRecordsInput.records()).thenReturn(kinesisClientRecords);
+        when(kinesisSourceConfig.isAcknowledgments()).thenReturn(true);
+        when(kinesisStreamConfig.isEnableCheckPoint()).thenReturn(false);
+        AtomicReference<Integer> numEventsAdded = new AtomicReference<>(0);
+        doAnswer(a -> {
+            numEventsAdded.getAndSet(numEventsAdded.get() + 1);
+            return null;
+        }).when(acknowledgementSet).add(any());
+
+        doAnswer(invocation -> {
+            Consumer<Boolean> consumer = invocation.getArgument(0);
+            consumer.accept(true);
+            return acknowledgementSet;
+        }).when(acknowledgementSetManager).create(any(Consumer.class), any(Duration.class));
+
+        kinesisRecordProcessor = new KinesisRecordProcessor(buffer, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, pluginFactory, streamIdentifier);
+        kinesisRecordProcessor.initialize(initializationInput);
+
+        Thread.sleep(2000);
+
+        kinesisRecordProcessor.processRecords(processRecordsInput);
+
+        verify(checkpointer).checkpoint();
+        verify(buffer).writeAll(anyCollection(), anyInt());
+        verify(acknowledgementSetManager, times(1)).create(any(), any(Duration.class));
+    }
+
+    @Test
+    void testProcessRecordsWithAcknowledgementsEnabledAndAcksReturnFalse()
+            throws Exception {
+        List<KinesisClientRecord> kinesisClientRecords = createInputKinesisClientRecords();
+        when(processRecordsInput.records()).thenReturn(kinesisClientRecords);
+        when(kinesisSourceConfig.isAcknowledgments()).thenReturn(true);
+        when(kinesisStreamConfig.isEnableCheckPoint()).thenReturn(false);
+        AtomicReference<Integer> numEventsAdded = new AtomicReference<>(0);
+        doAnswer(a -> {
+            numEventsAdded.getAndSet(numEventsAdded.get() + 1);
+            return null;
+        }).when(acknowledgementSet).add(any());
+
+        doAnswer(invocation -> {
+            Consumer<Boolean> consumer = invocation.getArgument(0);
+            consumer.accept(false);
+            return acknowledgementSet;
+        }).when(acknowledgementSetManager).create(any(Consumer.class), any(Duration.class));
+
+        kinesisRecordProcessor = new KinesisRecordProcessor(buffer, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, pluginFactory, streamIdentifier);
+        kinesisRecordProcessor.initialize(initializationInput);
+
+        Thread.sleep(2000);
+
+        kinesisRecordProcessor.processRecords(processRecordsInput);
+
+        verify(checkpointer, times(0)).checkpoint();
+        verify(buffer).writeAll(anyCollection(), anyInt());
+        verify(acknowledgementSetManager, times(1)).create(any(), any(Duration.class));
     }
 
     @Test

@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 public class KinesisRecordProcessor implements ShardRecordProcessor {
@@ -52,7 +53,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
     private final Counter recordProcessingErrors;
     private final Counter checkpointFailures;
     private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofSeconds(20);
-    private static final String ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
+    public static final String ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
     public static final String KINESIS_RECORD_PROCESSING_ERRORS = "recordProcessingErrors";
     public static final String KINESIS_CHECKPOINT_FAILURES = "checkpointFailures";
     public static final String KINESIS_STREAM_TAG_KEY = "stream";
@@ -71,7 +72,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
         this.codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
         this.acknowledgementSetManager = acknowledgementSetManager;
-        this.acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME);
+        this.acknowledgementSetCallbackCounter = pluginMetrics.counterWithTags(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
         this.recordProcessingErrors = pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSING_ERRORS, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
         this.checkpointFailures = pluginMetrics.counterWithTags(KINESIS_CHECKPOINT_FAILURES, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
         this.checkpointIntervalMilliSeconds = kinesisStreamConfig.getCheckPointIntervalInMilliseconds();
@@ -108,29 +109,21 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
         List<Record<Event>> records = new ArrayList<>();
 
         try {
-            AcknowledgementSet acknowledgementSet;
+            Optional<AcknowledgementSet> acknowledgementSetOpt = Optional.empty();
             boolean acknowledgementsEnabled = kinesisSourceConfig.isAcknowledgments();
             if (acknowledgementsEnabled) {
-                acknowledgementSet = createAcknowledgmentSet(processRecordsInput);
-            } else {
-                acknowledgementSet = null;
+                acknowledgementSetOpt = Optional.of(createAcknowledgmentSet(processRecordsInput));
             }
 
             for (KinesisClientRecord record : processRecordsInput.records()) {
                 processRecord(record, records::add);
             }
 
-            if (acknowledgementSet != null) {
-                records.forEach(record -> {
-                    acknowledgementSet.add(record.getData());
-                });
-            }
+            acknowledgementSetOpt.ifPresent(acknowledgementSet -> records.forEach(record -> acknowledgementSet.add(record.getData())));
 
             buffer.writeAll(records, bufferTimeoutMillis);
 
-            if (acknowledgementSet != null) {
-                acknowledgementSet.complete();
-            }
+            acknowledgementSetOpt.ifPresent(AcknowledgementSet::complete);
 
             // Checkpoint for shard
             if (kinesisStreamConfig.isEnableCheckPoint() && System.currentTimeMillis() - lastCheckpointTimeInMillis > checkpointIntervalMilliSeconds) {

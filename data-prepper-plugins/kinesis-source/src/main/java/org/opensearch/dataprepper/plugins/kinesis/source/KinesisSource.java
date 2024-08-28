@@ -36,8 +36,8 @@ public class KinesisSource implements Source<Record<Event>> {
                          final KinesisLeaseConfigSupplier kinesisLeaseConfigSupplier) {
         this.kinesisSourceConfig = kinesisSourceConfig;
         this.kinesisLeaseConfigSupplier = kinesisLeaseConfigSupplier;
-        ClientFactory clientFactory = new ClientFactory(awsCredentialsSupplier, kinesisSourceConfig.getAwsAuthenticationConfig());
-        this.kinesisService = new KinesisService(kinesisSourceConfig, clientFactory, pluginMetrics, pluginFactory,
+        KinesisClientFactory kinesisClientFactory = new KinesisClientFactory(awsCredentialsSupplier, kinesisSourceConfig.getAwsAuthenticationConfig());
+        this.kinesisService = new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
                 pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier);
     }
     @Override

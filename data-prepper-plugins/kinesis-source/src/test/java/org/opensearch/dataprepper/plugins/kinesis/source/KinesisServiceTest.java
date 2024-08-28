@@ -85,7 +85,7 @@ public class KinesisServiceTest {
     private PipelineDescription pipelineDescription;
 
     @Mock
-    private ClientFactory clientFactory;
+    private KinesisClientFactory kinesisClientFactory;
 
     @Mock
     private KinesisAsyncClient kinesisClient;
@@ -120,7 +120,7 @@ public class KinesisServiceTest {
         kinesisClient = mock(KinesisAsyncClient.class);
         dynamoDbClient = mock(DynamoDbAsyncClient.class);
         cloudWatchClient = mock(CloudWatchAsyncClient.class);
-        clientFactory = mock(ClientFactory.class);
+        kinesisClientFactory = mock(KinesisClientFactory.class);
         scheduler = mock(Scheduler.class);
         pipelineDescription = mock(PipelineDescription.class);
         buffer = mock(Buffer.class);
@@ -168,16 +168,16 @@ public class KinesisServiceTest {
         when(kinesisSourceConfig.getStreams()).thenReturn(streamConfigs);
         when(kinesisSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(NUMBER_OF_RECORDS_TO_ACCUMULATE);
 
-        when(clientFactory.buildDynamoDBClient(kinesisLeaseCoordinationTableConfig.getAwsRegion())).thenReturn(dynamoDbClient);
-        when(clientFactory.buildKinesisAsyncClient()).thenReturn(kinesisClient);
-        when(clientFactory.buildCloudWatchAsyncClient(kinesisLeaseCoordinationTableConfig.getAwsRegion())).thenReturn(cloudWatchClient);
+        when(kinesisClientFactory.buildDynamoDBClient(kinesisLeaseCoordinationTableConfig.getAwsRegion())).thenReturn(dynamoDbClient);
+        when(kinesisClientFactory.buildKinesisAsyncClient()).thenReturn(kinesisClient);
+        when(kinesisClientFactory.buildCloudWatchAsyncClient(kinesisLeaseCoordinationTableConfig.getAwsRegion())).thenReturn(cloudWatchClient);
         when(kinesisClient.serviceClientConfiguration()).thenReturn(KinesisServiceClientConfiguration.builder().region(Region.US_EAST_1).build());
         when(scheduler.startGracefulShutdown()).thenReturn(CompletableFuture.completedFuture(true));
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);
     }
 
     public KinesisService createObjectUnderTest() {
-        return new KinesisService(kinesisSourceConfig, clientFactory, pluginMetrics, pluginFactory,
+        return new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
                 pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier);
     }
 
@@ -189,8 +189,15 @@ public class KinesisServiceTest {
     }
 
     @Test
+    void testServiceThrowsWhenLeaseConfigIsInvalid() {
+        when(kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig()).thenReturn(Optional.empty());
+        assertThrows(IllegalStateException.class, () -> new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
+                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier));
+    }
+
+    @Test
     void testCreateScheduler() {
-        KinesisService kinesisService = new KinesisService(kinesisSourceConfig, clientFactory, pluginMetrics, pluginFactory,
+        KinesisService kinesisService = new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
                 pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier);
         Scheduler schedulerObjectUnderTest = kinesisService.createScheduler(buffer);
 
@@ -208,7 +215,7 @@ public class KinesisServiceTest {
     @Test
     void testCreateSchedulerWithPollingStrategy() {
         when(kinesisSourceConfig.getConsumerStrategy()).thenReturn(ConsumerStrategy.POLLING);
-        KinesisService kinesisService = new KinesisService(kinesisSourceConfig, clientFactory, pluginMetrics, pluginFactory,
+        KinesisService kinesisService = new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
                 pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier);
         Scheduler schedulerObjectUnderTest = kinesisService.createScheduler(buffer);
 
