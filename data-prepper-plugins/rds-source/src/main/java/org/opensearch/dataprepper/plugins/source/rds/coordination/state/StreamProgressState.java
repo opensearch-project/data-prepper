@@ -10,22 +10,11 @@ import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 
 public class StreamProgressState {
 
-    @JsonProperty("startPosition")
-    private BinlogCoordinate startPosition;
-
     @JsonProperty("currentPosition")
     private BinlogCoordinate currentPosition;
 
     @JsonProperty("waitForExport")
     private boolean waitForExport = false;
-
-    public BinlogCoordinate getStartPosition() {
-        return startPosition;
-    }
-
-    public void setStartPosition(BinlogCoordinate startPosition) {
-        this.startPosition = startPosition;
-    }
 
     public BinlogCoordinate getCurrentPosition() {
         return currentPosition;

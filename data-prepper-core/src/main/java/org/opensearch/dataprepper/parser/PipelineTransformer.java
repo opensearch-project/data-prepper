@@ -34,6 +34,7 @@ import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.validation.PluginError;
 import org.opensearch.dataprepper.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +66,7 @@ public class PipelineTransformer {
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final SourceCoordinatorFactory sourceCoordinatorFactory;
     private final PluginErrorCollector pluginErrorCollector;
+    private final PluginErrorsHandler pluginErrorsHandler;
 
     public PipelineTransformer(final PipelinesDataFlowModel pipelinesDataFlowModel,
                                final PluginFactory pluginFactory,
@@ -75,7 +77,8 @@ public class PipelineTransformer {
                                final EventFactory eventFactory,
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final SourceCoordinatorFactory sourceCoordinatorFactory,
-                               final PluginErrorCollector pluginErrorCollector) {
+                               final PluginErrorCollector pluginErrorCollector,
+                               final PluginErrorsHandler pluginErrorsHandler) {
         this.pipelinesDataFlowModel = pipelinesDataFlowModel;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
@@ -86,6 +89,7 @@ public class PipelineTransformer {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceCoordinatorFactory = sourceCoordinatorFactory;
         this.pluginErrorCollector = pluginErrorCollector;
+        this.pluginErrorsHandler = pluginErrorsHandler;
     }
 
     public Map<String, Pipeline> transformConfiguration() {
@@ -165,9 +169,10 @@ public class PipelineTransformer {
                     .stream().filter(pluginError -> pipelineName.equals(pluginError.getPipelineName()))
                     .collect(Collectors.toList());
             if (!subPipelinePluginErrors.isEmpty()) {
+                pluginErrorsHandler.handleErrors(subPipelinePluginErrors);
                 throw new InvalidPluginConfigurationException(
                         String.format("One or more plugins are not configured correctly in the pipeline: %s.\n",
-                                pipelineName) + pluginErrorCollector.getConsolidatedErrorMessage());
+                                pipelineName));
             }
 
             final List<List<Processor>> decoratedProcessorSets = processorSets.stream()

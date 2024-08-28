@@ -12,8 +12,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
@@ -73,6 +73,9 @@ class DataFileSchedulerTest {
     private PluginMetrics pluginMetrics;
 
     @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+
+    @Mock
     private DataFilePartition dataFilePartition;
 
     @Mock
@@ -112,7 +115,7 @@ class DataFileSchedulerTest {
     }
 
     @Test
-    void test_given_available_datafile_partition_then_load_datafile() {
+    void test_given_available_datafile_partition_then_load_datafile() throws InterruptedException {
         final String exportTaskId = UUID.randomUUID().toString();
         when(dataFilePartition.getExportTaskId()).thenReturn(exportTaskId);
 
@@ -129,9 +132,10 @@ class DataFileSchedulerTest {
                     // MockedStatic needs to be created on the same thread it's used
                     try (MockedStatic<DataFileLoader> dataFileLoaderMockedStatic = mockStatic(DataFileLoader.class)) {
                         DataFileLoader dataFileLoader = mock(DataFileLoader.class);
-                        dataFileLoaderMockedStatic.when(() -> DataFileLoader.create(
-                                eq(dataFilePartition), any(InputCodec.class), any(BufferAccumulator.class), any(S3ObjectReader.class),
-                                        any(ExportRecordConverter.class), any(PluginMetrics.class)))
+                        dataFileLoaderMockedStatic.when(() -> DataFileLoader.create(eq(dataFilePartition), any(InputCodec.class),
+                                        any(Buffer.class), any(S3ObjectReader.class),
+                                        any(ExportRecordConverter.class), any(PluginMetrics.class),
+                                        any(EnhancedSourceCoordinator.class), any(), any(Duration.class)))
                                 .thenReturn(dataFileLoader);
                         doNothing().when(dataFileLoader).run();
                         objectUnderTest.run();
@@ -157,9 +161,10 @@ class DataFileSchedulerTest {
             // MockedStatic needs to be created on the same thread it's used
             try (MockedStatic<DataFileLoader> dataFileLoaderMockedStatic = mockStatic(DataFileLoader.class)) {
                 DataFileLoader dataFileLoader = mock(DataFileLoader.class);
-                dataFileLoaderMockedStatic.when(() -> DataFileLoader.create(
-                                eq(dataFilePartition), any(InputCodec.class), any(BufferAccumulator.class), any(S3ObjectReader.class),
-                                any(ExportRecordConverter.class), any(PluginMetrics.class)))
+                dataFileLoaderMockedStatic.when(() -> DataFileLoader.create(eq(dataFilePartition), any(InputCodec.class),
+                                any(Buffer.class), any(S3ObjectReader.class),
+                                any(ExportRecordConverter.class), any(PluginMetrics.class),
+                                any(EnhancedSourceCoordinator.class), any(), any(Duration.class)))
                         .thenReturn(dataFileLoader);
                 doThrow(new RuntimeException()).when(dataFileLoader).run();
                 objectUnderTest.run();
@@ -187,6 +192,6 @@ class DataFileSchedulerTest {
     }
 
     private DataFileScheduler createObjectUnderTest() {
-        return new DataFileScheduler(sourceCoordinator, sourceConfig, s3Client, eventFactory, buffer, pluginMetrics);
+        return new DataFileScheduler(sourceCoordinator, sourceConfig, s3Client, eventFactory, buffer, pluginMetrics, acknowledgementSetManager);
     }
 }

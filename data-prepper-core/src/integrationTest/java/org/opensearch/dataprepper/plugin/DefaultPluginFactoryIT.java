@@ -17,7 +17,9 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.TestObjectPlugin;
 import org.opensearch.dataprepper.plugins.test.TestPlugin;
+import org.opensearch.dataprepper.validation.LoggingPluginErrorsHandler;
 import org.opensearch.dataprepper.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.HashMap;
@@ -63,6 +65,7 @@ class DefaultPluginFactoryIT {
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
         coreContext.register(PluginBeanFactoryProvider.class);
         coreContext.registerBean(PluginErrorCollector.class, PluginErrorCollector::new);
+        coreContext.registerBean(PluginErrorsHandler.class, LoggingPluginErrorsHandler::new);
         coreContext.registerBean(ExtensionsConfiguration.class, () -> extensionsConfiguration);
         coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
         coreContext.refresh();
