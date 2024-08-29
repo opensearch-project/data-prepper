@@ -38,7 +38,7 @@ public class KinesisSource implements Source<Record<Event>> {
         this.kinesisLeaseConfigSupplier = kinesisLeaseConfigSupplier;
         KinesisClientFactory kinesisClientFactory = new KinesisClientFactory(awsCredentialsSupplier, kinesisSourceConfig.getAwsAuthenticationConfig());
         this.kinesisService = new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
-                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier);
+                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier, new HostNameWorkerIdentifierGenerator());
     }
     @Override
     public void start(final Buffer<Record<Event>> buffer) {

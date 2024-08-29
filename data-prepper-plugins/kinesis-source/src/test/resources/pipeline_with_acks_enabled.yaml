@@ -1,0 +1,12 @@
+source:
+  kinesis:
+    streams:
+      - stream_name: "stream-1"
+      - stream_name: "stream-2"
+      - stream_name: "stream-3"
+    codec:
+      ndjson:
+    aws:
+      sts_role_arn: "arn:aws:iam::123456789012:role/OSI-PipelineRole"
+      region: "us-east-1"
+    acknowledgments: true

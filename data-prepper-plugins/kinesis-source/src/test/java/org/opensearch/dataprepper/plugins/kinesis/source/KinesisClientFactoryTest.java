@@ -1,9 +1,11 @@
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.AwsAuthenticationConfig;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
@@ -14,7 +16,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class KinesisClientFactoryTest {
     private Region region = Region.US_EAST_1;
@@ -33,12 +37,15 @@ public class KinesisClientFactoryTest {
         ReflectivelySetField.setField(AwsAuthenticationConfig.class, awsAuthenticationOptionsConfig, "awsRegion", "us-east-1");
         ReflectivelySetField.setField(AwsAuthenticationConfig.class, awsAuthenticationOptionsConfig, "awsStsRoleArn", roleArn);
 
+        AwsCredentialsProvider defaultCredentialsProvider = mock(AwsCredentialsProvider.class);
+        when(awsCredentialsSupplier.getProvider(eq(AwsCredentialsOptions.defaultOptions()))).thenReturn(defaultCredentialsProvider);
+
         KinesisClientFactory clientFactory = new KinesisClientFactory(awsCredentialsSupplier, awsAuthenticationOptionsConfig);
 
         final DynamoDbAsyncClient dynamoDbAsyncClient = clientFactory.buildDynamoDBClient(Region.US_EAST_1);
         assertNotNull(dynamoDbAsyncClient);
 
-        final KinesisAsyncClient kinesisAsyncClient = clientFactory.buildKinesisAsyncClient();
+        final KinesisAsyncClient kinesisAsyncClient = clientFactory.buildKinesisAsyncClient(Region.US_EAST_1);
         assertNotNull(kinesisAsyncClient);
 
         final CloudWatchAsyncClient cloudWatchAsyncClient = clientFactory.buildCloudWatchAsyncClient(Region.US_EAST_1);

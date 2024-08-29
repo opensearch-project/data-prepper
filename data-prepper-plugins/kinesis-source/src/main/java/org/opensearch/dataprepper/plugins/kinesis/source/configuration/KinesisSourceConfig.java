@@ -19,7 +19,7 @@ public class KinesisSourceConfig {
     @JsonProperty("streams")
     @NotNull
     @Valid
-    @Size(min = 1, max = 4, message = "Only support a maximum of 4 streams")
+    @Size(min = 1, max = 4, message = "Provide 1-4 streams to read from.")
     private List<KinesisStreamConfig> streams;
 
     @Getter
@@ -49,6 +49,7 @@ public class KinesisSourceConfig {
     private KinesisStreamPollingConfig pollingConfig;
 
     @Getter
+    @NotNull
     @JsonProperty("codec")
     private PluginModel codec;
 

@@ -2,6 +2,8 @@ package org.opensearch.dataprepper.plugins.kinesis.source.configuration;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class KinesisStreamPollingConfigTest {
@@ -12,7 +14,7 @@ public class KinesisStreamPollingConfigTest {
     void testConfig() {
         KinesisStreamPollingConfig kinesisStreamPollingConfig = new KinesisStreamPollingConfig();
         assertEquals(kinesisStreamPollingConfig.getMaxPollingRecords(), DEFAULT_MAX_RECORDS);
-        assertEquals(kinesisStreamPollingConfig.getIdleTimeBetweenReadsInMillis(), IDLE_TIME_BETWEEN_READS_IN_MILLIS);
+        assertEquals(kinesisStreamPollingConfig.getIdleTimeBetweenReads(), Duration.ofMillis(IDLE_TIME_BETWEEN_READS_IN_MILLIS));
     }
 
 }

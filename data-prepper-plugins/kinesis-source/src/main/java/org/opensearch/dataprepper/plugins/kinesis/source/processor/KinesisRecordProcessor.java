@@ -41,7 +41,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(KinesisSource.class);
     private final StreamIdentifier streamIdentifier;
     private final KinesisStreamConfig kinesisStreamConfig;
-    private final int checkpointIntervalMilliSeconds;
+    private final Duration checkpointInterval;
     private final KinesisSourceConfig kinesisSourceConfig;
     private final Buffer<Record<Event>> buffer;
     private String kinesisShardId;
@@ -75,7 +75,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
         this.acknowledgementSetCallbackCounter = pluginMetrics.counterWithTags(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
         this.recordProcessingErrors = pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSING_ERRORS, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
         this.checkpointFailures = pluginMetrics.counterWithTags(KINESIS_CHECKPOINT_FAILURES, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
-        this.checkpointIntervalMilliSeconds = kinesisStreamConfig.getCheckPointIntervalInMilliseconds();
+        this.checkpointInterval = kinesisStreamConfig.getCheckPointInterval();
         this.buffer = buffer;
     }
 
@@ -87,7 +87,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
     public void initialize(InitializationInput initializationInput) {
         // Called once when the processor is initialized.
         kinesisShardId = initializationInput.shardId();
-        LOG.info("Initialize Processor for shard: " + kinesisShardId);
+        LOG.info("Initialize Processor for shard: {}", kinesisShardId);
         lastCheckpointTimeInMillis = System.currentTimeMillis();
     }
 
@@ -126,7 +126,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
             acknowledgementSetOpt.ifPresent(AcknowledgementSet::complete);
 
             // Checkpoint for shard
-            if (kinesisStreamConfig.isEnableCheckPoint() && System.currentTimeMillis() - lastCheckpointTimeInMillis > checkpointIntervalMilliSeconds) {
+            if (kinesisStreamConfig.isEnableCheckPoint() && System.currentTimeMillis() - lastCheckpointTimeInMillis > checkpointInterval.toMillis()) {
                 LOG.info("Regular checkpointing for shard " + kinesisShardId);
                 checkpoint(processRecordsInput.checkpointer());
                 lastCheckpointTimeInMillis = System.currentTimeMillis();
@@ -152,7 +152,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
 
     @Override
     public void shardEnded(ShardEndedInput shardEndedInput) {
-        LOG.info("Reached shard end, checkpointing shard: {}", kinesisShardId);
+        LOG.debug("Reached shard end, checkpointing shard: {}", kinesisShardId);
         checkpoint(shardEndedInput.checkpointer());
     }
 

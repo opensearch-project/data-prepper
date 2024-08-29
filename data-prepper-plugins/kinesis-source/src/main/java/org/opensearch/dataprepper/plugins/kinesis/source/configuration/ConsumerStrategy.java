@@ -2,13 +2,15 @@ package org.opensearch.dataprepper.plugins.kinesis.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
-// Reference: https://docs.aws.amazon.com/streams/latest/dev/enhanced-consumers.html
+/**
+ * @see <a href="https://docs.aws.amazon.com/streams/latest/dev/enhanced-consumers.html">Enhanced Consumers</a>
+ */
 
 public enum ConsumerStrategy {
 
-    POLLING("Polling"),
+    POLLING("polling"),
 
-    ENHANCED_FAN_OUT("Fan-Out");
+    ENHANCED_FAN_OUT("fan-out");
 
     private final String value;
 

@@ -11,7 +11,7 @@ public class KinesisLeaseConfigExtension implements ExtensionPlugin {
     private KinesisLeaseConfigSupplier kinesisLeaseConfigSupplier;
     @DataPrepperPluginConstructor
     public KinesisLeaseConfigExtension(final KinesisLeaseConfig kinesisLeaseConfig) {
-        this.kinesisLeaseConfigSupplier = new DefaultKinesisLeaseConfigSupplier(kinesisLeaseConfig);
+        this.kinesisLeaseConfigSupplier = new KinesisLeaseConfigSupplier(kinesisLeaseConfig);
     }
 
     @Override

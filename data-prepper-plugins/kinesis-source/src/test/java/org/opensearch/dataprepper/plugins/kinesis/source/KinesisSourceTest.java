@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.kinesis.source;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -17,6 +18,7 @@ import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseCoordina
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.AwsAuthenticationConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisStreamConfig;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.List;
@@ -85,12 +87,16 @@ public class KinesisSourceTest {
         kinesisLeaseConfig = mock(KinesisLeaseConfig.class);
         kinesisLeaseCoordinationTableConfig = mock(KinesisLeaseCoordinationTableConfig.class);
         when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn(kinesisLeaseCoordinationTableConfig);
-        when(kinesisLeaseCoordinationTableConfig.getTableName()).thenReturn("us-east-1");
+        when(kinesisLeaseCoordinationTableConfig.getTableName()).thenReturn("table-name");
+        when(kinesisLeaseCoordinationTableConfig.getRegion()).thenReturn("us-east-1");
+        when(kinesisLeaseCoordinationTableConfig.getAwsRegion()).thenReturn(Region.US_EAST_1);
         when(kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig()).thenReturn(Optional.ofNullable(kinesisLeaseConfig));
-        when(awsAuthenticationConfig.getAwsRegion()).thenReturn(Region.of("us-west-2"));
+        when(awsAuthenticationConfig.getAwsRegion()).thenReturn(Region.US_EAST_1);
         when(awsAuthenticationConfig.getAwsStsRoleArn()).thenReturn(UUID.randomUUID().toString());
         when(awsAuthenticationConfig.getAwsStsExternalId()).thenReturn(UUID.randomUUID().toString());
         final Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        AwsCredentialsProvider defaultCredentialsProvider = mock(AwsCredentialsProvider.class);
+        when(awsCredentialsSupplier.getProvider(AwsCredentialsOptions.defaultOptions())).thenReturn(defaultCredentialsProvider);
         when(awsAuthenticationConfig.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
         when(kinesisSourceConfig.getAwsAuthenticationConfig()).thenReturn(awsAuthenticationConfig);
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);

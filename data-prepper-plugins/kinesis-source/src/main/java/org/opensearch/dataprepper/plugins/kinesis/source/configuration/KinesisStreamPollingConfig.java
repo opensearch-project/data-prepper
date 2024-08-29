@@ -3,15 +3,17 @@ package org.opensearch.dataprepper.plugins.kinesis.source.configuration;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
+import java.time.Duration;
+
 public class KinesisStreamPollingConfig {
     private static final int DEFAULT_MAX_RECORDS = 10000;
-    private static final int IDLE_TIME_BETWEEN_READS_IN_MILLIS = 250;
+    private static final Duration IDLE_TIME_BETWEEN_READS = Duration.ofMillis(250);
     @Getter
-    @JsonProperty("maxPollingRecords")
+    @JsonProperty("max_polling_records")
     private int maxPollingRecords = DEFAULT_MAX_RECORDS;
 
     @Getter
-    @JsonProperty("idleTimeBetweenReadsInMillis")
-    private int idleTimeBetweenReadsInMillis = IDLE_TIME_BETWEEN_READS_IN_MILLIS;
+    @JsonProperty("idle_time_between_reads")
+    private Duration idleTimeBetweenReads = IDLE_TIME_BETWEEN_READS;
 
 }

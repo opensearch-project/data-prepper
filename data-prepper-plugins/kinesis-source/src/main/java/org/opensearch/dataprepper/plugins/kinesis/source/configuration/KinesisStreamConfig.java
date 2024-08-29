@@ -6,10 +6,12 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import software.amazon.kinesis.common.InitialPositionInStream;
 
+import java.time.Duration;
+
 @Getter
 public class KinesisStreamConfig {
     // Checkpointing interval
-    private static final int MINIMAL_CHECKPOINT_INTERVAL_MILLIS = 2 * 60 * 1000; // 2 minute
+    private static final Duration MINIMAL_CHECKPOINT_INTERVAL = Duration.ofMillis(2 * 60 * 1000); // 2 minute
     private static final boolean DEFAULT_ENABLE_CHECKPOINT = false;
 
     @JsonProperty("stream_name")
@@ -17,16 +19,17 @@ public class KinesisStreamConfig {
     @Valid
     private String name;
 
-    @JsonProperty("stream_arn")
-    private String arn;
-
     @JsonProperty("initial_position")
-    private InitialPositionInStream initialPosition = InitialPositionInStream.LATEST;
+    private InitialPositionInStreamConfig initialPosition = InitialPositionInStreamConfig.LATEST;
 
     @JsonProperty("checkpoint_interval")
-    private int checkPointIntervalInMilliseconds = MINIMAL_CHECKPOINT_INTERVAL_MILLIS;
+    private Duration checkPointInterval = MINIMAL_CHECKPOINT_INTERVAL;
 
     @Getter
-    @JsonProperty("enableCheckpoint")
+    @JsonProperty("enable_checkpoint")
     private boolean enableCheckPoint = DEFAULT_ENABLE_CHECKPOINT;
+
+    public InitialPositionInStream getInitialPosition() {
+        return initialPosition.getPositionInStream();
+    }
 }

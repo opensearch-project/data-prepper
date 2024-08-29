@@ -62,7 +62,7 @@ public class KinesisRecordProcessorTest {
     private static final String streamId = "stream-1";
     private static final String codec_plugin_name = "json";
 
-    private static final int CHECKPOINT_INTERVAL_MS = 1000;
+    private static final Duration CHECKPOINT_INTERVAL = Duration.ofMillis(1000);
     private static final int NUMBER_OF_RECORDS_TO_ACCUMULATE = 10;
 
     @Mock
@@ -124,7 +124,7 @@ public class KinesisRecordProcessorTest {
 
         InputCodec codec = mock(InputCodec.class);
         when(pluginFactory.loadPlugin(eq(InputCodec.class), any())).thenReturn(codec);
-        when(kinesisStreamConfig.getCheckPointIntervalInMilliseconds()).thenReturn(CHECKPOINT_INTERVAL_MS);
+        when(kinesisStreamConfig.getCheckPointInterval()).thenReturn(CHECKPOINT_INTERVAL);
         when(kinesisSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(NUMBER_OF_RECORDS_TO_ACCUMULATE);
         when(kinesisSourceConfig.getStreams()).thenReturn(List.of(kinesisStreamConfig));
         when(processRecordsInput.checkpointer()).thenReturn(checkpointer);

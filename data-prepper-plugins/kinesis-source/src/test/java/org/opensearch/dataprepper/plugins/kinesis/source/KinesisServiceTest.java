@@ -30,6 +30,7 @@ import software.amazon.kinesis.common.InitialPositionInStream;
 import software.amazon.kinesis.coordinator.Scheduler;
 import software.amazon.kinesis.metrics.MetricsLevel;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +54,7 @@ public class KinesisServiceTest {
     private final String PIPELINE_NAME = "kinesis-pipeline-test";
     private final String streamId = "stream-1";
 
-    private static final int CHECKPOINT_INTERVAL_MS = 0;
+    private static final Duration CHECKPOINT_INTERVAL = Duration.ofMillis(0);
     private static final int NUMBER_OF_RECORDS_TO_ACCUMULATE = 10;
     private static final int DEFAULT_MAX_RECORDS = 10000;
     private static final int IDLE_TIME_BETWEEN_READS_IN_MILLIS = 250;
@@ -111,6 +112,9 @@ public class KinesisServiceTest {
     @Mock
     KinesisLeaseCoordinationTableConfig kinesisLeaseCoordinationTableConfig;
 
+    @Mock
+    WorkerIdentifierGenerator workerIdentifierGenerator;
+
     @BeforeEach
     void setup() {
         awsAuthenticationConfig = mock(AwsAuthenticationConfig.class);
@@ -126,6 +130,7 @@ public class KinesisServiceTest {
         buffer = mock(Buffer.class);
         kinesisLeaseConfigSupplier = mock(KinesisLeaseConfigSupplier.class);
         kinesisLeaseConfig = mock(KinesisLeaseConfig.class);
+        workerIdentifierGenerator = mock(WorkerIdentifierGenerator.class);
         kinesisLeaseCoordinationTableConfig = mock(KinesisLeaseCoordinationTableConfig.class);
         when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn(kinesisLeaseCoordinationTableConfig);
         when(kinesisLeaseCoordinationTableConfig.getTableName()).thenReturn("kinesis-lease-table");
@@ -156,12 +161,12 @@ public class KinesisServiceTest {
 
         when(kinesisSourceConfig.getAwsAuthenticationConfig()).thenReturn(awsAuthenticationConfig);
         when(kinesisStreamConfig.getName()).thenReturn(streamId);
-        when(kinesisStreamConfig.getCheckPointIntervalInMilliseconds()).thenReturn(CHECKPOINT_INTERVAL_MS);
+        when(kinesisStreamConfig.getCheckPointInterval()).thenReturn(CHECKPOINT_INTERVAL);
         when(kinesisStreamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.LATEST);
-        when(kinesisSourceConfig.getConsumerStrategy()).thenReturn(ConsumerStrategy.POLLING);
+        when(kinesisSourceConfig.getConsumerStrategy()).thenReturn(ConsumerStrategy.ENHANCED_FAN_OUT);
         when(kinesisSourceConfig.getPollingConfig()).thenReturn(kinesisStreamPollingConfig);
         when(kinesisStreamPollingConfig.getMaxPollingRecords()).thenReturn(DEFAULT_MAX_RECORDS);
-        when(kinesisStreamPollingConfig.getIdleTimeBetweenReadsInMillis()).thenReturn(IDLE_TIME_BETWEEN_READS_IN_MILLIS);
+        when(kinesisStreamPollingConfig.getIdleTimeBetweenReads()).thenReturn(Duration.ofMillis(IDLE_TIME_BETWEEN_READS_IN_MILLIS));
 
         List<KinesisStreamConfig> streamConfigs = new ArrayList<>();
         streamConfigs.add(kinesisStreamConfig);
@@ -169,16 +174,17 @@ public class KinesisServiceTest {
         when(kinesisSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(NUMBER_OF_RECORDS_TO_ACCUMULATE);
 
         when(kinesisClientFactory.buildDynamoDBClient(kinesisLeaseCoordinationTableConfig.getAwsRegion())).thenReturn(dynamoDbClient);
-        when(kinesisClientFactory.buildKinesisAsyncClient()).thenReturn(kinesisClient);
+        when(kinesisClientFactory.buildKinesisAsyncClient(awsAuthenticationConfig.getAwsRegion())).thenReturn(kinesisClient);
         when(kinesisClientFactory.buildCloudWatchAsyncClient(kinesisLeaseCoordinationTableConfig.getAwsRegion())).thenReturn(cloudWatchClient);
         when(kinesisClient.serviceClientConfiguration()).thenReturn(KinesisServiceClientConfiguration.builder().region(Region.US_EAST_1).build());
         when(scheduler.startGracefulShutdown()).thenReturn(CompletableFuture.completedFuture(true));
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);
+        when(workerIdentifierGenerator.generate()).thenReturn(UUID.randomUUID().toString());
     }
 
     public KinesisService createObjectUnderTest() {
         return new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
-                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier);
+                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier, workerIdentifierGenerator);
     }
 
     @Test
@@ -186,19 +192,20 @@ public class KinesisServiceTest {
         KinesisService kinesisService = createObjectUnderTest();
         kinesisService.start(buffer);
         assertNotNull(kinesisService.getScheduler(buffer));
+        verify(workerIdentifierGenerator, times(1)).generate();
     }
 
     @Test
     void testServiceThrowsWhenLeaseConfigIsInvalid() {
         when(kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig()).thenReturn(Optional.empty());
         assertThrows(IllegalStateException.class, () -> new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
-                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier));
+                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier, workerIdentifierGenerator));
     }
 
     @Test
     void testCreateScheduler() {
         KinesisService kinesisService = new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
-                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier);
+                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier, workerIdentifierGenerator);
         Scheduler schedulerObjectUnderTest = kinesisService.createScheduler(buffer);
 
         assertNotNull(schedulerObjectUnderTest);
@@ -210,13 +217,14 @@ public class KinesisServiceTest {
         assertSame(schedulerObjectUnderTest.metricsConfig().metricsLevel(), MetricsLevel.DETAILED);
         assertNotNull(schedulerObjectUnderTest.processorConfig());
         assertNotNull(schedulerObjectUnderTest.retrievalConfig());
+        verify(workerIdentifierGenerator, times(1)).generate();
     }
 
     @Test
     void testCreateSchedulerWithPollingStrategy() {
         when(kinesisSourceConfig.getConsumerStrategy()).thenReturn(ConsumerStrategy.POLLING);
         KinesisService kinesisService = new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
-                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier);
+                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier, workerIdentifierGenerator);
         Scheduler schedulerObjectUnderTest = kinesisService.createScheduler(buffer);
 
         assertNotNull(schedulerObjectUnderTest);
@@ -228,6 +236,7 @@ public class KinesisServiceTest {
         assertSame(schedulerObjectUnderTest.metricsConfig().metricsLevel(), MetricsLevel.DETAILED);
         assertNotNull(schedulerObjectUnderTest.processorConfig());
         assertNotNull(schedulerObjectUnderTest.retrievalConfig());
+        verify(workerIdentifierGenerator, times(1)).generate();
     }
 
 

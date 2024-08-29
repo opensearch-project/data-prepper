@@ -12,7 +12,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class DefaultKinesisLeaseConfigSupplierTest {
+public class KinesisLeaseConfigSupplierTest {
     private static final String LEASE_COORDINATION_TABLE = "lease-table";
     @Mock
     KinesisLeaseConfig kinesisLeaseConfig;
@@ -20,8 +20,8 @@ public class DefaultKinesisLeaseConfigSupplierTest {
     @Mock
     KinesisLeaseCoordinationTableConfig kinesisLeaseCoordinationTableConfig;
 
-    private DefaultKinesisLeaseConfigSupplier createObjectUnderTest() {
-        return new DefaultKinesisLeaseConfigSupplier(kinesisLeaseConfig);
+    private KinesisLeaseConfigSupplier createObjectUnderTest() {
+        return new KinesisLeaseConfigSupplier(kinesisLeaseConfig);
     }
 
     @Test
@@ -37,14 +37,14 @@ public class DefaultKinesisLeaseConfigSupplierTest {
     @Test
     void testGettersWithNullTableConfig() {
         when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn(null);
-        DefaultKinesisLeaseConfigSupplier defaultKinesisLeaseConfigSupplier = createObjectUnderTest();
+        KinesisLeaseConfigSupplier defaultKinesisLeaseConfigSupplier = createObjectUnderTest();
         assertThat(defaultKinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig().get().getLeaseCoordinationTable(), equalTo(null));
 
     }
 
     @Test
     void testGettersWithNullConfig() {
-        KinesisLeaseConfigSupplier kinesisLeaseConfigSupplier = new DefaultKinesisLeaseConfigSupplier(null);
+        KinesisLeaseConfigSupplier kinesisLeaseConfigSupplier = new KinesisLeaseConfigSupplier(null);
         assertThat(kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig(), equalTo(Optional.empty()));
     }
 }

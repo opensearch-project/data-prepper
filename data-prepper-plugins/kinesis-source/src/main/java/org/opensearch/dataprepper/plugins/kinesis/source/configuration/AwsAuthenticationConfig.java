@@ -8,16 +8,9 @@ package org.opensearch.dataprepper.plugins.kinesis.source.configuration;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import software.amazon.awssdk.arns.Arn;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.sts.StsClient;
-import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
-import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import java.util.Map;
-import java.util.UUID;
 
 public class AwsAuthenticationConfig {
     private static final String AWS_IAM_ROLE = "role";
@@ -44,36 +37,5 @@ public class AwsAuthenticationConfig {
 
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
-    }
-
-    public AwsCredentialsProvider authenticateAwsConfiguration() {
-
-        final AwsCredentialsProvider awsCredentialsProvider;
-        if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
-            try {
-                Arn.fromString(awsStsRoleArn);
-            } catch (final Exception e) {
-                throw new IllegalArgumentException("Invalid ARN format for awsStsRoleArn");
-            }
-
-            final StsClient stsClient = StsClient.builder().region(getAwsRegion()).build();
-
-            AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
-                    .roleSessionName("Kinesis-source-" + UUID.randomUUID()).roleArn(awsStsRoleArn);
-
-            if (awsStsHeaderOverrides != null && !awsStsHeaderOverrides.isEmpty()) {
-                assumeRoleRequestBuilder = assumeRoleRequestBuilder.overrideConfiguration(
-                        configuration -> awsStsHeaderOverrides.forEach(configuration::putHeader));
-            }
-
-            awsCredentialsProvider = StsAssumeRoleCredentialsProvider.builder()
-                    .stsClient(stsClient)
-                    .refreshRequest(assumeRoleRequestBuilder.build())
-                    .build();
-
-        } else {
-            awsCredentialsProvider = DefaultCredentialsProvider.create();
-        }
-        return awsCredentialsProvider;
     }
 }

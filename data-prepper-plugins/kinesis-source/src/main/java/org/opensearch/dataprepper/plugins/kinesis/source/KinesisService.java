@@ -47,6 +47,7 @@ public class KinesisService {
     private final KinesisAsyncClient kinesisClient;
     private final DynamoDbAsyncClient dynamoDbClient;
     private final CloudWatchAsyncClient cloudWatchClient;
+    private final WorkerIdentifierGenerator workerIdentifierGenerator;
 
     @Setter
     private Scheduler scheduler;
@@ -59,7 +60,8 @@ public class KinesisService {
                           final PluginFactory pluginFactory,
                           final PipelineDescription pipelineDescription,
                           final AcknowledgementSetManager acknowledgementSetManager,
-                          final KinesisLeaseConfigSupplier kinesisLeaseConfigSupplier
+                          final KinesisLeaseConfigSupplier kinesisLeaseConfigSupplier,
+                          final WorkerIdentifierGenerator workerIdentifierGenerator
                           ){
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
@@ -73,10 +75,11 @@ public class KinesisService {
         this.tableName = kinesisLeaseConfig.getLeaseCoordinationTable().getTableName();
         this.kclMetricsNamespaceName = this.tableName;
         this.dynamoDbClient = kinesisClientFactory.buildDynamoDBClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
-        this.kinesisClient = kinesisClientFactory.buildKinesisAsyncClient();
+        this.kinesisClient = kinesisClientFactory.buildKinesisAsyncClient(sourceConfig.getAwsAuthenticationConfig().getAwsRegion());
         this.cloudWatchClient = kinesisClientFactory.buildCloudWatchAsyncClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
         this.pipelineName = pipelineDescription.getPipelineName();
         this.applicationName = pipelineName;
+        this.workerIdentifierGenerator = workerIdentifierGenerator;
         this.executorService = Executors.newFixedThreadPool(1);
     }
 
@@ -122,7 +125,7 @@ public class KinesisService {
                 new ConfigsBuilder(
                         new KinesisMultiStreamTracker(kinesisClient, sourceConfig, applicationName),
                         applicationName, kinesisClient, dynamoDbClient, cloudWatchClient,
-                        new WorkerIdentifierGenerator().generate(), processorFactory
+                        workerIdentifierGenerator.generate(), processorFactory
                 )
                 .tableName(tableName)
                 .namespace(kclMetricsNamespaceName);
@@ -133,7 +136,7 @@ public class KinesisService {
                 new PollingConfig(kinesisClient)
                     .maxRecords(sourceConfig.getPollingConfig().getMaxPollingRecords())
                     .idleTimeBetweenReadsInMillis(
-                            sourceConfig.getPollingConfig().getIdleTimeBetweenReadsInMillis()));
+                            sourceConfig.getPollingConfig().getIdleTimeBetweenReads().toMillis()));
         }
 
         return new Scheduler(
