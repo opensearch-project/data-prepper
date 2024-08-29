@@ -16,4 +16,7 @@ for author in sys.stdin:
 
 for author in sorted(authors, key=str.lower):
     user = json.loads(os.popen(f"gh api users/{author}").read())
-    print(f"* [{user['login']}]({user['html_url']}) -- {user['name']}")
+    if user['name'] != None:
+        print(f"* [{user['login']}]({user['html_url']}) -- {user['name']}")
+    else:
+        print(f"* [{user['login']}]({user['html_url']})")
