@@ -146,7 +146,7 @@ public class RdsService {
                 dbMetadata.getPort(),
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword(),
-                !sourceConfig.isTlsEnabled());
+                sourceConfig.isTlsEnabled());
         return new SchemaManager(connectionManager);
     }
 }
