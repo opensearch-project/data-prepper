@@ -22,6 +22,8 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
+
 
 public class StreamScheduler implements Runnable {
 
@@ -57,18 +59,24 @@ public class StreamScheduler implements Runnable {
     @Override
     public void run() {
         LOG.debug("Start running Stream Scheduler");
+        StreamPartition streamPartition = null;
         while (!shutdownRequested && !Thread.currentThread().isInterrupted()) {
             try {
                 final Optional<EnhancedSourcePartition> sourcePartition = sourceCoordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
                 if (sourcePartition.isPresent()) {
                     LOG.info("Acquired partition to read from stream");
 
-                    final StreamPartition streamPartition = (StreamPartition) sourcePartition.get();
+                    if (sourceConfig.isDisableS3ReadForLeader()) {
+                        // Primary node that acquires the stream partition will not perform work on the S3 buffer
+                        System.setProperty(STOP_S3_SCAN_PROCESSING_PROPERTY, "true");
+                    }
+
+                    streamPartition = (StreamPartition) sourcePartition.get();
                     final StreamCheckpointer streamCheckpointer = new StreamCheckpointer(sourceCoordinator, streamPartition, pluginMetrics);
                     binaryLogClient.registerEventListener(new BinlogEventListener(
                             buffer, sourceConfig, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager));
                     final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, binaryLogClient, pluginMetrics);
-                    executorService.submit(() -> streamWorker.processStream(streamPartition));
+                    executorService.submit(() -> streamWorker.processStream((StreamPartition) sourcePartition.get()));
                 }
 
                 try {
@@ -81,6 +89,13 @@ public class StreamScheduler implements Runnable {
 
             } catch (Exception e) {
                 LOG.error("Received an exception during stream processing, backing off and retrying", e);
+                if (streamPartition != null) {
+                    if (sourceConfig.isDisableS3ReadForLeader()) {
+                        System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
+                    }
+                    sourceCoordinator.giveUpPartition(streamPartition);
+                }
+
                 try {
                     Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
                 } catch (final InterruptedException ex) {

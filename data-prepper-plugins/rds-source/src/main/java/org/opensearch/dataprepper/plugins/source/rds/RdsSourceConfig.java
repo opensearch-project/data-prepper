@@ -85,6 +85,9 @@ public class RdsSourceConfig {
     @JsonProperty("tls")
     private TlsConfig tlsConfig;
 
+    @JsonProperty("disable_s3_read_for_leader")
+    private boolean disableS3ReadForLeader = false;
+
     public String getDbIdentifier() {
         return dbIdentifier;
     }
@@ -151,6 +154,14 @@ public class RdsSourceConfig {
 
     public TlsConfig getTlsConfig() {
         return tlsConfig;
+    }
+
+    public boolean isTlsEnabled() {
+        return tlsConfig == null || !tlsConfig.isInsecure();
+    }
+
+    public boolean isDisableS3ReadForLeader() {
+        return disableS3ReadForLeader;
     }
 
     public AuthenticationConfig getAuthenticationConfig() {

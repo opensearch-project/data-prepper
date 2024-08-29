@@ -36,7 +36,9 @@ public class ExportObjectKey {
         final String prefix = parts[0];
         final String exportTaskId = parts[1];
         final String databaseName = parts[2];
-        final String tableName = parts[3];
+        // fullTableName is in the format of "databaseName.tableName"
+        final String fullTableName = parts[3];
+        final String tableName = fullTableName.split("\\.")[1];
         final String numberedFolder = parts[4];
         final String fileName = parts[5];
         return new ExportObjectKey(prefix, exportTaskId, databaseName, tableName, numberedFolder, fileName);

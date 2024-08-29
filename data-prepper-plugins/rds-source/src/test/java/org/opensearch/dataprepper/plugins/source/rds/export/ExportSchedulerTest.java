@@ -124,7 +124,7 @@ class ExportSchedulerTest {
         String tableName = UUID.randomUUID().toString();
         // objectKey needs to have this structure: "{prefix}/{export task ID}/{database name}/{table name}/{numbered folder}/{file name}"
         S3Object s3Object = S3Object.builder()
-                .key("prefix/" + exportTaskId + "/my_db/" + tableName + "/1/file1" + PARQUET_SUFFIX)
+                .key("prefix/" + exportTaskId + "/my_db/my_db." + tableName + "/1/file1" + PARQUET_SUFFIX)
                 .build();
         when(listObjectsV2Response.contents()).thenReturn(List.of(s3Object));
         when(listObjectsV2Response.isTruncated()).thenReturn(false);
@@ -185,7 +185,7 @@ class ExportSchedulerTest {
         String tableName = UUID.randomUUID().toString();
         // objectKey needs to have this structure: "{prefix}/{export task ID}/{database name}/{table name}/{numbered folder}/{file name}"
         S3Object s3Object = S3Object.builder()
-                .key("prefix/" + exportTaskId + "/my_db/" + tableName + "/1/file1" + PARQUET_SUFFIX)
+                .key("prefix/" + exportTaskId + "/my_db/my_db." + tableName + "/1/file1" + PARQUET_SUFFIX)
                 .build();
         when(listObjectsV2Response.contents()).thenReturn(List.of(s3Object));
         when(listObjectsV2Response.isTruncated()).thenReturn(false);
