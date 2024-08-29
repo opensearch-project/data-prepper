@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -62,6 +63,11 @@ public class StreamRecordConverter {
                 .build();
 
         EventMetadata eventMetadata = event.getMetadata();
+
+        // Only set external origination time for stream events, not export
+        final Instant externalOriginationTime = Instant.ofEpochMilli(eventCreateTimeEpochMillis);
+        event.getEventHandle().setExternalOriginationTime(externalOriginationTime);
+        eventMetadata.setExternalOriginationTime(externalOriginationTime);
 
         eventMetadata.setAttribute(EVENT_DATABASE_NAME_METADATA_ATTRIBUTE, databaseName);
         eventMetadata.setAttribute(EVENT_TABLE_NAME_METADATA_ATTRIBUTE, tableName);

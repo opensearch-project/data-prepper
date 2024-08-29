@@ -105,7 +105,7 @@ public class RdsService {
 
         if (sourceConfig.isStreamEnabled()) {
             BinaryLogClient binaryLogClient = new BinlogClientFactory(sourceConfig, rdsClient, dbMetadata).create();
-            if (sourceConfig.getTlsConfig() == null || !sourceConfig.getTlsConfig().isInsecure()) {
+            if (sourceConfig.isTlsEnabled()) {
                 binaryLogClient.setSSLMode(SSLMode.REQUIRED);
             } else {
                 binaryLogClient.setSSLMode(SSLMode.DISABLED);
@@ -146,7 +146,7 @@ public class RdsService {
                 dbMetadata.getPort(),
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword(),
-                !sourceConfig.getTlsConfig().isInsecure());
+                sourceConfig.isTlsEnabled());
         return new SchemaManager(connectionManager);
     }
 }

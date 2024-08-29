@@ -16,7 +16,7 @@ class ExportObjectKeyTest {
 
     @Test
     void test_fromString_with_valid_input_string() {
-        final String objectKeyString = "prefix/export-task-id/db-name/table-name/1/file-name.parquet";
+        final String objectKeyString = "prefix/export-task-id/db-name/db-name.table-name/1/file-name.parquet";
         final ExportObjectKey exportObjectKey = ExportObjectKey.fromString(objectKeyString);
 
         assertThat(exportObjectKey.getPrefix(), equalTo("prefix"));
