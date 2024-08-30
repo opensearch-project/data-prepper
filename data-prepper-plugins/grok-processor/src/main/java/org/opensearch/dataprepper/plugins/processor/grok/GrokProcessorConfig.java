@@ -74,7 +74,7 @@ public class GrokProcessorConfig {
     @JsonPropertyDescription("Allows for a custom pattern that can be used inline inside the response body. " +
             "Default is an empty response body.")
     private Map<String, String> patternDefinitions = Collections.emptyMap();
-    @JsonProperty(value = TIMEOUT_MILLIS)
+    @JsonProperty(TIMEOUT_MILLIS)
     @JsonPropertyDescription("The maximum amount of time during which matching occurs. " +
             "Setting to `0` prevents any matching from occurring. Default is `30,000`.")
     private int timeoutMillis = DEFAULT_TIMEOUT_MILLIS;
