@@ -20,7 +20,7 @@ dependencies {
     implementation libs.reflections.core
     implementation 'io.micrometer:micrometer-core'
     implementation libs.parquet.common
-    implementation 'org.xerial.snappy:snappy-java:1.1.10.5'
+    implementation 'org.xerial.snappy:snappy-java:1.1.10.6'
     testImplementation project(':data-prepper-plugins:blocking-buffer')
     testImplementation project(':data-prepper-test-event')
     testImplementation libs.commons.io
