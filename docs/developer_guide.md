@@ -134,7 +134,7 @@ Near the time of the next release, we create a release branch for that upcoming
 release (e.g. `1.2`). We perform our release builds from this branch. Any patch
 releases also build from that release branch.
 
-### <a name="identification_keys">Backporting</a>
+### <a name="backporting">Backporting</a>
 
 When you create a PR which targets `main` and need this change as a patch to a previous version
 of Data Prepper, use the auto backport GitHub Action. All you need to do is add the label
