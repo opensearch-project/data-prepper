@@ -8,7 +8,7 @@ on:
     paths:
       - 'data-prepper-plugins/kafka-plugins/**'
       - '*gradle*'
-  pull_request_target:
+  pull_request:
     types: [ opened, synchronize, reopened ]
     paths:
       - 'data-prepper-plugins/kafka-plugins/**'
