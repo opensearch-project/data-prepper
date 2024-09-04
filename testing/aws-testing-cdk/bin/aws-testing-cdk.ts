@@ -4,7 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import {GitHubAccessStack} from '../lib/common/GitHubAccessStack';
 import {SecretsManagerStack} from '../lib/aws-secrets-manager/SecretsManagerStack';
 import {KmsStack} from '../lib/common/KmsStack';
-import {S3SinkStack} from "../lib/s3/S3SinkStack";
+import {S3SinkStack} from '../lib/s3/S3SinkStack';
 
 const app = new cdk.App();
 
