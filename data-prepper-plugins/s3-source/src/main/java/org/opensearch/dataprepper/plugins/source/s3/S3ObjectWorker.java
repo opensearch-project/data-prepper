@@ -108,7 +108,7 @@ class S3ObjectWorker implements S3ObjectHandler {
                     }
                     bufferAccumulator.add(record);
 
-                    if (sourceCoordinator != null && partitionKey != null &&
+                    if (acknowledgementSet != null && sourceCoordinator != null && partitionKey != null &&
                             (System.currentTimeMillis() - lastCheckpointTime.get() > DEFAULT_CHECKPOINT_INTERVAL_MILLS)) {
                         LOG.debug("Renew partition ownership for the object {}", partitionKey);
                         sourceCoordinator.saveProgressStateForPartition(partitionKey, null);

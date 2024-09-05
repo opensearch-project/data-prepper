@@ -59,7 +59,6 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     static final String PARTITION_NOT_FOUND_ERROR_COUNT = "partitionNotFoundErrors";
     static final String PARTITION_NOT_OWNED_ERROR_COUNT = "partitionNotOwnedErrors";
     static final String PARTITION_UPDATE_ERROR_COUNT = "PartitionUpdateErrors";
-
     static final Duration DEFAULT_LEASE_TIMEOUT = Duration.ofMinutes(10);
 
     private static final String hostName;
@@ -91,7 +90,6 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     private final Counter saveStatePartitionUpdateErrorCounter;
     private final Counter closePartitionUpdateErrorCounter;
     private final Counter completePartitionUpdateErrorCounter;
-
     private final Counter partitionsDeleted;
     private final ReentrantLock lock;
 
@@ -302,7 +300,8 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
         try {
             sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
-        } catch (final PartitionUpdateException e) {
+        } catch (final Exception e) {
+            LOG.error("Exception while saving state for the partition {}: {}", partitionKey, e.getMessage());
             saveStatePartitionUpdateErrorCounter.increment();
             throw e;
         }
@@ -315,12 +314,29 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     @Override
     public void updatePartitionForAcknowledgmentWait(final String partitionKey, final Duration ackowledgmentTimeout) {
-        validateIsInitialized();
+        try {
+            updatePartitionOwnership(partitionKey, ackowledgmentTimeout);
+        } catch (final Exception e) {
+            LOG.error("Exception while updating acknowledgment wait for the partition {}: {}", partitionKey, e.getMessage());
+            throw e;
+        }
+    }
 
-        final SourcePartitionStoreItem itemToUpdate = getSourcePartitionStoreItem(partitionKey, "update for ack wait");
+    @Override
+    public void renewPartitionOwnership(final String partitionKey) {
+        try {
+            updatePartitionOwnership(partitionKey, DEFAULT_LEASE_TIMEOUT);
+        } catch (final Exception e) {
+            LOG.error("Exception while renewing partition ownership for the partition {}: {}", partitionKey, e.getMessage());
+            throw e;
+        }
+    }
+
+    private void updatePartitionOwnership(final String partitionKey, final Duration ownershipRenewalTime) {
+        final SourcePartitionStoreItem itemToUpdate = getSourcePartitionStoreItem(partitionKey, "update partition ownership");
         validatePartitionOwnership(itemToUpdate);
 
-        itemToUpdate.setPartitionOwnershipTimeout(Instant.now().plus(ackowledgmentTimeout));
+        itemToUpdate.setPartitionOwnershipTimeout(Instant.now().plus(ownershipRenewalTime));
 
         sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
     }
@@ -371,7 +387,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             try {
                 sourceCoordinationStore.tryDeletePartitionItem(deleteItem);
             } catch (final PartitionUpdateException e) {
-                LOG.info("Unable to delete partition {}: {}.", deleteItem.getSourcePartitionKey(), e.getMessage());
+                LOG.error("Unable to delete partition {}: {}.", deleteItem.getSourcePartitionKey(), e.getMessage());
                 return;
             }
 

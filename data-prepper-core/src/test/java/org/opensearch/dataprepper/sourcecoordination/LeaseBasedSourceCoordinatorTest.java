@@ -797,6 +797,29 @@ public class LeaseBasedSourceCoordinatorTest {
     }
 
     @Test
+    void renewPartitionOwnership_updates_partition_ownership() throws UnknownHostException {
+        final SourcePartition<String> sourcePartition = SourcePartition.builder(String.class)
+                .withPartitionKey(UUID.randomUUID().toString())
+                .withPartitionState(null)
+                .build();
+
+        final Instant beforeSave = Instant.now();
+
+        given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(sourceIdentifierWithPartitionPrefix + ":" + InetAddress.getLocalHost().getHostName());
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifierForPartition, sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
+
+        doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
+
+        final Duration ackTimeout = Duration.ofSeconds(10);
+        createObjectUnderTest().renewPartitionOwnership(sourcePartition.getPartitionKey());
+
+        final ArgumentCaptor<Instant> argumentCaptorForPartitionOwnershipTimeout = ArgumentCaptor.forClass(Instant.class);
+        verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(argumentCaptorForPartitionOwnershipTimeout.capture());
+        final Instant newPartitionOwnershipTimeout = argumentCaptorForPartitionOwnershipTimeout.getValue();
+        assertThat(newPartitionOwnershipTimeout.isAfter(beforeSave.plus(ackTimeout)), equalTo(true));
+    }
+
+    @Test
     void giveUpPartitions_with_active_partitionKey_that_does_not_exist_in_the_store_removes_the_active_partition() {
         final SourcePartition<String> sourcePartition = SourcePartition.builder(String.class)
                 .withPartitionKey(UUID.randomUUID().toString())
