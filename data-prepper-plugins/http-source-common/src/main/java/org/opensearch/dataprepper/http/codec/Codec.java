@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.http.codec;
 import com.linecorp.armeria.common.HttpData;
 
 import java.io.IOException;
+import java.util.function.Consumer;
 
 /**
  * Codec parses the content of HTTP request into custom Java type.
@@ -22,7 +23,32 @@ public interface Codec<T> {
      */
     T parse(HttpData httpData) throws IOException;
 
-    default T parse(HttpData httpData, int maxSize) throws IOException {
-        return parse(httpData);
+    /**
+     * Serializes parsed data back into a UTF-8 string.
+     * <p>
+     * This API will split into multiple bodies based on splitLength. Note that if a single
+     * item is larger than this, it will be output and exceed that length.
+     *
+     * @param parsedData The parsed data
+     * @param serializedBodyConsumer A {@link Consumer} to accept each serialized body
+     * @param splitLength The length at which to split serialized bodies.
+     * @throws IOException A failure writing data.
+     */
+    void serialize(final T parsedData,
+                   final Consumer<String> serializedBodyConsumer,
+                   final int splitLength) throws IOException;
+
+
+    /**
+     * Serializes parsed data back into a UTF-8 string.
+     * <p>
+     * This API will not split the data into chunks.
+     *
+     * @param parsedData The parsed data
+     * @param serializedBodyConsumer A {@link Consumer} to accept the serialized body
+     * @throws IOException A failure writing data.
+     */
+    default void serialize(final T parsedData, final Consumer<String> serializedBodyConsumer) throws IOException {
+        serialize(parsedData, serializedBodyConsumer, Integer.MAX_VALUE);
     }
 }
