@@ -18,6 +18,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -54,7 +55,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
-    static final String REPLICATION_LOG_EVENT_PROCESSING_TIME = "replicationLogEventProcessingTime";
+    static final String REPLICATION_LOG_EVENT_PROCESSING_TIME = "replicationLogEntryProcessingTime";
 
     /**
      * TableId to TableMetadata mapping
@@ -70,7 +71,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     private final PluginMetrics pluginMetrics;
     private final List<Event> pipelineEvents;
     private final StreamCheckpointManager streamCheckpointManager;
-    private final ExecutorService executorService;
+    private final ExecutorService binlogEventExecutorService;
     private final Counter changeEventSuccessCounter;
     private final Counter changeEventErrorCounter;
     private final DistributionSummary bytesReceivedSummary;
@@ -98,7 +99,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         isAcknowledgmentsEnabled = sourceConfig.isAcknowledgmentsEnabled();
         this.pluginMetrics = pluginMetrics;
         pipelineEvents = new ArrayList<>();
-        executorService = Executors.newCachedThreadPool();
+        binlogEventExecutorService = Executors.newFixedThreadPool(
+                sourceConfig.getStream().getNumWorkers(), BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-binlog-processor"));
 
         this.streamCheckpointManager = new StreamCheckpointManager(
                 streamCheckpointer, sourceConfig.isAcknowledgmentsEnabled(),
@@ -141,7 +143,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     public void stopClient() {
         try {
             binaryLogClient.disconnect();
-            executorService.shutdownNow();
+            binlogEventExecutorService.shutdownNow();
             LOG.info("Binary log client disconnected.");
         } catch (Exception e) {
             LOG.error("Binary log client failed to disconnect.", e);
@@ -160,6 +162,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             }
         }
     }
+
     void handleTableMapEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         final TableMapEventData data = event.getData();
         final TableMapEventMetadata tableMapEventMetadata = data.getEventMetadata();
@@ -301,7 +304,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     }
 
     private void processEvent(com.github.shyiko.mysql.binlog.event.Event event, Consumer<com.github.shyiko.mysql.binlog.event.Event> function) {
-        executorService.submit(() -> handleEventAndErrors(event, function));
+        binlogEventExecutorService.submit(() -> handleEventAndErrors(event, function));
     }
 
     private void handleEventAndErrors(com.github.shyiko.mysql.binlog.event.Event event,

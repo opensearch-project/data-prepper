@@ -28,7 +28,10 @@ import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.spy;
@@ -63,6 +66,9 @@ class BinlogEventListenerTest {
     @Mock
     private ExecutorService checkpointManagerExecutorService;
 
+    @Mock
+    private ThreadFactory threadFactory;
+
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private com.github.shyiko.mysql.binlog.event.Event binlogEvent;
 
@@ -75,8 +81,9 @@ class BinlogEventListenerTest {
         eventProcessingTimer = Metrics.timer("test-timer");
         when(pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME)).thenReturn(eventProcessingTimer);
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(Executors::newCachedThreadPool).thenReturn(eventListnerExecutorService);
+            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(ThreadFactory.class))).thenReturn(eventListnerExecutorService);
             executorsMockedStatic.when(Executors::newSingleThreadExecutor).thenReturn(checkpointManagerExecutorService);
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenReturn(threadFactory);
             objectUnderTest = spy(createObjectUnderTest());
         }
     }
