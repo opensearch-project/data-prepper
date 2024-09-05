@@ -16,7 +16,9 @@ import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -38,6 +40,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -51,6 +55,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
+    static final String REPLICATION_LOG_EVENT_PROCESSING_TIME = "replicationLogEntryProcessingTime";
 
     /**
      * TableId to TableMetadata mapping
@@ -59,17 +64,20 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
     private final StreamRecordConverter recordConverter;
     private final BinaryLogClient binaryLogClient;
-    private final BufferAccumulator<Record<Event>> bufferAccumulator;
+    private final Buffer<Record<Event>> buffer;
     private final List<String> tableNames;
     private final String s3Prefix;
     private final boolean isAcknowledgmentsEnabled;
     private final PluginMetrics pluginMetrics;
     private final List<Event> pipelineEvents;
     private final StreamCheckpointManager streamCheckpointManager;
+    private final ExecutorService binlogEventExecutorService;
     private final Counter changeEventSuccessCounter;
     private final Counter changeEventErrorCounter;
     private final DistributionSummary bytesReceivedSummary;
     private final DistributionSummary bytesProcessedSummary;
+    private final Timer eventProcessingTimer;
+
 
     /**
      * currentBinlogCoordinate is the coordinate where next event will start
@@ -82,15 +90,17 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                                final BinaryLogClient binaryLogClient,
                                final StreamCheckpointer streamCheckpointer,
                                final AcknowledgementSetManager acknowledgementSetManager) {
+        this.buffer = buffer;
         this.binaryLogClient = binaryLogClient;
         tableMetadataMap = new HashMap<>();
         recordConverter = new StreamRecordConverter(sourceConfig.getStream().getPartitionCount());
-        bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
         s3Prefix = sourceConfig.getS3Prefix();
         tableNames = sourceConfig.getTableNames();
         isAcknowledgmentsEnabled = sourceConfig.isAcknowledgmentsEnabled();
         this.pluginMetrics = pluginMetrics;
         pipelineEvents = new ArrayList<>();
+        binlogEventExecutorService = Executors.newFixedThreadPool(
+                sourceConfig.getStream().getNumWorkers(), BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-binlog-processor"));
 
         this.streamCheckpointManager = new StreamCheckpointManager(
                 streamCheckpointer, sourceConfig.isAcknowledgmentsEnabled(),
@@ -101,6 +111,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         changeEventErrorCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT);
         bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
         bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
+        eventProcessingTimer = pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME);
     }
 
     @Override
@@ -109,22 +120,22 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
         switch (eventType) {
             case ROTATE:
-                handleEventAndErrors(event, this::handleRotateEvent);
+                processEvent(event, this::handleRotateEvent);
                 break;
             case TABLE_MAP:
-                handleEventAndErrors(event, this::handleTableMapEvent);
+                processEvent(event, this::handleTableMapEvent);
                 break;
             case WRITE_ROWS:
             case EXT_WRITE_ROWS:
-                handleEventAndErrors(event, this::handleInsertEvent);
+                processEvent(event, this::handleInsertEvent);
                 break;
             case UPDATE_ROWS:
             case EXT_UPDATE_ROWS:
-                handleEventAndErrors(event, this::handleUpdateEvent);
+                processEvent(event, this::handleUpdateEvent);
                 break;
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:
-                handleEventAndErrors(event, this::handleDeleteEvent);
+                processEvent(event, this::handleDeleteEvent);
                 break;
         }
     }
@@ -132,6 +143,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     public void stopClient() {
         try {
             binaryLogClient.disconnect();
+            binlogEventExecutorService.shutdownNow();
             LOG.info("Binary log client disconnected.");
         } catch (Exception e) {
             LOG.error("Binary log client failed to disconnect.", e);
@@ -150,6 +162,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             }
         }
     }
+
     void handleTableMapEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         final TableMapEventData data = event.getData();
         final TableMapEventMetadata tableMapEventMetadata = data.getEventMetadata();
@@ -223,6 +236,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = event.getHeader().getTimestamp();
 
+        final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
+
         for (Object[] rowDataArray : rows) {
             final Map<String, Object> rowDataMap = new HashMap<>();
             for (int i = 0; i < rowDataArray.length; i++) {
@@ -242,7 +257,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             pipelineEvents.add(pipelineEvent);
         }
 
-        writeToBuffer(acknowledgementSet);
+        writeToBuffer(bufferAccumulator, acknowledgementSet);
         bytesProcessedSummary.record(bytes);
 
         if (isAcknowledgmentsEnabled) {
@@ -256,19 +271,19 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         return new HashSet<>(tableNames).contains(tableName);
     }
 
-    private void writeToBuffer(AcknowledgementSet acknowledgementSet) {
+    private void writeToBuffer(BufferAccumulator<Record<Event>> bufferAccumulator, AcknowledgementSet acknowledgementSet) {
         for (Event pipelineEvent : pipelineEvents) {
-            addToBufferAccumulator(new Record<>(pipelineEvent));
+            addToBufferAccumulator(bufferAccumulator, new Record<>(pipelineEvent));
             if (acknowledgementSet != null) {
                 acknowledgementSet.add(pipelineEvent);
             }
         }
 
-        flushBufferAccumulator(pipelineEvents.size());
+        flushBufferAccumulator(bufferAccumulator, pipelineEvents.size());
         pipelineEvents.clear();
     }
 
-    private void addToBufferAccumulator(final Record<Event> record) {
+    private void addToBufferAccumulator(final BufferAccumulator<Record<Event>> bufferAccumulator, final Record<Event> record) {
         try {
             bufferAccumulator.add(record);
         } catch (Exception e) {
@@ -276,7 +291,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         }
     }
 
-    private void flushBufferAccumulator(int eventCount) {
+    private void flushBufferAccumulator(BufferAccumulator<Record<Event>> bufferAccumulator, int eventCount) {
         try {
             bufferAccumulator.flush();
             changeEventSuccessCounter.increment(eventCount);
@@ -288,10 +303,14 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         }
     }
 
+    private void processEvent(com.github.shyiko.mysql.binlog.event.Event event, Consumer<com.github.shyiko.mysql.binlog.event.Event> function) {
+        binlogEventExecutorService.submit(() -> handleEventAndErrors(event, function));
+    }
+
     private void handleEventAndErrors(com.github.shyiko.mysql.binlog.event.Event event,
                                       Consumer<com.github.shyiko.mysql.binlog.event.Event> function) {
         try {
-            function.accept(event);
+            eventProcessingTimer.record(() -> function.accept(event));
         } catch (Exception e) {
             LOG.error("Failed to process change event of type {}", event.getHeader().getEventType(), e);
         }

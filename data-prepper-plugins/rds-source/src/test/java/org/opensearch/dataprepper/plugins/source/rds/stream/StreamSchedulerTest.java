@@ -42,6 +42,7 @@ class StreamSchedulerTest {
 
     @Mock
     private EnhancedSourceCoordinator sourceCoordinator;
+
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private RdsSourceConfig sourceConfig;
 
@@ -85,6 +86,8 @@ class StreamSchedulerTest {
 
         StreamWorker streamWorker = mock(StreamWorker.class);
         doNothing().when(streamWorker).processStream(streamPartition);
+        when(sourceConfig.getStream().getNumWorkers()).thenReturn(1);
+
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> {
             try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class)) {
