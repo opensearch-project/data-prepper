@@ -26,4 +26,9 @@ public class KafkaClusterConfigExtension implements ExtensionPlugin {
         LOG.info("Applying Kafka Cluster Config Extension.");
         extensionPoints.addExtensionProvider(new KafkaClusterConfigProvider(this.defaultKafkaClusterConfigSupplier));
     }
+
+    @Override
+    public void shutdown() {
+
+    }
 }

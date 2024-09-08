@@ -34,4 +34,9 @@ public class AwsPlugin implements ExtensionPlugin {
     public void apply(final ExtensionPoints extensionPoints) {
         extensionPoints.addExtensionProvider(new AwsExtensionProvider(defaultAwsCredentialsSupplier));
     }
+
+    @Override
+    public void shutdown() {
+
+    }
 }

@@ -10,12 +10,14 @@ import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Named;
+import java.util.Collections;
 import java.util.List;
 
 @Named("extensionsApplier")
-class ExtensionsApplier {
+public class ExtensionsApplier {
     private final DataPrepperExtensionPoints dataPrepperExtensionPoints;
     private final ExtensionLoader extensionLoader;
+    private List<? extends ExtensionPlugin> loadedExtensionPlugins = Collections.emptyList();
 
     @Inject
     ExtensionsApplier(
@@ -27,10 +29,14 @@ class ExtensionsApplier {
 
     @PostConstruct
     void applyExtensions() {
-        final List<? extends ExtensionPlugin> extensionPlugins = extensionLoader.loadExtensions();
+        loadedExtensionPlugins = extensionLoader.loadExtensions();
 
-        for (ExtensionPlugin extensionPlugin : extensionPlugins) {
+        for (ExtensionPlugin extensionPlugin : loadedExtensionPlugins) {
             extensionPlugin.apply(dataPrepperExtensionPoints);
         }
+    }
+
+    public void shutdownExtensions() {
+        loadedExtensionPlugins.forEach(ExtensionPlugin::shutdown);
     }
 }

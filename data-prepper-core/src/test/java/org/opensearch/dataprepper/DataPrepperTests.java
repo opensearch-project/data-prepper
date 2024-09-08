@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.PipelineObserver;
 import org.opensearch.dataprepper.pipeline.server.DataPrepperServer;
+import org.opensearch.dataprepper.plugin.ExtensionsApplier;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
@@ -38,6 +39,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class DataPrepperTests {
     private Map<String, Pipeline> parseConfigurationFixture;
+    @Mock
+    private ExtensionsApplier extensionsApplier;
     @Mock
     private PipelineTransformer pipelineTransformer;
     @Mock
@@ -63,7 +66,8 @@ public class DataPrepperTests {
     }
 
     private DataPrepper createObjectUnderTest() throws NoSuchFieldException, IllegalAccessException {
-        final DataPrepper dataPrepper = new DataPrepper(pipelineTransformer, pluginFactory, peerForwarderServer, shouldShutdownOnPipelineFailurePredicate);
+        final DataPrepper dataPrepper = new DataPrepper(extensionsApplier, pipelineTransformer, pluginFactory,
+                peerForwarderServer, shouldShutdownOnPipelineFailurePredicate);
         final Field dataPrepperServerField = dataPrepper.getClass().getDeclaredField("dataPrepperServer");
         dataPrepperServerField.setAccessible(true);
         dataPrepperServerField.set(dataPrepper, dataPrepperServer);
@@ -86,7 +90,8 @@ public class DataPrepperTests {
 
         assertThrows(
                 RuntimeException.class,
-                () -> new DataPrepper(pipelineTransformer, pluginFactory, peerForwarderServer, shouldShutdownOnPipelineFailurePredicate),
+                () -> new DataPrepper(extensionsApplier, pipelineTransformer, pluginFactory, peerForwarderServer,
+                        shouldShutdownOnPipelineFailurePredicate),
                 "Exception should be thrown if pipeline parser has no pipeline configuration");
     }
 
@@ -111,6 +116,19 @@ public class DataPrepperTests {
 
     @Test
     public void testDataPrepperShutdown() throws NoSuchFieldException, IllegalAccessException {
+        final DataPrepper objectUnderTest = createObjectUnderTest();
+        final DataPrepperShutdownListener dataPrepperShutdownListener = mock(DataPrepperShutdownListener.class);
+        objectUnderTest.registerShutdownHandler(dataPrepperShutdownListener);
+        objectUnderTest.shutdown();
+        verify(pipeline).shutdown();
+        verify(extensionsApplier).shutdownExtensions();
+        verify(dataPrepperServer).stop();
+        verify(peerForwarderServer).stop();
+        verify(dataPrepperShutdownListener).handleShutdown();
+    }
+
+    @Test
+    public void testDataPrepperShutdownPipelines() throws NoSuchFieldException, IllegalAccessException {
         createObjectUnderTest().shutdownPipelines();
         verify(pipeline).shutdown();
     }

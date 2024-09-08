@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.PipelineObserver;
 import org.opensearch.dataprepper.pipeline.PipelinesProvider;
 import org.opensearch.dataprepper.pipeline.server.DataPrepperServer;
+import org.opensearch.dataprepper.plugin.ExtensionsApplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -37,6 +38,7 @@ public class DataPrepper implements PipelinesProvider {
     private static final String DEFAULT_SERVICE_NAME = "dataprepper";
     private static final int MAX_RETRIES = 100;
 
+    private final ExtensionsApplier extensionsApplier;
     private final PluginFactory pluginFactory;
     private final PeerForwarderServer peerForwarderServer;
     private final PipelinesObserver pipelinesObserver;
@@ -60,10 +62,12 @@ public class DataPrepper implements PipelinesProvider {
 
     @Inject
     public DataPrepper(
+            @Named("extensionsApplier") final ExtensionsApplier extensionsApplier,
             final PipelineTransformer pipelineTransformer,
             final PluginFactory pluginFactory,
             final PeerForwarderServer peerForwarderServer,
             final Predicate<Map<String, Pipeline>> shouldShutdownOnPipelineFailurePredicate) {
+        this.extensionsApplier = extensionsApplier;
         this.pluginFactory = pluginFactory;
 
         transformationPipelines = pipelineTransformer.transformConfiguration();
@@ -94,6 +98,7 @@ public class DataPrepper implements PipelinesProvider {
 
     public void shutdown() {
         shutdownPipelines();
+        extensionsApplier.shutdownExtensions();
         shutdownServers();
     }
 
