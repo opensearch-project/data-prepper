@@ -21,5 +21,8 @@ public interface ExtensionPlugin {
      */
     void apply(ExtensionPoints extensionPoints);
 
+    /**
+     * Close resources used by the extension.
+     */
     void shutdown();
 }
