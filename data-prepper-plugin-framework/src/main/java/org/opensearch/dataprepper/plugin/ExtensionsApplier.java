@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.Collections;
@@ -36,6 +37,7 @@ public class ExtensionsApplier {
         }
     }
 
+    @PreDestroy
     public void shutdownExtensions() {
         loadedExtensionPlugins.forEach(ExtensionPlugin::shutdown);
     }

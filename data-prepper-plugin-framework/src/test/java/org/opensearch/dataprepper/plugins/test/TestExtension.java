@@ -34,11 +34,6 @@ public class TestExtension implements ExtensionPlugin {
         extensionPoints.addExtensionProvider(new TestExtensionProvider());
     }
 
-    @Override
-    public void shutdown() {
-
-    }
-
     public static void reset() {
         CONSTRUCTED_COUNT.set(0);
     }

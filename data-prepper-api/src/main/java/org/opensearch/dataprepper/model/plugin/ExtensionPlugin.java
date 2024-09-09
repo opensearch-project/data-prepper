@@ -24,5 +24,6 @@ public interface ExtensionPlugin {
     /**
      * Close resources used by the extension.
      */
-    void shutdown();
+    default void shutdown() {
+    };
 }

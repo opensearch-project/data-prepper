@@ -38,9 +38,4 @@ public class GeoIpConfigExtension implements ExtensionPlugin {
     public void apply(final ExtensionPoints extensionPoints) {
             extensionPoints.addExtensionProvider(new GeoIpConfigProvider(this.defaultGeoIpConfigSupplier));
     }
-
-    @Override
-    public void shutdown() {
-
-    }
 }
