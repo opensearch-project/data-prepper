@@ -136,6 +136,7 @@ class OTelTraceSourceTest {
     private static final String TEST_PATH = "${pipelineName}/v1/traces";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
+    private static final RetryInfo TEST_RETRY_INFO = new RetryInfo(100, 2000);
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
@@ -214,6 +215,7 @@ class OTelTraceSourceTest {
         when(oTelTraceSourceConfig.getMaxConnectionCount()).thenReturn(10);
         when(oTelTraceSourceConfig.getThreadCount()).thenReturn(5);
         when(oTelTraceSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
+        when(oTelTraceSourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
@@ -851,7 +853,9 @@ class OTelTraceSourceTest {
         // starting server
         SOURCE.start(buffer);
 
-        testPluginSetting = new PluginSetting(null, Collections.singletonMap(SSL, false));
+
+        Map<String, Object> settingsMap = Map.of("retry_info", TEST_RETRY_INFO, SSL, false);
+        testPluginSetting = new PluginSetting(null, settingsMap);
         testPluginSetting.setPipelineName("pipeline");
         oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
         final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);

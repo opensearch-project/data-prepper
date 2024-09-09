@@ -302,6 +302,28 @@ class OtelTraceSourceConfigTests {
         assertThat(otelTraceSourceConfig.isPathValid(), equalTo(false));
     }
 
+    @Test
+    void testRetryInfoConfig() {
+        final PluginSetting customPathPluginSetting = completePluginSettingForOtelTraceSource(
+                DEFAULT_REQUEST_TIMEOUT_MS,
+                DEFAULT_PORT,
+                null,
+                false,
+                false,
+                false,
+                true,
+                TEST_KEY_CERT,
+                "",
+                DEFAULT_THREAD_COUNT,
+                DEFAULT_MAX_CONNECTION_COUNT);
+
+        final OTelTraceSourceConfig otelTraceSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelTraceSourceConfig.class);
+
+
+        assertThat(otelTraceSourceConfig.getRetryInfo().getMaxDelay(), equalTo(100));
+        assertThat(otelTraceSourceConfig.getRetryInfo().getMinDelay(), equalTo(50));
+    }
+
     private PluginSetting completePluginSettingForOtelTraceSource(final int requestTimeoutInMillis,
                                                                   final int port,
                                                                   final String path,
@@ -325,6 +347,7 @@ class OtelTraceSourceConfigTests {
         settings.put(OTelTraceSourceConfig.SSL_KEY_FILE, sslKeyFile);
         settings.put(OTelTraceSourceConfig.THREAD_COUNT, threadCount);
         settings.put(OTelTraceSourceConfig.MAX_CONNECTION_COUNT, maxConnectionCount);
+        settings.put(OTelTraceSourceConfig.RETRY_INFO, new RetryInfo(50, 100));
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 }
