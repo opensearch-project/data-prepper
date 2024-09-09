@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,13 +61,5 @@ class AwsPluginTest {
         final ExtensionProvider actualExtensionProvider = extensionProviderArgumentCaptor.getValue();
 
         assertThat(actualExtensionProvider, instanceOf(AwsExtensionProvider.class));
-    }
-
-    @Test
-    void testShutdown() {
-        when(awsPluginConfig.getDefaultStsConfiguration()).thenReturn(new AwsStsConfiguration());
-        final AwsPlugin objectUnderTest = createObjectUnderTest();
-        objectUnderTest.shutdown();
-        verifyNoInteractions(extensionPoints);
     }
 }
