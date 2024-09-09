@@ -15,7 +15,7 @@ import java.util.Collections;
 import java.util.List;
 
 @Named("extensionsApplier")
-public class ExtensionsApplier {
+class ExtensionsApplier {
     private final DataPrepperExtensionPoints dataPrepperExtensionPoints;
     private final ExtensionLoader extensionLoader;
     private List<? extends ExtensionPlugin> loadedExtensionPlugins = Collections.emptyList();
