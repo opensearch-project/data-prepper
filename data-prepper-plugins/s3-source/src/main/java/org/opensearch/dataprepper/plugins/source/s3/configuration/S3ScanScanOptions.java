@@ -55,9 +55,14 @@ public class S3ScanScanOptions {
         return (startTime != null || endTime != null) && range != null;
     }
 
-    @AssertTrue(message = "start_time, end_time, and range are not valid options when using scheduling with s3 scan")
+    @AssertTrue(message = "end_time is not a valid option when using scheduling with s3 scan. One of start_time or range must be used for scheduled scan.")
     public boolean hasValidTimeOptionsWithScheduling() {
-        return !Objects.nonNull(schedulingOptions) || Stream.of(startTime, endTime, range).noneMatch(Objects::nonNull);
+
+        if (schedulingOptions != null && ((startTime != null && range != null) || endTime != null)) {
+            return false;
+        }
+
+        return true;
     }
 
     public Duration getRange() {

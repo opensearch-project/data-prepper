@@ -114,6 +114,7 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
                                                                      final LocalDateTime endDateTime,
                                                                      final Map<String, Object> globalStateMap) {
         final Instant previousScanTime = globalStateMap.get(bucket) != null ? Instant.parse((String) globalStateMap.get(bucket)) : null;
+        final boolean isFirstScan = previousScanTime == null;
         final List<PartitionIdentifier> allPartitionIdentifiers = new ArrayList<>();
         ListObjectsV2Response listObjectsV2Response = null;
         do {
@@ -124,7 +125,7 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
                     .filter(keyTimestampPair -> !keyTimestampPair.left().endsWith("/"))
                     .filter(keyTimestampPair -> excludeKeyPaths.stream()
                             .noneMatch(excludeItem -> keyTimestampPair.left().endsWith(excludeItem)))
-                    .filter(keyTimestampPair -> isKeyMatchedBetweenTimeRange(keyTimestampPair.right(), startDateTime, endDateTime))
+                    .filter(keyTimestampPair -> isKeyMatchedBetweenTimeRange(keyTimestampPair.right(), startDateTime, endDateTime, isFirstScan))
                     .map(Pair::left)
                     .map(objectKey -> PartitionIdentifier.builder().withPartitionKey(String.format(BUCKET_OBJECT_PARTITION_KEY_FORMAT, bucket, objectKey)).build())
                     .collect(Collectors.toList()));
@@ -166,8 +167,9 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
      */
     private boolean isKeyMatchedBetweenTimeRange(final LocalDateTime lastModifiedTime,
                                                  final LocalDateTime startDateTime,
-                                                 final LocalDateTime endDateTime) {
-        if (Objects.nonNull(schedulingOptions)) {
+                                                 final LocalDateTime endDateTime,
+                                                 final boolean isFirstScan) {
+        if (!isFirstScan && schedulingOptions != null) {
             return true;
         } else if (Objects.isNull(startDateTime) && Objects.isNull(endDateTime)) {
             return true;
