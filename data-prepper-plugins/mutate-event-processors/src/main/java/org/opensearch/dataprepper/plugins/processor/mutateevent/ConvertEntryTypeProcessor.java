@@ -19,10 +19,13 @@ import org.opensearch.dataprepper.typeconverter.TypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
@@ -80,7 +83,18 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                     if (keyVal != null) {
                         if (!nullValues.contains(keyVal.toString())) {
                             try {
-                                recordEvent.put(key, converter.convert(keyVal, converterArguments));
+                                if (keyVal instanceof ArrayList || keyVal.getClass().isArray()) {
+                                    ArrayList<Object> inputList;
+                                    if (keyVal.getClass().isArray()) {
+                                        inputList = (ArrayList<Object>)Arrays.asList((Object[])keyVal);
+                                    } else {
+                                        inputList = (ArrayList<Object>)keyVal;
+                                    }
+                                    recordEvent.put(key, inputList.stream().
+                                            map(i -> converter.convert(i, converterArguments)).collect(Collectors.toList()));
+                                } else {
+                                    recordEvent.put(key, converter.convert(keyVal, converterArguments));
+                                }
                             } catch (final RuntimeException e) {
                                 LOG.error(EVENT, "Unable to convert key: {} with value: {} to {}", key, keyVal, type, e);
                                 recordEvent.getMetadata().addTags(tagsOnFailure);
