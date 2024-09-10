@@ -4,6 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import {GitHubAccessStack} from '../lib/common/GitHubAccessStack';
 import {SecretsManagerStack} from '../lib/aws-secrets-manager/SecretsManagerStack';
 import {KmsStack} from '../lib/common/KmsStack';
+import {S3SinkStack} from '../lib/s3/S3SinkStack';
 
 const app = new cdk.App();
 
@@ -14,5 +15,9 @@ new KmsStack(app, 'CommonKmsStack', {
 })
 
 new SecretsManagerStack(app, 'SecretsManagerStack', {
+  testingRole: githubStack.gitHubActionsTestingRole
+});
+
+new S3SinkStack(app, 'S3SinkStack', {
   testingRole: githubStack.gitHubActionsTestingRole
 });

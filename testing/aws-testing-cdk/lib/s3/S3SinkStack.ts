@@ -21,7 +21,7 @@ export class S3SinkStack extends Stack {
   constructor(scope: Construct, id: string, props: S3SinkStackProps) {
     super(scope, id, props);
 
-    new Bucket(this, 'MyBucket', {
+    this.bucket = new Bucket(this, 'DataPrepperSinkTest', {
       removalPolicy: RemovalPolicy.DESTROY,
       lifecycleRules: [
         {
