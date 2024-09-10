@@ -43,7 +43,6 @@ public class AwsSecretPlugin implements ExtensionPlugin {
             scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
             pluginMetrics = PluginMetrics.fromNames("secrets", "aws");
             submitSecretsRefreshJobs(awsSecretPluginConfig, secretsSupplier);
-            Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
         } else {
             pluginConfigValueTranslator = null;
         }
@@ -70,7 +69,8 @@ public class AwsSecretPlugin implements ExtensionPlugin {
         });
     }
 
-    void shutdown() {
+    @Override
+    public void shutdown() {
         if (scheduledExecutorService != null) {
             LOG.info("Shutting down secrets refreshing tasks.");
             scheduledExecutorService.shutdown();

@@ -55,4 +55,14 @@ class ExtensionsApplierTest {
 
         createObjectUnderTest().applyExtensions();
     }
+
+    @Test
+    void shutDownExtensions_invokes_extension_plugin_shutdown() {
+        final ExtensionPlugin extensionPlugin = mock(ExtensionPlugin.class);
+        when(extensionLoader.loadExtensions()).thenReturn((List) List.of(extensionPlugin));
+        final ExtensionsApplier objectUnderTest = createObjectUnderTest();
+        objectUnderTest.applyExtensions();
+        objectUnderTest.shutdownExtensions();
+        verify(extensionPlugin).shutdown();
+    }
 }

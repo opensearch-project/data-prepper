@@ -20,4 +20,10 @@ public interface ExtensionPlugin {
      * @param extensionPoints The {@link ExtensionPoints} wherein the extension can extend behaviors.
      */
     void apply(ExtensionPoints extensionPoints);
+
+    /**
+     * Close resources used by the extension.
+     */
+    default void shutdown() {
+    };
 }
