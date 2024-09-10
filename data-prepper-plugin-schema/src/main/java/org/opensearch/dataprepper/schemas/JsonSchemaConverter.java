@@ -11,8 +11,12 @@ import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigPart;
 import com.github.victools.jsonschema.generator.SchemaVersion;
+import org.opensearch.dataprepper.model.schemas.IfPresentAlsoRequire;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 public class JsonSchemaConverter {
     static final String DEPRECATED_SINCE_KEY = "deprecated";
@@ -31,9 +35,11 @@ public class JsonSchemaConverter {
         final SchemaGeneratorConfigPart<FieldScope> scopeSchemaGeneratorConfigPart = configBuilder.forFields();
         overrideInstanceAttributeWithDeprecated(scopeSchemaGeneratorConfigPart);
         resolveDefaultValueFromJsonProperty(scopeSchemaGeneratorConfigPart);
+        resolveDependentRequiresFields(scopeSchemaGeneratorConfigPart);
 
         final SchemaGeneratorConfig config = configBuilder.build();
         final SchemaGenerator generator = new SchemaGenerator(config);
+
         return generator.generateSchema(clazz);
     }
 
@@ -58,5 +64,14 @@ public class JsonSchemaConverter {
             final JsonProperty annotation = field.getAnnotationConsideringFieldAndGetter(JsonProperty.class);
             return annotation == null || annotation.defaultValue().isEmpty() ? null : annotation.defaultValue();
         });
+    }
+
+    private void resolveDependentRequiresFields(
+            final SchemaGeneratorConfigPart<FieldScope> scopeSchemaGeneratorConfigPart) {
+        scopeSchemaGeneratorConfigPart.withDependentRequiresResolver(field -> Optional
+                .ofNullable(field.getAnnotationConsideringFieldAndGetter(IfPresentAlsoRequire.class))
+                .map(IfPresentAlsoRequire::values)
+                .map(Arrays::asList)
+                .orElse(null));
     }
 }
