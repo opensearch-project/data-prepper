@@ -2,7 +2,7 @@ version: '3'
 services:
   fluent-bit:
     container_name: fluent-bit
-    image: fluent/fluent-bit
+    image: docker.io/fluent/fluent-bit
     volumes:
       - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
       - ./test.log:/var/log/test.log
@@ -10,7 +10,7 @@ services:
       - opensearch-net
   opensearch:
     container_name: opensearch
-    image: opensearchproject/opensearch:latest
+    image: docker.io/opensearchproject/opensearch:latest
     environment:
       - discovery.type=single-node
       - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
@@ -29,7 +29,7 @@ services:
     networks:
       - opensearch-net
   dashboards:
-    image: opensearchproject/opensearch-dashboards:latest
+    image: docker.io/opensearchproject/opensearch-dashboards:latest
     container_name: opensearch-dashboards
     ports:
       - 5601:5601
