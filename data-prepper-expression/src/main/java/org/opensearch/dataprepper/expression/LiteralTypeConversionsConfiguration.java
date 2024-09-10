@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 
 import javax.inject.Named;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -26,6 +27,7 @@ class LiteralTypeConversionsConfiguration {
             Long.class, Function.identity(),
             ArrayList.class, Function.identity(),
             LinkedHashMap.class, Function.identity(),
+            BigDecimal.class, Function.identity(),
             Double.class, o -> ((Double) o).floatValue()
         );
     }

@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.opensearch.dataprepper.expression.util.TestObject;
 import org.opensearch.dataprepper.model.event.Event;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -111,6 +112,19 @@ class ParseTreeCoercionServiceTest {
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
         assertThat(result, instanceOf(Float.class));
         assertThat(result, equalTo(testFloat));
+    }
+
+    @Test
+    void testCoerceTerminalNodeBigDecimalType() {
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.JsonPointer);
+        final BigDecimal testBigDecimal = new BigDecimal(new Random().nextFloat());
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn("/key");
+
+        final Event testEvent = createTestEvent(Map.of("key", testBigDecimal));
+        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+        assertThat(result, instanceOf(BigDecimal.class));
+        assertThat(result, equalTo(testBigDecimal));
     }
 
     @ParameterizedTest

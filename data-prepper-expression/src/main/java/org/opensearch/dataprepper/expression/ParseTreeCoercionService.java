@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
