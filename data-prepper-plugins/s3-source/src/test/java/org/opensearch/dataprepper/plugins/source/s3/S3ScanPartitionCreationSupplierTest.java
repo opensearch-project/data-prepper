@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -44,6 +45,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -287,6 +289,67 @@ public class S3ScanPartitionCreationSupplierTest {
         assertThat(partitionCreationSupplier.apply(globalStateMap), equalTo(Collections.emptyList()));
 
         verify(listObjectsResponse, times(4)).contents();
+    }
+
+
+    @Test
+    void scheduled_scan_filters_on_start_time_and_end_time_for_the_first_scan_and_does_not_filter_on_subsequent_scans() {
+        schedulingOptions = mock(S3ScanSchedulingOptions.class);
+        given(schedulingOptions.getCount()).willReturn(2);
+
+        final String firstScanBucket = "bucket-one";
+        final String notFirstScanBucket = "bucket-two";
+
+        final Map<String, Object> globalStateMap = new HashMap<>();
+        globalStateMap.put(firstScanBucket, null);
+        globalStateMap.put(notFirstScanBucket, "2024-09-07T20:43:34.384822Z");
+        globalStateMap.put(SCAN_COUNT, 0);
+
+        final LocalDateTime startTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(1725907846000L), ZoneId.systemDefault());
+        final LocalDateTime endTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(1725907849100L), ZoneId.systemDefault());
+
+        final ScanOptions firstBucketScanOptions = mock(ScanOptions.class);
+        final S3ScanBucketOption firstBucketScanBucketOption = mock(S3ScanBucketOption.class);
+        given(firstBucketScanOptions.getBucketOption()).willReturn(firstBucketScanBucketOption);
+        given(firstBucketScanBucketOption.getName()).willReturn(firstScanBucket);
+        given(firstBucketScanOptions.getUseStartDateTime()).willReturn(startTime);
+        given(firstBucketScanOptions.getUseEndDateTime()).willReturn(endTime);
+        scanOptionsList.add(firstBucketScanOptions);
+
+        final ScanOptions notFirstScanOptions = mock(ScanOptions.class);
+        final S3ScanBucketOption notFirstScanBucketOption = mock(S3ScanBucketOption.class);
+        given(notFirstScanOptions.getBucketOption()).willReturn(notFirstScanBucketOption);
+        given(notFirstScanBucketOption.getName()).willReturn(notFirstScanBucket);
+        given(notFirstScanOptions.getUseStartDateTime()).willReturn(startTime);
+        given(notFirstScanOptions.getUseEndDateTime()).willReturn(endTime);
+        scanOptionsList.add(notFirstScanOptions);
+
+        final ListObjectsV2Response listObjectsResponse = mock(ListObjectsV2Response.class);
+        final List<S3Object> s3ObjectsList = new ArrayList<>();
+
+        final Instant objectNotBetweenStartAndEndTime = Instant.ofEpochMilli(1725907846000L).minus(500L, TimeUnit.SECONDS.toChronoUnit());
+        final S3Object validObject = mock(S3Object.class);
+        given(validObject.key()).willReturn("valid");
+        given(validObject.lastModified()).willReturn(objectNotBetweenStartAndEndTime);
+        s3ObjectsList.add(validObject);
+
+        final List<PartitionIdentifier> expectedPartitionIdentifiers = new ArrayList<>();
+        expectedPartitionIdentifiers.add(PartitionIdentifier.builder().withPartitionKey(notFirstScanBucket + "|" + validObject.key()).build());
+
+        given(listObjectsResponse.contents())
+                .willReturn(s3ObjectsList);
+
+        given(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).willReturn(listObjectsResponse);
+
+        final Function<Map<String, Object>, List<PartitionIdentifier>> partitionCreationSupplier = createObjectUnderTest();
+
+        final List<PartitionIdentifier> firstScanPartitions = partitionCreationSupplier.apply(globalStateMap);
+        assertThat(firstScanPartitions.size(), equalTo(expectedPartitionIdentifiers.size()));
+        assertThat(firstScanPartitions.stream().map(PartitionIdentifier::getPartitionKey).collect(Collectors.toList()),
+                containsInAnyOrder(expectedPartitionIdentifiers.stream().map(PartitionIdentifier::getPartitionKey).map(Matchers::equalTo).collect(Collectors.toList())));
+
+        final List<PartitionIdentifier> secondScanPartitions = partitionCreationSupplier.apply(globalStateMap);
+        assertThat(secondScanPartitions.isEmpty(), equalTo(true));
     }
 
     @Test
