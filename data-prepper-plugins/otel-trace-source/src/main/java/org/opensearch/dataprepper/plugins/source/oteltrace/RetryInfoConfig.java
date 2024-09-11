@@ -2,7 +2,7 @@ package org.opensearch.dataprepper.plugins.source.oteltrace;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class RetryInfo {
+public class RetryInfoConfig {
 
     @JsonProperty("min_delay")
     private Integer minDelay;
@@ -11,9 +11,9 @@ public class RetryInfo {
     private Integer maxDelay;
 
     // Jackson needs this constructor
-    public RetryInfo() {}
+    public RetryInfoConfig() {}
 
-    public RetryInfo(int minDelay, int maxDelay) {
+    public RetryInfoConfig(int minDelay, int maxDelay) {
         this.minDelay = minDelay;
         this.maxDelay = maxDelay;
     }

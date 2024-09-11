@@ -347,7 +347,7 @@ class OtelTraceSourceConfigTests {
         settings.put(OTelTraceSourceConfig.SSL_KEY_FILE, sslKeyFile);
         settings.put(OTelTraceSourceConfig.THREAD_COUNT, threadCount);
         settings.put(OTelTraceSourceConfig.MAX_CONNECTION_COUNT, maxConnectionCount);
-        settings.put(OTelTraceSourceConfig.RETRY_INFO, new RetryInfo(50, 100));
+        settings.put(OTelTraceSourceConfig.RETRY_INFO, new RetryInfoConfig(50, 100));
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 }

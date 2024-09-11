@@ -109,7 +109,7 @@ public class OTelTraceSourceConfig {
     private ByteCount maxRequestLength;
 
     @JsonProperty(RETRY_INFO)
-    private RetryInfo retryInfo;
+    private RetryInfoConfig retryInfo;
 
     @AssertTrue(message = "path should start with /")
     boolean isPathValid() {
@@ -233,7 +233,7 @@ public class OTelTraceSourceConfig {
         return maxRequestLength;
     }
 
-    public RetryInfo getRetryInfo() {
+    public RetryInfoConfig getRetryInfo() {
         return retryInfo;
     }
 }

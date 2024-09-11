@@ -209,7 +209,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
     }
 
     private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
-        RetryInfo retryInfo = oTelTraceSourceConfig.getRetryInfo() != null ? oTelTraceSourceConfig.getRetryInfo() : new RetryInfo(100, 2000);
+        RetryInfoConfig retryInfo = oTelTraceSourceConfig.getRetryInfo() != null ? oTelTraceSourceConfig.getRetryInfo() : new RetryInfoConfig(100, 2000);
 
         return new GrpcRequestExceptionHandler(pluginMetrics, Duration.ofMillis(retryInfo.getMinDelay()), Duration.ofMillis(retryInfo.getMaxDelay()));
     }

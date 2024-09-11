@@ -136,7 +136,7 @@ class OTelTraceSourceTest {
     private static final String TEST_PATH = "${pipelineName}/v1/traces";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
-    private static final RetryInfo TEST_RETRY_INFO = new RetryInfo(100, 2000);
+    private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(100, 2000);
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
