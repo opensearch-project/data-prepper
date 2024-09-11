@@ -203,7 +203,7 @@ class LambdaSinkServiceIT {
         when(thresholdOptions.getEventCount()).thenReturn(event_count);
         when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("2mb"));
         when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.parse("PT10s"));
-        when(batchOptions.getBatchKey()).thenReturn("lambda_batch_key");
+        when(batchOptions.getKeyName()).thenReturn("lambda_batch_key");
         when(batchOptions.getThresholdOptions()).thenReturn(thresholdOptions);
         when(lambdaSinkConfig.getBatchOptions()).thenReturn(batchOptions);
 

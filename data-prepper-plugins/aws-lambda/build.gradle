@@ -8,6 +8,7 @@ dependencies {
     implementation project(path: ':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation project(':data-prepper-plugins:failures-common')
+    implementation project(':data-prepper-plugins:parse-json-processor')
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'

@@ -152,7 +152,7 @@ public class LambdaProcessorServiceIT {
         when(thresholdOptions.getEventCount()).thenReturn(1);
         when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("2mb"));
         when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.parse("PT10s"));
-        when(batchOptions.getBatchKey()).thenReturn("lambda_batch_key");
+        when(batchOptions.getKeyName()).thenReturn("lambda_batch_key");
         when(batchOptions.getThresholdOptions()).thenReturn(thresholdOptions);
         when(lambdaProcessorConfig.getBatchOptions()).thenReturn(batchOptions);
 

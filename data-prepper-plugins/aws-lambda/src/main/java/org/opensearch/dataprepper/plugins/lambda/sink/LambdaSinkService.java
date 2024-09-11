@@ -16,9 +16,12 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodec;
+import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
+import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputCodec;
+import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
-import org.opensearch.dataprepper.plugins.lambda.common.codec.LambdaJsonCodec;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
@@ -68,7 +71,6 @@ public class LambdaSinkService {
     private final BatchOptions batchOptions;
     private final Boolean isBatchEnabled;
     private OutputCodecContext codecContext = null;
-    private final String batchKey;
 
     public LambdaSinkService(final LambdaClient lambdaClient,
                              final LambdaSinkConfig lambdaSinkConfig,
@@ -92,18 +94,19 @@ public class LambdaSinkService {
         batchOptions = lambdaSinkConfig.getBatchOptions();
 
         if (!Objects.isNull(batchOptions)){
+            JsonOutputCodecConfig jsonOutputCodecConfig = new JsonOutputCodecConfig();
+            jsonOutputCodecConfig.setKeyName(batchOptions.getKeyName());
+            codec = new JsonOutputCodec(jsonOutputCodecConfig);
             maxEvents = batchOptions.getThresholdOptions().getEventCount();
             maxBytes = batchOptions.getThresholdOptions().getMaximumSize();
             maxCollectionDuration = batchOptions.getThresholdOptions().getEventCollectTimeOut();
-            batchKey = batchOptions.getBatchKey();
             isBatchEnabled = true;
         }else{
-            batchKey = null;
+            NdjsonOutputConfig ndjsonOutputCodecConfig = new NdjsonOutputConfig();
+            codec = new NdjsonOutputCodec(ndjsonOutputCodecConfig);
             isBatchEnabled = false;
         }
         this.codecContext = codecContext;
-
-        codec = new LambdaJsonCodec(batchKey);
         bufferedEventHandles = new LinkedList<>();
         events = new ArrayList();
 

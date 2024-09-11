@@ -16,6 +16,8 @@ public class LambdaProcessorConfig {
 
     public static final String REQUEST_RESPONSE = "RequestResponse";
     public static final String EVENT = "Event";
+    public static final String BATCH_EVENT = "batch_event";
+    public static final String SINGLE_EVENT = "single_event";
     private static final int DEFAULT_CONNECTION_RETRIES = 3;
 
     @JsonProperty("aws")
@@ -25,7 +27,6 @@ public class LambdaProcessorConfig {
 
     @JsonProperty("function_name")
     @NotEmpty
-    @NotNull
     @Size(min = 3, max = 500, message = "function name length should be at least 3 characters")
     private String functionName;
 
@@ -34,6 +35,9 @@ public class LambdaProcessorConfig {
 
     @JsonProperty("invocation_type")
     private String invocationType = REQUEST_RESPONSE;
+
+    @JsonProperty("payload_model")
+    private String payloadModel = BATCH_EVENT;
 
     @JsonProperty("batch")
     private BatchOptions batchOptions;
@@ -59,5 +63,9 @@ public class LambdaProcessorConfig {
 
     public String getWhenCondition() {
         return whenCondition;
+    }
+
+    public String getPayloadModel() {
+        return payloadModel;
     }
 }

@@ -65,9 +65,6 @@ public class LambdaProcessorTest {
     private static MockedStatic<LambdaClientFactory> lambdaClientFactoryMockedStatic;
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
-//    @Mock
-//    private PluginSetting pluginSetting;
-
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -122,13 +119,14 @@ public class LambdaProcessorTest {
         lenient().when(lambdaProcessorConfig.getFunctionName()).thenReturn("test-function1");
         lenient().when(lambdaProcessorConfig.getMaxConnectionRetries()).thenReturn(3);
         lenient().when(lambdaProcessorConfig.getInvocationType()).thenReturn("requestresponse");
+        lenient().when(lambdaProcessorConfig.getPayloadModel()).thenReturn("batch_event");
 
         lenient().when(thresholdOptions.getEventCount()).thenReturn(10);
         lenient().when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.ofBytes(6));
         lenient().when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(5));
 
+        lenient().when(batchOptions.getKeyName()).thenReturn("events");
         lenient().when(batchOptions.getThresholdOptions()).thenReturn(thresholdOptions);
-        lenient().when(batchOptions.getBatchKey()).thenReturn("key");
         lenient().when(lambdaProcessorConfig.getBatchOptions()).thenReturn(batchOptions);
 
         lenient().when(lambdaProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
@@ -264,7 +262,7 @@ public class LambdaProcessorTest {
 
     @Test
     public void testDoExecute_WithConfig() throws JsonProcessingException {
-        final String config = "        function_name: test_function\n" + "        invocation_type: requestresponse\n" + "        aws:\n" + "          region: us-east-1\n" + "          sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" + "          sts_header_overrides: {\"test\":\"test\"}\n" + "        max_retries: 3\n";
+        final String config = "        function_name: test_function\n" + "        invocation_type: requestresponse\n"+ "        payload_model: single_event\n" + "        aws:\n" + "          region: us-east-1\n" + "          sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" + "          sts_header_overrides: {\"test\":\"test\"}\n" + "        max_retries: 3\n";
 
         this.lambdaProcessorConfig = objectMapper.readValue(config, LambdaProcessorConfig.class);
 

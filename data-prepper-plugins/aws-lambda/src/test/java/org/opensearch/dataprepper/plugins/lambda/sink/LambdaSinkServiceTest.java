@@ -54,6 +54,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +85,7 @@ public class LambdaSinkServiceTest {
     private DlqPushHandler dlqPushHandler;
     private Buffer buffer;
     private BufferFactory bufferFactory;
+    private OutputCodecContext outputCodecContext;
 
 
     private InvokeResponse invokeResponse;
@@ -102,23 +104,28 @@ public class LambdaSinkServiceTest {
         this.numberOfRecordsFailedCounter = mock(Counter.class);
         this.dlqPushHandler = mock(DlqPushHandler.class);
         this.bufferFactory = mock(BufferFactory.class);
+        this.outputCodecContext = mock(OutputCodecContext.class);
         when(pluginMetrics.counter(LambdaSinkService.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS)).thenReturn(numberOfRecordsSuccessCounter);
         when(pluginMetrics.counter(LambdaSinkService.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED)).thenReturn(numberOfRecordsFailedCounter);
         mockResponse = InvokeResponse.builder()
                 .statusCode(200) // HTTP 200 for successful invocation
                 .payload(SdkBytes.fromString("{\"key\": \"value\"}", java.nio.charset.StandardCharsets.UTF_8))
                 .build();
+
     }
 
     private LambdaSinkService createObjectUnderTest(LambdaSinkConfig lambdaSinkConfig) throws IOException {
         bufferFactory = new InMemoryBufferFactory();
         buffer = bufferFactory.getBuffer(lambdaClient,functionName,invocationType);
+        when(outputCodecContext.getIncludeKeys()).thenReturn(Collections.emptyList());
+        when(outputCodecContext.getExcludeKeys()).thenReturn(Collections.emptyList());
+        when(outputCodecContext.getTagsTargetKey()).thenReturn(null);
         return new LambdaSinkService(lambdaClient,
                 lambdaSinkConfig,
                 pluginMetrics,
                 mock(PluginFactory.class),
                 mock(PluginSetting.class),
-                mock(OutputCodecContext.class),
+                outputCodecContext,
                 mock(AwsCredentialsSupplier.class),
                 dlqPushHandler,
                 bufferFactory);
@@ -128,12 +135,15 @@ public class LambdaSinkServiceTest {
         this.lambdaSinkConfig = objectMapper.readValue(config, LambdaSinkConfig.class);
         bufferFactory = new InMemoryBufferFactory();
         buffer = bufferFactory.getBuffer(lambdaClient,functionName,invocationType);
+        when(outputCodecContext.getIncludeKeys()).thenReturn(Collections.emptyList());
+        when(outputCodecContext.getExcludeKeys()).thenReturn(Collections.emptyList());
+        when(outputCodecContext.getTagsTargetKey()).thenReturn(null);
         return new LambdaSinkService(lambdaClient,
                 lambdaSinkConfig,
                 pluginMetrics,
                 mock(PluginFactory.class),
                 mock(PluginSetting.class),
-                mock(OutputCodecContext.class),
+                outputCodecContext,
                 mock(AwsCredentialsSupplier.class),
                 dlqPushHandler,
                 bufferFactory);
@@ -198,7 +208,7 @@ public class LambdaSinkServiceTest {
                 pluginMetrics,
                 mock(PluginFactory.class),
                 mock(PluginSetting.class),
-                mock(OutputCodecContext.class),
+                outputCodecContext,
                 mock(AwsCredentialsSupplier.class),
                 dlqPushHandler,
                 bufferFactory);
@@ -237,7 +247,7 @@ public class LambdaSinkServiceTest {
                 pluginMetrics,
                 mock(PluginFactory.class),
                 mock(PluginSetting.class),
-                mock(OutputCodecContext.class),
+                outputCodecContext,
                 mock(AwsCredentialsSupplier.class),
                 dlqPushHandler,
                 bufferFactory);
@@ -274,6 +284,13 @@ public class LambdaSinkServiceTest {
         final Event event = mock(Event.class);
         given(event.toJsonString()).willReturn("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}");
         given(event.getEventHandle()).willReturn(mock(EventHandle.class));
+        final Event.JsonStringBuilder jsonStringBuilder = mock(Event.JsonStringBuilder.class); // Mock the JsonStringBuilder
+        given(event.jsonBuilder()).willReturn(jsonStringBuilder);
+        given(jsonStringBuilder.includeKeys(outputCodecContext.getIncludeKeys())).willReturn(jsonStringBuilder);
+        given(jsonStringBuilder.excludeKeys(outputCodecContext.getExcludeKeys())).willReturn(jsonStringBuilder);
+        given(jsonStringBuilder.includeTags(outputCodecContext.getTagsTargetKey())).willReturn(jsonStringBuilder);
+        given(jsonStringBuilder.toJsonString()).willReturn("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}");
+
 
         final ArgumentCaptor<InvokeRequest> invokeRequestCaptor = ArgumentCaptor.forClass(InvokeRequest.class);
         when(lambdaClient.invoke(any(InvokeRequest.class))).thenReturn(mockResponse);
@@ -292,7 +309,7 @@ public class LambdaSinkServiceTest {
         when(lambdaSinkConfig.getFunctionName()).thenReturn(functionName);
         when(lambdaSinkConfig.getMaxConnectionRetries()).thenReturn(maxRetries);
         when(lambdaSinkConfig.getBatchOptions()).thenReturn(mock(BatchOptions.class));
-        when(lambdaSinkConfig.getBatchOptions().getBatchKey()).thenReturn(batchKey);
+        when(lambdaSinkConfig.getBatchOptions().getKeyName()).thenReturn("lambda_batch_key");
         when(lambdaSinkConfig.getBatchOptions().getThresholdOptions()).thenReturn(mock(ThresholdOptions.class));
         when(lambdaSinkConfig.getBatchOptions().getThresholdOptions().getEventCount()).thenReturn(1);
         when(lambdaSinkConfig.getBatchOptions().getThresholdOptions().getMaximumSize()).thenReturn(ByteCount.parse(maxSize));

@@ -18,10 +18,12 @@ import java.util.Objects;
 
 public class LambdaSinkConfig {
 
+    public static final String REQUEST_RESPONSE = "RequestResponse";
+    public static final String EVENT = "Event";
+    public static final String BATCH_EVENT = "batch_event";
+    public static final String SINGLE_EVENT = "single_event";
     private static final int DEFAULT_CONNECTION_RETRIES = 3;
-
     public static final String STS_REGION = "region";
-
     public static final String STS_ROLE_ARN = "sts_role_arn";
 
     @JsonProperty("aws")
@@ -38,11 +40,20 @@ public class LambdaSinkConfig {
     @JsonProperty("max_retries")
     private int maxConnectionRetries = DEFAULT_CONNECTION_RETRIES;
 
+    @JsonProperty("invocation_type")
+    private String invocationType = REQUEST_RESPONSE;
+
+    @JsonProperty("payload_model")
+    private String payloadModel = BATCH_EVENT;
+
     @JsonProperty("dlq")
     private PluginModel dlq;
 
     @JsonProperty("batch")
     private BatchOptions batchOptions;
+
+    @JsonProperty("lambda_when")
+    private String whenCondition;
 
     public AwsAuthenticationOptions getAwsAuthenticationOptions() {
         return awsAuthenticationOptions;
@@ -76,5 +87,15 @@ public class LambdaSinkConfig {
 
     public  Map<String, Object> getDlqPluginSetting(){
         return dlq != null ? dlq.getPluginSettings() : Map.of();
+    }
+
+    public String getInvocationType(){return invocationType;}
+
+    public String getWhenCondition() {
+        return whenCondition;
+    }
+
+    public String getPayloadModel() {
+        return payloadModel;
     }
 }

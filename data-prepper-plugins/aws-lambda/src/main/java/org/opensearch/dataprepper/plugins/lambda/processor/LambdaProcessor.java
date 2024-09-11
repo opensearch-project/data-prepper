@@ -23,12 +23,16 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodec;
+import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
+import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputCodec;
+import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
-import org.opensearch.dataprepper.plugins.lambda.common.codec.LambdaJsonCodec;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.slf4j.Logger;
@@ -57,6 +61,9 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     public static final String LAMBDA_LATENCY_METRIC = "lambdaLatency";
     public static final String REQUEST_PAYLOAD_SIZE = "requestPayloadSize";
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
+    public static final String BATCH_EVENT = "batch_event";
+    public static final String SINGLE_EVENT = "single_event";
+
     private static final Logger LOG = LoggerFactory.getLogger(LambdaProcessor.class);
 
     private final String functionName;
@@ -73,15 +80,16 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final BufferFactory bufferFactory;
     private final LambdaClient lambdaClient;
     private final Boolean isBatchEnabled;
-    private final String batchKey;
     Buffer currentBuffer;
     private final AtomicLong requestPayload;
     private final AtomicLong responsePayload;
+    private String payloadModel = null;
     private int maxEvents = 0;
     private ByteCount maxBytes = null;
     private Duration maxCollectionDuration = null;
     private int maxRetries = 0;
     private OutputCodec codec = null;
+    OutputCodecContext codecContext = null;
 
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginMetrics pluginMetrics, final LambdaProcessorConfig lambdaProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier, final ExpressionEvaluator expressionEvaluator) {
@@ -92,29 +100,37 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         this.lambdaLatencyMetric = pluginMetrics.timer(LAMBDA_LATENCY_METRIC);
         this.requestPayload = pluginMetrics.gauge(REQUEST_PAYLOAD_SIZE, new AtomicLong());
         this.responsePayload = pluginMetrics.gauge(RESPONSE_PAYLOAD_SIZE, new AtomicLong());
+
         functionName = lambdaProcessorConfig.getFunctionName();
         whenCondition = lambdaProcessorConfig.getWhenCondition();
         maxRetries = lambdaProcessorConfig.getMaxConnectionRetries();
         batchOptions = lambdaProcessorConfig.getBatchOptions();
-        if (batchOptions != null) {
+        payloadModel = lambdaProcessorConfig.getPayloadModel();
+        codecContext = new OutputCodecContext();
+
+        if (payloadModel.equals(BATCH_EVENT)) {
+            JsonOutputCodecConfig jsonOutputCodecConfig = new JsonOutputCodecConfig();
+            jsonOutputCodecConfig.setKeyName(batchOptions.getKeyName());
+            codec = new JsonOutputCodec(jsonOutputCodecConfig);
             maxEvents = batchOptions.getThresholdOptions().getEventCount();
-            maxBytes = batchOptions.getThresholdOptions().getMaximumSize();
+            maxBytes = batchOptions.getThresholdOptions().getMaximumSize(); // remove
             maxCollectionDuration = batchOptions.getThresholdOptions().getEventCollectTimeOut();
-            batchKey = batchOptions.getBatchKey();
             isBatchEnabled = true;
             LOG.info("maxEvents:" + maxEvents + " maxbytes:" + maxBytes + " maxDuration:" + maxCollectionDuration);
-        } else {
-            batchKey = null;
+        } else if(payloadModel.equals(SINGLE_EVENT)) {
+            NdjsonOutputConfig ndjsonOutputCodecConfig = new NdjsonOutputConfig();
+            codec = new NdjsonOutputCodec(ndjsonOutputCodecConfig);
             isBatchEnabled = false;
+        } else{
+            throw new RuntimeException("invalid payload_model option");
         }
         invocationType = lambdaProcessorConfig.getInvocationType();
-        // TODO - Support for Event invocation type to be added.
+
         if(invocationType.equals(LambdaProcessorConfig.EVENT) ||
         invocationType.equals(LambdaProcessorConfig.REQUEST_RESPONSE)){
             throw new RuntimeException("Unsupported invocation type " + invocationType);
         }
 
-        codec = new LambdaJsonCodec(batchKey);
         bufferedEventHandles = new LinkedList<>();
         events = new ArrayList();
 
@@ -149,7 +165,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
             try {
                 if (currentBuffer.getEventCount() == 0) {
-                    codec.start(currentBuffer.getOutputStream(), event, null);
+                    codec.start(currentBuffer.getOutputStream(), event, codecContext);
                 }
                 codec.writeEvent(event, currentBuffer.getOutputStream());
                 int count = currentBuffer.getEventCount() + 1;

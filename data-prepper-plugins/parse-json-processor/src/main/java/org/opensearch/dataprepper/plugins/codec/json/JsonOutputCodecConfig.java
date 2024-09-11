@@ -17,4 +17,8 @@ public class JsonOutputCodecConfig {
     public String getKeyName() {
         return keyName;
     }
+
+    public void setKeyName(String keyName) {
+        this.keyName = keyName;
+    }
 }
