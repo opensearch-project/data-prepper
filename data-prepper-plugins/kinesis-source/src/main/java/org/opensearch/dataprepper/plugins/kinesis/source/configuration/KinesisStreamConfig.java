@@ -35,10 +35,6 @@ public class KinesisStreamConfig {
     @JsonProperty("checkpoint_interval")
     private Duration checkPointInterval = MINIMAL_CHECKPOINT_INTERVAL;
 
-    @Getter
-    @JsonProperty("enable_checkpoint")
-    private boolean enableCheckPoint = DEFAULT_ENABLE_CHECKPOINT;
-
     public InitialPositionInStream getInitialPosition() {
         return initialPosition.getPositionInStream();
     }

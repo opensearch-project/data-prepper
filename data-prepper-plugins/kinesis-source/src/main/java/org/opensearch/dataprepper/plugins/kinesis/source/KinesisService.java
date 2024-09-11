@@ -14,8 +14,12 @@ import lombok.Setter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseConfig;
@@ -53,18 +57,18 @@ public class KinesisService {
     private final String kclMetricsNamespaceName;
     private final String pipelineName;
     private final AcknowledgementSetManager acknowledgementSetManager;
-    private final KinesisSourceConfig sourceConfig;
+    private final KinesisSourceConfig kinesisSourceConfig;
     private final KinesisAsyncClient kinesisClient;
     private final DynamoDbAsyncClient dynamoDbClient;
     private final CloudWatchAsyncClient cloudWatchClient;
     private final WorkerIdentifierGenerator workerIdentifierGenerator;
+    private final InputCodec codec;
 
     @Setter
     private Scheduler scheduler;
-
     private final ExecutorService executorService;
 
-    public KinesisService(final KinesisSourceConfig sourceConfig,
+    public KinesisService(final KinesisSourceConfig kinesisSourceConfig,
                           final KinesisClientFactory kinesisClientFactory,
                           final PluginMetrics pluginMetrics,
                           final PluginFactory pluginFactory,
@@ -73,7 +77,7 @@ public class KinesisService {
                           final KinesisLeaseConfigSupplier kinesisLeaseConfigSupplier,
                           final WorkerIdentifierGenerator workerIdentifierGenerator
                           ){
-        this.sourceConfig = sourceConfig;
+        this.kinesisSourceConfig = kinesisSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.pluginFactory = pluginFactory;
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -85,21 +89,24 @@ public class KinesisService {
         this.tableName = kinesisLeaseConfig.getLeaseCoordinationTable().getTableName();
         this.kclMetricsNamespaceName = this.tableName;
         this.dynamoDbClient = kinesisClientFactory.buildDynamoDBClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
-        this.kinesisClient = kinesisClientFactory.buildKinesisAsyncClient(sourceConfig.getAwsAuthenticationConfig().getAwsRegion());
+        this.kinesisClient = kinesisClientFactory.buildKinesisAsyncClient(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsRegion());
         this.cloudWatchClient = kinesisClientFactory.buildCloudWatchAsyncClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
         this.pipelineName = pipelineDescription.getPipelineName();
         this.applicationName = pipelineName;
         this.workerIdentifierGenerator = workerIdentifierGenerator;
         this.executorService = Executors.newFixedThreadPool(1);
+        final PluginModel codecConfiguration = kinesisSourceConfig.getCodec();
+        final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
+        this.codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
     }
 
     public void start(final Buffer<Record<Event>> buffer) {
         if (buffer == null) {
-            throw new IllegalStateException("Buffer provided is null");
+            throw new IllegalStateException("Buffer provided is null.");
         }
 
-        if (sourceConfig.getStreams() == null || sourceConfig.getStreams().isEmpty()) {
-            throw new IllegalStateException("Streams are empty!");
+        if (kinesisSourceConfig.getStreams() == null || kinesisSourceConfig.getStreams().isEmpty()) {
+            throw new InvalidPluginConfigurationException("No Kinesis streams provided.");
         }
 
         scheduler = getScheduler(buffer);
@@ -129,31 +136,30 @@ public class KinesisService {
 
     public Scheduler createScheduler(final Buffer<Record<Event>> buffer) {
         final ShardRecordProcessorFactory processorFactory = new KinesisShardRecordProcessorFactory(
-                buffer, sourceConfig, acknowledgementSetManager, pluginMetrics, pluginFactory);
+                buffer, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, codec);
 
         ConfigsBuilder configsBuilder =
                 new ConfigsBuilder(
-                        new KinesisMultiStreamTracker(kinesisClient, sourceConfig, applicationName),
+                        new KinesisMultiStreamTracker(kinesisClient, kinesisSourceConfig, applicationName),
                         applicationName, kinesisClient, dynamoDbClient, cloudWatchClient,
                         workerIdentifierGenerator.generate(), processorFactory
                 )
                 .tableName(tableName)
                 .namespace(kclMetricsNamespaceName);
 
-        ConsumerStrategy consumerStrategy = sourceConfig.getConsumerStrategy();
+        ConsumerStrategy consumerStrategy = kinesisSourceConfig.getConsumerStrategy();
         if (consumerStrategy == ConsumerStrategy.POLLING) {
             configsBuilder.retrievalConfig().retrievalSpecificConfig(
                 new PollingConfig(kinesisClient)
-                    .maxRecords(sourceConfig.getPollingConfig().getMaxPollingRecords())
+                    .maxRecords(kinesisSourceConfig.getPollingConfig().getMaxPollingRecords())
                     .idleTimeBetweenReadsInMillis(
-                            sourceConfig.getPollingConfig().getIdleTimeBetweenReads().toMillis()));
+                            kinesisSourceConfig.getPollingConfig().getIdleTimeBetweenReads().toMillis()));
         }
 
         return new Scheduler(
                 configsBuilder.checkpointConfig(),
                 configsBuilder.coordinatorConfig(),
-                configsBuilder.leaseManagementConfig()
-                        .billingMode(BillingMode.PAY_PER_REQUEST),
+                configsBuilder.leaseManagementConfig().billingMode(BillingMode.PAY_PER_REQUEST),
                 configsBuilder.lifecycleConfig(),
                 configsBuilder.metricsConfig(),
                 configsBuilder.processorConfig(),

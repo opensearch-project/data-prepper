@@ -3,15 +3,12 @@ source:
     streams:
       - stream_name: "stream-1"
         initial_position: "EARLIEST"
-        enable_checkpoint: true
         checkpoint_interval: "20s"
       - stream_name: "stream-2"
         initial_position: "EARLIEST"
-        enable_checkpoint: true
         checkpoint_interval: "PT15M"
       - stream_name: "stream-3"
         initial_position: "EARLIEST"
-        enable_checkpoint: true
         checkpoint_interval: "PT2H"
     codec:
       ndjson:

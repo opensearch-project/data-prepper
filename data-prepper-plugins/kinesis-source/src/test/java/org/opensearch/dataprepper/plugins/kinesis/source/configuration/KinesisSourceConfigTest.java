@@ -88,9 +88,10 @@ public class KinesisSourceConfigTest {
         assertEquals(kinesisSourceConfig.getConsumerStrategy(), ConsumerStrategy.ENHANCED_FAN_OUT);
         assertNull(kinesisSourceConfig.getPollingConfig());
 
+        assertEquals(streamConfigs.size(), 3);
+
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
             assertTrue(kinesisStreamConfig.getName().contains("stream"));
-            assertFalse(kinesisStreamConfig.isEnableCheckPoint());
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.LATEST);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), MINIMAL_CHECKPOINT_INTERVAL);
         }
@@ -117,9 +118,10 @@ public class KinesisSourceConfigTest {
         assertEquals(kinesisSourceConfig.getPollingConfig().getMaxPollingRecords(), 10);
         assertEquals(kinesisSourceConfig.getPollingConfig().getIdleTimeBetweenReads(), Duration.ofSeconds(10));
 
+        assertEquals(streamConfigs.size(), 3);
+
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
             assertTrue(kinesisStreamConfig.getName().contains("stream"));
-            assertFalse(kinesisStreamConfig.isEnableCheckPoint());
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.LATEST);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), MINIMAL_CHECKPOINT_INTERVAL);
         }
@@ -148,9 +150,10 @@ public class KinesisSourceConfigTest {
         expectedCheckpointIntervals.put("stream-2", Duration.ofMinutes(15));
         expectedCheckpointIntervals.put("stream-3", Duration.ofHours(2));
 
+        assertEquals(streamConfigs.size(), 3);
+
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
             assertTrue(kinesisStreamConfig.getName().contains("stream"));
-            assertTrue(kinesisStreamConfig.isEnableCheckPoint());
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.TRIM_HORIZON);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), expectedCheckpointIntervals.get(kinesisStreamConfig.getName()));
         }

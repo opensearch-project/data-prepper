@@ -63,6 +63,9 @@ public class KinesisShardRecordProcessorFactoryTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
+    @Mock
+    private InputCodec codec;
+
     @BeforeEach
     void setup() {
         MockitoAnnotations.initMocks(this);
@@ -71,8 +74,9 @@ public class KinesisShardRecordProcessorFactoryTest {
         when(pluginModel.getPluginName()).thenReturn(codec_plugin_name);
         when(pluginModel.getPluginSettings()).thenReturn(Collections.emptyMap());
         when(kinesisSourceConfig.getCodec()).thenReturn(pluginModel);
+        when(kinesisSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(100);
 
-        InputCodec codec = mock(InputCodec.class);
+        codec = mock(InputCodec.class);
         when(pluginFactory.loadPlugin(eq(InputCodec.class), any())).thenReturn(codec);
 
         when(streamIdentifier.streamName()).thenReturn(streamId);
@@ -82,13 +86,13 @@ public class KinesisShardRecordProcessorFactoryTest {
 
     @Test
     void testKinesisRecordProcessFactoryReturnsKinesisRecordProcessor() {
-        kinesisShardRecordProcessorFactory = new KinesisShardRecordProcessorFactory(buffer, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, pluginFactory);
+        kinesisShardRecordProcessorFactory = new KinesisShardRecordProcessorFactory(buffer, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, codec);
         assertInstanceOf(KinesisRecordProcessor.class, kinesisShardRecordProcessorFactory.shardRecordProcessor(streamIdentifier));
     }
 
     @Test
     void testKinesisRecordProcessFactoryDefaultUnsupported() {
-        kinesisShardRecordProcessorFactory = new KinesisShardRecordProcessorFactory(buffer, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, pluginFactory);
+        kinesisShardRecordProcessorFactory = new KinesisShardRecordProcessorFactory(buffer, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, codec);
         assertThrows(UnsupportedOperationException.class, () -> kinesisShardRecordProcessorFactory.shardRecordProcessor());
     }
 }

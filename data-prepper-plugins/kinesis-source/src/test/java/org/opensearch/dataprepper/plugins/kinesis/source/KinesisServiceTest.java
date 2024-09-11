@@ -16,8 +16,11 @@ import org.mockito.Mock;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseConfig;
@@ -43,6 +46,7 @@ import software.amazon.kinesis.metrics.MetricsLevel;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,6 +59,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -63,6 +69,7 @@ import static org.mockito.Mockito.when;
 public class KinesisServiceTest {
     private final String PIPELINE_NAME = "kinesis-pipeline-test";
     private final String streamId = "stream-1";
+    private static final String codec_plugin_name = "json";
 
     private static final Duration CHECKPOINT_INTERVAL = Duration.ofMillis(0);
     private static final int NUMBER_OF_RECORDS_TO_ACCUMULATE = 10;
@@ -183,6 +190,15 @@ public class KinesisServiceTest {
         when(kinesisSourceConfig.getStreams()).thenReturn(streamConfigs);
         when(kinesisSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(NUMBER_OF_RECORDS_TO_ACCUMULATE);
 
+        PluginModel pluginModel = mock(PluginModel.class);
+        when(pluginModel.getPluginName()).thenReturn(codec_plugin_name);
+        when(pluginModel.getPluginSettings()).thenReturn(Collections.emptyMap());
+        when(kinesisSourceConfig.getCodec()).thenReturn(pluginModel);
+
+        pluginFactory = mock(PluginFactory.class);
+        InputCodec codec = mock(InputCodec.class);
+        when(pluginFactory.loadPlugin(eq(InputCodec.class), any())).thenReturn(codec);
+
         when(kinesisClientFactory.buildDynamoDBClient(kinesisLeaseCoordinationTableConfig.getAwsRegion())).thenReturn(dynamoDbClient);
         when(kinesisClientFactory.buildKinesisAsyncClient(awsAuthenticationConfig.getAwsRegion())).thenReturn(kinesisClient);
         when(kinesisClientFactory.buildCloudWatchAsyncClient(kinesisLeaseCoordinationTableConfig.getAwsRegion())).thenReturn(cloudWatchClient);
@@ -263,7 +279,7 @@ public class KinesisServiceTest {
         when(kinesisSourceConfig.getStreams()).thenReturn(null);
 
         KinesisService kinesisService = createObjectUnderTest();
-        assertThrows(IllegalStateException.class, () -> kinesisService.start(buffer));
+        assertThrows(InvalidPluginConfigurationException.class, () -> kinesisService.start(buffer));
 
         verify(scheduler, times(0)).run();
     }
@@ -273,7 +289,7 @@ public class KinesisServiceTest {
         when(kinesisSourceConfig.getStreams()).thenReturn(new ArrayList<>());
 
         KinesisService kinesisService = createObjectUnderTest();
-        assertThrows(IllegalStateException.class, () -> kinesisService.start(buffer));
+        assertThrows(InvalidPluginConfigurationException.class, () -> kinesisService.start(buffer));
 
         verify(scheduler, times(0)).run();
     }
