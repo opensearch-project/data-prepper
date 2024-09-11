@@ -11,7 +11,7 @@ import com.github.victools.jsonschema.generator.Module;
 import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.model.schemas.IfPresentAlsoRequire;
+import org.opensearch.dataprepper.model.annotations.IfPresentAlsoRequire;
 import org.opensearch.dataprepper.schemas.module.CustomJacksonModule;
 
 import java.util.Collections;

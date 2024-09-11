@@ -11,10 +11,9 @@ import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigPart;
 import com.github.victools.jsonschema.generator.SchemaVersion;
-import org.opensearch.dataprepper.model.schemas.IfPresentAlsoRequire;
+import org.opensearch.dataprepper.model.annotations.IfPresentAlsoRequire;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 

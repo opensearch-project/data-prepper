@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.model.schemas;
+package org.opensearch.dataprepper.model.annotations;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
