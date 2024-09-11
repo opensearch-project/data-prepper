@@ -11,7 +11,8 @@ import com.github.victools.jsonschema.generator.Module;
 import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.model.annotations.IfPresentAlsoRequire;
+import org.opensearch.dataprepper.model.annotations.AlsoRequires;
+import org.opensearch.dataprepper.model.annotations.Required;
 import org.opensearch.dataprepper.schemas.module.CustomJacksonModule;
 
 import java.util.Collections;
@@ -21,6 +22,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 
 class JsonSchemaConverterTest {
 
@@ -60,11 +62,16 @@ class JsonSchemaConverterTest {
         assertThat(dependentRequiredNode.has("test_mutually_exclusive_attribute_a"), is(true));
         assertThat(dependentRequiredNode.at("/test_mutually_exclusive_attribute_a"),
                 instanceOf(ArrayNode.class));
-        final ArrayNode dependentRequiredProperties = (ArrayNode) dependentRequiredNode.at(
+        final ArrayNode dependentRequiredProperty1 = (ArrayNode) dependentRequiredNode.at(
                 "/test_mutually_exclusive_attribute_a");
-        assertThat(dependentRequiredProperties.size(), equalTo(1));
-        assertThat(dependentRequiredProperties.get(0),
-                equalTo(TextNode.valueOf("test_mutually_exclusive_attribute_b:null")));
+        assertThat(dependentRequiredProperty1.size(), equalTo(1));
+        assertThat(dependentRequiredProperty1.get(0), equalTo(
+                TextNode.valueOf("test_mutually_exclusive_attribute_b:[null, \"test_value\"]")));
+        final ArrayNode dependentRequiredProperty2 = (ArrayNode) dependentRequiredNode.at(
+                "/test_dependent_required_property_with_default_allowed_values");
+        assertThat(dependentRequiredProperty2.size(), equalTo(1));
+        assertThat(dependentRequiredProperty2.get(0), equalTo(
+                TextNode.valueOf("test_mutually_exclusive_attribute_a")));
     }
 
     @JsonClassDescription("test config")
@@ -78,10 +85,18 @@ class JsonSchemaConverterTest {
         private String testAttributeWithDefaultValue;
 
         @JsonProperty
-        @IfPresentAlsoRequire(values = {"test_mutually_exclusive_attribute_b:null"})
+        @AlsoRequires(values = {
+                @Required(name="test_mutually_exclusive_attribute_b", allowedValues = {"null", "\"test_value\""})
+        })
         private String testMutuallyExclusiveAttributeA;
 
         private String testMutuallyExclusiveAttributeB;
+
+        @JsonProperty
+        @AlsoRequires(values = {
+                @Required(name="test_mutually_exclusive_attribute_a")
+        })
+        private String testDependentRequiredPropertyWithDefaultAllowedValues;
 
         public String getTestAttributeWithGetter() {
             return testAttributeWithGetter;

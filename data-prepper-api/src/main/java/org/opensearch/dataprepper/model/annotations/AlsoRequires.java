@@ -13,9 +13,9 @@ import java.lang.annotation.Target;
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD})
-public @interface IfPresentAlsoRequire {
+public @interface AlsoRequires {
     /**
-     * Array of strings in which each string should represent property(:value) where :value can be optional.
+     * Array of Required annotations, each representing a required property with its allowed values.
      */
-    String[] values();
+    Required[] values();
 }
