@@ -7,8 +7,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marker annotation used in schema generation to define the names and corresponding values of other required
- * properties to be returned, if the property represented by the annotated field/method is present.
+ * Annotation used in schema generation to define the names and corresponding values of other required
+ * configurations if the configuration represented by the annotated field/method is present.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
