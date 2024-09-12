@@ -26,8 +26,10 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
@@ -726,6 +728,40 @@ public class AddEntryProcessorTests {
         assertThat(editedRecords.get(0).getData().toMap().size(), is(1));
     }
 
+    @Test
+    public void testAddEntriesWithJoin() {
+        final String addWhenExpression = "/object/name != null and (/type == \"my-type\")";
+        when(mockConfig.getEntries()).thenReturn(Arrays.asList(
+            createEntry("elements", null, null, "Type: ${/type}", null, false, false, null),
+            createEntry("elements", null, null, "Name: ${/object/name}", null, false, true, 
+                addWhenExpression),
+            createEntry("text", null, null, null, 
+                "join(/elements)", false, false, 
+                null)
+        ));
+
+        final Record<Event> record = eventWithNestedObject(); 
+
+        when(expressionEvaluator.isValidExpressionStatement(addWhenExpression)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(addWhenExpression, record.getData())).thenReturn(true);
+        
+        final AddEntryProcessor processor = createObjectUnderTest();
+
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        final Event resultEvent = editedRecords.get(0).getData();
+        assertThat(resultEvent.containsKey("elements"), is(true));
+        assertThat(resultEvent.containsKey("text"), is(true));
+        List<String> elements = resultEvent.getList("elements", String.class);
+
+        assertThat(elements.size(), is(2));
+        assertThat(elements, hasItems("Type: my-type", "Name: My Name"));
+
+        String passageText = resultEvent.get("text", String.class);
+        assertThat(passageText, containsString("Type: my-type"));
+        assertThat(passageText, containsString("Name: My Name"));
+    }
+
     private AddEntryProcessor createObjectUnderTest() {
         return new AddEntryProcessor(pluginMetrics, mockConfig, expressionEvaluator);
     }
@@ -776,5 +812,14 @@ public class AddEntryProcessorTests {
                 .withEventType("event")
                 .build());
     }
+
+    private Record<Event> eventWithNestedObject() {
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("type", "my-type");
+        testData.put("object", new HashMap<String, Object>() {{
+            put("name", "My Name");
+        }});
+        return buildRecordWithEvent(testData);
+    }    
 
 }
