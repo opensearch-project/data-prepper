@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
@@ -121,12 +122,14 @@ public class DataFileLoader implements Runnable {
                     final long snapshotTime = progressState.getSnapshotTime();
                     final long eventVersionNumber = snapshotTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis();
                     final Event transformedEvent = recordConverter.convert(
-                            record,
+                            event,
                             progressState.getSourceDatabase(),
                             progressState.getSourceTable(),
+                            OpenSearchBulkActions.INDEX,
                             primaryKeys,
                             snapshotTime,
-                            eventVersionNumber);
+                            eventVersionNumber,
+                            null);
 
                     if (acknowledgementSet != null) {
                         acknowledgementSet.add(transformedEvent);

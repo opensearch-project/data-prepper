@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -72,12 +73,15 @@ class BinlogEventListenerTest {
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private com.github.shyiko.mysql.binlog.event.Event binlogEvent;
 
+    private String s3Prefix;
+
     private BinlogEventListener objectUnderTest;
 
     private Timer eventProcessingTimer;
 
     @BeforeEach
     void setUp() {
+        s3Prefix = UUID.randomUUID().toString();
         eventProcessingTimer = Metrics.timer("test-timer");
         when(pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME)).thenReturn(eventProcessingTimer);
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
@@ -136,7 +140,7 @@ class BinlogEventListenerTest {
     }
 
     private BinlogEventListener createObjectUnderTest() {
-        return new BinlogEventListener(buffer, sourceConfig, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager);
+        return new BinlogEventListener(buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager);
     }
 
     private void verifyHandlerCallHelper() {

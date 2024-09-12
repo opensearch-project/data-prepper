@@ -33,6 +33,7 @@ public class StreamScheduler implements Runnable {
 
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final RdsSourceConfig sourceConfig;
+    private final String s3Prefix;
     private final BinaryLogClient binaryLogClient;
     private final Buffer<Record<Event>> buffer;
     private final PluginMetrics pluginMetrics;
@@ -43,12 +44,14 @@ public class StreamScheduler implements Runnable {
 
     public StreamScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final RdsSourceConfig sourceConfig,
+                           final String s3Prefix,
                            final BinaryLogClient binaryLogClient,
                            final Buffer<Record<Event>> buffer,
                            final PluginMetrics pluginMetrics,
                            final AcknowledgementSetManager acknowledgementSetManager) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
+        this.s3Prefix = s3Prefix;
         this.binaryLogClient = binaryLogClient;
         this.buffer = buffer;
         this.pluginMetrics = pluginMetrics;
@@ -74,7 +77,7 @@ public class StreamScheduler implements Runnable {
                     streamPartition = (StreamPartition) sourcePartition.get();
                     final StreamCheckpointer streamCheckpointer = new StreamCheckpointer(sourceCoordinator, streamPartition, pluginMetrics);
                     binaryLogClient.registerEventListener(new BinlogEventListener(
-                            buffer, sourceConfig, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager));
+                            buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager));
                     final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, binaryLogClient, pluginMetrics);
                     executorService.submit(() -> streamWorker.processStream((StreamPartition) sourcePartition.get()));
                 }

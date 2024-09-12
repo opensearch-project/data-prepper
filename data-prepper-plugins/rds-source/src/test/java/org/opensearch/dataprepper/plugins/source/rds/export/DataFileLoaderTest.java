@@ -130,7 +130,7 @@ class DataFileLoaderTest {
         when(eventFactory.eventBuilder(any())).thenReturn(eventBuilder);
         when(eventBuilder.withEventType(any()).withData(any()).build()).thenReturn(event);
         when(event.toJsonString()).thenReturn(randomString);
-        when(recordConverter.convert(any(), any(), any(), any(), anyLong(), anyLong())).thenReturn(event);
+        when(recordConverter.convert(any(), any(), any(), any(), any(), anyLong(), anyLong(), any())).thenReturn(event);
 
         AvroParquetReader.Builder<GenericRecord> builder = mock(AvroParquetReader.Builder.class);
         ParquetReader<GenericRecord> parquetReader = mock(ParquetReader.class);
@@ -180,7 +180,7 @@ class DataFileLoaderTest {
         when(eventBuilder.withEventType(any()).withData(any()).build()).thenReturn(event);
         when(event.toJsonString()).thenReturn(randomString);
 
-        when(recordConverter.convert(any(), any(), any(), any(), anyLong(), anyLong())).thenReturn(event);
+        when(recordConverter.convert(any(), any(), any(), any(), any(), anyLong(), anyLong(), any())).thenReturn(event);
 
         ParquetReader<GenericRecord> parquetReader = mock(ParquetReader.class);
         AvroParquetReader.Builder<GenericRecord> builder = mock(AvroParquetReader.Builder.class);

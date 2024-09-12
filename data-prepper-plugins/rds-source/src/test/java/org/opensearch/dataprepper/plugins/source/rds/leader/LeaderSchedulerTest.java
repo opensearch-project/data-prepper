@@ -60,10 +60,12 @@ class LeaderSchedulerTest {
     @Mock
     private LeaderProgressState leaderProgressState;
 
+    private String s3Prefix;
     private LeaderScheduler leaderScheduler;
 
     @BeforeEach
     void setUp() {
+        s3Prefix = UUID.randomUUID().toString();
         leaderScheduler = createObjectUnderTest();
 
         AwsAuthenticationConfig awsAuthenticationConfig = mock(AwsAuthenticationConfig.class);
@@ -138,6 +140,6 @@ class LeaderSchedulerTest {
     }
 
     private LeaderScheduler createObjectUnderTest() {
-        return new LeaderScheduler(sourceCoordinator, sourceConfig, schemaManager, dbMetadata);
+        return new LeaderScheduler(sourceCoordinator, sourceConfig, s3Prefix, schemaManager, dbMetadata);
     }
 }
