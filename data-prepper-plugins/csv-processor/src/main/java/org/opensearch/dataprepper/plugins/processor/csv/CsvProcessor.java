@@ -46,6 +46,9 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
 
     private final ExpressionEvaluator expressionEvaluator;
 
+    private final CsvMapper mapper;
+    private final CsvSchema schema;
+
     @DataPrepperPluginConstructor
     public CsvProcessor(final PluginMetrics pluginMetrics,
                         final CsvProcessorConfig config,
@@ -61,13 +64,12 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
                     String.format("csv_when value of %s is not a valid expression statement. " +
                             "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.", config.getCsvWhen()));
         }
+        this.mapper = createCsvMapper();
+        this.schema = createCsvSchema();
     }
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
-        final CsvMapper mapper = createCsvMapper();
-        final CsvSchema schema = createCsvSchema();
-
         for (final Record<Event> record : records) {
 
             final Event event = record.getData();
