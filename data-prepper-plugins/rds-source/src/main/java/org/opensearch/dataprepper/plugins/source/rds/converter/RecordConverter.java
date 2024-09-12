@@ -73,6 +73,7 @@ public abstract class RecordConverter {
                 .map(key -> event.get(key, String.class))
                 .collect(Collectors.joining("|"));
         eventMetadata.setAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE, primaryKeyValue);
+
         final String s3PartitionKey = s3Prefix + S3_PATH_DELIMITER + S3_BUFFER_PREFIX + S3_PATH_DELIMITER + hashKeyToPartition(primaryKeyValue);
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_S3_PARTITION_KEY, s3PartitionKey);
 

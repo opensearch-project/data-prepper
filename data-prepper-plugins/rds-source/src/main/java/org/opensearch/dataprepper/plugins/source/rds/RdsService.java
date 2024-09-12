@@ -156,17 +156,16 @@ public class RdsService {
     private String getS3PathPrefix() {
         final String s3UserPathPrefix;
         if (sourceConfig.getS3Prefix() != null && !sourceConfig.getS3Prefix().isBlank()) {
-            s3UserPathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER;
+            s3UserPathPrefix = sourceConfig.getS3Prefix();
         } else {
             s3UserPathPrefix = "";
         }
 
         final String s3PathPrefix;
-        final Instant now = Instant.now();
         if (sourceCoordinator.getPartitionPrefix() != null ) {
-            s3PathPrefix = s3UserPathPrefix + sourceCoordinator.getPartitionPrefix() + S3_PATH_DELIMITER + now.toEpochMilli() + S3_PATH_DELIMITER;
+            s3PathPrefix = s3UserPathPrefix + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix();
         } else {
-            s3PathPrefix = s3UserPathPrefix + now.toEpochMilli() + S3_PATH_DELIMITER;
+            s3PathPrefix = s3UserPathPrefix;
         }
         return s3PathPrefix;
     }

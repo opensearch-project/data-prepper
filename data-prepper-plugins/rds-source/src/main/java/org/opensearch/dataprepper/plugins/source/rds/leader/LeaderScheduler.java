@@ -133,7 +133,7 @@ public class LeaderScheduler implements Runnable {
 
     private void createExportPartition(RdsSourceConfig sourceConfig) {
         ExportProgressState progressState = new ExportProgressState();
-        progressState.setIamRoleArn(sourceConfig.getAwsAuthenticationConfig().getAwsStsRoleArn());
+        progressState.setIamRoleArn(sourceConfig.getExport().getIamRoleArn());
         progressState.setBucket(sourceConfig.getS3Bucket());
         // This prefix is for data exported from RDS
         progressState.setPrefix(getS3PrefixForExport(s3Prefix));

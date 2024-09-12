@@ -5,12 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.model;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 /**
  * Represents the object key for an object exported to S3 by RDS.
  * The object key has this structure: "{prefix}/{export task ID}/{database name}/{table name}/{numbered folder}/{file name}"
  */
 public class ExportObjectKey {
 
+    static final String S3_PATH_DELIMITER = "/";
     private final String prefix;
     private final String exportTaskId;
     private final String databaseName;
@@ -29,18 +33,21 @@ public class ExportObjectKey {
 
     public static ExportObjectKey fromString(final String objectKeyString) {
 
-        final String[] parts = objectKeyString.split("/");
-        if (parts.length != 6) {
+        final String[] parts = objectKeyString.split(S3_PATH_DELIMITER);
+        if (parts.length < 5) {
             throw new IllegalArgumentException("Export object key is not valid: " + objectKeyString);
         }
-        final String prefix = parts[0];
-        final String exportTaskId = parts[1];
-        final String databaseName = parts[2];
+
+        final String prefix = Arrays.stream(parts, 0, parts.length - 5)
+                .collect(Collectors.joining(S3_PATH_DELIMITER));
+        final String exportTaskId = parts[parts.length - 5];
+        final String databaseName = parts[parts.length - 4];
         // fullTableName is in the format of "databaseName.tableName"
-        final String fullTableName = parts[3];
+        final String fullTableName = parts[parts.length - 3];
         final String tableName = fullTableName.split("\\.")[1];
-        final String numberedFolder = parts[4];
-        final String fileName = parts[5];
+        final String numberedFolder = parts[parts.length - 2];
+        final String fileName = parts[parts.length - 1];
+
         return new ExportObjectKey(prefix, exportTaskId, databaseName, tableName, numberedFolder, fileName);
     }
 
