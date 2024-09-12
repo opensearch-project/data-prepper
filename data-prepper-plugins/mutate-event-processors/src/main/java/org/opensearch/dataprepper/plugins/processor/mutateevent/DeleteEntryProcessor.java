@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -21,8 +22,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 @DataPrepperPlugin(name = "delete_entries", pluginType = Processor.class, pluginConfigurationType = DeleteEntryProcessorConfig.class)
 public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -62,7 +61,7 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                     recordEvent.delete(entry);
                 }
             } catch (final Exception e) {
-                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
+                LOG.error(NOISY, "There was an exception while processing Event [{}]", recordEvent, e);
             }
         }
 

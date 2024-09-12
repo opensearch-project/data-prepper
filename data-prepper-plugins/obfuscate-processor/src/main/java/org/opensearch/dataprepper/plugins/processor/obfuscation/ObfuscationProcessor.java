@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.processor.obfuscation;
 
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -28,8 +30,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 @DataPrepperPlugin(name = "obfuscate", pluginType = Processor.class, pluginConfigurationType = ObfuscationProcessorConfig.class)
 public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -99,7 +99,7 @@ public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Recor
                     Pattern p = Pattern.compile(rawPattern);
                     patterns.add(p);
                 } catch (Exception e) {
-                    LOG.error(e.getMessage());
+                    LOG.error(NOISY,e.getMessage());
                     throw new InvalidPluginConfigurationException("Invalid Pattern: \"" + rawPattern + "\" for source field " + this.source);
                 }
             }

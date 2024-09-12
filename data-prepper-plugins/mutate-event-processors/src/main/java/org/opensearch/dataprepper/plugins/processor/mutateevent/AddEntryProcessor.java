@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -25,8 +26,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 @DataPrepperPlugin(name = "add_entries", pluginType = Processor.class, pluginConfigurationType = AddEntryProcessorConfig.class)
 public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -92,12 +91,12 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                             }
                         }
                     } catch (Exception e) {
-                        LOG.error(EVENT, "Error adding entry to record [{}] with key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]",
+                        LOG.error(NOISY, "Error adding entry to record [{}] with key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]",
                                 recordEvent, entry.getKey(), entry.getMetadataKey(), entry.getValueExpression(), entry.getFormat(), entry.getValue(), e);
                     }
                 }
             } catch(final Exception e){
-                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
+                LOG.error(NOISY, "There was an exception while processing Event [{}]", recordEvent, e);
             }
         }
 

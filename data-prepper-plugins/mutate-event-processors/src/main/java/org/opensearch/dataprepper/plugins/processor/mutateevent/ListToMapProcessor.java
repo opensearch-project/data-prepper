@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -23,8 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 @DataPrepperPlugin(name = "list_to_map", pluginType = Processor.class, pluginConfigurationType = ListToMapProcessorConfig.class)
 public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -78,7 +78,7 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
                     recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                     continue;
                 } catch (final Exception e) {
-                    LOG.error(EVENT, "Error converting source list to map on record [{}]", recordEvent, e);
+                    LOG.error(NOISY, "Error converting source list to map on record [{}]", recordEvent, e);
                     recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                     continue;
                 }
@@ -86,11 +86,11 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
                 try {
                     updateEvent(recordEvent, targetMap);
                 } catch (final Exception e) {
-                    LOG.error(EVENT, "Error updating record [{}] after converting source list to map", recordEvent, e);
+                    LOG.error(NOISY, "Error updating record [{}] after converting source list to map", recordEvent, e);
                     recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                 }
             } catch (final Exception e) {
-                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
+                LOG.error(NOISY, "There was an exception while processing Event [{}]", recordEvent, e);
                 recordEvent.getMetadata().addTags(config.getTagsOnFailure());
             }
         }

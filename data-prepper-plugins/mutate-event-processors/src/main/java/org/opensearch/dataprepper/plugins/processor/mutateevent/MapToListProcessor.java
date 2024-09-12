@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.mutateevent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -27,8 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 @DataPrepperPlugin(name = "map_to_list", pluginType = Processor.class, pluginConfigurationType = MapToListProcessorConfig.class)
 public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -92,11 +91,11 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
                         recordEvent.put(config.getTarget(), targetList);
                     }
                 } catch (Exception e) {
-                    LOG.error("Fail to perform Map to List operation", e);
+                    LOG.error(NOISY,"Fail to perform Map to List operation", e);
                     recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                 }
             } catch (final Exception e) {
-                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
+                LOG.error(NOISY, "There was an exception while processing Event [{}]", recordEvent, e);
                 recordEvent.getMetadata().addTags(config.getTagsOnFailure());
             }
         }

@@ -72,7 +72,7 @@ public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Ev
                     }
                 }
             } catch (Exception ex){
-                LOG.error(EVENT, "Error dissecting the event [{}] ", record.getData(), ex);
+                LOG.error(NOISY, "Error dissecting the event [{}] ", record.getData(), ex);
             }
         }
         return records;
