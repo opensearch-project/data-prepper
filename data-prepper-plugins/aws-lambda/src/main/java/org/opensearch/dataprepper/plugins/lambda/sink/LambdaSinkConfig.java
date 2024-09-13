@@ -12,16 +12,14 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.REQUEST_RESPONSE;
 
 import java.util.Map;
 import java.util.Objects;
 
 public class LambdaSinkConfig {
 
-    public static final String REQUEST_RESPONSE = "RequestResponse";
-    public static final String EVENT = "Event";
-    public static final String BATCH_EVENT = "batch_event";
-    public static final String SINGLE_EVENT = "single_event";
     private static final int DEFAULT_CONNECTION_RETRIES = 3;
     public static final String STS_REGION = "region";
     public static final String STS_ROLE_ARN = "sts_role_arn";

@@ -11,13 +11,11 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.REQUEST_RESPONSE;
 
 public class LambdaProcessorConfig {
 
-    public static final String REQUEST_RESPONSE = "RequestResponse";
-    public static final String EVENT = "Event";
-    public static final String BATCH_EVENT = "batch_event";
-    public static final String SINGLE_EVENT = "single_event";
     private static final int DEFAULT_CONNECTION_RETRIES = 3;
 
     @JsonProperty("aws")

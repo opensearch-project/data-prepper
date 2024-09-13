@@ -23,6 +23,8 @@ import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.SINGLE_EVENT;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
@@ -39,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -71,6 +72,7 @@ public class LambdaSinkService {
     private final BatchOptions batchOptions;
     private final Boolean isBatchEnabled;
     private OutputCodecContext codecContext = null;
+    private String payloadModel = null;
 
     public LambdaSinkService(final LambdaClient lambdaClient,
                              final LambdaSinkConfig lambdaSinkConfig,
@@ -89,11 +91,11 @@ public class LambdaSinkService {
         numberOfRecordsSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS);
         numberOfRecordsFailedCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED);
         functionName = lambdaSinkConfig.getFunctionName();
-
+        payloadModel = lambdaSinkConfig.getPayloadModel();
         maxRetries = lambdaSinkConfig.getMaxConnectionRetries();
         batchOptions = lambdaSinkConfig.getBatchOptions();
 
-        if (!Objects.isNull(batchOptions)){
+        if (payloadModel.equals(BATCH_EVENT)){
             JsonOutputCodecConfig jsonOutputCodecConfig = new JsonOutputCodecConfig();
             jsonOutputCodecConfig.setKeyName(batchOptions.getKeyName());
             codec = new JsonOutputCodec(jsonOutputCodecConfig);
@@ -101,10 +103,12 @@ public class LambdaSinkService {
             maxBytes = batchOptions.getThresholdOptions().getMaximumSize();
             maxCollectionDuration = batchOptions.getThresholdOptions().getEventCollectTimeOut();
             isBatchEnabled = true;
-        }else{
+        } else if(payloadModel.equals(SINGLE_EVENT)){
             NdjsonOutputConfig ndjsonOutputCodecConfig = new NdjsonOutputConfig();
             codec = new NdjsonOutputCodec(ndjsonOutputCodecConfig);
             isBatchEnabled = false;
+        } else{
+            throw new RuntimeException("invalid payload_model option");
         }
         this.codecContext = codecContext;
         bufferedEventHandles = new LinkedList<>();

@@ -34,6 +34,9 @@ import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.SINGLE_EVENT;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,8 +64,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     public static final String LAMBDA_LATENCY_METRIC = "lambdaLatency";
     public static final String REQUEST_PAYLOAD_SIZE = "requestPayloadSize";
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
-    public static final String BATCH_EVENT = "batch_event";
-    public static final String SINGLE_EVENT = "single_event";
+
 
     private static final Logger LOG = LoggerFactory.getLogger(LambdaProcessor.class);
 
@@ -126,8 +128,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         }
         invocationType = lambdaProcessorConfig.getInvocationType();
 
-        if(invocationType.equals(LambdaProcessorConfig.EVENT) ||
-        invocationType.equals(LambdaProcessorConfig.REQUEST_RESPONSE)){
+        if(!invocationType.equals(LambdaCommonConfig.EVENT) &&
+        !invocationType.equals(LambdaCommonConfig.REQUEST_RESPONSE)){
             throw new RuntimeException("Unsupported invocation type " + invocationType);
         }
 

@@ -50,6 +50,7 @@ class LambdaSinkTest {
         LambdaClient lambdaClient = mock(LambdaClient.class);
 
 
+        when(lambdaSinkConfig.getPayloadModel()).thenReturn("single-event");
         when(lambdaSinkConfig.getDlq()).thenReturn(pluginModel);
         when(pluginModel.getPluginSettings()).thenReturn(dlqMap);
         when(lambdaSinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);

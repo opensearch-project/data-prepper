@@ -67,13 +67,14 @@ public class LambdaSinkServiceTest {
     public static final String maxSize = "1kb";
     public static final String functionName = "testFunction";
     public static final String invocationType = "event";
-    public static final String batchKey ="lambda_batch_key";
+    public static final String keyName ="lambda_batch_key";
     public static final String config =
             "        function_name: testFunction\n" +
                     "        aws:\n" +
                     "          region: us-east-1\n" +
                     "          sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" +
                     "          sts_header_overrides: {\"test\":\"test\"}\n" +
+                    "        payload_model: single-event\n"+
                     "        max_retries: 10\n";
 
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
@@ -105,6 +106,7 @@ public class LambdaSinkServiceTest {
         this.dlqPushHandler = mock(DlqPushHandler.class);
         this.bufferFactory = mock(BufferFactory.class);
         this.outputCodecContext = mock(OutputCodecContext.class);
+        when(lambdaSinkConfig.getPayloadModel()).thenReturn("single-event");
         when(pluginMetrics.counter(LambdaSinkService.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS)).thenReturn(numberOfRecordsSuccessCounter);
         when(pluginMetrics.counter(LambdaSinkService.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED)).thenReturn(numberOfRecordsFailedCounter);
         mockResponse = InvokeResponse.builder()
@@ -190,6 +192,7 @@ public class LambdaSinkServiceTest {
                         "          region: us-east-1\n" +
                         "          sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" +
                         "          sts_header_overrides: {\"test\":\"test\"}\n" +
+                        "        payload_model: single-event\n"+
                         "        max_retries: 3\n";
         this.buffer = mock(InMemoryBuffer.class);
         when(lambdaClient.invoke(any(InvokeRequest.class))).thenThrow(AwsServiceException.class);
@@ -228,6 +231,7 @@ public class LambdaSinkServiceTest {
                         "          region: us-east-1\n" +
                         "          sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" +
                         "          sts_header_overrides: {\"test\":\"test\"}\n" +
+                        "        payload_model: single-event\n"+
                         "        max_retries: 3\n";
 
         when(lambdaClient.invoke(any(InvokeRequest.class))).thenThrow(AwsServiceException.class);
@@ -308,6 +312,7 @@ public class LambdaSinkServiceTest {
     public void lambda_sink_test_batch_enabled() throws IOException {
         when(lambdaSinkConfig.getFunctionName()).thenReturn(functionName);
         when(lambdaSinkConfig.getMaxConnectionRetries()).thenReturn(maxRetries);
+        when(lambdaSinkConfig.getPayloadModel()).thenReturn("batch-event");
         when(lambdaSinkConfig.getBatchOptions()).thenReturn(mock(BatchOptions.class));
         when(lambdaSinkConfig.getBatchOptions().getKeyName()).thenReturn("lambda_batch_key");
         when(lambdaSinkConfig.getBatchOptions().getThresholdOptions()).thenReturn(mock(ThresholdOptions.class));
