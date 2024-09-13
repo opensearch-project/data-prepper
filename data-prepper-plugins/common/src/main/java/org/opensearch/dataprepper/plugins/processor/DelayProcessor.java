@@ -35,7 +35,7 @@ public class DelayProcessor implements Processor<Record<?>, Record<?>> {
         try {
             Thread.sleep(delayDuration.toMillis());
         } catch (final InterruptedException ex) {
-            LOG.error(NOISY,"Interrupted during delay processor", ex);
+            LOG.error(NOISY, "Interrupted during delay processor", ex);
         }
         return records;
     }

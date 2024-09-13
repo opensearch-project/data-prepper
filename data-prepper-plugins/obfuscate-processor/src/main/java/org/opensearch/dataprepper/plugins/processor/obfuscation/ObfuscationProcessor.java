@@ -100,6 +100,11 @@ public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Recor
                     patterns.add(p);
                 } catch (Exception e) {
                     LOG.error(NOISY,e.getMessage());
+                    LOG.atError()
+                            .addMarker(EVENT)
+                            .addMarker(NOISY)
+                            .setMessage(e.getMessage())
+                            .log();
                     throw new InvalidPluginConfigurationException("Invalid Pattern: \"" + rawPattern + "\" for source field " + this.source);
                 }
             }

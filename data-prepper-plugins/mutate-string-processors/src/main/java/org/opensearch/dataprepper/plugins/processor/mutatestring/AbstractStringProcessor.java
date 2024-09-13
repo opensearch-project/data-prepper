@@ -37,6 +37,13 @@ public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Recor
                 performStringAction(recordEvent);
             } catch (final Exception e) {
                 LOG.error(NOISY, "There was an exception while processing Event [{}]", recordEvent, e);
+                LOG.atError()
+                        .addMarker(EVENT)
+                        .addMarker(NOISY)
+                        .setMessage("There was an exception while processing Event [{}]")
+                        .addArgument(recordEvent)
+                        .setCause(e)
+                        .log();
             }
         }
 

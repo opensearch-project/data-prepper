@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -83,7 +84,13 @@ public class StringProcessor implements Processor<Record<Event>, Record<Event>> 
                         .build();
                 modifiedRecords.add(new Record<>(newRecordEvent));
             } catch (JsonProcessingException e) {
-                LOG.error(NOISY, "Unable to process Event data: {}", eventJson, e);
+                LOG.atError()
+                        .addMarker(EVENT)
+                        .addMarker(NOISY)
+                        .setMessage("Unable to process Event data: {}")
+                        .addArgument(eventJson)
+                        .setCause(e)
+                        .log();
             }
         }
         return modifiedRecords;

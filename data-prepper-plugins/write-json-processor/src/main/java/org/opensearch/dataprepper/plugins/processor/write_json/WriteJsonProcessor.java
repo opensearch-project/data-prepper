@@ -53,7 +53,7 @@ public class WriteJsonProcessor extends AbstractProcessor<Record<Event>, Record<
                 try {
                     event.put(target, objectMapper.writeValueAsString(value));
                 } catch (Exception e) {
-                    LOG.error(NOISY,"Failed to convert source to json string", e);
+                    LOG.error(NOISY, "Failed to convert source to json string", e);
                     writeJsonFailedCounter.increment();
                 }
             }

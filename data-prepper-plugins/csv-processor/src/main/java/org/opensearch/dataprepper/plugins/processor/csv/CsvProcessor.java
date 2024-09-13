@@ -11,6 +11,7 @@ import com.fasterxml.jackson.dataformat.csv.CsvParser;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -104,7 +105,13 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
                 }
             } catch (final IOException e) {
                 csvInvalidEventsCounter.increment();
-                LOG.error(NOISY, "An exception occurred while reading event [{}]", event, e);
+                LOG.atError()
+                        .addMarker(EVENT)
+                        .addMarker(NOISY)
+                        .setMessage("An exception occurred while reading event [{}]")
+                        .addArgument(event)
+                        .setCause(e)
+                        .log();
             }
         }
         return records;

@@ -10,7 +10,6 @@ public final class DataPrepperMarkers {
 
     static {
         EVENT.add(SENSITIVE);
-        NOISY.add(SENSITIVE);
     }
 
     private DataPrepperMarkers() {}

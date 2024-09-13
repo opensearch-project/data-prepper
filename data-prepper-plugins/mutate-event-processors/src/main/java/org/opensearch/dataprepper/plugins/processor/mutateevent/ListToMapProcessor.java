@@ -78,7 +78,13 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
                     recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                     continue;
                 } catch (final Exception e) {
-                    LOG.error(NOISY, "Error converting source list to map on record [{}]", recordEvent, e);
+                    LOG.atError()
+                            .addMarker(EVENT)
+                            .addMarker(NOISY)
+                            .setMessage("Error converting source list to map on record [{}]")
+                            .addArgument(recordEvent)
+                            .setCause(e)
+                            .log();
                     recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                     continue;
                 }
@@ -86,11 +92,23 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
                 try {
                     updateEvent(recordEvent, targetMap);
                 } catch (final Exception e) {
-                    LOG.error(NOISY, "Error updating record [{}] after converting source list to map", recordEvent, e);
+                    LOG.atError()
+                            .addMarker(EVENT)
+                            .addMarker(NOISY)
+                            .setMessage("Error updating record [{}] after converting source list to map")
+                            .addArgument(recordEvent)
+                            .setCause(e)
+                            .log();
                     recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                 }
             } catch (final Exception e) {
-                LOG.error(NOISY, "There was an exception while processing Event [{}]", recordEvent, e);
+                LOG.atError()
+                        .addMarker(EVENT)
+                        .addMarker(NOISY)
+                        .setMessage("There was an exception while processing Event [{}]")
+                        .addArgument(recordEvent)
+                        .setCause(e)
+                        .log();
                 recordEvent.getMetadata().addTags(config.getTagsOnFailure());
             }
         }
