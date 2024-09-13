@@ -122,18 +122,33 @@ public class ConvertEntryTypeProcessorTests {
         Integer testValue1 = random.nextInt();
         Integer testValue2 = random.nextInt();
         Integer testValue3 = random.nextInt();
-        List<String> inputList = new ArrayList<>();
-        inputList.add(testValue1.toString());
-        inputList.add(testValue2.toString());
-        inputList.add(testValue3.toString());
         String[] inputArray = {testValue1.toString(), testValue2.toString(), testValue3.toString()};
         List<Integer> expectedResult = new ArrayList<>();
         expectedResult.add(testValue1);
         expectedResult.add(testValue2);
         expectedResult.add(testValue3);
-        Event event = executeAndGetProcessedEvent(inputList);
-        assertThat(event.get(TEST_KEY, List.class), equalTo(expectedResult));
         event = executeAndGetProcessedEvent(inputArray);
+        assertThat(event.get(TEST_KEY, List.class), equalTo(expectedResult));
+    }
+
+    @Test
+    void testArrayListOfStringsToIntegerConvertEntryTypeProcessor() {
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+
+        Random random = new Random();
+        Integer testValue1 = random.nextInt();
+        Integer testValue2 = random.nextInt();
+        Integer testValue3 = random.nextInt();
+        List<String> inputList = new ArrayList<>();
+        inputList.add(testValue1.toString());
+        inputList.add(testValue2.toString());
+        inputList.add(testValue3.toString());
+        List<Integer> expectedResult = new ArrayList<>();
+        expectedResult.add(testValue1);
+        expectedResult.add(testValue2);
+        expectedResult.add(testValue3);
+        Event event = executeAndGetProcessedEvent(inputList);
         assertThat(event.get(TEST_KEY, List.class), equalTo(expectedResult));
     }
 

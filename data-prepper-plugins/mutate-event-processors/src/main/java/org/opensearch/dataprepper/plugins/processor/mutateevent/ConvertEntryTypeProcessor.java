@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
@@ -84,14 +85,14 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                         if (!nullValues.contains(keyVal.toString())) {
                             try {
                                 if (keyVal instanceof ArrayList || keyVal.getClass().isArray()) {
-                                    ArrayList<Object> inputList;
+                                    Stream<Object> inputStream;
                                     if (keyVal.getClass().isArray()) {
-                                        inputList = (ArrayList<Object>)Arrays.asList((Object[])keyVal);
+                                        inputStream = Arrays.stream((Object[])keyVal);
                                     } else {
-                                        inputList = (ArrayList<Object>)keyVal;
+                                        inputStream = ((List<Object>)keyVal).stream();
                                     }
-                                    recordEvent.put(key, inputList.stream().
-                                            map(i -> converter.convert(i, converterArguments)).collect(Collectors.toList()));
+                                    List<?> replacementList = inputStream.map(i -> converter.convert(i, converterArguments)).collect(Collectors.toList());
+                                    recordEvent.put(key, replacementList);
                                 } else {
                                     recordEvent.put(key, converter.convert(keyVal, converterArguments));
                                 }
