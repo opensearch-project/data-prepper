@@ -11,6 +11,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.apache.commons.lang3.RandomStringUtils;
 
+import java.util.UUID;
+
 import static org.opensearch.dataprepper.plugins.processor.aggregate.actions.HistogramAggregateActionConfig.DEFAULT_GENERATED_KEY_PREFIX;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -41,6 +43,7 @@ public class HistogramAggregateActionConfigTests {
         assertThat(histogramAggregateActionConfig.getGeneratedKeyPrefix(), equalTo(DEFAULT_GENERATED_KEY_PREFIX));
         assertThat(histogramAggregateActionConfig.getRecordMinMax(), equalTo(false));
         assertThat(histogramAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS.toString()));
+        assertThat(histogramAggregateActionConfig.getMetricName(), equalTo(HistogramAggregateActionConfig.HISTOGRAM_METRIC_NAME));
     }
 
     @Test
@@ -106,6 +109,9 @@ public class HistogramAggregateActionConfigTests {
         longBuckets.add(longValue2);
         setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "buckets", longBuckets);
         assertThat(histogramAggregateActionConfig.getBuckets(), containsInAnyOrder(longBuckets.toArray()));
+        final String testName = UUID.randomUUID().toString();
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "metricName", testName);
+        assertThat(histogramAggregateActionConfig.getMetricName(), equalTo(testName));
     }
 
     @Test

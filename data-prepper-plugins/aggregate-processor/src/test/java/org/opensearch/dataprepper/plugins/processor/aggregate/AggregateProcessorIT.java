@@ -127,6 +127,7 @@ public class AggregateProcessorIT {
 
         pluginMetrics = PluginMetrics.fromNames(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
+        when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(false);
         when(aggregateProcessorConfig.getIdentificationKeys()).thenReturn(identificationKeys);
         when(aggregateProcessorConfig.getAggregateAction()).thenReturn(actionConfiguration);
         when(actionConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
@@ -220,6 +221,7 @@ public class AggregateProcessorIT {
         String condition = "/firstRandomNumber < 100";
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
+        when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(true);
         int count = 0;
         for (Record<Event> record: eventBatch) {
             Event event = record.getData();
@@ -409,6 +411,7 @@ public class AggregateProcessorIT {
         final String condition = "/firstRandomNumber < 100";
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
+        when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(true);
         int count = 0;
         eventBatch = getBatchOfEvents(true);
         for (Record<Event> record: eventBatch) {
@@ -444,6 +447,50 @@ public class AggregateProcessorIT {
         expectedEventMap.forEach((k, v) -> assertThat(record.getData().toMap(), hasEntry(k,v)));
         assertThat(record.getData().toMap(), hasKey(DEFAULT_START_TIME_KEY));
     }
+
+    @RepeatedTest(value = 2)
+    void aggregateWithCountAggregateActionWithUnaggregatedEvents() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
+        when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(true);
+        String tag = UUID.randomUUID().toString();
+        when(aggregateProcessorConfig.getAggregatedEventsTag()).thenReturn(tag);
+        CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
+        aggregateAction = new CountAggregateAction(countAggregateActionConfig);
+        when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
+                .thenReturn(aggregateAction);
+        when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
+        eventBatch = getBatchOfEvents(true);
+
+        final AggregateProcessor objectUnderTest = createObjectUnderTest();
+
+        final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
+
+        for (int i = 0; i < NUM_THREADS; i++) {
+            executorService.execute(() -> {
+                final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(eventBatch);
+                assertThat(recordsOut.size(), equalTo(NUM_EVENTS_PER_BATCH));
+                countDownLatch.countDown();
+            });
+        }
+        // wait longer so that the raw events are processed.
+        Thread.sleep(2*GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+
+        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        assertThat(allThreadsFinished, equalTo(true));
+
+        Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
+        assertThat(results.size(), equalTo(1));
+
+        Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(testValue));
+        expectedEventMap.put(DEFAULT_COUNT_KEY, NUM_THREADS * NUM_EVENTS_PER_BATCH);
+
+        final Record<Event> record = (Record<Event>)results.toArray()[0];
+        assertTrue(record.getData().getMetadata().hasTags(List.of(tag)));
+        expectedEventMap.forEach((k, v) -> assertThat(record.getData().toMap(), hasEntry(k,v)));
+        assertThat(record.getData().toMap(), hasKey(DEFAULT_START_TIME_KEY));
+    }
+
 
     @RepeatedTest(value = 2)
     void aggregateWithHistogramAggregateAction() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
@@ -488,7 +535,7 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1500);
 
         boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));

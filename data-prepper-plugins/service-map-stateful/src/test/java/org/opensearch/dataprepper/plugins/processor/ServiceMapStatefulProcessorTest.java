@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
@@ -38,11 +40,13 @@ import java.util.stream.Collectors;
 
 import static io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.processor.ServiceMapProcessorConfig.DEFAULT_WINDOW_DURATION;
 
 
 public class ServiceMapStatefulProcessorTest {
@@ -54,12 +58,20 @@ public class ServiceMapStatefulProcessorTest {
     private static final String PAYMENT_SERVICE = "PAY";
     private static final String CART_SERVICE = "CART";
     private PluginSetting pluginSetting;
+    private PluginMetrics pluginMetrics;
+    private PipelineDescription pipelineDescription;
+    private ServiceMapProcessorConfig serviceMapProcessorConfig;
 
     @BeforeEach
     public void setup() throws NoSuchFieldException, IllegalAccessException {
         resetServiceMapStatefulProcessorStatic();
         MetricsTestUtil.initMetrics();
         pluginSetting = mock(PluginSetting.class);
+        pipelineDescription = mock(PipelineDescription.class);
+        serviceMapProcessorConfig = mock(ServiceMapProcessorConfig.class);
+        when(serviceMapProcessorConfig.getWindowDuration()).thenReturn(DEFAULT_WINDOW_DURATION);
+        pluginMetrics = PluginMetrics.fromNames(
+                "testServiceMapProcessor", "testPipelineName");
         when(pluginSetting.getName()).thenReturn("testServiceMapProcessor");
         when(pluginSetting.getPipelineName()).thenReturn("testPipelineName");
     }
@@ -116,13 +128,11 @@ public class ServiceMapStatefulProcessorTest {
     }
 
     @Test
-    public void testPluginSettingConstructor() {
-
-        final PluginSetting pluginSetting = new PluginSetting("testPluginSetting", Collections.emptyMap());
-        pluginSetting.setProcessWorkers(4);
-        pluginSetting.setPipelineName("TestPipeline");
+    public void testDataPrepperConstructor() {
+        when(pipelineDescription.getNumberOfProcessWorkers()).thenReturn(4);
         //Nothing is accessible to validate, so just verify that no exception is thrown.
-        final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(pluginSetting);
+        final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(
+                serviceMapProcessorConfig, pluginMetrics, pipelineDescription);
     }
 
     @Test
@@ -132,8 +142,8 @@ public class ServiceMapStatefulProcessorTest {
         Mockito.when(clock.instant()).thenReturn(Instant.now());
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
-        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginSetting);
-        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginSetting);
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginMetrics);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginMetrics);
 
         final byte[] rootSpanId1Bytes = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] rootSpanId2Bytes = ServiceMapTestUtils.getRandomBytes(8);
@@ -292,7 +302,6 @@ public class ServiceMapStatefulProcessorTest {
         assertThat(relationshipCountMeasurement.getValue(), equalTo((double)relationshipsFound.size()));
 
 
-        //Make sure that future relationships that are equivalent are caught by cache
         final byte[] rootSpanId3Bytes = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] traceId3Bytes = ServiceMapTestUtils.getRandomBytes(16);
         final String rootSpanId3 = Hex.encodeHexString(rootSpanId3Bytes);
@@ -303,19 +312,24 @@ public class ServiceMapStatefulProcessorTest {
                 AUTHENTICATION_SERVICE, "reset", Hex.encodeHexString(ServiceMapTestUtils.getRandomBytes(8)),
                 frontendSpans3.getSpanId(), traceId3, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER);
 
+        // relationship missing traceGroupName
         when(clock.millis()).thenReturn(450L);
         Future<Set<ServiceMapRelationship>> r7 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
                 Collections.singletonList(new Record<>(frontendSpans3)));
         Future<Set<ServiceMapRelationship>> r8 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
                 Collections.singletonList(new Record<>(authenticationSpansServer2)));
-        assertTrue(r7.get().isEmpty());
-        assertTrue(r8.get().isEmpty());
+        final Set<ServiceMapRelationship> relationshipsFoundWithNoTraceGroupName = new HashSet<>();
+        relationshipsFoundWithNoTraceGroupName.addAll(r7.get());
+        relationshipsFoundWithNoTraceGroupName.addAll(r8.get());
 
         when(clock.millis()).thenReturn(560L);
         Future<Set<ServiceMapRelationship>> r9 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1, Arrays.asList());
         Future<Set<ServiceMapRelationship>> r10 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2, Arrays.asList());
-        assertTrue(r9.get().isEmpty());
-        assertTrue(r10.get().isEmpty());
+        relationshipsFoundWithNoTraceGroupName.addAll(r9.get());
+        relationshipsFoundWithNoTraceGroupName.addAll(r10.get());
+        assertThat(relationshipsFoundWithNoTraceGroupName.size(), equalTo(4));
+        relationshipsFoundWithNoTraceGroupName.forEach(
+                relationship -> assertThat(relationship.getTraceGroupName(), nullValue()));
         serviceMapStateful1.shutdown();
         serviceMapStateful2.shutdown();
     }
@@ -327,8 +341,8 @@ public class ServiceMapStatefulProcessorTest {
         Mockito.when(clock.instant()).thenReturn(Instant.now());
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
-        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginSetting);
-        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginSetting);
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginMetrics);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginMetrics);
 
         final byte[] rootSpanIdBytes = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] traceIdBytes = ServiceMapTestUtils.getRandomBytes(16);
@@ -383,7 +397,7 @@ public class ServiceMapStatefulProcessorTest {
     @Test
     public void testPrepareForShutdownWithEventRecordData() {
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
-        final ServiceMapStatefulProcessor serviceMapStateful = new ServiceMapStatefulProcessor(100, path, Clock.systemUTC(), 1, pluginSetting);
+        final ServiceMapStatefulProcessor serviceMapStateful = new ServiceMapStatefulProcessor(100, path, Clock.systemUTC(), 1, pluginMetrics);
 
         final byte[] rootSpanId1Bytes = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] traceId1Bytes = ServiceMapTestUtils.getRandomBytes(16);
@@ -411,11 +425,9 @@ public class ServiceMapStatefulProcessorTest {
 
     @Test
     public void testGetIdentificationKeys() {
-        final PluginSetting pluginSetting = new PluginSetting("testPluginSetting", Collections.emptyMap());
-        pluginSetting.setProcessWorkers(4);
-        pluginSetting.setPipelineName("TestPipeline");
-
-        final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(pluginSetting);
+        when(pipelineDescription.getNumberOfProcessWorkers()).thenReturn(4);
+        final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(
+                serviceMapProcessorConfig, pluginMetrics, pipelineDescription);
         final Collection<String> expectedIdentificationKeys = serviceMapStatefulProcessor.getIdentificationKeys();
 
         assertThat(expectedIdentificationKeys, equalTo(Collections.singleton("traceId")));

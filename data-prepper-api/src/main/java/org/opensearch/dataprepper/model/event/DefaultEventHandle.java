@@ -8,33 +8,20 @@ package org.opensearch.dataprepper.model.event;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import java.lang.ref.WeakReference;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.BiConsumer;
 import java.time.Instant;
 import java.io.Serializable;
 
-public class DefaultEventHandle implements EventHandle, InternalEventHandle, Serializable {
-    private Instant externalOriginationTime;
-    private final Instant internalOriginationTime;
+public class DefaultEventHandle extends AbstractEventHandle implements Serializable {
     private WeakReference<AcknowledgementSet> acknowledgementSetRef;
-    private List<BiConsumer<EventHandle, Boolean>> releaseConsumers;
 
     public DefaultEventHandle(final Instant internalOriginationTime) {
+        super(internalOriginationTime);
         this.acknowledgementSetRef = null;
-        this.externalOriginationTime = null;
-        this.internalOriginationTime = internalOriginationTime;
-        this.releaseConsumers = new ArrayList<>();
     }
 
     @Override
-    public void setAcknowledgementSet(final AcknowledgementSet acknowledgementSet) {
+    public void addAcknowledgementSet(final AcknowledgementSet acknowledgementSet) {
         this.acknowledgementSetRef = new WeakReference<>(acknowledgementSet);
-    }
-
-    @Override
-    public void setExternalOriginationTime(final Instant externalOriginationTime) {
-        this.externalOriginationTime = externalOriginationTime;
     }
 
     public AcknowledgementSet getAcknowledgementSet() {
@@ -45,32 +32,30 @@ public class DefaultEventHandle implements EventHandle, InternalEventHandle, Ser
     }
 
     @Override
-    public Instant getInternalOriginationTime() {
-        return this.internalOriginationTime;
+    public boolean hasAcknowledgementSet() {
+        AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
+        return acknowledgementSet != null;
     }
 
     @Override
-    public Instant getExternalOriginationTime() {
-        return this.externalOriginationTime;
-    }
-
-    @Override
-    public void release(boolean result) {
-        synchronized (releaseConsumers) {
-            for (final BiConsumer<EventHandle, Boolean> consumer: releaseConsumers) {
-                consumer.accept(this, result);
+    public void acquireReference() {
+        synchronized (this) {
+            AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
+            if (acknowledgementSet != null) {
+                acknowledgementSet.acquire(this);
             }
         }
+    }
+
+    @Override
+    public boolean release(boolean result) {
+        notifyReleaseConsumers(result);
         AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
         if (acknowledgementSet != null) {
             acknowledgementSet.release(this, result);
+            return true;
         }
+        return false;
     }
 
-    @Override
-    public void onRelease(BiConsumer<EventHandle, Boolean> releaseConsumer) {
-        synchronized (releaseConsumers) {
-            releaseConsumers.add(releaseConsumer);
-        }
-    }
 }

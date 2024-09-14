@@ -6,8 +6,13 @@
 package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
+import org.opensearch.dataprepper.validation.PluginError;
+import org.opensearch.dataprepper.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -21,26 +26,54 @@ public class ExtensionLoader {
     private final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter;
     private final ExtensionClassProvider extensionClassProvider;
     private final PluginCreator extensionPluginCreator;
+    private final PluginErrorCollector pluginErrorCollector;
+    private final PluginErrorsHandler pluginErrorsHandler;
 
     @Inject
     ExtensionLoader(
             final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter,
             final ExtensionClassProvider extensionClassProvider,
-            @Named("extensionPluginCreator") final PluginCreator extensionPluginCreator) {
+            @Named("extensionPluginCreator") final PluginCreator extensionPluginCreator,
+            final PluginErrorCollector pluginErrorCollector,
+            final PluginErrorsHandler pluginErrorsHandler) {
         this.extensionPluginConfigurationConverter = extensionPluginConfigurationConverter;
         this.extensionClassProvider = extensionClassProvider;
         this.extensionPluginCreator = extensionPluginCreator;
+        this.pluginErrorCollector = pluginErrorCollector;
+        this.pluginErrorsHandler = pluginErrorsHandler;
     }
 
-    List<? extends ExtensionPlugin> loadExtensions() {
-        return extensionClassProvider.loadExtensionPluginClasses()
+    public List<? extends ExtensionPlugin> loadExtensions() {
+        final List<? extends ExtensionPlugin> result = extensionClassProvider.loadExtensionPluginClasses()
                 .stream()
                 .map(extensionClass -> {
-                    final PluginArgumentsContext pluginArgumentsContext = getConstructionContext(extensionClass);
-                    return extensionPluginCreator.newPluginInstance(
-                            extensionClass, pluginArgumentsContext, convertClassToName(extensionClass));
+                    final String pluginName = convertClassToName(extensionClass);
+                    try {
+                        final PluginArgumentsContext pluginArgumentsContext = getConstructionContext(extensionClass);
+                        return extensionPluginCreator.newPluginInstance(
+                                extensionClass, pluginArgumentsContext, pluginName);
+                    } catch (Exception e) {
+                        final PluginError pluginError = PluginError.builder()
+                                .componentType(PipelinesDataFlowModel.EXTENSION_PLUGIN_TYPE)
+                                .pluginName(pluginName)
+                                .exception(e)
+                                .build();
+                        pluginErrorCollector.collectPluginError(pluginError);
+                        return null;
+                    }
                 })
                 .collect(Collectors.toList());
+        final List<PluginError> extensionPluginErrors = pluginErrorCollector.getPluginErrors()
+                .stream().filter(pluginError -> PipelinesDataFlowModel.EXTENSION_PLUGIN_TYPE
+                        .equals(pluginError.getComponentType()))
+                .collect(Collectors.toList());
+        if (!extensionPluginErrors.isEmpty()) {
+            pluginErrorsHandler.handleErrors(extensionPluginErrors);
+            throw new InvalidPluginConfigurationException(
+                    "One or more extension plugins are not configured correctly.");
+        } else {
+            return result;
+        }
     }
 
     private PluginArgumentsContext getConstructionContext(final Class<?> extensionPluginClass) {

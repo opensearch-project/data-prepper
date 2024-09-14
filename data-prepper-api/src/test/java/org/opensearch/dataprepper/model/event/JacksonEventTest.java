@@ -9,11 +9,14 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
@@ -22,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.containsStringIgnoringCase;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -70,6 +74,53 @@ public class JacksonEventTest {
         assertThat(result, is(equalTo(value)));
     }
 
+    @Test
+    public void testPutAndGet_withRandomString_eventKey() {
+        final EventKey key = new JacksonEventKey("aRandomKey" + UUID.randomUUID());
+        final UUID value = UUID.randomUUID();
+
+        event.put(key, value);
+        final UUID result = event.get(key, UUID.class);
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(value)));
+    }
+
+    @Test
+    public void testPutAndGet_withRandomString_eventKey_multiple_events() {
+        final EventKey key = new JacksonEventKey("aRandomKey" + UUID.randomUUID());
+        final UUID value = UUID.randomUUID();
+
+        for(int i = 0; i < 10; i++) {
+            event = JacksonEvent.builder()
+                    .withEventType(eventType)
+                    .build();
+
+            event.put(key, value);
+            final UUID result = event.get(key, UUID.class);
+
+            assertThat(result, is(notNullValue()));
+            assertThat(result, is(equalTo(value)));
+        }
+    }
+
+    @Test
+    public void testPutAndGet_eventKey_with_non_JacksonEventKey_throws() {
+        final EventKey key = mock(EventKey.class);
+        final UUID value = UUID.randomUUID();
+
+        assertThrows(IllegalArgumentException.class, () -> event.put(key, value));
+        assertThrows(IllegalArgumentException.class, () -> event.get(key, UUID.class));
+    }
+
+    @Test
+    public void testPut_eventKey_with_immutable_action() {
+        final EventKey key = new JacksonEventKey("aRandomKey" + UUID.randomUUID(), EventKeyFactory.EventAction.GET);
+        final UUID value = UUID.randomUUID();
+
+        assertThrows(IllegalArgumentException.class, () -> event.put(key, value));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"/", "foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/", "a1K.k3-01_02", "keyWithBrackets[]"})
     void testPutAndGet_withStrings(final String key) {
@@ -82,6 +133,19 @@ public class JacksonEventTest {
         assertThat(result, is(equalTo(value)));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"/", "foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/", "a1K.k3-01_02", "keyWithBrackets[]"})
+    void testPutAndGet_withStrings_eventKey(final String key) {
+        final UUID value = UUID.randomUUID();
+
+        final EventKey eventKey = new JacksonEventKey(key);
+        event.put(eventKey, value);
+        final UUID result = event.get(eventKey, UUID.class);
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(value)));
+    }
+
     @Test
     public void testPutKeyCannotBeEmptyString() {
         Throwable exception = assertThrows(IllegalArgumentException.class, () -> event.put("", "value"));
@@ -89,8 +153,20 @@ public class JacksonEventTest {
     }
 
     @Test
-    public void testPutAndGet_withMultLevelKey() {
+    public void testPutAndGet_withMultiLevelKey() {
         final String key = "foo/bar";
+        final UUID value = UUID.randomUUID();
+
+        event.put(key, value);
+        final UUID result = event.get(key, UUID.class);
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(value)));
+    }
+
+    @Test
+    public void testPutAndGet_withMultiLevelKey_eventKey() {
+        final EventKey key = new JacksonEventKey("foo/bar");
         final UUID value = UUID.randomUUID();
 
         event.put(key, value);
@@ -122,8 +198,41 @@ public class JacksonEventTest {
     }
 
     @Test
+    public void testPutAndGet_withMultiLevelKeyTwice_eventKey() {
+        final EventKey key = new JacksonEventKey("foo/bar");
+        final UUID value = UUID.randomUUID();
+
+        event.put(key, value);
+        final UUID result = event.get(key, UUID.class);
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(value)));
+
+        final EventKey key2 = new JacksonEventKey("foo/fizz");
+        final UUID value2 = UUID.randomUUID();
+
+        event.put(key2, value2);
+        final UUID result2 = event.get(key2, UUID.class);
+
+        assertThat(result2, is(notNullValue()));
+        assertThat(result2, is(equalTo(value2)));
+    }
+
+    @Test
     public void testPutAndGet_withMultiLevelKeyWithADash() {
         final String key = "foo/bar-bar";
+        final UUID value = UUID.randomUUID();
+
+        event.put(key, value);
+        final UUID result = event.get(key, UUID.class);
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(value)));
+    }
+
+    @Test
+    public void testPutAndGet_withMultiLevelKeyWithADash_eventKey() {
+        final EventKey key = new JacksonEventKey("foo/bar-bar");
         final UUID value = UUID.randomUUID();
 
         event.put(key, value);
@@ -145,12 +254,34 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"foo", "/foo", "/foo/", "foo/"})
+    void testGetAtRootLevel_eventKey(final String key) {
+        final String value = UUID.randomUUID().toString();
+
+        event.put(new JacksonEventKey(key), value);
+        final Map<String, String> result = event.get(new JacksonEventKey("", EventKeyFactory.EventAction.GET), Map.class);
+
+        assertThat(result, is(Map.of("foo", value)));
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"/foo/bar", "foo/bar", "foo/bar/"})
     void testGetAtRootLevelWithMultiLevelKey(final String key) {
         final String value = UUID.randomUUID().toString();
 
         event.put(key, value);
         final Map<String, String> result = event.get("", Map.class);
+
+        assertThat(result, is(Map.of("foo", Map.of("bar", value))));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/foo/bar", "foo/bar", "foo/bar/"})
+    void testGetAtRootLevelWithMultiLevelKey_eventKey(final String key) {
+        final String value = UUID.randomUUID().toString();
+
+        event.put(new JacksonEventKey(key), value);
+        final Map<String, String> result = event.get( new JacksonEventKey("", EventKeyFactory.EventAction.GET), Map.class);
 
         assertThat(result, is(Map.of("foo", Map.of("bar", value))));
     }
@@ -287,6 +418,14 @@ public class JacksonEventTest {
         final UUID result = event.get(key, UUID.class);
 
         assertThat(result, is(nullValue()));
+    }
+
+    @Test
+    public void testDelete_eventKey_with_immutable_action() {
+        final EventKey key = new JacksonEventKey("aRandomKey" + UUID.randomUUID(), EventKeyFactory.EventAction.GET);
+        final UUID value = UUID.randomUUID();
+
+        assertThrows(IllegalArgumentException.class, () -> event.delete(key));
     }
 
     @Test
@@ -777,6 +916,13 @@ public class JacksonEventTest {
                 .build();
 
         // Include Keys must start with / and also ordered, This is pre-processed in SinkModel
+        List<String> includeNullKey = null;
+        assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeNullKey).toJsonString(), equalTo(jsonString));
+
+        List<String> includeEmptyKey = List.of();
+        assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeEmptyKey).toJsonString(), equalTo(jsonString));
+
+        // Include Keys must start with / and also ordered, This is pre-processed in SinkModel
         List<String> includeKeys1 = Arrays.asList("foo", "info");
         final String expectedJsonString1 = "{\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"}}";
         assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeKeys1).toJsonString(), equalTo(expectedJsonString1));
@@ -861,7 +1007,16 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @CsvSource(value = {"test_key, true", "/test_key, true", "inv(alid, false", "getMetadata(\"test_key\"), false"})
+    @CsvSource(value = {"test_key, true",
+            "/test_key, true",
+            "inv(alid, false",
+            "getMetadata(\"test_key\"), false",
+            "key.with.dot, true",
+            "key-with-hyphen, true",
+            "key_with_underscore, true",
+            "key@with@at, true",
+            "key[with]brackets, true"
+    })
     void isValidEventKey_returns_expected_result(final String key, final boolean isValid) {
         assertThat(JacksonEvent.isValidEventKey(key), equalTo(isValid));
     }
@@ -880,6 +1035,26 @@ public class JacksonEventTest {
             currentObject = nextObject;
         }
         return dataObject;
+    }
+
+    @ParameterizedTest
+    @MethodSource("getBigDecimalPutTestData")
+    void testPutAndGet_withBigDecimal(final String value) {
+        final String key = "bigDecimalKey";
+        event.put(key, new BigDecimal(value));
+        final Object result = event.get(key, Object.class);
+        assertThat(result, is(notNullValue()));
+        assertThat(result.toString(), is(equalTo(value)));
+    }
+
+    private static Stream<Arguments> getBigDecimalPutTestData() {
+        return Stream.of(
+                Arguments.of("702062202420"),
+                Arguments.of("1.23345E+9"),
+                Arguments.of("1.2345E+60"),
+                Arguments.of("1.2345E+6"),
+                Arguments.of("1.000")
+        );
     }
 
 }

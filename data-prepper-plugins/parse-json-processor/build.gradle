@@ -10,12 +10,14 @@ plugins {
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
+    implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-ion'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
-    implementation 'org.apache.parquet:parquet-common:1.14.0'
+    implementation libs.parquet.common
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-test-event')
+    testImplementation testLibs.slf4j.simple
 }
 
 test {

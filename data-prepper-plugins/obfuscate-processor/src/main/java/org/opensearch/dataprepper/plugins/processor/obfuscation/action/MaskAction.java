@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.plugins.processor.obfuscation.action;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -21,7 +23,7 @@ public class MaskAction implements ObfuscationAction {
     }
 
     @Override
-    public String obfuscate(String source, List<Pattern> patterns) {
+    public String obfuscate(String source, List<Pattern> patterns, Record<Event> record) {
 
         if (patterns == null || patterns.size() == 0) {
             // This is to replace the whole field.

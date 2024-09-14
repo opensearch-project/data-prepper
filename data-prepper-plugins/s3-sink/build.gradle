@@ -16,11 +16,16 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
+    implementation 'software.amazon.awssdk:securitylake:2.26.18'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
     implementation project(':data-prepper-plugins:avro-codecs')
     implementation libs.avro.core
-    implementation libs.hadoop.common
-    implementation 'org.apache.parquet:parquet-avro:1.14.0'
+    implementation(libs.hadoop.common) {
+        exclude group: 'org.eclipse.jetty'
+        exclude group: 'org.apache.hadoop', module: 'hadoop-auth'
+        exclude group: 'org.apache.zookeeper', module: 'zookeeper'
+    }
+    implementation libs.parquet.avro
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22'
     implementation libs.commons.lang3

@@ -115,6 +115,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String documentId;
   private final String routingField;
   private final String routing;
+  private final String pipeline;
   private final String action;
   private final List<Map<String, Object>> actions;
   private final String documentRootKey;
@@ -170,6 +171,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.documentId = openSearchSinkConfig.getIndexConfiguration().getDocumentId();
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.routing = openSearchSinkConfig.getIndexConfiguration().getRouting();
+    this.pipeline = openSearchSinkConfig.getIndexConfiguration().getPipeline();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.actions = openSearchSinkConfig.getIndexConfiguration().getActions();
     this.documentRootKey = openSearchSinkConfig.getIndexConfiguration().getDocumentRootKey();
@@ -184,6 +186,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.bulkRequestMap = new ConcurrentHashMap<>();
     this.lastFlushTimeMap = new ConcurrentHashMap<>();
     this.pluginConfigObservable = pluginConfigObservable;
+    this.objectMapper = new ObjectMapper();
 
     final Optional<PluginModel> dlqConfig = openSearchSinkConfig.getRetryConfiguration().getDlq();
     if (dlqConfig.isPresent()) {
@@ -199,7 +202,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         doInitializeInternal();
     } catch (IOException e) {
         LOG.warn("Failed to initialize OpenSearch sink, retrying: {} ", e.getMessage());
-        closeFiles();
+        this.shutdown();
     } catch (InvalidPluginConfigurationException e) {
         LOG.error("Failed to initialize OpenSearch sink due to a configuration error.", e);
         this.shutdown();
@@ -210,7 +213,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         throw e;
     } catch (Exception e) {
         LOG.warn("Failed to initialize OpenSearch sink with a retryable exception. ", e);
-        closeFiles();
+        this.shutdown();
     }
   }
 
@@ -277,7 +280,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             bulkRequestSupplier,
             pluginSetting);
 
-    objectMapper = new ObjectMapper();
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
   }
@@ -299,6 +301,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     BulkOperation bulkOperation;
     final Optional<String> docId = document.getDocumentId();
     final Optional<String> routing = document.getRoutingField();
+    final Optional<String> pipeline = document.getPipelineField();
 
     if (StringUtils.equals(action, OpenSearchBulkActions.CREATE.toString())) {
        final CreateOperation.Builder<Object> createOperationBuilder =
@@ -307,6 +310,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
              .document(document);
        docId.ifPresent(createOperationBuilder::id);
        routing.ifPresent(createOperationBuilder::routing);
+       pipeline.ifPresent(createOperationBuilder::pipeline);
+
        bulkOperation = new BulkOperation.Builder()
                            .create(createOperationBuilder.build())
                            .build();
@@ -367,6 +372,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
               .versionType(versionType);
     docId.ifPresent(indexOperationBuilder::id);
     routing.ifPresent(indexOperationBuilder::routing);
+    pipeline.ifPresent(indexOperationBuilder::pipeline);
     bulkOperation = new BulkOperation.Builder()
                         .index(indexOperationBuilder.build())
                         .build();
@@ -442,9 +448,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       }
 
       SerializedJson serializedJsonNode = null;
-      if (StringUtils.equals(action, OpenSearchBulkActions.UPDATE.toString()) ||
-          StringUtils.equals(action, OpenSearchBulkActions.UPSERT.toString()) ||
-          StringUtils.equals(action, OpenSearchBulkActions.DELETE.toString())) {
+      if (StringUtils.equals(eventAction, OpenSearchBulkActions.UPDATE.toString()) ||
+          StringUtils.equals(eventAction, OpenSearchBulkActions.UPSERT.toString()) ||
+          StringUtils.equals(eventAction, OpenSearchBulkActions.DELETE.toString())) {
             serializedJsonNode = SerializedJson.fromJsonNode(event.getJsonNode(), document);
       }
       BulkOperation bulkOperation;
@@ -502,9 +508,21 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       }
     }
 
+    String pipelineValue = null;
+    if (pipeline != null) {
+      try {
+        pipelineValue = event.formatString(pipeline, expressionEvaluator);
+      } catch (final ExpressionEvaluationException | EventKeyNotFoundException e) {
+        LOG.error("Unable to construct pipeline with format {}", pipeline, e);
+      }
+      if (StringUtils.isEmpty(pipelineValue) || StringUtils.isBlank(pipelineValue)) {
+        pipelineValue = null;
+      }
+    }
+
     final String document = DocumentBuilder.build(event, documentRootKey, sinkContext.getTagsTargetKey(), sinkContext.getIncludeKeys(), sinkContext.getExcludeKeys());
 
-    return SerializedJson.fromStringAndOptionals(document, docId, routingValue);
+    return SerializedJson.fromStringAndOptionals(document, docId, routingValue, pipelineValue);
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {
@@ -597,6 +615,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public void shutdown() {
     super.shutdown();
     closeFiles();
+    openSearchClient.shutdown();
   }
 
   private void maybeUpdateServerlessNetworkPolicy() {

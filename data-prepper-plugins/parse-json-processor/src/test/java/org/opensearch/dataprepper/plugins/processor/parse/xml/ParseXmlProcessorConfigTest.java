@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.processor.parse.xml;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 
 import java.util.List;
 
@@ -24,6 +25,8 @@ public class ParseXmlProcessorConfigTest {
         assertThat(objectUnderTest.getPointer(), equalTo(null));
         assertThat(objectUnderTest.getTagsOnFailure(), equalTo(null));
         assertThat(objectUnderTest.getOverwriteIfDestinationExists(), equalTo(true));
+        assertThat(objectUnderTest.getHandleFailedEventsOption(), equalTo(HandleFailedEventsOption.SKIP));
+        assertThat(objectUnderTest.isHandleFailedEventsOptionValid(), equalTo(true));
     }
 
     @Nested
@@ -52,6 +55,23 @@ public class ParseXmlProcessorConfigTest {
             setField(ParseXmlProcessorConfig.class, config, "tagsOnFailure", tagsList);
 
             assertThat(config.getTagsOnFailure(), equalTo(tagsList));
+
+            setField(ParseXmlProcessorConfig.class, config, "deleteSource", true);
+            assertThat(config.isDeleteSourceRequested(), equalTo(true));
+        }
+
+        @Test
+        void isHandleFailedEventsOptionValid_returns_false_with_drop_option() throws NoSuchFieldException, IllegalAccessException {
+            setField(ParseXmlProcessorConfig.class, config, "handleFailedEventsOption", HandleFailedEventsOption.DROP);
+
+            assertThat(config.isHandleFailedEventsOptionValid(), equalTo(false));
+        }
+
+        @Test
+        void isHandleFailedEventsOptionValid_returns_true_with_null_handle_events() throws NoSuchFieldException, IllegalAccessException {
+            setField(ParseXmlProcessorConfig.class, config, "handleFailedEventsOption", null);
+
+            assertThat(config.isHandleFailedEventsOptionValid(), equalTo(true));
         }
     }
 }

@@ -9,20 +9,27 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 
 public interface InternalEventHandle {
     /**
-     * sets acknowledgement set
+     * adds acknowledgement set
      *
      * @param acknowledgementSet acknowledgementSet to be set in the event handle
-     * @since 2.6
+     * @since 2.9
      */
-    void setAcknowledgementSet(final AcknowledgementSet acknowledgementSet);
+    void addAcknowledgementSet(final AcknowledgementSet acknowledgementSet);
 
     /**
-     * gets acknowledgement set
+     * Indicates if the event handle has atleast one acknowledgement set
      *
-     * @return returns acknowledgementSet from the event handle
-     * @since 2.6
+     * @return returns true if there is at least one acknowledgementSet in the event handle
+     * @since 2.9
      */
-    AcknowledgementSet getAcknowledgementSet();
+    boolean hasAcknowledgementSet();
+
+    /**
+     * Acquires reference to acknowledgement set(s) in the event handle
+     *
+     * @since 2.9
+     */
+    void acquireReference();
 
 }
 

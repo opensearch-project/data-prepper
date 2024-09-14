@@ -122,7 +122,11 @@ regexPattern
     ;
 
 setInitializer
-    : LBRACE primary (SET_DELIMITER primary)* RBRACE
+    : LBRACE setMembers RBRACE
+    ;
+
+setMembers
+    : literal (SPACE* SET_DELIMITER SPACE* literal)*
     ;
 
 unaryOperator

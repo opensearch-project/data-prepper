@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.util.Map;
 import java.util.function.Supplier;
@@ -29,6 +30,9 @@ class ApplicationContextToTypedSuppliersTest {
     private EventFactory eventFactory;
 
     @Mock
+    private EventKeyFactory eventKeyFactory;
+
+    @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
@@ -37,6 +41,7 @@ class ApplicationContextToTypedSuppliersTest {
     private ApplicationContextToTypedSuppliers createObjectUnderTest() {
         return new ApplicationContextToTypedSuppliers(
                 eventFactory,
+                eventKeyFactory,
                 acknowledgementSetManager,
                 circuitBreaker
         );
@@ -58,11 +63,15 @@ class ApplicationContextToTypedSuppliersTest {
     void getArgumentsSuppliers_returns_map_with_expected_classes() {
         final Map<Class<?>, Supplier<Object>> argumentsSuppliers = createObjectUnderTest().getArgumentsSuppliers();
 
-        assertThat(argumentsSuppliers.size(), equalTo(3));
+        assertThat(argumentsSuppliers.size(), equalTo(4));
 
         assertThat(argumentsSuppliers, hasKey(EventFactory.class));
         assertThat(argumentsSuppliers.get(EventFactory.class), notNullValue());
         assertThat(argumentsSuppliers.get(EventFactory.class).get(), equalTo(eventFactory));
+
+        assertThat(argumentsSuppliers, hasKey(EventKeyFactory.class));
+        assertThat(argumentsSuppliers.get(EventKeyFactory.class), notNullValue());
+        assertThat(argumentsSuppliers.get(EventKeyFactory.class).get(), equalTo(eventKeyFactory));
 
         assertThat(argumentsSuppliers, hasKey(AcknowledgementSetManager.class));
         assertThat(argumentsSuppliers.get(AcknowledgementSetManager.class), notNullValue());
@@ -79,11 +88,15 @@ class ApplicationContextToTypedSuppliersTest {
 
         final Map<Class<?>, Supplier<Object>> argumentsSuppliers = createObjectUnderTest().getArgumentsSuppliers();
 
-        assertThat(argumentsSuppliers.size(), equalTo(3));
+        assertThat(argumentsSuppliers.size(), equalTo(4));
 
         assertThat(argumentsSuppliers, hasKey(EventFactory.class));
         assertThat(argumentsSuppliers.get(EventFactory.class), notNullValue());
         assertThat(argumentsSuppliers.get(EventFactory.class).get(), equalTo(eventFactory));
+
+        assertThat(argumentsSuppliers, hasKey(EventKeyFactory.class));
+        assertThat(argumentsSuppliers.get(EventKeyFactory.class), notNullValue());
+        assertThat(argumentsSuppliers.get(EventKeyFactory.class).get(), equalTo(eventKeyFactory));
 
         assertThat(argumentsSuppliers, hasKey(AcknowledgementSetManager.class));
         assertThat(argumentsSuppliers.get(AcknowledgementSetManager.class), notNullValue());

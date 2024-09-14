@@ -19,7 +19,6 @@ dependencies {
     implementation libs.opentelemetry.proto
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
-    testImplementation testLibs.mockito.inline
 }
 
 jacocoTestCoverageVerification {

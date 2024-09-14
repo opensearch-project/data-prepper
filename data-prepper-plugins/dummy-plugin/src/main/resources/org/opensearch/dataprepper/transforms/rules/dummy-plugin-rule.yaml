@@ -1,0 +1,3 @@
+plugin_name: "dummy-plugin"
+apply_when:
+  - "$.test-pipeline.processor[?(@.dummy_plugin)]"

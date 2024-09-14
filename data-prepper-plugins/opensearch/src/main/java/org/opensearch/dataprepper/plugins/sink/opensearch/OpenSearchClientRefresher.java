@@ -30,7 +30,7 @@ public class OpenSearchClientRefresher implements PluginComponentRefresher<OpenS
                                      final Function<ConnectionConfiguration, OpenSearchClient> clientFunction) {
         this.clientFunction = clientFunction;
         this.currentConfig = connectionConfiguration;
-        this.currentClient = clientFunction.apply(connectionConfiguration);
+        this.currentClient = null;
         credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
         clientRefreshErrorsCounter = pluginMetrics.counter(CLIENT_REFRESH_ERRORS);
     }
@@ -44,6 +44,9 @@ public class OpenSearchClientRefresher implements PluginComponentRefresher<OpenS
     public OpenSearchClient get() {
         readWriteLock.readLock().lock();
         try {
+            if (currentClient == null) {
+                currentClient = clientFunction.apply(currentConfig);
+            }
             return currentClient;
         } finally {
             readWriteLock.readLock().unlock();

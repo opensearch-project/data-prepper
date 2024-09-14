@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.model.event;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -20,7 +21,6 @@ import java.util.UUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.mock;
 
 class JacksonEvent_JavaSerializationTest {
@@ -54,7 +54,7 @@ class JacksonEvent_JavaSerializationTest {
         assertThat(deserializedEvent.getMetadata(), equalTo(objectUnderTest.getMetadata()));
 
         assertThat(deserializedEvent.getEventHandle(), instanceOf(InternalEventHandle.class));
-        assertThat(((InternalEventHandle) deserializedEvent.getEventHandle()).getAcknowledgementSet(), nullValue());
+        assertFalse(((InternalEventHandle) deserializedEvent.getEventHandle()).hasAcknowledgementSet());
         assertThat(deserializedEvent.getEventHandle().getInternalOriginationTime(), equalTo(objectUnderTest.getMetadata().getTimeReceived()));
 
     }
@@ -63,7 +63,7 @@ class JacksonEvent_JavaSerializationTest {
     void serialize_with_acknowledgementSet_does_not_include_old_acknowledgement_set() throws IOException, ClassNotFoundException {
         final JacksonEvent objectUnderTest = createObjectUnderTest();
         final InternalEventHandle internalEventHandle = (InternalEventHandle) objectUnderTest.getEventHandle();
-        internalEventHandle.setAcknowledgementSet(mock(AcknowledgementSet.class));
+        internalEventHandle.addAcknowledgementSet(mock(AcknowledgementSet.class));
 
         final Object deserializedObject = serializeAndDeserialize(objectUnderTest);
 
@@ -74,7 +74,7 @@ class JacksonEvent_JavaSerializationTest {
         assertThat(deserializedEvent.getMetadata(), equalTo(objectUnderTest.getMetadata()));
 
         assertThat(deserializedEvent.getEventHandle(), instanceOf(InternalEventHandle.class));
-        assertThat(((InternalEventHandle) deserializedEvent.getEventHandle()).getAcknowledgementSet(), nullValue());
+        assertFalse(((InternalEventHandle) deserializedEvent.getEventHandle()).hasAcknowledgementSet());
         assertThat(deserializedEvent.getEventHandle().getInternalOriginationTime(), equalTo(objectUnderTest.getMetadata().getTimeReceived()));
     }
 

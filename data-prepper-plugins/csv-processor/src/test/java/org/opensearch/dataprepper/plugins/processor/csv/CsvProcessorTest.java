@@ -56,6 +56,7 @@ class CsvProcessorTest {
         lenient().when(processorConfig.getQuoteCharacter()).thenReturn(defaultConfig.getQuoteCharacter());
         lenient().when(processorConfig.getColumnNamesSourceKey()).thenReturn(defaultConfig.getColumnNamesSourceKey());
         lenient().when(processorConfig.getColumnNames()).thenReturn(defaultConfig.getColumnNames());
+        lenient().when(processorConfig.isDeleteSource()).thenReturn(false);
 
         lenient().when(pluginMetrics.counter(CsvProcessor.CSV_INVALID_EVENTS)).thenReturn(csvInvalidEventsCounter);
 
@@ -64,6 +65,24 @@ class CsvProcessorTest {
 
     private CsvProcessor createObjectUnderTest() {
         return new CsvProcessor(pluginMetrics, processorConfig, expressionEvaluator);
+    }
+
+    @Test
+    void delete_source_true_deletes_the_source() {
+        when(processorConfig.isDeleteSource()).thenReturn(true);
+
+        when(processorConfig.getSource()).thenReturn("different_source");
+
+        final Map<String, Object> eventData = new HashMap<>();
+        eventData.put("different_source","1,2,3");
+        final Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
+
+        final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
+        final Event parsedEvent = getSingleEvent(editedEvents);
+        assertThat(parsedEvent.containsKey("different_source"), equalTo(false));
+        assertThatKeyEquals(parsedEvent, "column1", "1");
+        assertThatKeyEquals(parsedEvent, "column2", "2");
+        assertThatKeyEquals(parsedEvent, "column3", "3");
     }
 
     @Test
@@ -98,6 +117,7 @@ class CsvProcessorTest {
     @Test
     void test_when_delimiterIsTab_then_parsedCorrectly() {
         when(processorConfig.getDelimiter()).thenReturn("\t");
+        csvProcessor = createObjectUnderTest();
 
         Record<Event> eventUnderTest = createMessageEvent("1\t2\t3");
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
@@ -274,6 +294,7 @@ class CsvProcessorTest {
     @Test
     void test_when_differentQuoteCharacter_then_parsesCorrectly() {
         when(processorConfig.getQuoteCharacter()).thenReturn("\'");
+        csvProcessor = createObjectUnderTest();
 
         final Record<Event> eventUnderTest = createMessageEvent("'1','2','3'");
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));

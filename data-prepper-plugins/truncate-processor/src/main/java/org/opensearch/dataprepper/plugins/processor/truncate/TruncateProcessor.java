@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -39,6 +40,14 @@ public class TruncateProcessor extends AbstractProcessor<Record<Event>, Record<E
         super(pluginMetrics);
         this.expressionEvaluator = expressionEvaluator;
         this.entries = config.getEntries();
+
+        config.getEntries().forEach(entry -> {
+            if (entry.getTruncateWhen() != null
+                    && !expressionEvaluator.isValidExpressionStatement(entry.getTruncateWhen())) {
+                throw new InvalidPluginConfigurationException(
+                        String.format("truncate_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", entry.getTruncateWhen()));
+            }
+        });
     }
 
     private String getTruncatedValue(final String value, final int startIndex, final Integer length) {

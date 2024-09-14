@@ -19,6 +19,8 @@ import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
+import org.opensearch.dataprepper.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -55,11 +57,18 @@ class PipelineParserConfigurationTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
+    @Mock
+    private PluginErrorCollector pluginErrorCollector;
+
+    @Mock
+    private PluginErrorsHandler pluginErrorsHandler;
+
     @Test
     void pipelineParser() {
         final PipelineTransformer pipelineTransformer = pipelineParserConfiguration.pipelineParser(
                 pipelinesDataFlowModel, pluginFactory, peerForwarderProvider, routerFactory,
-                dataPrepperConfiguration, circuitBreakerManager, eventFactory, acknowledgementSetManager, sourceCoordinatorFactory);
+                dataPrepperConfiguration, circuitBreakerManager, eventFactory, acknowledgementSetManager,
+                sourceCoordinatorFactory, pluginErrorCollector, pluginErrorsHandler);
 
         assertThat(pipelineTransformer, is(notNullValue()));
     }

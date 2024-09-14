@@ -25,7 +25,16 @@ public class KafkaPluginThreadFactory implements ThreadFactory {
             final ThreadFactory delegateThreadFactory,
             final String kafkaPluginType) {
         this.delegateThreadFactory = delegateThreadFactory;
-        this.threadPrefix = "kafka-" + kafkaPluginType + "-";
+        this.threadPrefix = createPluginPart(kafkaPluginType);
+        this.kafkaPluginType = kafkaPluginType;
+    }
+
+    KafkaPluginThreadFactory(
+            final ThreadFactory delegateThreadFactory,
+            final String kafkaPluginType,
+            final String kafkaTopic) {
+        this.delegateThreadFactory = delegateThreadFactory;
+        this.threadPrefix = normalizeName(kafkaTopic) + "-" + createPluginPart(kafkaPluginType);
         this.kafkaPluginType = kafkaPluginType;
     }
 
@@ -37,6 +46,28 @@ public class KafkaPluginThreadFactory implements ThreadFactory {
      */
     public static KafkaPluginThreadFactory defaultExecutorThreadFactory(final String kafkaPluginType) {
         return new KafkaPluginThreadFactory(Executors.defaultThreadFactory(), kafkaPluginType);
+    }
+
+    /**
+     * Creates an instance specifically for use with {@link Executors}.
+     *
+     * @param kafkaPluginType The name of the plugin type. e.g. sink, source, buffer
+     * @return An instance of the {@link KafkaPluginThreadFactory}.
+     */
+    public static KafkaPluginThreadFactory defaultExecutorThreadFactory(
+            final String kafkaPluginType,
+            final String kafkaTopic) {
+        return new KafkaPluginThreadFactory(Executors.defaultThreadFactory(), kafkaPluginType, kafkaTopic);
+    }
+
+    private static String createPluginPart(final String kafkaPluginType) {
+        return "kafka-" + kafkaPluginType + "-";
+    }
+
+    private static String normalizeName(final String kafkaTopic) {
+        final String limitedName = kafkaTopic.length() > 20 ? kafkaTopic.substring(0, 20) : kafkaTopic;
+        return limitedName
+                .toLowerCase().replaceAll("[^a-z0-9]", "-");
     }
 
     @Override

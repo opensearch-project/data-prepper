@@ -5,10 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +30,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +43,19 @@ public class RenameKeyProcessorTests {
 
     @Mock
     private ExpressionEvaluator expressionEvaluator;
+
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
+
+    @Test
+    void invalid_rename_when_throws_InvalidPluginConfigurationException() {
+        final String renameWhen = UUID.randomUUID().toString();
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true, renameWhen)));
+
+
+        when(expressionEvaluator.isValidExpressionStatement(renameWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
 
     @Test
     public void testSingleOverwriteRenameProcessorTests() {
@@ -118,6 +136,7 @@ public class RenameKeyProcessorTests {
         final String renameWhen = UUID.randomUUID().toString();
 
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false, renameWhen)));
+        when(expressionEvaluator.isValidExpressionStatement(renameWhen)).thenReturn(true);
 
         final RenameKeyProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -136,7 +155,9 @@ public class RenameKeyProcessorTests {
     }
 
     private RenameKeyProcessorConfig.Entry createEntry(final String fromKey, final String toKey, final boolean overwriteIfToKeyExists, final String renameWhen) {
-        return new RenameKeyProcessorConfig.Entry(fromKey, toKey, overwriteIfToKeyExists, renameWhen);
+        final EventKey fromEventKey = eventKeyFactory.createEventKey(fromKey);
+        final EventKey toEventKey = eventKeyFactory.createEventKey(toKey);
+        return new RenameKeyProcessorConfig.Entry(fromEventKey, toEventKey, overwriteIfToKeyExists, renameWhen);
     }
 
     private List<RenameKeyProcessorConfig.Entry> createListOfEntries(final RenameKeyProcessorConfig.Entry... entries) {

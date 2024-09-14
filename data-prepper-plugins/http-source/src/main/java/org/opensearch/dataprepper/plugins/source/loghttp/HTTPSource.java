@@ -13,6 +13,9 @@ import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import com.linecorp.armeria.server.throttling.ThrottlingService;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
+import org.opensearch.dataprepper.http.HttpServerConfig;
+import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
+import org.opensearch.dataprepper.http.LogThrottlingStrategy;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -29,7 +32,7 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.plugins.source.loghttp.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +52,7 @@ public class HTTPSource implements Source<Record<Log>> {
     public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
     static final String SERVER_CONNECTIONS = "serverConnections";
 
-    private final HTTPSourceConfig sourceConfig;
+    private final HttpServerConfig sourceConfig;
     private final CertificateProviderFactory certificateProviderFactory;
     private final ArmeriaHttpAuthenticationProvider authenticationProvider;
     private final HttpRequestExceptionHandler httpRequestExceptionHandler;

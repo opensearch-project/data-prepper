@@ -110,6 +110,8 @@ public class GeoIPProcessorIT {
         lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_FAILED)).thenReturn(geoIpEventsFailed);
         lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_FAILED_ENGINE_EXCEPTION)).thenReturn(geoIpEventsFailedEngineException);
         lenient().when(pluginMetrics.counter(GEO_IP_EVENTS_FAILED_IP_NOT_FOUND)).thenReturn(geoIpEventsFailedIPNotFound);
+
+        when(expressionEvaluator.isValidExpressionStatement("/peer/status == \"success\"")).thenReturn(true);
     }
 
     public GeoIPProcessor createObjectUnderTest() {

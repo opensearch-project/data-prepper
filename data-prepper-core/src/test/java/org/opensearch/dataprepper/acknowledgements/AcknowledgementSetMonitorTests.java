@@ -13,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.doAnswer;
 import static org.hamcrest.Matchers.equalTo;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -70,58 +69,5 @@ public class AcknowledgementSetMonitorTests {
         shutdownThread.start();
         acknowledgementSetMonitor.run();
         assertThat(acknowledgementSetMonitor.getSize(), equalTo(1));
-    }
-
-    @Test
-    public void testAcknowledgementSetAcquireRelease() {
-        when(eventHandle1.getAcknowledgementSet()).thenReturn(acknowledgementSet1);
-        try {
-            doAnswer((i) -> {return null; }).when(acknowledgementSet1).acquire(eventHandle1);
-        } catch (Exception e){}
-        acknowledgementSetMonitor.add(acknowledgementSet1);
-        acknowledgementSetMonitor.acquire(eventHandle1);
-        acknowledgementSetMonitor.release(eventHandle1, true);
-        Thread shutdownThread = new Thread(() -> {
-            try {
-                Thread.sleep(DEFAULT_WAIT_TIME_MS);
-            } catch (Exception e){}
-        });
-        shutdownThread.start();
-        acknowledgementSetMonitor.run();
-        assertThat(acknowledgementSetMonitor.getSize(), equalTo(0));
-    }
-
-    @Test
-    public void testAcknowledgementSetInvalidAcquire() {
-        acknowledgementSet2 = mock(DefaultAcknowledgementSet.class);
-        when(eventHandle1.getAcknowledgementSet()).thenReturn(acknowledgementSet2);
-        acknowledgementSetMonitor.add(acknowledgementSet1);
-        acknowledgementSetMonitor.acquire(eventHandle1);
-        Thread shutdownThread = new Thread(() -> {
-            try {
-                Thread.sleep(DEFAULT_WAIT_TIME_MS);
-            } catch (Exception e){}
-        });
-        shutdownThread.start();
-        acknowledgementSetMonitor.run();
-        assertThat(acknowledgementSetMonitor.getSize(), equalTo(0));
-        assertThat(acknowledgementSetMonitor.getNumInvalidAcquires(), equalTo(1));
-    }
-
-    @Test
-    public void testAcknowledgementSetInvalidRelease() {
-        acknowledgementSet2 = mock(DefaultAcknowledgementSet.class);
-        when(eventHandle1.getAcknowledgementSet()).thenReturn(acknowledgementSet2);
-        acknowledgementSetMonitor.add(acknowledgementSet1);
-        acknowledgementSetMonitor.release(eventHandle1, true);
-        Thread shutdownThread = new Thread(() -> {
-            try {
-                Thread.sleep(DEFAULT_WAIT_TIME_MS);
-            } catch (Exception e){}
-        });
-        shutdownThread.start();
-        acknowledgementSetMonitor.run();
-        assertThat(acknowledgementSetMonitor.getSize(), equalTo(0));
-        assertThat(acknowledgementSetMonitor.getNumInvalidReleases(), equalTo(1));
     }
 }

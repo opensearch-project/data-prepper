@@ -27,11 +27,11 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     implementation 'org.xerial.snappy:snappy-java:1.1.10.5'
-    implementation 'org.apache.parquet:parquet-common:1.14.0'
+    implementation libs.parquet.common
     implementation 'dev.failsafe:failsafe:3.3.2'
     implementation 'org.apache.httpcomponents:httpcore:4.4.16'
     testImplementation libs.commons.lang3
-    testImplementation 'org.wiremock:wiremock:3.4.2'
+    testImplementation 'org.wiremock:wiremock:3.8.0'
     testImplementation 'org.eclipse.jetty:jetty-bom:11.0.20'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation testLibs.junit.vintage
@@ -45,11 +45,14 @@ dependencies {
     testImplementation project(':data-prepper-plugins:parquet-codecs')
     testImplementation project(':data-prepper-test-event')
     testImplementation libs.avro.core
-    testImplementation testLibs.hadoop.common
-    testImplementation 'org.apache.parquet:parquet-avro:1.14.0'
-    testImplementation 'org.apache.parquet:parquet-column:1.14.0'
-    testImplementation 'org.apache.parquet:parquet-common:1.14.0'
-    testImplementation 'org.apache.parquet:parquet-hadoop:1.14.0'
+    testImplementation(libs.hadoop.common)  {
+        exclude group: 'org.eclipse.jetty'
+        exclude group: 'org.apache.hadoop', module: 'hadoop-auth'
+        exclude group: 'org.apache.zookeeper', module: 'zookeeper'
+    }
+    testImplementation libs.parquet.avro
+    testImplementation libs.parquet.column
+    testImplementation libs.parquet.hadoop
 }
 
 test {

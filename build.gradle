@@ -69,7 +69,7 @@ subprojects {
         }
     }
     dependencies {
-        implementation platform('com.fasterxml.jackson:jackson-bom:2.16.1')
+        implementation platform('com.fasterxml.jackson:jackson-bom:2.17.2')
         implementation platform('org.eclipse.jetty:jetty-bom:9.4.53.v20231009')
         implementation platform('io.micrometer:micrometer-bom:1.10.5')
         implementation libs.guava.core
@@ -79,11 +79,23 @@ subprojects {
         testImplementation testLibs.hamcrest
         testImplementation testLibs.awaitility
         constraints {
+            implementation('dnsjava:dnsjava') {
+                version {
+                    require '3.6.1'
+                }
+                because 'Fixes CVE-2023-39410.'
+            }
             implementation('org.apache.avro:avro') {
                 version {
                     require '1.11.3'
                 }
                 because 'Fixes CVE-2023-39410.'
+            }
+            implementation('org.apache.commons:commons-configuration2') {
+                version {
+                    require '2.11.0'
+                }
+                because 'Fixes CVE-2024-29131 and CVE-2024-29133.'
             }
             implementation('org.apache.httpcomponents:httpclient') {
                 version {
@@ -220,12 +232,19 @@ subprojects {
                 }
             } else if (details.requested.group == 'log4j' && details.requested.name == 'log4j') {
                 details.useTarget group: 'org.apache.logging.log4j', name: 'log4j-1.2-api', version: '2.17.1'
+            } else if (details.requested.group == 'org.bouncycastle' && details.requested.name.endsWith('-jdk15on')) {
+                def java8Name = details.requested.name.replace('-jdk15on', '-jdk18on')
+                details.useTarget group: 'org.bouncycastle', name: java8Name, version: libs.bouncycastle.bcprov.get().version
+                details.because 'Use only the Java 8 artifacts of BouncyCastle'
             }
         }
     }
 
     test {
         useJUnitPlatform()
+        javaLauncher = javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.current()
+        }
         reports {
             junitXml.required
             html.required

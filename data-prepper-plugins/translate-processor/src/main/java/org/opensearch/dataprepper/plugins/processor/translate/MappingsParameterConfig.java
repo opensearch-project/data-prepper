@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.processor.translate;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
@@ -12,10 +13,12 @@ import java.util.Objects;
 public class MappingsParameterConfig {
 
     @JsonProperty("source")
+    @JsonPropertyDescription("The source field to translate. Can be a string or a list of strings.")
     @NotNull
     private Object source;
 
     @JsonProperty("targets")
+    @JsonPropertyDescription("A list of target field configurations, such as the target field key or translation maps.")
     @Valid
     private List<TargetsParameterConfig> targetsParameterConfigs = new ArrayList<>();
 

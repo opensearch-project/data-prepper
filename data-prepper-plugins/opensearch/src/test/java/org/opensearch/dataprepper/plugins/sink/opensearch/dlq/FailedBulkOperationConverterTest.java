@@ -160,7 +160,7 @@ public class FailedBulkOperationConverterTest {
 
         final String jsonString = String.format("{\"%s\": \"%s\", \"%s\": \"%s\"}", key1, value1, key2, value2);
 
-        document = SerializedJson.fromStringAndOptionals(jsonString, null, null);
+        document = SerializedJson.fromStringAndOptionals(jsonString, null, null, null);
     }
 
 

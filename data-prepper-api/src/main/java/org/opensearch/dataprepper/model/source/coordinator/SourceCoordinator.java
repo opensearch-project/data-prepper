@@ -122,6 +122,7 @@ public interface SourceCoordinator<T> {
     /**
      * Should be called by the source when it is shutting down to indicate that it will no longer be able to perform work on partitions,
      * or can be called to give up ownership of its partitions in order to pick up new ones with {@link #getNextPartition(Function)} ()}.
+     * @param partitionKey - Key used as the partition key.
      * @param priorityTimestamp - A timestamp that will determine the order that UNASSIGNED partitions are acquired after they are given up.
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException if the partition could not be given up due to some failure
      * @since 2.8
@@ -137,6 +138,13 @@ public interface SourceCoordinator<T> {
      *                             can pick it up for processing
      */
     void updatePartitionForAcknowledgmentWait(final String partitionKey, final Duration ackowledgmentTimeout);
+
+    /**
+     * Should be called by the source to keep ownership of the partition
+     * before another instance of Data Prepper can pick it up for processing.
+     * @param partitionKey - the partition to renew ownership for
+     */
+    void renewPartitionOwnership(final String partitionKey);
 
     void deletePartition(final String partitionKey);
 }

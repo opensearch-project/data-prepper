@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateProcessor;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
@@ -35,15 +36,14 @@ import java.util.Arrays;
 import java.util.ArrayList;
 
 /**
- * An AggregateAction that combines multiple Events into a single Event. This action will create a combined event with histogram buckets of the values 
- * of specified list of keys from the groupState on concludeGroup. 
+ * An AggregateAction that combines multiple Events into a single Event. This action will create a combined event with histogram buckets of the values
+ * of specified list of keys from the groupState on concludeGroup.
  * @since 2.1
  */
 @DataPrepperPlugin(name = "histogram", pluginType = AggregateAction.class, pluginConfigurationType = HistogramAggregateActionConfig.class)
 public class HistogramAggregateAction implements AggregateAction {
     private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
     private static final String EVENT_TYPE = "event";
-    public static final String HISTOGRAM_METRIC_NAME = "histogram";
     private final String countKey;
     private final String bucketCountsKey;
     private final String bucketsKey;
@@ -61,8 +61,8 @@ public class HistogramAggregateAction implements AggregateAction {
     private Event maxEvent;
     private double minValue;
     private double maxValue;
+    private final String metricName;
 
-    private long startTimeNanos;
     private double[] buckets;
 
     @DataPrepperPluginConstructor
@@ -71,6 +71,7 @@ public class HistogramAggregateAction implements AggregateAction {
         List<Number> bucketList = histogramAggregateActionConfig.getBuckets();
         this.buckets = new double[bucketList.size()+2];
         int bucketIdx = 0;
+        this.metricName = histogramAggregateActionConfig.getMetricName();
         this.buckets[bucketIdx++] = -Float.MAX_VALUE;
         for (int i = 0; i < bucketList.size(); i++) {
             this.buckets[bucketIdx++] = convertToDouble(bucketList.get(i));
@@ -137,16 +138,28 @@ public class HistogramAggregateAction implements AggregateAction {
             return AggregateActionResponse.nullEventResponse();
         }
         double doubleValue = convertToDouble(value);
-        
+
         int idx = Arrays.binarySearch(this.buckets, doubleValue);
         if (idx < 0) {
             idx = -idx-2;
         }
+        Instant eventTime = Instant.now();
+        Instant eventStartTime = eventTime;
+        Instant eventEndTime = eventTime;
+        final Object startTime = event.get(startTimeKey, Object.class);
+        final Object endTime = event.get(endTimeKey, Object.class);
+        if (startTime != null) {
+            eventStartTime = AggregateProcessor.convertObjectToInstant(startTime);
+        }
+        if (endTime != null) {
+            eventEndTime = AggregateProcessor.convertObjectToInstant(endTime);
+        }
         if (groupState.get(bucketCountsKey) == null) {
+            groupState.put(startTimeKey, eventStartTime);
+            groupState.put(endTimeKey, eventEndTime);
             Long[] bucketCountsList = new Long[buckets.length-1];
             Arrays.fill(bucketCountsList, (long)0);
             bucketCountsList[idx]++;
-            groupState.put(startTimeKey, Instant.now());
             groupState.putAll(aggregateActionInput.getIdentificationKeys());
             groupState.put(sumKey, doubleValue);
             groupState.put(countKey, 1);
@@ -180,9 +193,15 @@ public class HistogramAggregateAction implements AggregateAction {
                     maxValue = doubleValue;
                 }
             }
-        } 
-        // Keep over-writing endTime to get the last time a record of this group received
-        groupState.put(endTimeKey, Instant.now());
+            final Instant groupStartTime = (Instant)groupState.get(startTimeKey);
+            final Instant groupEndTime = (Instant)groupState.get(endTimeKey);
+            if (eventStartTime.isBefore(groupStartTime)) {
+                groupState.put(startTimeKey, eventStartTime);
+            }
+            if (eventEndTime.isAfter(groupEndTime)) {
+                groupState.put(endTimeKey, eventEndTime);
+            }
+        }
         return AggregateActionResponse.nullEventResponse();
     }
 
@@ -194,7 +213,7 @@ public class HistogramAggregateAction implements AggregateAction {
         Instant endTime = (Instant)groupState.get(endTimeKey);
         long startTimeNanos = getTimeNanos(startTime);
         long endTimeNanos = getTimeNanos(endTime);
-        String histogramKey = HISTOGRAM_METRIC_NAME + "_key";
+        String histogramKey = this.metricName + "_key";
         List<Exemplar> exemplarList = new ArrayList<>();
         exemplarList.add(createExemplar("min", minEvent, minValue));
         exemplarList.add(createExemplar("max", maxEvent, maxValue));
@@ -214,8 +233,7 @@ public class HistogramAggregateAction implements AggregateAction {
                 explicitBoundsList.add(this.buckets[i]);
             }
             List<Bucket> buckets = createBuckets(bucketCounts, explicitBoundsList);
-            Integer countValue = (Integer)groupState.get(countKey);
-            Map<String, Object> attr = new HashMap<String, Object>();
+            Map<String, Object> attr = new HashMap<>();
             aggregateActionInput.getIdentificationKeys().forEach((k, v) -> {
                 attr.put((String)k, v);
             });
@@ -227,7 +245,7 @@ public class HistogramAggregateAction implements AggregateAction {
             Integer count = (Integer)groupState.get(countKey);
             String description = String.format("Histogram of %s in the events", key);
             JacksonHistogram histogram = JacksonHistogram.builder()
-                .withName(HISTOGRAM_METRIC_NAME)
+                .withName(this.metricName)
                 .withDescription(description)
                 .withTime(OTelProtoCodec.convertUnixNanosToISO8601(endTimeNanos))
                 .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(startTimeNanos))
@@ -247,7 +265,7 @@ public class HistogramAggregateAction implements AggregateAction {
                 .build(false);
             event = (Event)histogram;
         }
-        
+
         return new AggregateActionOutput(List.of(event));
     }
 }

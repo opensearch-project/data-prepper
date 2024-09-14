@@ -140,11 +140,12 @@ class ObfuscationProcessorTest {
     void testProcessorWithDifferentAction() {
         final PluginModel mockModel = mock(PluginModel.class);
         final ObfuscationAction mockAction = mock(ObfuscationAction.class);
+        
         when(mockModel.getPluginName()).thenReturn("mock");
         when(mockModel.getPluginSettings()).thenReturn(new HashMap<>());
         when(mockConfig.getAction()).thenReturn(mockModel);
         when(mockConfig.getTarget()).thenReturn("");
-        when(mockAction.obfuscate(anyString(), anyList())).thenReturn("abc");
+        when(mockAction.obfuscate(anyString(), anyList(),any())).thenReturn("abc");
 
         when(mockFactory.loadPlugin(eq(ObfuscationAction.class), any(PluginSetting.class)))
                 .thenReturn(mockAction);

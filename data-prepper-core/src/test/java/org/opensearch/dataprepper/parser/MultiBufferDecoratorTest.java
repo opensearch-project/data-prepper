@@ -231,6 +231,15 @@ public class MultiBufferDecoratorTest {
         assertThat(multiBufferDecorator.getMaxRequestSize(), equalTo(Optional.empty()));
     }
 
+    @Test
+    void test_getOptimalRequestSize() {
+        when(primaryBuffer.getOptimalRequestSize()).thenReturn(Optional.empty());
+        when(secondaryBuffer.getOptimalRequestSize()).thenReturn(Optional.empty());
+
+        final MultiBufferDecorator multiBufferDecorator = createObjectUnderTest(2);
+        assertThat(multiBufferDecorator.getOptimalRequestSize(), equalTo(Optional.empty()));
+    }
+
     private MultiBufferDecorator createObjectUnderTest(final int secondaryBufferCount) {
         final List<Buffer> secondaryBuffers = IntStream.range(0, secondaryBufferCount)
                 .mapToObj(i -> secondaryBuffer)

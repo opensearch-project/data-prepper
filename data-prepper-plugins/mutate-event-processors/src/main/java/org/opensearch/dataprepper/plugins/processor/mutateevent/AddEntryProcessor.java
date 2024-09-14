@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -39,6 +40,14 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         super(pluginMetrics);
         this.entries = config.getEntries();
         this.expressionEvaluator = expressionEvaluator;
+
+        config.getEntries().forEach(entry -> {
+            if (entry.getAddWhen() != null
+                    && !expressionEvaluator.isValidExpressionStatement(entry.getAddWhen())) {
+                throw new InvalidPluginConfigurationException(
+                        String.format("add_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", entry.getAddWhen()));
+            }
+        });
     }
 
     @Override

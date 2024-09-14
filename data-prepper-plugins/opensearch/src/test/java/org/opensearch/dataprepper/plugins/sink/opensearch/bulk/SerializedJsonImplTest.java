@@ -20,6 +20,7 @@ class SerializedJsonImplTest {
     private byte[] documentBytes;
     private String documentId;
     private String routingField;
+    private String pipelineField;
 
     @BeforeEach
     void setUp() {
@@ -27,12 +28,13 @@ class SerializedJsonImplTest {
         documentSize = random.nextInt(1_000) + 100;
 
         documentBytes = new byte[documentSize];
-	documentId = RandomStringUtils.randomAlphabetic(10);
-	routingField = RandomStringUtils.randomAlphabetic(10);
+        documentId = RandomStringUtils.randomAlphabetic(10);
+        routingField = RandomStringUtils.randomAlphabetic(10);
+        pipelineField = RandomStringUtils.randomAlphabetic(10);
     }
 
     private SerializedJsonImpl createObjectUnderTest() {
-        return new SerializedJsonImpl(documentBytes, documentId, routingField);
+        return new SerializedJsonImpl(documentBytes, documentId, routingField, pipelineField);
     }
 
     @Test
@@ -45,5 +47,6 @@ class SerializedJsonImplTest {
         assertThat(createObjectUnderTest().getSerializedJson(), sameInstance(documentBytes));
         assertThat(createObjectUnderTest().getDocumentId().get(), equalTo(documentId));
         assertThat(createObjectUnderTest().getRoutingField().get(), equalTo(routingField));
+        assertThat(createObjectUnderTest().getPipelineField().get(), equalTo(pipelineField));
     }
 }

@@ -80,7 +80,7 @@ public class BufferUtilitiesTest {
 
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(successfulFuture);
 
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, bucketOwnerProvider).join();
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, null, bucketOwnerProvider).join();
 
         final ArgumentCaptor<PutObjectRequest> argumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(s3Client, times(1)).putObject(argumentCaptor.capture(), eq(requestBody));
@@ -101,7 +101,7 @@ public class BufferUtilitiesTest {
         final CompletableFuture<PutObjectResponse> failedFuture = CompletableFuture.failedFuture(NoSuchBucketException.builder().build());
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(failedFuture);
 
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, null, bucketOwnerProvider).join();
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, null, null,  bucketOwnerProvider).join();
 
         verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), eq(requestBody));
         verify(mockRunOnCompletion).accept(false);
@@ -115,7 +115,7 @@ public class BufferUtilitiesTest {
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(failedFuture);
 
         BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket,
-                defaultBucketEnabled ? defaultBucket : null, bucketOwnerProvider);
+                defaultBucketEnabled ? defaultBucket : null, null, bucketOwnerProvider);
 
         verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), eq(requestBody));
         verify(mockRunOnCompletion).accept(false);
@@ -130,7 +130,7 @@ public class BufferUtilitiesTest {
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(failedFuture).thenReturn(successfulFuture);
 
         when(bucketOwnerProvider.getBucketOwner(anyString())).thenReturn(Optional.empty());
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, bucketOwnerProvider);
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, null, bucketOwnerProvider);
 
         final ArgumentCaptor<PutObjectRequest> argumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(s3Client, times(2)).putObject(argumentCaptor.capture(), eq(requestBody));
@@ -168,7 +168,7 @@ public class BufferUtilitiesTest {
         when(bucketOwnerProvider.getBucketOwner(targetBucket)).thenReturn(Optional.of(bucketOwner));
         when(bucketOwnerProvider.getBucketOwner(defaultBucket)).thenReturn(Optional.of(defaultBucketOwner));
 
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, bucketOwnerProvider);
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, null, bucketOwnerProvider);
 
         final ArgumentCaptor<PutObjectRequest> argumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(s3Client, times(2)).putObject(argumentCaptor.capture(), eq(requestBody));

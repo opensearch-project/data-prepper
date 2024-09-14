@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
@@ -45,6 +46,17 @@ public class AddEntryProcessorTests {
 
     @Mock
     private ExpressionEvaluator expressionEvaluator;
+
+    @Test
+    void invalid_add_when_throws_InvalidPluginConfigurationException() {
+        final String addWhen = UUID.randomUUID().toString();
+
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,addWhen)));
+
+        when(expressionEvaluator.isValidExpressionStatement(addWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
 
     @Test
     public void testSingleAddProcessorTests() {
@@ -417,6 +429,7 @@ public class AddEntryProcessorTests {
         final String addWhen = UUID.randomUUID().toString();
 
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,addWhen)));
+        when(expressionEvaluator.isValidExpressionStatement(addWhen)).thenReturn(true);
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -434,6 +447,7 @@ public class AddEntryProcessorTests {
         final String addWhen = UUID.randomUUID().toString();
 
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null, "newMessage", 3, null, null, false, false,addWhen)));
+        when(expressionEvaluator.isValidExpressionStatement(addWhen)).thenReturn(true);
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEventWithMetadata("thisisamessage", Map.of("key", "value"));

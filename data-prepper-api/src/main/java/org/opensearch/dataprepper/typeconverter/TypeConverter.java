@@ -7,4 +7,5 @@ package org.opensearch.dataprepper.typeconverter;
 
 public interface TypeConverter<T> {
   T convert(Object source);
+  T convert(Object source, ConverterArguments arguments);
 }

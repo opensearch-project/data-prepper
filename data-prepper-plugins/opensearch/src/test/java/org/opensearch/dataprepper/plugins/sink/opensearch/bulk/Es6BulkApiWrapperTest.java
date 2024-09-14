@@ -26,6 +26,7 @@ import org.opensearch.client.transport.TransportOptions;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -120,6 +121,26 @@ class Es6BulkApiWrapperTest {
         final JsonEndpoint<BulkRequest, BulkResponse, ErrorResponse> endpoint = jsonEndpointArgumentCaptor.getValue();
         final String expectedURI = String.format(ES6_URI_PATTERN, testIndex);
         assertThat(endpoint.requestUrl(bulkRequest), equalTo(expectedURI));
+    }
+
+    @Test
+    void testBulkWithAdditionParameters() throws IOException {
+        final String requestIndex = "test-index";
+        final String expectedURI = String.format(ES6_URI_PATTERN, "test-index");
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        when(openSearchClient._transportOptions()).thenReturn(transportOptions);
+        when(bulkRequest.index()).thenReturn(requestIndex);
+        final String pipeline = UUID.randomUUID().toString();
+        when(bulkRequest.pipeline()).thenReturn(pipeline);
+        objectUnderTest.bulk(bulkRequest);
+
+        ArgumentCaptor<BulkRequest> bulkRequestArgumentCaptor = ArgumentCaptor.forClass(BulkRequest.class);
+
+        verify(openSearchTransport).performRequest(
+                bulkRequestArgumentCaptor.capture(), jsonEndpointArgumentCaptor.capture(), eq(transportOptions));
+        final JsonEndpoint<BulkRequest, BulkResponse, ErrorResponse> endpoint = jsonEndpointArgumentCaptor.getValue();
+        assertThat(endpoint.requestUrl(bulkRequest), equalTo(expectedURI));
+        assertThat(bulkRequestArgumentCaptor.getValue().pipeline(), equalTo(pipeline));
     }
 
     private static Stream<Arguments> getTypeFlags() {

@@ -16,7 +16,6 @@ dependencies {
     implementation 'org.projectlombok:lombok:1.18.26'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
     testImplementation project(path: ':data-prepper-test-common')
-    testImplementation testLibs.mockito.inline
     compileOnly 'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
 }

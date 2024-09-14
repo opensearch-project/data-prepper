@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.s3;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -20,8 +19,7 @@ import org.opensearch.dataprepper.plugins.source.s3.filter.EventBridgeObjectCrea
 import org.opensearch.dataprepper.plugins.source.s3.filter.S3EventFilter;
 import org.opensearch.dataprepper.plugins.source.s3.filter.S3ObjectCreatedFilter;
 import org.opensearch.dataprepper.plugins.source.s3.parser.ParsedMessage;
-import org.opensearch.dataprepper.plugins.source.s3.parser.S3EventBridgeNotificationParser;
-import org.opensearch.dataprepper.plugins.source.s3.parser.S3EventNotificationParser;
+import org.opensearch.dataprepper.plugins.source.s3.parser.SqsMessageParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkException;
@@ -75,11 +73,10 @@ public class SqsWorker implements Runnable {
     private final Counter sqsVisibilityTimeoutChangeFailedCount;
     private final Timer sqsMessageDelayTimer;
     private final Backoff standardBackoff;
+    private final SqsMessageParser sqsMessageParser;
     private int failedAttemptCount;
     private final boolean endToEndAcknowledgementsEnabled;
     private final AcknowledgementSetManager acknowledgementSetManager;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private volatile boolean isStopped = false;
     private Map<ParsedMessage, Integer> parsedMessageVisibilityTimesMap;
 
@@ -98,6 +95,7 @@ public class SqsWorker implements Runnable {
         sqsOptions = s3SourceConfig.getSqsOptions();
         objectCreatedFilter = new S3ObjectCreatedFilter();
         evenBridgeObjectCreatedFilter = new EventBridgeObjectCreatedFilter();
+        sqsMessageParser = new SqsMessageParser(s3SourceConfig);
         failedAttemptCount = 0;
         parsedMessageVisibilityTimesMap = new HashMap<>();
 
@@ -139,7 +137,7 @@ public class SqsWorker implements Runnable {
         if (!sqsMessages.isEmpty()) {
             sqsMessagesReceivedCounter.increment(sqsMessages.size());
 
-            final Collection<ParsedMessage> s3MessageEventNotificationRecords = getS3MessageEventNotificationRecords(sqsMessages);
+            final Collection<ParsedMessage> s3MessageEventNotificationRecords = sqsMessageParser.parseSqsMessages(sqsMessages);
 
             // build s3ObjectReference from S3EventNotificationRecord if event name starts with ObjectCreated
             final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processS3EventNotificationRecords(s3MessageEventNotificationRecords);
@@ -191,25 +189,11 @@ public class SqsWorker implements Runnable {
                 .build();
     }
 
-    private Collection<ParsedMessage> getS3MessageEventNotificationRecords(final List<Message> sqsMessages) {
-        return sqsMessages.stream()
-                .map(this::convertS3EventMessages)
-                .collect(Collectors.toList());
-    }
-
-    private ParsedMessage convertS3EventMessages(final Message message) {
-        if (s3SourceConfig.getNotificationSource().equals(NotificationSourceOption.S3)) {
-            return new S3EventNotificationParser().parseMessage(message, objectMapper);
-        }
-        else if (s3SourceConfig.getNotificationSource().equals(NotificationSourceOption.EVENTBRIDGE)) {
-            return new S3EventBridgeNotificationParser().parseMessage(message, objectMapper);
-        }
-        return new ParsedMessage(message, true);
-    }
-
     private List<DeleteMessageBatchRequestEntry> processS3EventNotificationRecords(final Collection<ParsedMessage> s3EventNotificationRecords) {
         final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection = new ArrayList<>();
         final List<ParsedMessage> parsedMessagesToRead = new ArrayList<>();
+        final Map<ParsedMessage, AcknowledgementSet> messageAcknowledgementSetMap = new HashMap<>();
+        final Map<ParsedMessage, List<DeleteMessageBatchRequestEntry>> messageWaitingForAcknowledgementsMap = new HashMap<>();
 
         for (ParsedMessage parsedMessage : s3EventNotificationRecords) {
             if (parsedMessage.isFailedParsing()) {
@@ -242,7 +226,7 @@ public class SqsWorker implements Runnable {
         }
 
         LOG.info("Received {} messages from SQS. Processing {} messages.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
-
+        
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
             List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
@@ -276,25 +260,23 @@ public class SqsWorker implements Runnable {
                                 return;
                             }
                             parsedMessageVisibilityTimesMap.put(parsedMessage, newValue);
-                            final ChangeMessageVisibilityRequest changeMessageVisibilityRequest = ChangeMessageVisibilityRequest.builder()
-                                    .visibilityTimeout(newVisibilityTimeoutSeconds)
-                                    .queueUrl(sqsOptions.getSqsUrl())
-                                    .receiptHandle(parsedMessage.getMessage().receiptHandle())
-                                    .build();
-
-                            try {
-                                sqsClient.changeMessageVisibility(changeMessageVisibilityRequest);
-                                sqsVisibilityTimeoutChangedCount.increment();
-                                LOG.debug("Set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds);
-                            } catch (Exception e) {
-                                LOG.error("Failed to set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds, e);
-                                sqsVisibilityTimeoutChangeFailedCount.increment();
-                            }
-
+                            increaseVisibilityTimeout(parsedMessage, newVisibilityTimeoutSeconds);
                         },
                         Duration.ofSeconds(progressCheckInterval));
                 }
+                messageAcknowledgementSetMap.put(parsedMessage, acknowledgementSet);
+                messageWaitingForAcknowledgementsMap.put(parsedMessage, waitingForAcknowledgements);
             }
+        }
+        
+        if (endToEndAcknowledgementsEnabled) {
+            LOG.debug("Created acknowledgement sets for {} messages.", parsedMessagesToRead.size());
+        }
+
+        // Use a separate loop for processing the S3 objects
+        for (ParsedMessage parsedMessage : parsedMessagesToRead) {
+            final AcknowledgementSet acknowledgementSet = messageAcknowledgementSetMap.get(parsedMessage);
+            final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = messageWaitingForAcknowledgementsMap.get(parsedMessage);
             final S3ObjectReference s3ObjectReference = populateS3Reference(parsedMessage.getBucketName(), parsedMessage.getObjectKey());
             final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(parsedMessage, s3ObjectReference, acknowledgementSet);
             if (endToEndAcknowledgementsEnabled) {
@@ -303,9 +285,30 @@ public class SqsWorker implements Runnable {
             } else {
                 deleteMessageBatchRequestEntry.ifPresent(deleteMessageBatchRequestEntryCollection::add);
             }
-        }
+        }         
 
         return deleteMessageBatchRequestEntryCollection;
+    }
+
+    private void increaseVisibilityTimeout(final ParsedMessage parsedMessage, final int newVisibilityTimeoutSeconds) {
+        if(isStopped) {
+            LOG.info("Some messages are pending completion of acknowledgments. Data Prepper will not increase the visibility timeout because it is shutting down. {}", parsedMessage);
+            return;
+        }
+        final ChangeMessageVisibilityRequest changeMessageVisibilityRequest = ChangeMessageVisibilityRequest.builder()
+                .visibilityTimeout(newVisibilityTimeoutSeconds)
+                .queueUrl(sqsOptions.getSqsUrl())
+                .receiptHandle(parsedMessage.getMessage().receiptHandle())
+                .build();
+
+        try {
+            sqsClient.changeMessageVisibility(changeMessageVisibilityRequest);
+            sqsVisibilityTimeoutChangedCount.increment();
+            LOG.debug("Set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds);
+        } catch (Exception e) {
+            LOG.error("Failed to set visibility timeout for message {} to {}", parsedMessage.getMessage().messageId(), newVisibilityTimeoutSeconds, e);
+            sqsVisibilityTimeoutChangeFailedCount.increment();
+        }
     }
 
     private Optional<DeleteMessageBatchRequestEntry> processS3Object(
@@ -328,6 +331,8 @@ public class SqsWorker implements Runnable {
     }
 
     private void deleteSqsMessages(final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection) {
+        if(isStopped)
+            return;
         if (deleteMessageBatchRequestEntryCollection.size() == 0) {
             return;
         }
@@ -396,6 +401,5 @@ public class SqsWorker implements Runnable {
 
     void stop() {
         isStopped = true;
-        Thread.currentThread().interrupt();
     }
 }

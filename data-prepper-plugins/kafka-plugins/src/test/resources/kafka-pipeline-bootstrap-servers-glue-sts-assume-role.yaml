@@ -1,0 +1,17 @@
+log-pipeline :
+  source:
+     kafka:
+        bootstrap_servers:
+          - "localhost:9092"
+        encryption:
+          type: "SSL"
+        aws:
+          region: us-east-2
+          sts_role_arn: sts_role_arn
+        schema:
+          type: aws_glue
+        topics:
+        - name: "quickstart-events"
+          group_id: "groupdID1"
+  sink:
+    stdout:

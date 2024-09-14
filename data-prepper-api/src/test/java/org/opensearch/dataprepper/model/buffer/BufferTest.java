@@ -38,6 +38,12 @@ class BufferTest {
     }
 
     @Test
+    void testOptimalRequestSize() {
+        final Buffer<Record<Event>> buffer = createObjectUnderTest();
+        assertEquals(buffer.getOptimalRequestSize(), Optional.empty());
+    }
+
+    @Test
     void testShutdown() {
         final Buffer<Record<Event>> buffer = createObjectUnderTest();
         buffer.shutdown();

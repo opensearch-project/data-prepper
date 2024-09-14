@@ -6,6 +6,11 @@
 package org.opensearch.dataprepper.typeconverter;
 
 public class DoubleConverter implements TypeConverter<Double> {
+
+    public Double convert(Object source, ConverterArguments arguments) throws IllegalArgumentException {
+        return convert(source);
+    }
+
     public Double convert(Object source) throws IllegalArgumentException {
         if (source instanceof String) {
             return Double.parseDouble((String)source);
@@ -17,7 +22,7 @@ public class DoubleConverter implements TypeConverter<Double> {
             return (((Number)source).doubleValue());
         }
         if (source instanceof Boolean) {
-            return (double)(((Boolean)source) ? 1.0 : 0.0);
+            return ((Boolean)source) ? 1.0 : 0.0;
         }
         throw new IllegalArgumentException("Unsupported type conversion. Source class: " + source.getClass());
     }

@@ -6,25 +6,37 @@
 package org.opensearch.dataprepper.metrics;
 
 import io.micrometer.core.instrument.Measurement;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Statistic;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class MetricsTestUtil {
 
-    public static void initMetrics() {
-        Metrics.globalRegistry.getRegistries().forEach(meterRegistry -> Metrics.globalRegistry.remove(meterRegistry));
-        Metrics.globalRegistry.getMeters().forEach(meter -> Metrics.globalRegistry.remove(meter));
+    public static synchronized void initMetrics() {
+        final Set<MeterRegistry> registries = new HashSet<>(Metrics.globalRegistry.getRegistries());
+        registries.forEach(Metrics.globalRegistry::remove);
+
+        final List<Meter> meters = new ArrayList<>(Metrics.globalRegistry.getMeters());
+        meters.forEach(Metrics.globalRegistry::remove);
+
         Metrics.addRegistry(new SimpleMeterRegistry());
     }
 
-    public static List<Measurement> getMeasurementList(final String meterName) {
-        return StreamSupport.stream(getRegistry().find(meterName).meter().measure().spliterator(), false)
+    public static synchronized List<Measurement> getMeasurementList(final String meterName) {
+        final Meter meter = getRegistry().find(meterName).meter();
+        if(meter == null)
+            throw new RuntimeException("No metrics meter is available for " + meterName);
+
+        return StreamSupport.stream(meter.measure().spliterator(), false)
                 .collect(Collectors.toList());
     }
 

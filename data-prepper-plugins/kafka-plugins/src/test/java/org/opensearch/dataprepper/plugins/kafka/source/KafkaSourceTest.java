@@ -6,11 +6,14 @@
 package org.opensearch.dataprepper.plugins.kafka.source;
 
 import org.apache.kafka.common.config.ConfigException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -21,6 +24,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.kafka.common.KafkaMdc;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
@@ -29,6 +33,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import org.slf4j.MDC;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -41,6 +46,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -82,6 +88,7 @@ class KafkaSourceTest {
     private PluginConfigObservable pluginConfigObservable;
 
     private static final String TEST_GROUP_ID = "testGroupId";
+    private static final String TEST_CLIENT_ID = "testClientId";
 
     public KafkaSource createObjectUnderTest() {
         return new KafkaSource(
@@ -107,6 +114,8 @@ class KafkaSourceTest {
         when(topic2.getConsumerMaxPollRecords()).thenReturn(1);
         when(topic1.getGroupId()).thenReturn(TEST_GROUP_ID);
         when(topic2.getGroupId()).thenReturn(TEST_GROUP_ID);
+        when(topic1.getClientId()).thenReturn(TEST_CLIENT_ID);
+        when(topic2.getClientId()).thenReturn(TEST_CLIENT_ID);
         when(topic1.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));
         when(topic2.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));
         when(topic1.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(5));
@@ -150,6 +159,18 @@ class KafkaSourceTest {
     void test_kafkaSource_basicFunctionality() {
         when(topic1.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
         when(topic2.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+        kafkaSource = createObjectUnderTest();
+        assertTrue(Objects.nonNull(kafkaSource));
+        kafkaSource.start(buffer);
+        assertTrue(Objects.nonNull(kafkaSource.getConsumer()));
+    }
+
+    @Test
+    void test_kafkaSource_basicFunctionalityWithClientIdNull() {
+        when(topic1.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+        when(topic2.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+        when(topic1.getClientId()).thenReturn(null);
+        when(topic1.getClientId()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
         assertTrue(Objects.nonNull(kafkaSource));
         kafkaSource.start(buffer);
@@ -214,5 +235,39 @@ class KafkaSourceTest {
         verify(sourceConfig, never()).setAuthConfig(any());
         verify(sourceConfig, never()).setAwsConfig(any());
         verify(sourceConfig, never()).setEncryptionConfig(any());
+    }
+
+    @Nested
+    class MdcTests {
+        private MockedStatic<MDC> mdcMockedStatic;
+
+        @BeforeEach
+        void setUp() {
+            mdcMockedStatic = mockStatic(MDC.class);
+        }
+
+        @AfterEach
+        void tearDown() {
+            mdcMockedStatic.close();
+        }
+
+        @Test
+        void start_sets_and_removes_MDC() {
+            when(topic1.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+            when(topic2.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+
+            createObjectUnderTest().start(buffer);
+
+            mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "source"));
+            mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));
+        }
+
+        @Test
+        void stop_sets_and_removes_MDC() {
+            createObjectUnderTest().stop();
+
+            mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "source"));
+            mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));
+        }
     }
 }

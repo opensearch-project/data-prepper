@@ -565,8 +565,8 @@ class S3SinkServiceTest {
 
         DefaultEventHandle eventHandle1 = (DefaultEventHandle)event1.getEventHandle();
         DefaultEventHandle eventHandle2 = (DefaultEventHandle)event2.getEventHandle();
-        eventHandle1.setAcknowledgementSet(acknowledgementSet);
-        eventHandle2.setAcknowledgementSet(acknowledgementSet);
+        eventHandle1.addAcknowledgementSet(acknowledgementSet);
+        eventHandle2.addAcknowledgementSet(acknowledgementSet);
 
         doThrow(RuntimeException.class).when(codec).writeEvent(event1, outputStream);
 

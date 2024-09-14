@@ -254,4 +254,18 @@ class MongoTasksRefresherTest {
                 buffer, enhancedSourceCoordinator, pluginMetrics, acknowledgementSetManager,
                 executorServiceFunction, null, documentDBSourceAggregateMetrics));
     }
+
+    @Test
+    void testTaskRefreshShutdown() {
+        final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(sourceConfig);
+        objectUnderTest.shutdown();
+        verify(executorServiceFunction).apply(eq(3));
+        verify(executorService).submit(any(ExportScheduler.class));
+        verify(executorService).submit(any(ExportWorker.class));
+        verify(executorService).submit(any(StreamScheduler.class));
+        verify(executorService).shutdownNow();
+        verifyNoMoreInteractions(executorServiceFunction);
+
+    }
 }

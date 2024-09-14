@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.parse;
 
 import java.util.List;
+import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 
 public interface CommonParseConfig {
     /**
@@ -27,7 +28,6 @@ public interface CommonParseConfig {
      * An optional setting used to specify a JSON Pointer. Pointer points to the JSON key that will be parsed into the destination.
      * There is no pointer by default, meaning that the entirety of source will be parsed. If the target key would overwrite an existing
      * key in the Event then the absolute path of the target key will be placed into destination
-     *
      * Note: (should this be configurable/what about double conflicts?)
      * @return String representing JSON Pointer
      */
@@ -54,4 +54,16 @@ public interface CommonParseConfig {
      * Defaults to true.
      */
     boolean getOverwriteIfDestinationExists();
+
+    /**
+     * An optional setting used to request dropping the original raw message after successfully parsing the input event.
+     * Defaults to false.
+     */
+    boolean isDeleteSourceRequested();
+
+    /**
+     * An optional setting used to determine how to handle parsing errors. Default is skip, which includes logging the error
+     * and passing the failed Event downstream to the next processor.
+     */
+    HandleFailedEventsOption getHandleFailedEventsOption();
 }

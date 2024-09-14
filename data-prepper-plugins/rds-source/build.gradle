@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+}
+
+dependencies {
+    implementation project(path: ':data-prepper-api')
+    implementation project(path: ':data-prepper-plugins:aws-plugin-api')
+    implementation project(path: ':data-prepper-plugins:buffer-common')
+    implementation project(path: ':data-prepper-plugins:http-common')
+    implementation project(path: ':data-prepper-plugins:common')
+    implementation project(path: ':data-prepper-plugins:parquet-codecs')
+
+    implementation 'io.micrometer:micrometer-core'
+
+    implementation 'software.amazon.awssdk:sts'
+    implementation 'software.amazon.awssdk:arns'
+    implementation 'software.amazon.awssdk:rds'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:netty-nio-client'
+
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    implementation 'com.zendesk:mysql-binlog-connector-java:0.29.2'
+    implementation 'com.mysql:mysql-connector-j:8.4.0'
+
+    testImplementation project(path: ':data-prepper-test-common')
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    testImplementation project(path: ':data-prepper-test-event')
+    testImplementation libs.avro.core
+    testImplementation libs.parquet.hadoop
+    testImplementation libs.parquet.avro
+}

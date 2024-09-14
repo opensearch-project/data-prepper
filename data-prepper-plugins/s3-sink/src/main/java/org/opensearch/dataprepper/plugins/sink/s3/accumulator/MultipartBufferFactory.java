@@ -9,7 +9,10 @@ import org.opensearch.dataprepper.plugins.codec.parquet.S3OutputStream;
 import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 
+import java.util.Map;
 import java.util.function.Supplier;
+import java.util.function.Function;
+
 
 public class MultipartBufferFactory implements BufferFactory {
     @Override
@@ -17,6 +20,7 @@ public class MultipartBufferFactory implements BufferFactory {
                             final Supplier<String> bucketSupplier,
                             final Supplier<String> keySupplier,
                             final String defaultBucket,
+                            final Function<Integer, Map<String, String>> metadataSupplier,
                             final BucketOwnerProvider bucketOwnerProvider) {
         return new MultipartBuffer(new S3OutputStream(s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider));
     }

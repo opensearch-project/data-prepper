@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.dissect.Fields.AppendField;
 import org.opensearch.dataprepper.plugins.processor.dissect.Fields.Field;
@@ -25,9 +26,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -47,6 +50,17 @@ class DissectProcessorTest {
     @BeforeEach
     void setUp() {
         when(dissectConfig.getMap()).thenReturn(Map.of());
+    }
+
+    @Test
+    void invalid_dissect_when_condition_throws_InvalidPluginConfigurationException() {
+        final String dissectWhen = UUID.randomUUID().toString();
+
+        when(dissectConfig.getDissectWhen()).thenReturn(dissectWhen);
+
+        when(expressionEvaluator.isValidExpressionStatement(dissectWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
     @Test

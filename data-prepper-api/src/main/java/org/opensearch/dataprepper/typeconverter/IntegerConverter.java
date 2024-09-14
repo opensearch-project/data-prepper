@@ -7,6 +7,11 @@ package org.opensearch.dataprepper.typeconverter;
 
 import java.math.BigDecimal;
 public class IntegerConverter implements TypeConverter<Integer> {
+
+    public Integer convert(Object source, ConverterArguments arguments) throws IllegalArgumentException {
+        return convert(source);
+    }
+
     public Integer convert(Object source) throws IllegalArgumentException {
         if (source instanceof String) {
             return Integer.parseInt((String)source);

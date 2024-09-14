@@ -20,13 +20,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
@@ -48,11 +47,11 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -109,23 +108,22 @@ public class GrokProcessorTests {
 
     @Mock
     private ExpressionEvaluator expressionEvaluator;
-
-    private PluginSetting pluginSetting;
+    @Mock
+    private GrokProcessorConfig grokProcessorConfig;
     private final String PLUGIN_NAME = "grok";
     private Map<String, Object> capture;
     private final Map<String, List<String>> matchConfig = new HashMap<>();
 
     @BeforeEach
     public void setup() throws TimeoutException, ExecutionException, InterruptedException {
-        pluginSetting = getDefaultPluginSetting();
-        pluginSetting.setPipelineName("grokPipeline");
+        configureDefaultGrokProcessorConfig();
 
         final List<String> matchPatterns = new ArrayList<>();
         matchPatterns.add("%{PATTERN1}");
         matchPatterns.add("%{PATTERN2}");
         matchConfig.put("message", matchPatterns);
 
-        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        when(grokProcessorConfig.getMatch()).thenReturn(matchConfig);
 
         lenient().when(pluginMetrics.counter(GrokProcessor.GROK_PROCESSING_MATCH)).thenReturn(grokProcessingMatchCounter);
         lenient().when(pluginMetrics.counter(GrokProcessor.GROK_PROCESSING_MISMATCH)).thenReturn(grokProcessingMismatchCounter);
@@ -155,15 +153,23 @@ public class GrokProcessorTests {
     }
 
     private GrokProcessor createObjectUnderTest() {
-        try (MockedStatic<PluginMetrics> pluginMetricsMockedStatic = mockStatic(PluginMetrics.class)) {
-            pluginMetricsMockedStatic.when(() -> PluginMetrics.fromPluginSetting(pluginSetting)).thenReturn(pluginMetrics);
-            return new GrokProcessor(pluginSetting, grokCompiler, executorService, expressionEvaluator);
-        }
+        return new GrokProcessor(
+                pluginMetrics, grokProcessorConfig, grokCompiler, executorService, expressionEvaluator);
+    }
+
+    @Test
+    void invalid_grok_when_throws_InvalidPluginConfigurationException() {
+        final String grokWhen = UUID.randomUUID().toString();
+
+        when(grokProcessorConfig.getGrokWhen()).thenReturn(grokWhen);
+        when(expressionEvaluator.isValidExpressionStatement(grokWhen)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
     @Test
     public void testMatchMerge() throws JsonProcessingException, ExecutionException, InterruptedException, TimeoutException {
-        pluginSetting.getSettings().put(GrokProcessorConfig.INCLUDE_PERFORMANCE_METADATA, false);
+        when(grokProcessorConfig.getIncludePerformanceMetadata()).thenReturn(false);
 
         grokProcessor = createObjectUnderTest();
 
@@ -202,7 +208,7 @@ public class GrokProcessorTests {
 
     @Test
     public void testTarget() throws JsonProcessingException, ExecutionException, InterruptedException, TimeoutException {
-        pluginSetting.getSettings().put(GrokProcessorConfig.TARGET_KEY, "test_target");
+        when(grokProcessorConfig.getTargetKey()).thenReturn("test_target");
         grokProcessor = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");
@@ -238,7 +244,7 @@ public class GrokProcessorTests {
 
     @Test
     public void testOverwrite() throws JsonProcessingException {
-        pluginSetting.getSettings().put(GrokProcessorConfig.KEYS_TO_OVERWRITE, Collections.singletonList("message"));
+        when(grokProcessorConfig.getkeysToOverwrite()).thenReturn(Collections.singletonList("message"));
         grokProcessor = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");
@@ -423,7 +429,7 @@ public class GrokProcessorTests {
 
     @Test
     public void testThatProcessingWithTimeoutMillisOfZeroDoesNotInteractWithExecutorServiceAndReturnsCorrectResult() throws JsonProcessingException {
-        pluginSetting.getSettings().put(GrokProcessorConfig.TIMEOUT_MILLIS, 0);
+        when(grokProcessorConfig.getTimeoutMillis()).thenReturn(0);
         grokProcessor = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");
@@ -528,7 +534,7 @@ public class GrokProcessorTests {
 
         @Test
         public void testMatchOnSecondPattern() throws JsonProcessingException {
-            pluginSetting.getSettings().put(GrokProcessorConfig.INCLUDE_PERFORMANCE_METADATA, true);
+            when(grokProcessorConfig.getIncludePerformanceMetadata()).thenReturn(true);
 
             when(match.capture()).thenReturn(Collections.emptyMap());
             when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
@@ -556,7 +562,7 @@ public class GrokProcessorTests {
 
         @Test
         public void testMatchOnSecondPatternWithExistingMetadataForTotalPatternMatches() throws JsonProcessingException {
-            pluginSetting.getSettings().put(GrokProcessorConfig.INCLUDE_PERFORMANCE_METADATA, true);
+            when(grokProcessorConfig.getIncludePerformanceMetadata()).thenReturn(true);
 
             when(match.capture()).thenReturn(Collections.emptyMap());
             when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
@@ -598,8 +604,10 @@ public class GrokProcessorTests {
                 tagOnMatchFailure2 = UUID.randomUUID().toString();
                 tagOnTimeout1 = UUID.randomUUID().toString();
                 tagOnTimeout2 = UUID.randomUUID().toString();
-                pluginSetting.getSettings().put(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, List.of(tagOnMatchFailure1, tagOnMatchFailure2));
-                pluginSetting.getSettings().put(GrokProcessorConfig.TAGS_ON_TIMEOUT, List.of(tagOnTimeout1, tagOnTimeout2));
+                when(grokProcessorConfig.getTagsOnMatchFailure()).thenReturn(
+                        List.of(tagOnMatchFailure1, tagOnMatchFailure2));
+                when(grokProcessorConfig.getTagsOnTimeout()).thenReturn(
+                        List.of(tagOnTimeout1, tagOnTimeout2));
             }
 
             @Test
@@ -649,6 +657,34 @@ public class GrokProcessorTests {
                 assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnTimeout2));
                 assertThat(record.getData().getMetadata().getTags(), not(hasItem(tagOnMatchFailure1)));
                 assertThat(record.getData().getMetadata().getTags(), not(hasItem(tagOnMatchFailure2)));
+                verify(grokProcessingTimeoutsCounter, times(1)).increment();
+                verify(grokProcessingTime, times(1)).record(any(Runnable.class));
+                verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter);
+            }
+
+            @Test
+            public void timeout_exception_tags_the_event_with_tags_on_match_failure()
+                    throws JsonProcessingException, TimeoutException, ExecutionException, InterruptedException {
+                when(grokProcessorConfig.getTagsOnTimeout()).thenReturn(Collections.emptyList());
+                when(task.get(GrokProcessorConfig.DEFAULT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)).thenThrow(TimeoutException.class);
+
+                grokProcessor = createObjectUnderTest();
+
+                capture.put("key_capture_1", "value_capture_1");
+                capture.put("key_capture_2", "value_capture_2");
+                capture.put("key_capture_3", "value_capture_3");
+
+                final Map<String, Object> testData = new HashMap();
+                testData.put("message", messageInput);
+                final Record<Event> record = buildRecordWithEvent(testData);
+
+                final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
+
+                assertThat(grokkedRecords.size(), equalTo(1));
+                assertThat(grokkedRecords.get(0), notNullValue());
+                assertRecordsAreEqual(grokkedRecords.get(0), record);
+                assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnMatchFailure1));
+                assertThat(record.getData().getMetadata().getTags(), hasItem(tagOnMatchFailure2));
                 verify(grokProcessingTimeoutsCounter, times(1)).increment();
                 verify(grokProcessingTime, times(1)).record(any(Runnable.class));
                 verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter);
@@ -720,7 +756,7 @@ public class GrokProcessorTests {
 
         @Test
         public void testBreakOnMatchFalse() throws JsonProcessingException {
-            pluginSetting.getSettings().put(GrokProcessorConfig.BREAK_ON_MATCH, false);
+            when(grokProcessorConfig.isBreakOnMatch()).thenReturn(false);
             grokProcessor = createObjectUnderTest();
 
             when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
@@ -756,10 +792,8 @@ public class GrokProcessorTests {
         }
     }
 
-    private PluginSetting getDefaultPluginSetting() {
-
-        return completePluginSettingForGrokProcessor(
-                GrokProcessorConfig.DEFAULT_BREAK_ON_MATCH,
+    private void configureDefaultGrokProcessorConfig() {
+        completeMockGrokProcessorConfig(GrokProcessorConfig.DEFAULT_BREAK_ON_MATCH,
                 GrokProcessorConfig.DEFAULT_KEEP_EMPTY_CAPTURES,
                 matchConfig,
                 GrokProcessorConfig.DEFAULT_NAMED_CAPTURES_ONLY,
@@ -775,7 +809,8 @@ public class GrokProcessorTests {
     @Test
     public void testNoGrok_when_GrokWhen_returns_false() throws JsonProcessingException {
         final String grokWhen = UUID.randomUUID().toString();
-        pluginSetting.getSettings().put(GrokProcessorConfig.GROK_WHEN, grokWhen);
+        when(grokProcessorConfig.getGrokWhen()).thenReturn(grokWhen);
+        when(expressionEvaluator.isValidExpressionStatement(grokWhen)).thenReturn(true);
         grokProcessor = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");
@@ -796,31 +831,28 @@ public class GrokProcessorTests {
         verifyNoInteractions(grok, grokSecondMatch);
     }
 
-    private PluginSetting completePluginSettingForGrokProcessor(final boolean breakOnMatch,
-                                                              final boolean keepEmptyCaptures,
-                                                              final Map<String, List<String>> match,
-                                                              final boolean namedCapturesOnly,
-                                                              final List<String> keysToOverwrite,
-                                                              final List<String> patternsDirectories,
-                                                              final String patternsFilesGlob,
-                                                              final Map<String, String> patternDefinitions,
-                                                              final int timeoutMillis,
-                                                              final String targetKey,
-                                                              final String grokWhen) {
-        final Map<String, Object> settings = new HashMap<>();
-        settings.put(GrokProcessorConfig.BREAK_ON_MATCH, breakOnMatch);
-        settings.put(GrokProcessorConfig.NAMED_CAPTURES_ONLY, namedCapturesOnly);
-        settings.put(GrokProcessorConfig.MATCH, match);
-        settings.put(GrokProcessorConfig.KEEP_EMPTY_CAPTURES, keepEmptyCaptures);
-        settings.put(GrokProcessorConfig.KEYS_TO_OVERWRITE, keysToOverwrite);
-        settings.put(GrokProcessorConfig.PATTERNS_DIRECTORIES, patternsDirectories);
-        settings.put(GrokProcessorConfig.PATTERN_DEFINITIONS, patternDefinitions);
-        settings.put(GrokProcessorConfig.PATTERNS_FILES_GLOB, patternsFilesGlob);
-        settings.put(GrokProcessorConfig.TIMEOUT_MILLIS, timeoutMillis);
-        settings.put(GrokProcessorConfig.TARGET_KEY, targetKey);
-        settings.put(GrokProcessorConfig.GROK_WHEN, grokWhen);
-
-        return new PluginSetting(PLUGIN_NAME, settings);
+    private void completeMockGrokProcessorConfig(final boolean breakOnMatch,
+                                                 final boolean keepEmptyCaptures,
+                                                 final Map<String, List<String>> match,
+                                                 final boolean namedCapturesOnly,
+                                                 final List<String> keysToOverwrite,
+                                                 final List<String> patternsDirectories,
+                                                 final String patternsFilesGlob,
+                                                 final Map<String, String> patternDefinitions,
+                                                 final int timeoutMillis,
+                                                 final String targetKey,
+                                                 final String grokWhen) {
+        lenient().when(grokProcessorConfig.isBreakOnMatch()).thenReturn(breakOnMatch);
+        lenient().when(grokProcessorConfig.isNamedCapturesOnly()).thenReturn(namedCapturesOnly);
+        lenient().when(grokProcessorConfig.getMatch()).thenReturn(match);
+        lenient().when(grokProcessorConfig.isKeepEmptyCaptures()).thenReturn(keepEmptyCaptures);
+        lenient().when(grokProcessorConfig.getkeysToOverwrite()).thenReturn(keysToOverwrite);
+        lenient().when(grokProcessorConfig.getPatternsDirectories()).thenReturn(patternsDirectories);
+        lenient().when(grokProcessorConfig.getPatternDefinitions()).thenReturn(patternDefinitions);
+        lenient().when(grokProcessorConfig.getPatternsFilesGlob()).thenReturn(patternsFilesGlob);
+        lenient().when(grokProcessorConfig.getTimeoutMillis()).thenReturn(timeoutMillis);
+        lenient().when(grokProcessorConfig.getTargetKey()).thenReturn(targetKey);
+        lenient().when(grokProcessorConfig.getGrokWhen()).thenReturn(grokWhen);
     }
 
      private void assertRecordsAreEqual(final Record<Event> first, final Record<Event> second) throws JsonProcessingException {

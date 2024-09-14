@@ -32,19 +32,18 @@ dependencies {
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:opensearchserverless'
     implementation libs.commons.lang3
-    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
+    implementation libs.caffeine
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'software.amazon.awssdk:netty-nio-client'
     implementation 'co.elastic.clients:elasticsearch-java:7.17.0'
-    implementation('org.apache.maven:maven-artifact:3.9.6') {
+    implementation('org.apache.maven:maven-artifact:3.9.8') {
         exclude group: 'org.codehaus.plexus'
     }
     testImplementation testLibs.junit.vintage
     testImplementation libs.commons.io
-    testImplementation 'net.bytebuddy:byte-buddy:1.14.12'
-    testImplementation 'net.bytebuddy:byte-buddy-agent:1.14.12'
+    testImplementation 'net.bytebuddy:byte-buddy:1.14.17'
+    testImplementation 'net.bytebuddy:byte-buddy-agent:1.14.17'
     testImplementation testLibs.slf4j.simple
-    testImplementation testLibs.mockito.inline
 }
 
 sourceSets {

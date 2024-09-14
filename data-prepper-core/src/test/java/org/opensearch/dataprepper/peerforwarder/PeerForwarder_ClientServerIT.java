@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
 import org.opensearch.dataprepper.peerforwarder.codec.PeerForwarderCodecAppConfig;
@@ -133,7 +134,7 @@ class PeerForwarder_ClientServerIT {
         final PeerForwarderClient clientForProvider = createClient(peerForwarderConfiguration);
         final PeerClientPool peerClientPool = new PeerClientPool();
         final PeerForwarderClientFactory clientFactoryForProvider = new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory, pluginMetrics);
-        return new PeerForwarderProvider(clientFactoryForProvider, clientForProvider, peerForwarderConfiguration, pluginMetrics);
+        return new DefaultPeerForwarderProvider(clientFactoryForProvider, clientForProvider, peerForwarderConfiguration, pluginMetrics);
     }
 
     private PeerForwarderClient createClient(
@@ -160,6 +161,7 @@ class PeerForwarder_ClientServerIT {
     class WithSSL {
         private PeerForwarderServer server;
         private PeerForwarderProvider peerForwarderProvider;
+        private Processor processor;
 
         void setUpServer(final boolean binaryCodec) {
             peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
@@ -168,7 +170,7 @@ class PeerForwarder_ClientServerIT {
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
-            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()), PIPELINE_WORKER_THREADS);
+            peerForwarderProvider.register(pipelineName, processor, pluginId, Collections.singleton(UUID.randomUUID().toString()), PIPELINE_WORKER_THREADS);
             server = createServer(peerForwarderConfiguration, certificateProviderFactory, peerForwarderProvider);
             server.start();
         }
@@ -280,6 +282,7 @@ class PeerForwarder_ClientServerIT {
     class WithoutSSL {
         private PeerForwarderServer server;
         private PeerForwarderProvider peerForwarderProvider;
+        private Processor processor;
 
         void setUpServer(final boolean binaryCodec) {
             peerForwarderConfiguration = createConfiguration(false, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
@@ -288,7 +291,7 @@ class PeerForwarder_ClientServerIT {
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
-            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()), PIPELINE_WORKER_THREADS);
+            peerForwarderProvider.register(pipelineName, processor, pluginId, Collections.singleton(UUID.randomUUID().toString()), PIPELINE_WORKER_THREADS);
             server = createServer(peerForwarderConfiguration, certificateProviderFactory, peerForwarderProvider);
             server.start();
         }
@@ -339,6 +342,7 @@ class PeerForwarder_ClientServerIT {
     class WithMutualTls {
         private PeerForwarderServer server;
         private PeerForwarderProvider peerForwarderProvider;
+        private Processor processor;
 
         void setUpServer(final boolean binaryCodec) {
             peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.MUTUAL_TLS, binaryCodec);
@@ -347,7 +351,7 @@ class PeerForwarder_ClientServerIT {
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
-            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()), PIPELINE_WORKER_THREADS);
+            peerForwarderProvider.register(pipelineName, processor, pluginId, Collections.singleton(UUID.randomUUID().toString()), PIPELINE_WORKER_THREADS);
             server = createServer(peerForwarderConfiguration, certificateProviderFactory, peerForwarderProvider);
             server.start();
         }

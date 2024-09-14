@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
@@ -41,6 +42,8 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -124,6 +127,7 @@ public class AggregateProcessorTest {
     @BeforeEach
     void setUp() {
         when(aggregateProcessorConfig.getAggregateAction()).thenReturn(actionConfiguration);
+        when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(false);
         when(aggregateProcessorConfig.getLocalMode()).thenReturn(false);
         when(actionConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
         when(actionConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
@@ -148,6 +152,16 @@ public class AggregateProcessorTest {
         when(pluginMetrics.counter(MetricNames.RECORDS_IN)).thenReturn(recordsIn);
         when(pluginMetrics.counter(MetricNames.RECORDS_OUT)).thenReturn(recordsOut);
         when(pluginMetrics.timer(MetricNames.TIME_ELAPSED)).thenReturn(timeElapsed);
+    }
+
+    @Test
+    void invalid_aggregate_when_statement_throws_InvalidPluginConfigurationException() {
+        final String whenCondition = UUID.randomUUID().toString();
+        when(aggregateProcessorConfig.getWhenCondition()).thenReturn(whenCondition);
+
+        when(expressionEvaluator.isValidExpressionStatement(whenCondition)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
     @Test
@@ -216,6 +230,7 @@ public class AggregateProcessorTest {
             when(identificationKeysHasher.createIdentificationKeysMapFromEvent(firstEvent))
                     .thenReturn(identificationKeysMap);
             when(aggregateActionSynchronizer.handleEventForGroup(firstEvent, identificationKeysMap, aggregateGroup)).thenReturn(firstAggregateActionResponse);
+            when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, event)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, firstEvent)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, secondEvent)).thenReturn(false);
@@ -278,6 +293,7 @@ public class AggregateProcessorTest {
             when(identificationKeysHasher.createIdentificationKeysMapFromEvent(firstEvent))
                     .thenReturn(identificationKeysMap);
             when(aggregateActionSynchronizer.handleEventForGroup(firstEvent, identificationKeysMap, aggregateGroup)).thenReturn(firstAggregateActionResponse);
+            when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, event)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, firstEvent)).thenReturn(true);
             when(expressionEvaluator.evaluateConditional(condition, secondEvent)).thenReturn(false);
@@ -396,6 +412,33 @@ public class AggregateProcessorTest {
             verify(actionHandleEventsOutCounter).increment(1);
             verify(actionHandleEventsDroppedCounter).increment(0);
             verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
+            verifyNoInteractions(actionConcludeGroupEventsOutCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
+        }
+        @Test
+        void handleEvent_returning_with_event_adds_event_to_records_out_with_output_unaggregated_events() {
+            when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(true);
+            String tag = UUID.randomUUID().toString();
+            when(aggregateProcessorConfig.getAggregatedEventsTag()).thenReturn(tag);
+            final AggregateProcessor objectUnderTest = createObjectUnderTest();
+            final Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>(identificationKeysMap, aggregateGroup);
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.singletonList(groupEntry));
+            when(aggregateActionResponse.getEvent()).thenReturn(event);
+            when(aggregateActionSynchronizer.concludeGroup(identificationKeysMap, aggregateGroup, false)).thenReturn(new AggregateActionOutput(List.of()));
+
+            final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
+
+            assertThat(recordsOut.size(), equalTo(2));
+            assertThat(recordsOut.get(0), notNullValue());
+            assertThat(recordsOut.get(0).getData(), equalTo(event));
+            assertThat(recordsOut.get(1), notNullValue());
+            assertThat(recordsOut.get(1).getData(), equalTo(event));
+            Event receivedEvent = recordsOut.get(1).getData();
+            assertTrue(receivedEvent.getMetadata().hasTags(List.of(tag)));
+
+            verify(actionHandleEventsOutCounter).increment(1);
+            verify(actionHandleEventsDroppedCounter).increment(0);
             verifyNoInteractions(actionConcludeGroupEventsOutCounter);
 
             verify(aggregateGroupManager).getGroupsToConclude(eq(false));
