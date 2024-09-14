@@ -134,7 +134,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
                 .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0);
 
-        if(!pattern.contains("a"))
+        if(!pattern.contains("a") && !pattern.contains("k"))
             dateTimeFormatterBuilder.parseDefaulting(ChronoField.HOUR_OF_DAY, 0);
 
         if (!(pattern.contains("y") || pattern.contains("u")))
