@@ -47,7 +47,7 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
                 // buffer contents before the event record is added
                 // to acknowledgement set
                 if(Objects.nonNull(acknowledgementSet)){
-                    acknowledgementSet.add(eventRecord.getData());
+                    acknowledgementSet.add(((Event)eventRecord.getData()).getEventHandle());
                 }
                 bufferAccumulator.add(eventRecord);
             } catch (Exception e) {

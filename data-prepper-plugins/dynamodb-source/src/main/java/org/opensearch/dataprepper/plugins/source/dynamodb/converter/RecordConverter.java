@@ -114,7 +114,7 @@ public abstract class RecordConverter {
             eventMetadata.setAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE, partitionKey);
         }
         if (acknowledgementSet != null) {
-            acknowledgementSet.add(event);
+            acknowledgementSet.add(event.getEventHandle());
         }
         bufferAccumulator.add(new Record<>(event));
     }

@@ -107,7 +107,7 @@ public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record
     protected void addToAcknowledgementSetFromOriginEvent(Event recordEvent, Event originRecordEvent) {
         DefaultEventHandle eventHandle = (DefaultEventHandle) originRecordEvent.getEventHandle();
         if (eventHandle != null && eventHandle.getAcknowledgementSet() != null) {
-            eventHandle.getAcknowledgementSet().add(recordEvent);
+            eventHandle.getAcknowledgementSet().add(recordEvent.getEventHandle());
         }
     }
 

@@ -275,7 +275,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         for (Event pipelineEvent : pipelineEvents) {
             addToBufferAccumulator(bufferAccumulator, new Record<>(pipelineEvent));
             if (acknowledgementSet != null) {
-                acknowledgementSet.add(pipelineEvent);
+                acknowledgementSet.add(pipelineEvent.getEventHandle());
             }
         }
 

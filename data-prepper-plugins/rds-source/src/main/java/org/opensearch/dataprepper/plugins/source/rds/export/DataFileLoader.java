@@ -129,7 +129,7 @@ public class DataFileLoader implements Runnable {
                             eventVersionNumber);
 
                     if (acknowledgementSet != null) {
-                        acknowledgementSet.add(transformedEvent);
+                        acknowledgementSet.add(transformedEvent.getEventHandle());
                     }
 
                     bufferAccumulator.add(new Record<>(transformedEvent));

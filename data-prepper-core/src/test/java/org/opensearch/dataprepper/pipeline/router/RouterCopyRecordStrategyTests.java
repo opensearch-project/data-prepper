@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.pipeline.router;
 
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -242,10 +243,10 @@ public class RouterCopyRecordStrategyTests {
         attachEventHandlesToRecordsIn(eventHandles);
         try {
             doAnswer((i) -> {
-                JacksonEvent e1 = (JacksonEvent) i.getArgument(0);
-                ((DefaultEventHandle)e1.getEventHandle()).addAcknowledgementSet(acknowledgementSet1);
+                EventHandle h1 = (EventHandle) i.getArgument(0);
+                ((DefaultEventHandle)h1).addAcknowledgementSet(acknowledgementSet1);
                 return null;
-            }).when(acknowledgementSet1).add(any(JacksonEvent.class));
+            }).when(acknowledgementSet1).add(any(EventHandle.class));
         } catch (Exception e){}
 
         eventBuilder = mock(EventBuilder.class);
@@ -280,10 +281,10 @@ public class RouterCopyRecordStrategyTests {
         attachEventHandlesToRecordsIn(eventHandles);
         try {
             doAnswer((i) -> {
-                JacksonEvent e1 = (JacksonEvent) i.getArgument(0);
-                ((DefaultEventHandle)e1.getEventHandle()).addAcknowledgementSet(acknowledgementSet1);
+                EventHandle h1 = (EventHandle) i.getArgument(0);
+                ((DefaultEventHandle)h1).addAcknowledgementSet(acknowledgementSet1);
                 return null;
-            }).when(acknowledgementSet1).add(any(JacksonEvent.class));
+            }).when(acknowledgementSet1).add(any(EventHandle.class));
         } catch (Exception e){}
 
         eventBuilder = mock(EventBuilder.class);

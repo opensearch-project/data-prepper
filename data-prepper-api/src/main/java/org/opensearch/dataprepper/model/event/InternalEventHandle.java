@@ -31,5 +31,14 @@ public interface InternalEventHandle {
      */
     void acquireReference();
 
+    /**
+     * Adds new event handle to the acknowledgement sets associated
+     * with this event handle
+
+     * @param eventHandle event handle to add
+     * @since 2.10
+     */
+     void addEventHandle(EventHandle eventHandle);
+
 }
 

@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.model.acknowledgements;
 
-import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
 import java.time.Duration;
@@ -23,13 +22,13 @@ import java.util.function.Consumer;
 public interface AcknowledgementSet {
 
     /**
-     * Adds an event to the acknowledgement set. Assigns initial reference
+     * Adds an eventHandle to the acknowledgement set. Assigns initial reference
      * count of 1.
      *
-     * @param event event to be added
+     * @param eventHandle eventHandle to be added
      * @since 2.2
      */
-    public void add(Event event);
+    public void add(EventHandle eventHandle);
 
     /**
      * Aquires a reference to the event by incrementing the reference

@@ -49,12 +49,12 @@ public class RecordBufferWriter {
      * @throws Exception Exception if failed to write to buffer.
      */
     public void addToBuffer(final AcknowledgementSet acknowledgementSet,
-                            final Event record) throws Exception {
+                            final Event event) throws Exception {
         if (acknowledgementSet != null) {
-            acknowledgementSet.add(record);
+            acknowledgementSet.add(event.getEventHandle());
         }
 
-        bufferAccumulator.add(new Record<>(record));
+        bufferAccumulator.add(new Record<>(event));
     }
 
     public void writeToBuffer(final AcknowledgementSet acknowledgementSet,

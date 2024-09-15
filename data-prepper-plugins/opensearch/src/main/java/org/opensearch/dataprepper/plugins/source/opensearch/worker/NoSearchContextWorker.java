@@ -161,7 +161,7 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
                     final long documentBytes = objectMapper.writeValueAsBytes(record.getData().getJsonNode()).length;
                     openSearchSourcePluginMetrics.getBytesReceivedSummary().record(documentBytes);
                     if (Objects.nonNull(acknowledgementSet)) {
-                        acknowledgementSet.add(record.getData());
+                        acknowledgementSet.add(((Event)record.getData()).getEventHandle());
                     }
                     bufferAccumulator.add(record);
                     openSearchSourcePluginMetrics.getDocumentsProcessedCounter().increment();

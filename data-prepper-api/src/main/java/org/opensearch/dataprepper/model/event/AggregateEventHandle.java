@@ -68,6 +68,18 @@ public class AggregateEventHandle extends AbstractEventHandle implements Seriali
         return returnValue;
     }
 
+    @Override
+    public void addEventHandle(EventHandle eventHandle) {
+        synchronized (this) {
+            for (WeakReference<AcknowledgementSet> acknowledgementSetRef : acknowledgementSetRefList) {
+                AcknowledgementSet acknowledgementSet = acknowledgementSetRef.get();
+                if (acknowledgementSet != null) {
+                    acknowledgementSet.add(eventHandle);
+                }
+             }
+         }
+    }
+
     // For testing
     List<WeakReference<AcknowledgementSet>> getAcknowledgementSetRefs() {
         return acknowledgementSetRefList;
