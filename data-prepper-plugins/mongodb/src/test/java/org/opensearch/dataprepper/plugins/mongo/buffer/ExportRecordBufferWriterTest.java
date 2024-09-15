@@ -112,7 +112,7 @@ class ExportRecordBufferWriterTest {
                 pluginMetrics);
         recordBufferWriter.writeToBuffer(acknowledgementSet, List.of(event));
         verify(bufferAccumulator).add(recordArgumentCaptor.capture());
-        verify(acknowledgementSet).add(event);
+        verify(acknowledgementSet).add(event.getEventHandle());
         assertThat(recordArgumentCaptor.getValue().getData(), equalTo(event));
 
         verify(bufferAccumulator).flush();
@@ -129,7 +129,7 @@ class ExportRecordBufferWriterTest {
 
         recordBufferWriter.writeToBuffer(acknowledgementSet, List.of(event));
         verify(bufferAccumulator).add(recordArgumentCaptor.capture());
-        verify(acknowledgementSet).add(event);
+        verify(acknowledgementSet).add(event.getEventHandle());
         assertThat(recordArgumentCaptor.getValue().getData(), equalTo(event));
 
         verify(bufferAccumulator).flush();
