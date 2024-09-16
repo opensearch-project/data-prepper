@@ -23,7 +23,9 @@ import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.EVENT_LAMBDA;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.SINGLE_EVENT;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
@@ -41,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -61,7 +64,6 @@ public class LambdaSinkService {
     private int maxRetries = 0;
     private final Counter numberOfRecordsSuccessCounter;
     private final Counter numberOfRecordsFailedCounter;
-    private final String ASYNC_INVOCATION_TYPE = "Event";
     private final String invocationType;
     private Buffer currentBuffer;
     private final BufferFactory bufferFactory;
@@ -114,7 +116,11 @@ public class LambdaSinkService {
         bufferedEventHandles = new LinkedList<>();
         events = new ArrayList();
 
-        invocationType = ASYNC_INVOCATION_TYPE;
+        //Translate dataprepper invocation type to lambda invocation type
+        Map<String, String> invocationTypeMap = Map.of(
+                LambdaCommonConfig.EVENT, EVENT_LAMBDA
+        );
+        invocationType = invocationTypeMap.get(lambdaSinkConfig.getInvocationType());
 
         this.bufferFactory = bufferFactory;
         try {

@@ -13,7 +13,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
-import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.REQUEST_RESPONSE;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.EVENT;
 
 import java.util.Map;
 import java.util.Objects;
@@ -39,7 +39,7 @@ public class LambdaSinkConfig {
     private int maxConnectionRetries = DEFAULT_CONNECTION_RETRIES;
 
     @JsonProperty("invocation_type")
-    private String invocationType = REQUEST_RESPONSE;
+    private String invocationType = EVENT;
 
     @JsonProperty("payload_model")
     private String payloadModel = BATCH_EVENT;

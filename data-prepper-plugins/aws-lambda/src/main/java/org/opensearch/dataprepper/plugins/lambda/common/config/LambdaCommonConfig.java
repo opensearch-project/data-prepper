@@ -5,4 +5,8 @@ public class LambdaCommonConfig {
     public static final String EVENT = "event";
     public static final String BATCH_EVENT = "batch-event";
     public static final String SINGLE_EVENT = "single-event";
+
+    //AWS Lambda payload options needs this format
+    public static final String REQUEST_RESPONSE_LAMBDA = "RequestResponse";
+    public static final String EVENT_LAMBDA = "Event";
 }

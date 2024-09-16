@@ -8,14 +8,14 @@ package org.opensearch.dataprepper.plugins.lambda.sink;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
@@ -58,6 +58,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                     , lambdaSinkConfig.getDlqStsRegion(),
                     String.valueOf(lambdaSinkConfig.getDlqPluginSetting().get(KEY_PATH)));
         }
+
         this.bufferFactory = new InMemoryBufferFactory();
 
         lambdaSinkService = new LambdaSinkService(lambdaClient,

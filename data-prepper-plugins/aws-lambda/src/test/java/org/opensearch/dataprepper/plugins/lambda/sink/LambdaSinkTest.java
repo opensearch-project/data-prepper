@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 
@@ -49,9 +50,9 @@ class LambdaSinkTest {
         Map<String,Object> dlqMap = mock(HashMap.class);
         LambdaClient lambdaClient = mock(LambdaClient.class);
 
-
         when(lambdaSinkConfig.getPayloadModel()).thenReturn("single-event");
         when(lambdaSinkConfig.getDlq()).thenReturn(pluginModel);
+        when(lambdaSinkConfig.getInvocationType()).thenReturn(LambdaCommonConfig.EVENT);
         when(pluginModel.getPluginSettings()).thenReturn(dlqMap);
         when(lambdaSinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of(S3_REGION));

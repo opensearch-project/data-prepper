@@ -36,6 +36,8 @@ import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFacto
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.EVENT_LAMBDA;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.REQUEST_RESPONSE_LAMBDA;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.SINGLE_EVENT;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.slf4j.Logger;
@@ -53,6 +55,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -64,7 +67,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     public static final String LAMBDA_LATENCY_METRIC = "lambdaLatency";
     public static final String REQUEST_PAYLOAD_SIZE = "requestPayloadSize";
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
-
 
     private static final Logger LOG = LoggerFactory.getLogger(LambdaProcessor.class);
 
@@ -126,12 +128,18 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         } else{
             throw new RuntimeException("invalid payload_model option");
         }
-        invocationType = lambdaProcessorConfig.getInvocationType();
 
-        if(!invocationType.equals(LambdaCommonConfig.EVENT) &&
-        !invocationType.equals(LambdaCommonConfig.REQUEST_RESPONSE)){
-            throw new RuntimeException("Unsupported invocation type " + invocationType);
+        if(!lambdaProcessorConfig.getInvocationType().equals(LambdaCommonConfig.EVENT) &&
+                !lambdaProcessorConfig.getInvocationType().equals(LambdaCommonConfig.REQUEST_RESPONSE)){
+            throw new RuntimeException("Unsupported invocation type " + lambdaProcessorConfig.getInvocationType());
         }
+
+        //Translate dataprepper invocation type to lambda invocation type
+        Map<String, String> invocationTypeMap = Map.of(
+                LambdaCommonConfig.EVENT, EVENT_LAMBDA,
+                LambdaCommonConfig.REQUEST_RESPONSE, REQUEST_RESPONSE_LAMBDA
+        );
+        invocationType = invocationTypeMap.get(lambdaProcessorConfig.getInvocationType());
 
         bufferedEventHandles = new LinkedList<>();
         events = new ArrayList();

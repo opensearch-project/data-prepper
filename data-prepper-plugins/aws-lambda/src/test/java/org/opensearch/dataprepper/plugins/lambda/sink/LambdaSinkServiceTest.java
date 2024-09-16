@@ -39,6 +39,8 @@ import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffe
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
@@ -106,6 +108,7 @@ public class LambdaSinkServiceTest {
         this.dlqPushHandler = mock(DlqPushHandler.class);
         this.bufferFactory = mock(BufferFactory.class);
         this.outputCodecContext = mock(OutputCodecContext.class);
+        when(lambdaSinkConfig.getInvocationType()).thenReturn(LambdaCommonConfig.EVENT);
         when(lambdaSinkConfig.getPayloadModel()).thenReturn("single-event");
         when(pluginMetrics.counter(LambdaSinkService.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS)).thenReturn(numberOfRecordsSuccessCounter);
         when(pluginMetrics.counter(LambdaSinkService.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED)).thenReturn(numberOfRecordsFailedCounter);
@@ -312,7 +315,7 @@ public class LambdaSinkServiceTest {
     public void lambda_sink_test_batch_enabled() throws IOException {
         when(lambdaSinkConfig.getFunctionName()).thenReturn(functionName);
         when(lambdaSinkConfig.getMaxConnectionRetries()).thenReturn(maxRetries);
-        when(lambdaSinkConfig.getPayloadModel()).thenReturn("batch-event");
+        when(lambdaSinkConfig.getPayloadModel()).thenReturn(BATCH_EVENT);
         when(lambdaSinkConfig.getBatchOptions()).thenReturn(mock(BatchOptions.class));
         when(lambdaSinkConfig.getBatchOptions().getKeyName()).thenReturn("lambda_batch_key");
         when(lambdaSinkConfig.getBatchOptions().getThresholdOptions()).thenReturn(mock(ThresholdOptions.class));
