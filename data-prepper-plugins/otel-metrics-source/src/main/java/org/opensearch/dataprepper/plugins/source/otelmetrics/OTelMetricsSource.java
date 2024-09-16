@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
+import com.linecorp.armeria.common.grpc.GrpcExceptionHandlerFunction;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
@@ -66,7 +67,6 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
-    private final GrpcRequestExceptionHandler requestExceptionHandler;
     private Server server;
     private final ByteDecoder byteDecoder;
 
@@ -85,8 +85,6 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-        // TODO tlongo read from config
-        this.requestExceptionHandler = new GrpcRequestExceptionHandler(pluginMetrics, Duration.ofMillis(100), Duration.ofSeconds(2));
         this.byteDecoder = new OTelMetricDecoder();
     }
 
@@ -114,7 +112,8 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
                     .useClientTimeoutHeader(false)
-                    .useBlockingTaskExecutor(true).exceptionHandler(requestExceptionHandler);
+                    .useBlockingTaskExecutor(true)
+                    .exceptionHandler(createGrpExceptionHandler());
 
             final MethodDescriptor<ExportMetricsServiceRequest, ExportMetricsServiceResponse> methodDescriptor = MetricsServiceGrpc.getExportMethod();
             final String oTelMetricsSourcePath = oTelMetricsSourceConfig.getPath();
@@ -224,6 +223,12 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
             }
         }
         LOG.info("Stopped otel_metrics_source.");
+    }
+
+    private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
+        RetryInfoConfig retryInfo = oTelMetricsSourceConfig.getRetryInfo() != null ? oTelMetricsSourceConfig.getRetryInfo() : new RetryInfoConfig(100, 2000);
+
+        return new GrpcRequestExceptionHandler(pluginMetrics, Duration.ofMillis(retryInfo.getMinDelay()), Duration.ofMillis(retryInfo.getMaxDelay()));
     }
 
     private List<ServerInterceptor> getAuthenticationInterceptor() {
