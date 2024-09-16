@@ -181,7 +181,7 @@ class SqsWorkerIT {
             assertThat(s3ObjectReference.getBucketName(), equalTo(bucket));
             assertThat(s3ObjectReference.getKey(), startsWith("s3 source/sqs/"));
             event = (Event)JacksonEvent.fromMessage(val.getArgument(0).toString());
-            ackSet.add(event);
+            ackSet.add(event.getEventHandle());
             return null;
         }).when(s3Service).addS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class));
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
@@ -246,7 +246,7 @@ class SqsWorkerIT {
             assertThat(s3ObjectReference.getKey(), startsWith("s3 source/sqs/"));
             event = (Event)JacksonEvent.fromMessage(val.getArgument(0).toString());
 
-            ackSet.add(event);
+            ackSet.add(event.getEventHandle());
             synchronized(this) {
                 ready.set(true);
                 this.notify();
@@ -325,7 +325,7 @@ class SqsWorkerIT {
             assertThat(s3ObjectReference.getKey(), startsWith("s3 source/sqs/"));
             event = (Event)JacksonEvent.fromMessage(val.getArgument(0).toString());
 
-            ackSet.add(event);
+            ackSet.add(event.getEventHandle());
             synchronized(events) {
                 events.add(event);
             }
@@ -400,7 +400,7 @@ class SqsWorkerIT {
             assertThat(s3ObjectReference.getKey(), startsWith("s3 source/sqs/"));
             event = (Event)JacksonEvent.fromMessage(val.getArgument(0).toString());
 
-            ackSet.add(event);
+            ackSet.add(event.getEventHandle());
             synchronized(events) {
                 events.add(event);
             }
