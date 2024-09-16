@@ -276,6 +276,29 @@ class OtelLogsSourceConfigTests {
         assertThat(oTelLogsSourceConfig.isPathValid(), equalTo(false));
     }
 
+    @Test
+    void testRetryInfoConfig() {
+        final PluginSetting customPathPluginSetting = completePluginSettingForOtelLogsSource(
+                DEFAULT_REQUEST_TIMEOUT_MS,
+                DEFAULT_PORT,
+                null,
+                false,
+                false,
+                false,
+                true,
+                TEST_KEY_CERT,
+                "",
+                DEFAULT_THREAD_COUNT,
+                DEFAULT_MAX_CONNECTION_COUNT);
+
+        final OTelLogsSourceConfig oTelLogsSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelLogsSourceConfig.class);
+
+
+        RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo();
+        assertThat(retryInfo.getMaxDelay(), equalTo(100));
+        assertThat(retryInfo.getMinDelay(), equalTo(50));
+    }
+
     private PluginSetting completePluginSettingForOtelLogsSource(final int requestTimeoutInMillis,
                                                                  final int port,
                                                                  final String path,
@@ -299,6 +322,7 @@ class OtelLogsSourceConfigTests {
         settings.put(SSL_KEY_FILE, sslKeyFile);
         settings.put(THREAD_COUNT, threadCount);
         settings.put(MAX_CONNECTION_COUNT, maxConnectionCount);
+        settings.put(OTelLogsSourceConfig.RETRY_INFO, new RetryInfoConfig(50, 100));
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 }

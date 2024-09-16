@@ -3,19 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.otelmetrics;
+package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_PORT;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 
 import java.time.Duration;
 
@@ -32,11 +33,11 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.rpc.RetryInfo;
@@ -44,20 +45,18 @@ import com.linecorp.armeria.client.Clients;
 
 import io.grpc.Metadata;
 import io.grpc.StatusRuntimeException;
-import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
-import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
+import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
 import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.KeyValue;
-import io.opentelemetry.proto.metrics.v1.Gauge;
-import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
-import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
-import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.logs.v1.LogRecord;
+import io.opentelemetry.proto.logs.v1.ResourceLogs;
+import io.opentelemetry.proto.logs.v1.ScopeLogs;
 import io.opentelemetry.proto.resource.v1.Resource;
 
 @ExtendWith(MockitoExtension.class)
-class OTelMetricsSourceRetryInfoTest {
-    private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21891/";
+class OtelLogsSourceRetryInfoTest {
+    private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21892/";
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
     private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(100, 2000);
 
@@ -68,25 +67,25 @@ class OTelMetricsSourceRetryInfoTest {
     private GrpcBasicAuthenticationProvider authenticationProvider;
 
     @Mock(lenient = true)
-    private OTelMetricsSourceConfig oTelMetricsSourceConfig;
+    private OTelLogsSourceConfig oTelLogsSourceConfig;
 
     @Mock
-    private Buffer<Record<? extends Metric>> buffer;
+    private Buffer<Record<Object>> buffer;
 
-    private OTelMetricsSource SOURCE;
+    private OTelLogsSource SOURCE;
 
     @BeforeEach
     void beforeEach() throws Exception {
         lenient().when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
         Mockito.lenient().doThrow(SizeOverflowException.class).when(buffer).writeAll(any(), anyInt());
 
-        when(oTelMetricsSourceConfig.getPort()).thenReturn(DEFAULT_PORT);
-        when(oTelMetricsSourceConfig.isSsl()).thenReturn(false);
-        when(oTelMetricsSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
-        when(oTelMetricsSourceConfig.getMaxConnectionCount()).thenReturn(10);
-        when(oTelMetricsSourceConfig.getThreadCount()).thenReturn(5);
-        when(oTelMetricsSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
-        when(oTelMetricsSourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
+        when(oTelLogsSourceConfig.getPort()).thenReturn(DEFAULT_PORT);
+        when(oTelLogsSourceConfig.isSsl()).thenReturn(false);
+        when(oTelLogsSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
+        when(oTelLogsSourceConfig.getMaxConnectionCount()).thenReturn(10);
+        when(oTelLogsSourceConfig.getThreadCount()).thenReturn(5);
+        when(oTelLogsSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
+        when(oTelLogsSourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
@@ -101,18 +100,19 @@ class OTelMetricsSourceRetryInfoTest {
     }
 
     private void configureObjectUnderTest() {
-        PluginMetrics pluginMetrics = PluginMetrics.fromNames("otel_trace", "pipeline");
-
+        PluginMetrics pluginMetrics = PluginMetrics.fromNames("otel_logs", "pipeline");
         PipelineDescription pipelineDescription = mock(PipelineDescription.class);
-        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
-        SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        lenient().when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
+
+        SOURCE = new OTelLogsSource(oTelLogsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        assertTrue(SOURCE.getDecoder() instanceof OTelLogsDecoder);
     }
 
     @Test
     public void gRPC_failed_request_returns_minimal_delay_in_status() throws Exception {
-        final MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
-                .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
-        final StatusRuntimeException statusRuntimeException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportMetricsRequest()));
+        final LogsServiceGrpc.LogsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(LogsServiceGrpc.LogsServiceBlockingStub.class);
+        final StatusRuntimeException statusRuntimeException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportLogsRequest()));
 
         RetryInfo retryInfo = extracRetryInfoFromStatusRuntimeException(statusRuntimeException);
         assertThat(Duration.ofNanos(retryInfo.getRetryDelay().getNanos()).toMillis(), equalTo(100L));
@@ -136,43 +136,30 @@ class OTelMetricsSourceRetryInfoTest {
     private RetryInfo callService3TimesAndReturnRetryInfo() throws Exception {
         StatusRuntimeException e = null;
         for (int i = 0; i < 3; i++) {
-            final MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
-                    .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
-            e = assertThrows(StatusRuntimeException.class, () -> client.export(createExportMetricsRequest()));
+            final LogsServiceGrpc.LogsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                    .build(LogsServiceGrpc.LogsServiceBlockingStub.class);
+            e = assertThrows(StatusRuntimeException.class, () -> client.export(createExportLogsRequest()));
         }
 
         return extracRetryInfoFromStatusRuntimeException(e);
     }
 
-    private ExportMetricsServiceRequest createExportMetricsRequest() {
+    private ExportLogsServiceRequest createExportLogsRequest() {
         final Resource resource = Resource.newBuilder()
                 .addAttributes(KeyValue.newBuilder()
                         .setKey("service.name")
                         .setValue(AnyValue.newBuilder().setStringValue("service").build())
                 ).build();
-        NumberDataPoint.Builder p1 = NumberDataPoint.newBuilder().setAsInt(4);
-        Gauge gauge = Gauge.newBuilder().addDataPoints(p1).build();
 
-        io.opentelemetry.proto.metrics.v1.Metric.Builder metric = io.opentelemetry.proto.metrics.v1.Metric.newBuilder()
-                .setGauge(gauge)
-                .setUnit("seconds")
-                .setName("name")
-                .setDescription("description");
-        InstrumentationLibraryMetrics isntLib = InstrumentationLibraryMetrics.newBuilder()
-                .addMetrics(metric)
-                .setInstrumentationLibrary(InstrumentationLibrary.newBuilder()
-                        .setName("ilname")
-                        .setVersion("ilversion")
+        final ResourceLogs resourceLogs = ResourceLogs.newBuilder()
+                .addScopeLogs(ScopeLogs.newBuilder()
+                        .addLogRecords(LogRecord.newBuilder().setSeverityNumberValue(1))
                         .build())
-                .build();
-
-
-        final ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
                 .setResource(resource)
-                .addInstrumentationLibraryMetrics(isntLib)
                 .build();
 
-        return ExportMetricsServiceRequest.newBuilder()
-                .addResourceMetrics(resourceMetrics).build();
+        return ExportLogsServiceRequest.newBuilder()
+                .addResourceLogs(resourceLogs)
+                .build();
     }
 }
