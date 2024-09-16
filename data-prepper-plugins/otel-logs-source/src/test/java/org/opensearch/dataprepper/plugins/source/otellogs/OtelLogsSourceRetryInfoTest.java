@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -105,7 +106,7 @@ class OtelLogsSourceRetryInfoTest {
         lenient().when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
 
         SOURCE = new OTelLogsSource(oTelLogsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        assertTrue(SOURCE.getDecoder() instanceof OTelLogsDecoder);
+        assertInstanceOf(OTelLogsDecoder.class, SOURCE.getDecoder());
     }
 
     @Test

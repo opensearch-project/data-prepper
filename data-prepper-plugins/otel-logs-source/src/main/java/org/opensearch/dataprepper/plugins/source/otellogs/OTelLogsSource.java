@@ -62,8 +62,8 @@ public class OTelLogsSource implements Source<Record<Object>> {
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
+    private final ByteDecoder byteDecoder;
     private Server server;
-    private ByteDecoder byteDecoder;
 
     @DataPrepperPluginConstructor
     public OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig,
