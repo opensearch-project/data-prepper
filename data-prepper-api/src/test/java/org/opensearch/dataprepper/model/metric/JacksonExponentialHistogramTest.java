@@ -11,7 +11,9 @@ import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.TestObject;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
+import org.opensearch.dataprepper.model.event.AggregateEventHandle;
 import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.time.Instant;
@@ -24,6 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anEmptyMap;
 import static org.hamcrest.Matchers.equalTo;
@@ -110,6 +113,24 @@ public class JacksonExponentialHistogramTest {
                     assertThat(attributes.get(key), is(equalTo(TEST_ATTRIBUTES.get(key))));
                 }
         );
+    }
+
+    @Test
+    public void testGetDefaultEventHandle() {
+        EventHandle eventHandle = new DefaultEventHandle(Instant.now());
+        builder.withEventHandle(eventHandle);
+        histogram = builder.build();
+        final EventHandle handle = histogram.getEventHandle();
+        assertThat(handle, is(sameInstance(eventHandle)));
+    }
+
+    @Test
+    public void testGetAggregateEventHandle() {
+        EventHandle eventHandle = new AggregateEventHandle(Instant.now());
+        builder.withEventHandle(eventHandle);
+        histogram = builder.build();
+        final EventHandle handle = histogram.getEventHandle();
+        assertThat(handle, is(sameInstance(eventHandle)));
     }
 
     @Test

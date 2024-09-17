@@ -81,7 +81,7 @@ public class JacksonSummary extends JacksonMetric implements Summary {
          * @since 1.4
          */
         public Builder withQuantiles(final List<Quantile> quantiles) {
-            data.put(QUANTILES_KEY, quantiles);
+            put(QUANTILES_KEY, quantiles);
             return this;
         }
 
@@ -92,7 +92,7 @@ public class JacksonSummary extends JacksonMetric implements Summary {
          * @since 1.4
          */
         public Builder withQuantilesValueCount(int quantileValuesCount) {
-            data.put(QUANTILE_VALUES_COUNT_KEY, quantileValuesCount);
+            put(QUANTILE_VALUES_COUNT_KEY, quantileValuesCount);
             return this;
         }
 
@@ -103,7 +103,7 @@ public class JacksonSummary extends JacksonMetric implements Summary {
          * @since 1.4
          */
         public Builder withSum(double sum) {
-            data.put(SUM_KEY, sum);
+            put(SUM_KEY, sum);
             return this;
         }
 
@@ -126,7 +126,7 @@ public class JacksonSummary extends JacksonMetric implements Summary {
          * @since 1.4
          */
         public Builder withCount(Long count) {
-            data.put(COUNT_KEY, count);
+            put(COUNT_KEY, count);
             return this;
         }
 
@@ -150,13 +150,13 @@ public class JacksonSummary extends JacksonMetric implements Summary {
             this.withEventKind(KIND.SUMMARY.toString());
             this.withEventType(EventType.METRIC.toString());
 
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, data);
+            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
             checkAndSetDefaultValues();
             return new JacksonSummary(this, flattenAttributes);
         }
 
         private void checkAndSetDefaultValues() {
-            data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
+            computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
         }
 
     }

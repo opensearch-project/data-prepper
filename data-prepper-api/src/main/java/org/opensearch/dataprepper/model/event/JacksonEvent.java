@@ -98,7 +98,11 @@ public class JacksonEvent implements Event {
         }
 
         this.jsonNode = getInitialJsonNode(builder.data);
-        this.eventHandle = new DefaultEventHandle(eventMetadata.getTimeReceived());
+        if (builder.eventHandle != null) {
+            this.eventHandle = builder.eventHandle;
+        } else {
+            this.eventHandle = new DefaultEventHandle(eventMetadata.getTimeReceived());
+        }
         final Instant externalOriginationTime = this.eventMetadata.getExternalOriginationTime();
         if (externalOriginationTime != null) {
             eventHandle.setExternalOriginationTime(externalOriginationTime);
@@ -532,10 +536,11 @@ public class JacksonEvent implements Event {
     public abstract static class Builder<T extends Builder<T>> {
 
         private EventMetadata eventMetadata;
-        private Object data;
+        protected Object data;
         private String eventType;
         private Instant timeReceived;
         private Map<String, Object> eventMetadataAttributes;
+        protected EventHandle eventHandle;
 
         public abstract T getThis();
 
@@ -572,6 +577,18 @@ public class JacksonEvent implements Event {
          */
         public Builder<T> withTimeReceived(final Instant timeReceived) {
             this.timeReceived = timeReceived;
+            return this;
+        }
+
+        /**
+         * Sets the event handle
+         *
+         * @param eventHandle event handle
+         * @return returns the builder
+         * @since 2.10
+         */
+        public Builder<T> withEventHandle(final EventHandle eventHandle) {
+            this.eventHandle = eventHandle;
             return this;
         }
 
