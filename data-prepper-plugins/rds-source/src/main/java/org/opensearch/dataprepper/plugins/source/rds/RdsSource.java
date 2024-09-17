@@ -51,7 +51,7 @@ public class RdsSource implements Source<Record<Event>>, UsesEnhancedSourceCoord
         this.eventFactory = eventFactory;
         this.acknowledgementSetManager = acknowledgementSetManager;
 
-        clientFactory = new ClientFactory(awsCredentialsSupplier, sourceConfig.getAwsAuthenticationConfig());
+        clientFactory = new ClientFactory(awsCredentialsSupplier, sourceConfig);
     }
 
     @Override

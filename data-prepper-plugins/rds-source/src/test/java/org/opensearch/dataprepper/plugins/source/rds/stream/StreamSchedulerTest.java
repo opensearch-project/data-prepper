@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.Stre
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -58,10 +59,12 @@ class StreamSchedulerTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
+    private String s3Prefix;
     private StreamScheduler objectUnderTest;
 
     @BeforeEach
     void setUp() {
+        s3Prefix = UUID.randomUUID().toString();
         objectUnderTest = createObjectUnderTest();
     }
 
@@ -117,6 +120,6 @@ class StreamSchedulerTest {
     }
 
     private StreamScheduler createObjectUnderTest() {
-        return new StreamScheduler(sourceCoordinator, sourceConfig, binaryLogClient, buffer, pluginMetrics, acknowledgementSetManager);
+        return new StreamScheduler(sourceCoordinator, sourceConfig, s3Prefix, binaryLogClient, buffer, pluginMetrics, acknowledgementSetManager);
     }
 }

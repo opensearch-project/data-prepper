@@ -74,6 +74,7 @@ public class DataFileScheduler implements Runnable {
 
     public DataFileScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                              final RdsSourceConfig sourceConfig,
+                             final String s3Prefix,
                              final S3Client s3Client,
                              final EventFactory eventFactory,
                              final Buffer<Record<Event>> buffer,
@@ -83,7 +84,7 @@ public class DataFileScheduler implements Runnable {
         this.sourceConfig = sourceConfig;
         codec = new ParquetInputCodec(eventFactory);
         objectReader = new S3ObjectReader(s3Client);
-        recordConverter = new ExportRecordConverter();
+        recordConverter = new ExportRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
         executor = Executors.newFixedThreadPool(DATA_LOADER_MAX_JOB_COUNT);
         this.buffer = buffer;
         this.pluginMetrics = pluginMetrics;

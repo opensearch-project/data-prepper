@@ -44,6 +44,7 @@ public class RdsService {
      * Maximum concurrent data loader per node
      */
     public static final int DATA_LOADER_MAX_JOB_COUNT = 1;
+    public static final String S3_PATH_DELIMITER = "/";
 
     private final RdsClient rdsClient;
     private final S3Client s3Client;
@@ -88,8 +89,9 @@ public class RdsService {
         final RdsApiStrategy rdsApiStrategy = sourceConfig.isCluster() ?
                 new ClusterApiStrategy(rdsClient) : new InstanceApiStrategy(rdsClient);
         final DbMetadata dbMetadata = rdsApiStrategy.describeDb(sourceConfig.getDbIdentifier());
+        final String s3PathPrefix = getS3PathPrefix();
         leaderScheduler = new LeaderScheduler(
-                sourceCoordinator, sourceConfig, getSchemaManager(sourceConfig, dbMetadata), dbMetadata);
+                sourceCoordinator, sourceConfig, s3PathPrefix, getSchemaManager(sourceConfig, dbMetadata), dbMetadata);
         runnableList.add(leaderScheduler);
 
         if (sourceConfig.isExportEnabled()) {
@@ -98,7 +100,7 @@ public class RdsService {
             exportScheduler = new ExportScheduler(
                     sourceCoordinator, snapshotManager, exportTaskManager, s3Client, pluginMetrics);
             dataFileScheduler = new DataFileScheduler(
-                    sourceCoordinator, sourceConfig, s3Client, eventFactory, buffer, pluginMetrics, acknowledgementSetManager);
+                    sourceCoordinator, sourceConfig, s3PathPrefix, s3Client, eventFactory, buffer, pluginMetrics, acknowledgementSetManager);
             runnableList.add(exportScheduler);
             runnableList.add(dataFileScheduler);
         }
@@ -111,7 +113,7 @@ public class RdsService {
                 binaryLogClient.setSSLMode(SSLMode.DISABLED);
             }
             streamScheduler = new StreamScheduler(
-                    sourceCoordinator, sourceConfig, binaryLogClient, buffer, pluginMetrics, acknowledgementSetManager);
+                    sourceCoordinator, sourceConfig, s3PathPrefix, binaryLogClient, buffer, pluginMetrics, acknowledgementSetManager);
             runnableList.add(streamScheduler);
         }
 
@@ -148,5 +150,22 @@ public class RdsService {
                 sourceConfig.getAuthenticationConfig().getPassword(),
                 sourceConfig.isTlsEnabled());
         return new SchemaManager(connectionManager);
+    }
+
+    private String getS3PathPrefix() {
+        final String s3UserPathPrefix;
+        if (sourceConfig.getS3Prefix() != null && !sourceConfig.getS3Prefix().isBlank()) {
+            s3UserPathPrefix = sourceConfig.getS3Prefix();
+        } else {
+            s3UserPathPrefix = "";
+        }
+
+        final String s3PathPrefix;
+        if (sourceCoordinator.getPartitionPrefix() != null ) {
+            s3PathPrefix = s3UserPathPrefix + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix();
+        } else {
+            s3PathPrefix = s3UserPathPrefix;
+        }
+        return s3PathPrefix;
     }
 }

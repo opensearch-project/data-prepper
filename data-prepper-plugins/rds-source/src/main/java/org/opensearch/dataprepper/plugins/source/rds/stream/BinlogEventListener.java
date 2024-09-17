@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
@@ -51,6 +52,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+    static final String DATA_PREPPER_EVENT_TYPE = "event";
     static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
     static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
@@ -86,6 +88,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
     public BinlogEventListener(final Buffer<Record<Event>> buffer,
                                final RdsSourceConfig sourceConfig,
+                               final String s3Prefix,
                                final PluginMetrics pluginMetrics,
                                final BinaryLogClient binaryLogClient,
                                final StreamCheckpointer streamCheckpointer,
@@ -93,8 +96,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         this.buffer = buffer;
         this.binaryLogClient = binaryLogClient;
         tableMetadataMap = new HashMap<>();
-        recordConverter = new StreamRecordConverter(sourceConfig.getStream().getPartitionCount());
-        s3Prefix = sourceConfig.getS3Prefix();
+        recordConverter = new StreamRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
+        this.s3Prefix = s3Prefix;
         tableNames = sourceConfig.getTableNames();
         isAcknowledgmentsEnabled = sourceConfig.isAcknowledgmentsEnabled();
         this.pluginMetrics = pluginMetrics;
@@ -244,16 +247,20 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                 rowDataMap.put(columnNames.get(i), rowDataArray[i]);
             }
 
+            final Event dataPrepperEvent = JacksonEvent.builder()
+                    .withEventType(DATA_PREPPER_EVENT_TYPE)
+                    .withData(rowDataMap)
+                    .build();
+
             final Event pipelineEvent = recordConverter.convert(
-                    rowDataMap,
+                    dataPrepperEvent,
                     tableMetadata.getDatabaseName(),
                     tableMetadata.getTableName(),
-                    event.getHeader().getEventType(),
                     bulkAction,
                     primaryKeys,
-                    s3Prefix,
                     eventTimestampMillis,
-                    eventTimestampMillis);
+                    eventTimestampMillis,
+                    event.getHeader().getEventType());
             pipelineEvents.add(pipelineEvent);
         }
 
