@@ -67,7 +67,7 @@
       disable_s3_metadata_in_event: true
       scan:
         folder_partitions:
-          depth: "<<FUNCTION_NAME:calculateDepth,PARAMETER:$.<<pipeline-name>>.source.rds.s3_prefix>>"
+          depth: "<<FUNCTION_NAME:calculateDepthForRdsSource,PARAMETER:$.<<pipeline-name>>.source.rds.s3_prefix>>"
           max_objects_per_ownership: 50
         buckets:
           - bucket:

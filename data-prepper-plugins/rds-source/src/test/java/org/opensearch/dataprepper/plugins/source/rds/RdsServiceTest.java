@@ -36,7 +36,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.startsWith;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
@@ -150,7 +150,7 @@ class RdsServiceTest {
             rdsService.start(buffer);
         }
 
-        assertThat(s3PrefixArray[0], startsWith(s3Prefix + S3_PATH_DELIMITER + partitionPrefix + S3_PATH_DELIMITER));
+        assertThat(s3PrefixArray[0], equalTo(s3Prefix + S3_PATH_DELIMITER + partitionPrefix));
         verify(executor).submit(any(LeaderScheduler.class));
         verify(executor).submit(any(StreamScheduler.class));
         verify(executor, never()).submit(any(ExportScheduler.class));

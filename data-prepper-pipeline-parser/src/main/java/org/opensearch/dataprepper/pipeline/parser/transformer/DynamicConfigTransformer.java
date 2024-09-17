@@ -403,15 +403,28 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     }
 
     /**
-     * Calculate s3 folder scan depth for DocDB and RDS source pipeline
+     * Calculate s3 folder scan depth for DocDB source pipeline
      * @param s3Prefix: s3 prefix defined in the source configuration
      * @return s3 folder scan depth
      */
     public String calculateDepth(String s3Prefix) {
-        if (s3Prefix == null) {
-            return Integer.toString(4);
+        return Integer.toString(getDepth(s3Prefix, 4));
+    }
+
+    /**
+     * Calculate s3 folder scan depth for RDS source pipeline
+     * @param s3Prefix: s3 prefix defined in the source configuration
+     * @return s3 folder scan depth
+     */
+    public String calculateDepthForRdsSource(String s3Prefix) {
+        return Integer.toString(getDepth(s3Prefix, 3));
+    }
+
+    private int getDepth(String s3Prefix, int baseDepth) {
+        if(s3Prefix == null){
+            return baseDepth;
         }
-        return Integer.toString(s3Prefix.split("/").length + 4);
+        return s3Prefix.split("/").length + baseDepth;
     }
 
     public String getSourceCoordinationIdentifierEnvVariable(String s3Prefix){

@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -163,7 +162,7 @@ public class RdsService {
 
         final String s3PathPrefix;
         if (sourceCoordinator.getPartitionPrefix() != null ) {
-            s3PathPrefix = s3UserPathPrefix + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix() + S3_PATH_DELIMITER + Instant.now().toEpochMilli();
+            s3PathPrefix = s3UserPathPrefix + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix();
         } else {
             s3PathPrefix = s3UserPathPrefix;
         }
