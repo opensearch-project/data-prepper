@@ -10,7 +10,9 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
+import org.opensearch.dataprepper.model.event.AggregateEventHandle;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -93,6 +96,24 @@ public class JacksonSummaryTest {
     public void testGetName() {
         final String name = summary.getName();
         assertThat(name, is(equalTo(TEST_NAME)));
+    }
+
+    @Test
+    public void testGetDefaultEventHandle() {
+        EventHandle eventHandle = new DefaultEventHandle(Instant.now());
+        builder.withEventHandle(eventHandle);
+        summary = builder.build();
+        final EventHandle handle = summary.getEventHandle();
+        assertThat(handle, is(sameInstance(eventHandle)));
+    }
+
+    @Test
+    public void testGetAggregateEventHandle() {
+        EventHandle eventHandle = new AggregateEventHandle(Instant.now());
+        builder.withEventHandle(eventHandle);
+        summary = builder.build();
+        final EventHandle handle = summary.getEventHandle();
+        assertThat(handle, is(sameInstance(eventHandle)));
     }
 
     @Test

@@ -75,7 +75,7 @@ public class JacksonSum extends JacksonMetric implements Sum {
          */
         public Builder withValue(final Double value) {
             if (value != null) {
-                data.put(VALUE_KEY, value);
+                put(VALUE_KEY, value);
             }
             return this;
         }
@@ -87,7 +87,7 @@ public class JacksonSum extends JacksonMetric implements Sum {
          * @since 1.4
          */
         public Builder withAggregationTemporality(String aggregationTemporality) {
-            data.put(AGGREGATION_TEMPORALITY_KEY, aggregationTemporality);
+            put(AGGREGATION_TEMPORALITY_KEY, aggregationTemporality);
             return this;
         }
 
@@ -98,7 +98,7 @@ public class JacksonSum extends JacksonMetric implements Sum {
          * @since 1.4
          */
         public Builder withIsMonotonic(final boolean isMonotonic) {
-            data.put(IS_MONOTONIC_KEY, isMonotonic);
+            put(IS_MONOTONIC_KEY, isMonotonic);
             return this;
         }
 
@@ -135,12 +135,12 @@ public class JacksonSum extends JacksonMetric implements Sum {
             this.withEventKind(Metric.KIND.SUM.toString());
 
             checkAndSetDefaultValues();
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, data);
+            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
             return new JacksonSum(this, flattenAttributes);
         }
 
         private void checkAndSetDefaultValues() {
-            data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
+            computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
         }
 
     }

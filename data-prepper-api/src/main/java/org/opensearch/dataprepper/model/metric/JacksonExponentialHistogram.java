@@ -125,7 +125,7 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @since 1.4
          */
         public JacksonExponentialHistogram.Builder withSum(double sum) {
-            data.put(SUM_KEY, sum);
+            put(SUM_KEY, sum);
             return this;
         }
 
@@ -137,7 +137,7 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @since 1.4
          */
         public JacksonExponentialHistogram.Builder withCount(long count) {
-            data.put(COUNT_KEY, count);
+            put(COUNT_KEY, count);
             return this;
         }
 
@@ -149,7 +149,7 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @since 1.4
          */
         public JacksonExponentialHistogram.Builder withScale(int scale) {
-            data.put(SCALE_KEY, scale);
+            put(SCALE_KEY, scale);
             return this;
         }
 
@@ -162,7 +162,7 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @since 1.4
          */
         public JacksonExponentialHistogram.Builder withZeroCount(long zeroCount) {
-            data.put(ZERO_COUNT_KEY, zeroCount);
+            put(ZERO_COUNT_KEY, zeroCount);
             return this;
         }
 
@@ -174,7 +174,7 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @since 1.4
          */
         public JacksonExponentialHistogram.Builder withAggregationTemporality(String aggregationTemporality) {
-            data.put(AGGREGATION_TEMPORALITY_KEY, aggregationTemporality);
+            put(AGGREGATION_TEMPORALITY_KEY, aggregationTemporality);
             return this;
         }
 
@@ -186,7 +186,7 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @since 1.4
          */
         public JacksonExponentialHistogram.Builder  withPositiveBuckets(List<Bucket> exponentialBuckets) {
-            data.put(POSITIVE_BUCKETS_KEY, exponentialBuckets);
+            put(POSITIVE_BUCKETS_KEY, exponentialBuckets);
             return this;
         }
 
@@ -198,7 +198,7 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @since 1.4
          */
         public JacksonExponentialHistogram.Builder withNegativeBuckets(List<Bucket> exponentialBuckets) {
-            data.put(NEGATIVE_BUCKETS_KEY, exponentialBuckets);
+            put(NEGATIVE_BUCKETS_KEY, exponentialBuckets);
             return this;
         }
 
@@ -210,7 +210,7 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @since 1.4
          */
         public JacksonExponentialHistogram.Builder withPositive(List<Long> bucketCountsList) {
-            data.put(POSITIVE_KEY, bucketCountsList);
+            put(POSITIVE_KEY, bucketCountsList);
             return this;
         }
 
@@ -222,7 +222,7 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @since 1.4
          */
         public JacksonExponentialHistogram.Builder withNegative(List<Long> bucketCountsList) {
-            data.put(NEGATIVE_KEY, bucketCountsList);
+            put(NEGATIVE_KEY, bucketCountsList);
             return this;
         }
 
@@ -234,7 +234,7 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @since 1.4
          */
         public JacksonExponentialHistogram.Builder withPositiveOffset(int offset) {
-            data.put(POSITIVE_OFFSET_KEY, offset);
+            put(POSITIVE_OFFSET_KEY, offset);
             return this;
         }
 
@@ -258,7 +258,7 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @since 1.4
          */
         public JacksonExponentialHistogram.Builder withNegativeOffset(int offset) {
-            data.put(NEGATIVE_OFFSET_KEY, offset);
+            put(NEGATIVE_OFFSET_KEY, offset);
             return this;
         }
 
@@ -284,13 +284,13 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
             this.withEventKind(KIND.EXPONENTIAL_HISTOGRAM.toString());
             this.withEventType(EventType.METRIC.toString());
             checkAndSetDefaultValues();
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, data);
+            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
 
             return new JacksonExponentialHistogram(this, flattenAttributes);
         }
 
         private void checkAndSetDefaultValues() {
-            data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
+            computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
         }
     }
 }
