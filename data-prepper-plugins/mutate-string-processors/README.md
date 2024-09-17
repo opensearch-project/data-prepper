@@ -1,6 +1,7 @@
 # Mutate String Processors
 The following is a list of processors to mutate a string.
 * [substitute_string](#substitutestringprocessor)
+* [replace_string](#replacestringprocessor)
 * [split_string](#splitstringprocessor)
 * [uppercase_string](#uppercasestringprocessor)
 * [lowercase_string](#lowercasestringprocessor)
@@ -48,6 +49,48 @@ If `from` regex string does not have a match, the key will be returned as it is.
 must be escaped using `\\` when using double quotes and `\ ` when using single quotes. See [here](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/regex/Pattern.html) for more information.
     * `to` - (required) - The String to be substituted for each match of `from`
     
+---
+
+## ReplaceStringProcessor
+A processor that takes in a key and changes its value by replacing each occurrence of from substring to target substring.
+
+### Basic Usage
+To get started, create the following `pipeline.yaml`.
+```yaml
+pipeline:
+  source:
+    file:
+      path: "/full/path/to/logs_json.log"
+      record_type: "event"
+      format: "json"
+  processor:
+    - replace_string:
+        entries:
+          - source: "message"
+            from: "ab"
+            to: "ef"
+  sink:
+    - stdout:
+```
+
+Create the following file named `logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
+
+```json
+{"message": "ab:cd:ab:cd"}
+```
+When you run Data Prepper with this `pipeline.yaml`, you should see the following output:
+
+```json
+{"message": "ef:cd:ef:cd"}
+```
+If `from` substring does not have a match, the key will be returned as it is.
+
+### Configuration
+* `entries` - (required) - A list of entries to add to an event
+  * `source` - (required) - The key to be modified
+  * `from` - (required) - The substring to be replaced. This cannot be regex.
+  * `to` - (required) - The String to be substituted for each match of `from`
+
 ---
 
 ## SplitStringProcessor
