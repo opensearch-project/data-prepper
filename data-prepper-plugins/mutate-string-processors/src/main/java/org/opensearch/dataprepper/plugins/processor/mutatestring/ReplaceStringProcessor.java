@@ -30,10 +30,10 @@ public class ReplaceStringProcessor extends AbstractStringProcessor<ReplaceStrin
         this.expressionEvaluator = expressionEvaluator;
 
         for(final ReplaceStringProcessorConfig.Entry entry : config.getEntries()) {
-            if (entry.getSubstituteWhen() != null
-                    && !expressionEvaluator.isValidExpressionStatement(entry.getSubstituteWhen())) {
+            if (entry.getReplaceWhen() != null
+                    && !expressionEvaluator.isValidExpressionStatement(entry.getReplaceWhen())) {
                 throw new InvalidPluginConfigurationException(
-                        String.format("substitute_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", entry.getSubstituteWhen()));
+                        String.format("substitute_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", entry.getReplaceWhen()));
             }
         }
     }
@@ -41,7 +41,7 @@ public class ReplaceStringProcessor extends AbstractStringProcessor<ReplaceStrin
     @Override
     protected void performKeyAction(final Event recordEvent, final ReplaceStringProcessorConfig.Entry entry, final String value)
     {
-        if (Objects.nonNull(entry.getSubstituteWhen()) && !expressionEvaluator.evaluateConditional(entry.getSubstituteWhen(), recordEvent)) {
+        if (Objects.nonNull(entry.getReplaceWhen()) && !expressionEvaluator.evaluateConditional(entry.getReplaceWhen(), recordEvent)) {
             return;
         }
 

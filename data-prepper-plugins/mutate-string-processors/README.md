@@ -88,7 +88,7 @@ If `from` substring does not have a match, the key will be returned as it is.
 ### Configuration
 * `entries` - (required) - A list of entries to add to an event
   * `source` - (required) - The key to be modified
-  * `from` - (required) - The substring to be replaced. This cannot be regex.
+  * `from` - (required) - The substring to be replaced. This doesn't support regex.
   * `to` - (required) - The String to be substituted for each match of `from`
 
 ---

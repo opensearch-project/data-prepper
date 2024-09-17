@@ -22,14 +22,14 @@ public class ReplaceStringProcessorConfig implements StringProcessorConfig<Repla
         private EventKey source;
         @JsonPropertyDescription("The substring to be replaced in the source.")
         private String from;
-        @JsonPropertyDescription("The string to be substituted for each match of `from`.")
+        @JsonPropertyDescription("The string to be replaced for each match of `from`.")
         private String to;
 
-        @JsonProperty("substitute_when")
+        @JsonProperty("replace_when")
         @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
                 "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be " +
                 "run on the event. Default is `null`. All events will be processed unless otherwise stated.")
-        private String substituteWhen;
+        private String replaceWhen;
 
         public EventKey getSource() {
             return source;
@@ -43,13 +43,13 @@ public class ReplaceStringProcessorConfig implements StringProcessorConfig<Repla
             return to;
         }
 
-        public String getSubstituteWhen() { return substituteWhen; }
+        public String getReplaceWhen() { return replaceWhen; }
 
-        public Entry(final EventKey source, final String from, final String to, final String substituteWhen) {
+        public Entry(final EventKey source, final String from, final String to, final String replaceWhen) {
             this.source = source;
             this.from = from;
             this.to = to;
-            this.substituteWhen = substituteWhen;
+            this.replaceWhen = replaceWhen;
         }
 
         public Entry() {}
