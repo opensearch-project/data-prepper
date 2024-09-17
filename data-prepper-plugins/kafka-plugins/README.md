@@ -50,6 +50,17 @@ Then run
 ./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin --tests KafkaSourceSaslPlainTextIT
 ```
 
+##### Run SASL SCRAM integration tests
+
+First run Kafka with SASL_SCRAM username, password and mechanism:
+```
+docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/kraft/sasl-scram --env-file  data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/kraft/sasl-scram/.env up -d
+```
+Then run
+```
+./gradlew data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=localhost:9092 -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin -Dtests.kafka.authconfig.mechanism=SCRAM-SHA-512 --tests KafkaSourceSaslScramIT
+```
+
 See the Old integration tests section to run other tests. However, these are more involved.
 
 ### Old integration tests

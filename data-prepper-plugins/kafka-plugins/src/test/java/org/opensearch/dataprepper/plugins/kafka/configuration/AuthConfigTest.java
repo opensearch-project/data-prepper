@@ -46,6 +46,9 @@ class AuthConfigTest {
     OAuthConfig testOAuthConfig;
 
     @Mock
+    ScramAuthConfig testScramConfig;
+
+    @Mock
     PlainTextAuthConfig testPlainTextConfig;
 
     @BeforeEach
@@ -79,6 +82,16 @@ class AuthConfigTest {
     }
 
     @Test
+    void testScramAuthConfig() {
+        assertThat(authConfig, notNullValue());
+        assertThat(authConfig.getSaslAuthConfig(), notNullValue());
+        assertThat(authConfig.getSaslAuthConfig().getScramAuthConfig(), notNullValue());
+        assertThat(authConfig.getSaslAuthConfig().getScramAuthConfig(), hasProperty("username"));
+        assertThat(authConfig.getSaslAuthConfig().getScramAuthConfig(), hasProperty("password"));
+        assertThat(authConfig.getSaslAuthConfig().getScramAuthConfig(), hasProperty("mechanism"));
+    }
+
+    @Test
     void testSaslAuthConfigWithPlainText() throws NoSuchFieldException, IllegalAccessException {
         saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
         testPlainTextConfig = mock(PlainTextAuthConfig.class);
@@ -86,6 +99,16 @@ class AuthConfigTest {
         setField(AuthConfig.class, authConfig, "saslAuthConfig", saslAuthConfig);
         assertThat(authConfig.getSaslAuthConfig(), equalTo(saslAuthConfig));
         assertThat(authConfig.getSaslAuthConfig().getPlainTextAuthConfig(), equalTo(testPlainTextConfig));
+    }
+
+    @Test
+    void testSaslAuthConfigWithScram() throws NoSuchFieldException, IllegalAccessException {
+        saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
+        testScramConfig = mock(ScramAuthConfig.class);
+        when(saslAuthConfig.getScramAuthConfig()).thenReturn(testScramConfig);
+        setField(AuthConfig.class, authConfig, "saslAuthConfig", saslAuthConfig);
+        assertThat(authConfig.getSaslAuthConfig(), equalTo(saslAuthConfig));
+        assertThat(authConfig.getSaslAuthConfig().getScramAuthConfig(), equalTo(testScramConfig));
     }
 
     @Test
