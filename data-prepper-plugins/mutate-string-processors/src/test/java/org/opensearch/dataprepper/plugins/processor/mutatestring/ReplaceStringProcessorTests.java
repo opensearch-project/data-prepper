@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.PatternSyntaxException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -176,9 +175,8 @@ public class ReplaceStringProcessorTests {
 
     private ReplaceStringProcessorConfig.Entry createEntry(final String source, final String from, final String to, final String ReplaceWhen) {
         final EventKey sourceKey = eventKeyFactory.createEventKey(source);
-        final ReplaceStringProcessorConfig.Entry entry = new ReplaceStringProcessorConfig.Entry(sourceKey, from, to, ReplaceWhen);
 
-        return entry;
+        return new ReplaceStringProcessorConfig.Entry(sourceKey, from, to, ReplaceWhen);
     }
 
     private ReplaceStringProcessor createObjectUnderTest() {
@@ -186,7 +184,7 @@ public class ReplaceStringProcessorTests {
     }
 
     private Record<Event> getEvent(Object message) {
-        final Map<String, Object> testData = new HashMap();
+        final Map<String, Object> testData = new HashMap<>();
         testData.put("message", message);
         return buildRecordWithEvent(testData);
     }

@@ -14,10 +14,7 @@ import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.Processor;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 /**
  * This processor takes in a key and changes its value by replacing each occurrence of from substring to target substring.
