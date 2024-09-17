@@ -193,14 +193,15 @@ public class KinesisRecordProcessorTest {
         records.add(record);
         when(kinesisRecordConverter.convert(eq(kinesisClientRecords))).thenReturn(records);
 
-        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, streamIdentifier);
+        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
         KinesisCheckpointerRecord kinesisCheckpointerRecord = mock(KinesisCheckpointerRecord.class);
         ExtendedSequenceNumber extendedSequenceNumber = mock(ExtendedSequenceNumber.class);
         when(extendedSequenceNumber.sequenceNumber()).thenReturn(sequence_number);
         when(extendedSequenceNumber.subSequenceNumber()).thenReturn(sub_sequence_number);
         when(kinesisCheckpointerRecord.getExtendedSequenceNumber()).thenReturn(extendedSequenceNumber);
-        when(kinesisCheckpointerTracker.getLatestAvailableCheckpointRecord()).thenReturn(Optional.of(kinesisCheckpointerRecord));
-        kinesisRecordProcessor.setKinesisCheckpointerTracker(kinesisCheckpointerTracker);
+        when(kinesisCheckpointerRecord.getCheckpointer()).thenReturn(checkpointer);
+        when(kinesisCheckpointerTracker.popLatestReadyToCheckpointRecord()).thenReturn(Optional.of(kinesisCheckpointerRecord));
         kinesisRecordProcessor.initialize(initializationInput);
 
         kinesisRecordProcessor.processRecords(processRecordsInput);
@@ -238,9 +239,9 @@ public class KinesisRecordProcessorTest {
         records.add(record);
         when(kinesisRecordConverter.convert(eq(kinesisClientRecords))).thenReturn(records);
 
-        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, streamIdentifier);
-        when(kinesisCheckpointerTracker.getLatestAvailableCheckpointRecord()).thenReturn(Optional.empty());
-        kinesisRecordProcessor.setKinesisCheckpointerTracker(kinesisCheckpointerTracker);
+        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
+        when(kinesisCheckpointerTracker.popLatestReadyToCheckpointRecord()).thenReturn(Optional.empty());
         kinesisRecordProcessor.initialize(initializationInput);
 
         kinesisRecordProcessor.processRecords(processRecordsInput);
@@ -288,14 +289,15 @@ public class KinesisRecordProcessorTest {
         records.add(record);
         when(kinesisRecordConverter.convert(eq(kinesisClientRecords))).thenReturn(records);
 
-        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, streamIdentifier);
+        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
         KinesisCheckpointerRecord kinesisCheckpointerRecord = mock(KinesisCheckpointerRecord.class);
         ExtendedSequenceNumber extendedSequenceNumber = mock(ExtendedSequenceNumber.class);
         when(extendedSequenceNumber.sequenceNumber()).thenReturn(sequence_number);
         when(extendedSequenceNumber.subSequenceNumber()).thenReturn(sub_sequence_number);
         when(kinesisCheckpointerRecord.getExtendedSequenceNumber()).thenReturn(extendedSequenceNumber);
-        when(kinesisCheckpointerTracker.getLatestAvailableCheckpointRecord()).thenReturn(Optional.of(kinesisCheckpointerRecord));
-        kinesisRecordProcessor.setKinesisCheckpointerTracker(kinesisCheckpointerTracker);
+        when(kinesisCheckpointerRecord.getCheckpointer()).thenReturn(checkpointer);
+        when(kinesisCheckpointerTracker.popLatestReadyToCheckpointRecord()).thenReturn(Optional.of(kinesisCheckpointerRecord));
         kinesisRecordProcessor.initialize(initializationInput);
 
         kinesisRecordProcessor.processRecords(processRecordsInput);
@@ -341,14 +343,15 @@ public class KinesisRecordProcessorTest {
         records.add(record);
         when(kinesisRecordConverter.convert(eq(kinesisClientRecords))).thenReturn(records);
 
-        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, streamIdentifier);
-        kinesisRecordProcessor.setKinesisCheckpointerTracker(kinesisCheckpointerTracker);
+        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
         KinesisCheckpointerRecord kinesisCheckpointerRecord = mock(KinesisCheckpointerRecord.class);
         ExtendedSequenceNumber extendedSequenceNumber = mock(ExtendedSequenceNumber.class);
         when(extendedSequenceNumber.sequenceNumber()).thenReturn(sequence_number);
         when(extendedSequenceNumber.subSequenceNumber()).thenReturn(sub_sequence_number);
+        when(kinesisCheckpointerRecord.getCheckpointer()).thenReturn(checkpointer);
         when(kinesisCheckpointerRecord.getExtendedSequenceNumber()).thenReturn(extendedSequenceNumber);
-        when(kinesisCheckpointerTracker.getLatestAvailableCheckpointRecord()).thenReturn(Optional.of(kinesisCheckpointerRecord));
+        when(kinesisCheckpointerTracker.popLatestReadyToCheckpointRecord()).thenReturn(Optional.of(kinesisCheckpointerRecord));
         kinesisRecordProcessor.initialize(initializationInput);
 
         kinesisRecordProcessor.processRecords(processRecordsInput);
@@ -384,8 +387,8 @@ public class KinesisRecordProcessorTest {
         final Throwable exception = mock(RuntimeException.class);
         doThrow(exception).when(bufferAccumulator).add(any(Record.class));
 
-        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, streamIdentifier);
-        kinesisRecordProcessor.setKinesisCheckpointerTracker(kinesisCheckpointerTracker);
+        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
         kinesisRecordProcessor.initialize(initializationInput);
 
         assertDoesNotThrow(() -> kinesisRecordProcessor.processRecords(processRecordsInput));
@@ -408,8 +411,8 @@ public class KinesisRecordProcessorTest {
         final Throwable exception = mock(RuntimeException.class);
         doThrow(exception).when(bufferAccumulator).flush();
 
-        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, streamIdentifier);
-        kinesisRecordProcessor.setKinesisCheckpointerTracker(kinesisCheckpointerTracker);
+        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
         kinesisRecordProcessor.initialize(initializationInput);
 
         assertDoesNotThrow(() -> kinesisRecordProcessor.processRecords(processRecordsInput));
@@ -420,10 +423,10 @@ public class KinesisRecordProcessorTest {
 
     @Test
     void testShardEndedLatestCheckpoint() {
-        KinesisRecordProcessor mockKinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, streamIdentifier);
+        KinesisRecordProcessor mockKinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
         ShardEndedInput shardEndedInput = mock(ShardEndedInput.class);
         when(shardEndedInput.checkpointer()).thenReturn(checkpointer);
-        mockKinesisRecordProcessor.setKinesisCheckpointerTracker(kinesisCheckpointerTracker);
 
         mockKinesisRecordProcessor.shardEnded(shardEndedInput);
 
@@ -436,8 +439,8 @@ public class KinesisRecordProcessorTest {
         checkpointFailures = mock(Counter.class);
         when(pluginMetrics.counterWithTags(KINESIS_CHECKPOINT_FAILURES, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(checkpointFailures);
 
-        KinesisRecordProcessor mockKinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, streamIdentifier);
-        mockKinesisRecordProcessor.setKinesisCheckpointerTracker(kinesisCheckpointerTracker);
+        KinesisRecordProcessor mockKinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
         ShardEndedInput shardEndedInput = mock(ShardEndedInput.class);
         when(shardEndedInput.checkpointer()).thenReturn(checkpointer);
         doThrow(exceptionType).when(checkpointer).checkpoint();
@@ -454,8 +457,8 @@ public class KinesisRecordProcessorTest {
         checkpointFailures = mock(Counter.class);
         when(pluginMetrics.counterWithTags(KINESIS_CHECKPOINT_FAILURES, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(checkpointFailures);
 
-        KinesisRecordProcessor mockKinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, streamIdentifier);
-        mockKinesisRecordProcessor.setKinesisCheckpointerTracker(kinesisCheckpointerTracker);
+        KinesisRecordProcessor mockKinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
         ShutdownRequestedInput shutdownRequestedInput = mock(ShutdownRequestedInput.class);
         when(shutdownRequestedInput.checkpointer()).thenReturn(checkpointer);
 
@@ -471,8 +474,8 @@ public class KinesisRecordProcessorTest {
         checkpointFailures = mock(Counter.class);
         when(pluginMetrics.counterWithTags(KINESIS_CHECKPOINT_FAILURES, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(checkpointFailures);
 
-        KinesisRecordProcessor mockKinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, streamIdentifier);
-        mockKinesisRecordProcessor.setKinesisCheckpointerTracker(kinesisCheckpointerTracker);
+        KinesisRecordProcessor mockKinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
         doThrow(exceptionType).when(checkpointer).checkpoint(eq(sequence_number), eq(sub_sequence_number));
 
         assertDoesNotThrow(() -> mockKinesisRecordProcessor.checkpoint(checkpointer, sequence_number, sub_sequence_number));
@@ -487,8 +490,8 @@ public class KinesisRecordProcessorTest {
         checkpointFailures = mock(Counter.class);
         when(pluginMetrics.counterWithTags(KINESIS_CHECKPOINT_FAILURES, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(checkpointFailures);
 
-        KinesisRecordProcessor mockKinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, streamIdentifier);
-        mockKinesisRecordProcessor.setKinesisCheckpointerTracker(kinesisCheckpointerTracker);
+        KinesisRecordProcessor mockKinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
         ShutdownRequestedInput shutdownRequestedInput = mock(ShutdownRequestedInput.class);
         when(shutdownRequestedInput.checkpointer()).thenReturn(checkpointer);
         doThrow(exceptionType).when(checkpointer).checkpoint();

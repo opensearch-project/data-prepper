@@ -38,7 +38,7 @@ public class KinesisCheckpointerTracker {
         checkpointerRecordList.get(extendedSequenceNumber).setReadyToCheckpoint(true);
     }
 
-    public synchronized Optional<KinesisCheckpointerRecord> getLatestAvailableCheckpointRecord() {
+    public synchronized Optional<KinesisCheckpointerRecord> popLatestReadyToCheckpointRecord() {
         Optional<KinesisCheckpointerRecord> kinesisCheckpointerRecordOptional = Optional.empty();
         List<ExtendedSequenceNumber> toRemoveRecords = new ArrayList<>();
 

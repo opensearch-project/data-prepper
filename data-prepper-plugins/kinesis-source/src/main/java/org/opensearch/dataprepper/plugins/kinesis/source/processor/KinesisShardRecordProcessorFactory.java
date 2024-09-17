@@ -52,6 +52,8 @@ public class KinesisShardRecordProcessorFactory implements ShardRecordProcessorF
     public ShardRecordProcessor shardRecordProcessor(StreamIdentifier streamIdentifier) {
         BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer,
                 kinesisSourceConfig.getNumberOfRecordsToAccumulate(), kinesisSourceConfig.getBufferTimeout());
-        return new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, streamIdentifier);
+        KinesisCheckpointerTracker kinesisCheckpointerTracker = new KinesisCheckpointerTracker();
+        return new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig, acknowledgementSetManager,
+                pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
     }
 }

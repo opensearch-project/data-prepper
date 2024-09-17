@@ -45,7 +45,7 @@ public class KinesisCheckpointerTrackerTest {
         ExtendedSequenceNumber last = extendedSequenceNumberList.get(extendedSequenceNumberList.size()-1);
         kinesisCheckpointerTracker.markSequenceNumberForCheckpoint(last);
 
-        Optional<KinesisCheckpointerRecord> checkpointRecord = kinesisCheckpointerTracker.getLatestAvailableCheckpointRecord();
+        Optional<KinesisCheckpointerRecord> checkpointRecord = kinesisCheckpointerTracker.popLatestReadyToCheckpointRecord();
         assertTrue(checkpointRecord.isEmpty());
         assertEquals(kinesisCheckpointerTracker.size(), numRecords);
 
@@ -53,7 +53,7 @@ public class KinesisCheckpointerTrackerTest {
         ExtendedSequenceNumber extendedSequenceNumber1 = extendedSequenceNumberList.get(idx);
         kinesisCheckpointerTracker.markSequenceNumberForCheckpoint(extendedSequenceNumber1);
 
-        Optional<KinesisCheckpointerRecord> firstcheckpointer = kinesisCheckpointerTracker.getLatestAvailableCheckpointRecord();
+        Optional<KinesisCheckpointerRecord> firstcheckpointer = kinesisCheckpointerTracker.popLatestReadyToCheckpointRecord();
         if (idx != 0) {
             assertTrue(firstcheckpointer.isEmpty());
             assertEquals(kinesisCheckpointerTracker.size(), numRecords);
@@ -79,7 +79,7 @@ public class KinesisCheckpointerTrackerTest {
             kinesisCheckpointerTracker.markSequenceNumberForCheckpoint(extendedSequenceNumber);
         }
 
-        Optional<KinesisCheckpointerRecord> checkpointer = kinesisCheckpointerTracker.getLatestAvailableCheckpointRecord();
+        Optional<KinesisCheckpointerRecord> checkpointer = kinesisCheckpointerTracker.popLatestReadyToCheckpointRecord();
         assertTrue(checkpointer.isPresent());
         assertEquals(0, kinesisCheckpointerTracker.size());
     }
@@ -92,7 +92,7 @@ public class KinesisCheckpointerTrackerTest {
         ExtendedSequenceNumber extendedSequenceNumber = mock(ExtendedSequenceNumber.class);
         assertThrows(IllegalArgumentException.class, () -> kinesisCheckpointerTracker.markSequenceNumberForCheckpoint(extendedSequenceNumber));
 
-        Optional<KinesisCheckpointerRecord> checkpointer = kinesisCheckpointerTracker.getLatestAvailableCheckpointRecord();
+        Optional<KinesisCheckpointerRecord> checkpointer = kinesisCheckpointerTracker.popLatestReadyToCheckpointRecord();
         assertTrue(checkpointer.isEmpty());
     }
 }

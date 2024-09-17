@@ -49,31 +49,34 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class KinesisRecordProcessor implements ShardRecordProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(KinesisRecordProcessor.class);
+
     private static final int DEFAULT_MONITOR_WAIT_TIME_MS = 15_000;
+    private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofSeconds(20);
+
     private final StreamIdentifier streamIdentifier;
     private final KinesisStreamConfig kinesisStreamConfig;
     private final Duration checkpointInterval;
     private final KinesisSourceConfig kinesisSourceConfig;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final KinesisRecordConverter kinesisRecordConverter;
+    private final KinesisCheckpointerTracker kinesisCheckpointerTracker;
+    private final ExecutorService executorService;
     private String kinesisShardId;
     private long lastCheckpointTimeInMillis;
     private final int bufferTimeoutMillis;
     private final AcknowledgementSetManager acknowledgementSetManager;
+
     private final Counter acknowledgementSetSuccesses;
     private final Counter acknowledgementSetFailures;
     private final Counter recordsProcessed;
     private final Counter recordProcessingErrors;
     private final Counter checkpointFailures;
-    private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofSeconds(20);
     public static final String ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME = "acknowledgementSetSuccesses";
     public static final String ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME = "acknowledgementSetFailures";
     public static final String KINESIS_RECORD_PROCESSED = "recordProcessed";
     public static final String KINESIS_RECORD_PROCESSING_ERRORS = "recordProcessingErrors";
     public static final String KINESIS_CHECKPOINT_FAILURES = "checkpointFailures";
     public static final String KINESIS_STREAM_TAG_KEY = "stream";
-    private KinesisCheckpointerTracker kinesisCheckpointerTracker;
-    private final ExecutorService executorService;
     private AtomicBoolean isStopRequested;
 
     public KinesisRecordProcessor(final BufferAccumulator<Record<Event>> bufferAccumulator,
@@ -81,6 +84,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
                                   final AcknowledgementSetManager acknowledgementSetManager,
                                   final PluginMetrics pluginMetrics,
                                   final KinesisRecordConverter kinesisRecordConverter,
+                                  final KinesisCheckpointerTracker kinesisCheckpointerTracker,
                                   final StreamIdentifier streamIdentifier) {
         this.bufferTimeoutMillis = (int) kinesisSourceConfig.getBufferTimeout().toMillis();
         this.streamIdentifier = streamIdentifier;
@@ -95,7 +99,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
         this.checkpointFailures = pluginMetrics.counterWithTags(KINESIS_CHECKPOINT_FAILURES, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
         this.checkpointInterval = kinesisStreamConfig.getCheckPointInterval();
         this.bufferAccumulator = bufferAccumulator;
-        this.kinesisCheckpointerTracker = new KinesisCheckpointerTracker();
+        this.kinesisCheckpointerTracker = kinesisCheckpointerTracker;
         this.executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("kinesis-ack-monitor"));
         this.isStopRequested = new AtomicBoolean(false);
     }
@@ -120,16 +124,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
     private void monitorCheckpoint(final ExecutorService executorService) {
         while (!isStopRequested.get()) {
             if (System.currentTimeMillis() - lastCheckpointTimeInMillis >= checkpointInterval.toMillis()) {
-                LOG.debug("Regular checkpointing for shard {}", kinesisShardId);
-
-                Optional<KinesisCheckpointerRecord> kinesisCheckpointerRecordOptional = kinesisCheckpointerTracker.getLatestAvailableCheckpointRecord();
-                if (kinesisCheckpointerRecordOptional.isPresent()) {
-                    RecordProcessorCheckpointer recordProcessorCheckpointer = kinesisCheckpointerRecordOptional.get().getCheckpointer();
-                    String sequenceNumber = kinesisCheckpointerRecordOptional.get().getExtendedSequenceNumber().sequenceNumber();
-                    Long subSequenceNumber = kinesisCheckpointerRecordOptional.get().getExtendedSequenceNumber().subSequenceNumber();
-                    checkpoint(recordProcessorCheckpointer, sequenceNumber, subSequenceNumber);
-                    lastCheckpointTimeInMillis = System.currentTimeMillis();
-                }
+                doCheckpoint();
             }
             try {
                 Thread.sleep(DEFAULT_MONITOR_WAIT_TIME_MS);
@@ -195,14 +190,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
 
             // Checkpoint for shard
             if (!acknowledgementsEnabled && (System.currentTimeMillis() - lastCheckpointTimeInMillis >= checkpointInterval.toMillis())) {
-                LOG.debug("Regular checkpointing for shard {}", kinesisShardId);
-
-                Optional<KinesisCheckpointerRecord> KinesisCheckpointerRecordOptional = kinesisCheckpointerTracker.getLatestAvailableCheckpointRecord();
-                if (KinesisCheckpointerRecordOptional.isPresent()) {
-                    ExtendedSequenceNumber lastExtendedSequenceNumber = KinesisCheckpointerRecordOptional.get().getExtendedSequenceNumber();
-                    checkpoint(processRecordsInput.checkpointer(), lastExtendedSequenceNumber.sequenceNumber(), lastExtendedSequenceNumber.subSequenceNumber());
-                    lastCheckpointTimeInMillis = System.currentTimeMillis();
-                }
+                doCheckpoint();
             }
         } catch (Exception ex) {
             recordProcessingErrors.increment();
@@ -242,6 +230,17 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
         }
     }
 
+    private void doCheckpoint() {
+        LOG.debug("Regular checkpointing for shard {}", kinesisShardId);
+        Optional<KinesisCheckpointerRecord> kinesisCheckpointerRecordOptional = kinesisCheckpointerTracker.popLatestReadyToCheckpointRecord();
+        if (kinesisCheckpointerRecordOptional.isPresent()) {
+            ExtendedSequenceNumber lastExtendedSequenceNumber = kinesisCheckpointerRecordOptional.get().getExtendedSequenceNumber();
+            RecordProcessorCheckpointer recordProcessorCheckpointer = kinesisCheckpointerRecordOptional.get().getCheckpointer();
+            checkpoint(recordProcessorCheckpointer, lastExtendedSequenceNumber.sequenceNumber(), lastExtendedSequenceNumber.subSequenceNumber());
+            lastCheckpointTimeInMillis = System.currentTimeMillis();
+        }
+    }
+
     private void checkpoint(RecordProcessorCheckpointer checkpointer) {
         try {
             String kinesisStream = streamIdentifier.streamName();
@@ -267,10 +266,5 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
             }
         }
         return largestExtendedSequenceNumber;
-    }
-
-    @VisibleForTesting
-    public void setKinesisCheckpointerTracker(final KinesisCheckpointerTracker kinesisCheckpointerTracker) {
-        this.kinesisCheckpointerTracker = kinesisCheckpointerTracker;
     }
 }
