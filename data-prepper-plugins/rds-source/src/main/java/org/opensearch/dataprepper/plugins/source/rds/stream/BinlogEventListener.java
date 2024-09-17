@@ -52,6 +52,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+    static final String DATA_PREPPER_EVENT_TYPE = "event";
     static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
     static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
@@ -247,7 +248,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             }
 
             final Event dataPrepperEvent = JacksonEvent.builder()
-                    .withEventType("event")
+                    .withEventType(DATA_PREPPER_EVENT_TYPE)
                     .withData(rowDataMap)
                     .build();
 
