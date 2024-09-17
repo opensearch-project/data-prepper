@@ -540,7 +540,7 @@ public class JacksonEvent implements Event {
         private String eventType;
         private Instant timeReceived;
         private Map<String, Object> eventMetadataAttributes;
-        protected EventHandle eventHandle;
+        protected transient EventHandle eventHandle;
 
         public abstract T getThis();
 
