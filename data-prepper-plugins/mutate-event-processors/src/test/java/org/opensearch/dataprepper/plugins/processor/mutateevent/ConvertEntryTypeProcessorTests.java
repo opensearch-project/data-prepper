@@ -127,7 +127,7 @@ public class ConvertEntryTypeProcessorTests {
         expectedResult.add(testValue1);
         expectedResult.add(testValue2);
         expectedResult.add(testValue3);
-        event = executeAndGetProcessedEvent(inputArray);
+        Event event = executeAndGetProcessedEvent(inputArray);
         assertThat(event.get(TEST_KEY, List.class), equalTo(expectedResult));
     }
 
