@@ -70,7 +70,6 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
                     }
                 }
             } catch (final Exception e) {
-                LOG.error(NOISY, "There was an exception while processing Event [{}]", recordEvent, e);
                 LOG.atError()
                         .addMarker(EVENT)
                         .addMarker(NOISY)
