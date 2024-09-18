@@ -132,20 +132,22 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
      */
     public abstract static class Builder<T extends JacksonEvent.Builder<T>> extends JacksonEvent.Builder<T> {
 
-        //protected final Map<String, Object> data;
-        //protected EventHandle eventHandle;
+        private final Map<String, Object> mdata;
 
         public Builder() {
-            data = new HashMap<String, Object>();
+            if (data == null) {
+                data = new HashMap<String, Object>();
+            }
+            mdata = (HashMap<String, Object>)data;
             eventHandle = null;
         }
 
 	public void put(String key, Object value) {
-            ((HashMap<String, Object>)data).put(key, value);
+            mdata.put(key, value);
 	}
 
         public void computeIfAbsent(String key, Function<? super String,? extends Object> f) {
-            ((HashMap<String, Object>)data).computeIfAbsent(key, f);
+            mdata.computeIfAbsent(key, f);
         }
 
         /**
