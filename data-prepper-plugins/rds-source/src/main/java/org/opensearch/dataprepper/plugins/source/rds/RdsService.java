@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.stream.BinlogClientFactory;
 import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
+import org.opensearch.dataprepper.plugins.source.rds.utils.IdentifierShortener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.rds.RdsClient;
@@ -45,6 +46,7 @@ public class RdsService {
      */
     public static final int DATA_LOADER_MAX_JOB_COUNT = 1;
     public static final String S3_PATH_DELIMITER = "/";
+    public static final int MAX_SOURCE_IDENTIFIER_LENGTH = 15;
 
     private final RdsClient rdsClient;
     private final S3Client s3Client;
@@ -162,10 +164,13 @@ public class RdsService {
 
         final String s3PathPrefix;
         if (sourceCoordinator.getPartitionPrefix() != null ) {
-            s3PathPrefix = s3UserPathPrefix + S3_PATH_DELIMITER + sourceCoordinator.getPartitionPrefix();
+            // The prefix will be used in RDS export, which has a limit of 60 characters.
+            s3PathPrefix = s3UserPathPrefix + S3_PATH_DELIMITER + IdentifierShortener.shortenIdentifier(sourceCoordinator.getPartitionPrefix(), MAX_SOURCE_IDENTIFIER_LENGTH);
         } else {
             s3PathPrefix = s3UserPathPrefix;
         }
         return s3PathPrefix;
     }
+
+
 }

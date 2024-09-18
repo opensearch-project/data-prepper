@@ -34,7 +34,7 @@ public class LeaderScheduler implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(LeaderScheduler.class);
     private static final int DEFAULT_EXTEND_LEASE_MINUTES = 3;
     private static final Duration DEFAULT_LEASE_INTERVAL = Duration.ofMinutes(1);
-    private static final String S3_EXPORT_PREFIX = "rds-export";
+    private static final String S3_EXPORT_PREFIX = "rds";
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final RdsSourceConfig sourceConfig;
     private final String s3Prefix;

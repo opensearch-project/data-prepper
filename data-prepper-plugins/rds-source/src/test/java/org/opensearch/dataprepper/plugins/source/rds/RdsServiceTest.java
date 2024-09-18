@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.leader.LeaderScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
+import org.opensearch.dataprepper.plugins.source.rds.utils.IdentifierShortener;
 import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.rds.model.DBInstance;
 import software.amazon.awssdk.services.rds.model.DescribeDbInstancesRequest;
@@ -46,6 +47,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.rds.RdsService.MAX_SOURCE_IDENTIFIER_LENGTH;
 import static org.opensearch.dataprepper.plugins.source.rds.RdsService.S3_PATH_DELIMITER;
 
 @ExtendWith(MockitoExtension.class)
@@ -150,7 +152,7 @@ class RdsServiceTest {
             rdsService.start(buffer);
         }
 
-        assertThat(s3PrefixArray[0], equalTo(s3Prefix + S3_PATH_DELIMITER + partitionPrefix));
+        assertThat(s3PrefixArray[0], equalTo(s3Prefix + S3_PATH_DELIMITER + IdentifierShortener.shortenIdentifier(partitionPrefix, MAX_SOURCE_IDENTIFIER_LENGTH)));
         verify(executor).submit(any(LeaderScheduler.class));
         verify(executor).submit(any(StreamScheduler.class));
         verify(executor, never()).submit(any(ExportScheduler.class));
