@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.plugins.processor.translate;
 import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -31,8 +33,6 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 
 @DataPrepperPlugin(name = "translate", pluginType = Processor.class, pluginConfigurationType = TranslateProcessorConfig.class)
@@ -67,8 +67,14 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
                         translateSource(sourceObject, recordEvent, targetConfig);
                     }
                 } catch (Exception ex) {
-                    LOG.error(EVENT, "Error mapping the source [{}] of entry [{}]", mappingConfig.getSource(),
-                              record.getData(), ex);
+                    LOG.atError()
+                            .addMarker(EVENT)
+                            .addMarker(NOISY)
+                            .setMessage("Error mapping the source [{}] of entry [{}]")
+                            .addArgument(mappingConfig.getSource())
+                            .addArgument(record.getData())
+                            .setCause(ex)
+                            .log();
                 }
             }
         }

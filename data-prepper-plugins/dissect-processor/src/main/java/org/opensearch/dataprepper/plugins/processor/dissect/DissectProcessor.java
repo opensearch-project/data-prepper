@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.processor.dissect;
 
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -25,8 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 
 @DataPrepperPlugin(name = "dissect", pluginType = Processor.class, pluginConfigurationType = DissectProcessorConfig.class)
@@ -72,7 +72,13 @@ public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Ev
                     }
                 }
             } catch (Exception ex){
-                LOG.error(EVENT, "Error dissecting the event [{}] ", record.getData(), ex);
+                LOG.atError()
+                        .addMarker(EVENT)
+                        .addMarker(NOISY)
+                        .setMessage("Error dissecting the event [{}]")
+                        .addArgument(record.getData())
+                        .setCause(ex)
+                        .log();
             }
         }
         return records;
