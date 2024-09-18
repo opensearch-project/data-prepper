@@ -17,6 +17,8 @@ import com.jayway.jsonpath.PathNotFoundException;
 import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import static java.lang.String.format;
+import static org.opensearch.dataprepper.plugins.source.rds.RdsService.MAX_SOURCE_IDENTIFIER_LENGTH;
+
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
@@ -24,6 +26,7 @@ import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluatorResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.opensearch.dataprepper.plugins.source.rds.utils.IdentifierShortener;
 import software.amazon.awssdk.arns.Arn;
 
 import javax.xml.transform.TransformerException;
@@ -441,15 +444,17 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * @return the actual include_prefix
      */
     public String getIncludePrefixForRdsSource(String s3Prefix) {
-        String envSourceCoordinationIdentifier = System.getenv(SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE);
+        final String envSourceCoordinationIdentifier = System.getenv(SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE);
+        final String shortenedSourceIdentifier = envSourceCoordinationIdentifier != null ?
+                IdentifierShortener.shortenIdentifier(envSourceCoordinationIdentifier, MAX_SOURCE_IDENTIFIER_LENGTH) : null;
         if (s3Prefix == null && envSourceCoordinationIdentifier == null) {
             return S3_BUFFER_PREFIX;
         } else if (s3Prefix == null) {
-            return envSourceCoordinationIdentifier + S3_BUFFER_PREFIX;
+            return shortenedSourceIdentifier + S3_BUFFER_PREFIX;
         } else if (envSourceCoordinationIdentifier == null) {
             return s3Prefix + S3_BUFFER_PREFIX;
         }
-        return s3Prefix + "/" + envSourceCoordinationIdentifier + S3_BUFFER_PREFIX;
+        return s3Prefix + "/" + shortenedSourceIdentifier + S3_BUFFER_PREFIX;
     }
 
     public String getAccountIdFromRole(final String roleArn) {
