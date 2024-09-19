@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AggregateThresholdOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ClientOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
 
@@ -94,6 +95,9 @@ public class S3SinkConfig {
     @JsonProperty("default_bucket_owner")
     @AwsAccountId
     private String defaultBucketOwner;
+
+    @JsonProperty("client")
+    private ClientOptions clientOptions;
 
     /**
      * Aws Authentication configuration Options.
@@ -194,5 +198,9 @@ public class S3SinkConfig {
 
     public String getDefaultBucketOwner() {
         return defaultBucketOwner;
+    }
+
+    public ClientOptions getClientOptions() {
+        return clientOptions;
     }
 }
