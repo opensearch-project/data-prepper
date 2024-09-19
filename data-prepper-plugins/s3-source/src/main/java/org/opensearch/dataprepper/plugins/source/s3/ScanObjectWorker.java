@@ -216,16 +216,7 @@ public class ScanObjectWorker implements Runnable {
                     partitionKeys.remove(objectToProcess.get().getPartitionKey());
                 }, ACKNOWLEDGEMENT_SET_TIMEOUT);
 
-                acknowledgementSet.addProgressCheck(
-                        (ratio) -> {
-                            try {
-                                sourceCoordinator.renewPartitionOwnership(objectToProcess.get().getPartitionKey());
-                            } catch (final PartitionUpdateException | PartitionNotOwnedException | PartitionNotFoundException e) {
-                                LOG.debug("Failed to update partition ownership for {} in the acknowledgment progress check", objectToProcess.get().getPartitionKey());
-                                partitionOwnershipUpdateFailures.increment();
-                            }
-                        },
-                        CHECKPOINT_OWNERSHIP_INTERVAL);
+                addProgressCheck(acknowledgementSet, objectToProcess.get());
             }
 
 
@@ -360,6 +351,7 @@ public class ScanObjectWorker implements Runnable {
                 activeAcknowledgmentSetId = acknowledgmentSetId;
 
                 acknowledgementSet = createAcknowledgmentSetForFolderPartition(folderPartition, acknowledgmentSetId);
+                addProgressCheck(acknowledgementSet, folderPartition);
 
                 objectsToDeleteForAcknowledgmentSets.put(acknowledgmentSetId, new HashSet<>());
 
@@ -411,5 +403,18 @@ public class ScanObjectWorker implements Runnable {
                 sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now());
             }
         }, ACKNOWLEDGEMENT_SET_TIMEOUT);
+    }
+
+    private void addProgressCheck(final AcknowledgementSet acknowledgementSet, final SourcePartition<S3SourceProgressState> objectToProcess) {
+        acknowledgementSet.addProgressCheck(
+                (ratio) -> {
+                    try {
+                        sourceCoordinator.renewPartitionOwnership(objectToProcess.getPartitionKey());
+                    } catch (final PartitionUpdateException | PartitionNotOwnedException | PartitionNotFoundException e) {
+                        LOG.debug("Failed to update partition ownership for {} in the acknowledgment progress check", objectToProcess.getPartitionKey());
+                        partitionOwnershipUpdateFailures.increment();
+                    }
+                },
+                CHECKPOINT_OWNERSHIP_INTERVAL);
     }
 }

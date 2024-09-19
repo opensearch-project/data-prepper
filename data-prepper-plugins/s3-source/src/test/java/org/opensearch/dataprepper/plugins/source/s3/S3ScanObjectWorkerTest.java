@@ -514,6 +514,9 @@ class S3ScanObjectWorkerTest {
                 .thenReturn(acknowledgementSet1)
                 .thenReturn(acknowledgementSet2);
 
+        doNothing().when(acknowledgementSet1).addProgressCheck(any(Consumer.class), eq(CHECKPOINT_OWNERSHIP_INTERVAL));
+        doNothing().when(acknowledgementSet2).addProgressCheck(any(Consumer.class), eq(CHECKPOINT_OWNERSHIP_INTERVAL));
+
         doNothing().when(s3ObjectDeleteWorker).deleteS3Object(any(DeleteObjectRequest.class));
         doNothing().when(s3ObjectHandler).parseS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class), eq(sourceCoordinator), eq(partitionKey));
 
@@ -589,6 +592,7 @@ class S3ScanObjectWorkerTest {
 
         when(acknowledgementSetManager.create(any(Consumer.class), any(Duration.class)))
                 .thenReturn(acknowledgementSet1);
+        doNothing().when(acknowledgementSet1).addProgressCheck(any(Consumer.class), eq(CHECKPOINT_OWNERSHIP_INTERVAL));
 
         doNothing().when(s3ObjectDeleteWorker).deleteS3Object(any(DeleteObjectRequest.class));
         doNothing().when(s3ObjectHandler).parseS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class), eq(sourceCoordinator), eq(partitionKey));
@@ -600,6 +604,13 @@ class S3ScanObjectWorkerTest {
 
         final ArgumentCaptor<Consumer> consumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
         verify(acknowledgementSetManager, times(1)).create(consumerArgumentCaptor.capture(), any(Duration.class));
+
+        final ArgumentCaptor<Consumer> progressCheckArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(acknowledgementSet1).addProgressCheck(progressCheckArgumentCaptor.capture(), eq(CHECKPOINT_OWNERSHIP_INTERVAL));
+
+        final Consumer<ProgressCheck> progressCheckConsumer = progressCheckArgumentCaptor.getValue();
+        progressCheckConsumer.accept(mock(ProgressCheck.class));
+        verify(sourceCoordinator).renewPartitionOwnership(partitionKey);
 
 
         final InOrder inOrder = inOrder(sourceCoordinator, acknowledgementSet1, s3ObjectDeleteWorker);
