@@ -16,6 +16,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,6 +27,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 
+import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,6 +36,7 @@ import java.util.concurrent.ThreadFactory;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -101,6 +104,16 @@ class BinlogEventListenerTest {
 
         verifyHandlerCallHelper();
         verify(objectUnderTest).handleTableMapEvent(binlogEvent);
+    }
+
+    @Test
+    void test_stopClient() throws IOException {
+        objectUnderTest.stopClient();
+
+        InOrder inOrder = inOrder(binaryLogClient, eventListnerExecutorService);
+        inOrder.verify(binaryLogClient).disconnect();
+        inOrder.verify(binaryLogClient).unregisterEventListener(objectUnderTest);
+        inOrder.verify(eventListnerExecutorService).shutdownNow();
     }
 
     @ParameterizedTest
