@@ -69,7 +69,7 @@ jobs:
 
   publish-test-results:
     name: "Publish Unit Tests Results"
-    needs: integration-tests
+    needs: build
     runs-on: ubuntu-latest
     if: always()
 
