@@ -146,6 +146,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     public void stopClient() {
         try {
             binaryLogClient.disconnect();
+            binaryLogClient.unregisterEventListener(this);
             binlogEventExecutorService.shutdownNow();
             LOG.info("Binary log client disconnected.");
         } catch (Exception e) {
