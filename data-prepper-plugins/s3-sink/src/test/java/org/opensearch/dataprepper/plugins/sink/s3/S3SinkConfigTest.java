@@ -76,4 +76,9 @@ class S3SinkConfigTest {
     void get_json_codec_test() {
         assertNull(new S3SinkConfig().getCodec());
     }
+
+    @Test
+    void get_client_option_test() {
+        assertNull(new S3SinkConfig().getClientOptions());
+    }
 }
