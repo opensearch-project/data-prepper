@@ -184,7 +184,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
                 kinesisCheckpointerTracker.markSequenceNumberForCheckpoint(extendedSequenceNumber);
             }
 
-            LOG.debug("Number of Records {} written for stream: {}, shardId: {} to buffer: {}", eventCount, streamIdentifier.streamName(), kinesisShardId, records.size());
+            LOG.debug("Number of Records {} written for stream: {}, shardId: {}", eventCount, streamIdentifier.streamName(), kinesisShardId);
 
             acknowledgementSetOpt.ifPresent(AcknowledgementSet::complete);
 

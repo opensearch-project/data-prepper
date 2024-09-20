@@ -7,6 +7,25 @@ plugins {
     id 'java'
 }
 
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
@@ -28,6 +47,19 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation project(':data-prepper-plugins:parse-json-processor')
     testImplementation project(':data-prepper-plugins:newline-codecs')
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    systemProperty 'tests.kinesis.source.aws.region', System.getProperty('tests.kinesis.source.aws.region')
+
+    filter {
+        includeTestsMatching '*IT'
+    }
 }
 
 jacocoTestCoverageVerification {
