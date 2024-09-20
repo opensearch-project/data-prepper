@@ -38,19 +38,6 @@ class JsonCodecTest {
     private static final HttpData GOOD_TEST_DATA = HttpData.ofUtf8("[{\"a\":\"b\"}, {\"c\":\"d\"}]");
     private static final HttpData GOOD_LARGE_TEST_DATA = HttpData.ofUtf8("[{\"a1\":\"b1\"}, {\"a2\":\"b2\"}, {\"a3\":\"b3\"}, {\"a4\":\"b4\"}, {\"a5\":\"b5\"}]");
     private static final HttpData GOOD_LARGE_TEST_DATA_UNICODE = HttpData.ofUtf8("[{\"ὊὊὊ1\":\"ὊὊὊ1\"}, {\"ὊὊὊ2\":\"ὊὊὊ2\"}, {\"a3\":\"b3\"}, {\"ὊὊὊ4\":\"ὊὊὊ4\"}]");
-    public static final List<String> JSON_BODIES_LIST = List.of(
-            "{\"a1\":\"b1\"}",
-            "{\"a2\":\"b2\"}",
-            "{\"a3\":\"b3\"}",
-            "{\"a4\":\"b4\"}",
-            "{\"a5\":\"b5\"}"
-    );
-    public static final List<String> JSON_BODIES_UNICODE_MIXED_LIST = List.of(
-            "{\"ὊὊὊ1\":\"ὊὊὊ1\"}",
-            "{\"ὊὊὊ2\":\"ὊὊὊ2\"}",
-            "{\"a3\":\"b3\"}",
-            "{\"ὊὊὊ4\":\"ὊὊὊ4\"}"
-    );
     private final HttpData badTestDataJsonLine = HttpData.ofUtf8("{\"a\":\"b\"}");
     private final HttpData badTestDataMultiJsonLines = HttpData.ofUtf8("{\"a\":\"b\"}{\"c\":\"d\"}");
     private final HttpData badTestDataNonJson = HttpData.ofUtf8("non json content");
@@ -84,16 +71,16 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {-1, -2, Integer.MIN_VALUE})
-    void serialize_with_invalid_splitLength(final int splitLength) {
+    void serializeSplit_with_invalid_splitLength(final int splitLength) {
         final Consumer<String> serializedBodyConsumer = mock(Consumer.class);
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.serialize(JSON_BODIES_LIST, serializedBodyConsumer, splitLength));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.serializeSplit(GOOD_LARGE_TEST_DATA, serializedBodyConsumer, splitLength));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 24})
-    void serialize_with_split_length_leading_to_groups_of_one(final int splitLength) throws IOException {
+    void serializeSplit_with_split_length_leading_to_groups_of_one(final int splitLength) throws IOException {
         final Consumer<String> serializedBodyConsumer = mock(Consumer.class);
-        objectUnderTest.serialize(JSON_BODIES_LIST, serializedBodyConsumer, splitLength);
+        objectUnderTest.serializeSplit(GOOD_LARGE_TEST_DATA, serializedBodyConsumer, splitLength);
 
         final ArgumentCaptor<String> actualSerializedBodyCaptor = ArgumentCaptor.forClass(String.class);
         verify(serializedBodyConsumer, times(5)).accept(actualSerializedBodyCaptor.capture());
@@ -109,9 +96,9 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {25, 30, 36})
-    void serialize_with_split_length_leading_to_groups_of_two(final int splitLength) throws IOException {
+    void serializeSplit_with_split_length_leading_to_groups_of_two(final int splitLength) throws IOException {
         final Consumer<String> serializedBodyConsumer = mock(Consumer.class);
-        objectUnderTest.serialize(JSON_BODIES_LIST, serializedBodyConsumer, splitLength);
+        objectUnderTest.serializeSplit(GOOD_LARGE_TEST_DATA, serializedBodyConsumer, splitLength);
 
         final ArgumentCaptor<String> actualSerializedBodyCaptor = ArgumentCaptor.forClass(String.class);
         verify(serializedBodyConsumer, times(3)).accept(actualSerializedBodyCaptor.capture());
@@ -129,9 +116,9 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {37, 48})
-    void serialize_with_split_length_leading_to_groups_up_to_three(final int splitLength) throws IOException {
+    void serializeSplit_with_split_length_leading_to_groups_up_to_three(final int splitLength) throws IOException {
         final Consumer<String> serializedBodyConsumer = mock(Consumer.class);
-        objectUnderTest.serialize(JSON_BODIES_LIST, serializedBodyConsumer, splitLength);
+        objectUnderTest.serializeSplit(GOOD_LARGE_TEST_DATA, serializedBodyConsumer, splitLength);
 
         final ArgumentCaptor<String> actualSerializedBodyCaptor = ArgumentCaptor.forClass(String.class);
         verify(serializedBodyConsumer, times(2)).accept(actualSerializedBodyCaptor.capture());
@@ -147,9 +134,9 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {0, Integer.MAX_VALUE})
-    void serialize_with_split_size_that_does_not_split(final int splitLength) throws IOException {
+    void serializeSplit_with_split_size_that_does_not_split(final int splitLength) throws IOException {
         final Consumer<String> serializedBodyConsumer = mock(Consumer.class);
-        objectUnderTest.serialize(JSON_BODIES_LIST, serializedBodyConsumer, splitLength);
+        objectUnderTest.serializeSplit(GOOD_LARGE_TEST_DATA, serializedBodyConsumer, splitLength);
 
         final ArgumentCaptor<String> actualSerializedBodyCaptor = ArgumentCaptor.forClass(String.class);
         verify(serializedBodyConsumer, times(1)).accept(actualSerializedBodyCaptor.capture());
@@ -160,9 +147,9 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {58, 68})
-    void serialize_with_split_length_unicode(final int splitLength) throws IOException {
+    void serializeSplit_with_split_length_unicode(final int splitLength) throws IOException {
         final Consumer<String> serializedBodyConsumer = mock(Consumer.class);
-        objectUnderTest.serialize(JSON_BODIES_UNICODE_MIXED_LIST, serializedBodyConsumer, splitLength);
+        objectUnderTest.serializeSplit(GOOD_LARGE_TEST_DATA_UNICODE, serializedBodyConsumer, splitLength);
 
         final ArgumentCaptor<String> actualSerializedBodyCaptor = ArgumentCaptor.forClass(String.class);
         verify(serializedBodyConsumer, times(2)).accept(actualSerializedBodyCaptor.capture());
@@ -178,17 +165,19 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @ArgumentsSource(GoodTestData.class)
-    void parse_and_serialize_symmetry(final HttpData httpData) throws IOException {
-        final List<String> parsedList = objectUnderTest.parse(httpData);
-
+    void serializeSplit_and_parse_symmetry(final HttpData httpData) throws IOException {
+        final List<String> parsedFromOriginal = objectUnderTest.parse(httpData);
         final Consumer<String> serializedBodyConsumer = mock(Consumer.class);
-        objectUnderTest.serialize(parsedList, serializedBodyConsumer);
+        objectUnderTest.serializeSplit(httpData, serializedBodyConsumer, Integer.MAX_VALUE);
         final ArgumentCaptor<String> actualSerializedBodyCaptor = ArgumentCaptor.forClass(String.class);
         verify(serializedBodyConsumer, times(1)).accept(actualSerializedBodyCaptor.capture());
         final String actualString = actualSerializedBodyCaptor.getValue();
 
         final String expectedJsonString = httpData.toStringUtf8().replace(" ", "");
         assertThat(actualString, equalTo(expectedJsonString));
+
+        final List<String> parsedFromRewritten = objectUnderTest.parse(HttpData.ofUtf8(actualString));
+        assertThat(parsedFromRewritten, equalTo(parsedFromOriginal));
     }
 
 
@@ -196,10 +185,8 @@ class JsonCodecTest {
     @ArgumentsSource(JsonArrayWithKnownFirstArgumentsProvider.class)
     public void parse_should_return_lists_smaller_than_provided_length(
             final String inputJsonArray, final String knownFirstPart, final int maxSize, final List<List<String>> expectedChunks, final List<Boolean> exceedsMaxSize) throws IOException {
-        List<String> individualJsonLines = objectUnderTest.parse(HttpData.ofUtf8(inputJsonArray));
-
         Consumer<String> serializedBodyConsumer = mock(Consumer.class);
-        objectUnderTest.serialize(individualJsonLines, serializedBodyConsumer, maxSize);
+        objectUnderTest.serializeSplit(HttpData.ofUtf8(inputJsonArray), serializedBodyConsumer, maxSize);
         ArgumentCaptor<String> actualSerializedBodyCaptor = ArgumentCaptor.forClass(String.class);
         verify(serializedBodyConsumer, times(expectedChunks.size())).accept(actualSerializedBodyCaptor.capture());
 
@@ -300,5 +287,27 @@ class JsonCodecTest {
                     arguments("[" + chunk61 + "," + chunk62 + "," + chunk63 + "," + chunk64 + "]", chunk61, maxSize6, List.of(List.of(chunk61, chunk62), List.of(chunk63), List.of(chunk64)), List.of(false, false, true))
             );
         }
+    }
+
+
+    @ParameterizedTest
+    @ArgumentsSource(GoodTestData.class)
+    void validate_with_known_good_Json(final HttpData httpData) throws IOException {
+        objectUnderTest.validate(httpData);
+    }
+
+    @Test
+    void validate_with_valid_JSON_but_not_array_should_throw() {
+        assertThrows(IOException.class, () -> objectUnderTest.validate(badTestDataJsonLine));
+    }
+
+    @Test
+    void validate_with_multiline_JSON_should_throw() {
+        assertThrows(IOException.class, () -> objectUnderTest.validate(badTestDataMultiJsonLines));
+    }
+
+    @Test
+    void validate_with_invalid_JSON_should_throw() {
+        assertThrows(IOException.class, () -> objectUnderTest.validate(badTestDataNonJson));
     }
 }
