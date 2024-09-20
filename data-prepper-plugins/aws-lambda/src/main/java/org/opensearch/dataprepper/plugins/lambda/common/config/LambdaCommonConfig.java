@@ -1,5 +1,7 @@
 package org.opensearch.dataprepper.plugins.lambda.common.config;
 
+import java.util.Map;
+
 public class LambdaCommonConfig {
     public static final String REQUEST_RESPONSE = "request-response";
     public static final String EVENT = "event";
@@ -9,4 +11,10 @@ public class LambdaCommonConfig {
     //AWS Lambda payload options needs this format
     public static final String REQUEST_RESPONSE_LAMBDA = "RequestResponse";
     public static final String EVENT_LAMBDA = "Event";
+
+    //Translate dataprepper invocation type to lambda invocation type
+    public static final Map<String, String> invocationTypeMap = Map.of(
+            LambdaCommonConfig.EVENT, EVENT_LAMBDA,
+            LambdaCommonConfig.REQUEST_RESPONSE, REQUEST_RESPONSE_LAMBDA
+    );
 }

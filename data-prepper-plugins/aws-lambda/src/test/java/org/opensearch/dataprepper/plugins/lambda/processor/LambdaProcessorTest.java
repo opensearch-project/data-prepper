@@ -213,17 +213,27 @@ public class LambdaProcessorTest {
     }
 
     @Test
-    public void testConvertLambdaResponseToEvent_withNon200StatusCode() {
-        InvokeResponse response = InvokeResponse.builder().statusCode(500).payload(SdkBytes.fromUtf8String(RESPONSE_PAYLOAD)).build();
+    public void testConvertLambdaResponseToEvent_withInvalidJsonPayload() {
+        // Arrange
+        // Using an invalid JSON string to trigger the JSON parsing exception
+        String invalidJsonPayload = "{ invalid json }";
+        InvokeResponse response = InvokeResponse.builder()
+                .statusCode(200)
+                .payload(SdkBytes.fromUtf8String(invalidJsonPayload))
+                .build();
+
         lenient().when(lambdaClient.invoke(any(InvokeRequest.class))).thenReturn(response);
 
         LambdaProcessor lambdaProcessor = createObjectUnderTest();
 
-        Exception exception = assertThrows(RuntimeException.class, () -> {
+        // Act and Assert
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             lambdaProcessor.convertLambdaResponseToEvent(response);
         });
+        // Asserting the message thrown by the RuntimeException
         assertEquals("Error converting Lambda response to Event", exception.getMessage());
     }
+
 
     @Test
     public void testDoExecute_withNonSuccessfulStatusCode() {

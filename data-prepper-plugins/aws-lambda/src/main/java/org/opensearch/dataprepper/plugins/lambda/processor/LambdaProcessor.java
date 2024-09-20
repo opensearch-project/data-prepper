@@ -36,9 +36,8 @@ import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFacto
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
-import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.EVENT_LAMBDA;
-import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.REQUEST_RESPONSE_LAMBDA;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.SINGLE_EVENT;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.invocationTypeMap;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,16 +54,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 @DataPrepperPlugin(name = "aws_lambda", pluginType = Processor.class, pluginConfigurationType = LambdaProcessorConfig.class)
 public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
     public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS = "lambdaProcessorObjectsEventsSucceeded";
     public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED = "lambdaProcessorObjectsEventsFailed";
-    public static final String LAMBDA_LATENCY_METRIC = "lambdaLatency";
+    public static final String LAMBDA_LATENCY_METRIC = "lambdaProcessorLatency";
     public static final String REQUEST_PAYLOAD_SIZE = "requestPayloadSize";
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
 
@@ -85,7 +82,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final LambdaClient lambdaClient;
     private final Boolean isBatchEnabled;
     Buffer currentBuffer;
-    private final AtomicLong requestPayload;
+    private final AtomicLong requestPayloadMetric;
     private final AtomicLong responsePayload;
     private String payloadModel = null;
     private int maxEvents = 0;
@@ -102,7 +99,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         this.numberOfRecordsSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS);
         this.numberOfRecordsFailedCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED);
         this.lambdaLatencyMetric = pluginMetrics.timer(LAMBDA_LATENCY_METRIC);
-        this.requestPayload = pluginMetrics.gauge(REQUEST_PAYLOAD_SIZE, new AtomicLong());
+        this.requestPayloadMetric = pluginMetrics.gauge(REQUEST_PAYLOAD_SIZE, new AtomicLong());
         this.responsePayload = pluginMetrics.gauge(RESPONSE_PAYLOAD_SIZE, new AtomicLong());
 
         functionName = lambdaProcessorConfig.getFunctionName();
@@ -129,16 +126,12 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             throw new RuntimeException("invalid payload_model option");
         }
 
-        if(!lambdaProcessorConfig.getInvocationType().equals(LambdaCommonConfig.EVENT) &&
+        //EVENT type will soon be supported.
+        if(lambdaProcessorConfig.getInvocationType().equals(LambdaCommonConfig.EVENT) &&
                 !lambdaProcessorConfig.getInvocationType().equals(LambdaCommonConfig.REQUEST_RESPONSE)){
             throw new RuntimeException("Unsupported invocation type " + lambdaProcessorConfig.getInvocationType());
         }
 
-        //Translate dataprepper invocation type to lambda invocation type
-        Map<String, String> invocationTypeMap = Map.of(
-                LambdaCommonConfig.EVENT, EVENT_LAMBDA,
-                LambdaCommonConfig.REQUEST_RESPONSE, REQUEST_RESPONSE_LAMBDA
-        );
         invocationType = invocationTypeMap.get(lambdaProcessorConfig.getInvocationType());
 
         bufferedEventHandles = new LinkedList<>();
@@ -185,7 +178,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 flushToLambdaIfNeeded(resultRecords);
             } catch (Exception e) {
                 numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
-                LOG.error(EVENT, "There was an exception while processing Event [{}]" + ", number of events dropped={}", event, e, numberOfRecordsFailedCounter);
+                LOG.error(EVENT, "There was an exception while processing Event [{}]" , event, e);
                 //reset buffer
                 try {
                     currentBuffer = bufferFactory.getBuffer(lambdaClient, functionName, invocationType);
@@ -212,69 +205,38 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
     }
 
-    void flushToLambdaIfNeeded(List<Record<Event>> resultRecords) throws InterruptedException, IOException {
-
+    protected void flushToLambdaIfNeeded(List<Record<Event>> resultRecords) throws InterruptedException, IOException {
         LOG.info("Flush to Lambda check: currentBuffer.size={}, currentBuffer.events={}, currentBuffer.duration={}", currentBuffer.getSize(), currentBuffer.getEventCount(), currentBuffer.getDuration());
-        final AtomicReference<String> errorMsgObj = new AtomicReference<>();
 
         if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration, isBatchEnabled)) {
-            codec.complete(currentBuffer.getOutputStream());
-            LOG.info("Writing {} to Lambda with {} events and size of {} bytes.", functionName, currentBuffer.getEventCount(), currentBuffer.getSize());
-            LambdaResult lambdaResult = retryFlushToLambda(currentBuffer, errorMsgObj);
-
-            if (lambdaResult.getIsUploadedToLambda()) {
-                LOG.info("Successfully flushed to Lambda {}.", functionName);
+            try{
+                codec.complete(currentBuffer.getOutputStream());
+                responsePayload.set(currentBuffer.getPayloadResponseSyncSize());
+                InvokeResponse lambdaResponse = currentBuffer.flushToLambdaSync();
+                handleLambdaResponse(lambdaResponse);
                 numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
                 lambdaLatencyMetric.record(currentBuffer.getFlushLambdaSyncLatencyMetric());
-
-                requestPayload.set(currentBuffer.getPayloadRequestSyncSize());
-                responsePayload.set(currentBuffer.getPayloadResponseSyncSize());
-
-                InvokeResponse lambdaResponse = lambdaResult.getLambdaResponse();
+                requestPayloadMetric.set(currentBuffer.getPayloadRequestSyncSize());
                 Event lambdaEvent = convertLambdaResponseToEvent(lambdaResponse);
                 resultRecords.add(new Record<>(lambdaEvent));
-                //reset buffer after flush
-                currentBuffer = bufferFactory.getBuffer(lambdaClient, functionName, invocationType);
-            } else {
-                LOG.error("Failed to save to Lambda {}", functionName);
+            } catch(AwsServiceException | SdkClientException e) {
+                LOG.error(EVENT, "Exception occurred while uploading records to lambda. functionName: {} | exception:", functionName, e);
                 numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
+            } catch (final IOException e) {
+                LOG.error("Exception while completing codec", e);
+                numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
+            }
+            //Reset Buffer
+            try {
+                currentBuffer = bufferFactory.getBuffer(lambdaClient, functionName, invocationType);
+            } catch (IOException ex) {
+                throw new RuntimeException("Failed to reset buffer after exception", ex);
             }
         }
     }
 
-    LambdaResult retryFlushToLambda(Buffer currentBuffer, final AtomicReference<String> errorMsgObj) throws InterruptedException {
-        boolean isUploadedToLambda = Boolean.FALSE;
-        int retryCount = maxRetries;
-        do {
-
-            try {
-                InvokeResponse resp = currentBuffer.flushToLambdaSync();
-                isUploadedToLambda = Boolean.TRUE;
-                LambdaResult lambdaResult = LambdaResult.builder().withIsUploadedToLambda(isUploadedToLambda).withLambdaResponse(resp).build();
-                return lambdaResult;
-            } catch (AwsServiceException | SdkClientException e) {
-                errorMsgObj.set(e.getMessage());
-                LOG.error("Exception occurred while uploading records to lambda. Retry countdown  : {} | exception:", retryCount, e);
-                --retryCount;
-                if (retryCount == 0) {
-                    LambdaResult lambdaResult = LambdaResult.builder().withIsUploadedToLambda(isUploadedToLambda).withLambdaResponse(null).build();
-                    return lambdaResult;
-                }
-                Thread.sleep(5000);
-            }
-        } while (!isUploadedToLambda);
-
-        LambdaResult lambdaResult = LambdaResult.builder().withIsUploadedToLambda(false).withLambdaResponse(null).build();
-        return lambdaResult;
-    }
-
-    Event convertLambdaResponseToEvent(InvokeResponse lambdaResponse) {
+    protected Event convertLambdaResponseToEvent(InvokeResponse lambdaResponse) {
         try {
-            int statusCode = lambdaResponse.statusCode();
-            if (statusCode < 200 || statusCode >= 300) {
-                throw new RuntimeException("Lambda invocation failed with status code: " + statusCode);
-            }
-
             SdkBytes payload = lambdaResponse.payload();
             if (payload != null) {
                 String payloadJsonString = payload.asString(StandardCharsets.UTF_8);
@@ -292,5 +254,12 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             throw new RuntimeException("Error converting Lambda response to Event");
         }
         return null;
+    }
+
+    private void handleLambdaResponse(InvokeResponse response){
+        int statusCode = response.statusCode();
+        if (statusCode < 200 || statusCode >= 300) {
+            throw new RuntimeException("Lambda invocation failed with status code: " + statusCode);
+        }
     }
 }

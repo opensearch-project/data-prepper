@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -37,6 +38,7 @@ class LambdaSinkTest {
     private PluginFactory pluginFactory;
     private AwsCredentialsSupplier awsCredentialsSupplier;
     private SinkContext sinkContext;
+    private ExpressionEvaluator expressionEvaluator;
 
     @BeforeEach
     void setUp() {
@@ -49,6 +51,7 @@ class LambdaSinkTest {
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         Map<String,Object> dlqMap = mock(HashMap.class);
         LambdaClient lambdaClient = mock(LambdaClient.class);
+        ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
 
         when(lambdaSinkConfig.getPayloadModel()).thenReturn("single-event");
         when(lambdaSinkConfig.getDlq()).thenReturn(pluginModel);
@@ -62,7 +65,7 @@ class LambdaSinkTest {
     }
 
     private LambdaSink createObjectUnderTest() {
-        return new LambdaSink(pluginSetting, lambdaSinkConfig, pluginFactory, sinkContext, awsCredentialsSupplier);
+        return new LambdaSink(pluginSetting, lambdaSinkConfig, pluginFactory, sinkContext, awsCredentialsSupplier, expressionEvaluator);
     }
 
     @Test

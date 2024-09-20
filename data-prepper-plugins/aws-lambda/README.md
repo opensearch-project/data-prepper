@@ -24,13 +24,13 @@ lambda-pipeline:
                 maximum_size: 3mb
 ```
 
-`invocation_type` as RequestResponse will be used when the response from aws lambda comes back to dataprepper.
-`invocation_type` as Event is used when the response from aws lambda goes to an s3 bucket.
+`invocation_type` as request-response is used when the response from aws lambda comes back to dataprepper.
 
 In batch options, an implicit batch threshold option is that if events size is 3mb, we flush it.
-`payload_model` this is used to define how the payload should be constructed from a dataprepper event.
-`payload_model` as batch_event is used when the output needs to be formed as a batch of multiple events,
-if batch option is not mentioned along with payload_model: batch_event , then batch will assume default options as follows:
+`payload_model` this is used to define how the payload should be constructed from a dataprepper event by converting it to corresponding json.
+`payload_model` as batch_event is used when the output needs to be formed as a batch of multiple events, and a key(key_name) will be associated with the set of events.
+`payload_model` as single_event is used when the output each event is sent to lambda. 
+if batch option is not mentioned along with payload_model: batch_event , then batch will assume default options as follows.
 default batch options:
     batch_key: "events"
     threshold: 

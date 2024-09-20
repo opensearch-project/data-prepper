@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.lambda.sink;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -43,7 +44,8 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                       final LambdaSinkConfig lambdaSinkConfig,
                       final PluginFactory pluginFactory,
                       final SinkContext sinkContext,
-                      final AwsCredentialsSupplier awsCredentialsSupplier
+                      final AwsCredentialsSupplier awsCredentialsSupplier,
+                      final ExpressionEvaluator expressionEvaluator
     ) {
         super(pluginSetting);
         sinkInitialized = Boolean.FALSE;
@@ -69,7 +71,8 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                 outputCodecContext,
                 awsCredentialsSupplier,
                 dlqPushHandler,
-                bufferFactory);
+                bufferFactory,
+                expressionEvaluator);
 
     }
 
