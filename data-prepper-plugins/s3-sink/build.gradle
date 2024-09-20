@@ -17,7 +17,7 @@ dependencies {
     implementation 'software.amazon.awssdk:netty-nio-client'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
-    implementation 'software.amazon.awssdk:securitylake:2.26.18'
+    implementation 'software.amazon.awssdk:securitylake:2.28.5'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
     implementation project(':data-prepper-plugins:avro-codecs')
     implementation libs.avro.core
