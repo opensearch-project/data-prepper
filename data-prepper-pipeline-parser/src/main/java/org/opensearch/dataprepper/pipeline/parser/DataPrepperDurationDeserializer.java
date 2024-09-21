@@ -11,9 +11,6 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.time.format.DateTimeParseException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * This deserializer is used for configurations that use a {@link Duration} type when deserialized by Jackson
