@@ -23,7 +23,7 @@ import java.util.Objects;
 import java.util.function.Function;
 
 
-@DataPrepperPlugin(name = "documentdb", pluginType = Source.class, pluginConfigurationType = MongoDBSourceConfig.class)
+@DataPrepperPlugin(name = "documentdb", alternateNames = "mongodb", pluginType = Source.class, pluginConfigurationType = MongoDBSourceConfig.class)
 
 public class DocumentDBSource implements Source<Record<Event>>, UsesEnhancedSourceCoordination {
     private static final Logger LOG = LoggerFactory.getLogger(DocumentDBSource.class);
