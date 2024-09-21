@@ -111,8 +111,9 @@ public class DataPrepperTests {
 
     @Test
     public void testDataPrepperShutdown() throws NoSuchFieldException, IllegalAccessException {
-        createObjectUnderTest().shutdownPipelines();
-        verify(pipeline).shutdown();
+        final DataPrepperShutdownOptions dataPrepperShutdownOptions = mock(DataPrepperShutdownOptions.class);
+        createObjectUnderTest().shutdownPipelines(dataPrepperShutdownOptions);
+        verify(pipeline).shutdown(dataPrepperShutdownOptions);
     }
 
     @Test
@@ -120,14 +121,14 @@ public class DataPrepperTests {
         final Pipeline randomPipeline = mock(Pipeline.class);
         lenient().when(randomPipeline.isReady()).thenReturn(true);
         parseConfigurationFixture.put("Random Pipeline", randomPipeline);
-        createObjectUnderTest().shutdownPipelines("Random Pipeline");
+        createObjectUnderTest().shutdownPipeline("Random Pipeline");
 
         verify(randomPipeline).shutdown();
     }
 
     @Test
     public void testDataPrepperShutdownNonExistentPipelineWithoutException() throws NoSuchFieldException, IllegalAccessException {
-        createObjectUnderTest().shutdownPipelines("Missing Pipeline");
+        createObjectUnderTest().shutdownPipeline("Missing Pipeline");
     }
 
     @Test

@@ -24,54 +24,17 @@ import java.util.regex.Pattern;
  */
 public class DataPrepperDurationDeserializer extends StdDeserializer<Duration> {
 
-    private static final String SIMPLE_DURATION_REGEX = "^(0|[1-9]\\d*)(s|ms)$";
-    private static final Pattern SIMPLE_DURATION_PATTERN = Pattern.compile(SIMPLE_DURATION_REGEX);
-
     public DataPrepperDurationDeserializer() {
         this(null);
     }
-    protected DataPrepperDurationDeserializer(Class<?> vc) {
+    protected DataPrepperDurationDeserializer(final Class<?> vc) {
         super(vc);
     }
 
     @Override
-    public Duration deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+    public Duration deserialize(final JsonParser p, final DeserializationContext ctxt) throws IOException {
         final String durationString = p.getValueAsString();
 
-        Duration duration;
-
-        try {
-            duration = Duration.parse(durationString);
-        } catch (final DateTimeParseException e) {
-            duration = parseSimpleDuration(durationString);
-            if (duration == null) {
-                throw new IllegalArgumentException("Durations must use either ISO 8601 notation or simple notations for seconds (60s) or milliseconds (100ms). Whitespace is ignored.");
-            }
-        }
-
-        return duration;
-    }
-
-    private Duration parseSimpleDuration(final String durationString) throws IllegalArgumentException {
-        final String durationStringNoSpaces = durationString.replaceAll("\\s", "");
-        final Matcher matcher = SIMPLE_DURATION_PATTERN.matcher(durationStringNoSpaces);
-        if (!matcher.find()) {
-           return null;
-        }
-
-        final long durationNumber = Long.parseLong(matcher.group(1));
-        final String durationUnit = matcher.group(2);
-
-        return getDurationFromUnitAndNumber(durationNumber, durationUnit);
-    }
-
-    private Duration getDurationFromUnitAndNumber(final long durationNumber, final String durationUnit) {
-        switch (durationUnit) {
-            case "s":
-                return Duration.ofSeconds(durationNumber);
-            case "ms":
-                return Duration.ofMillis(durationNumber);
-        }
-        return null;
+        return DataPrepperDurationParser.parse(durationString);
     }
 }
