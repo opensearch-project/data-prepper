@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.plugin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
@@ -100,6 +102,29 @@ class ClasspathPluginProviderTest {
                 .willReturn(new HashSet<>(List.of(TestSource.class)));
 
         final Optional<Class<? extends Source>> optionalPlugin = createObjectUnderTest().findPluginClass(Source.class, "test_source_deprecated_name");
+        assertThat(optionalPlugin, notNullValue());
+        assertThat(optionalPlugin.isPresent(), equalTo(true));
+        assertThat(optionalPlugin.get(), equalTo(TestSource.class));
+    }
+
+    @Test
+    void findPlugin_should_return_empty_for_default_alternate_name() {
+        given(reflections.getTypesAnnotatedWith(DataPrepperPlugin.class))
+                .willReturn(new HashSet<>(List.of(TestSource.class)));
+
+        final Optional<Class<? extends Source>> optionalPlugin = createObjectUnderTest()
+                .findPluginClass(Source.class, UUID.randomUUID().toString());
+        assertThat(optionalPlugin, notNullValue());
+        assertThat(optionalPlugin.isPresent(), equalTo(false));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"test_source_alternate_name1", "test_source_alternate_name2"})
+    void findPlugin_should_return_plugin_if_found_for_alternate_name_and_type_using_pluginType(final String alternateSourceName) {
+        given(reflections.getTypesAnnotatedWith(DataPrepperPlugin.class))
+                .willReturn(new HashSet<>(List.of(TestSource.class)));
+
+        final Optional<Class<? extends Source>> optionalPlugin = createObjectUnderTest().findPluginClass(Source.class, alternateSourceName);
         assertThat(optionalPlugin, notNullValue());
         assertThat(optionalPlugin.isPresent(), equalTo(true));
         assertThat(optionalPlugin.get(), equalTo(TestSource.class));
