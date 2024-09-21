@@ -33,6 +33,8 @@ import java.lang.annotation.Target;
 public @interface DataPrepperPlugin {
     String DEFAULT_DEPRECATED_NAME = "";
 
+    String DEFAULT_ALTERNATE_NAME = "";
+
     /**
      *
      * @return Name of the plugin which should be unique for the type
@@ -45,6 +47,12 @@ public @interface DataPrepperPlugin {
      * @since 2.2
      */
     String deprecatedName() default DEFAULT_DEPRECATED_NAME;
+
+    /**
+     *
+     * @return Alternate name of the plugin which should be unique for the type
+     */
+    String alternateName() default DEFAULT_ALTERNATE_NAME;
 
     /**
      * The class type for this plugin.

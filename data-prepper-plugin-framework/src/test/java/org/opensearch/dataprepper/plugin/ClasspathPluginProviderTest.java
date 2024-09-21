@@ -28,6 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
+import static org.opensearch.dataprepper.model.annotations.DataPrepperPlugin.DEFAULT_ALTERNATE_NAME;
 import static org.opensearch.dataprepper.model.annotations.DataPrepperPlugin.DEFAULT_DEPRECATED_NAME;
 
 class ClasspathPluginProviderTest {
@@ -100,6 +101,27 @@ class ClasspathPluginProviderTest {
                 .willReturn(new HashSet<>(List.of(TestSource.class)));
 
         final Optional<Class<? extends Source>> optionalPlugin = createObjectUnderTest().findPluginClass(Source.class, "test_source_deprecated_name");
+        assertThat(optionalPlugin, notNullValue());
+        assertThat(optionalPlugin.isPresent(), equalTo(true));
+        assertThat(optionalPlugin.get(), equalTo(TestSource.class));
+    }
+
+    @Test
+    void findPlugin_should_return_empty_for_default_alternate_name() {
+        given(reflections.getTypesAnnotatedWith(DataPrepperPlugin.class))
+                .willReturn(new HashSet<>(List.of(TestSource.class)));
+
+        final Optional<Class<? extends Source>> optionalPlugin = createObjectUnderTest().findPluginClass(Source.class, DEFAULT_ALTERNATE_NAME);
+        assertThat(optionalPlugin, notNullValue());
+        assertThat(optionalPlugin.isPresent(), equalTo(false));
+    }
+
+    @Test
+    void findPlugin_should_return_plugin_if_found_for_alternate_name_and_type_using_pluginType() {
+        given(reflections.getTypesAnnotatedWith(DataPrepperPlugin.class))
+                .willReturn(new HashSet<>(List.of(TestSource.class)));
+
+        final Optional<Class<? extends Source>> optionalPlugin = createObjectUnderTest().findPluginClass(Source.class, "test_source_alternate_name");
         assertThat(optionalPlugin, notNullValue());
         assertThat(optionalPlugin.isPresent(), equalTo(true));
         assertThat(optionalPlugin.get(), equalTo(TestSource.class));

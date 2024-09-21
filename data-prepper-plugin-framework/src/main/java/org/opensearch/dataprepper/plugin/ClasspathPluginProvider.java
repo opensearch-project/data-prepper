@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.model.annotations.DataPrepperPlugin.DEFAULT_ALTERNATE_NAME;
 import static org.opensearch.dataprepper.model.annotations.DataPrepperPlugin.DEFAULT_DEPRECATED_NAME;
 
 /**
@@ -78,6 +79,7 @@ public class ClasspathPluginProvider implements PluginProvider {
             supportTypeToPluginTypeMap.put(supportedType, concretePluginClass);
 
             addOptionalDeprecatedPluginName(pluginsMap, concretePluginClass);
+            addOptionalAlternatePluginName(pluginsMap, concretePluginClass);
         }
 
         return pluginsMap;
@@ -93,6 +95,20 @@ public class ClasspathPluginProvider implements PluginProvider {
         if (!deprecatedPluginName.equals(DEFAULT_DEPRECATED_NAME)) {
             final Map<Class<?>, Class<?>> supportTypeToPluginTypeMap =
                     pluginsMap.computeIfAbsent(deprecatedPluginName, k -> new HashMap<>());
+            supportTypeToPluginTypeMap.put(supportedType, concretePluginClass);
+        }
+    }
+
+    private void addOptionalAlternatePluginName(
+            final Map<String, Map<Class<?>, Class<?>>> pluginsMap,
+            final Class<?> concretePluginClass) {
+        final DataPrepperPlugin dataPrepperPluginAnnotation = concretePluginClass.getAnnotation(DataPrepperPlugin.class);
+        final String alternatePluginName = dataPrepperPluginAnnotation.alternateName();
+        final Class<?> supportedType = dataPrepperPluginAnnotation.pluginType();
+
+        if (!alternatePluginName.equals(DEFAULT_ALTERNATE_NAME)) {
+            final Map<Class<?>, Class<?>> supportTypeToPluginTypeMap =
+                    pluginsMap.computeIfAbsent(alternatePluginName, k -> new HashMap<>());
             supportTypeToPluginTypeMap.put(supportedType, concretePluginClass);
         }
     }
