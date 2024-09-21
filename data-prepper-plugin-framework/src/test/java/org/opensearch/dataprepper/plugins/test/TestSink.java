@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.time.Instant;
 
-@DataPrepperPlugin(name = "test_sink", alternateNames = { "test_sink_alternate_name" }, deprecatedName = "test_sink_deprecated_name", pluginType = Sink.class)
+@DataPrepperPlugin(name = "test_sink", alternateNames = "test_sink_alternate_name", deprecatedName = "test_sink_deprecated_name", pluginType = Sink.class)
 public class TestSink implements Sink<Record<String>> {
     public boolean isShutdown = false;
     private final List<Record<String>> collectedRecords;
