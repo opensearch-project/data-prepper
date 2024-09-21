@@ -426,7 +426,7 @@ class DefaultPluginFactoryTest {
                     .willReturn(expectedInstance);
 
             assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting), equalTo(expectedInstance));
-            MatcherAssert.assertThat(expectedInstance.getClass().getAnnotation(DataPrepperPlugin.class).alternateName(), equalTo(TEST_SINK_ALTERNATE_NAME));
+            MatcherAssert.assertThat(expectedInstance.getClass().getAnnotation(DataPrepperPlugin.class).alternateNames(), equalTo(new String[]{TEST_SINK_ALTERNATE_NAME}));
             verify(beanFactoryProvider).get();
         }
     }

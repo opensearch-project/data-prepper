@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.model.annotations.DataPrepperPlugin.DEFAULT_ALTERNATE_NAME;
@@ -70,45 +72,34 @@ public class ClasspathPluginProvider implements PluginProvider {
 
         final Map<String, Map<Class<?>, Class<?>>> pluginsMap = new HashMap<>(dataPrepperPluginClasses.size());
         for (final Class<?> concretePluginClass : dataPrepperPluginClasses) {
-            final DataPrepperPlugin dataPrepperPluginAnnotation = concretePluginClass.getAnnotation(DataPrepperPlugin.class);
-            final String pluginName = dataPrepperPluginAnnotation.name();
-            final Class<?> supportedType = dataPrepperPluginAnnotation.pluginType();
-
-            final Map<Class<?>, Class<?>> supportTypeToPluginTypeMap =
-                    pluginsMap.computeIfAbsent(pluginName, k -> new HashMap<>());
-            supportTypeToPluginTypeMap.put(supportedType, concretePluginClass);
-
-            addOptionalDeprecatedPluginName(pluginsMap, concretePluginClass);
-            addOptionalAlternatePluginName(pluginsMap, concretePluginClass);
+            // plugin name
+            addPossiblePluginName(pluginsMap, concretePluginClass, DataPrepperPlugin::name, name -> true);
+            // deprecated plugin name
+            addPossiblePluginName(pluginsMap, concretePluginClass, DataPrepperPlugin::deprecatedName,
+                    deprecatedPluginName -> !deprecatedPluginName.equals(DEFAULT_DEPRECATED_NAME));
+            // alternate plugin names
+            for (final String alternateName: concretePluginClass.getAnnotation(DataPrepperPlugin.class).alternateNames()) {
+                addPossiblePluginName(pluginsMap, concretePluginClass, DataPrepperPlugin -> alternateName,
+                        alternatePluginName -> !alternatePluginName.equals(DEFAULT_ALTERNATE_NAME));
+            }
         }
 
         return pluginsMap;
     }
 
-    private void addOptionalDeprecatedPluginName(
+    private void addPossiblePluginName(
             final Map<String, Map<Class<?>, Class<?>>> pluginsMap,
-            final Class<?> concretePluginClass) {
+            final Class<?> concretePluginClass,
+            final Function<DataPrepperPlugin, String> possiblePluginNameFunction,
+            final Predicate<String> possiblePluginNamePredicate
+            ) {
         final DataPrepperPlugin dataPrepperPluginAnnotation = concretePluginClass.getAnnotation(DataPrepperPlugin.class);
-        final String deprecatedPluginName = dataPrepperPluginAnnotation.deprecatedName();
+        final String possiblePluginName = possiblePluginNameFunction.apply(dataPrepperPluginAnnotation);
         final Class<?> supportedType = dataPrepperPluginAnnotation.pluginType();
 
-        if (!deprecatedPluginName.equals(DEFAULT_DEPRECATED_NAME)) {
+        if (possiblePluginNamePredicate.test(possiblePluginName)) {
             final Map<Class<?>, Class<?>> supportTypeToPluginTypeMap =
-                    pluginsMap.computeIfAbsent(deprecatedPluginName, k -> new HashMap<>());
-            supportTypeToPluginTypeMap.put(supportedType, concretePluginClass);
-        }
-    }
-
-    private void addOptionalAlternatePluginName(
-            final Map<String, Map<Class<?>, Class<?>>> pluginsMap,
-            final Class<?> concretePluginClass) {
-        final DataPrepperPlugin dataPrepperPluginAnnotation = concretePluginClass.getAnnotation(DataPrepperPlugin.class);
-        final String alternatePluginName = dataPrepperPluginAnnotation.alternateName();
-        final Class<?> supportedType = dataPrepperPluginAnnotation.pluginType();
-
-        if (!alternatePluginName.equals(DEFAULT_ALTERNATE_NAME)) {
-            final Map<Class<?>, Class<?>> supportTypeToPluginTypeMap =
-                    pluginsMap.computeIfAbsent(alternatePluginName, k -> new HashMap<>());
+                    pluginsMap.computeIfAbsent(possiblePluginName, k -> new HashMap<>());
             supportTypeToPluginTypeMap.put(supportedType, concretePluginClass);
         }
     }

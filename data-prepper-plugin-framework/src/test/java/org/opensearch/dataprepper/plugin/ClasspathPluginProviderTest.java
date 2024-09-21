@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.plugin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
@@ -28,7 +30,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
-import static org.opensearch.dataprepper.model.annotations.DataPrepperPlugin.DEFAULT_ALTERNATE_NAME;
 import static org.opensearch.dataprepper.model.annotations.DataPrepperPlugin.DEFAULT_DEPRECATED_NAME;
 
 class ClasspathPluginProviderTest {
@@ -111,17 +112,19 @@ class ClasspathPluginProviderTest {
         given(reflections.getTypesAnnotatedWith(DataPrepperPlugin.class))
                 .willReturn(new HashSet<>(List.of(TestSource.class)));
 
-        final Optional<Class<? extends Source>> optionalPlugin = createObjectUnderTest().findPluginClass(Source.class, DEFAULT_ALTERNATE_NAME);
+        final Optional<Class<? extends Source>> optionalPlugin = createObjectUnderTest()
+                .findPluginClass(Source.class, UUID.randomUUID().toString());
         assertThat(optionalPlugin, notNullValue());
         assertThat(optionalPlugin.isPresent(), equalTo(false));
     }
 
-    @Test
-    void findPlugin_should_return_plugin_if_found_for_alternate_name_and_type_using_pluginType() {
+    @ParameterizedTest
+    @ValueSource(strings = {"test_source_alternate_name1", "test_source_alternate_name2"})
+    void findPlugin_should_return_plugin_if_found_for_alternate_name_and_type_using_pluginType(final String alternateSourceName) {
         given(reflections.getTypesAnnotatedWith(DataPrepperPlugin.class))
                 .willReturn(new HashSet<>(List.of(TestSource.class)));
 
-        final Optional<Class<? extends Source>> optionalPlugin = createObjectUnderTest().findPluginClass(Source.class, "test_source_alternate_name");
+        final Optional<Class<? extends Source>> optionalPlugin = createObjectUnderTest().findPluginClass(Source.class, alternateSourceName);
         assertThat(optionalPlugin, notNullValue());
         assertThat(optionalPlugin.isPresent(), equalTo(true));
         assertThat(optionalPlugin.get(), equalTo(TestSource.class));

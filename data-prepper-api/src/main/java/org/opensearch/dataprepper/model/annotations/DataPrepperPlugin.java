@@ -52,7 +52,7 @@ public @interface DataPrepperPlugin {
      *
      * @return Alternate name of the plugin which should be unique for the type
      */
-    String alternateName() default DEFAULT_ALTERNATE_NAME;
+    String[] alternateNames() default {};
 
     /**
      * The class type for this plugin.
