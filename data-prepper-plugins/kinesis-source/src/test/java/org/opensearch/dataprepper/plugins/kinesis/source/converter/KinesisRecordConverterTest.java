@@ -41,6 +41,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 public class KinesisRecordConverterTest {
+    private static final String streamId = "stream-1";
 
     @Test
     void setup() throws IOException {
@@ -52,7 +53,7 @@ public class KinesisRecordConverterTest {
         KinesisClientRecord kinesisClientRecord = KinesisClientRecord.builder()
                 .data(ByteBuffer.wrap(sample_record_data.getBytes()))
                 .build();
-        kinesisRecordConverter.convert(List.of(kinesisClientRecord));
+        kinesisRecordConverter.convert(List.of(kinesisClientRecord), streamId);
         verify(codec, times(1)).parse(any(InputStream.class), any(Consumer.class));
     }
 
@@ -79,7 +80,7 @@ public class KinesisRecordConverterTest {
         KinesisClientRecord kinesisClientRecord = KinesisClientRecord.builder()
                 .data(ByteBuffer.wrap(writer.toString().getBytes()))
                 .build();
-        List<Record<Event>> events = kinesisRecordConverter.convert(List.of(kinesisClientRecord));
+        List<Record<Event>> events = kinesisRecordConverter.convert(List.of(kinesisClientRecord), streamId);
 
         assertEquals(events.size(), numRecords);
     }
