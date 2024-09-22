@@ -11,22 +11,33 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.deser.ContextualDeserializer;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
+import org.reflections.Reflections;
+import org.reflections.scanners.Scanners;
+import org.reflections.util.ClasspathHelper;
+import org.reflections.util.ConfigurationBuilder;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Model class for a Plugin in Configuration YAML containing name of the Plugin and its associated settings
@@ -36,7 +47,7 @@ import java.util.function.Supplier;
 @JsonSerialize(using = PluginModel.PluginModelSerializer.class)
 @JsonDeserialize(using = PluginModel.PluginModelDeserializer.class)
 public class PluginModel {
-
+    static final String DEFAULT_PLUGINS_CLASSPATH = "org.opensearch.dataprepper.plugins";
     private static final ObjectMapper SERIALIZER_OBJECT_MAPPER = new ObjectMapper();
 
     private final String pluginName;
@@ -148,11 +159,15 @@ public class PluginModel {
      *
      * @see SinkModel.SinkModelDeserializer
      */
-    abstract static class AbstractPluginModelDeserializer<T extends PluginModel, M extends InternalJsonModel> extends StdDeserializer<PluginModel> {
+    abstract static class AbstractPluginModelDeserializer<T extends PluginModel, M extends InternalJsonModel>
+            extends StdDeserializer<PluginModel> implements ContextualDeserializer {
 
         private final Class<M> innerModelClass;
         private final BiFunction<String, M, T> constructorFunction;
         private final Supplier<M> emptyInnerModelConstructor;
+        private final Reflections reflections;
+
+        private UsesDataPrepperPlugin usesDataPrepperPlugin;
 
         protected AbstractPluginModelDeserializer(
                 final Class<T> valueClass,
@@ -163,6 +178,16 @@ public class PluginModel {
             this.innerModelClass = innerModelClass;
             this.constructorFunction = constructorFunction;
             this.emptyInnerModelConstructor = emptyInnerModelConstructor;
+            this.reflections = new Reflections(new ConfigurationBuilder()
+                    .setUrls(ClasspathHelper.forPackage(DEFAULT_PLUGINS_CLASSPATH))
+                    .setScanners(Scanners.TypesAnnotated, Scanners.SubTypes));
+        }
+
+        @Override
+        public AbstractPluginModelDeserializer<?, ?> createContextual(
+                final DeserializationContext context, final BeanProperty property) {
+            usesDataPrepperPlugin = property.getAnnotation(UsesDataPrepperPlugin.class);
+            return this;
         }
 
         @Override
@@ -175,11 +200,32 @@ public class PluginModel {
             final String pluginName = onlyField.getKey();
             final JsonNode value = onlyField.getValue();
 
+            if (usesDataPrepperPlugin != null) {
+                final Set<String> pluginNames = scanForPluginNames(usesDataPrepperPlugin.pluginType());
+                if (!pluginNames.contains(pluginName)) {
+                    throw new IOException(String.format("%s is not found on %s.",
+                            pluginName, usesDataPrepperPlugin.pluginType()));
+                }
+            }
+
             M innerModel = SERIALIZER_OBJECT_MAPPER.convertValue(value, innerModelClass);
             if(innerModel == null)
                 innerModel = emptyInnerModelConstructor.get();
 
             return constructorFunction.apply(pluginName, innerModel);
+        }
+
+        private Set<String> scanForPluginNames(final Class<?> pluginType) {
+            return reflections.getTypesAnnotatedWith(DataPrepperPlugin.class).stream()
+                    .map(clazz -> clazz.getAnnotation(DataPrepperPlugin.class))
+                    .filter(dataPrepperPlugin -> pluginType.equals(dataPrepperPlugin.pluginType()))
+                    .flatMap(dataPrepperPlugin -> {
+                        if (!dataPrepperPlugin.deprecatedName().isEmpty()) {
+                            return Stream.of(dataPrepperPlugin.deprecatedName(), dataPrepperPlugin.name());
+                        }
+                        return Stream.of(dataPrepperPlugin.name());
+                    })
+                    .collect(Collectors.toSet());
         }
     }
 

@@ -9,26 +9,42 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.github.victools.jsonschema.generator.Module;
 import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaVersion;
+import com.github.victools.jsonschema.module.jakarta.validation.JakartaValidationModule;
+import com.github.victools.jsonschema.module.jakarta.validation.JakartaValidationOption;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.schemas.module.CustomJacksonModule;
+import org.reflections.Reflections;
+import org.reflections.scanners.Scanners;
+import org.reflections.util.ClasspathHelper;
+import org.reflections.util.ConfigurationBuilder;
 
 import java.util.Collections;
 import java.util.List;
 
+import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_ORDER;
+import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_REQUIRED;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.opensearch.dataprepper.schemas.PluginConfigsJsonSchemaConverterIT.DEFAULT_PLUGINS_CLASSPATH;
 
+@ExtendWith(MockitoExtension.class)
 class JsonSchemaConverterTest {
+    @Mock
+    private Reflections reflections;
 
-    public JsonSchemaConverter createObjectUnderTest(final List<Module> modules) {
-        return new JsonSchemaConverter(modules);
+    public JsonSchemaConverter createObjectUnderTest(final List<Module> modules, final Reflections reflections) {
+        return new JsonSchemaConverter(modules, reflections);
     }
 
     @Test
     void testConvertIntoJsonSchemaWithDefaultModules() throws JsonProcessingException {
-        final JsonSchemaConverter jsonSchemaConverter = createObjectUnderTest(Collections.emptyList());
+        final JsonSchemaConverter jsonSchemaConverter = createObjectUnderTest(
+                Collections.emptyList(), reflections);
         final ObjectNode jsonSchemaNode = jsonSchemaConverter.convertIntoJsonSchema(
                 SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, TestConfig.class);
         assertThat(jsonSchemaNode, instanceOf(ObjectNode.class));
@@ -44,7 +60,8 @@ class JsonSchemaConverterTest {
     @Test
     void testConvertIntoJsonSchemaWithCustomJacksonModule() throws JsonProcessingException {
         final JsonSchemaConverter jsonSchemaConverter = createObjectUnderTest(
-                Collections.singletonList(new CustomJacksonModule()));
+                Collections.singletonList(new CustomJacksonModule()),
+                reflections);
         final ObjectNode jsonSchemaNode = jsonSchemaConverter.convertIntoJsonSchema(
                 SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, TestConfig.class);
         assertThat(jsonSchemaNode, instanceOf(ObjectNode.class));
@@ -68,5 +85,19 @@ class JsonSchemaConverterTest {
         public String getTestAttributeWithGetter() {
             return testAttributeWithGetter;
         }
+    }
+
+    public static void main(String[] args) throws JsonProcessingException {
+        final List<Module> modules = List.of(
+                new CustomJacksonModule(RESPECT_JSONPROPERTY_REQUIRED, RESPECT_JSONPROPERTY_ORDER),
+                new JakartaValidationModule(JakartaValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED,
+                        JakartaValidationOption.INCLUDE_PATTERN_EXPRESSIONS)
+        );
+        final Reflections reflections = new Reflections(new ConfigurationBuilder()
+                .setUrls(ClasspathHelper.forPackage(DEFAULT_PLUGINS_CLASSPATH))
+                .setScanners(Scanners.TypesAnnotated, Scanners.SubTypes));
+        JsonSchemaConverter jsonSchemaConverter = new JsonSchemaConverter(modules, reflections);
+        System.out.println(jsonSchemaConverter.convertIntoJsonSchema(
+                SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, TestPluginConfig.class).toPrettyString());
     }
 }

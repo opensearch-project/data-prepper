@@ -50,7 +50,7 @@ class PluginConfigsJsonSchemaConverterIT {
                 .setUrls(ClasspathHelper.forPackage(DEFAULT_PLUGINS_CLASSPATH))
                 .setScanners(Scanners.TypesAnnotated, Scanners.SubTypes));
         objectUnderTest = new PluginConfigsJsonSchemaConverter(
-                reflections, new JsonSchemaConverter(modules), TEST_URL, TEST_BASE_URL);
+                reflections, new JsonSchemaConverter(modules, reflections), TEST_URL, TEST_BASE_URL);
     }
 
     @ParameterizedTest

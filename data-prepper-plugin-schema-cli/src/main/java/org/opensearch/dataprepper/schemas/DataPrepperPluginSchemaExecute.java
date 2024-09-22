@@ -62,7 +62,7 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
                 .setUrls(ClasspathHelper.forPackage(DEFAULT_PLUGINS_CLASSPATH))
                 .setScanners(Scanners.TypesAnnotated, Scanners.SubTypes));
         final PluginConfigsJsonSchemaConverter pluginConfigsJsonSchemaConverter = new PluginConfigsJsonSchemaConverter(
-                reflections, new JsonSchemaConverter(modules), siteUrl, siteBaseUrl);
+                reflections, new JsonSchemaConverter(modules, reflections), siteUrl, siteBaseUrl);
         final Class<?> pluginType = pluginConfigsJsonSchemaConverter.pluginTypeNameToPluginType(pluginTypeName);
         final Map<String, String> pluginNameToJsonSchemaMap = pluginConfigsJsonSchemaConverter.convertPluginConfigsIntoJsonSchemas(
                 SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, pluginType);

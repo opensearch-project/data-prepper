@@ -11,15 +11,24 @@ import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigPart;
 import com.github.victools.jsonschema.generator.SchemaVersion;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
+import org.reflections.Reflections;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class JsonSchemaConverter {
     static final String DEPRECATED_SINCE_KEY = "deprecated";
+    static final String PLUGIN_NAME_KEY = "name";
     private final List<Module> jsonSchemaGeneratorModules;
+    private final Reflections reflections;
 
-    public JsonSchemaConverter(final List<Module> jsonSchemaGeneratorModules) {
+    public JsonSchemaConverter(final List<Module> jsonSchemaGeneratorModules, final Reflections reflections) {
         this.jsonSchemaGeneratorModules = jsonSchemaGeneratorModules;
+        this.reflections = reflections;
     }
 
     public ObjectNode convertIntoJsonSchema(
@@ -30,6 +39,7 @@ public class JsonSchemaConverter {
         loadJsonSchemaGeneratorModules(configBuilder);
         final SchemaGeneratorConfigPart<FieldScope> scopeSchemaGeneratorConfigPart = configBuilder.forFields();
         overrideInstanceAttributeWithDeprecated(scopeSchemaGeneratorConfigPart);
+        overrideTargetTypeWithUsesDataPrepperPlugin(scopeSchemaGeneratorConfigPart);
         resolveDefaultValueFromJsonProperty(scopeSchemaGeneratorConfigPart);
 
         final SchemaGeneratorConfig config = configBuilder.build();
@@ -52,11 +62,28 @@ public class JsonSchemaConverter {
         });
     }
 
+    private void overrideTargetTypeWithUsesDataPrepperPlugin(
+            final SchemaGeneratorConfigPart<FieldScope> scopeSchemaGeneratorConfigPart) {
+        scopeSchemaGeneratorConfigPart.withTargetTypeOverridesResolver(field -> Optional
+                .ofNullable(field.getAnnotationConsideringFieldAndGetterIfSupported(UsesDataPrepperPlugin.class))
+                .map(usesDataPrepperPlugin -> scanForPluginConfigs(usesDataPrepperPlugin.pluginType()))
+                .map(stream -> stream.map(specificSubtype -> field.getContext().resolve(specificSubtype)))
+                .map(stream -> stream.collect(Collectors.toList()))
+                .orElse(null));
+    }
+
     private void resolveDefaultValueFromJsonProperty(
             final SchemaGeneratorConfigPart<FieldScope> scopeSchemaGeneratorConfigPart) {
         scopeSchemaGeneratorConfigPart.withDefaultResolver(field -> {
             final JsonProperty annotation = field.getAnnotationConsideringFieldAndGetter(JsonProperty.class);
             return annotation == null || annotation.defaultValue().isEmpty() ? null : annotation.defaultValue();
         });
+    }
+
+    private Stream<Class<?>> scanForPluginConfigs(final Class<?> pluginType) {
+        final Stream<DataPrepperPlugin> result = reflections.getTypesAnnotatedWith(DataPrepperPlugin.class).stream()
+                .map(clazz -> clazz.getAnnotation(DataPrepperPlugin.class))
+                .filter(dataPrepperPlugin -> pluginType.equals(dataPrepperPlugin.pluginType()));
+        return result.map(DataPrepperPlugin::pluginConfigurationType);
     }
 }
