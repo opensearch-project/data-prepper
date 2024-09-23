@@ -97,17 +97,21 @@ public class DataPrepper implements PipelinesProvider {
         shutdownServers();
     }
 
+    private void shutdownPipelines() {
+        shutdownPipelines(DataPrepperShutdownOptions.defaultOptions());
+    }
+
     /**
      * Triggers the shutdown of all configured valid pipelines.
      */
-    public void shutdownPipelines() {
+    public void shutdownPipelines(final DataPrepperShutdownOptions shutdownOptions) {
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.removeShutdownObserver(pipelinesObserver);
         });
 
         for (final Pipeline pipeline : transformationPipelines.values()) {
             LOG.info("Shutting down pipeline: {}", pipeline.getName());
-            pipeline.shutdown();
+            pipeline.shutdown(shutdownOptions);
         }
     }
 
@@ -127,11 +131,12 @@ public class DataPrepper implements PipelinesProvider {
      *
      * @param pipeline name of the pipeline
      */
-    public void shutdownPipelines(final String pipeline) {
+    public void shutdownPipeline(final String pipeline) {
         if (transformationPipelines.containsKey(pipeline)) {
             transformationPipelines.get(pipeline).shutdown();
         }
     }
+
     public PluginFactory getPluginFactory() {
         return pluginFactory;
     }
