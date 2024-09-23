@@ -55,7 +55,7 @@ import io.opentelemetry.proto.trace.v1.Span;
 class OTelTraceSourceRetryInfoTest {
     private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21890/";
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
-    private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(100, 2000);
+    private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
     @Mock
     private PluginFactory pluginFactory;

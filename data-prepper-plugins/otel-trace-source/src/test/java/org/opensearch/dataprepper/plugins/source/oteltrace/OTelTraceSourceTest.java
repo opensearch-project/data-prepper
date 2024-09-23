@@ -81,6 +81,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
@@ -136,7 +137,7 @@ class OTelTraceSourceTest {
     private static final String TEST_PATH = "${pipelineName}/v1/traces";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
-    private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(100, 2000);
+    private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(2000));
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
