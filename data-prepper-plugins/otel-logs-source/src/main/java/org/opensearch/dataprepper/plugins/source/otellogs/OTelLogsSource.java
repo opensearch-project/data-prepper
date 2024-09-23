@@ -207,9 +207,14 @@ public class OTelLogsSource implements Source<Record<Object>> {
     }
 
     private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
-        RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo() != null ? oTelLogsSourceConfig.getRetryInfo() : new RetryInfoConfig(100, 2000);
+        Duration defaultMinDelay = Duration.ofMillis(100);
+        Duration defaultMaxDelay = Duration.ofMillis(2000);
 
-        return new GrpcRequestExceptionHandler(pluginMetrics, Duration.ofMillis(retryInfo.getMinDelay()), Duration.ofMillis(retryInfo.getMaxDelay()));
+        RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo() != null
+                ? oTelLogsSourceConfig.getRetryInfo()
+                : new RetryInfoConfig(defaultMinDelay, defaultMaxDelay);
+
+        return new GrpcRequestExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
     }
 
     private List<ServerInterceptor> getAuthenticationInterceptor() {
