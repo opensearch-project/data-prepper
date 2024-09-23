@@ -226,9 +226,14 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
     }
 
     private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
-        RetryInfoConfig retryInfo = oTelMetricsSourceConfig.getRetryInfo() != null ? oTelMetricsSourceConfig.getRetryInfo() : new RetryInfoConfig(100, 2000);
+        Duration defaultMinDelay = Duration.ofMillis(100);
+        Duration defaultMaxDelay = Duration.ofMillis(2000);
 
-        return new GrpcRequestExceptionHandler(pluginMetrics, Duration.ofMillis(retryInfo.getMinDelay()), Duration.ofMillis(retryInfo.getMaxDelay()));
+        RetryInfoConfig retryInfo = oTelMetricsSourceConfig.getRetryInfo() != null
+                ? oTelMetricsSourceConfig.getRetryInfo()
+                : new RetryInfoConfig(defaultMinDelay, defaultMaxDelay);
+
+        return new GrpcRequestExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
     }
 
     private List<ServerInterceptor> getAuthenticationInterceptor() {

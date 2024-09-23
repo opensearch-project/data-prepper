@@ -1,36 +1,38 @@
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
+import java.time.Duration;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class RetryInfoConfig {
 
     @JsonProperty("min_delay")
-    private Integer minDelay;
+    private Duration minDelay;
 
     @JsonProperty("max_delay")
-    private Integer maxDelay;
+    private Duration maxDelay;
 
     // Jackson needs this constructor
     public RetryInfoConfig() {}
 
-    public RetryInfoConfig(int minDelay, int maxDelay) {
+    public RetryInfoConfig(Duration minDelay, Duration maxDelay) {
         this.minDelay = minDelay;
         this.maxDelay = maxDelay;
     }
 
-    public int getMinDelay() {
+    public Duration getMinDelay() {
         return minDelay;
     }
 
-    public void setMinDelay(Integer minDelay) {
+    public void setMinDelay(Duration minDelay) {
         this.minDelay = minDelay;
     }
 
-    public int getMaxDelay() {
+    public Duration getMaxDelay() {
         return maxDelay;
     }
 
-    public void setMaxDelay(Integer maxDelay) {
+    public void setMaxDelay(Duration maxDelay) {
         this.maxDelay = maxDelay;
     }
 }

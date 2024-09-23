@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -349,7 +350,7 @@ class OtelMetricsSourceConfigTests {
         settings.put(OTelMetricsSourceConfig.SSL_KEY_FILE, sslKeyFile);
         settings.put(OTelMetricsSourceConfig.THREAD_COUNT, threadCount);
         settings.put(OTelMetricsSourceConfig.MAX_CONNECTION_COUNT, maxConnectionCount);
-        settings.put(OTelMetricsSourceConfig.RETRY_INFO, new RetryInfoConfig(50, 100));
+        settings.put(OTelMetricsSourceConfig.RETRY_INFO, new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(100)));
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 }
