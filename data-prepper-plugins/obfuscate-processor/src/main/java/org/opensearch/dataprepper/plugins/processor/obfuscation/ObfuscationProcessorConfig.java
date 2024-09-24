@@ -12,8 +12,10 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.plugins.processor.obfuscation.action.ObfuscationAction;
 
 import java.util.List;
 
@@ -40,6 +42,7 @@ public class ObfuscationProcessorConfig {
 
     @JsonProperty("action")
     @JsonPropertyDescription("The obfuscation action. Available actions include 'hash' and 'mask'.")
+    @UsesDataPrepperPlugin(pluginType = ObfuscationAction.class)
     private PluginModel action;
 
     @JsonProperty("obfuscate_when")
