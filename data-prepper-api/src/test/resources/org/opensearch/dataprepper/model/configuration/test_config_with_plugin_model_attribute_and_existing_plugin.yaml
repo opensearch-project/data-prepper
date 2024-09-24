@@ -1,0 +1,4 @@
+plugin_model:
+  test_plugin: {}
+plugin_model_deprecated:
+  test_plugin_deprecated: {}

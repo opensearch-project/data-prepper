@@ -10,10 +10,13 @@ import com.github.victools.jsonschema.generator.SchemaGenerator;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigPart;
+import com.github.victools.jsonschema.generator.SchemaGeneratorGeneralConfigPart;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
 import org.reflections.Reflections;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,8 +24,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class JsonSchemaConverter {
+    private static final Logger LOG = LoggerFactory.getLogger(JsonSchemaConverter.class);
     static final String DEPRECATED_SINCE_KEY = "deprecated";
-    static final String PLUGIN_NAME_KEY = "name";
     private final List<Module> jsonSchemaGeneratorModules;
     private final Reflections reflections;
 
@@ -41,6 +44,7 @@ public class JsonSchemaConverter {
         overrideInstanceAttributeWithDeprecated(scopeSchemaGeneratorConfigPart);
         overrideTargetTypeWithUsesDataPrepperPlugin(scopeSchemaGeneratorConfigPart);
         resolveDefaultValueFromJsonProperty(scopeSchemaGeneratorConfigPart);
+        overrideDataPrepperPluginTypeAttribute(configBuilder.forTypesInGeneral(), schemaVersion, optionPreset);
 
         final SchemaGeneratorConfig config = configBuilder.build();
         final SchemaGenerator generator = new SchemaGenerator(config);
@@ -72,6 +76,26 @@ public class JsonSchemaConverter {
                 .orElse(null));
     }
 
+    private void overrideDataPrepperPluginTypeAttribute(
+            final SchemaGeneratorGeneralConfigPart schemaGeneratorGeneralConfigPart,
+            final SchemaVersion schemaVersion, final OptionPreset optionPreset) {
+        schemaGeneratorGeneralConfigPart.withTypeAttributeOverride((node, scope, context) -> {
+            final DataPrepperPlugin dataPrepperPlugin = scope.getType().getErasedType()
+                    .getAnnotation(DataPrepperPlugin.class);
+            if (dataPrepperPlugin != null) {
+                final ObjectNode propertiesNode = node.putObject("properties");
+                try {
+                    final ObjectNode schemaNode = this.convertIntoJsonSchema(
+                            schemaVersion, optionPreset, dataPrepperPlugin.pluginConfigurationType());
+                    propertiesNode.set(dataPrepperPlugin.name(), schemaNode);
+                } catch (JsonProcessingException e) {
+                    LOG.error("Encountered error retrieving JSON schema for {}", dataPrepperPlugin.name(), e);
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+    }
+
     private void resolveDefaultValueFromJsonProperty(
             final SchemaGeneratorConfigPart<FieldScope> scopeSchemaGeneratorConfigPart) {
         scopeSchemaGeneratorConfigPart.withDefaultResolver(field -> {
@@ -81,9 +105,10 @@ public class JsonSchemaConverter {
     }
 
     private Stream<Class<?>> scanForPluginConfigs(final Class<?> pluginType) {
-        final Stream<DataPrepperPlugin> result = reflections.getTypesAnnotatedWith(DataPrepperPlugin.class).stream()
-                .map(clazz -> clazz.getAnnotation(DataPrepperPlugin.class))
-                .filter(dataPrepperPlugin -> pluginType.equals(dataPrepperPlugin.pluginType()));
-        return result.map(DataPrepperPlugin::pluginConfigurationType);
+        return reflections.getTypesAnnotatedWith(DataPrepperPlugin.class).stream()
+                .filter(clazz -> {
+                    final DataPrepperPlugin dataPrepperPlugin = clazz.getAnnotation(DataPrepperPlugin.class);
+                    return pluginType.equals(dataPrepperPlugin.pluginType());
+                });
     }
 }

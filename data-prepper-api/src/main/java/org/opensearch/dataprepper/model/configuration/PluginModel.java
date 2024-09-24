@@ -186,7 +186,9 @@ public class PluginModel {
         @Override
         public AbstractPluginModelDeserializer<?, ?> createContextual(
                 final DeserializationContext context, final BeanProperty property) {
-            usesDataPrepperPlugin = property.getAnnotation(UsesDataPrepperPlugin.class);
+            if (Objects.nonNull(property)) {
+                usesDataPrepperPlugin = property.getAnnotation(UsesDataPrepperPlugin.class);
+            }
             return this;
         }
 

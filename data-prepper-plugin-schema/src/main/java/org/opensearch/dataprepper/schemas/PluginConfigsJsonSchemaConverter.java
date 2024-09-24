@@ -90,8 +90,8 @@ public class PluginConfigsJsonSchemaConverter {
                         addPluginName(jsonSchemaNode, pluginName);
                         addDocumentationLink(jsonSchemaNode, pluginName, pluginType);
                         value = jsonSchemaNode.toPrettyString();
-                    } catch (JsonProcessingException e) {
-                        LOG.error("Encountered error retrieving JSON schema for {}", pluginName);
+                    } catch (final Exception e) {
+                        LOG.error("Encountered error retrieving JSON schema for {}", pluginName, e);
                         return Stream.empty();
                     }
                     return Stream.of(Map.entry(entry.getKey(), value));

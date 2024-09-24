@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.configuration;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -14,6 +15,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
+import org.opensearch.dataprepper.model.processor.Processor;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -27,9 +30,11 @@ import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class PluginModelTests {
 
@@ -88,6 +93,35 @@ class PluginModelTests {
         assertThat(pluginModel.getPluginName(), equalTo("customPlugin"));
         assertThat(pluginModel.getPluginSettings(), notNullValue());
         assertThat(pluginModel.getPluginSettings().size(), equalTo(0));
+    }
+
+    @Test
+    final void deserialize_PluginModel_attribute_matches_UsesDataPrepperPlugin_annotation() throws IOException {
+        final InputStream inputStream = PluginModelTests.class.getResourceAsStream(
+                "test_config_with_plugin_model_attribute_and_existing_plugin.yaml");
+
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        final TestConfig testConfig = mapper.readValue(inputStream, TestConfig.class);
+        assertThat(testConfig.getPluginModel(), instanceOf(PluginModel.class));
+        assertThat(testConfig.getPluginModel().getPluginName(), equalTo("test_plugin"));
+        assertThat(testConfig.getPluginModel().getPluginSettings(), notNullValue());
+        assertThat(testConfig.getPluginModel().getPluginSettings().size(), equalTo(0));
+        assertThat(testConfig.getPluginModelDeprecated(), instanceOf(PluginModel.class));
+        assertThat(testConfig.getPluginModelDeprecated().getPluginName(), equalTo("test_plugin_deprecated"));
+        assertThat(testConfig.getPluginModelDeprecated().getPluginSettings(), notNullValue());
+        assertThat(testConfig.getPluginModelDeprecated().getPluginSettings().size(), equalTo(0));
+    }
+
+    @Test
+    final void deserialize_PluginModel_attribute_does_not_match_UsesDataPrepperPlugin_annotation() {
+        final InputStream inputStream = PluginModelTests.class.getResourceAsStream(
+                "test_config_with_plugin_model_attribute_but_non_existing_plugin.yaml");
+
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        final IOException exception = assertThrows(
+                IOException.class, () -> mapper.readValue(inputStream, TestConfig.class));
+        assertThat(exception.getMessage(), equalTo(
+                "non-existing is not found on interface org.opensearch.dataprepper.model.processor.Processor."));
     }
 
     @Test
@@ -156,4 +190,21 @@ class PluginModelTests {
         return stringBuilder.toString();
     }
 
+    static class TestConfig {
+        @JsonProperty("plugin_model")
+        @UsesDataPrepperPlugin(pluginType = Processor.class)
+        private PluginModel pluginModel;
+
+        @JsonProperty("plugin_model_deprecated")
+        @UsesDataPrepperPlugin(pluginType = Processor.class)
+        private PluginModel pluginModelDeprecated;
+
+        public PluginModel getPluginModel() {
+            return pluginModel;
+        }
+
+        public PluginModel getPluginModelDeprecated() {
+            return pluginModelDeprecated;
+        }
+    }
 }
