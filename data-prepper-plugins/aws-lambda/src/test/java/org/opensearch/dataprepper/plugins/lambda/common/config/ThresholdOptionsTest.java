@@ -10,9 +10,12 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.types.ByteCount;
 
+import java.time.Duration;
+
 class ThresholdOptionsTest {
+    private static final int DEFAULT_EVENT_COUNT = 10;
     private static final String DEFAULT_BYTE_CAPACITY = "3mb";
-    private static final int DEFAULT_EVENT_COUNT = 0;
+    private static final Duration DEFAULT_EVENT_TIMEOUT = Duration.ofSeconds(10);
 
     @Test
     void test_default_byte_capacity_test() {
@@ -22,7 +25,7 @@ class ThresholdOptionsTest {
 
     @Test
     void test_get_event_collection_duration_test() {
-        assertThat(new ThresholdOptions().getEventCollectTimeOut(), equalTo(null));
+        assertThat(new ThresholdOptions().getEventCollectTimeOut(), equalTo(DEFAULT_EVENT_TIMEOUT));
     }
 
     @Test

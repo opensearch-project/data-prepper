@@ -2,27 +2,21 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.lambda.sink;
+package org.opensearch.dataprepper.plugins.lambda.processor;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
-import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.EVENT;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.REQUEST_RESPONSE;
 
-import java.util.Map;
-import java.util.Objects;
-
-public class LambdaSinkConfig {
+public class LambdaProcessorConfig {
 
     private static final int DEFAULT_CONNECTION_RETRIES = 3;
-    public static final String STS_REGION = "region";
-    public static final String STS_ROLE_ARN = "sts_role_arn";
 
     @JsonProperty("aws")
     @NotNull
@@ -31,7 +25,6 @@ public class LambdaSinkConfig {
 
     @JsonProperty("function_name")
     @NotEmpty
-    @NotNull
     @Size(min = 3, max = 500, message = "function name length should be at least 3 characters")
     private String functionName;
 
@@ -39,13 +32,10 @@ public class LambdaSinkConfig {
     private int maxConnectionRetries = DEFAULT_CONNECTION_RETRIES;
 
     @JsonProperty("invocation_type")
-    private String invocationType = EVENT;
+    private String invocationType = REQUEST_RESPONSE;
 
     @JsonProperty("payload_model")
     private String payloadModel = BATCH_EVENT;
-
-    @JsonProperty("dlq")
-    private PluginModel dlq;
 
     @JsonProperty("batch")
     private BatchOptions batchOptions;
@@ -65,26 +55,6 @@ public class LambdaSinkConfig {
 
     public int getMaxConnectionRetries() {
         return maxConnectionRetries;
-    }
-
-    public PluginModel getDlq() {
-        return dlq;
-    }
-
-    public String getDlqStsRoleARN(){
-        return Objects.nonNull(getDlqPluginSetting().get(STS_ROLE_ARN)) ?
-                String.valueOf(getDlqPluginSetting().get(STS_ROLE_ARN)) :
-                awsAuthenticationOptions.getAwsStsRoleArn();
-    }
-
-    public String getDlqStsRegion(){
-        return Objects.nonNull(getDlqPluginSetting().get(STS_REGION)) ?
-                String.valueOf(getDlqPluginSetting().get(STS_REGION)) :
-                awsAuthenticationOptions.getAwsRegion().toString();
-    }
-
-    public  Map<String, Object> getDlqPluginSetting(){
-        return dlq != null ? dlq.getPluginSettings() : Map.of();
     }
 
     public String getInvocationType(){return invocationType;}

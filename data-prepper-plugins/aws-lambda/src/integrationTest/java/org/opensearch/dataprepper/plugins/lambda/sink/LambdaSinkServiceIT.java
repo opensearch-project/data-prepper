@@ -10,10 +10,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.Mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -21,6 +24,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -35,6 +39,9 @@ import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffe
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.LAMBDA_LATENCY_METRIC;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.REQUEST_PAYLOAD_SIZE;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.RESPONSE_PAYLOAD_SIZE;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaClient;
@@ -45,6 +52,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 @ExtendWith(MockitoExtension.class)
 class LambdaSinkServiceIT {
@@ -76,6 +84,14 @@ class LambdaSinkServiceIT {
     private Counter numberOfRecordsSuccessCounter;
     @Mock
     private Counter numberOfRecordsFailedCounter;
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
+    @Mock
+    private Timer lambdaLatencyMetric;
+    @Mock
+    private AtomicLong requestPayload;
+    @Mock
+    private AtomicLong responsePayload;
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
 
@@ -98,6 +114,9 @@ class LambdaSinkServiceIT {
                 thenReturn(numberOfRecordsSuccessCounter);
         when(pluginMetrics.counter(LambdaSinkService.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED)).
                 thenReturn(numberOfRecordsFailedCounter);
+        when(pluginMetrics.timer(LAMBDA_LATENCY_METRIC)).thenReturn(lambdaLatencyMetric);
+        when(pluginMetrics.gauge(eq(REQUEST_PAYLOAD_SIZE), any(AtomicLong.class))).thenReturn(requestPayload);
+        when(pluginMetrics.gauge(eq(RESPONSE_PAYLOAD_SIZE), any(AtomicLong.class))).thenReturn(responsePayload);
     }
 
 
@@ -119,7 +138,8 @@ class LambdaSinkServiceIT {
                 codecContext,
                 awsCredentialsSupplier,
                 dlqPushHandler,
-                bufferFactory);
+                bufferFactory,
+                expressionEvaluator);
     }
 
     public LambdaSinkService createObjectUnderTest(LambdaSinkConfig lambdaSinkConfig) throws JsonProcessingException {
@@ -134,7 +154,8 @@ class LambdaSinkServiceIT {
                 codecContext,
                 awsCredentialsSupplier,
                 dlqPushHandler,
-                bufferFactory);
+                bufferFactory,
+                expressionEvaluator);
     }
 
 
@@ -203,7 +224,7 @@ class LambdaSinkServiceIT {
         when(thresholdOptions.getEventCount()).thenReturn(event_count);
         when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("2mb"));
         when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.parse("PT10s"));
-        when(batchOptions.getBatchKey()).thenReturn("lambda_batch_key");
+        when(batchOptions.getKeyName()).thenReturn("lambda_batch_key");
         when(batchOptions.getThresholdOptions()).thenReturn(thresholdOptions);
         when(lambdaSinkConfig.getBatchOptions()).thenReturn(batchOptions);
 
