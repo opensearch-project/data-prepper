@@ -8,16 +8,17 @@ package org.opensearch.dataprepper.http.codec;
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.io.CountingOutputStream;
 import com.linecorp.armeria.common.HttpData;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,7 @@ public class JsonCodec implements Codec<List<String>> {
     private static final TypeReference<List<Map<String, Object>>> LIST_OF_MAP_TYPE_REFERENCE =
             new TypeReference<List<Map<String, Object>>>() {
             };
+    private static final JsonFactory JSON_FACTORY = new JsonFactory();
 
 
     @Override
@@ -48,37 +50,55 @@ public class JsonCodec implements Codec<List<String>> {
         return jsonList;
     }
 
-    public void serialize(final List<String> jsonList,
-                          final Consumer<String> serializedBodyConsumer,
-                          final int splitLength) throws IOException {
-        if (splitLength < 0)
-            throw new IllegalArgumentException("The splitLength must be greater than or equal to 0.");
+    @Override
+    public void validate(final HttpData content) throws IOException {
+        mapper.readValue(content.toInputStream(),
+                LIST_OF_MAP_TYPE_REFERENCE);
+    }
 
+    @Override
+    public void serializeSplit(final HttpData content, final Consumer<String> serializedBodyConsumer, final int splitLength) throws IOException {
+        final InputStream contentInputStream = content.toInputStream();
         if (splitLength == 0) {
-            performSerialization(jsonList, serializedBodyConsumer, Integer.MAX_VALUE);
+            performSerialization(contentInputStream, serializedBodyConsumer, Integer.MAX_VALUE);
         } else {
-            performSerialization(jsonList, serializedBodyConsumer, splitLength);
+            performSerialization(contentInputStream, serializedBodyConsumer, splitLength);
         }
     }
 
-    private void performSerialization(final List<String> jsonList,
+
+    private void performSerialization(final InputStream inputStream,
                                       final Consumer<String> serializedBodyConsumer,
                                       final int splitLength) throws IOException {
 
-        JsonArrayWriter jsonArrayWriter = new JsonArrayWriter(splitLength, serializedBodyConsumer);
-
-        for (final String individualJsonLine : jsonList) {
-            if (jsonArrayWriter.willExceedByWriting(individualJsonLine)) {
-                jsonArrayWriter.close();
-
-                jsonArrayWriter = new JsonArrayWriter(splitLength, serializedBodyConsumer);
-
+        try (final JsonParser jsonParser = JSON_FACTORY.createParser(inputStream)) {
+            if (jsonParser.nextToken() != JsonToken.START_ARRAY) {
+                throw new RuntimeException("Input is not a valid JSON array.");
             }
-            jsonArrayWriter.write(individualJsonLine);
-        }
 
-        jsonArrayWriter.close();
+            JsonArrayWriter jsonArrayWriter = new JsonArrayWriter(splitLength, serializedBodyConsumer);
+
+            while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
+                final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                final JsonGenerator objectJsonGenerator = JSON_FACTORY
+                        .createGenerator(outputStream, JsonEncoding.UTF8);
+                objectJsonGenerator.copyCurrentStructure(jsonParser);
+                objectJsonGenerator.close();
+
+
+                if (jsonArrayWriter.willExceedByWriting(outputStream)) {
+                    jsonArrayWriter.close();
+
+                    jsonArrayWriter = new JsonArrayWriter(splitLength, serializedBodyConsumer);
+
+                }
+                jsonArrayWriter.write(outputStream);
+            }
+
+            jsonArrayWriter.close();
+        }
     }
+
 
     private static class JsonArrayWriter {
         private static final JsonFactory JSON_FACTORY = new JsonFactory().setCodec(mapper);
@@ -100,15 +120,15 @@ public class JsonCodec implements Codec<List<String>> {
             generator.writeStartArray();
         }
 
-        boolean willExceedByWriting(final String individualJsonLine) {
-            final int lengthToWrite = individualJsonLine.getBytes(StandardCharsets.UTF_8).length;
+        boolean willExceedByWriting(final ByteArrayOutputStream byteArrayOutputStream) {
+            final int lengthToWrite = byteArrayOutputStream.size();
             final long lengthOfDataWritten = countingOutputStream.getCount();
             return lengthToWrite + lengthOfDataWritten + NECESSARY_CHARACTERS_TO_WRITE.length() > splitLength;
         }
 
-        void write(final String individualJsonLine) throws IOException {
-            final JsonNode jsonNode = mapper.readTree(individualJsonLine);
-            generator.writeTree(jsonNode);
+        void write(final ByteArrayOutputStream individualJsonLine) throws IOException {
+            final String jsonLineString = individualJsonLine.toString(Charset.defaultCharset());
+            generator.writeRawValue(jsonLineString);
             generator.flush();
             hasItem = true;
         }
@@ -126,5 +146,4 @@ public class JsonCodec implements Codec<List<String>> {
             outputStream.close();
         }
     }
-
 }

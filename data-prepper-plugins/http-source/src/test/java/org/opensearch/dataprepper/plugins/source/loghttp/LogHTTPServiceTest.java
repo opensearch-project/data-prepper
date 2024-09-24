@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
 import com.linecorp.armeria.server.ServiceRequestContext;
+import org.junit.jupiter.api.Nested;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
@@ -49,8 +50,12 @@ import java.nio.charset.StandardCharsets;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -107,7 +112,7 @@ class LogHTTPServiceTest {
         );
 
         Buffer<Record<Log>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_CAPACITY, 8, "test-pipeline");
-        logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer, null, pluginMetrics);
+        logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer, pluginMetrics);
     }
 
     @Test
@@ -182,70 +187,185 @@ class LogHTTPServiceTest {
         verify(requestProcessDuration, times(2)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
     }
 
-    @Test
-    public void testChunking() throws Exception {
-        byteBuffer = mock(Buffer.class);
-        when(byteBuffer.isByteBuffer()).thenReturn(true);
-        when(byteBuffer.getMaxRequestSize()).thenReturn(Optional.of(4*1024*1024));
-        when(byteBuffer.getOptimalRequestSize()).thenReturn(Optional.of(1024*1024));
+    @Nested
+    class ChunkingCapableBuffer {
+        private String testString = "{\"key1\":\"value1\"},{\"key2\":\"value2\"},{\"key3\":\"value3\"},{\"key4\":\"value4\"},{\"key5\":\"value5\"}";
+        private AggregatedHttpRequest aggregatedHttpRequest;
+        private HttpData httpData;
+        private String largeTestString;
 
-        logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, byteBuffer, null, pluginMetrics);
-        AggregatedHttpRequest aggregatedHttpRequest = mock(AggregatedHttpRequest.class);
-        HttpData httpData = mock(HttpData.class);
-        // Test small json data
-        String testString ="{\"key1\":\"value1\"},{\"key2\":\"value2\"},{\"key3\":\"value3\"},{\"key4\":\"value4\"},{\"key5\":\"value5\"}";
-        String exampleString = "[ " + testString + "]";
-        when(httpData.array()).thenReturn(exampleString.getBytes());
-        InputStream stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
-        when(httpData.toInputStream()).thenReturn(stream);
+        @BeforeEach
+        void setUp() {
+            byteBuffer = mock(Buffer.class);
+            when(byteBuffer.isByteBuffer()).thenReturn(true);
+            when(byteBuffer.getMaxRequestSize()).thenReturn(Optional.of(4 * 1024 * 1024));
+            when(byteBuffer.getOptimalRequestSize()).thenReturn(Optional.of(1024 * 1024));
 
-        when(aggregatedHttpRequest.content()).thenReturn(httpData);
-        logHTTPService.processRequest(aggregatedHttpRequest);
-        verify(byteBuffer, times(1)).writeBytes(any(), (String)isNull(), any(Integer.class));
+            aggregatedHttpRequest = mock(AggregatedHttpRequest.class);
+            httpData = mock(HttpData.class);
 
-        // Test more than 1MB json data
-        StringBuilder sb = new StringBuilder(1024*1024+10240);
-        for (int i =0; i < 12500; i++) {
-            sb.append(testString);
-            if (i+1 != 12500)
-                sb.append(",");
+            logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, byteBuffer, pluginMetrics);
+
+            StringBuilder sb = new StringBuilder(1024 * 1024 + 10240);
+            for (int i = 0; i < 12500; i++) {
+                sb.append(testString);
+                if (i + 1 != 12500)
+                    sb.append(",");
+            }
+            largeTestString = sb.toString();
         }
-        String largeTestString = sb.toString();
-        exampleString = "[" + largeTestString + "]";
-        when(httpData.array()).thenReturn(exampleString.getBytes());
-        stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
-        when(httpData.toInputStream()).thenReturn(stream);
 
-        when(aggregatedHttpRequest.content()).thenReturn(httpData);
-        logHTTPService.processRequest(aggregatedHttpRequest);
-        verify(byteBuffer, times(2)).writeBytes(any(), anyString(), any(Integer.class));
-        // Test more than 4MB json data
-        exampleString = "[" + largeTestString + "," + largeTestString + ","+largeTestString +","+largeTestString+"]";
-        when(httpData.array()).thenReturn(exampleString.getBytes());
-        stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
-        when(httpData.toInputStream()).thenReturn(stream);
+        @Test
+        void invalid_JSON_returns() {
+            // Test small json data
+            String exampleString = testString;
+            when(httpData.array()).thenReturn(exampleString.getBytes());
+            InputStream stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
+            when(httpData.toInputStream()).thenReturn(stream);
 
-        when(aggregatedHttpRequest.content()).thenReturn(httpData);
-        logHTTPService.processRequest(aggregatedHttpRequest);
-        verify(byteBuffer, times(7)).writeBytes(any(), anyString(), any(Integer.class));
-
-        // Test more than 4MB single json object, should throw exception
-        int length = 3*1024*1024;
-        sb = new StringBuilder(length);
-        for (int i = 0; i < length; i++) {
-             sb.append('A');
+            when(aggregatedHttpRequest.content()).thenReturn(httpData);
+            IOException actualException = assertThrows(IOException.class, () -> logHTTPService.processRequest(aggregatedHttpRequest));
+            assertThat(actualException.getMessage(), containsString("Needs to be json array"));
         }
-        String value = sb.toString();
-        exampleString = "[{\"key\":\""+value+"\"}]";
 
-        when(httpData.array()).thenReturn(exampleString.getBytes());
-        stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
-        when(httpData.toInputStream()).thenReturn(stream);
+        @Test
+        void too_small_to_chunk() throws Exception {
+            // Test small json data
+            String exampleString = "[ " + testString + "]";
+            when(httpData.array()).thenReturn(exampleString.getBytes());
+            InputStream stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
+            when(httpData.toInputStream()).thenReturn(stream);
 
-        when(aggregatedHttpRequest.content()).thenReturn(httpData);
-        assertThrows(RuntimeException.class, () -> logHTTPService.processRequest(aggregatedHttpRequest));
+            when(aggregatedHttpRequest.content()).thenReturn(httpData);
+            logHTTPService.processRequest(aggregatedHttpRequest);
+            verify(byteBuffer, times(1)).writeBytes(any(), (String) isNull(), eq(TEST_TIMEOUT_IN_MILLIS));
+        }
 
+        @Test
+        void chunking_with_1mb() throws Exception {
+            // Test more than 1MB json data
+            String exampleString = "[" + largeTestString + "]";
+            when(httpData.array()).thenReturn(exampleString.getBytes());
+            ByteArrayInputStream stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
+            when(httpData.toInputStream()).thenReturn(stream);
+
+            when(aggregatedHttpRequest.content()).thenReturn(httpData);
+            logHTTPService.processRequest(aggregatedHttpRequest);
+            verify(byteBuffer, times(2)).writeBytes(any(), anyString(), eq(TEST_TIMEOUT_IN_MILLIS));
+        }
+
+        @Test
+        void chunking_with_4mb() throws Exception {
+            // Test more than 4MB json data
+            String exampleString = "[" + largeTestString + "," + largeTestString + "," + largeTestString + "," + largeTestString + "]";
+            when(httpData.array()).thenReturn(exampleString.getBytes());
+            ByteArrayInputStream stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
+            when(httpData.toInputStream()).thenReturn(stream);
+
+            when(aggregatedHttpRequest.content()).thenReturn(httpData);
+            logHTTPService.processRequest(aggregatedHttpRequest);
+            verify(byteBuffer, times(5)).writeBytes(any(), anyString(), eq(TEST_TIMEOUT_IN_MILLIS));
+        }
+
+        @Test
+        void chunking_with_4mb_single_json_object_should_throw() {
+            String exampleString;
+            // Test more than 4MB single json object, should throw exception
+            int length = 3 * 1024 * 1024;
+            StringBuilder sb = new StringBuilder(length);
+            for (int i = 0; i < length; i++) {
+                sb.append('A');
+            }
+            String value = sb.toString();
+            exampleString = "[{\"key\":\"" + value + "\"}]";
+
+            when(httpData.array()).thenReturn(exampleString.getBytes());
+            ByteArrayInputStream stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
+            when(httpData.toInputStream()).thenReturn(stream);
+
+            when(aggregatedHttpRequest.content()).thenReturn(httpData);
+            assertThrows(RuntimeException.class, () -> logHTTPService.processRequest(aggregatedHttpRequest));
+        }
     }
+
+    @Nested
+    class NonChunkingByteBuffer {
+        private String testString = "{\"key1\":\"value1\"},{\"key2\":\"value2\"},{\"key3\":\"value3\"},{\"key4\":\"value4\"},{\"key5\":\"value5\"}";
+        private AggregatedHttpRequest aggregatedHttpRequest;
+        private HttpData httpData;
+        private String largeTestString;
+
+        @BeforeEach
+        void setUp() {
+            byteBuffer = mock(Buffer.class);
+            when(byteBuffer.isByteBuffer()).thenReturn(true);
+
+            aggregatedHttpRequest = mock(AggregatedHttpRequest.class);
+            httpData = mock(HttpData.class);
+
+            logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, byteBuffer, pluginMetrics);
+
+            StringBuilder sb = new StringBuilder(1024 * 1024 + 10240);
+            for (int i = 0; i < 12500; i++) {
+                sb.append(testString);
+                if (i + 1 != 12500)
+                    sb.append(",");
+            }
+            largeTestString = sb.toString();
+        }
+
+
+        @Test
+        void invalid_JSON_returns() {
+            // Test small json data
+            String exampleString = testString;
+            InputStream stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
+            when(httpData.toInputStream()).thenReturn(stream);
+
+            when(aggregatedHttpRequest.content()).thenReturn(httpData);
+            IOException actualException = assertThrows(IOException.class, () -> logHTTPService.processRequest(aggregatedHttpRequest));
+            assertThat(actualException.getMessage(), containsString("Needs to be json array"));
+        }
+
+        @Test
+        void chunking_with_1mb() throws Exception {
+            // Test more than 1MB json data
+            String exampleString = "[" + largeTestString + "]";
+            byte[] bytes = exampleString.getBytes();
+            when(httpData.array()).thenReturn(bytes);
+            ByteArrayInputStream stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
+            when(httpData.toInputStream()).thenReturn(stream);
+
+            when(aggregatedHttpRequest.content()).thenReturn(httpData);
+            logHTTPService.processRequest(aggregatedHttpRequest);
+            ArgumentCaptor<byte[]> byteContentCaptor = ArgumentCaptor.forClass(byte[].class);
+            verify(byteBuffer).writeBytes(byteContentCaptor.capture(), isNull(), eq(TEST_TIMEOUT_IN_MILLIS));
+
+            final byte[] actualBytesWritten = byteContentCaptor.getValue();
+            assertThat(actualBytesWritten.length, equalTo(bytes.length));
+        }
+
+
+        @Test
+        void chunking_with_4mb() throws Exception {
+            // Test more than 4MB json data
+            String exampleString = "[" + largeTestString + "," + largeTestString + "," + largeTestString + "," + largeTestString + "]";
+            byte[] bytes = exampleString.getBytes();
+            when(httpData.array()).thenReturn(bytes);
+            ByteArrayInputStream stream = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8));
+            when(httpData.toInputStream()).thenReturn(stream);
+
+            when(aggregatedHttpRequest.content()).thenReturn(httpData);
+            logHTTPService.processRequest(aggregatedHttpRequest);
+            ArgumentCaptor<byte[]> byteContentCaptor = ArgumentCaptor.forClass(byte[].class);
+            verify(byteBuffer).writeBytes(byteContentCaptor.capture(), isNull(), eq(TEST_TIMEOUT_IN_MILLIS));
+
+            final byte[] actualBytesWritten = byteContentCaptor.getValue();
+            assertThat(actualBytesWritten.length, equalTo(bytes.length));
+            assertThat(actualBytesWritten, equalTo(bytes));
+        }
+    }
+
 
     private AggregatedHttpRequest generateRandomValidHTTPRequest(int numJson) throws JsonProcessingException,
             ExecutionException, InterruptedException {

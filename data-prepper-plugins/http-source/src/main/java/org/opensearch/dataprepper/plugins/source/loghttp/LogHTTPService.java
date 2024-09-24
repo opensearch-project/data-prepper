@@ -11,7 +11,6 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpResponse;
@@ -61,7 +60,6 @@ public class LogHTTPService {
 
     public LogHTTPService(final int bufferWriteTimeoutInMillis,
                           final Buffer<Record<Log>> buffer,
-                          final ByteDecoder decoder,
                           final PluginMetrics pluginMetrics) {
         this.buffer = buffer;
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
@@ -89,33 +87,47 @@ public class LogHTTPService {
 
     HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) throws Exception {
         final HttpData content = aggregatedHttpRequest.content();
-        final List<String> jsonList;
 
-        try {
-            jsonList = jsonCodec.parse(content);
-        } catch (IOException e) {
-            LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
-            throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
-        }
-        try {
-            if (buffer.isByteBuffer()) {
-                if (bufferMaxRequestLength != null && bufferOptimalRequestLength != null && content.array().length > bufferOptimalRequestLength) {
-                    jsonCodec.serialize(jsonList, this::writeChunkedBody, bufferOptimalRequestLength - SERIALIZATION_OVERHEAD);
-                } else {
-                    // jsonList is ignored in this path but parse() was done to make
-                    // sure that the data is in the expected json format
-                    buffer.writeBytes(content.array(), null, bufferWriteTimeoutInMillis);
-                }
+        if (buffer.isByteBuffer()) {
+            if (bufferMaxRequestLength != null && bufferOptimalRequestLength != null && content.array().length > bufferOptimalRequestLength) {
+                jsonCodec.serializeSplit(content, this::writeChunkedBody, bufferOptimalRequestLength - SERIALIZATION_OVERHEAD);
             } else {
-                final List<Record<Log>> records = jsonList.stream()
-                        .map(this::buildRecordLog)
-                        .collect(Collectors.toList());
-                buffer.writeAll(records, bufferWriteTimeoutInMillis);
+                try {
+                    jsonCodec.validate(content);
+                } catch (IOException e) {
+                    LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
+                    throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
+                }
+
+                try {
+                    buffer.writeBytes(content.array(), null, bufferWriteTimeoutInMillis);
+                } catch (Exception e) {
+                    LOG.error("Failed to write the request of size {} due to: {}", content.length(), e.getMessage());
+                    throw e;
+                }
             }
-        } catch (Exception e) {
-            LOG.error("Failed to write the request of size {} due to: {}", content.length(), e.getMessage());
-            throw e;
+        } else {
+            final List<String> jsonList;
+
+            try {
+                jsonList = jsonCodec.parse(content);
+            } catch (IOException e) {
+                LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
+                throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
+            }
+
+            final List<Record<Log>> records = jsonList.stream()
+                    .map(this::buildRecordLog)
+                    .collect(Collectors.toList());
+
+            try {
+                buffer.writeAll(records, bufferWriteTimeoutInMillis);
+            } catch (Exception e) {
+                LOG.error("Failed to write the request of size {} due to: {}", content.length(), e.getMessage());
+                throw e;
+            }
         }
+
         successRequestsCounter.increment();
         return HttpResponse.of(HttpStatus.OK);
     }

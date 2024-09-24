@@ -48,6 +48,9 @@
         codec:
           event_json:
         default_bucket_owner: "<<FUNCTION_NAME:getAccountIdFromRole,PARAMETER:$.<<pipeline-name>>.source.rds.aws.sts_role_arn>>"
+        client:
+          max_connections: 100
+          acquire_timeout: 20s
 "<<pipeline-name>>-s3":
   workers: "<<$.<<pipeline-name>>.workers>>"
   delay: "<<$.<<pipeline-name>>.delay>>"
