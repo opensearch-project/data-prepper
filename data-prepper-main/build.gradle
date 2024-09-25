@@ -20,6 +20,8 @@ group = 'org.opensearch.dataprepper.core'
 dependencies {
     implementation project(':data-prepper-core')
     implementation project(':data-prepper-plugins')
+    implementation project(':data-prepper-connector-sdk')
+    implementation project(':data-prepper-connectors')
     implementation project(':data-prepper-logstash-configuration')
     implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'

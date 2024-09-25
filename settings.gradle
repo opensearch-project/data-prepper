@@ -184,3 +184,7 @@ include 'data-prepper-plugins:aws-lambda'
 //include 'data-prepper-plugins:dummy-plugin'
 include 'data-prepper-plugin-schema'
 include 'data-prepper-plugins:kinesis-source'
+include 'data-prepper-connectors'
+include 'data-prepper-connector-sdk'
+include 'data-prepper-connectors:jira-connector'
+
