@@ -147,7 +147,7 @@ CopySpec archiveToTar() {
     return copySpec {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         into('lib') {
-            from project(':data-prepper-main').jar.archivePath
+            from project(':data-prepper-main').jar.archiveFile.get().asFile
             from configurations.runtimeClasspath
             //from allDependencyJarsFromMain(project(path: ':data-prepper-main', configuration: 'allDependencyJars')).runtimeClasspath
             //from project(':data-prepper-main').configurations.allDependencyJars
