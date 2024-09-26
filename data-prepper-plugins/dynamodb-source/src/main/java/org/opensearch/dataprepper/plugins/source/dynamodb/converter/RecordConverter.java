@@ -26,6 +26,7 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.Metad
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.SORT_KEY_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_USER_IDENTITY;
 
 /**
  * Base Record Processor definition.
@@ -76,6 +77,7 @@ public abstract class RecordConverter {
      * @param keys                    A map to hold the keys (partition key and sort key)
      * @param eventCreationTimeMillis Creation timestamp of the event
      * @param eventName               Event name
+     * @param userIdentity            UserIdentity for TTL based deletes
      * @throws Exception Exception if failed to write to buffer.
      */
     public void addToBuffer(final AcknowledgementSet acknowledgementSet,
@@ -83,7 +85,8 @@ public abstract class RecordConverter {
                             final Map<String, Object> keys,
                             final long eventCreationTimeMillis,
                             final long eventVersionNumber,
-                            final String eventName) throws Exception {
+                            final String eventName,
+                            final Boolean userIdentity) throws Exception {
         Event event = JacksonEvent.builder()
                 .withEventType(getEventType())
                 .withData(data)
@@ -102,6 +105,7 @@ public abstract class RecordConverter {
         eventMetadata.setAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE, eventName);
         eventMetadata.setAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, mapStreamEventNameToBulkAction(eventName));
         eventMetadata.setAttribute(EVENT_VERSION_FROM_TIMESTAMP, eventVersionNumber);
+        eventMetadata.setAttribute(DDB_STREAM_EVENT_USER_IDENTITY, userIdentity);
 
         String partitionKey = getAttributeValue(keys, tableInfo.getMetadata().getPartitionKeyAttributeName());
         eventMetadata.setAttribute(PARTITION_KEY_METADATA_ATTRIBUTE, partitionKey);
@@ -123,7 +127,7 @@ public abstract class RecordConverter {
                             final Map<String, Object> data,
                             final long timestamp,
                             final long eventVersionNumber) throws Exception {
-        addToBuffer(acknowledgementSet, data, data, timestamp, eventVersionNumber, null);
+        addToBuffer(acknowledgementSet, data, data, timestamp, eventVersionNumber, null, Boolean.FALSE);
     }
 
     private String mapStreamEventNameToBulkAction(final String streamEventName) {
