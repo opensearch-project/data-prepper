@@ -16,7 +16,7 @@
       }
     ],
     "ism_template": {
-      "index_patterns": ["metrics-otel-v1"]
+      "index_patterns": ["metrics-otel-v1-*"]
     }
   }
 }

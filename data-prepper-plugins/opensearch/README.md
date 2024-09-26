@@ -81,7 +81,7 @@ pipeline:
       bulk_size: 4
 ```
 
-The OpenSearch sink will reserve `metric-otel-v1-*` as index pattern and `metric-otel-v1` as index alias for record ingestion.
+The OpenSearch sink will reserve `metrics-otel-v1-*` as index pattern and `metrics-otel-v1` as index alias for record ingestion.
 
 
 ### Amazon OpenSearch Service
