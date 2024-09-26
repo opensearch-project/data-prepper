@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.pipeline;
 
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+
 import java.util.Map;
 
 /**
@@ -12,4 +14,5 @@ import java.util.Map;
  */
 public interface PipelinesProvider {
     Map<String, Pipeline> getTransformationPipelines();
+    PipelinesDataFlowModel getPipelinesDataFlowModel();
 }

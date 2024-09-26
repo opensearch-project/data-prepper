@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.pipeline.PipelinesProvider;
 import org.opensearch.dataprepper.pipeline.server.DataPrepperCoreAuthenticationProvider;
+import org.opensearch.dataprepper.pipeline.server.GetTransformedPipelinesBodyHandler;
 import org.opensearch.dataprepper.pipeline.server.ListPipelinesHandler;
 import org.opensearch.dataprepper.pipeline.server.ShutdownHandler;
 import com.sun.net.httpserver.Authenticator;
@@ -73,5 +74,10 @@ public class DataPrepperServerConfiguration {
     @Bean
     public ShutdownHandler shutdownHandler(final DataPrepper dataPrepper) {
         return new ShutdownHandler(dataPrepper);
+    }
+
+    @Bean
+    public GetTransformedPipelinesBodyHandler GetTransformedPipelinesBodyHandler(final PipelinesProvider pipelinesProvider) {
+        return new GetTransformedPipelinesBodyHandler(pipelinesProvider);
     }
 }

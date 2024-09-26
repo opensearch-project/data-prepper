@@ -386,4 +386,8 @@ public class PipelineTransformer {
                 .map(b -> (Buffer) b)
                 .orElseGet(() -> buffer);
     }
+
+    public PipelinesDataFlowModel getPipelinesDataFlowModel() {
+        return pipelinesDataFlowModel;
+    }
 }

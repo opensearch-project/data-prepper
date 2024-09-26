@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper;
 
 import io.micrometer.core.instrument.util.StringUtils;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.PipelineTransformer;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
@@ -42,6 +43,7 @@ public class DataPrepper implements PipelinesProvider {
     private final PipelinesObserver pipelinesObserver;
     private final Map<String, Pipeline> transformationPipelines;
     private final Predicate<Map<String, Pipeline>> shouldShutdownOnPipelineFailurePredicate;
+    private final PipelinesDataFlowModel pipelinesDataFlowModel;
 
     // TODO: Remove DataPrepperServer dependency on DataPrepper
     @Inject
@@ -67,8 +69,9 @@ public class DataPrepper implements PipelinesProvider {
         this.pluginFactory = pluginFactory;
 
         transformationPipelines = pipelineTransformer.transformConfiguration();
+        pipelinesDataFlowModel = pipelineTransformer.getPipelinesDataFlowModel();
         this.shouldShutdownOnPipelineFailurePredicate = shouldShutdownOnPipelineFailurePredicate;
-        if (transformationPipelines.size() == 0) {
+        if (transformationPipelines.isEmpty()) {
             throw new RuntimeException("No valid pipeline is available for execution, exiting");
         }
         this.peerForwarderServer = peerForwarderServer;
@@ -138,6 +141,10 @@ public class DataPrepper implements PipelinesProvider {
 
     public Map<String, Pipeline> getTransformationPipelines() {
         return transformationPipelines;
+    }
+
+    public PipelinesDataFlowModel getPipelinesDataFlowModel() {
+        return pipelinesDataFlowModel;
     }
 
     public void registerShutdownHandler(final DataPrepperShutdownListener shutdownListener) {
