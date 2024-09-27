@@ -38,7 +38,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class GetTransformedPipelinesBodyHandlerTest {
+public class GetPipelinesHandlerTest {
     @Mock
     private PipelinesProvider pipelinesProvider;
     @Mock
@@ -53,46 +53,12 @@ public class GetTransformedPipelinesBodyHandlerTest {
                 .thenReturn(outputStream);
     }
 
-    private GetTransformedPipelinesBodyHandler createObjectUnderTest() {
-        return new GetTransformedPipelinesBodyHandler(pipelinesProvider);
+    private GetPipelinesHandler createObjectUnderTest() {
+        return new GetPipelinesHandler(pipelinesProvider);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
-    public void testGivenNoPipelinesThenResponseWritten(String httpMethod) throws IOException {
-        final String pipelineName = "test-pipeline";
-        final Headers headers = mock(Headers.class);
-        final DataPrepperVersion version = DataPrepperVersion.parse("2.0");
-        final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
-        final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", (Map<String, Object>) null));
-        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null));
-        final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
-
-        final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(version, Collections.singletonMap(pipelineName, pipelineModel));
-
-        when(pipelinesProvider.getPipelinesDataFlowModel())
-                .thenReturn(pipelinesDataFlowModel);
-        when(httpExchange.getResponseHeaders())
-                .thenReturn(headers);
-        when(httpExchange.getRequestMethod())
-                .thenReturn(httpMethod);
-
-        final GetTransformedPipelinesBodyHandler handler = createObjectUnderTest();
-
-        handler.handle(httpExchange);
-
-        verify(headers)
-                .add(eq("Content-Type"), eq("text/plain; charset=UTF-8"));
-        verify(httpExchange)
-                .sendResponseHeaders(eq(HttpURLConnection.HTTP_OK), anyLong());
-        verify(outputStream)
-                .write(any(byte[].class));
-        verify(outputStream)
-                .close();
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
+    @ValueSource(strings = { HttpMethod.GET })
     public void testGivenPipelinesThenResponseWritten(String httpMethod) throws IOException {
         final String pipelineName = "test-pipeline";
         final Headers headers = mock(Headers.class);
@@ -112,7 +78,7 @@ public class GetTransformedPipelinesBodyHandlerTest {
         when(httpExchange.getRequestMethod())
                 .thenReturn(httpMethod);
 
-        final GetTransformedPipelinesBodyHandler handler = createObjectUnderTest();
+        final GetPipelinesHandler handler = createObjectUnderTest();
 
         handler.handle(httpExchange);
 
@@ -127,9 +93,9 @@ public class GetTransformedPipelinesBodyHandlerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { HttpMethod.DELETE, HttpMethod.PATCH, HttpMethod.PUT })
+    @ValueSource(strings = { HttpMethod.DELETE, HttpMethod.PATCH, HttpMethod.PUT, HttpMethod.POST })
     public void testGivenProhibitedHttpMethodThenErrorResponseWritten(String httpMethod) throws IOException {
-        final GetTransformedPipelinesBodyHandler handler = createObjectUnderTest();
+        final GetPipelinesHandler handler = createObjectUnderTest();
 
         when(httpExchange.getRequestMethod())
                 .thenReturn(httpMethod);
@@ -143,13 +109,13 @@ public class GetTransformedPipelinesBodyHandlerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
+    @ValueSource(strings = { HttpMethod.GET })
     public void testGivenExceptionThrownThenErrorResponseWritten(String httpMethod) throws IOException {
         when(httpExchange.getRequestMethod())
                 .thenReturn(httpMethod);
 
         pipelinesProvider = null;
-        final GetTransformedPipelinesBodyHandler handler = createObjectUnderTest();
+        final GetPipelinesHandler handler = createObjectUnderTest();
         handler.handle(httpExchange);
 
         verify(httpExchange)

@@ -49,7 +49,7 @@ public class DataPrepperServerTest {
     private ShutdownHandler shutdownHandler;
 
     @Mock
-    private GetTransformedPipelinesBodyHandler getTransformedPipelinesBodyHandler;
+    private GetPipelinesHandler getPipelinesHandler;
 
     @Mock
     private PrometheusMeterRegistry prometheusMeterRegistry;
@@ -148,7 +148,7 @@ public class DataPrepperServerTest {
         verify(httpServerProvider).get();
         verify(server).createContext("/list", listPipelinesHandler);
         verify(server).createContext(eq("/shutdown"), eq(shutdownHandler));
-        verify(server).createContext(eq("/getPipelineBody"), eq(getTransformedPipelinesBodyHandler));
+        verify(server).createContext(eq("/pipelines"), eq(getPipelinesHandler));
         final ArgumentCaptor<ExecutorService> executorServiceArgumentCaptor = ArgumentCaptor.forClass(ExecutorService.class);
         verify(server).setExecutor(executorServiceArgumentCaptor.capture());
         final ExecutorService actualExecutorService = executorServiceArgumentCaptor.getValue();
@@ -162,6 +162,6 @@ public class DataPrepperServerTest {
     }
 
     private DataPrepperServer createObjectUnderTest(final PrometheusMeterRegistry prometheusMeterRegistry, final Authenticator authenticator) {
-        return new DataPrepperServer(httpServerProvider, listPipelinesHandler, shutdownHandler, getTransformedPipelinesBodyHandler, prometheusMeterRegistry, authenticator);
+        return new DataPrepperServer(httpServerProvider, listPipelinesHandler, shutdownHandler, getPipelinesHandler, prometheusMeterRegistry, authenticator);
     }
 }

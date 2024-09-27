@@ -19,20 +19,20 @@ import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GetTransformedPipelinesBodyHandler implements HttpHandler {
+public class GetPipelinesHandler implements HttpHandler {
 
     private final PipelinesProvider pipelinesProvider;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private final Logger LOG = LoggerFactory.getLogger(GetTransformedPipelinesBodyHandler.class);
+    private final Logger LOG = LoggerFactory.getLogger(GetPipelinesHandler.class);
 
-    public GetTransformedPipelinesBodyHandler(final PipelinesProvider pipelinesProvider) {
+    public GetPipelinesHandler(final PipelinesProvider pipelinesProvider) {
         this.pipelinesProvider = pipelinesProvider;
     }
 
     @Override
     public void handle(final HttpExchange exchange) throws IOException {
         String requestMethod = exchange.getRequestMethod();
-        if (!requestMethod.equals(HttpMethod.GET) && !requestMethod.equals(HttpMethod.POST)) {
+        if (!requestMethod.equals(HttpMethod.GET)) {
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_METHOD, 0);
             exchange.getResponseBody().close();
             return;

@@ -30,7 +30,7 @@ public class DataPrepperServer {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperServer.class);
     private final HttpServerProvider serverProvider;
     private final ListPipelinesHandler listPipelinesHandler;
-    private final GetTransformedPipelinesBodyHandler getTransformedPipelinesBodyHandler;
+    private final GetPipelinesHandler getPipelinesHandler;
     private final ShutdownHandler shutdownHandler;
     private final PrometheusMeterRegistry prometheusMeterRegistry;
     private final Authenticator authenticator;
@@ -42,14 +42,14 @@ public class DataPrepperServer {
             final HttpServerProvider serverProvider,
             final ListPipelinesHandler listPipelinesHandler,
             final ShutdownHandler shutdownHandler,
-            final GetTransformedPipelinesBodyHandler getTransformedPipelinesBodyHandler,
+            final GetPipelinesHandler getPipelinesHandler,
             @Autowired(required = false) @Nullable final PrometheusMeterRegistry prometheusMeterRegistry,
             @Autowired(required = false) @Nullable final Authenticator authenticator
     ) {
         this.serverProvider = serverProvider;
         this.listPipelinesHandler = listPipelinesHandler;
         this.shutdownHandler = shutdownHandler;
-        this.getTransformedPipelinesBodyHandler = getTransformedPipelinesBodyHandler;
+        this.getPipelinesHandler = getPipelinesHandler;
         this.prometheusMeterRegistry = prometheusMeterRegistry;
         this.authenticator = authenticator;
         executorService = Executors.newFixedThreadPool(3);
@@ -70,7 +70,7 @@ public class DataPrepperServer {
 
         createContext(server, listPipelinesHandler, authenticator, "/list");
         createContext(server, shutdownHandler, authenticator, "/shutdown");
-        createContext(server, getTransformedPipelinesBodyHandler, authenticator, "/getPipelineBody");
+        createContext(server, getPipelinesHandler, authenticator, "/pipelines");
 
         if (prometheusMeterRegistry != null) {
             final PrometheusMetricsHandler prometheusMetricsHandler = new PrometheusMetricsHandler(prometheusMeterRegistry);
