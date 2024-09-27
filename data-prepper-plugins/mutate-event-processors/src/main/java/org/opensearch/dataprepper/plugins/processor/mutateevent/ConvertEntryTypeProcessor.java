@@ -19,7 +19,6 @@ import org.opensearch.dataprepper.typeconverter.TypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -84,7 +83,7 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                     if (keyVal != null) {
                         if (!nullValues.contains(keyVal.toString())) {
                             try {
-                                if (keyVal instanceof ArrayList || keyVal.getClass().isArray()) {
+                                if (keyVal instanceof List || keyVal.getClass().isArray()) {
                                     Stream<Object> inputStream;
                                     if (keyVal.getClass().isArray()) {
                                         inputStream = Arrays.stream((Object[])keyVal);
