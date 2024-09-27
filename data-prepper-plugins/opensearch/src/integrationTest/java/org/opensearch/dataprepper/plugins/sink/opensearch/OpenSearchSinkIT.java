@@ -190,6 +190,7 @@ public class OpenSearchSinkIT {
         final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
+        assertThat(indexAlias, equalTo("otel-v1-apm-span"));
         Request request = new Request(HttpMethod.HEAD, indexAlias);
         Response response = client.performRequest(request);
         assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
