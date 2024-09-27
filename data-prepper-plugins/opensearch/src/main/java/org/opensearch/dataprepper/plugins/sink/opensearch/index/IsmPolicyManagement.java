@@ -44,8 +44,7 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractI
 class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     private static final Logger LOG = LoggerFactory.getLogger(IsmPolicyManagement.class);
 
-    // TODO: replace with new _opensearch API
-    private static final String POLICY_MANAGEMENT_ENDPOINT = "/_opendistro/_ism/policies/";
+    private static final String POLICY_MANAGEMENT_ENDPOINT = "/_plugins/_ism/policies/";
     public static final String DEFAULT_INDEX_SUFFIX = "-000001";
     private static final String POLICY_FILE_ROOT_KEY = "policy";
     private static final String POLICY_FILE_ISM_TEMPLATE_KEY = "ism_template";
