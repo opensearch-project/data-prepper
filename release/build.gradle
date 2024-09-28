@@ -39,7 +39,6 @@ task benchmarkTests {
 task assembleMain {
     dependsOn ':data-prepper-core:assemble'
     dependsOn ':data-prepper-plugins:assemble'
-    dependsOn ':data-prepper-connectors:assemble'
     dependsOn ':data-prepper-main:assemble'
 }
 
