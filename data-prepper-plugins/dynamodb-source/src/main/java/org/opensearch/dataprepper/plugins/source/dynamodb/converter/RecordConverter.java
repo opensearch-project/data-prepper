@@ -13,6 +13,8 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
+import software.amazon.awssdk.services.dynamodb.model.Identity;
+import software.amazon.awssdk.services.dynamodb.model.OperationType;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -26,7 +28,7 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.Metad
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.SORT_KEY_METADATA_ATTRIBUTE;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_USER_IDENTITY;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_IS_TTL_DELETE;
 
 /**
  * Base Record Processor definition.
@@ -40,6 +42,8 @@ public abstract class RecordConverter {
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
 
     private final TableInfo tableInfo;
+    static final String TTL_USER_PRINCIPAL = "dynamodb.amazonaws.com";
+    static final String TTL_USER_TYPE = "Service";
 
     public RecordConverter(final BufferAccumulator<Record<Event>> bufferAccumulator, TableInfo tableInfo) {
         this.bufferAccumulator = bufferAccumulator;
@@ -86,7 +90,7 @@ public abstract class RecordConverter {
                             final long eventCreationTimeMillis,
                             final long eventVersionNumber,
                             final String eventName,
-                            final Boolean userIdentity) throws Exception {
+                            final Identity userIdentity) throws Exception {
         Event event = JacksonEvent.builder()
                 .withEventType(getEventType())
                 .withData(data)
@@ -98,6 +102,7 @@ public abstract class RecordConverter {
             event.getEventHandle().setExternalOriginationTime(externalOriginationTime);
             event.getMetadata().setExternalOriginationTime(externalOriginationTime);
         }
+
         EventMetadata eventMetadata = event.getMetadata();
 
         eventMetadata.setAttribute(EVENT_TABLE_NAME_METADATA_ATTRIBUTE, tableInfo.getTableName());
@@ -105,7 +110,13 @@ public abstract class RecordConverter {
         eventMetadata.setAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE, eventName);
         eventMetadata.setAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, mapStreamEventNameToBulkAction(eventName));
         eventMetadata.setAttribute(EVENT_VERSION_FROM_TIMESTAMP, eventVersionNumber);
-        eventMetadata.setAttribute(DDB_STREAM_EVENT_USER_IDENTITY, userIdentity);
+
+        // Only set ttl_delete for stream events, which are of type REMOVE containing a userIdentity
+        final boolean isTtlDelete = OperationType.REMOVE.toString().equals(eventName) &&
+                userIdentity != null &&
+                TTL_USER_PRINCIPAL.equals(userIdentity.principalId()) &&
+                TTL_USER_TYPE.equals(userIdentity.type());
+        eventMetadata.setAttribute(DDB_STREAM_EVENT_IS_TTL_DELETE, isTtlDelete);
 
         String partitionKey = getAttributeValue(keys, tableInfo.getMetadata().getPartitionKeyAttributeName());
         eventMetadata.setAttribute(PARTITION_KEY_METADATA_ATTRIBUTE, partitionKey);
@@ -127,7 +138,7 @@ public abstract class RecordConverter {
                             final Map<String, Object> data,
                             final long timestamp,
                             final long eventVersionNumber) throws Exception {
-        addToBuffer(acknowledgementSet, data, data, timestamp, eventVersionNumber, null, Boolean.FALSE);
+        addToBuffer(acknowledgementSet, data, data, timestamp, eventVersionNumber, null, null);
     }
 
     private String mapStreamEventNameToBulkAction(final String streamEventName) {

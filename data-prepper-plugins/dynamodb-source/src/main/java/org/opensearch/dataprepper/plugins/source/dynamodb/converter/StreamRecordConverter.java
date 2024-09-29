@@ -80,7 +80,6 @@ public class StreamRecordConverter extends RecordConverter {
         int eventCount = 0;
         for (Record record : records) {
             final long bytes = record.dynamodb().sizeBytes();
-            final Boolean userIdentity = record.userIdentity() != null && "dynamodb.amazonaws.com".equals(record.userIdentity().principalId());
             Map<String, Object> data;
             Map<String, Object> keys;
             try {
@@ -99,7 +98,7 @@ public class StreamRecordConverter extends RecordConverter {
             try {
                 bytesReceivedSummary.record(bytes);
                 final long eventCreationTimeMillis = calculateTieBreakingVersionFromTimestamp(record.dynamodb().approximateCreationDateTime());
-                addToBuffer(acknowledgementSet, data, keys, record.dynamodb().approximateCreationDateTime().toEpochMilli(), eventCreationTimeMillis, record.eventNameAsString(), userIdentity);
+                addToBuffer(acknowledgementSet, data, keys, record.dynamodb().approximateCreationDateTime().toEpochMilli(), eventCreationTimeMillis, record.eventNameAsString(), record.userIdentity());
                 bytesProcessedSummary.record(bytes);
                 eventCount++;
             } catch (Exception e) {

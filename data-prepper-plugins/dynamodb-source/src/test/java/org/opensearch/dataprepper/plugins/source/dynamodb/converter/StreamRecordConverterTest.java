@@ -59,7 +59,7 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.Metad
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.SORT_KEY_METADATA_ATTRIBUTE;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_USER_IDENTITY;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_IS_TTL_DELETE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.BYTES_PROCESSED;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.BYTES_RECEIVED;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.CHANGE_EVENTS_PROCESSED_COUNT;
@@ -98,6 +98,8 @@ class StreamRecordConverterTest {
 
     private final String partitionKeyAttrName = "PK";
     private final String sortKeyAttrName = "SK";
+    private final String principalId = "dynamodb.amazonaws.com";
+    private final String userIdentityType = "Service";
 
 
     @BeforeEach
@@ -214,7 +216,7 @@ class StreamRecordConverterTest {
         assertThat(event.getMetadata().getAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE), equalTo(OpenSearchBulkActions.INDEX.toString()));
         assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), equalTo("INSERT"));
         assertThat(event.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(record.dynamodb().approximateCreationDateTime().toEpochMilli()));
-        assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_USER_IDENTITY), equalTo(Boolean.FALSE));
+        assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_IS_TTL_DELETE), equalTo(false));
 
         assertThat(event.get(partitionKeyAttrName, String.class), notNullValue());
         assertThat(event.get(sortKeyAttrName, String.class), notNullValue());
@@ -486,8 +488,8 @@ class StreamRecordConverterTest {
         when(streamConfig.getStreamViewForRemoves()).thenReturn(StreamViewType.OLD_IMAGE);
 
         final Identity userIdentity = Identity.builder()
-                .principalId("dynamodb.amazonaws.com")
-                .type("Service")
+                .principalId(principalId)
+                .type(userIdentityType)
                 .build();
 
         final String newImageKey = UUID.randomUUID().toString();
@@ -509,7 +511,40 @@ class StreamRecordConverterTest {
         JacksonEvent event = (JacksonEvent) recordArgumentCaptor.getValue().getData();
 
         assertThat(event.getMetadata(), notNullValue());
-        assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_USER_IDENTITY), equalTo(Boolean.TRUE));
+        assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_IS_TTL_DELETE), equalTo(Boolean.TRUE));
+
+    }
+
+    @Test
+    void test_writeSingleRecordToBuffer_with_wrong_userIdentity() throws Exception {
+
+        when(streamConfig.getStreamViewForRemoves()).thenReturn(StreamViewType.OLD_IMAGE);
+
+        final Identity userIdentity = Identity.builder()
+                .principalId("lambda.amazonaws.com")
+                .type(userIdentityType)
+                .build();
+
+        final String newImageKey = UUID.randomUUID().toString();
+        final String newImageValue = UUID.randomUUID().toString();
+
+        final Map<String, AttributeValue> newImage = Map.of(newImageKey, AttributeValue.builder().s(newImageValue).build());
+        List<software.amazon.awssdk.services.dynamodb.model.Record> records = Collections.singletonList(buildRecord(Instant.now(), newImage, null, OperationType.REMOVE, userIdentity));
+        final ArgumentCaptor<Record> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        software.amazon.awssdk.services.dynamodb.model.Record record = records.get(0);
+        final StreamRecordConverter objectUnderTest = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics, streamConfig);
+        doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
+
+        objectUnderTest.writeToBuffer(null, records);
+
+        verify(bufferAccumulator).add(any(Record.class));
+        verify(bufferAccumulator).flush();
+        verify(changeEventSuccessCounter).increment(anyDouble());
+        assertThat(recordArgumentCaptor.getValue().getData(), notNullValue());
+        JacksonEvent event = (JacksonEvent) recordArgumentCaptor.getValue().getData();
+
+        assertThat(event.getMetadata(), notNullValue());
+        assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_IS_TTL_DELETE), equalTo(Boolean.FALSE));
 
     }
 
