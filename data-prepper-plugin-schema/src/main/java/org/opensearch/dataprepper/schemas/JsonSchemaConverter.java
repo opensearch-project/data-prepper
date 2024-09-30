@@ -11,10 +11,15 @@ import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigPart;
 import com.github.victools.jsonschema.generator.SchemaVersion;
+import org.opensearch.dataprepper.model.annotations.AlsoRequires;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class JsonSchemaConverter {
+    static final String KEY_VALUE_PAIR_DELIMITER = ":";
     static final String DEPRECATED_SINCE_KEY = "deprecated";
     private final List<Module> jsonSchemaGeneratorModules;
 
@@ -31,9 +36,11 @@ public class JsonSchemaConverter {
         final SchemaGeneratorConfigPart<FieldScope> scopeSchemaGeneratorConfigPart = configBuilder.forFields();
         overrideInstanceAttributeWithDeprecated(scopeSchemaGeneratorConfigPart);
         resolveDefaultValueFromJsonProperty(scopeSchemaGeneratorConfigPart);
+        resolveDependentRequiresFields(scopeSchemaGeneratorConfigPart);
 
         final SchemaGeneratorConfig config = configBuilder.build();
         final SchemaGenerator generator = new SchemaGenerator(config);
+
         return generator.generateSchema(clazz);
     }
 
@@ -58,5 +65,22 @@ public class JsonSchemaConverter {
             final JsonProperty annotation = field.getAnnotationConsideringFieldAndGetter(JsonProperty.class);
             return annotation == null || annotation.defaultValue().isEmpty() ? null : annotation.defaultValue();
         });
+    }
+
+    private void resolveDependentRequiresFields(
+            final SchemaGeneratorConfigPart<FieldScope> scopeSchemaGeneratorConfigPart) {
+        scopeSchemaGeneratorConfigPart.withDependentRequiresResolver(field -> Optional
+                .ofNullable(field.getAnnotationConsideringFieldAndGetter(AlsoRequires.class))
+                .map(alsoRequires -> Arrays.stream(alsoRequires.values())
+                        .map(required -> {
+                            final String property = required.name();
+                            final String[] allowedValues = required.allowedValues();
+                            if (allowedValues.length == 0) {
+                                return property;
+                            }
+                            return property + KEY_VALUE_PAIR_DELIMITER + Arrays.toString(allowedValues);
+                        })
+                        .collect(Collectors.toList()))
+                .orElse(null));
     }
 }

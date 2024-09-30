@@ -4,12 +4,15 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.github.victools.jsonschema.generator.Module;
 import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.annotations.AlsoRequires;
+import org.opensearch.dataprepper.model.annotations.Required;
 import org.opensearch.dataprepper.schemas.module.CustomJacksonModule;
 
 import java.util.Collections;
@@ -53,6 +56,21 @@ class JsonSchemaConverterTest {
         assertThat(propertiesNode, instanceOf(ObjectNode.class));
         assertThat(propertiesNode.has("test_attribute_with_getter"), is(true));
         assertThat(propertiesNode.has("custom_test_attribute"), is(true));
+        final JsonNode dependentRequiredNode = jsonSchemaNode.at("/dependentRequired");
+        assertThat(dependentRequiredNode, instanceOf(ObjectNode.class));
+        assertThat(dependentRequiredNode.has("test_mutually_exclusive_attribute_a"), is(true));
+        assertThat(dependentRequiredNode.at("/test_mutually_exclusive_attribute_a"),
+                instanceOf(ArrayNode.class));
+        final ArrayNode dependentRequiredProperty1 = (ArrayNode) dependentRequiredNode.at(
+                "/test_mutually_exclusive_attribute_a");
+        assertThat(dependentRequiredProperty1.size(), equalTo(1));
+        assertThat(dependentRequiredProperty1.get(0), equalTo(
+                TextNode.valueOf("test_mutually_exclusive_attribute_b:[null, \"test_value\"]")));
+        final ArrayNode dependentRequiredProperty2 = (ArrayNode) dependentRequiredNode.at(
+                "/test_dependent_required_property_with_default_allowed_values");
+        assertThat(dependentRequiredProperty2.size(), equalTo(1));
+        assertThat(dependentRequiredProperty2.get(0), equalTo(
+                TextNode.valueOf("test_mutually_exclusive_attribute_a")));
     }
 
     @JsonClassDescription("test config")
@@ -64,6 +82,20 @@ class JsonSchemaConverterTest {
 
         @JsonProperty(defaultValue = "default_value")
         private String testAttributeWithDefaultValue;
+
+        @JsonProperty
+        @AlsoRequires(values = {
+                @Required(name="test_mutually_exclusive_attribute_b", allowedValues = {"null", "\"test_value\""})
+        })
+        private String testMutuallyExclusiveAttributeA;
+
+        private String testMutuallyExclusiveAttributeB;
+
+        @JsonProperty
+        @AlsoRequires(values = {
+                @Required(name="test_mutually_exclusive_attribute_a")
+        })
+        private String testDependentRequiredPropertyWithDefaultAllowedValues;
 
         public String getTestAttributeWithGetter() {
             return testAttributeWithGetter;
