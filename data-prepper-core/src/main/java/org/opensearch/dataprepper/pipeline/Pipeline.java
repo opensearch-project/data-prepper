@@ -137,7 +137,7 @@ public class Pipeline {
         this.sinkExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(processorThreads,
                 new PipelineThreadFactory(format("%s-sink-worker", name)), this);
 
-        this.pipelineShutdown = new PipelineShutdown(buffer);
+        this.pipelineShutdown = new PipelineShutdown(name, buffer);
     }
 
     AcknowledgementSetManager getAcknowledgementSetManager() {

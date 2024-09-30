@@ -17,6 +17,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Random;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -37,17 +38,19 @@ class PipelineShutdownTest {
 
     private Duration bufferDrainTimeout;
     private Random random;
+    private String pipelineName;
 
     @BeforeEach
     void setUp() {
         random = new Random();
+        pipelineName = UUID.randomUUID().toString();
         bufferDrainTimeout = Duration.ofSeconds(random.nextInt(100) + 1_000);
 
         when(buffer.getDrainTimeout()).thenReturn(bufferDrainTimeout);
     }
 
     private PipelineShutdown createObjectUnderTest() {
-        return new PipelineShutdown(buffer, clock);
+        return new PipelineShutdown(pipelineName, buffer, clock);
     }
 
     @Test
