@@ -4,6 +4,7 @@ package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.annotations.PluginDiContextAware;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.event.Event;
@@ -20,6 +21,7 @@ import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.Leade
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.PartitionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -32,14 +34,16 @@ import java.util.function.Function;
  * JiraConnector connector entry point.
  */
 
-public class BaseConnectorSourcePlugin implements Source<Record<Event>>, UsesEnhancedSourceCoordination {
+public class BaseSaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSourceCoordination, PluginDiContextAware {
 
 
-  private static final Logger log = LoggerFactory.getLogger(BaseConnectorSourcePlugin.class);
+  private static final Logger log = LoggerFactory.getLogger(BaseSaasSourcePlugin.class);
   private static final int DEFAULT_THREAD_COUNT = 20;
   private final PluginMetrics pluginMetrics;
   private final PluginFactory pluginFactory;
 //  private final JiraService jiraService;
+
+  private AnnotationConfigApplicationContext pluginDIContext;
 
   private final AcknowledgementSetManager acknowledgementSetManager;
 
@@ -47,16 +51,16 @@ public class BaseConnectorSourcePlugin implements Source<Record<Event>>, UsesEnh
 
   private EnhancedSourceCoordinator coordinator;
 
-  private BaseConnectorSourceConfig sourceConfig;
+  private BaseSaasSourceConfig sourceConfig;
 
   private Buffer<Record<Event>> buffer;
 
 
   @DataPrepperPluginConstructor
-  public BaseConnectorSourcePlugin(final PluginMetrics pluginMetrics,
-                                   final BaseConnectorSourceConfig sourceConfig,
-                                   final PluginFactory pluginFactory,
-                                   final AcknowledgementSetManager acknowledgementSetManager) {
+  public BaseSaasSourcePlugin(final PluginMetrics pluginMetrics,
+                              final BaseSaasSourceConfig sourceConfig,
+                              final PluginFactory pluginFactory,
+                              final AcknowledgementSetManager acknowledgementSetManager) {
     log.info("Create Jira Source Connector");
     this.pluginMetrics = pluginMetrics;
     this.sourceConfig = sourceConfig;
@@ -73,7 +77,12 @@ public class BaseConnectorSourcePlugin implements Source<Record<Event>>, UsesEnh
     log.info("Starting Jira Service... ");
     this.buffer = buffer;
 
-    coordinator.createPartition(new LeaderPartition());
+    boolean isPartitionCreated = coordinator.createPartition(new LeaderPartition());
+    log.info("Leader partition creation status: {}", isPartitionCreated);
+
+    Crawler crawler = pluginDIContext.getBean(Crawler.class);
+    log.info("Crawler bean instance {}", crawler);
+
     Runnable leaderScheduler = new LeaderScheduler(coordinator, this);
     this.executorService.submit(leaderScheduler);
   }
@@ -120,5 +129,11 @@ public class BaseConnectorSourcePlugin implements Source<Record<Event>>, UsesEnh
   @Override
   public ByteDecoder getDecoder() {
     return Source.super.getDecoder();
+  }
+
+
+  @Override
+  public void setPluginDIContext(AnnotationConfigApplicationContext pluginDIContext) {
+    this.pluginDIContext = pluginDIContext;
   }
 }

@@ -2,14 +2,14 @@ package org.opensearch.dataprepper.plugins.source.saas.jira;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.base.BaseConnectorSourceConfig;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.base.BaseSaasSourceConfig;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 @Getter
-public class JiraSourceConfig implements BaseConnectorSourceConfig {
+public class JiraSourceConfig implements BaseSaasSourceConfig {
 
     /**
      * This connector's account url

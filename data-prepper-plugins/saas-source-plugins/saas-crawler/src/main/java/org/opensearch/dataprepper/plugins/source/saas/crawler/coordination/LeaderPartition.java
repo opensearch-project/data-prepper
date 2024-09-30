@@ -9,10 +9,10 @@ import java.util.Optional;
 /**
  * <p>A LeaderPartition is for some tasks that should be done in a single node only. </p>
  * <p>Hence whatever node owns the lease of this partition will be acted as a 'leader'. </p>
- * <p>In this DynamoDB source design, a leader node will be responsible for:</p>
+ * <p>In this saas source design, a leader node will be responsible for:</p>
  * <ul>
  * <li>Initialization process</li>
- * <li>Regular Shard Discovery</li>
+ * <li>Crawl the source iteratively and create work for other worker nodes</li>
  * </ul>
  */
 public class LeaderPartition extends EnhancedSourcePartition<LeaderProgressState> {

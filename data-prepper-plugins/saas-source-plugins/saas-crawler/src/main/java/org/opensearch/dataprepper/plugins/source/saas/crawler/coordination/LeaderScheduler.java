@@ -2,7 +2,7 @@ package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination;
 
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.base.BaseConnectorSourcePlugin;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.base.BaseSaasSourcePlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,9 +32,9 @@ public class LeaderScheduler implements Runnable {
 
     private List<String> streamArns;
 
-    private BaseConnectorSourcePlugin sourcePlugin;
+    private BaseSaasSourcePlugin sourcePlugin;
 
-    public LeaderScheduler(EnhancedSourceCoordinator coordinator, BaseConnectorSourcePlugin sourcePlugin) {
+    public LeaderScheduler(EnhancedSourceCoordinator coordinator, BaseSaasSourcePlugin sourcePlugin) {
         this(coordinator, DEFAULT_LEASE_INTERVAL);
         this.sourcePlugin = sourcePlugin;
     }

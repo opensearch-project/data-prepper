@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.PluginDiContextAware;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
@@ -13,6 +14,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Inject;
@@ -72,7 +74,11 @@ public class DefaultPluginFactory implements PluginFactory {
 
         final ComponentPluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass, null);
 
-        return pluginCreator.newPluginInstance(pluginClass, constructionContext, pluginName, args);
+        T t = pluginCreator.newPluginInstance(pluginClass, constructionContext, pluginName, args);
+        if(t instanceof PluginDiContextAware) {
+            initializeDIForThisPlugin((PluginDiContextAware)t, pluginClass);
+        }
+        return t;
     }
 
     @Override
@@ -146,5 +152,19 @@ public class DefaultPluginFactory implements PluginFactory {
         if (deprecatedName.equals(pluginName)) {
             LOG.warn("Plugin name '{}' is deprecated and will be removed in the next major release. Consider using the updated plugin name '{}'.", deprecatedName, name);
         }
+    }
+
+    private <T> void initializeDIForThisPlugin(PluginDiContextAware pluginInstance, final Class<? extends T> pluginClass) {
+        final DataPrepperPlugin pluginAnnotation = pluginClass.getAnnotation(DataPrepperPlugin.class);
+        String[] packagesToScanForDI = pluginAnnotation.packagesToScanForDI();
+        if(packagesToScanForDI.length==0) {
+            LOG.info("Base packages list missing for this Plugin to initialize Dependency Injection");
+            return;
+        }
+        AnnotationConfigApplicationContext pluginDIContext = new AnnotationConfigApplicationContext();
+        pluginDIContext.scan(packagesToScanForDI);
+        pluginDIContext.refresh();
+        pluginInstance.setPluginDIContext(pluginDIContext);
+        LOG.info("Plugin specific isolated Spring DI context is now initialized for the plugin {}", pluginClass);
     }
 }

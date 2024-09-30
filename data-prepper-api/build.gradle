@@ -18,6 +18,11 @@ dependencies {
     testImplementation project(':data-prepper-test-common')
     testImplementation 'org.skyscreamer:jsonassert:1.5.3'
     testImplementation libs.commons.io
+
+    implementation(libs.spring.context) {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+
 }
 
 jacocoTestCoverageVerification {
