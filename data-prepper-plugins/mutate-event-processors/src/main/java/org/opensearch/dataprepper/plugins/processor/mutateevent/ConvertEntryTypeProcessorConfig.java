@@ -20,10 +20,12 @@ import java.util.Optional;
 public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     @JsonProperty("key")
     @JsonPropertyDescription("Key whose value needs to be converted to a different type.")
+    @NotEmpty
     private String key;
 
     @JsonProperty("keys")
     @JsonPropertyDescription("List of keys whose value needs to be converted to a different type.")
+    @NotEmpty
     private List<String> keys;
 
     @JsonProperty("type")
