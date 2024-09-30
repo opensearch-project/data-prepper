@@ -60,6 +60,7 @@ public class DelayProcessor implements Processor<Record<?>, Record<?>> {
             "Typically, you should use this only for testing, experimenting, and debugging.")
     public static class Configuration {
         @JsonProperty("for")
+        @JsonPropertyDescription("The duration of time to delay. Defaults to `1s`.")
         private Duration delayFor = Duration.ofSeconds(1);
 
         public Duration getDelayFor() {
