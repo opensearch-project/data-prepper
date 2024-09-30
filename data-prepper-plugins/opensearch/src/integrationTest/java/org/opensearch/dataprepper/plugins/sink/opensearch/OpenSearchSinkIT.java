@@ -1829,7 +1829,8 @@ public class OpenSearchSinkIT {
     }
 
     private String getIndexPolicyId(final String index) throws IOException {
-        final Request request = new Request(HttpMethod.GET, "/_plugins/_ism/explain/" + index);
+        // TODO: replace with new _opensearch API
+        final Request request = new Request(HttpMethod.GET, "/_opendistro/_ism/explain/" + index);
         final Response response = client.performRequest(request);
         final String responseBody = EntityUtils.toString(response.getEntity());
 
