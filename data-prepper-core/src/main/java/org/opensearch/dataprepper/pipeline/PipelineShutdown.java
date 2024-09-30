@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.pipeline;
 
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -15,19 +17,25 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 class PipelineShutdown {
+    private static final Logger LOG = LoggerFactory.getLogger(PipelineShutdown.class);
+
     private final AtomicBoolean stopRequested = new AtomicBoolean(false);
-    private final Duration bufferDrainTimeout;
+    private final Duration pipelineConfiguredBufferDrainTimeout;
     private final Clock clock;
+    private final String pipelineName;
     private Instant shutdownRequestedAt;
     private Instant forceStopReadingBuffersAt;
     private Duration bufferDrainTimeoutOverride;
+    private Duration bufferDrainTimeout;
 
-    PipelineShutdown(final Buffer<?> buffer) {
-        this(buffer, Clock.systemDefaultZone());
+    PipelineShutdown(final String pipelineName, final Buffer<?> buffer) {
+        this(pipelineName, buffer, Clock.systemDefaultZone());
     }
 
-    PipelineShutdown(final Buffer<?> buffer, final Clock clock) {
-        bufferDrainTimeout = Objects.requireNonNull(buffer.getDrainTimeout());
+    PipelineShutdown(String pipelineName, final Buffer<?> buffer, final Clock clock) {
+        this.pipelineName = pipelineName;
+        pipelineConfiguredBufferDrainTimeout = Objects.requireNonNull(buffer.getDrainTimeout());
+        bufferDrainTimeout = pipelineConfiguredBufferDrainTimeout;
         this.clock = clock;
     }
 
@@ -48,7 +56,11 @@ class PipelineShutdown {
         final Duration bufferDrainTimeoutOverride = dataPrepperShutdownOptions.getBufferDrainTimeout();
         if(bufferDrainTimeoutOverride != null) {
             this.bufferDrainTimeoutOverride = bufferDrainTimeoutOverride;
+            bufferDrainTimeout = bufferDrainTimeoutOverride;
         }
+
+        LOG.info("Started shutdown for pipeline {}. Requested at {}. Force stop reading buffers at {}. The buffer drain timeout to use is {}",
+                pipelineName, shutdownRequestedAt, forceStopReadingBuffersAt, bufferDrainTimeout);
     }
 
     boolean isStopRequested() {
@@ -60,8 +72,7 @@ class PipelineShutdown {
     }
 
     public Duration getBufferDrainTimeout() {
-        return bufferDrainTimeoutOverride != null ?
-                bufferDrainTimeoutOverride : bufferDrainTimeout;
+        return bufferDrainTimeout;
     }
 
     private Instant now() {
