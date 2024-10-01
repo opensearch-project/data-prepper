@@ -20,11 +20,13 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
+import java.util.ArrayList;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -109,6 +111,45 @@ public class ConvertEntryTypeProcessorTests {
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue.toString());
         assertThat(event.get(TEST_KEY, Integer.class), equalTo(testValue));
+    }
+
+    @Test
+    void testArrayOfStringsToIntegerConvertEntryTypeProcessor() {
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+
+        Random random = new Random();
+        Integer testValue1 = random.nextInt();
+        Integer testValue2 = random.nextInt();
+        Integer testValue3 = random.nextInt();
+        String[] inputArray = {testValue1.toString(), testValue2.toString(), testValue3.toString()};
+        List<Integer> expectedResult = new ArrayList<>();
+        expectedResult.add(testValue1);
+        expectedResult.add(testValue2);
+        expectedResult.add(testValue3);
+        Event event = executeAndGetProcessedEvent(inputArray);
+        assertThat(event.get(TEST_KEY, List.class), equalTo(expectedResult));
+    }
+
+    @Test
+    void testArrayListOfStringsToIntegerConvertEntryTypeProcessor() {
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+
+        Random random = new Random();
+        Integer testValue1 = random.nextInt();
+        Integer testValue2 = random.nextInt();
+        Integer testValue3 = random.nextInt();
+        List<String> inputList = new ArrayList<>();
+        inputList.add(testValue1.toString());
+        inputList.add(testValue2.toString());
+        inputList.add(testValue3.toString());
+        List<Integer> expectedResult = new ArrayList<>();
+        expectedResult.add(testValue1);
+        expectedResult.add(testValue2);
+        expectedResult.add(testValue3);
+        Event event = executeAndGetProcessedEvent(inputList);
+        assertThat(event.get(TEST_KEY, List.class), equalTo(expectedResult));
     }
 
     @Test

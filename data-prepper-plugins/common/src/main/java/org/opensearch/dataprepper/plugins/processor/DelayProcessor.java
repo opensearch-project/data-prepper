@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -60,6 +61,7 @@ public class DelayProcessor implements Processor<Record<?>, Record<?>> {
             "Typically, you should use this only for testing, experimenting, and debugging.")
     public static class Configuration {
         @JsonProperty("for")
+        @JsonPropertyDescription("The duration of time to delay. Defaults to `1s`.")
         private Duration delayFor = Duration.ofSeconds(1);
 
         public Duration getDelayFor() {

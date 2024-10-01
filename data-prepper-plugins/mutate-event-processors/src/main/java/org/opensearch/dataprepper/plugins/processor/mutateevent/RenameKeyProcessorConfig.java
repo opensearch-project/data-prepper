@@ -25,12 +25,14 @@ public class RenameKeyProcessorConfig {
         @NotEmpty
         @NotNull
         @JsonProperty("from_key")
+        @JsonPropertyDescription("The key of the entry to be renamed.")
         @EventKeyConfiguration({EventKeyFactory.EventAction.GET, EventKeyFactory.EventAction.DELETE})
         private EventKey fromKey;
 
         @NotEmpty
         @NotNull
         @JsonProperty("to_key")
+        @JsonPropertyDescription("The new key of the entry.")
         @EventKeyConfiguration(EventKeyFactory.EventAction.PUT)
         private EventKey toKey;
 

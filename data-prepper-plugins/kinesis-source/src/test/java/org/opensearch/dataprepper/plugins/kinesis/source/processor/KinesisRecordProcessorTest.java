@@ -32,6 +32,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisStreamConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.converter.KinesisRecordConverter;
+import org.opensearch.dataprepper.plugins.kinesis.source.converter.MetadataKeyAttributes;
 import software.amazon.kinesis.common.StreamIdentifier;
 import software.amazon.kinesis.exceptions.InvalidStateException;
 import software.amazon.kinesis.exceptions.ShutdownException;
@@ -189,9 +190,10 @@ public class KinesisRecordProcessorTest {
 
         List<Record<Event>> records = new ArrayList<>();
         Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamId);
         Record<Event> record = new Record<>(event);
         records.add(record);
-        when(kinesisRecordConverter.convert(eq(kinesisClientRecords))).thenReturn(records);
+        when(kinesisRecordConverter.convert(eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
 
         kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
                 acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
@@ -235,9 +237,10 @@ public class KinesisRecordProcessorTest {
 
         List<Record<Event>> records = new ArrayList<>();
         Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamId);
         Record<Event> record = new Record<>(event);
         records.add(record);
-        when(kinesisRecordConverter.convert(eq(kinesisClientRecords))).thenReturn(records);
+        when(kinesisRecordConverter.convert(eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
 
         kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
                 acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
@@ -285,9 +288,10 @@ public class KinesisRecordProcessorTest {
 
         List<Record<Event>> records = new ArrayList<>();
         Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamId);
         Record<Event> record = new Record<>(event);
         records.add(record);
-        when(kinesisRecordConverter.convert(eq(kinesisClientRecords))).thenReturn(records);
+        when(kinesisRecordConverter.convert(eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
 
         kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
                 acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
@@ -339,9 +343,10 @@ public class KinesisRecordProcessorTest {
 
         List<Record<Event>> records = new ArrayList<>();
         Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamId);
         Record<Event> record = new Record<>(event);
         records.add(record);
-        when(kinesisRecordConverter.convert(eq(kinesisClientRecords))).thenReturn(records);
+        when(kinesisRecordConverter.convert(eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
 
         kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
                 acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
@@ -381,9 +386,10 @@ public class KinesisRecordProcessorTest {
 
         List<Record<Event>> records = new ArrayList<>();
         Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamId);
         Record<Event> record = new Record<>(event);
         records.add(record);
-        when(kinesisRecordConverter.convert(eq(kinesisClientRecords))).thenReturn(records);
+        when(kinesisRecordConverter.convert(eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
         final Throwable exception = mock(RuntimeException.class);
         doThrow(exception).when(bufferAccumulator).add(any(Record.class));
 
@@ -405,9 +411,10 @@ public class KinesisRecordProcessorTest {
 
         List<Record<Event>> records = new ArrayList<>();
         Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamId);
         Record<Event> record = new Record<>(event);
         records.add(record);
-        when(kinesisRecordConverter.convert(eq(kinesisClientRecords))).thenReturn(records);
+        when(kinesisRecordConverter.convert(eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
         final Throwable exception = mock(RuntimeException.class);
         doThrow(exception).when(bufferAccumulator).flush();
 

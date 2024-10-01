@@ -76,6 +76,7 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
     }
 
     @JsonPropertyDescription("List of entries. Valid values are `source`, `delimiter`, and `delimiter_regex`.")
+    @NotNull
     private List<@Valid Entry> entries;
 
     public List<Entry> getEntries() {

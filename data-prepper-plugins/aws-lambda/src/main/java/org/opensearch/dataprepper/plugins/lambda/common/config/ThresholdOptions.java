@@ -16,13 +16,14 @@ import java.time.Duration;
 
 
 public class ThresholdOptions {
-
+    private static final int DEFAULT_EVENT_COUNT = 10;
     private static final String DEFAULT_BYTE_CAPACITY = "3mb";
+    private static final Duration DEFAULT_EVENT_TIMEOUT = Duration.ofSeconds(10);
 
     @JsonProperty("event_count")
     @Size(min = 0, max = 10000000, message = "event_count size should be between 0 and 10000000")
     @NotNull
-    private int eventCount;
+    private int eventCount = DEFAULT_EVENT_COUNT;
 
     @JsonProperty("maximum_size")
     private String maximumSize = DEFAULT_BYTE_CAPACITY;
@@ -31,7 +32,7 @@ public class ThresholdOptions {
     @DurationMin(seconds = 1)
     @DurationMax(seconds = 3600)
     @NotNull
-    private Duration eventCollectTimeOut;
+    private Duration eventCollectTimeOut = DEFAULT_EVENT_TIMEOUT;
 
     /**
      * Read event collection duration configuration.

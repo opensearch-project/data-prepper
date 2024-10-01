@@ -292,6 +292,7 @@ EscapeSequence
 DataTypes
     : INTEGER
     | BOOLEAN
+    | BIG_DECIMAL
     | LONG
     | MAP
     | ARRAY
@@ -339,6 +340,7 @@ EXPONENTLETTER
     ;
 
 INTEGER: 'integer';
+BIG_DECIMAL: 'big_decimal';
 BOOLEAN: 'boolean';
 LONG   : 'long';
 DOUBLE : 'double';

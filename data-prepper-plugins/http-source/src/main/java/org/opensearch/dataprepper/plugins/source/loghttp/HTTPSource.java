@@ -141,7 +141,7 @@ public class HTTPSource implements Source<Record<Log>> {
 
             final String httpSourcePath = sourceConfig.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
             sb.decorator(httpSourcePath, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
-            final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getBufferTimeoutInMillis(), buffer, byteDecoder, pluginMetrics);
+            final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getBufferTimeoutInMillis(), buffer, pluginMetrics);
 
             if (CompressionOption.NONE.equals(sourceConfig.getCompression())) {
                 sb.annotatedService(httpSourcePath, logHTTPService, httpRequestExceptionHandler);

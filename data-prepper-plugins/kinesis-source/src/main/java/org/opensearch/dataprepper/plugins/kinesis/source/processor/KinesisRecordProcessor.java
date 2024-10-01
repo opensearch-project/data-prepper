@@ -18,7 +18,6 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisStreamConfig;
@@ -162,15 +161,13 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
 
             // Track the records for checkpoint purpose
             kinesisCheckpointerTracker.addRecordForCheckpoint(extendedSequenceNumber, processRecordsInput.checkpointer());
-            List<Record<Event>> records = kinesisRecordConverter.convert(processRecordsInput.records());
+            List<Record<Event>> records = kinesisRecordConverter.convert(processRecordsInput.records(), streamIdentifier.streamName());
 
             int eventCount = 0;
             for (Record<Event> record: records) {
                 Event event = record.getData();
                 acknowledgementSetOpt.ifPresent(acknowledgementSet -> acknowledgementSet.add(event));
-                EventMetadata eventMetadata = event.getMetadata();
-                eventMetadata.setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE,
-                        streamIdentifier.streamName().toLowerCase());
+
                 bufferAccumulator.add(record);
                 eventCount++;
             }
@@ -184,7 +181,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
                 kinesisCheckpointerTracker.markSequenceNumberForCheckpoint(extendedSequenceNumber);
             }
 
-            LOG.debug("Number of Records {} written for stream: {}, shardId: {} to buffer: {}", eventCount, streamIdentifier.streamName(), kinesisShardId, records.size());
+            LOG.debug("Number of Records {} written for stream: {}, shardId: {}", eventCount, streamIdentifier.streamName(), kinesisShardId);
 
             acknowledgementSetOpt.ifPresent(AcknowledgementSet::complete);
 

@@ -49,6 +49,9 @@ public class DataPrepperServerTest {
     private ShutdownHandler shutdownHandler;
 
     @Mock
+    private GetPipelinesHandler getPipelinesHandler;
+
+    @Mock
     private PrometheusMeterRegistry prometheusMeterRegistry;
 
     @Mock
@@ -82,7 +85,7 @@ public class DataPrepperServerTest {
         verifyServerStart();
         verify(server).createContext(eq("/metrics/prometheus"), any(PrometheusMetricsHandler.class));
         verify(server).createContext(eq("/metrics/sys"), any(PrometheusMetricsHandler.class));
-        verify(context, times(4)).setAuthenticator(eq(authenticator));
+        verify(context, times(5)).setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -93,7 +96,7 @@ public class DataPrepperServerTest {
         dataPrepperServer.start();
 
         verifyServerStart();
-        verify(context, times(2)).setAuthenticator(eq(authenticator));
+        verify(context, times(3)).setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -145,6 +148,7 @@ public class DataPrepperServerTest {
         verify(httpServerProvider).get();
         verify(server).createContext("/list", listPipelinesHandler);
         verify(server).createContext(eq("/shutdown"), eq(shutdownHandler));
+        verify(server).createContext(eq("/pipelines"), eq(getPipelinesHandler));
         final ArgumentCaptor<ExecutorService> executorServiceArgumentCaptor = ArgumentCaptor.forClass(ExecutorService.class);
         verify(server).setExecutor(executorServiceArgumentCaptor.capture());
         final ExecutorService actualExecutorService = executorServiceArgumentCaptor.getValue();
@@ -158,6 +162,6 @@ public class DataPrepperServerTest {
     }
 
     private DataPrepperServer createObjectUnderTest(final PrometheusMeterRegistry prometheusMeterRegistry, final Authenticator authenticator) {
-        return new DataPrepperServer(httpServerProvider, listPipelinesHandler, shutdownHandler, prometheusMeterRegistry, authenticator);
+        return new DataPrepperServer(httpServerProvider, listPipelinesHandler, shutdownHandler, getPipelinesHandler, prometheusMeterRegistry, authenticator);
     }
 }

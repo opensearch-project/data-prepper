@@ -1,0 +1,4 @@
+plugin_name: "mongodb"
+apply_when:
+  - "$..source.mongodb"
+  - "$..source.mongodb.s3_bucket"

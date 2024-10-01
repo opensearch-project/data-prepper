@@ -22,7 +22,7 @@ public interface Buffer {
 
     Duration getDuration();
 
-    void flushToLambdaAsync();
+    InvokeResponse flushToLambdaAsync();
 
     InvokeResponse flushToLambdaSync();
 

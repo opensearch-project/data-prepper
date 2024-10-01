@@ -8,8 +8,9 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.kinesis.source.processor;
+package org.opensearch.dataprepper.plugins.kinesis.source.converter;
 
 public class MetadataKeyAttributes {
-    static final String KINESIS_STREAM_NAME_METADATA_ATTRIBUTE = "kinesis_stream_name";
+    public static final String KINESIS_STREAM_NAME_METADATA_ATTRIBUTE = "stream_name";
+    public static final String KINESIS_PARTITION_KEY_METADATA_ATTRIBUTE = "partition_key";
 }

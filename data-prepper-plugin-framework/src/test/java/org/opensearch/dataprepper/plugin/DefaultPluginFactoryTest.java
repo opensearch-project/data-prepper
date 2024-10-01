@@ -401,4 +401,33 @@ class DefaultPluginFactoryTest {
             verify(beanFactoryProvider).get();
         }
     }
+
+    @Nested
+    class WithAlternatePluginName {
+        private static final String TEST_SINK_ALTERNATE_NAME = "test_sink_alternate_name";
+        private Class expectedPluginClass;
+
+        @BeforeEach
+        void setUp() {
+            expectedPluginClass = TestSink.class;
+            given(pluginSetting.getName()).willReturn(TEST_SINK_ALTERNATE_NAME);
+
+            given(firstPluginProvider.findPluginClass(baseClass, TEST_SINK_ALTERNATE_NAME))
+                    .willReturn(Optional.of(expectedPluginClass));
+        }
+
+        @Test
+        void loadPlugin_should_create_a_new_instance_of_the_first_plugin_found_with_correct_name_and_alternate_name() {
+            final TestSink expectedInstance = mock(TestSink.class);
+            final Object convertedConfiguration = mock(Object.class);
+            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+                    .willReturn(convertedConfiguration);
+            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(TEST_SINK_ALTERNATE_NAME)))
+                    .willReturn(expectedInstance);
+
+            assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting), equalTo(expectedInstance));
+            MatcherAssert.assertThat(expectedInstance.getClass().getAnnotation(DataPrepperPlugin.class).alternateNames(), equalTo(new String[]{TEST_SINK_ALTERNATE_NAME}));
+            verify(beanFactoryProvider).get();
+        }
+    }
 }

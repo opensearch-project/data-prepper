@@ -20,6 +20,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +72,7 @@ class TypeOfOperatorTest {
         List<Integer> testArrayList = new ArrayList<Integer>();
         testArrayList.add(1);
         testArrayList.add(2);
+        BigDecimal bigDecimalValue = new BigDecimal(1.222);
         return Stream.of(
             Arguments.of(2, "integer", true),
             Arguments.of("testString", "string", true),
@@ -86,6 +88,8 @@ class TypeOfOperatorTest {
             Arguments.of("testString", "double", false),
             Arguments.of(2, "boolean", false),
             Arguments.of(2L, "map", false),
+            Arguments.of(2L, "big_decimal", false),
+            Arguments.of(bigDecimalValue, "big_decimal", true),
             Arguments.of(2, "array", false)
         );
     }

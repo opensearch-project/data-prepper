@@ -75,7 +75,7 @@ public class InMemoryBuffer implements Buffer {
 
 
     @Override
-    public void flushToLambdaAsync() {
+    public InvokeResponse flushToLambdaAsync() {
         InvokeResponse resp;
         SdkBytes payload = getPayload();
         payloadRequestAsyncSize = payload.asByteArray().length;
@@ -91,6 +91,7 @@ public class InMemoryBuffer implements Buffer {
         resp = lambdaClient.invoke(request);
         lambdaAsyncLatencyWatch.stop();
         payloadResponseAsyncSize = resp.payload().asByteArray().length;
+        return resp;
     }
 
     @Override

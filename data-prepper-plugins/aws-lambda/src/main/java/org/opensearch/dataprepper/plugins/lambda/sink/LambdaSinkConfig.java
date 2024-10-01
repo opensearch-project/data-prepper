@@ -12,6 +12,8 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.EVENT;
 
 import java.util.Map;
 import java.util.Objects;
@@ -19,9 +21,7 @@ import java.util.Objects;
 public class LambdaSinkConfig {
 
     private static final int DEFAULT_CONNECTION_RETRIES = 3;
-
     public static final String STS_REGION = "region";
-
     public static final String STS_ROLE_ARN = "sts_role_arn";
 
     @JsonProperty("aws")
@@ -38,11 +38,20 @@ public class LambdaSinkConfig {
     @JsonProperty("max_retries")
     private int maxConnectionRetries = DEFAULT_CONNECTION_RETRIES;
 
+    @JsonProperty("invocation_type")
+    private String invocationType = EVENT;
+
+    @JsonProperty("payload_model")
+    private String payloadModel = BATCH_EVENT;
+
     @JsonProperty("dlq")
     private PluginModel dlq;
 
     @JsonProperty("batch")
     private BatchOptions batchOptions;
+
+    @JsonProperty("lambda_when")
+    private String whenCondition;
 
     public AwsAuthenticationOptions getAwsAuthenticationOptions() {
         return awsAuthenticationOptions;
@@ -76,5 +85,15 @@ public class LambdaSinkConfig {
 
     public  Map<String, Object> getDlqPluginSetting(){
         return dlq != null ? dlq.getPluginSettings() : Map.of();
+    }
+
+    public String getInvocationType(){return invocationType;}
+
+    public String getWhenCondition() {
+        return whenCondition;
+    }
+
+    public String getPayloadModel() {
+        return payloadModel;
     }
 }
