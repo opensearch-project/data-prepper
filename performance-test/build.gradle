@@ -15,7 +15,7 @@ configurations.all {
 group 'org.opensearch.dataprepper.test.performance'
 
 dependencies {
-    gatlingImplementation 'software.amazon.awssdk:auth:2.26.12'
+    gatlingImplementation 'software.amazon.awssdk:auth:2.28.12'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     testRuntimeOnly testLibs.junit.engine
 
