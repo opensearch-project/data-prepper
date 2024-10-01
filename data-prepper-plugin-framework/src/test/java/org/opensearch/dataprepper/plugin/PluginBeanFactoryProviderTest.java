@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugin;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.test.TestComponent;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.context.support.GenericApplicationContext;
 
@@ -48,14 +49,14 @@ class PluginBeanFactoryProviderTest {
     @Test
     void testPluginBeanFactoryProviderRequiresContext() {
         context = null;
-        assertThrows(NullPointerException.class, () -> createObjectUnderTest());
+        assertThrows(NullPointerException.class, this::createObjectUnderTest);
     }
 
     @Test
     void testPluginBeanFactoryProviderRequiresParentContext() {
         context = mock(GenericApplicationContext.class);
 
-        assertThrows(NullPointerException.class, () -> createObjectUnderTest());
+        assertThrows(NullPointerException.class, this::createObjectUnderTest);
     }
 
     @Test
@@ -94,5 +95,14 @@ class PluginBeanFactoryProviderTest {
         doReturn(context).when(context).getParent();
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
         assertThat(objectUnderTest.getSharedPluginApplicationContext(), sameInstance(objectUnderTest.getSharedPluginApplicationContext()));
+    }
+
+    @Test
+    void testInitializePluginSpecificIsolatedContext() {
+        doReturn(context).when(context).getParent();
+        final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
+        BeanFactory beanFactory = objectUnderTest.initializePluginSpecificIsolatedContext(new Class[]{TestComponent.class});
+        assertThat(beanFactory, notNullValue());
+        assertThat(beanFactory.getBean(TestComponent.class), notNullValue());
     }
 }
