@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.event.EventKey;
 
 import java.util.List;
@@ -59,6 +60,7 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
     }
 
     @JsonPropertyDescription("List of entries. Valid values are `source`, `from`, and `to`, and `substitute_when`.")
+    @NotNull
     private List<Entry> entries;
 
     public List<Entry> getEntries() {

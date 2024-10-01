@@ -20,6 +20,7 @@ public class MappingsParameterConfig {
     @JsonProperty("targets")
     @JsonPropertyDescription("A list of target field configurations, such as the target field key or translation maps.")
     @Valid
+    @NotNull
     private List<TargetsParameterConfig> targetsParameterConfigs = new ArrayList<>();
 
     public Object getSource() {
