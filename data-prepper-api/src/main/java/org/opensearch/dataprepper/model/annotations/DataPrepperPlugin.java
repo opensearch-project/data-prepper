@@ -66,11 +66,11 @@ public @interface DataPrepperPlugin {
     Class<?> pluginConfigurationType() default PluginSetting.class;
 
     /**
-     * This is an optional argument. Not required to be provided.
+     * This is an optional argument.
      * When provided, it indicates that this plugin want to use
-     * Dependency Injection in its module, isolated to its own module.
+     * Dependency Injection in its module, with the Spring ApplicationContext isolated to its own module.
      *
      * @return an Array of base packages of this plugin to scan and create Spring DI context.
      */
-    String[] packagesToScanForDI() default {};
+    Class[] packagesToScanForDI() default {};
 }

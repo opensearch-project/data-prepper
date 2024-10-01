@@ -13,7 +13,11 @@ public class LeaderProgressState {
     @JsonProperty("initialized")
     private boolean initialized = false;
 
-    @JsonProperty("streamArns")
-    private List<String> streamArns;
+    @JsonProperty("last_poll_time")
+    private Long lastPollTime;
+
+    public LeaderProgressState(@JsonProperty("last_poll_time") final Long lastPollTime) {
+        this.lastPollTime = lastPollTime;
+    }
 
 }

@@ -2,14 +2,15 @@ package org.opensearch.dataprepper.plugins.source.saas.jira;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.base.BaseSaasSourceConfig;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourceConfig;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 @Getter
-public class JiraSourceConfig implements BaseSaasSourceConfig {
+public class JiraSourceConfig implements SaasSourceConfig {
 
     /**
      * This connector's account url
@@ -53,6 +54,19 @@ public class JiraSourceConfig implements BaseSaasSourceConfig {
      */
     @JsonProperty("status")
     private String status;
+
+    /**
+     * Number of worker threads to spawn to parallel source fetching
+     */
+    @JsonProperty("workers")
+    private int numWorkers = DEFAULT_NUMBER_OF_WORKERS;
+
+    /**
+     * Default time to wait (with exponential backOff) in the case of
+     * waiting for the source service to respond
+     */
+    @JsonProperty("backoff_time")
+    private Duration backOff = DEFAULT_BACKOFF_MILLIS;
 
 
 }

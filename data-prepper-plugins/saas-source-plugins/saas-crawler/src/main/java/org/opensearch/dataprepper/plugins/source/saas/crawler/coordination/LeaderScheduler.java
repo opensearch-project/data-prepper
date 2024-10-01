@@ -2,7 +2,7 @@ package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination;
 
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.base.BaseSaasSourcePlugin;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourcePlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,11 +30,9 @@ public class LeaderScheduler implements Runnable {
 
     private LeaderPartition leaderPartition;
 
-    private List<String> streamArns;
+    private SaasSourcePlugin sourcePlugin;
 
-    private BaseSaasSourcePlugin sourcePlugin;
-
-    public LeaderScheduler(EnhancedSourceCoordinator coordinator, BaseSaasSourcePlugin sourcePlugin) {
+    public LeaderScheduler(EnhancedSourceCoordinator coordinator, SaasSourcePlugin sourcePlugin) {
         this(coordinator, DEFAULT_LEASE_INTERVAL);
         this.sourcePlugin = sourcePlugin;
     }
@@ -68,9 +66,9 @@ public class LeaderScheduler implements Runnable {
                         sourcePlugin.init(leaderPartition);
                     } else {
                         // The initialization process will populate that value, otherwise, get from state
-                        if (streamArns == null) {
+                        /*if (streamArns == null) {
                             streamArns = leaderProgressState.getStreamArns();
-                        }
+                        }*/
                     }
                 }
 
@@ -95,16 +93,6 @@ public class LeaderScheduler implements Runnable {
         if (leaderPartition != null) {
             coordinator.giveUpPartition(leaderPartition);
         }
-    }
-
-    private void init() {
-        LOG.info("Try to initialize DynamoDB service");
-
-
-        LOG.debug("Update initialization state");
-        LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
-        leaderProgressState.setStreamArns(streamArns);
-        leaderProgressState.setInitialized(true);
     }
 
 }

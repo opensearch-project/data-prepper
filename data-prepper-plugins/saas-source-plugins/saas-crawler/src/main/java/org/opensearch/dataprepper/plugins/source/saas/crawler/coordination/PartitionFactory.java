@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination;
 
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourcePartition;
 
 import java.util.function.Function;
 
@@ -23,6 +24,8 @@ public class PartitionFactory implements Function<SourcePartitionStoreItem, Enha
 
          if (LeaderPartition.PARTITION_TYPE.equals(partitionType)) {
             return new LeaderPartition(partitionStoreItem);
+        } else if (SaasSourcePartition.PARTITION_TYPE.equals(partitionType)) {
+            return new SaasSourcePartition(partitionStoreItem);
         } else {
             // Unable to acquire other partitions.
             return new GlobalState(partitionStoreItem);

@@ -4,7 +4,6 @@ package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.annotations.PluginDiContextAware;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.event.Event;
@@ -34,16 +33,13 @@ import java.util.function.Function;
  * JiraConnector connector entry point.
  */
 
-public class BaseSaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSourceCoordination, PluginDiContextAware {
+public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSourceCoordination {
 
 
-  private static final Logger log = LoggerFactory.getLogger(BaseSaasSourcePlugin.class);
+  private static final Logger log = LoggerFactory.getLogger(SaasSourcePlugin.class);
   private static final int DEFAULT_THREAD_COUNT = 20;
   private final PluginMetrics pluginMetrics;
   private final PluginFactory pluginFactory;
-//  private final JiraService jiraService;
-
-  private AnnotationConfigApplicationContext pluginDIContext;
 
   private final AcknowledgementSetManager acknowledgementSetManager;
 
@@ -51,47 +47,52 @@ public class BaseSaasSourcePlugin implements Source<Record<Event>>, UsesEnhanced
 
   private EnhancedSourceCoordinator coordinator;
 
-  private BaseSaasSourceConfig sourceConfig;
+  private final SaasSourceConfig sourceConfig;
 
   private Buffer<Record<Event>> buffer;
+  private final Crawler crawler;
 
 
   @DataPrepperPluginConstructor
-  public BaseSaasSourcePlugin(final PluginMetrics pluginMetrics,
-                              final BaseSaasSourceConfig sourceConfig,
-                              final PluginFactory pluginFactory,
-                              final AcknowledgementSetManager acknowledgementSetManager) {
+  public SaasSourcePlugin(final PluginMetrics pluginMetrics,
+                          final SaasSourceConfig sourceConfig,
+                          final PluginFactory pluginFactory,
+                          final AcknowledgementSetManager acknowledgementSetManager,
+                          Crawler crawler) {
     log.info("Create Jira Source Connector");
     this.pluginMetrics = pluginMetrics;
     this.sourceConfig = sourceConfig;
     this.pluginFactory = pluginFactory;
+    this.crawler = crawler;
 
     this.acknowledgementSetManager = acknowledgementSetManager;
     this.executorService = Executors.newFixedThreadPool(DEFAULT_THREAD_COUNT);
-
   }
 
   @Override
   public void start(Buffer<Record<Event>> buffer) {
     Objects.requireNonNull(coordinator);
-    log.info("Starting Jira Service... ");
+    log.info("Starting SaaS Source Plugin... ");
     this.buffer = buffer;
 
     boolean isPartitionCreated = coordinator.createPartition(new LeaderPartition());
     log.info("Leader partition creation status: {}", isPartitionCreated);
 
-    Crawler crawler = pluginDIContext.getBean(Crawler.class);
-    log.info("Crawler bean instance {}", crawler);
-
     Runnable leaderScheduler = new LeaderScheduler(coordinator, this);
     this.executorService.submit(leaderScheduler);
+    //Register worker threaders
+    for(int i=0; i< sourceConfig.DEFAULT_NUMBER_OF_WORKERS; i++) {
+      SourceItemWorker sourceItemWorker = new SourceItemWorker(buffer, coordinator, sourceConfig);
+      this.executorService.submit(new Thread(sourceItemWorker));
+    }
   }
-
 
   public void init(LeaderPartition leaderPartition) {
     Objects.requireNonNull(buffer);
 
-    //ConnectorConfiguration connectorConfiguration = sourceConfig.getRepositoryConfiguration();
+    log.info("Crawler bean instance {}", crawler);
+
+    crawler.crawl(sourceConfig);
 
     //this.executorService.submit(this.createMonitoringLoop(connectorId, connectorConfiguration, buffer));
 
@@ -131,9 +132,4 @@ public class BaseSaasSourcePlugin implements Source<Record<Event>>, UsesEnhanced
     return Source.super.getDecoder();
   }
 
-
-  @Override
-  public void setPluginDIContext(AnnotationConfigApplicationContext pluginDIContext) {
-    this.pluginDIContext = pluginDIContext;
-  }
 }

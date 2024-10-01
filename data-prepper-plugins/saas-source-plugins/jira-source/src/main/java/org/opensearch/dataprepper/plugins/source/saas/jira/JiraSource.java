@@ -7,7 +7,9 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.base.BaseSaasSourcePlugin;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.SaasCrawlerApplicationContextMarker;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.base.Crawler;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourcePlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,10 +21,9 @@ import org.slf4j.LoggerFactory;
 @DataPrepperPlugin(name = "jira",
         pluginType = Source.class,
         pluginConfigurationType = JiraSourceConfig.class,
-        packagesToScanForDI = {"org.opensearch.dataprepper.plugins.source.saas.crawler",
-                "org.opensearch.dataprepper.plugins.source.saas.jira"}
+        packagesToScanForDI = {SaasCrawlerApplicationContextMarker.class, JiraSource.class}
 )
-public class JiraSource extends BaseSaasSourcePlugin {
+public class JiraSource extends SaasSourcePlugin {
 
   private static final Logger log = LoggerFactory.getLogger(JiraSource.class);
 
@@ -30,8 +31,9 @@ public class JiraSource extends BaseSaasSourcePlugin {
   public JiraSource(final PluginMetrics pluginMetrics,
                     final JiraSourceConfig jiraSourceConfig,
                     final PluginFactory pluginFactory,
-                    final AcknowledgementSetManager acknowledgementSetManager) {
-    super(pluginMetrics, jiraSourceConfig, pluginFactory, acknowledgementSetManager);
+                    final AcknowledgementSetManager acknowledgementSetManager,
+                    Crawler crawler) {
+    super(pluginMetrics, jiraSourceConfig, pluginFactory, acknowledgementSetManager, crawler);
     log.info("Create Jira Source Connector");
   }
 

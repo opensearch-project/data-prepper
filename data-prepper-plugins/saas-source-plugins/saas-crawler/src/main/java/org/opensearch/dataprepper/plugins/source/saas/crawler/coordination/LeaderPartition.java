@@ -24,9 +24,7 @@ public class LeaderPartition extends EnhancedSourcePartition<LeaderProgressState
     private final LeaderProgressState state;
 
     public LeaderPartition() {
-        this.state = new LeaderProgressState();
-        this.state.setInitialized(false);
-        this.state.setStreamArns(new ArrayList<>());
+        this.state = new LeaderProgressState(0L);
     }
 
     public LeaderPartition(SourcePartitionStoreItem sourcePartitionStoreItem) {
