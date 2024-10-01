@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.test.TestComponent;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.context.support.GenericApplicationContext;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -112,5 +113,6 @@ class PluginBeanFactoryProviderTest {
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
         BeanFactory beanFactory = objectUnderTest.initializePluginSpecificIsolatedContext(new Class[]{});
         assertThat(beanFactory, notNullValue());
+        assertThrows(NoSuchBeanDefinitionException.class, ()->beanFactory.getBean(TestComponent.class));
     }
 }
