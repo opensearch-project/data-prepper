@@ -15,14 +15,12 @@ import com.github.victools.jsonschema.generator.SchemaVersion;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
 import org.opensearch.dataprepper.plugin.PluginProvider;
-import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class JsonSchemaConverter {
     private static final Logger LOG = LoggerFactory.getLogger(JsonSchemaConverter.class);
