@@ -116,15 +116,8 @@ public class DefaultPluginFactory implements PluginFactory {
         final PluginConfigObservable pluginConfigObservable = pluginConfigurationObservableFactory
                 .createDefaultPluginConfigObservable(pluginConfigurationConverter, pluginConfigurationType, pluginSetting);
 
-        BeanFactory beanFactory;
         Class[] scanForDIMarkers = pluginAnnotation.packagesToScanForDI();
-        if(scanForDIMarkers.length>0) {
-            // If packages to scan is provided in this plugin annotation, which indicates
-            // that this plugin is interested in using Dependency Injection isolated for its module
-            beanFactory = pluginBeanFactoryProvider.initializePluginSpecificIsolatedContext(scanForDIMarkers);
-        }else{
-            beanFactory = pluginBeanFactoryProvider.get();
-        }
+        BeanFactory beanFactory = pluginBeanFactoryProvider.initializePluginSpecificIsolatedContext(scanForDIMarkers);
 
         return new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)

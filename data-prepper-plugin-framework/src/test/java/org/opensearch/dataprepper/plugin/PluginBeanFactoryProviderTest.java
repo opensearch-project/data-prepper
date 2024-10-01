@@ -105,4 +105,12 @@ class PluginBeanFactoryProviderTest {
         assertThat(beanFactory, notNullValue());
         assertThat(beanFactory.getBean(TestComponent.class), notNullValue());
     }
+
+    @Test
+    void testInitializePluginSpecificIsolatedContext_with_empty_array() {
+        doReturn(context).when(context).getParent();
+        final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
+        BeanFactory beanFactory = objectUnderTest.initializePluginSpecificIsolatedContext(new Class[]{});
+        assertThat(beanFactory, notNullValue());
+    }
 }
