@@ -14,6 +14,7 @@ import com.github.victools.jsonschema.generator.SchemaGeneratorGeneralConfigPart
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
+import org.opensearch.dataprepper.plugin.PluginProvider;
 import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,11 +28,11 @@ public class JsonSchemaConverter {
     private static final Logger LOG = LoggerFactory.getLogger(JsonSchemaConverter.class);
     static final String DEPRECATED_SINCE_KEY = "deprecated";
     private final List<Module> jsonSchemaGeneratorModules;
-    private final Reflections reflections;
+    private final PluginProvider pluginProvider;
 
-    public JsonSchemaConverter(final List<Module> jsonSchemaGeneratorModules, final Reflections reflections) {
+    public JsonSchemaConverter(final List<Module> jsonSchemaGeneratorModules, final PluginProvider pluginProvider) {
         this.jsonSchemaGeneratorModules = jsonSchemaGeneratorModules;
-        this.reflections = reflections;
+        this.pluginProvider = pluginProvider;
     }
 
     public ObjectNode convertIntoJsonSchema(
@@ -70,7 +71,8 @@ public class JsonSchemaConverter {
             final SchemaGeneratorConfigPart<FieldScope> scopeSchemaGeneratorConfigPart) {
         scopeSchemaGeneratorConfigPart.withTargetTypeOverridesResolver(field -> Optional
                 .ofNullable(field.getAnnotationConsideringFieldAndGetterIfSupported(UsesDataPrepperPlugin.class))
-                .map(usesDataPrepperPlugin -> scanForPluginConfigs(usesDataPrepperPlugin.pluginType()))
+                .map(usesDataPrepperPlugin ->
+                        pluginProvider.findPluginClasses(usesDataPrepperPlugin.pluginType()).stream())
                 .map(stream -> stream.map(specificSubtype -> field.getContext().resolve(specificSubtype)))
                 .map(stream -> stream.collect(Collectors.toList()))
                 .orElse(null));
@@ -102,13 +104,5 @@ public class JsonSchemaConverter {
             final JsonProperty annotation = field.getAnnotationConsideringFieldAndGetter(JsonProperty.class);
             return annotation == null || annotation.defaultValue().isEmpty() ? null : annotation.defaultValue();
         });
-    }
-
-    private Stream<Class<?>> scanForPluginConfigs(final Class<?> pluginType) {
-        return reflections.getTypesAnnotatedWith(DataPrepperPlugin.class).stream()
-                .filter(clazz -> {
-                    final DataPrepperPlugin dataPrepperPlugin = clazz.getAnnotation(DataPrepperPlugin.class);
-                    return pluginType.equals(dataPrepperPlugin.pluginType());
-                });
     }
 }

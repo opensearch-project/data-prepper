@@ -16,11 +16,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugin.ClasspathPluginProvider;
+import org.opensearch.dataprepper.plugin.PluginProvider;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
-import org.reflections.Reflections;
-import org.reflections.scanners.Scanners;
-import org.reflections.util.ClasspathHelper;
-import org.reflections.util.ConfigurationBuilder;
 
 import java.util.List;
 
@@ -30,7 +28,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class JsonSchemaConverterIT {
-    static final String DEFAULT_PLUGINS_CLASSPATH = "org.opensearch.dataprepper.plugins";
     static final String PROPERTIES_KEY = "properties";
     static final String ANY_OF_KEY = "anyOf";
 
@@ -43,10 +40,8 @@ public class JsonSchemaConverterIT {
                 new JakartaValidationModule(JakartaValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED,
                         JakartaValidationOption.INCLUDE_PATTERN_EXPRESSIONS)
         );
-        final Reflections reflections = new Reflections(new ConfigurationBuilder()
-                .setUrls(ClasspathHelper.forPackage(DEFAULT_PLUGINS_CLASSPATH))
-                .setScanners(Scanners.TypesAnnotated, Scanners.SubTypes));
-        objectUnderTest = new JsonSchemaConverter(modules, reflections);
+        final PluginProvider pluginProvider = new ClasspathPluginProvider();
+        objectUnderTest = new JsonSchemaConverter(modules, pluginProvider);
     }
 
     @Test

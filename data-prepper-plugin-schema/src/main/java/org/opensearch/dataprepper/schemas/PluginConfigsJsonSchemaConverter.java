@@ -9,7 +9,7 @@ import org.opensearch.dataprepper.model.configuration.ConditionalRoute;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
-import org.reflections.Reflections;
+import org.opensearch.dataprepper.plugin.PluginProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,15 +50,15 @@ public class PluginConfigsJsonSchemaConverter {
 
     private final String siteUrl;
     private final String siteBaseUrl;
-    private final Reflections reflections;
+    private final PluginProvider pluginProvider;
     private final JsonSchemaConverter jsonSchemaConverter;
 
     public PluginConfigsJsonSchemaConverter(
-            final Reflections reflections,
+            final PluginProvider pluginProvider,
             final JsonSchemaConverter jsonSchemaConverter,
             final String siteUrl,
             final String siteBaseUrl) {
-        this.reflections = reflections;
+        this.pluginProvider = pluginProvider;
         this.jsonSchemaConverter = jsonSchemaConverter;
         this.siteUrl = siteUrl == null ? SITE_URL_PLACEHOLDER : siteUrl;
         this.siteBaseUrl = siteBaseUrl == null ? SITE_BASE_URL_PLACEHOLDER : siteBaseUrl;
@@ -106,7 +106,7 @@ public class PluginConfigsJsonSchemaConverter {
         if (ConditionalRoute.class.equals(pluginType)) {
             return Map.of(CONDITIONAL_ROUTE_PROCESSOR_NAME, ConditionalRoute.class);
         }
-        return reflections.getTypesAnnotatedWith(DataPrepperPlugin.class).stream()
+        return pluginProvider.findPluginClasses(pluginType).stream()
                         .map(clazz -> clazz.getAnnotation(DataPrepperPlugin.class))
                         .filter(dataPrepperPlugin -> pluginType.equals(dataPrepperPlugin.pluginType()))
                         .collect(Collectors.toMap(
