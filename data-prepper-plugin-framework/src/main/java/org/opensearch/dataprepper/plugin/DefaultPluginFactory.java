@@ -116,8 +116,8 @@ public class DefaultPluginFactory implements PluginFactory {
         final PluginConfigObservable pluginConfigObservable = pluginConfigurationObservableFactory
                 .createDefaultPluginConfigObservable(pluginConfigurationConverter, pluginConfigurationType, pluginSetting);
 
-        Class[] scanForDIMarkers = pluginAnnotation.packagesToScanForDI();
-        BeanFactory beanFactory = pluginBeanFactoryProvider.initializePluginSpecificIsolatedContext(scanForDIMarkers);
+        Class[] markersToScanForDI = pluginAnnotation.packagesToScanForDI();
+        BeanFactory beanFactory = pluginBeanFactoryProvider.initializePluginSpecificIsolatedContext(markersToScanForDI);
 
         return new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)

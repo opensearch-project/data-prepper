@@ -64,12 +64,12 @@ class PluginBeanFactoryProvider implements Provider<BeanFactory> {
         return isolatedPluginApplicationContext.getBeanFactory();
     }
 
-    public BeanFactory initializePluginSpecificIsolatedContext(Class[] scanForDIMarkers) {
+    public BeanFactory initializePluginSpecificIsolatedContext(Class[] markersToScanForDI) {
         AnnotationConfigApplicationContext pluginDIContext = new AnnotationConfigApplicationContext();
-        if(scanForDIMarkers.length>0) {
+        if(markersToScanForDI.length>0) {
             // If packages to scan is provided in this plugin annotation, which indicates
             // that this plugin is interested in using Dependency Injection isolated for its module
-            Arrays.stream(scanForDIMarkers)
+            Arrays.stream(markersToScanForDI)
                     .map(Class::getPackageName)
                     .forEach(pluginDIContext::scan);
             pluginDIContext.refresh();
