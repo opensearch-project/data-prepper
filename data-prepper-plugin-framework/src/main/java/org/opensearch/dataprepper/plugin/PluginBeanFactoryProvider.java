@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugin;
 
-import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -65,13 +64,12 @@ class PluginBeanFactoryProvider implements Provider<BeanFactory> {
         return isolatedPluginApplicationContext.getBeanFactory();
     }
 
-
-    public BeanFactory initializePluginSpecificIsolatedContext(DataPrepperPlugin pluginAnnotation) {
+    public BeanFactory initializePluginSpecificIsolatedContext(Class[] scanForDIMarkers) {
         AnnotationConfigApplicationContext pluginDIContext = new AnnotationConfigApplicationContext();
-        if(pluginAnnotation.packagesToScanForDI().length>0) {
+        if(scanForDIMarkers.length>0) {
             // If packages to scan is provided in this plugin annotation, which indicates
             // that this plugin is interested in using Dependency Injection isolated for its module
-            Arrays.stream(pluginAnnotation.packagesToScanForDI())
+            Arrays.stream(scanForDIMarkers)
                     .map(Class::getPackageName)
                     .forEach(pluginDIContext::scan);
             pluginDIContext.refresh();
