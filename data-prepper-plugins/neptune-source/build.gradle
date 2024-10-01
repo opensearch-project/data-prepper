@@ -1,0 +1,22 @@
+dependencies {
+    implementation project(path: ':data-prepper-api')
+
+    implementation libs.commons.lang3
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'org.apache.httpcomponents:httpclient:4.5.x'
+    implementation 'com.amazonaws:amazon-neptune-sigv4-signer:3.0.1'
+
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'software.amazon.awssdk:s3'
+
+    implementation project(path: ':data-prepper-plugins:aws-plugin-api')
+    implementation project(path: ':data-prepper-plugins:buffer-common')
+    implementation project(path: ':data-prepper-plugins:http-common')
+    implementation project(path: ':data-prepper-plugins:common')
+
+    testImplementation testLibs.bundles.junit
+    testImplementation testLibs.slf4j.simple
+    testImplementation project(path: ':data-prepper-test-common')
+
+}
