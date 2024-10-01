@@ -13,6 +13,7 @@ import org.springframework.context.support.GenericApplicationContext;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+import javax.inject.Provider;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -27,7 +28,7 @@ import java.util.Objects;
  * <p><i>publicContext</i> is the root {@link ApplicationContext}</p>
  */
 @Named
-class PluginBeanFactoryProvider {
+class PluginBeanFactoryProvider implements Provider<BeanFactory> {
     private final GenericApplicationContext sharedPluginApplicationContext;
     private final GenericApplicationContext coreApplicationContext;
 
@@ -59,7 +60,13 @@ class PluginBeanFactoryProvider {
      * instead, a new isolated {@link ApplicationContext} should be created.
      * @return BeanFactory A BeanFactory that inherits from {@link PluginBeanFactoryProvider#sharedPluginApplicationContext}
      */
-    public BeanFactory initializePluginSpecificIsolatedContextCombinedWithShared(DataPrepperPlugin pluginAnnotation) {
+    public BeanFactory get() {
+        final GenericApplicationContext isolatedPluginApplicationContext = new GenericApplicationContext(sharedPluginApplicationContext);
+        return isolatedPluginApplicationContext.getBeanFactory();
+    }
+
+
+    public BeanFactory initializePluginSpecificIsolatedContext(DataPrepperPlugin pluginAnnotation) {
         AnnotationConfigApplicationContext pluginDIContext = new AnnotationConfigApplicationContext();
         if(pluginAnnotation.packagesToScanForDI().length>0) {
             // If packages to scan is provided in this plugin annotation, which indicates
