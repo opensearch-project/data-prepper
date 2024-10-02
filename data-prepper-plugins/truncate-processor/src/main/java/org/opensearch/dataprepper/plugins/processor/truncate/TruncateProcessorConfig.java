@@ -28,7 +28,7 @@ public class TruncateProcessorConfig {
 
         @JsonProperty("start_at")
         @JsonPropertyDescription("Where in the string value to start truncation. " +
-                "Default is `0`, which specifies to start truncation at the beginning of each key's value.")
+                "Default is <code>0</code>, which specifies to start truncation at the beginning of each key's value.")
         private Integer startAt;
 
         @JsonProperty("length")

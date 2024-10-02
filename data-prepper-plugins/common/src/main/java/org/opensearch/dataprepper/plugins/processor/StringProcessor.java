@@ -45,7 +45,7 @@ public class StringProcessor implements Processor<Record<Event>, Record<Event>> 
     @JsonPropertyOrder
     @JsonClassDescription("The `string_converter` processor converts a string to uppercase or lowercase.")
     public static class Configuration {
-        @JsonPropertyDescription("Whether to convert to uppercase (`true`) or lowercase (`false`).")
+        @JsonPropertyDescription("Whether to convert to uppercase (<code>true</code>) or lowercase (<code>false</code>).")
         private boolean upperCase = true;
 
         public boolean getUpperCase() {

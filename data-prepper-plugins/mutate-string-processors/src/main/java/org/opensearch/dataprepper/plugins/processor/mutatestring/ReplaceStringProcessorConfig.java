@@ -22,13 +22,13 @@ public class ReplaceStringProcessorConfig implements StringProcessorConfig<Repla
         private EventKey source;
         @JsonPropertyDescription("The substring to be replaced in the source.")
         private String from;
-        @JsonPropertyDescription("The string to be replaced for each match of `from`.")
+        @JsonPropertyDescription("The string to be replaced for each match of <code>from</code>.")
         private String to;
 
         @JsonProperty("replace_when")
-        @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
-                "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be " +
-                "run on the event. Default is `null`. All events will be processed unless otherwise stated.")
+        @JsonPropertyDescription("A Data Prepper <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
+                "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be " +
+                "run on the event. Default is <code>null</code>. All events will be processed unless otherwise stated.")
         private String replaceWhen;
 
         public EventKey getSource() {
@@ -55,7 +55,7 @@ public class ReplaceStringProcessorConfig implements StringProcessorConfig<Repla
         public Entry() {}
     }
 
-    @JsonPropertyDescription("List of entries. Valid values are `source`, `from`, and `to`, and `substitute_when`.")
+    @JsonPropertyDescription("List of entries. Valid values are <code>source</code>, <code>from</code>, and <code>to</code>, and <code>substitute_when</code>.")
     private List<Entry> entries;
 
     public List<Entry> getEntries() {

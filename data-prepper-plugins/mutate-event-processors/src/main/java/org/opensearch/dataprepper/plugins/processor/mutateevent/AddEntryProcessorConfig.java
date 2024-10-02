@@ -22,14 +22,14 @@ import java.util.stream.Stream;
 public class AddEntryProcessorConfig {
     public static class Entry {
 
-        @JsonPropertyDescription("The key of the new entry to be added. Some examples of keys include `my_key`, " +
-                "`myKey`, and `object/sub_Key`. The key can also be a format expression, for example, `${/key1}` to " +
-                "use the value of field `key1` as the key.")
+        @JsonPropertyDescription("The key of the new entry to be added. Some examples of keys include <code>my_key</code>, " +
+                "<code>myKey</code>, and <code>object/sub_Key</code>. The key can also be a format expression, for example, <code>${/key1}</code> to " +
+                "use the value of field <code>key1</code> as the key.")
         private String key;
 
         @JsonProperty("metadata_key")
         @JsonPropertyDescription("The key for the new metadata attribute. The argument must be a literal string key " +
-                "and not a JSON Pointer. Either one string key or `metadata_key` is required.")
+                "and not a JSON Pointer. Either one string key or <code>metadata_key</code> is required.")
         private String metadataKey;
 
         @JsonPropertyDescription("The value of the new entry to be added, which can be used with any of the " +
@@ -37,31 +37,31 @@ public class AddEntryProcessorConfig {
         private Object value;
 
         @JsonPropertyDescription("A format string to use as the value of the new entry, for example, " +
-                "`${key1}-${key2}`, where `key1` and `key2` are existing keys in the event. Required if neither " +
-                "`value` nor `value_expression` is specified.")
+                "<code>${key1}-${key2}</code>, where <code>key1</code> and <code>key2</code> are existing keys in the event. Required if neither" +
+                "<code>value</code> nor <code>value_expression</code> is specified.")
         private String format;
 
         @JsonProperty("value_expression")
-        @JsonPropertyDescription("An expression string to use as the value of the new entry. For example, `/key` " +
+        @JsonPropertyDescription("An expression string to use as the value of the new entry. For example, <code>/key</code> " +
                 "is an existing key in the event with a type of either a number, a string, or a Boolean. " +
                 "Expressions can also contain functions returning number/string/integer. For example, " +
-                "`length(/key)` will return the length of the key in the event when the key is a string. For more " +
-                "information about keys, see [Expression syntax](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/).")
+                "<code>length(/key)</code> will return the length of the key in the event when the key is a string. For more " +
+                "information about keys, see <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">Expression syntax</a>.")
         private String valueExpression;
 
         @JsonProperty("add_when")
-        @JsonPropertyDescription("A [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
-                "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be run on the event.")
+        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
+                "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be run on the event.")
         private String addWhen;
 
         @JsonProperty("overwrite_if_key_exists")
-        @JsonPropertyDescription("When set to `true`, the existing value is overwritten if `key` already exists " +
-                "in the event. The default value is `false`.")
+        @JsonPropertyDescription("When set to <code>true</code>, the existing value is overwritten if <code>key</code> already exists " +
+                "in the event. The default value is <code>false</code>.")
         private boolean overwriteIfKeyExists = false;
 
         @JsonProperty("append_if_key_exists")
-        @JsonPropertyDescription("When set to `true`, the existing value will be appended if a `key` already " +
-                "exists in the event. An array will be created if the existing value is not an array. Default is `false`.")
+        @JsonPropertyDescription("When set to <code>true</code>, the existing value will be appended if a <code>key</code> already " +
+                "exists in the event. An array will be created if the existing value is not an array. Default is <code>false</code>.")
         private boolean appendIfKeyExists = false;
 
         public String getKey() {

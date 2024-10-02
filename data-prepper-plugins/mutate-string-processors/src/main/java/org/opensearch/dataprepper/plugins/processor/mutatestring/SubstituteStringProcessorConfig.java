@@ -21,18 +21,18 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
     public static class Entry {
         @JsonPropertyDescription("The key to modify.")
         private EventKey source;
-        @JsonPropertyDescription("The Regex String to be replaced. Special regex characters such as `[` and `]` must " +
-                "be escaped using `\\\\` when using double quotes and `\\ ` when using single quotes. " +
-                "See [Java Patterns](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/regex/Pattern.html) " +
+        @JsonPropertyDescription("The Regex String to be replaced. Special regex characters such as <code>[</code> and <code>]</code> must " +
+                "be escaped using <code>\\\\</code> when using double quotes and <code>\\</code> when using single quotes. " +
+                "See <a href=\"https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/regex/Pattern.html\">Java Patterns</a>" +
                 "for more information.")
         private String from;
-        @JsonPropertyDescription("The String to be substituted for each match of `from`.")
+        @JsonPropertyDescription("The String to be substituted for each match of <code>from</code>.")
         private String to;
 
         @JsonProperty("substitute_when")
-        @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
-                "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be " +
-                "run on the event. Default is `null`. All events will be processed unless otherwise stated.")
+        @JsonPropertyDescription("A Data Prepper <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
+                "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be " +
+                "run on the event. Default is <code>null</code>. All events will be processed unless otherwise stated.")
         private String substituteWhen;
 
         public EventKey getSource() {
@@ -59,7 +59,7 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
         public Entry() {}
     }
 
-    @JsonPropertyDescription("List of entries. Valid values are `source`, `from`, and `to`, and `substitute_when`.")
+    @JsonPropertyDescription("List of entries. Valid values are <code>source</code>, <code>from</code>, and <code>to</code>, and <code>substitute_when</code>.")
     @NotNull
     private List<Entry> entries;
 

@@ -18,7 +18,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 public class OtelMetricsRawProcessorConfig {
 
     @JsonProperty("flatten_attributes")
-    @JsonPropertyDescription("Whether or not to flatten the `attributes` field in the JSON data.")
+    @JsonPropertyDescription("Whether or not to flatten the <code>attributes</code> field in the JSON data.")
     boolean flattenAttributesFlag = true;
 
     @JsonPropertyDescription("Whether or not to calculate histogram buckets.")

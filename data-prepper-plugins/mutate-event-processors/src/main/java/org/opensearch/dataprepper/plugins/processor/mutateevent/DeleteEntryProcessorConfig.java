@@ -30,7 +30,7 @@ public class DeleteEntryProcessorConfig {
     private List<@NotNull @NotEmpty EventKey> withKeys;
 
     @JsonProperty("delete_when")
-    @JsonPropertyDescription("Specifies under what condition the `delete_entries` processor should perform deletion. " +
+    @JsonPropertyDescription("Specifies under what condition the <code>delete_entries</code> processor should perform deletion. " +
             "Default is no condition.")
     private String deleteWhen;
 
