@@ -149,6 +149,7 @@ public class PipelineTransformer {
                         .componentType(PipelineModel.BUFFER_PLUGIN_TYPE)
                         .pipelineName(pipelineName)
                         .pluginName(bufferPluginSetting.getName())
+                        .exception(e)
                         .build();
                 pluginErrorCollector.collectPluginError(pluginError);
             }

@@ -1,0 +1,22 @@
+# this configuration file is solely for testing formatting
+test-pipeline-1:
+  source:
+    stdin:
+  sink:
+    - pipeline:
+        name: "test-pipeline-2"
+    - invalid_sink: # this plugin should fail
+test-pipeline-2:
+  source:
+    pipeline:
+      name: "test-pipeline-1"
+  sink:
+    - pipeline:
+        name: "test-pipeline-3"
+test-pipeline-3:
+  source:
+    pipeline:
+      name: "test-pipeline-2"
+  sink:
+    - file:
+        path: "/tmp/todelete.txt"
