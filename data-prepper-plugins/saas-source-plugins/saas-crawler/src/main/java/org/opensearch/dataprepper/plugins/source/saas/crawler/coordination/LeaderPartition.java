@@ -29,7 +29,8 @@ public class LeaderPartition extends EnhancedSourcePartition<LeaderProgressState
 
     public LeaderPartition(SourcePartitionStoreItem sourcePartitionStoreItem) {
         setSourcePartitionStoreItem(sourcePartitionStoreItem);
-        this.state = convertStringToPartitionProgressState(LeaderProgressState.class, sourcePartitionStoreItem.getPartitionProgressState());
+        this.state = convertStringToPartitionProgressState(LeaderProgressState.class,
+                sourcePartitionStoreItem.getPartitionProgressState());
     }
 
     @Override

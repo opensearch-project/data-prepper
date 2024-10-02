@@ -21,9 +21,10 @@ public class Crawler {
         this.sourceIterator = sourceIterator;
     }
 
-    public void crawl(SaasSourceConfig sourceConfig,
+    public long crawl(SaasSourceConfig sourceConfig,
                       long lastPollTime,
                       EnhancedSourceCoordinator coordinator) {
+        long startTime = System.currentTimeMillis();
         log.info("Starting to crawl the source");
         do {
             final List<ItemInfo> itemInfoList = new ArrayList<>();
@@ -32,6 +33,7 @@ public class Crawler {
             }
             createPartition(itemInfoList, coordinator);
         }while (sourceIterator.hasNext());
+        return startTime;
     }
 
     private void createPartition(List<ItemInfo> itemInfoList, EnhancedSourceCoordinator coordinator) {

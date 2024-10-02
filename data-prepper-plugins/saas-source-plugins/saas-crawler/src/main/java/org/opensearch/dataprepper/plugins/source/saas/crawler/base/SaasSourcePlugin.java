@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
 
 
+import lombok.Getter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -45,6 +46,7 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
 
   private EnhancedSourceCoordinator coordinator;
 
+  @Getter
   private final SaasSourceConfig sourceConfig;
 
   private Buffer<Record<Event>> buffer;
@@ -56,7 +58,7 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
                           final SaasSourceConfig sourceConfig,
                           final PluginFactory pluginFactory,
                           final AcknowledgementSetManager acknowledgementSetManager,
-                          Crawler crawler) {
+                          final Crawler crawler) {
     log.info("Create Jira Source Connector");
     this.pluginMetrics = pluginMetrics;
     this.sourceConfig = sourceConfig;
@@ -89,14 +91,13 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
   @Override
   public void stop() {
     log.info("Stop Source Connector");
+    this.executorService.shutdownNow();
   }
 
   @Override
   public boolean areAcknowledgementsEnabled() {
     return Source.super.areAcknowledgementsEnabled();
   }
-
-
 
 
   @Override
@@ -113,10 +114,6 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
   @Override
   public ByteDecoder getDecoder() {
     return Source.super.getDecoder();
-  }
-
-  public SaasSourceConfig getSourceConfig() {
-    return sourceConfig;
   }
 
 }
