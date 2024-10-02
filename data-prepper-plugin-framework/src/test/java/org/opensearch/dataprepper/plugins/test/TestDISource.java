@@ -6,9 +6,11 @@
 package org.opensearch.dataprepper.plugins.test;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.plugin.TestPluggableInterface;
 
 import java.util.Iterator;
 import java.util.List;
@@ -21,13 +23,13 @@ import java.util.stream.Stream;
         deprecatedName = "test_source_deprecated_name",
         pluginType = Source.class,
         packagesToScan = {TestDISource.class})
-public class TestDISource extends TestSource {
+public class TestDISource implements Source<Record<String>>, TestPluggableInterface {
     public static final List<Record<String>> TEST_DATA = Stream.of("TEST")
             .map(Record::new).collect(Collectors.toList());
 
     private final TestComponent testComponent;
 
-
+    @DataPrepperPluginConstructor
     public TestDISource(TestComponent testComponent) {
         this.testComponent = testComponent;
     }
@@ -42,6 +44,10 @@ public class TestDISource extends TestSource {
                     throw new RuntimeException("Timed out writing to buffer");
                 }
             }
+    }
+
+    public TestComponent getTestComponent() {
+        return testComponent;
     }
 
     @Override
