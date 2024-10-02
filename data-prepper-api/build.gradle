@@ -12,7 +12,6 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
-    implementation libs.reflections.core
     implementation libs.parquet.common
     implementation libs.commons.lang3
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
