@@ -68,6 +68,30 @@ public class StreamWorker {
         }
     }
 
+//    public void refreshConnection(final StreamPartition streamPartition) {
+//        try {
+//            binaryLogClient.disconnect();
+//        } catch (IOException e) {
+//            LOG.error("Binary log client failed to disconnect.", e);
+//            throw new RuntimeException(e);
+//        }
+//
+//        setStartBinlogPosition(streamPartition);
+//
+//        try {
+//            LOG.info("Re-connect to database to read change events.");
+//            binaryLogClient.connect();
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        } finally {
+//            try {
+//                binaryLogClient.disconnect();
+//            } catch (IOException e) {
+//                LOG.error("Binary log client failed to disconnect.", e);
+//            }
+//        }
+//    }
+
     private boolean shouldWaitForExport(final StreamPartition streamPartition) {
         if (!streamPartition.getProgressState().get().shouldWaitForExport()) {
             LOG.debug("Export is not enabled. Proceed with streaming.");

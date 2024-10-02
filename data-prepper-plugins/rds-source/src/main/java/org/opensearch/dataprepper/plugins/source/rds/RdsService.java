@@ -5,13 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.source.rds;
 
-import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
@@ -55,6 +55,7 @@ public class RdsService {
     private final PluginMetrics pluginMetrics;
     private final RdsSourceConfig sourceConfig;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final PluginConfigObservable pluginConfigObservable;
     private ExecutorService executor;
     private LeaderScheduler leaderScheduler;
     private ExportScheduler exportScheduler;
@@ -66,12 +67,14 @@ public class RdsService {
                       final EventFactory eventFactory,
                       final ClientFactory clientFactory,
                       final PluginMetrics pluginMetrics,
-                      final AcknowledgementSetManager acknowledgementSetManager) {
+                      final AcknowledgementSetManager acknowledgementSetManager,
+                      final PluginConfigObservable pluginConfigObservable) {
         this.sourceCoordinator = sourceCoordinator;
         this.eventFactory = eventFactory;
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        this.pluginConfigObservable = pluginConfigObservable;
 
         rdsClient = clientFactory.buildRdsClient();
         s3Client = clientFactory.buildS3Client();
@@ -92,6 +95,7 @@ public class RdsService {
                 new ClusterApiStrategy(rdsClient) : new InstanceApiStrategy(rdsClient);
         final DbMetadata dbMetadata = rdsApiStrategy.describeDb(sourceConfig.getDbIdentifier());
         final String s3PathPrefix = getS3PathPrefix();
+
         leaderScheduler = new LeaderScheduler(
                 sourceCoordinator, sourceConfig, s3PathPrefix, getSchemaManager(sourceConfig, dbMetadata), dbMetadata);
         runnableList.add(leaderScheduler);
@@ -108,14 +112,16 @@ public class RdsService {
         }
 
         if (sourceConfig.isStreamEnabled()) {
-            BinaryLogClient binaryLogClient = new BinlogClientFactory(sourceConfig, rdsClient, dbMetadata).create();
+            BinlogClientFactory binaryLogClientFactory = new BinlogClientFactory(sourceConfig, rdsClient, dbMetadata);
+
             if (sourceConfig.isTlsEnabled()) {
-                binaryLogClient.setSSLMode(SSLMode.REQUIRED);
+                binaryLogClientFactory.setSSLMode(SSLMode.REQUIRED);
             } else {
-                binaryLogClient.setSSLMode(SSLMode.DISABLED);
+                binaryLogClientFactory.setSSLMode(SSLMode.DISABLED);
             }
+
             streamScheduler = new StreamScheduler(
-                    sourceCoordinator, sourceConfig, s3PathPrefix, binaryLogClient, buffer, pluginMetrics, acknowledgementSetManager);
+                    sourceCoordinator, sourceConfig, s3PathPrefix, binaryLogClientFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
             runnableList.add(streamScheduler);
         }
 

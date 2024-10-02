@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
-import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
@@ -34,28 +34,32 @@ public class StreamScheduler implements Runnable {
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final RdsSourceConfig sourceConfig;
     private final String s3Prefix;
-    private final BinaryLogClient binaryLogClient;
+    private final BinlogClientFactory binlogClientFactory;
     private final Buffer<Record<Event>> buffer;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
-    private final ExecutorService executorService;
+    private final PluginConfigObservable pluginConfigObservable;
+    private StreamWorkerTaskRefresher streamWorkerTaskRefresher;
+    private ExecutorService executorService;
 
     private volatile boolean shutdownRequested = false;
 
     public StreamScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final RdsSourceConfig sourceConfig,
                            final String s3Prefix,
-                           final BinaryLogClient binaryLogClient,
+                           final BinlogClientFactory binlogClientFactory,
                            final Buffer<Record<Event>> buffer,
                            final PluginMetrics pluginMetrics,
-                           final AcknowledgementSetManager acknowledgementSetManager) {
+                           final AcknowledgementSetManager acknowledgementSetManager,
+                           final PluginConfigObservable pluginConfigObservable) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.s3Prefix = s3Prefix;
-        this.binaryLogClient = binaryLogClient;
+        this.binlogClientFactory = binlogClientFactory;
         this.buffer = buffer;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        this.pluginConfigObservable = pluginConfigObservable;
         executorService = Executors.newCachedThreadPool();
     }
 
@@ -76,10 +80,14 @@ public class StreamScheduler implements Runnable {
 
                     streamPartition = (StreamPartition) sourcePartition.get();
                     final StreamCheckpointer streamCheckpointer = new StreamCheckpointer(sourceCoordinator, streamPartition, pluginMetrics);
-                    binaryLogClient.registerEventListener(new BinlogEventListener(
-                            buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager));
-                    final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, binaryLogClient, pluginMetrics);
-                    executorService.submit(() -> streamWorker.processStream((StreamPartition) sourcePartition.get()));
+
+                    streamWorkerTaskRefresher = new StreamWorkerTaskRefresher(
+                            sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, binlogClientFactory, buffer, acknowledgementSetManager, executorService, pluginMetrics);
+
+                    streamWorkerTaskRefresher.initialize(sourceConfig);
+
+                    LOG.debug("Add plugin config observer for refreshing stream worker");
+                    pluginConfigObservable.addPluginConfigObserver(pluginConfig -> streamWorkerTaskRefresher.update((RdsSourceConfig) pluginConfig));
                 }
 
                 try {
