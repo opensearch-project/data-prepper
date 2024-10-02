@@ -60,13 +60,12 @@ class PluginBeanFactoryProvider implements Provider<BeanFactory> {
      * @return BeanFactory A BeanFactory that inherits from {@link PluginBeanFactoryProvider#sharedPluginApplicationContext}
      */
     public BeanFactory get() {
-        final GenericApplicationContext isolatedPluginApplicationContext = new GenericApplicationContext(sharedPluginApplicationContext);
-        return isolatedPluginApplicationContext.getBeanFactory();
+        return initializePluginSpecificIsolatedContext(new Class[]{});
     }
 
     public BeanFactory initializePluginSpecificIsolatedContext(Class[] markersToScanForDI) {
         AnnotationConfigApplicationContext pluginDIContext = new AnnotationConfigApplicationContext();
-        if(markersToScanForDI.length>0) {
+        if(markersToScanForDI!=null && markersToScanForDI.length>0) {
             // If packages to scan is provided in this plugin annotation, which indicates
             // that this plugin is interested in using Dependency Injection isolated for its module
             Arrays.stream(markersToScanForDI)

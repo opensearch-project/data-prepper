@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class PluginBeanFactoryProviderTest {
 
@@ -100,7 +101,7 @@ class PluginBeanFactoryProviderTest {
 
     @Test
     void testInitializePluginSpecificIsolatedContext() {
-        doReturn(context).when(context).getParent();
+        when(context.getParent()).thenReturn(context);
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
         BeanFactory beanFactory = objectUnderTest.initializePluginSpecificIsolatedContext(new Class[]{TestComponent.class});
         assertThat(beanFactory, notNullValue());
@@ -109,7 +110,7 @@ class PluginBeanFactoryProviderTest {
 
     @Test
     void testInitializePluginSpecificIsolatedContext_with_empty_array() {
-        doReturn(context).when(context).getParent();
+        when(context.getParent()).thenReturn(context);
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
         BeanFactory beanFactory = objectUnderTest.initializePluginSpecificIsolatedContext(new Class[]{});
         assertThat(beanFactory, notNullValue());

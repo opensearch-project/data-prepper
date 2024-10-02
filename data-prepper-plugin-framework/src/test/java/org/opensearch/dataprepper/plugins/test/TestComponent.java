@@ -1,7 +1,7 @@
 package org.opensearch.dataprepper.plugins.test;
 
-import org.springframework.stereotype.Component;
+import javax.inject.Named;
 
-@Component
+@Named
 public class TestComponent {
 }
