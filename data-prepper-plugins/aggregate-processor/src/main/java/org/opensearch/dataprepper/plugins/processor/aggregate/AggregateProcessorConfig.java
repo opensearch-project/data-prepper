@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -37,6 +38,7 @@ public class AggregateProcessorConfig {
     @JsonPropertyDescription("The action to be performed on each group. One of the available aggregate actions must be provided.")
     @JsonProperty("action")
     @NotNull
+    @UsesDataPrepperPlugin(pluginType = AggregateAction.class)
     private PluginModel aggregateAction;
 
     @JsonPropertyDescription("When local_mode is set to true, the aggregation is performed locally on each Data Prepper node instead of forwarding events to a specific node based on the identification_keys using a hash function. Default is false.")

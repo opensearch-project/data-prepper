@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.opensearch.dataprepper.model.annotations.DataPrepperPlugin.DEFAULT_ALTERNATE_NAME;
 import static org.opensearch.dataprepper.model.annotations.DataPrepperPlugin.DEFAULT_DEPRECATED_NAME;
@@ -58,6 +59,20 @@ public class ClasspathPluginProvider implements PluginProvider {
             return Optional.empty();
         }
         return Optional.ofNullable((Class<? extends T>) supportedTypesMap.get(pluginType));
+    }
+
+    @Override
+    public <T> Set<Class<? extends T>> findPluginClasses(Class<T> pluginType) {
+        if (nameToSupportedTypeToPluginType == null) {
+            nameToSupportedTypeToPluginType = scanForPlugins();
+        }
+
+        return nameToSupportedTypeToPluginType.values().stream()
+                .flatMap(supportedTypeToPluginType ->
+                        supportedTypeToPluginType.entrySet().stream()
+                                .filter(entry -> pluginType.equals(entry.getKey()))
+                                .flatMap(entry -> Stream.of((Class<? extends T>) entry.getValue())))
+                .collect(Collectors.toSet());
     }
 
     private Map<String, Map<Class<?>, Class<?>>> scanForPlugins() {

@@ -10,6 +10,10 @@ import com.github.victools.jsonschema.generator.Module;
 import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugin.PluginProvider;
 import org.opensearch.dataprepper.schemas.module.CustomJacksonModule;
 
 import java.util.Collections;
@@ -20,15 +24,19 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+@ExtendWith(MockitoExtension.class)
 class JsonSchemaConverterTest {
+    @Mock
+    private PluginProvider pluginProvider;
 
-    public JsonSchemaConverter createObjectUnderTest(final List<Module> modules) {
-        return new JsonSchemaConverter(modules);
+    public JsonSchemaConverter createObjectUnderTest(final List<Module> modules, final PluginProvider pluginProvider) {
+        return new JsonSchemaConverter(modules, pluginProvider);
     }
 
     @Test
     void testConvertIntoJsonSchemaWithDefaultModules() throws JsonProcessingException {
-        final JsonSchemaConverter jsonSchemaConverter = createObjectUnderTest(Collections.emptyList());
+        final JsonSchemaConverter jsonSchemaConverter = createObjectUnderTest(
+                Collections.emptyList(), pluginProvider);
         final ObjectNode jsonSchemaNode = jsonSchemaConverter.convertIntoJsonSchema(
                 SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, TestConfig.class);
         assertThat(jsonSchemaNode, instanceOf(ObjectNode.class));
@@ -44,7 +52,8 @@ class JsonSchemaConverterTest {
     @Test
     void testConvertIntoJsonSchemaWithCustomJacksonModule() throws JsonProcessingException {
         final JsonSchemaConverter jsonSchemaConverter = createObjectUnderTest(
-                Collections.singletonList(new CustomJacksonModule()));
+                Collections.singletonList(new CustomJacksonModule()),
+                pluginProvider);
         final ObjectNode jsonSchemaNode = jsonSchemaConverter.convertIntoJsonSchema(
                 SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, TestConfig.class);
         assertThat(jsonSchemaNode, instanceOf(ObjectNode.class));
