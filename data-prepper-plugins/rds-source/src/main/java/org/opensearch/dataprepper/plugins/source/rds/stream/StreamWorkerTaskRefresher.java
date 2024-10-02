@@ -27,7 +27,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
 
     private static final Logger LOG = LoggerFactory.getLogger(StreamWorkerTaskRefresher.class);
     static final String CREDENTIALS_CHANGED = "credentialsChanged";
-    static final String EXECUTOR_REFRESH_ERRORS = "executorRefreshErrors";
+    static final String TASK_REFRESH_ERRORS = "streamWorkerTaskRefreshErrors";
 
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final StreamPartition streamPartition;
@@ -38,7 +38,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final Counter credentialsChangeCounter;
-    private final Counter executorRefreshErrorsCounter;
+    private final Counter taskRefreshErrorsCounter;
 
     private ExecutorService executorService;
     private RdsSourceConfig currentSourceConfig;
@@ -62,10 +62,23 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
         this.binlogClientFactory = binlogClientFactory;
         this.executorService = executorService;
         this.credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
-        this.executorRefreshErrorsCounter = pluginMetrics.counter(EXECUTOR_REFRESH_ERRORS);
+        this.taskRefreshErrorsCounter = pluginMetrics.counter(TASK_REFRESH_ERRORS);
     }
 
-    public void initialize(final RdsSourceConfig sourceConfig) {
+    public static StreamWorkerTaskRefresher create(final EnhancedSourceCoordinator sourceCoordinator,
+                                                   final StreamPartition streamPartition,
+                                                   final StreamCheckpointer streamCheckpointer,
+                                                   final String s3Prefix,
+                                                   final BinlogClientFactory binlogClientFactory,
+                                                   final Buffer<Record<Event>> buffer,
+                                                   final AcknowledgementSetManager acknowledgementSetManager,
+                                                   final ExecutorService executorService,
+                                                   final PluginMetrics pluginMetrics) {
+        return new StreamWorkerTaskRefresher(sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix,
+                binlogClientFactory, buffer, acknowledgementSetManager, executorService, pluginMetrics);
+    }
+
+    public void initialize(RdsSourceConfig sourceConfig) {
         currentSourceConfig = sourceConfig;
         refreshTask(sourceConfig);
     }
@@ -85,7 +98,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
 
                 currentSourceConfig = sourceConfig;
             } catch (Exception e) {
-                executorRefreshErrorsCounter.increment();
+                taskRefreshErrorsCounter.increment();
                 LOG.error("Refreshing stream worker failed", e);
             }
         }
@@ -94,7 +107,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
 
     private void refreshTask(RdsSourceConfig sourceConfig) {
         final BinaryLogClient binaryLogClient = binlogClientFactory.create();
-        binaryLogClient.registerEventListener(new BinlogEventListener(
+        binaryLogClient.registerEventListener(BinlogEventListener.create(
                 buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager));
         final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, binaryLogClient, pluginMetrics);
         executorService.submit(() -> streamWorker.processStream(streamPartition));

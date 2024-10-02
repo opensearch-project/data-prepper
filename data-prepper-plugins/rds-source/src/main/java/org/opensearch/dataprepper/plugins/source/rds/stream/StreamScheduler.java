@@ -81,7 +81,7 @@ public class StreamScheduler implements Runnable {
                     streamPartition = (StreamPartition) sourcePartition.get();
                     final StreamCheckpointer streamCheckpointer = new StreamCheckpointer(sourceCoordinator, streamPartition, pluginMetrics);
 
-                    streamWorkerTaskRefresher = new StreamWorkerTaskRefresher(
+                    streamWorkerTaskRefresher = StreamWorkerTaskRefresher.create(
                             sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, binlogClientFactory, buffer, acknowledgementSetManager, executorService, pluginMetrics);
 
                     streamWorkerTaskRefresher.initialize(sourceConfig);

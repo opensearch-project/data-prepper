@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
-import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +16,8 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObserver;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
@@ -29,7 +30,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.awaitility.Awaitility.await;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -48,7 +50,7 @@ class StreamSchedulerTest {
     private RdsSourceConfig sourceConfig;
 
     @Mock
-    private BinaryLogClient binaryLogClient;
+    private BinlogClientFactory binlogClientFactory;
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -58,6 +60,12 @@ class StreamSchedulerTest {
 
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
+
+    @Mock
+    private PluginConfigObservable pluginConfigObservable;
+
+    @Mock
+    private StreamWorkerTaskRefresher streamWorkerTaskRefresher;
 
     private String s3Prefix;
     private StreamScheduler objectUnderTest;
@@ -79,7 +87,7 @@ class StreamSchedulerTest {
         Thread.sleep(100);
         executorService.shutdownNow();
 
-        verifyNoInteractions(binaryLogClient);
+        verifyNoInteractions(binlogClientFactory, pluginConfigObservable);
     }
 
     @Test
@@ -87,15 +95,12 @@ class StreamSchedulerTest {
         final StreamPartition streamPartition = mock(StreamPartition.class);
         when(sourceCoordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).thenReturn(Optional.of(streamPartition));
 
-        StreamWorker streamWorker = mock(StreamWorker.class);
-        doNothing().when(streamWorker).processStream(streamPartition);
-        when(sourceConfig.getStream().getNumWorkers()).thenReturn(1);
-
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> {
-            try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class)) {
-                streamWorkerMockedStatic.when(() -> StreamWorker.create(sourceCoordinator, binaryLogClient, pluginMetrics))
-                        .thenReturn(streamWorker);
+            try (MockedStatic<StreamWorkerTaskRefresher> streamWorkerTaskRefresherMockedStatic = mockStatic(StreamWorkerTaskRefresher.class)) {
+                streamWorkerTaskRefresherMockedStatic.when(() -> StreamWorkerTaskRefresher.create(eq(sourceCoordinator), eq(streamPartition), any(StreamCheckpointer.class),
+                                eq(s3Prefix), eq(binlogClientFactory), eq(buffer), eq(acknowledgementSetManager), any(ExecutorService.class), eq(pluginMetrics)))
+                        .thenReturn(streamWorkerTaskRefresher);
                 objectUnderTest.run();
             }
 
@@ -105,7 +110,8 @@ class StreamSchedulerTest {
         Thread.sleep(100);
         executorService.shutdownNow();
 
-        verify(streamWorker).processStream(streamPartition);
+        verify(streamWorkerTaskRefresher).initialize(sourceConfig);
+        verify(pluginConfigObservable).addPluginConfigObserver(any(PluginConfigObserver.class));
     }
 
     @Test
@@ -120,6 +126,7 @@ class StreamSchedulerTest {
     }
 
     private StreamScheduler createObjectUnderTest() {
-        return new StreamScheduler(sourceCoordinator, sourceConfig, s3Prefix, binaryLogClient, buffer, pluginMetrics, acknowledgementSetManager);
+        return new StreamScheduler(
+                sourceCoordinator, sourceConfig, s3Prefix, binlogClientFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
     }
 }
