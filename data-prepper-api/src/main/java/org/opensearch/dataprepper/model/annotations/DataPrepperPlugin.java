@@ -80,7 +80,7 @@ public @interface DataPrepperPlugin {
      * <p>
      * The package names that spring context scans will be picked up by these marker classes.
      *
-     * @return Array of packages to scan
+     * @return Array of classes to use for package scan.
      * @since 2.2
      */
     Class[] packagesToScanForDI() default {};
