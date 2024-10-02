@@ -35,7 +35,7 @@ public class ObfuscationProcessorConfig {
     @JsonProperty("target")
     @JsonPropertyDescription("The new field in which to store the obfuscated value. " +
             "This leaves the original source field unchanged. " +
-            "When no `target` is provided, the source field updates with the obfuscated value.")
+            "When no <code>target</code> is provided, the source field updates with the obfuscated value.")
     private String target;
 
     @JsonProperty("action")
@@ -52,7 +52,7 @@ public class ObfuscationProcessorConfig {
     private List<String> tagsOnMatchFailure;
 
     @JsonProperty("single_word_only")
-    @JsonPropertyDescription("When set to `true`, a word boundary `\b` is added to the pattern, " +
+    @JsonPropertyDescription("When set to <code>true</code>, a word boundary <code>\b</code> is added to the pattern, " +
             "which causes obfuscation to be applied only to words that are standalone in the input text. " +
             "By default, it is false, meaning obfuscation patterns are applied to all occurrences. " +
             "Can be used for Data Prepper 2.8 or greater.")

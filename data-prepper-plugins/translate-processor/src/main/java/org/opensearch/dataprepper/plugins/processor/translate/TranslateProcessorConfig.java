@@ -23,12 +23,12 @@ import java.util.Objects;
 public class TranslateProcessorConfig {
 
     @JsonProperty("file")
-    @JsonPropertyDescription("Points to the file that contains mapping configurations. For more information, see [file](#file).")
+    @JsonPropertyDescription("Points to the file that contains mapping configurations. For more information, see <a href=\"#file\">file</a>.")
     @Valid
     private FileParameterConfig fileParameterConfig;
 
     @JsonProperty("mappings")
-    @JsonPropertyDescription("Defines inline mappings. For more information, see [mappings](#mappings).")
+    @JsonPropertyDescription("Defines inline mappings. For more information, see <a href=\"#mappings\">mappings</a>.")
     @Valid
     private List<MappingsParameterConfig> mappingsParameterConfigs = new ArrayList<>();
 

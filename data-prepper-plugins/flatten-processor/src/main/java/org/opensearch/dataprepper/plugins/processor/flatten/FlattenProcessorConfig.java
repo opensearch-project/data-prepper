@@ -24,39 +24,39 @@ public class FlattenProcessorConfig {
 
     @NotNull
     @JsonProperty("source")
-    @JsonPropertyDescription("The source key on which to perform the operation. If set to an empty string (`\"\"`), " +
+    @JsonPropertyDescription("The source key on which to perform the operation. If set to an empty string (<code>\"\"</code>), " +
             "then the processor uses the root of the event as the source.")
     private String source;
 
     @NotNull
     @JsonProperty("target")
-    @JsonPropertyDescription("The target key to put into the flattened fields. If set to an empty string (`\"\"`), " +
+    @JsonPropertyDescription("The target key to put into the flattened fields. If set to an empty string (<code>\"\"</code>) " +
             "then the processor uses the root of the event as the target.")
     private String target;
 
     @JsonProperty("remove_processed_fields")
-    @JsonPropertyDescription("When `true`, the processor removes all processed fields from the source. Default is `false`.")
+    @JsonPropertyDescription("When <code>true</code>, the processor removes all processed fields from the source. Default is <code>false</code>.")
     private boolean removeProcessedFields = false;
 
     @JsonProperty("remove_list_indices")
-    @JsonPropertyDescription("When `true`, the processor converts the fields from the source map into lists and " +
-            "puts the lists into the target field. Default is `false`.")
+    @JsonPropertyDescription("When <code>true</code>, the processor converts the fields from the source map into lists and " +
+            "puts the lists into the target field. Default is <code>false</code>.")
     private boolean removeListIndices = false;
 
     @JsonProperty("remove_brackets")
-    @JsonPropertyDescription("When `true`, the processor also removes brackets around the indices. Can only be " +
-            "set to `true` when `remove_list_indices` is `true`.")
+    @JsonPropertyDescription("When <code>true</code>, the processor also removes brackets around the indices. Can only be " +
+            "set to <code>true</code> when <code>remove_list_indices</code> is <code>true</code>.")
     private boolean removeBrackets = false;
 
     @JsonProperty("exclude_keys")
     @JsonPropertyDescription("The keys from the source field that should be excluded from processing. " +
-            "Default is an empty list (`[]`).")
+            "Default is an empty list (<code>[]</code>).")
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     @JsonProperty("flatten_when")
-    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
-            "such as `/some-key == \"test\"'`, that determines whether the `flatten` processor will be run on the " +
-            "event. Default is `null`, which means that all events will be processed unless otherwise stated.")
+    @JsonPropertyDescription("A Data Prepper <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
+            "such as <code>/some-key == \"test\"'</code>, that determines whether the <code>flatten</code> processor will be run on the " +
+            "event. Default is <code>null</code>, which means that all events will be processed unless otherwise stated.")
     private String flattenWhen;
 
     @JsonProperty("tags_on_failure")

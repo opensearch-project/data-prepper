@@ -38,7 +38,7 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     private int scale = 0;
 
     @JsonProperty("convert_when")
-    @JsonPropertyDescription("Specifies a condition using a [Data Prepper expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/) for performing the convert_entry_type operation. If specified, the convert_entry_type operation runs only when the expression evaluates to true.")
+    @JsonPropertyDescription("Specifies a condition using a <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">Data Prepper expression</a> for performing the convert_entry_type operation. If specified, the convert_entry_type operation runs only when the expression evaluates to true.")
     private String convertWhen;
 
     @JsonProperty("null_values")
