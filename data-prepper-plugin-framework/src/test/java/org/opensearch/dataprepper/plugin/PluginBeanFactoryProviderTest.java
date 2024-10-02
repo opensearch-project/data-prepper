@@ -68,7 +68,7 @@ class PluginBeanFactoryProviderTest {
         final PluginBeanFactoryProvider beanFactoryProvider = createObjectUnderTest();
 
         verify(context).getParent();
-        assertThat(beanFactoryProvider.get(), is(instanceOf(BeanFactory.class)));
+        assertThat(beanFactoryProvider.createPluginSpecificContext(new Class[]{}), is(instanceOf(BeanFactory.class)));
     }
 
     @Test
@@ -76,8 +76,8 @@ class PluginBeanFactoryProviderTest {
         doReturn(context).when(context).getParent();
 
         final PluginBeanFactoryProvider beanFactoryProvider = createObjectUnderTest();
-        final BeanFactory isolatedBeanFactoryA = beanFactoryProvider.get();
-        final BeanFactory isolatedBeanFactoryB = beanFactoryProvider.get();
+        final BeanFactory isolatedBeanFactoryA = beanFactoryProvider.createPluginSpecificContext(new Class[]{});
+        final BeanFactory isolatedBeanFactoryB = beanFactoryProvider.createPluginSpecificContext(new Class[]{});
 
         verify(context).getParent();
         assertThat(isolatedBeanFactoryA, not(sameInstance(isolatedBeanFactoryB)));
@@ -100,19 +100,19 @@ class PluginBeanFactoryProviderTest {
     }
 
     @Test
-    void testInitializePluginSpecificIsolatedContext() {
+    void testCreatePluginSpecificContext() {
         when(context.getParent()).thenReturn(context);
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
-        BeanFactory beanFactory = objectUnderTest.initializePluginSpecificIsolatedContext(new Class[]{TestComponent.class});
+        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{TestComponent.class});
         assertThat(beanFactory, notNullValue());
         assertThat(beanFactory.getBean(TestComponent.class), notNullValue());
     }
 
     @Test
-    void testInitializePluginSpecificIsolatedContext_with_empty_array() {
+    void testCreatePluginSpecificContext_with_empty_array() {
         when(context.getParent()).thenReturn(context);
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
-        BeanFactory beanFactory = objectUnderTest.initializePluginSpecificIsolatedContext(new Class[]{});
+        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{});
         assertThat(beanFactory, notNullValue());
         assertThrows(NoSuchBeanDefinitionException.class, ()->beanFactory.getBean(TestComponent.class));
     }

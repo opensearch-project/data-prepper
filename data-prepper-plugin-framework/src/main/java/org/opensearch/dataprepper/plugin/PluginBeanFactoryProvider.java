@@ -12,7 +12,6 @@ import org.springframework.context.support.GenericApplicationContext;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import javax.inject.Provider;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -27,7 +26,7 @@ import java.util.Objects;
  * <p><i>publicContext</i> is the root {@link ApplicationContext}</p>
  */
 @Named
-class PluginBeanFactoryProvider implements Provider<BeanFactory> {
+class PluginBeanFactoryProvider {
     private final GenericApplicationContext sharedPluginApplicationContext;
     private final GenericApplicationContext coreApplicationContext;
 
@@ -59,16 +58,12 @@ class PluginBeanFactoryProvider implements Provider<BeanFactory> {
      * instead, a new isolated {@link ApplicationContext} should be created.
      * @return BeanFactory A BeanFactory that inherits from {@link PluginBeanFactoryProvider#sharedPluginApplicationContext}
      */
-    public BeanFactory get() {
-        return initializePluginSpecificIsolatedContext(new Class[]{});
-    }
-
-    public BeanFactory initializePluginSpecificIsolatedContext(Class[] markersToScanForDI) {
+    public BeanFactory createPluginSpecificContext(Class[] markersToScan) {
         AnnotationConfigApplicationContext isolatedPluginApplicationContext = new AnnotationConfigApplicationContext();
-        if(markersToScanForDI!=null && markersToScanForDI.length>0) {
+        if(markersToScan !=null && markersToScan.length>0) {
             // If packages to scan is provided in this plugin annotation, which indicates
             // that this plugin is interested in using Dependency Injection isolated for its module
-            Arrays.stream(markersToScanForDI)
+            Arrays.stream(markersToScan)
                     .map(Class::getPackageName)
                     .forEach(isolatedPluginApplicationContext::scan);
             isolatedPluginApplicationContext.refresh();
