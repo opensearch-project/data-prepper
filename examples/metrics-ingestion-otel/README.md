@@ -14,7 +14,7 @@ To run:
 
 1. Run `docker compose up`
 2. Wait for everything to come up.
-3. Log into OpenSearch Dashboards at <http://localhost:5601>.
+3. Log into OpenSearch Dashboards at <http://localhost:5601> using username `admin` and password `Developer@123`.
 4. Create an Index Pattern for index `otel_metrics` choosing `time` as the time field.
 5. Inspect the data in the Discovery plugin.
 
