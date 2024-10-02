@@ -15,12 +15,10 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.LeaderPartition;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.LeaderScheduler;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.PartitionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -78,7 +76,7 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
     boolean isPartitionCreated = coordinator.createPartition(new LeaderPartition());
     log.info("Leader partition creation status: {}", isPartitionCreated);
 
-    Runnable leaderScheduler = new LeaderScheduler(coordinator, this);
+    Runnable leaderScheduler = new LeaderScheduler(coordinator, this, crawler);
     this.executorService.submit(leaderScheduler);
     //Register worker threaders
     for(int i=0; i< sourceConfig.DEFAULT_NUMBER_OF_WORKERS; i++) {
@@ -86,21 +84,6 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
       this.executorService.submit(new Thread(sourceItemWorker));
     }
   }
-
-  public void init(LeaderPartition leaderPartition) {
-    Objects.requireNonNull(buffer);
-
-    log.info("Crawler bean instance {}", crawler);
-
-    crawler.crawl(sourceConfig);
-
-    //this.executorService.submit(this.createMonitoringLoop(connectorId, connectorConfiguration, buffer));
-
-    log.debug("Update initialization state");
-    LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
-    leaderProgressState.setInitialized(true);
-  }
-
 
 
   @Override
@@ -130,6 +113,10 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
   @Override
   public ByteDecoder getDecoder() {
     return Source.super.getDecoder();
+  }
+
+  public SaasSourceConfig getSourceConfig() {
+    return sourceConfig;
   }
 
 }

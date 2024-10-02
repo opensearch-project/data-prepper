@@ -8,9 +8,7 @@ package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * An SAAS source partition represents a chunk of work.
@@ -31,14 +29,12 @@ public class SaasSourcePartition extends EnhancedSourcePartition<SaasWorkerProgr
         this.projectName = parts[1];
         this.issueType = parts[2];
         setSourcePartitionStoreItem(sourcePartitionStoreItem);
-        String[] keySplits = sourcePartitionStoreItem.getSourcePartitionKey().split("\\|");
         this.state = convertStringToPartitionProgressState(SaasWorkerProgressState.class, sourcePartitionStoreItem.getPartitionProgressState());
     }
 
-    public SaasSourcePartition(final Optional<SaasWorkerProgressState> state,
-                               String sourceName, String projectName, String issueType,
-                               List<String> itemIds) {
-        this.state = state.orElse(null);
+    public SaasSourcePartition(final SaasWorkerProgressState state,
+                               String sourceName, String projectName, String issueType) {
+        this.state = state;
         this.sourceName = sourceName;
         this.projectName = projectName;
         this.issueType = issueType;
@@ -51,7 +47,7 @@ public class SaasSourcePartition extends EnhancedSourcePartition<SaasWorkerProgr
 
     @Override
     public String getPartitionKey() {
-        return sourceName + "|" + projectName + "|" + issueType;
+        return sourceName + "|" + projectName + "|" + issueType + "|" +state;
     }
 
     @Override

@@ -4,16 +4,23 @@ import org.opensearch.dataprepper.plugins.source.saas.crawler.base.ItemInfo;
 import org.springframework.stereotype.Component;
 
 import java.util.Iterator;
+import java.util.UUID;
 
 @Component
 public class JiraSourceIterator implements Iterator<ItemInfo> {
+
+    int itemCounter = 0;
+
     @Override
     public boolean hasNext() {
-        return false;
+        return itemCounter<10;
     }
 
     @Override
     public ItemInfo next() {
-        return null;
+        ItemInfo itemInfo = new ItemInfo();
+        itemInfo.setId(UUID.randomUUID().toString());
+        itemCounter++;
+        return itemInfo;
     }
 }

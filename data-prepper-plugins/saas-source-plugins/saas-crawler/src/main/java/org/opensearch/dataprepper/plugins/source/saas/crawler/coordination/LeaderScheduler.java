@@ -2,12 +2,14 @@ package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination;
 
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourcePlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class LeaderScheduler implements Runnable {
@@ -30,17 +32,17 @@ public class LeaderScheduler implements Runnable {
 
     private LeaderPartition leaderPartition;
 
-    private SaasSourcePlugin sourcePlugin;
+    private final SaasSourcePlugin sourcePlugin;
 
-    public LeaderScheduler(EnhancedSourceCoordinator coordinator, SaasSourcePlugin sourcePlugin) {
-        this(coordinator, DEFAULT_LEASE_INTERVAL);
-        this.sourcePlugin = sourcePlugin;
-    }
+    private final Crawler crawler;
 
-    LeaderScheduler(EnhancedSourceCoordinator coordinator,
-                    Duration leaseInterval) {
+    public LeaderScheduler(EnhancedSourceCoordinator coordinator,
+                           SaasSourcePlugin sourcePlugin,
+                           Crawler crawler) {
         this.coordinator = coordinator;
-        this.leaseInterval = leaseInterval;
+        this.leaseInterval =  DEFAULT_LEASE_INTERVAL;
+        this.sourcePlugin = sourcePlugin;
+        this.crawler = crawler;
     }
 
     @Override
@@ -58,18 +60,19 @@ public class LeaderScheduler implements Runnable {
                     }
                 }
                 // Once owned, run Normal LEADER node process.
-                // May want to quit this scheduler if streaming is not required
+                // May want to quit this scheduler if we don't want to monitor future changes
                 if (leaderPartition != null) {
+                    long lastPollTime = 0L;
                     LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
                     if (!leaderProgressState.isInitialized()) {
                         LOG.debug("The service is not been initialized");
-                        sourcePlugin.init(leaderPartition);
+                        init();
                     } else {
-                        // The initialization process will populate that value, otherwise, get from state
-                        /*if (streamArns == null) {
-                            streamArns = leaderProgressState.getStreamArns();
-                        }*/
+                        lastPollTime = leaderProgressState.getLastPollTime();
                     }
+
+                    //Start crawling and create child partitions
+                    crawler.crawl(sourcePlugin.getSourceConfig(), lastPollTime, coordinator);
                 }
 
             } catch (Exception e) {
@@ -93,6 +96,19 @@ public class LeaderScheduler implements Runnable {
         if (leaderPartition != null) {
             coordinator.giveUpPartition(leaderPartition);
         }
+    }
+
+    private LeaderProgressState init() {
+        LOG.info("Initializing Leader Scheduler");
+        //TODO: make this generic
+        List<String> projects = List.of("project1", "project2");
+        projects.forEach(project -> coordinator.createPartition((new GlobalState(project, Optional.of(Map.of("p1", "v1"))))));
+
+        LOG.debug("Update initialization state");
+        LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
+        leaderProgressState.setLastPollTime(0L);
+        leaderProgressState.setInitialized(true);
+        return leaderProgressState;
     }
 
 }
