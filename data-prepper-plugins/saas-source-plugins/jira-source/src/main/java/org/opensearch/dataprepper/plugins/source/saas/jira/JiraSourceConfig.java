@@ -1,11 +1,14 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.Setter;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourceConfig;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,13 +44,13 @@ public class JiraSourceConfig implements SaasSourceConfig {
      * Optional Inclusion patterns for filtering some tickets
      */
     @JsonProperty("inclusion_patterns")
-    private String inclusionPatterns;
+    private List<String> inclusionPatterns;
 
     /**
      * Optional Exclusion patterns for excluding some tickets
      */
     @JsonProperty("exclusion_patterns")
-    private String exclusionPatterns;
+    private List<String> exclusionPatterns;
 
     /**
      * Optional Status filter to ingest the tickets
@@ -68,5 +71,14 @@ public class JiraSourceConfig implements SaasSourceConfig {
     @JsonProperty("backoff_time")
     private Duration backOff = DEFAULT_BACKOFF_MILLIS;
 
+
+    /**
+     * This field aims at holding all the additional properties which are not specified above.
+     *
+     * <p>Needs to be a Map of String to Object to ensure that the value could be a nested structure
+     * as well.
+     */
+    @Setter(AccessLevel.NONE)
+    Map<String, Object> additionalProperties = new HashMap<>();
 
 }
