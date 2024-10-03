@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `add_entries` processor adds entries to an event.")
+@JsonClassDescription("The <code>add_entries</code> processor adds entries to an event.")
 public class AddEntryProcessorConfig {
     public static class Entry {
 
@@ -29,7 +29,7 @@ public class AddEntryProcessorConfig {
 
         @JsonProperty("metadata_key")
         @JsonPropertyDescription("The key for the new metadata attribute. The argument must be a literal string key " +
-                "and not a JSON Pointer. Either one string key or <code>metadata_key</code> is required.")
+                "and not a JSON Pointer. Either one of <code>key</code> or <code>metadata_key</code> is required.")
         private String metadataKey;
 
         @JsonPropertyDescription("The value of the new entry to be added, which can be used with any of the " +

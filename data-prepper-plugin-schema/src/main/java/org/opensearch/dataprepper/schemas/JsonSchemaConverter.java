@@ -1,5 +1,7 @@
 package org.opensearch.dataprepper.schemas;
 
+import com.fasterxml.classmate.TypeBindings;
+import com.fasterxml.classmate.types.ResolvedObjectType;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -12,12 +14,14 @@ import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigPart;
 import com.github.victools.jsonschema.generator.SchemaGeneratorGeneralConfigPart;
 import com.github.victools.jsonschema.generator.SchemaVersion;
+import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
 import org.opensearch.dataprepper.plugin.PluginProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -44,6 +48,7 @@ public class JsonSchemaConverter {
         overrideTargetTypeWithUsesDataPrepperPlugin(scopeSchemaGeneratorConfigPart);
         resolveDefaultValueFromJsonProperty(scopeSchemaGeneratorConfigPart);
         overrideDataPrepperPluginTypeAttribute(configBuilder.forTypesInGeneral(), schemaVersion, optionPreset);
+        resolveDataPrepperTypes(scopeSchemaGeneratorConfigPart);
 
         final SchemaGeneratorConfig config = configBuilder.build();
         final SchemaGenerator generator = new SchemaGenerator(config);
@@ -101,6 +106,15 @@ public class JsonSchemaConverter {
         scopeSchemaGeneratorConfigPart.withDefaultResolver(field -> {
             final JsonProperty annotation = field.getAnnotationConsideringFieldAndGetter(JsonProperty.class);
             return annotation == null || annotation.defaultValue().isEmpty() ? null : annotation.defaultValue();
+        });
+    }
+
+    private void resolveDataPrepperTypes(final SchemaGeneratorConfigPart<FieldScope> scopeSchemaGeneratorConfigPart) {
+        scopeSchemaGeneratorConfigPart.withTargetTypeOverridesResolver(field -> {
+            if(field.getType().getErasedType().equals(EventKey.class)) {
+                return Collections.singletonList(ResolvedObjectType.create(String.class, TypeBindings.emptyBindings(), null, null));
+            }
+            return Collections.singletonList(field.getType());
         });
     }
 }

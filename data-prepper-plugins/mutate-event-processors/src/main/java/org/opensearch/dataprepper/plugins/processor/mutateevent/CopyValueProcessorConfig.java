@@ -17,8 +17,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `copy_values` processor copies values within an event and is a [mutate event]" +
-        "(https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/mutate-event/) processor.")
+@JsonClassDescription("The <code>copy_values</code> processor copies values within an event to other fields within the event.")
 public class CopyValueProcessorConfig {
     public static class Entry {
         @NotEmpty

@@ -19,8 +19,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `list_to_map` processor converts a list of objects from an event, " +
-        "where each object contains a `key` field, into a map of target keys.")
+@JsonClassDescription("The <code>list_to_map</code> processor converts a list of objects from an event, " +
+        "where each object contains a <code>key</code> field, into a map of target keys.")
 public class ListToMapProcessorConfig {
     enum FlattenedElement {
         FIRST("first"),
@@ -89,9 +89,9 @@ public class ListToMapProcessorConfig {
     private FlattenedElement flattenedElement = FlattenedElement.FIRST;
 
     @JsonProperty("list_to_map_when")
-    @JsonPropertyDescription("A Data Prepper <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
             "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be " +
-            "run on the event. Default is <code>null</code>. All events will be processed unless otherwise stated.")
+            "run on the event. By default, all events will be processed unless otherwise stated.")
     private String listToMapWhen;
 
     @JsonProperty("tags_on_failure")

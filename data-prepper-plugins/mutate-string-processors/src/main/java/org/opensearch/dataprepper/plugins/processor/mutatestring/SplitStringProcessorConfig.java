@@ -19,14 +19,13 @@ import org.opensearch.dataprepper.model.event.EventKey;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `split_string` processor splits a field into an array using a delimiting character and is a " +
-        "[mutate string](https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/mutate-string-processors#mutate-string-processors) processor.")
+@JsonClassDescription("The <code>split_string</code> processor splits a field into an array using a delimiting character.")
 public class SplitStringProcessorConfig implements StringProcessorConfig<SplitStringProcessorConfig.Entry> {
     public static class Entry {
 
         @NotEmpty
         @NotNull
-        @JsonPropertyDescription("The key to split.")
+        @JsonPropertyDescription("The key name of the field to split.")
         private EventKey source;
 
         @JsonProperty("delimiter_regex")
@@ -75,7 +74,7 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
         return entries;
     }
 
-    @JsonPropertyDescription("List of entries. Valid values are <code>source</code>, <code>delimiter</code>, and <code>delimiter_regex</code>.")
+    @JsonPropertyDescription("List of entries. Each entry defines a split.")
     @NotNull
     private List<@Valid Entry> entries;
 
