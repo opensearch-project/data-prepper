@@ -10,6 +10,7 @@ import com.github.victools.jsonschema.generator.Module;
 import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.event.EventKey;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -22,6 +23,7 @@ import java.util.List;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,6 +66,18 @@ class JsonSchemaConverterTest {
         assertThat(propertiesNode.has("custom_test_attribute"), is(true));
     }
 
+    @Test
+    void testConvertIntoJsonSchemaWithEventKey() throws JsonProcessingException {
+        final JsonSchemaConverter jsonSchemaConverter = createObjectUnderTest(Collections.emptyList(), pluginProvider);
+        final ObjectNode jsonSchemaNode = jsonSchemaConverter.convertIntoJsonSchema(
+                SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, TestConfig.class);
+        final JsonNode propertiesNode = jsonSchemaNode.at("/properties");
+        assertThat(propertiesNode, instanceOf(ObjectNode.class));
+        assertThat(propertiesNode.has("testAttributeEventKey"), is(equalTo(true)));
+        assertThat(propertiesNode.get("testAttributeEventKey"), is(notNullValue()));
+        assertThat(propertiesNode.get("testAttributeEventKey").get("type"), is(equalTo(TextNode.valueOf("string"))));
+    }
+
     @JsonClassDescription("test config")
     static class TestConfig {
         private String testAttributeWithGetter;
@@ -77,5 +91,7 @@ class JsonSchemaConverterTest {
         public String getTestAttributeWithGetter() {
             return testAttributeWithGetter;
         }
+
+        private EventKey testAttributeEventKey;
     }
 }

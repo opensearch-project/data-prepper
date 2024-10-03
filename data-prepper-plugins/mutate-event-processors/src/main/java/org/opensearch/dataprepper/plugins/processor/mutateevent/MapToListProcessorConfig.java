@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `map_to_list` processor converts a map of key-value pairs to a list of objects. " +
+@JsonClassDescription("The <code>map_to_list</code> processor converts a map of key-value pairs to a list of objects. " +
         "Each object contains the key and value in separate fields.")
 public class MapToListProcessorConfig {
     private static final String DEFAULT_KEY_NAME = "key";
@@ -45,9 +45,9 @@ public class MapToListProcessorConfig {
     private String valueName = DEFAULT_VALUE_NAME;
 
     @JsonProperty("map_to_list_when")
-    @JsonPropertyDescription("A Data Prepper <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
             "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will " +
-            "be run on the event. Default is <code>null</code>. All events will be processed unless otherwise stated.")
+            "be run on the event. By default, all events will be processed unless otherwise stated.")
     private String mapToListWhen;
 
     @JsonProperty("exclude_keys")
