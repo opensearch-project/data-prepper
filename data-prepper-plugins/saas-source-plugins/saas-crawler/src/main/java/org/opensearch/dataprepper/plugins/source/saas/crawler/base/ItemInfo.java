@@ -6,6 +6,8 @@ import lombok.Setter;
 
 @Setter
 @Getter
-public class ItemInfo {
+public abstract class ItemInfo {
     String id;
+
+    public abstract String getKeyAttributes();
 }

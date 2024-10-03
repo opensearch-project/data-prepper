@@ -1,9 +1,9 @@
-package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination;
+package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition;
 
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.LeaderProgressState;
 
-import java.util.ArrayList;
 import java.util.Optional;
 
 /**
@@ -48,4 +48,7 @@ public class LeaderPartition extends EnhancedSourcePartition<LeaderProgressState
         return Optional.of(state);
     }
 
+    public void setLeaderProgressState(LeaderProgressState state) {
+        this.state.setLastPollTime(state.getLastPollTime());
+    }
 }

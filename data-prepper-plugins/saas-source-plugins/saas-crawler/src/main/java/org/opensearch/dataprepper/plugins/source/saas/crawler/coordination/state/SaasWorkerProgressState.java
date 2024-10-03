@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
+package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;

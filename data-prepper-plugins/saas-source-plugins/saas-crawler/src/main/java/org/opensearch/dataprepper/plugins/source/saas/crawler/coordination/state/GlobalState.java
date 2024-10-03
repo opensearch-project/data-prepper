@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination;
+package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state;
 
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
@@ -52,10 +52,5 @@ public class GlobalState extends EnhancedSourcePartition<Map<String, Object>> {
         }
         return Optional.empty();
     }
-
-    public void setProgressState(Map<String, Object> state) {
-        this.state = state;
-    }
-
 
 }

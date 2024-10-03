@@ -18,7 +18,7 @@ public class JiraSourceIterator implements Iterator<ItemInfo> {
 
     @Override
     public ItemInfo next() {
-        ItemInfo itemInfo = new ItemInfo();
+        ItemInfo itemInfo = new JiraItemInfo();
         itemInfo.setId(UUID.randomUUID().toString());
         itemCounter++;
         return itemInfo;

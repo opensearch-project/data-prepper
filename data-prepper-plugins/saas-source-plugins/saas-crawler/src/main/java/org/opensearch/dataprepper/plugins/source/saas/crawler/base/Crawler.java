@@ -1,6 +1,8 @@
 package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
 
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.SaasSourcePartition;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.SaasWorkerProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -37,13 +39,17 @@ public class Crawler {
     }
 
     private void createPartition(List<ItemInfo> itemInfoList, EnhancedSourceCoordinator coordinator) {
+        if(itemInfoList.isEmpty()) {
+            return;
+        }
+        String partitionKey = itemInfoList.get(0).getKeyAttributes();
         List<String> itemIds = itemInfoList.stream().map(ItemInfo::getId).collect(Collectors.toList());
         SaasWorkerProgressState state = new SaasWorkerProgressState();
         state.setItemIds(itemIds);
         state.setExportStartTime(System.currentTimeMillis());
         state.setLoadedItems(itemInfoList.size());
         log.info("Creating a new partition");
-        SaasSourcePartition sourcePartition = new SaasSourcePartition(state, "jira", "project1", "ISSUE");
+        SaasSourcePartition sourcePartition = new SaasSourcePartition(state, partitionKey);
         coordinator.createPartition(sourcePartition);
     }
 

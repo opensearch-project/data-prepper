@@ -15,9 +15,10 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.LeaderPartition;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.LeaderScheduler;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.scheduler.LeaderScheduler;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.PartitionFactory;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.scheduler.WorkerScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,8 +83,8 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
     this.executorService.submit(leaderScheduler);
     //Register worker threaders
     for(int i=0; i< sourceConfig.DEFAULT_NUMBER_OF_WORKERS; i++) {
-      SourceItemWorker sourceItemWorker = new SourceItemWorker(buffer, coordinator, sourceConfig);
-      this.executorService.submit(new Thread(sourceItemWorker));
+      WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig);
+      this.executorService.submit(new Thread(workerScheduler));
     }
   }
 

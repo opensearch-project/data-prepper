@@ -3,12 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
+package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition;
 
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.SaasWorkerProgressState;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * An SAAS source partition represents a chunk of work.
@@ -18,26 +20,19 @@ public class SaasSourcePartition extends EnhancedSourcePartition<SaasWorkerProgr
 
     public static final String PARTITION_TYPE = "SAAS-WORKER";
     private final SaasWorkerProgressState state;
-    private final String sourceName;
-    private final String projectName;
-    private final String issueType;
+    private final String partitionKey;
 
     public SaasSourcePartition(final SourcePartitionStoreItem sourcePartitionStoreItem) {
-        String partitionKey = sourcePartitionStoreItem.getSourcePartitionKey();
-        String[] parts = partitionKey.split("|");
-        this.sourceName = parts[0];
-        this.projectName = parts[1];
-        this.issueType = parts[2];
+        this.partitionKey = sourcePartitionStoreItem.getSourcePartitionKey();
+
         setSourcePartitionStoreItem(sourcePartitionStoreItem);
         this.state = convertStringToPartitionProgressState(SaasWorkerProgressState.class, sourcePartitionStoreItem.getPartitionProgressState());
     }
 
     public SaasSourcePartition(final SaasWorkerProgressState state,
-                               String sourceName, String projectName, String issueType) {
+                               String partitionKey) {
         this.state = state;
-        this.sourceName = sourceName;
-        this.projectName = projectName;
-        this.issueType = issueType;
+        this.partitionKey = partitionKey;
     }
 
     @Override
@@ -47,7 +42,7 @@ public class SaasSourcePartition extends EnhancedSourcePartition<SaasWorkerProgr
 
     @Override
     public String getPartitionKey() {
-        return sourceName + "|" + projectName + "|" + issueType + "|" +state;
+        return this.partitionKey + "|" + UUID.randomUUID();
     }
 
     @Override

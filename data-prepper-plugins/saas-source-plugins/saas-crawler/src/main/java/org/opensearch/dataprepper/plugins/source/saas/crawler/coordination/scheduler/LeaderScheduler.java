@@ -1,10 +1,12 @@
-package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination;
+package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.scheduler;
 
-import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourcePlugin;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.GlobalState;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.LeaderProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,8 +77,8 @@ public class LeaderScheduler implements Runnable {
                     //Start crawling and create child partitions
                     long updatedPollTime = crawler.crawl(sourcePlugin.getSourceConfig(), lastPollTime, coordinator);
                     leaderProgressState.setLastPollTime(updatedPollTime);
-                    coordinator.saveProgressStateForPartition(
-                            new LeaderPartition((SourcePartitionStoreItem) leaderProgressState), null);
+                    leaderPartition.setLeaderProgressState(leaderProgressState);
+                    coordinator.saveProgressStateForPartition(leaderPartition, null);
                 }
 
             } catch (Exception e) {
