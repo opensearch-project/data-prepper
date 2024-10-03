@@ -1,9 +1,9 @@
 
 ## Peer Forwarder
-An HTTP service which performs peer forwarding of `Event` between Data Prepper nodes for aggregation. Currently, supported by `aggregate`, `service_map_stateful`, `otel_trace_raw` processors.
+An HTTP service which performs peer forwarding of `Event` between Data Prepper nodes for aggregation. Currently, supported by `aggregate`, `service_map`, `otel_traces` processors.
 
 Peer Forwarder groups events based on the identification keys provided the processors.
-For `service_map_stateful` and `otel_trace_raw` it's `traceId` by default and can not be configured.
+For `service_map` and `otel_traces` it's `traceId` by default and can not be configured.
 It's configurable for `aggregate` processor using `identification_keys` configuration option. You can find more information about identification keys [here](https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/aggregate-processor#identification_keys).
 
 ---
