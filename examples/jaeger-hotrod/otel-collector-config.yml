@@ -1,18 +1,18 @@
 receivers:
-  jaeger:
+  otlp:
     protocols:
-      grpc:
+      http:
+        endpoint: otel-collector:4318
 
 exporters:
   otlp/2:
     endpoint: data-prepper:21890
     tls:
       insecure: true
-      insecure_skip_verify: true
   logging:
 
 service:
   pipelines:
     traces:
-      receivers: [jaeger]
+      receivers: [otlp]
       exporters: [logging, otlp/2]
