@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
+package org.opensearch.dataprepper.plugins.source.saas.crawler.model;
 
 
 import lombok.Builder;

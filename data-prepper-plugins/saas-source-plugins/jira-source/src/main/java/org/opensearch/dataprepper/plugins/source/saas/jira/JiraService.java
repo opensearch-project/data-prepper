@@ -8,7 +8,7 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import org.apache.http.HttpHeaders;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.base.ItemInfo;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.saas.jira.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.saas.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.saas.jira.models.SearchResults;
@@ -18,9 +18,11 @@ import org.opensearch.dataprepper.plugins.source.saas.jira.utils.JiraContentType
 import org.slf4j.Logger;
 import org.springframework.util.CollectionUtils;
 
+import javax.inject.Named;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +38,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ACCEPT;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ALL;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.Application_JSON;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.BAD_REQUEST_EXCEPTION;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.BAD_RESPONSE;
@@ -44,11 +47,13 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.CONTENT_TYPE;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.DELIMITER;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ERR_MSG;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EXPAND;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EXPAND_FIELD;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EXPAND_VALUE;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.FIFTY;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.GREATER_THAN_EQUALS;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ISSUE_KEY;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ISSUE_KEY_EQUALS;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ISSUE_TYPE_ID;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.JQL_FIELD;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.KEY;
@@ -62,6 +67,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_ID;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_KEY;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_NAME;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.RATE_LIMIT;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.REST_API_SEARCH;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.RETRY_ATTEMPT;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.START_AT;
@@ -78,7 +84,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
  * The type Jira service.
  */
 
-
+@Named
 public class JiraService {
 
   private static final Logger log = org.slf4j.LoggerFactory.getLogger(JiraService.class);
@@ -299,6 +305,53 @@ public class JiraService {
     }
     log.info("Created issue filter criteria JiraQl query: {}", jiraQl);
     return jiraQl;
+  }
+
+  /**
+   * Gets issue.
+   *
+   * @param issueKey      the item info
+   * @param configuration the configuration
+   * @return the issue
+   */
+  public IssueBean getIssue(String issueKey, JiraConfiguration configuration) {
+    log.info("Started to fetch issue information");
+    SearchResults searchResults = new SearchResults();
+    Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
+    boolean shouldContinue = Boolean.TRUE;
+    while (shouldContinue) {
+      try {
+        //TODO: fix the api call
+        searchResults = getIssueSearchApi(configuration, ISSUE_KEY_EQUALS + issueKey);
+        shouldContinue = Boolean.FALSE;
+      } catch (BadRequestException ex) {
+          if(ex instanceof BadRequestException){
+          String waitTime = String.valueOf(waitTimeQueue.remove());
+          log.info("Retrying search api with issue, resulted in exception: {}", ex.getMessage());
+          handleThrottling(waitTime, Boolean.TRUE);
+        } else {
+          log.info("issueKey: {}", issueKey);
+          log.error("Skipping document as maximum retry attempts exhausted.Error: {} ", ex.getMessage());
+          throw new BadRequestException(ex.getMessage(), ex);
+        }
+      }
+    }
+    if (Objects.nonNull(searchResults.getIssues())) {
+      return searchResults.getIssues().get(0);
+    } else {
+      return new IssueBean();
+    }
+  }
+
+  /**
+   * Gets issue search api.
+   *
+   * @param configuration the configuration
+   * @return the issue search api
+   */
+  public SearchResults getIssueSearchApi(JiraConfiguration configuration, String jql) {
+    //TODO: Fill this method body
+    return null;
   }
 
   /**

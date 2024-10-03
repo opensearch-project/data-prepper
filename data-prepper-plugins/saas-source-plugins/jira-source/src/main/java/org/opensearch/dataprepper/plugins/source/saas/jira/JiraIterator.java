@@ -1,37 +1,38 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira;
 
-import org.opensearch.dataprepper.plugins.source.saas.crawler.base.ItemInfo;
+import lombok.Setter;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
+import javax.inject.Named;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-@Component
-public class JiraSourceIterator implements Iterator<ItemInfo> {
+@Named
+public class JiraIterator implements Iterator<ItemInfo> {
 
-    private static final Logger log = LoggerFactory.getLogger(JiraSourceIterator.class);
+    private static final Logger log = LoggerFactory.getLogger(JiraIterator.class);
     private Queue<ItemInfo> itemInfoQueue;
-    private final JiraSourceConfig sourceConfig;
+    @Setter
+    private SaasSourceConfig sourceConfig;
     private final JiraService service;
-    private long jiraChangeLogToken;
+    private long lastPollTime;
     private boolean firstTime = true;
     private List<Future<Boolean>> futureList = new ArrayList<>();
     private ExecutorService crawlerTaskExecutor = Executors.newFixedThreadPool(10);
     public static final int HAS_NEXT_TIMEOUT = 7200;
 
-    public JiraSourceIterator(final JiraService service, final JiraSourceConfig sourceConfig) {
-        this.sourceConfig = sourceConfig;
+    public JiraIterator(final JiraService service) {
         this.service = service;
     }
 
@@ -93,7 +94,7 @@ public class JiraSourceIterator implements Iterator<ItemInfo> {
 
     private void startCrawlerThreads() {
         futureList.add(crawlerTaskExecutor.submit(
-                () -> service.getJiraEntities(JiraConfiguration.of(sourceConfig), jiraChangeLogToken, itemInfoQueue,
+                () -> service.getJiraEntities(JiraConfiguration.of((JiraSourceConfig) sourceConfig), lastPollTime, itemInfoQueue,
                         futureList, crawlerTaskExecutor), false));
     }
 
@@ -109,6 +110,7 @@ public class JiraSourceIterator implements Iterator<ItemInfo> {
      */
     public void initialize(long jiraChangeLogToken) {
         this.itemInfoQueue = new ConcurrentLinkedQueue<>();
-        this.jiraChangeLogToken = jiraChangeLogToken;
+        this.lastPollTime = jiraChangeLogToken;
     }
+
 }

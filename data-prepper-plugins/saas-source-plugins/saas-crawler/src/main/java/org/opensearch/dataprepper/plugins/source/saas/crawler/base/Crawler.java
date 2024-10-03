@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.SaasSourcePartition;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.SaasWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -17,24 +18,27 @@ public class Crawler {
     private static final Logger log = LoggerFactory.getLogger(Crawler.class);
     private static final int maxItemsPerPage = 2;
 
-    private final Iterator<ItemInfo> sourceIterator;
+    private final SaasClient client;
 
-    public Crawler(Iterator<ItemInfo> sourceIterator) {
-        this.sourceIterator = sourceIterator;
+    public Crawler(SaasClient client) {
+        this.client = client;
     }
 
     public long crawl(SaasSourceConfig sourceConfig,
                       long lastPollTime,
                       EnhancedSourceCoordinator coordinator) {
         long startTime = System.currentTimeMillis();
+        client.setConfiguration(sourceConfig);
+        client.setLastPollTime(lastPollTime);
+        Iterator<ItemInfo> itemInfoIterator = client.listItems();
         log.info("Starting to crawl the source");
         do {
             final List<ItemInfo> itemInfoList = new ArrayList<>();
-            for (int i = 0; i < maxItemsPerPage && sourceIterator.hasNext(); i++) {
-                itemInfoList.add(sourceIterator.next());
+            for (int i = 0; i < maxItemsPerPage && itemInfoIterator.hasNext(); i++) {
+                itemInfoList.add(itemInfoIterator.next());
             }
             createPartition(itemInfoList, coordinator);
-        }while (sourceIterator.hasNext());
+        }while (itemInfoIterator.hasNext());
         return startTime;
     }
 

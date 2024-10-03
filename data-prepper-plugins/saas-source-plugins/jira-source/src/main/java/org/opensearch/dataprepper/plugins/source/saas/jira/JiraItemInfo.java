@@ -1,9 +1,8 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira;
 
-import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.base.ItemInfo;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 
 @Setter
 @Getter
