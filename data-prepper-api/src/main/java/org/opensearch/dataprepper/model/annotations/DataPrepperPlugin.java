@@ -72,4 +72,16 @@ public @interface DataPrepperPlugin {
      * @since 1.2
      */
     Class<?> pluginConfigurationType() default PluginSetting.class;
+
+    /**
+     * Optional Packages to scan for Data Prepper DI components.
+     * Plugins provide this list if they want to use Dependency Injection in its module.
+     * Providing this value, implicitly assumes and initiates plugin specific isolated ApplicationContext.
+     * <p>
+     * The package names that spring context scans will be picked up by these marker classes.
+     *
+     * @return Array of classes to use for package scan.
+     * @since 2.2
+     */
+    Class[] packagesToScan() default {};
 }
