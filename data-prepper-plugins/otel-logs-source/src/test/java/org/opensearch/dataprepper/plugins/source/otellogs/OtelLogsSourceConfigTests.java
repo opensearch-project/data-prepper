@@ -35,6 +35,7 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceC
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PORT;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PROTO_REFLECTION_SERVICE;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.REQUEST_TIMEOUT;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.RETRY_INFO;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_CERT_FILE;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_FILE;
@@ -323,7 +324,7 @@ class OtelLogsSourceConfigTests {
         settings.put(SSL_KEY_FILE, sslKeyFile);
         settings.put(THREAD_COUNT, threadCount);
         settings.put(MAX_CONNECTION_COUNT, maxConnectionCount);
-        settings.put(OTelLogsSourceConfig.RETRY_INFO, new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(100)));
+        settings.put(RETRY_INFO, new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(100)));
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 }

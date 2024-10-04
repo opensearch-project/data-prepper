@@ -28,7 +28,7 @@ source:
 
 ### Retry Information
 
-Data Prepper gives clients a hint on how long to wait for the next request in case backpressure builds up. The retry information is implemented as exponential backoff, with a max delay of `retry_info.max_delay`.
+Data Prepper replies with a `RetryInfo` specifying how long to wait for the next request in case backpressure builds up. The retry information is implemented as exponential backoff, with a max delay of `retry_info.max_delay`.
 
 ```yaml
 source:
@@ -36,7 +36,6 @@ source:
     retry_info:
       min_delay: 1000ms # defaults to 100ms
       max_delay: 5s     # defaults to 2s
-
 ```
 
 ### SSL

@@ -45,7 +45,7 @@ For more information on migrating from Data Prepper 1.x to Data Prepper 2.x, see
 
 ### Retry Information
 
-Data Prepper gives clients a hint on how long to wait for the next request in case backpressure builds up. The retry information is implemented as exponential backoff, with a max delay of `retry_info.max_delay`.
+Data Prepper replies with a `RetryInfo` specifying how long to wait for the next request in case backpressure builds up. The retry information is implemented as exponential backoff, with a max delay of `retry_info.max_delay`.
 
 ```yaml
 source:

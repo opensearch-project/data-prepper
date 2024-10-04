@@ -61,6 +61,9 @@ public class OTelTraceSource implements Source<Record<Object>> {
     static final String SERVER_CONNECTIONS = "serverConnections";
     private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
 
+    // Default RetryInfo with minimum 100ms and maximum 2s
+    private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
+
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
@@ -209,12 +212,9 @@ public class OTelTraceSource implements Source<Record<Object>> {
     }
 
     private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
-        Duration defaultMinDelay = Duration.ofMillis(100);
-        Duration defaultMaxDelay = Duration.ofMillis(2000);
-
         RetryInfoConfig retryInfo = oTelTraceSourceConfig.getRetryInfo() != null
                 ? oTelTraceSourceConfig.getRetryInfo()
-                : new RetryInfoConfig(defaultMinDelay, defaultMaxDelay);
+                : DEFAULT_RETRY_INFO;
 
         return new GrpcRequestExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
     }

@@ -114,7 +114,7 @@ class OTelMetricsSourceRetryInfoTest {
                 .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
         final StatusRuntimeException statusRuntimeException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportMetricsRequest()));
 
-        RetryInfo retryInfo = extracRetryInfoFromStatusRuntimeException(statusRuntimeException);
+        RetryInfo retryInfo = extractRetryInfoFromStatusRuntimeException(statusRuntimeException);
         assertThat(Duration.ofNanos(retryInfo.getRetryDelay().getNanos()).toMillis(), equalTo(100L));
     }
 
@@ -125,7 +125,7 @@ class OTelMetricsSourceRetryInfoTest {
         assertThat(Duration.ofNanos(retryInfo.getRetryDelay().getNanos()).toMillis(), equalTo(200L));
     }
 
-    private RetryInfo extracRetryInfoFromStatusRuntimeException(StatusRuntimeException e) throws InvalidProtocolBufferException {
+    private RetryInfo extractRetryInfoFromStatusRuntimeException(StatusRuntimeException e) throws InvalidProtocolBufferException {
         com.google.rpc.Status status = com.google.rpc.Status.parseFrom(e.getTrailers().get(Metadata.Key.of("grpc-status-details-bin", Metadata.BINARY_BYTE_MARSHALLER)));
         return RetryInfo.parseFrom(status.getDetails(0).getValue());
     }
@@ -141,7 +141,7 @@ class OTelMetricsSourceRetryInfoTest {
             e = assertThrows(StatusRuntimeException.class, () -> client.export(createExportMetricsRequest()));
         }
 
-        return extracRetryInfoFromStatusRuntimeException(e);
+        return extractRetryInfoFromStatusRuntimeException(e);
     }
 
     private ExportMetricsServiceRequest createExportMetricsRequest() {

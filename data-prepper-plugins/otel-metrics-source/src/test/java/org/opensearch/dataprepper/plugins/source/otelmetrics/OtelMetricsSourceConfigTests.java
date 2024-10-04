@@ -321,7 +321,6 @@ class OtelMetricsSourceConfigTests {
 
         final OTelMetricsSourceConfig otelTraceSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
 
-
         RetryInfoConfig retryInfo = otelTraceSourceConfig.getRetryInfo();
         assertThat(retryInfo.getMaxDelay(), equalTo(100));
         assertThat(retryInfo.getMinDelay(), equalTo(50));
