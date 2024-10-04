@@ -34,11 +34,14 @@ public class MultiLineJsonCodecTest {
     private final HttpData serializedRequestBadEmptyNewLines = HttpData.ofUtf8("\n\n\n\n\n\n\n     \n");
     private final HttpData serializedRequestBadInvalidJson = HttpData.ofUtf8("{\"text\":");
 
-    private final MultiLineJsonCodec multiLineJsonCodec = new MultiLineJsonCodec();
+    private MultiLineJsonCodec createObjectUnderTest() {
+        return new MultiLineJsonCodec();
+    }
 
     @Test
     public void testParseSuccess() throws IOException {
         // When
+        MultiLineJsonCodec multiLineJsonCodec = createObjectUnderTest();
         List<Map<String, Object>> res = multiLineJsonCodec.parse(serializedRequest);
 
         // Then
@@ -55,8 +58,8 @@ public class MultiLineJsonCodecTest {
     @Test
     public void testParseSuccess2() throws IOException {
         // When
+        MultiLineJsonCodec multiLineJsonCodec = createObjectUnderTest();
         List<Map<String, Object>> res = multiLineJsonCodec.parse(serializedRequestMultipleRows);
-
 
         // Then
         assertEquals(10, res.size());
@@ -75,6 +78,7 @@ public class MultiLineJsonCodecTest {
 
     @Test
     public void testParseFailure() {
+        MultiLineJsonCodec multiLineJsonCodec = createObjectUnderTest();
         assertThrows(IOException.class, () -> multiLineJsonCodec.parse(serializedRequestBad));
         assertThrows(IOException.class, () -> multiLineJsonCodec.parse(serializedRequestBadEmpty));
         assertThrows(IOException.class, () -> multiLineJsonCodec.parse(serializedRequestBadEmptyNewLines));

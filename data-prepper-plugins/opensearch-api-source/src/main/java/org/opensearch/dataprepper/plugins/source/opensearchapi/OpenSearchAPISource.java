@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 @DataPrepperPlugin(name = "opensearch_api", pluginType = Source.class, pluginConfigurationType = OpenSearchAPISourceConfig.class)
 public class OpenSearchAPISource extends BaseHttpSource<Record<Event>> {
     private static final String SOURCE_NAME = "OpenSearch API";
+    private static final String HTTP_HEALTH_CHECK_PATH = "/";
 
     @DataPrepperPluginConstructor
     public OpenSearchAPISource(final OpenSearchAPISourceConfig sourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
@@ -31,5 +32,10 @@ public class OpenSearchAPISource extends BaseHttpSource<Record<Event>> {
     @Override
     public BaseHttpService getHttpService(final int bufferWriteTimeoutInMillis, final Buffer<Record<Event>> buffer, final PluginMetrics pluginMetrics) {
         return new OpenSearchAPIService(bufferWriteTimeoutInMillis, buffer, pluginMetrics);
+    }
+
+    @Override
+    public String getHttpHealthCheckPath() {
+        return HTTP_HEALTH_CHECK_PATH;
     }
 }

@@ -143,7 +143,7 @@ public abstract class BaseHttpSource<T extends Record<?>> implements Source<T> {
 
             if (sourceConfig.hasHealthCheckService()) {
                 logger.info("{} source health check is enabled", sourceName);
-                sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
+                sb.service(getHttpHealthCheckPath(), HealthCheckService.builder().longPolling(0).build());
             }
 
             server = sb.build();
@@ -191,4 +191,7 @@ public abstract class BaseHttpSource<T extends Record<?>> implements Source<T> {
 
     public abstract BaseHttpService getHttpService(int bufferTimeoutInMillis, Buffer<T> buffer, PluginMetrics pluginMetrics);
 
+    public String getHttpHealthCheckPath() {
+        return HTTP_HEALTH_CHECK_PATH;
+    }
 }
