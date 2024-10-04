@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.http.BaseHttpServerConfig;
 public class OpenSearchAPISourceConfig extends BaseHttpServerConfig {
 
     static final String DEFAULT_ENDPOINT_URI = "/";
-    static final int DEFAULT_PORT = 9202;
+    static final int DEFAULT_PORT = 9200;
 
     @Override
     public int getDefaultPort() {
