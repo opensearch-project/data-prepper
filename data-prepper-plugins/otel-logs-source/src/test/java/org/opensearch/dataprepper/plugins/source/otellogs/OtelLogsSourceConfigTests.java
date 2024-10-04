@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -34,6 +35,7 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceC
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PORT;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PROTO_REFLECTION_SERVICE;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.REQUEST_TIMEOUT;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.RETRY_INFO;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_CERT_FILE;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_FILE;
@@ -276,6 +278,29 @@ class OtelLogsSourceConfigTests {
         assertThat(oTelLogsSourceConfig.isPathValid(), equalTo(false));
     }
 
+    @Test
+    void testRetryInfoConfig() {
+        final PluginSetting customPathPluginSetting = completePluginSettingForOtelLogsSource(
+                DEFAULT_REQUEST_TIMEOUT_MS,
+                DEFAULT_PORT,
+                null,
+                false,
+                false,
+                false,
+                true,
+                TEST_KEY_CERT,
+                "",
+                DEFAULT_THREAD_COUNT,
+                DEFAULT_MAX_CONNECTION_COUNT);
+
+        final OTelLogsSourceConfig oTelLogsSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelLogsSourceConfig.class);
+
+
+        RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo();
+        assertThat(retryInfo.getMaxDelay(), equalTo(100));
+        assertThat(retryInfo.getMinDelay(), equalTo(50));
+    }
+
     private PluginSetting completePluginSettingForOtelLogsSource(final int requestTimeoutInMillis,
                                                                  final int port,
                                                                  final String path,
@@ -299,6 +324,7 @@ class OtelLogsSourceConfigTests {
         settings.put(SSL_KEY_FILE, sslKeyFile);
         settings.put(THREAD_COUNT, threadCount);
         settings.put(MAX_CONNECTION_COUNT, maxConnectionCount);
+        settings.put(RETRY_INFO, new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(100)));
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 }

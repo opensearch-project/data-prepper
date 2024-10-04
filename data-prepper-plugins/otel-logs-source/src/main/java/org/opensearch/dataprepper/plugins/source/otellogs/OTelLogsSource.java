@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
+import com.linecorp.armeria.common.grpc.GrpcExceptionHandlerFunction;
 import com.linecorp.armeria.server.encoding.DecodingService;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
@@ -43,6 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -54,14 +56,16 @@ public class OTelLogsSource implements Source<Record<Object>> {
     private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
     static final String SERVER_CONNECTIONS = "serverConnections";
 
+    // Default RetryInfo with minimum 100ms and maximum 2s
+    private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
+
     private final OTelLogsSourceConfig oTelLogsSourceConfig;
     private final String pipelineName;
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
-    private final GrpcRequestExceptionHandler requestExceptionHandler;
+    private final ByteDecoder byteDecoder;
     private Server server;
-    private ByteDecoder byteDecoder;
 
     @DataPrepperPluginConstructor
     public OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig,
@@ -80,7 +84,6 @@ public class OTelLogsSource implements Source<Record<Object>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-        this.requestExceptionHandler = new GrpcRequestExceptionHandler(pluginMetrics);
         this.byteDecoder = new OTelLogsDecoder();
     }
 
@@ -110,7 +113,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
                     .builder()
                     .useClientTimeoutHeader(false)
                     .useBlockingTaskExecutor(true)
-                    .exceptionHandler(requestExceptionHandler);
+                    .exceptionHandler(createGrpExceptionHandler());
 
             final MethodDescriptor<ExportLogsServiceRequest, ExportLogsServiceResponse> methodDescriptor = LogsServiceGrpc.getExportMethod();
             final String oTelLogsSourcePath = oTelLogsSourceConfig.getPath();
@@ -203,6 +206,14 @@ public class OTelLogsSource implements Source<Record<Object>> {
             }
         }
         LOG.info("Stopped otel_logs_source.");
+    }
+
+    private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
+        RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo() != null
+                ? oTelLogsSourceConfig.getRetryInfo()
+                : DEFAULT_RETRY_INFO;
+
+        return new GrpcRequestExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
     }
 
     private List<ServerInterceptor> getAuthenticationInterceptor() {

@@ -41,12 +41,12 @@ public class GrpcRequestExceptionHandler implements GoogleGrpcExceptionHandlerFu
     private final Counter internalServerErrorCounter;
     private final GrpcRetryInfoCalculator retryInfoCalculator;
 
-    public GrpcRequestExceptionHandler(final PluginMetrics pluginMetrics) {
+    public GrpcRequestExceptionHandler(final PluginMetrics pluginMetrics, Duration retryInfoMinDelay, Duration retryInfoMaxDelay) {
         requestTimeoutsCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         badRequestsCounter = pluginMetrics.counter(BAD_REQUESTS);
         requestsTooLargeCounter = pluginMetrics.counter(REQUESTS_TOO_LARGE);
         internalServerErrorCounter = pluginMetrics.counter(INTERNAL_SERVER_ERROR);
-        retryInfoCalculator = new GrpcRetryInfoCalculator(Duration.ofMillis(100), Duration.ofSeconds(2));
+        retryInfoCalculator = new GrpcRetryInfoCalculator(retryInfoMinDelay, retryInfoMaxDelay);
     }
 
     @Override

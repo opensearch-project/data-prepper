@@ -32,6 +32,7 @@ public class OTelTraceSourceConfig {
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
     static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
     static final String COMPRESSION = "compression";
+    static final String RETRY_INFO = "retry_info";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_PORT = 21890;
     static final int DEFAULT_THREAD_COUNT = 200;
@@ -106,6 +107,9 @@ public class OTelTraceSourceConfig {
 
     @JsonProperty("max_request_length")
     private ByteCount maxRequestLength;
+
+    @JsonProperty(RETRY_INFO)
+    private RetryInfoConfig retryInfo;
 
     @AssertTrue(message = "path should start with /")
     boolean isPathValid() {
@@ -227,5 +231,9 @@ public class OTelTraceSourceConfig {
 
     public ByteCount getMaxRequestLength() {
         return maxRequestLength;
+    }
+
+    public RetryInfoConfig getRetryInfo() {
+        return retryInfo;
     }
 }

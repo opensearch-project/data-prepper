@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -303,6 +304,28 @@ class OtelMetricsSourceConfigTests {
         assertThat(oTelMetricsSourceConfig.isPathValid(), equalTo(false));
     }
 
+    @Test
+    void testRetryInfoConfig() {
+        final PluginSetting customPathPluginSetting = completePluginSettingForOtelMetricsSource(
+                DEFAULT_REQUEST_TIMEOUT_MS,
+                DEFAULT_PORT,
+                null,
+                false,
+                false,
+                false,
+                true,
+                TEST_KEY_CERT,
+                "",
+                DEFAULT_THREAD_COUNT,
+                DEFAULT_MAX_CONNECTION_COUNT);
+
+        final OTelMetricsSourceConfig otelTraceSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+
+        RetryInfoConfig retryInfo = otelTraceSourceConfig.getRetryInfo();
+        assertThat(retryInfo.getMaxDelay(), equalTo(100));
+        assertThat(retryInfo.getMinDelay(), equalTo(50));
+    }
+
     private PluginSetting completePluginSettingForOtelMetricsSource(final int requestTimeoutInMillis,
                                                                     final int port,
                                                                     final String path,
@@ -326,6 +349,7 @@ class OtelMetricsSourceConfigTests {
         settings.put(OTelMetricsSourceConfig.SSL_KEY_FILE, sslKeyFile);
         settings.put(OTelMetricsSourceConfig.THREAD_COUNT, threadCount);
         settings.put(OTelMetricsSourceConfig.MAX_CONNECTION_COUNT, maxConnectionCount);
+        settings.put(OTelMetricsSourceConfig.RETRY_INFO, new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(100)));
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 }

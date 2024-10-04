@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
+import com.linecorp.armeria.common.grpc.GrpcExceptionHandlerFunction;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
@@ -45,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -60,12 +62,14 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
     private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
     static final String SERVER_CONNECTIONS = "serverConnections";
 
+    // Default RetryInfo with minimum 100ms and maximum 2s
+    private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
+
     private final OTelMetricsSourceConfig oTelMetricsSourceConfig;
     private final String pipelineName;
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
-    private final GrpcRequestExceptionHandler requestExceptionHandler;
     private Server server;
     private final ByteDecoder byteDecoder;
 
@@ -84,7 +88,6 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-        this.requestExceptionHandler = new GrpcRequestExceptionHandler(pluginMetrics);
         this.byteDecoder = new OTelMetricDecoder();
     }
 
@@ -112,7 +115,8 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
                     .useClientTimeoutHeader(false)
-                    .useBlockingTaskExecutor(true).exceptionHandler(requestExceptionHandler);
+                    .useBlockingTaskExecutor(true)
+                    .exceptionHandler(createGrpExceptionHandler());
 
             final MethodDescriptor<ExportMetricsServiceRequest, ExportMetricsServiceResponse> methodDescriptor = MetricsServiceGrpc.getExportMethod();
             final String oTelMetricsSourcePath = oTelMetricsSourceConfig.getPath();
@@ -222,6 +226,14 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
             }
         }
         LOG.info("Stopped otel_metrics_source.");
+    }
+
+    private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
+        RetryInfoConfig retryInfo = oTelMetricsSourceConfig.getRetryInfo() != null
+                ? oTelMetricsSourceConfig.getRetryInfo()
+                : DEFAULT_RETRY_INFO;
+
+        return new GrpcRequestExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
     }
 
     private List<ServerInterceptor> getAuthenticationInterceptor() {

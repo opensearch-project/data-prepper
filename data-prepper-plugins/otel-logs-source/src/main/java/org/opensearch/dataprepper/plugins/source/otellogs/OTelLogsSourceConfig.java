@@ -32,6 +32,7 @@ public class OTelLogsSourceConfig {
     static final String MAX_CONNECTION_COUNT = "max_connection_count";
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
     static final String COMPRESSION = "compression";
+    static final String RETRY_INFO = "retry_info";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_PORT = 21892;
     static final int DEFAULT_THREAD_COUNT = 200;
@@ -103,6 +104,9 @@ public class OTelLogsSourceConfig {
 
     @JsonProperty("max_request_length")
     private ByteCount maxRequestLength;
+
+    @JsonProperty(RETRY_INFO)
+    private RetryInfoConfig retryInfo;
 
     @AssertTrue(message = "path should start with /")
     boolean isPathValid() {
@@ -216,6 +220,14 @@ public class OTelLogsSourceConfig {
 
     public ByteCount getMaxRequestLength() {
         return maxRequestLength;
+    }
+
+    public RetryInfoConfig getRetryInfo() {
+        return retryInfo;
+    }
+
+    public void setRetryInfo(RetryInfoConfig retryInfo) {
+        this.retryInfo = retryInfo;
     }
 }
 

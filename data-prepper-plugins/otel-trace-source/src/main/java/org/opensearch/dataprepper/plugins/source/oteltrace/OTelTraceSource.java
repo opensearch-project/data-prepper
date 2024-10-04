@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
+import com.linecorp.armeria.common.grpc.GrpcExceptionHandlerFunction;
 import com.linecorp.armeria.common.util.BlockingTaskExecutor;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
@@ -45,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -59,11 +61,13 @@ public class OTelTraceSource implements Source<Record<Object>> {
     static final String SERVER_CONNECTIONS = "serverConnections";
     private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
 
+    // Default RetryInfo with minimum 100ms and maximum 2s
+    private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
+
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
-    private final GrpcRequestExceptionHandler requestExceptionHandler;
     private final String pipelineName;
     private Server server;
     private final ByteDecoder byteDecoder;
@@ -83,7 +87,6 @@ public class OTelTraceSource implements Source<Record<Object>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-        this.requestExceptionHandler = new GrpcRequestExceptionHandler(pluginMetrics);
         this.byteDecoder = new OTelTraceDecoder();
     }
 
@@ -113,7 +116,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
                     .builder()
                     .useClientTimeoutHeader(false)
                     .useBlockingTaskExecutor(true)
-                    .exceptionHandler(requestExceptionHandler);
+                    .exceptionHandler(createGrpExceptionHandler());
 
             final MethodDescriptor<ExportTraceServiceRequest, ExportTraceServiceResponse> methodDescriptor = TraceServiceGrpc.getExportMethod();
             final String oTelTraceSourcePath = oTelTraceSourceConfig.getPath();
@@ -206,6 +209,14 @@ public class OTelTraceSource implements Source<Record<Object>> {
             throw new RuntimeException(ex);
         }
         LOG.info("Started otel_trace_source on port " + oTelTraceSourceConfig.getPort() + "...");
+    }
+
+    private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
+        RetryInfoConfig retryInfo = oTelTraceSourceConfig.getRetryInfo() != null
+                ? oTelTraceSourceConfig.getRetryInfo()
+                : DEFAULT_RETRY_INFO;
+
+        return new GrpcRequestExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
     }
 
     @Override
