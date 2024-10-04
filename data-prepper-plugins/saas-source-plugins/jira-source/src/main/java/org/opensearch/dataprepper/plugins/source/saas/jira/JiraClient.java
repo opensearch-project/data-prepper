@@ -1,6 +1,5 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira;
 
-import lombok.Setter;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasClient;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourceConfig;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.model.Item;
@@ -59,6 +58,7 @@ public class JiraClient implements SaasClient {
 
     @Override
     public void setLastPollTime(long lastPollTime) {
+        log.info("Setting the lastPollTime: {}", lastPollTime);
         this.lastPollTime = lastPollTime;
     }
 }
