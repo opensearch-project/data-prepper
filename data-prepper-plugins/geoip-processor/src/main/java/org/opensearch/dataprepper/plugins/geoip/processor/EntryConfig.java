@@ -23,15 +23,17 @@ public class EntryConfig {
     @NotEmpty
     private String source;
 
-    @JsonPropertyDescription("The key of the target field in which to save the geolocation data. Default is geo.")
+    @JsonPropertyDescription("The key of the target field in which to set the geolocation data. Default is <code>geo</code>.")
     @JsonProperty("target")
     private String target = DEFAULT_TARGET;
 
-    @JsonPropertyDescription("The list of geolocation fields to include in the target object. By default, this is all the fields provided by the configured databases.")
+    @JsonPropertyDescription("The list of geolocation fields to include in the target object. By default, this is all the fields provided by the configured databases. " +
+            "For example, if you wish to only obtain the actual location, you can specify <code>location</code>.")
     @JsonProperty("include_fields")
     private List<String> includeFields;
 
-    @JsonPropertyDescription("The list of geolocation fields to exclude from the target object.")
+    @JsonPropertyDescription("The list of geolocation fields to exclude from the target object. " +
+            "For example, you can exclude ASN fields by including <code>asn</code>, <code>asn_organization</code>, <code>network</code>, <code>ip</code>.")
     @JsonProperty("exclude_fields")
     private List<String> excludeFields;
 

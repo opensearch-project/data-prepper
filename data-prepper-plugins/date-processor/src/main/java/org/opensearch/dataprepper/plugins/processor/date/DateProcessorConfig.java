@@ -18,7 +18,7 @@ import java.util.Locale;
 import java.time.format.DateTimeFormatter;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `date` processor adds a default timestamp to an event, parses timestamp fields, " +
+@JsonClassDescription("The <code>date</code> processor adds a default timestamp to an event, parses timestamp fields, " +
         "and converts timestamp information to the International Organization for Standardization (ISO) 8601 format. " +
         "This timestamp information can be used as an event timestamp.")
 public class DateProcessorConfig {
@@ -34,10 +34,13 @@ public class DateProcessorConfig {
         @JsonPropertyDescription("Represents the event key against which to match patterns. " +
                 "Required if <code>match</code> is configured.")
         private String key;
+
         @JsonProperty("patterns")
         @JsonPropertyDescription("A list of possible patterns that the timestamp value of the key can have. The patterns " +
                 "are based on a sequence of letters and symbols. The <code>patterns</code> support all the patterns listed in the " +
                 "Java DateTimeFormatter (https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html) reference. " +
+                "To match ISO 8601 formatted strings, use, <code>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</code>. " +
+                "To match Apache Common Log Format, use <code>dd/MMM/yyyy:HH:mm:ss Z</code>. " +
                 "The timestamp value also supports <code>epoch_second</code>, <code>epoch_milli</code>, and <code>epoch_nano</code> values, " +
                 "which represent the timestamp as the number of seconds, milliseconds, and nanoseconds since the epoch. " +
                 "Epoch values always use the UTC time zone.")
@@ -110,7 +113,9 @@ public class DateProcessorConfig {
 
     @JsonProperty("match")
     @JsonPropertyDescription("The date match configuration. " +
-            "This option cannot be defined at the same time as <code>from_time_received</code>. There is no default value.")
+            "This option cannot be defined at the same time as <code>from_time_received</code>. " +
+            "The date processor will use the first pattern that matches each event's timestamp field. " +
+            "You must provide at least one pattern unless you have <code>from_time_received</code>.")
     private List<DateMatch> match;
 
     @JsonProperty("destination")
