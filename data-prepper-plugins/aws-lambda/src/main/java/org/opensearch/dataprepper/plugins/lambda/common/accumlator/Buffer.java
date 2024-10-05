@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
 import java.io.OutputStream;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * A buffer can hold data before flushing it.
@@ -22,9 +23,9 @@ public interface Buffer {
 
     Duration getDuration();
 
-    InvokeResponse flushToLambdaAsync();
+    CompletableFuture<InvokeResponse> flushToLambdaAsync(String invocationType);
 
-    InvokeResponse flushToLambdaSync();
+    InvokeResponse flushToLambdaSync(String invocationType);
 
     OutputStream getOutputStream();
 
@@ -44,5 +45,7 @@ public interface Buffer {
     public Long getPayloadRequestAsyncSize();
 
     public Long getPayloadResponseAsyncSize();
+
+    void reset();
 
 }
