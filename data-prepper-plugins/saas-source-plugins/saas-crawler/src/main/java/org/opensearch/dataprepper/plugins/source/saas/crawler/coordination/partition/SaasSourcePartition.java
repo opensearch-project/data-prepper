@@ -42,7 +42,7 @@ public class SaasSourcePartition extends EnhancedSourcePartition<SaasWorkerProgr
 
     @Override
     public String getPartitionKey() {
-        return this.partitionKey + "|" + UUID.randomUUID();
+        return this.partitionKey;
     }
 
     @Override

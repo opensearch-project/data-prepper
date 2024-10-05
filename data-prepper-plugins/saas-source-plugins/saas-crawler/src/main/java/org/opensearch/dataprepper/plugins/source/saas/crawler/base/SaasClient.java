@@ -1,5 +1,10 @@
 package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
 
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.SaasWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.model.Item;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 
 import java.util.Iterator;
@@ -17,7 +22,7 @@ public interface SaasClient {
      * @param itemInfo metadata info the item that we are interested in
      * @return item information
      */
-    Optional<ItemInfo> getItemInfo(ItemInfo itemInfo);
+    Optional<Item> getItem(ItemInfo itemInfo);
 
     /**
      * This will be the main API called by crawler. This method assumes that {@link
@@ -48,4 +53,5 @@ public interface SaasClient {
 
     void setLastPollTime(long lastPollTime);
 
+    void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer);
 }

@@ -19,6 +19,9 @@ import org.slf4j.Logger;
 import org.springframework.util.CollectionUtils;
 
 import javax.inject.Named;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,7 +41,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ACCEPT;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ALL;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.Application_JSON;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.BAD_REQUEST_EXCEPTION;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.BAD_RESPONSE;
@@ -46,6 +48,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.CLOSING_ROUND_BRACKET;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.CONTENT_TYPE;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.DELIMITER;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EMPTY_STRING;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ERR_MSG;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EXPAND;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EXPAND_FIELD;
@@ -64,7 +67,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PREFIX;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_ID;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_IN;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_KEY;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_NAME;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.RATE_LIMIT;
@@ -289,7 +292,7 @@ public class JiraService {
     }
     StringBuilder jiraQl = new StringBuilder(UPDATED + GREATER_THAN_EQUALS + ts);
     if (!CollectionUtils.isEmpty(configuration.getProjectKeyFilter())) {
-      jiraQl.append(PROJECT_ID).append(configuration.getProjectKeyFilter().stream()
+      jiraQl.append(PROJECT_IN).append(configuration.getProjectKeyFilter().stream()
                       .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
               .append(CLOSING_ROUND_BRACKET);
     }
@@ -308,6 +311,20 @@ public class JiraService {
   }
 
   /**
+   * Method to build message input stream.
+   *
+   * @param text input parameter.
+   * @return ByteArrayInputStream input stream
+   */
+  public final InputStream buildTextInputStream(String text) {
+    if (text!=null && !text.isEmpty()) {
+      text = EMPTY_STRING;
+    }
+    byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+    return new ByteArrayInputStream(bytes);
+  }
+
+  /**
    * Gets issue.
    *
    * @param issueKey      the item info
@@ -318,23 +335,44 @@ public class JiraService {
     log.info("Started to fetch issue information");
     SearchResults searchResults = new SearchResults();
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
+    HttpResponse<JsonNode> response;
+    com.mashape.unirest.request.HttpRequest request;
     boolean shouldContinue = Boolean.TRUE;
+    String jql = ISSUE_KEY_EQUALS + issueKey;
     while (shouldContinue) {
-      try {
-        //TODO: fix the api call
-        searchResults = getIssueSearchApi(configuration, ISSUE_KEY_EQUALS + issueKey);
-        shouldContinue = Boolean.FALSE;
-      } catch (BadRequestException ex) {
-          if(ex instanceof BadRequestException){
-          String waitTime = String.valueOf(waitTimeQueue.remove());
-          log.info("Retrying search api with issue, resulted in exception: {}", ex.getMessage());
-          handleThrottling(waitTime, Boolean.TRUE);
-        } else {
-          log.info("issueKey: {}", issueKey);
-          log.error("Skipping document as maximum retry attempts exhausted.Error: {} ", ex.getMessage());
-          throw new BadRequestException(ex.getMessage(), ex);
+      request = Unirest.get(configuration.getJiraAccountUrl() + REST_API_SEARCH)
+              .basicAuth(configuration.getJiraId(), configuration.getJiraCredential())
+              .header(ACCEPT, Application_JSON)
+              .queryString(MAX_RESULTS, FIFTY)
+              .queryString(START_AT, 0)
+              .queryString(JQL_FIELD, jql)
+              .queryString(EXPAND_FIELD, Collections.singletonList(EXPAND));
+      log.info("Search result api call request is : {}",
+              new Gson().toJson(request, com.mashape.unirest.request.HttpRequest.class));
+
+        try {
+            response = request.asJson();
+            if(response.getStatus() == RATE_LIMIT) {
+              String waitTime = String.valueOf(waitTimeQueue.remove());
+              log.info("Service responded with Rate Limit. We will retry after {} seconds.", waitTime);
+              handleThrottling(waitTime, Boolean.TRUE);
+            }
+            else if (response.getStatus() == BAD_RESPONSE) {
+              if (Objects.nonNull(response.getBody())
+                      && Objects.nonNull(response.getBody().getObject())) {
+                log.error("An exception has occurred while getting"
+                                + " response from Jira search API {} ",
+                        response.getBody().getObject().get(ERR_MSG).toString());
+                throw new BadRequestException(response.getBody().getObject().get(ERR_MSG).toString());
+              }
+            }
+            shouldContinue = Boolean.FALSE;
+            Gson gson = new GsonBuilder().create();
+            searchResults = gson.fromJson(response.getBody().getObject().toString(), SearchResults.class);
+        } catch (UnirestException e) {
+          log.error("An exception has occurred while connecting to Jira search API: {}", e.getMessage());
+          throw new BadRequestException(e.getMessage(), e);
         }
-      }
     }
     if (Objects.nonNull(searchResults.getIssues())) {
       return searchResults.getIssues().get(0);
@@ -386,7 +424,13 @@ public class JiraService {
    */
   private ItemInfo createItemInfo(String key, Map<String, String> metadata) {
     long eventTime = Date.from(Instant.now()).getTime();
-      return ItemInfo.builder().eventTime(eventTime).id(key).metadata(metadata).build();
+      return JiraItemInfo.builder().withEventTime(eventTime)
+              .withId(metadata.get(ISSUE_KEY))
+              .withItemId(key)
+              .withMetadata(metadata)
+              .withProject(metadata.get(PROJECT_KEY))
+              .withIssueType(metadata.get(CONTENT_TYPE))
+              .build();
   }
 
   /**

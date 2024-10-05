@@ -9,7 +9,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -23,6 +25,8 @@ public class SaasWorkerProgressState {
 
     @JsonProperty("exportStartTime")
     private long exportStartTime;
+
+    private Map<String, Object> keyAttributes = new HashMap<>();
 
     @JsonProperty("itemIds")
     private List<String> itemIds;

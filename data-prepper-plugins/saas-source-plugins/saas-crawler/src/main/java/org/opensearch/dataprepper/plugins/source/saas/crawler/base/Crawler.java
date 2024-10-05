@@ -1,8 +1,13 @@
 package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
 
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.SaasSourcePartition;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.SaasWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.model.Item;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,12 +16,14 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component
 public class Crawler {
     private static final Logger log = LoggerFactory.getLogger(Crawler.class);
-    private static final int maxItemsPerPage = 2;
+    private static final int maxItemsPerPage = 20;
 
     private final SaasClient client;
 
@@ -42,13 +49,23 @@ public class Crawler {
         return startTime;
     }
 
+    public Optional<Item> getItem(ItemInfo itemInfo) {
+        return client.getItem(itemInfo);
+    }
+
+    public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer) {
+        client.executePartition(state, buffer);
+    }
+
     private void createPartition(List<ItemInfo> itemInfoList, EnhancedSourceCoordinator coordinator) {
         if(itemInfoList.isEmpty()) {
             return;
         }
-        String partitionKey = itemInfoList.get(0).getKeyAttributes();
+        ItemInfo itemInfo = itemInfoList.get(0);
+        String partitionKey = itemInfo.getPartitionKey();
         List<String> itemIds = itemInfoList.stream().map(ItemInfo::getId).collect(Collectors.toList());
         SaasWorkerProgressState state = new SaasWorkerProgressState();
+        state.setKeyAttributes(itemInfo.getKeyAttributes());
         state.setItemIds(itemIds);
         state.setExportStartTime(System.currentTimeMillis());
         state.setLoadedItems(itemInfoList.size());

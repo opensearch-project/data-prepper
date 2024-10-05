@@ -7,6 +7,7 @@ public class LeaderProgressState {
     @JsonProperty("initialized")
     private boolean initialized = false;
 
+
     public boolean isInitialized() {
         return initialized;
     }

@@ -1,23 +1,22 @@
 package org.opensearch.dataprepper.plugins.source.saas.crawler.model;
 
 
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 
 import java.util.Map;
+import java.util.Objects;
 
 @Setter
 @Getter
-@Builder(toBuilder = true)
-public class ItemInfo {
+public abstract class ItemInfo {
 
     /**
      * Use this field to store primary item of a repository. Primary item of a repository is something
      * which can be fetched/queried/obtained from repository just using its item ID.
      */
-    String id;
+    String itemId;
 
     /**
      * Use this field to store items metadata. Item metadata can be any information other than item
@@ -35,17 +34,17 @@ public class ItemInfo {
     @NonNull
     Long eventTime;
 
-    public ItemInfo(String id) {
-        this.id = id;
+    public ItemInfo(String itemId) {
+        this.itemId = itemId;
     }
 
-    public ItemInfo(@NonNull String id, Map<String, String> metadata, @NonNull Long eventTime) {
-        this.id = id;
+    public ItemInfo(@NonNull String itemId, Map<String, String> metadata, @NonNull Long eventTime) {
+        this.itemId = itemId;
         this.metadata = metadata;
         this.eventTime = eventTime;
     }
 
-    public String getKeyAttributes() {
-        return id;
-    }
+    public abstract String getPartitionKey();
+    public abstract String getId();
+    public abstract Map<String, Object> getKeyAttributes();
 }

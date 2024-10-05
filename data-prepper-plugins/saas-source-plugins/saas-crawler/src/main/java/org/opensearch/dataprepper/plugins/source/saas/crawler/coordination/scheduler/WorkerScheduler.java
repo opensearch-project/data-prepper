@@ -5,8 +5,10 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourceConfig;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.SaasSourcePartition;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.SaasWorkerProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,12 +26,17 @@ public class WorkerScheduler implements Runnable {
     private final EnhancedSourceCoordinator sourceCoordinator;
 
     private final SaasSourceConfig sourceConfig;
+    private final Crawler crawler;
+    private final Buffer<Record<Event>> buffer;
 
     public WorkerScheduler(Buffer<Record<Event>> buffer,
                            EnhancedSourceCoordinator sourceCoordinator,
-                           SaasSourceConfig sourceConfig) {
+                           SaasSourceConfig sourceConfig,
+                           Crawler crawler) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
+        this.crawler = crawler;
+        this.buffer = buffer;
     }
 
     @Override
@@ -41,7 +48,7 @@ public class WorkerScheduler implements Runnable {
                 Optional<EnhancedSourcePartition> partition = sourceCoordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE);
                 if (partition.isPresent()) {
                     // Process the partition (source extraction logic)
-                    processPartition(partition.get());
+                    processPartition(partition.get(), buffer);
 
                 } else {
                     log.info("No partition available. Going to Sleep for a while ");
@@ -64,11 +71,14 @@ public class WorkerScheduler implements Runnable {
         log.warn("SourceItemWorker Scheduler is interrupted, looks like shutdown has triggered");
     }
 
-    private void processPartition(EnhancedSourcePartition partition) {
+    private void processPartition(EnhancedSourcePartition partition, Buffer<Record<Event>> buffer) {
         log.info("Processing partition: {}", partition.getPartitionKey());
         // Implement your source extraction logic here
         // Update the partition state or commit the partition as needed
         // Commit the partition to mark it as processed
+        if(partition.getProgressState().isPresent()) {
+            crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer);
+        }
         sourceCoordinator.completePartition(partition);
     }
 }

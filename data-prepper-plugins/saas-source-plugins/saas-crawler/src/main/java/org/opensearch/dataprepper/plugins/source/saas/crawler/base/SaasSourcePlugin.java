@@ -83,7 +83,7 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
     this.executorService.submit(leaderScheduler);
     //Register worker threaders
     for(int i=0; i<sourceConfig.DEFAULT_NUMBER_OF_WORKERS; i++) {
-      WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig);
+      WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig, crawler);
       this.executorService.submit(new Thread(workerScheduler));
     }
   }
