@@ -13,16 +13,17 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_CONNECTION_RETRIES;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_SDK_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.EVENT;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.STS_REGION;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.STS_ROLE_ARN;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 
 public class LambdaSinkConfig {
-
-    private static final int DEFAULT_CONNECTION_RETRIES = 3;
-    public static final String STS_REGION = "region";
-    public static final String STS_ROLE_ARN = "sts_role_arn";
 
     @JsonProperty("aws")
     @NotNull
@@ -52,6 +53,11 @@ public class LambdaSinkConfig {
 
     @JsonProperty("lambda_when")
     private String whenCondition;
+
+    @JsonProperty("sdk_timeout")
+    private Duration sdkTimeout = DEFAULT_SDK_TIMEOUT;
+
+    public Duration getSdkTimeout(){return sdkTimeout;}
 
     public AwsAuthenticationOptions getAwsAuthenticationOptions() {
         return awsAuthenticationOptions;

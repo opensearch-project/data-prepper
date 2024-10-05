@@ -23,24 +23,19 @@ import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputConfig;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
+import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
+import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
+import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.SINGLE_EVENT;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.invocationTypeMap;
-import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
-import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.core.exception.SdkClientException;
-import software.amazon.awssdk.services.lambda.LambdaClient;
-import software.amazon.awssdk.services.lambda.model.InvokeResponse;
+import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -63,7 +58,7 @@ public class LambdaSinkService {
     private final PluginSetting pluginSetting;
     private final Lock reentrantLock;
     private final LambdaSinkConfig lambdaSinkConfig;
-    private final LambdaClient lambdaClient;
+    private final LambdaAsyncClient lambdaAsyncClient;
     private final String functionName;
     private final String whenCondition;
     private final ExpressionEvaluator expressionEvaluator;
@@ -81,17 +76,18 @@ public class LambdaSinkService {
     private ByteCount maxBytes = null;
     private Duration maxCollectionDuration = null;
     private int maxRetries = 0;
-    private Buffer currentBuffer;
     private OutputCodec codec = null;
     private OutputCodecContext codecContext = null;
     private String payloadModel = null;
+    private LambdaCommonHandler lambdaCommonHandler;
 
-    public LambdaSinkService(final LambdaClient lambdaClient, final LambdaSinkConfig lambdaSinkConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final PluginSetting pluginSetting, final OutputCodecContext codecContext, final AwsCredentialsSupplier awsCredentialsSupplier, final DlqPushHandler dlqPushHandler, final BufferFactory bufferFactory, final ExpressionEvaluator expressionEvaluator) {
+
+    public LambdaSinkService(final LambdaAsyncClient lambdaAsyncClient, final LambdaSinkConfig lambdaSinkConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final PluginSetting pluginSetting, final OutputCodecContext codecContext, final AwsCredentialsSupplier awsCredentialsSupplier, final DlqPushHandler dlqPushHandler, final BufferFactory bufferFactory, final ExpressionEvaluator expressionEvaluator) {
         this.lambdaSinkConfig = lambdaSinkConfig;
         this.pluginSetting = pluginSetting;
         this.expressionEvaluator = expressionEvaluator;
         this.dlqPushHandler = dlqPushHandler;
-        this.lambdaClient = lambdaClient;
+        this.lambdaAsyncClient = lambdaAsyncClient;
         this.numberOfRecordsSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS);
         this.numberOfRecordsFailedCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED);
         this.lambdaLatencyMetric = pluginMetrics.timer(LAMBDA_LATENCY_METRIC);
@@ -126,17 +122,43 @@ public class LambdaSinkService {
         invocationType = invocationTypeMap.get(lambdaSinkConfig.getInvocationType());
 
         this.bufferFactory = bufferFactory;
-        try {
-            currentBuffer = bufferFactory.getBuffer(lambdaClient, functionName, invocationType);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
+        Boolean isSink = true;
+
+        LOG.info("LambdaFunctionName:{}, isBatchEnabled:{} , isSink:{}, invocationType:{}",
+                functionName,isBatchEnabled,isSink,invocationType);
+        // Initialize LambdaCommonHandler
+        lambdaCommonHandler = new LambdaCommonHandler(
+                LOG,
+                LambdaClientFactory.createAsyncLambdaClient(
+                        lambdaSinkConfig.getAwsAuthenticationOptions(),
+                        lambdaSinkConfig.getMaxConnectionRetries(),
+                        awsCredentialsSupplier,
+                        lambdaSinkConfig.getSdkTimeout()),
+                lambdaSinkConfig.getFunctionName(),
+                invocationTypeMap.get(lambdaSinkConfig.getInvocationType()),
+                expressionEvaluator,
+                pluginMetrics.counter("lambdaProcessorObjectsEventsSucceeded"),
+                pluginMetrics.counter("lambdaProcessorObjectsEventsFailed"),
+                pluginMetrics.timer("lambdaProcessorLatency"),
+                new InMemoryBufferFactory(),
+                codec,
+                codecContext,
+                isBatchEnabled,
+                whenCondition,
+                maxEvents,
+                maxBytes,
+                maxCollectionDuration,
+                isSink,
+                dlqPushHandler,
+                pluginSetting);
     }
 
     public void output(Collection<Record<Event>> records) {
-        if (records.isEmpty() && currentBuffer.getEventCount() == 0) {
+        if (records.isEmpty() && lambdaCommonHandler.getCurrentBuffer().getEventCount() == 0) {
             return;
         }
+
         List<Event> failedEvents = new ArrayList<>();
         Exception sampleException = null;
         reentrantLock.lock();
@@ -147,92 +169,33 @@ public class LambdaSinkService {
                 if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
                     continue;
                 }
-
                 try {
-                    if (currentBuffer.getEventCount() == 0) {
-                        codec.start(currentBuffer.getOutputStream(), event, codecContext);
-                    }
-                    codec.writeEvent(event, currentBuffer.getOutputStream());
-                    int count = currentBuffer.getEventCount() + 1;
-                    currentBuffer.setEventCount(count);
-
-                    bufferedEventHandles.add(event.getEventHandle());
-                    flushToLambdaIfNeeded();
-                } catch (Exception ex) {
-                    LOG.error(EVENT, "There was an exception while processing Event [{}]" , event, ex);
-                    if (sampleException == null) {
-                        sampleException = ex;
-                    }
-                    failedEvents.add(event);
-                    handleFailure(currentBuffer, ex);                //reset buffer
-                    try {
-                        currentBuffer = bufferFactory.getBuffer(lambdaClient, functionName, invocationType);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+                    lambdaCommonHandler.processEvent(null, event);
+                } catch (Exception e) {
+                    LOG.error(EVENT, "There was an exception while processing Event [{}]" , event, e);
+                    lambdaCommonHandler.handleFailure(e);
+                    lambdaCommonHandler.resetBuffer();
+                }
+            }
+            LOG.info("Force Flushing the remaining {} events in the buffer", lambdaCommonHandler.getCurrentBuffer().getEventCount());
+            // Flush any remaining events after processing all records
+            if (lambdaCommonHandler.getCurrentBuffer().getEventCount() > 0) {
+                try {
+                    lambdaCommonHandler.flushToLambdaIfNeeded(null, true); // Force flush remaining events
+                } catch (Exception e) {
+                    LOG.error("Exception while flushing remaining {} events", lambdaCommonHandler.getCurrentBuffer().getEventCount(), e);
                 }
             }
         } finally {
             reentrantLock.unlock();
         }
 
+        // Wait for all futures to complete
+        lambdaCommonHandler.waitForFutures();
+
         if (!failedEvents.isEmpty()) {
             failedEvents.stream().map(Event::getEventHandle).forEach(eventHandle -> eventHandle.release(false));
             LOG.error("Unable to add {} events to buffer. Dropping these events. Sample exception provided.", failedEvents.size(), sampleException);
-        }
-    }
-
-    private void releaseEventHandles(final boolean result) {
-        for (EventHandle eventHandle : bufferedEventHandles) {
-            eventHandle.release(result);
-        }
-        bufferedEventHandles.clear();
-    }
-
-    private void flushToLambdaIfNeeded() {
-        LOG.info("Flush to Lambda check: currentBuffer.size={}, currentBuffer.events={}, currentBuffer.duration={}", currentBuffer.getSize(), currentBuffer.getEventCount(), currentBuffer.getDuration());
-
-        if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration, isBatchEnabled)) {
-            try {
-                codec.complete(currentBuffer.getOutputStream());
-                responsePayloadMetric.set(currentBuffer.getPayloadResponseSyncSize());
-                InvokeResponse response = currentBuffer.flushToLambdaAsync();
-                handleLambdaResponse(response);
-                lambdaLatencyMetric.record(currentBuffer.getFlushLambdaSyncLatencyMetric());
-                requestPayloadMetric.set(currentBuffer.getPayloadRequestSyncSize());
-                numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
-                releaseEventHandles(true);
-            } catch (AwsServiceException | SdkClientException e) {
-                LOG.error("Exception occurred while uploading records to lambda  : {} | exception:", functionName, e);
-                handleFailure(currentBuffer, e);
-            } catch (final IOException e) {
-                LOG.error("Exception while completing codec", e);
-                handleFailure(currentBuffer, e);
-            }
-            // Reset buffer
-            try {
-                currentBuffer = bufferFactory.getBuffer(lambdaClient, functionName, invocationType);
-            } catch (IOException ex) {
-                throw new RuntimeException("Failed to reset buffer after exception", ex);
-            }
-        }
-    }
-
-    private void handleFailure(Buffer currentBuffer, Exception e) {
-        numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
-        SdkBytes payload = currentBuffer.getPayload();
-        if (dlqPushHandler != null) {
-            dlqPushHandler.perform(pluginSetting, new LambdaSinkFailedDlqData(payload, e.getMessage(), 0));
-            releaseEventHandles(true);
-        } else {
-            releaseEventHandles(false);
-        }
-    }
-
-    private void handleLambdaResponse(InvokeResponse response) {
-        int statusCode = response.statusCode();
-        if (statusCode < 200 || statusCode >= 300) {
-            LOG.warn("Lambda invocation returned with non-success status code: {}", statusCode);
         }
     }
 }

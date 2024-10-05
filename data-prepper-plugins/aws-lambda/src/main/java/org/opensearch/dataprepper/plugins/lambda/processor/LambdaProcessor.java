@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.lambda.processor;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -17,9 +15,9 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -29,7 +27,7 @@ import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputConfig;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
+import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
@@ -38,17 +36,11 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfi
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.SINGLE_EVENT;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.invocationTypeMap;
-import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
+import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.core.exception.SdkClientException;
-import software.amazon.awssdk.services.lambda.LambdaClient;
-import software.amazon.awssdk.services.lambda.model.InvokeResponse;
+import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -75,13 +67,11 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final Timer lambdaLatencyMetric;
     private final String invocationType;
     private final Collection<EventHandle> bufferedEventHandles;
-    private final List<Event> events;
     private final BatchOptions batchOptions;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final BufferFactory bufferFactory;
-    private final LambdaClient lambdaClient;
+    private final LambdaAsyncClient lambdaAsyncClient;
     private final Boolean isBatchEnabled;
-    Buffer currentBuffer;
     private final AtomicLong requestPayloadMetric;
     private final AtomicLong responsePayload;
     private String payloadModel = null;
@@ -91,6 +81,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private int maxRetries = 0;
     private OutputCodec codec = null;
     OutputCodecContext codecContext = null;
+    LambdaCommonHandler lambdaCommonHandler;
 
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginMetrics pluginMetrics, final LambdaProcessorConfig lambdaProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier, final ExpressionEvaluator expressionEvaluator) {
@@ -110,6 +101,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         codecContext = new OutputCodecContext();
 
         if (payloadModel.equals(BATCH_EVENT)) {
+            LOG.info("Batching events");
             JsonOutputCodecConfig jsonOutputCodecConfig = new JsonOutputCodecConfig();
             jsonOutputCodecConfig.setKeyName(batchOptions.getKeyName());
             codec = new JsonOutputCodec(jsonOutputCodecConfig);
@@ -119,6 +111,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             isBatchEnabled = true;
             LOG.info("maxEvents:" + maxEvents + " maxbytes:" + maxBytes + " maxDuration:" + maxCollectionDuration);
         } else if(payloadModel.equals(SINGLE_EVENT)) {
+            LOG.info("Single events");
             NdjsonOutputConfig ndjsonOutputCodecConfig = new NdjsonOutputConfig();
             codec = new NdjsonOutputCodec(ndjsonOutputCodecConfig);
             isBatchEnabled = false;
@@ -135,19 +128,45 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         invocationType = invocationTypeMap.get(lambdaProcessorConfig.getInvocationType());
 
         bufferedEventHandles = new LinkedList<>();
-        events = new ArrayList();
 
-        lambdaClient = LambdaClientFactory.createLambdaClient(lambdaProcessorConfig.getAwsAuthenticationOptions(),
+        lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(lambdaProcessorConfig.getAwsAuthenticationOptions(),
                 lambdaProcessorConfig.getMaxConnectionRetries()
-                , awsCredentialsSupplier);
+                , awsCredentialsSupplier,lambdaProcessorConfig.getSdkTimeout());
 
         this.bufferFactory = new InMemoryBufferFactory();
-        try {
-            currentBuffer = this.bufferFactory.getBuffer(lambdaClient, functionName, invocationType);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
 
+        Boolean isSink = false;
+        PluginSetting pluginSetting = null;
+        DlqPushHandler dlqPushHandler = null;
+
+        LOG.info("LambdaFunctionName:{}, isBatchEnabled:{} , isSink:{}, invocationType:{}," +
+                        "payload_model:{}",
+                functionName,isBatchEnabled,isSink,invocationType,payloadModel);
+        // Initialize LambdaCommonHandler
+        lambdaCommonHandler = new LambdaCommonHandler(
+                LOG,
+                LambdaClientFactory.createAsyncLambdaClient(
+                        lambdaProcessorConfig.getAwsAuthenticationOptions(),
+                        lambdaProcessorConfig.getMaxConnectionRetries(),
+                        awsCredentialsSupplier,
+                        lambdaProcessorConfig.getSdkTimeout()),
+                lambdaProcessorConfig.getFunctionName(),
+                invocationTypeMap.get(lambdaProcessorConfig.getInvocationType()),
+                expressionEvaluator,
+                pluginMetrics.counter("lambdaProcessorObjectsEventsSucceeded"),
+                pluginMetrics.counter("lambdaProcessorObjectsEventsFailed"),
+                pluginMetrics.timer("lambdaProcessorLatency"),
+                new InMemoryBufferFactory(),
+                codec,
+                codecContext,
+                isBatchEnabled,
+                whenCondition,
+                maxEvents,
+                maxBytes,
+                maxCollectionDuration,
+                isSink,
+                dlqPushHandler,
+                pluginSetting);
     }
 
     @Override
@@ -156,6 +175,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             return records;
         }
 
+        LOG.info("Received " + records.size() + "records to lambda Processor" );
         //lambda mutates event
         List<Record<Event>> resultRecords = new ArrayList<>();
 
@@ -167,26 +187,26 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             }
 
             try {
-                if (currentBuffer.getEventCount() == 0) {
-                    codec.start(currentBuffer.getOutputStream(), event, codecContext);
-                }
-                codec.writeEvent(event, currentBuffer.getOutputStream());
-                int count = currentBuffer.getEventCount() + 1;
-                currentBuffer.setEventCount(count);
-
-                // flush to lambda and update result record
-                flushToLambdaIfNeeded(resultRecords);
+               lambdaCommonHandler.processEvent(resultRecords, event);
             } catch (Exception e) {
-                numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
                 LOG.error(EVENT, "There was an exception while processing Event [{}]" , event, e);
-                //reset buffer
-                try {
-                    currentBuffer = bufferFactory.getBuffer(lambdaClient, functionName, invocationType);
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
+                lambdaCommonHandler.handleFailure(e);
+                lambdaCommonHandler.resetBuffer();
             }
         }
+
+        LOG.info("Force Flushing the remaining {} events in the buffer", lambdaCommonHandler.getCurrentBuffer().getEventCount());
+        // Flush any remaining events in the buffer after processing all records
+        if (lambdaCommonHandler.getCurrentBuffer().getEventCount() > 0) {
+            try {
+                lambdaCommonHandler.flushToLambdaIfNeeded(resultRecords, true); // Force flush remaining events
+            } catch (Exception e) {
+                LOG.error("Exception while flushing remaining events", e);
+            }
+        }
+
+        lambdaCommonHandler.waitForFutures();
+
         return resultRecords;
     }
 
@@ -205,61 +225,4 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
     }
 
-    protected void flushToLambdaIfNeeded(List<Record<Event>> resultRecords) throws InterruptedException, IOException {
-        LOG.info("Flush to Lambda check: currentBuffer.size={}, currentBuffer.events={}, currentBuffer.duration={}", currentBuffer.getSize(), currentBuffer.getEventCount(), currentBuffer.getDuration());
-
-        if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration, isBatchEnabled)) {
-            try{
-                codec.complete(currentBuffer.getOutputStream());
-                responsePayload.set(currentBuffer.getPayloadResponseSyncSize());
-                InvokeResponse lambdaResponse = currentBuffer.flushToLambdaSync();
-                handleLambdaResponse(lambdaResponse);
-                numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
-                lambdaLatencyMetric.record(currentBuffer.getFlushLambdaSyncLatencyMetric());
-                requestPayloadMetric.set(currentBuffer.getPayloadRequestSyncSize());
-                Event lambdaEvent = convertLambdaResponseToEvent(lambdaResponse);
-                resultRecords.add(new Record<>(lambdaEvent));
-            } catch(AwsServiceException | SdkClientException e) {
-                LOG.error(EVENT, "Exception occurred while uploading records to lambda. functionName: {} | exception:", functionName, e);
-                numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
-            } catch (final IOException e) {
-                LOG.error("Exception while completing codec", e);
-                numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
-            }
-            //Reset Buffer
-            try {
-                currentBuffer = bufferFactory.getBuffer(lambdaClient, functionName, invocationType);
-            } catch (IOException ex) {
-                throw new RuntimeException("Failed to reset buffer after exception", ex);
-            }
-        }
-    }
-
-    protected Event convertLambdaResponseToEvent(InvokeResponse lambdaResponse) {
-        try {
-            SdkBytes payload = lambdaResponse.payload();
-            if (payload != null) {
-                String payloadJsonString = payload.asString(StandardCharsets.UTF_8);
-
-                JsonNode jsonNode = null;
-                try {
-                    jsonNode = objectMapper.readTree(payloadJsonString);
-                } catch (JsonParseException e) {
-                    throw new RuntimeException("payload output is not json formatted");
-                }
-                return JacksonEvent.builder().withEventType("event").withData(jsonNode).build();
-            }
-        } catch (Exception e) {
-            LOG.error("Error converting Lambda response to Event", e);
-            throw new RuntimeException("Error converting Lambda response to Event");
-        }
-        return null;
-    }
-
-    private void handleLambdaResponse(InvokeResponse response){
-        int statusCode = response.statusCode();
-        if (statusCode < 200 || statusCode >= 300) {
-            throw new RuntimeException("Lambda invocation failed with status code: " + statusCode);
-        }
-    }
 }

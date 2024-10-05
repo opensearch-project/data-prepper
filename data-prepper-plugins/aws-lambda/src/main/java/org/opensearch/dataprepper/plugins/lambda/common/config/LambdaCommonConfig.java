@@ -1,8 +1,12 @@
 package org.opensearch.dataprepper.plugins.lambda.common.config;
 
+import java.time.Duration;
 import java.util.Map;
 
 public class LambdaCommonConfig {
+    public static final int DEFAULT_CONNECTION_RETRIES = 3;
+    public static final Duration DEFAULT_SDK_TIMEOUT = Duration.ofSeconds(60);
+
     public static final String REQUEST_RESPONSE = "request-response";
     public static final String EVENT = "event";
     public static final String BATCH_EVENT = "batch-event";
@@ -11,6 +15,9 @@ public class LambdaCommonConfig {
     //AWS Lambda payload options needs this format
     public static final String REQUEST_RESPONSE_LAMBDA = "RequestResponse";
     public static final String EVENT_LAMBDA = "Event";
+
+    public static final String STS_REGION = "region";
+    public static final String STS_ROLE_ARN = "sts_role_arn";
 
     //Translate dataprepper invocation type to lambda invocation type
     public static final Map<String, String> invocationTypeMap = Map.of(

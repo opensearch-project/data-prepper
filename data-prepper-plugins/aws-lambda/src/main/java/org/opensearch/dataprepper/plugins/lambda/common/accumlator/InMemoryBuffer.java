@@ -9,15 +9,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.time.StopWatch;
 import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.lambda.LambdaClient;
+import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
-import software.amazon.awssdk.services.lambda.model.LambdaException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -27,13 +28,13 @@ public class InMemoryBuffer implements Buffer {
 
     private static final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-    private final LambdaClient lambdaClient;
+    private final LambdaAsyncClient lambdaAsyncClient;
     private final String functionName;
     private final String invocationType;
     private int eventCount;
-    private final StopWatch watch;
-    private final StopWatch lambdaSyncLatencyWatch;
-    private final StopWatch lambdaAsyncLatencyWatch;
+    private StopWatch watch;
+    private StopWatch lambdaSyncLatencyWatch;
+    private StopWatch lambdaAsyncLatencyWatch;
     private boolean isCodecStarted;
     private long payloadRequestSyncSize;
     private long payloadResponseSyncSize;
@@ -41,8 +42,8 @@ public class InMemoryBuffer implements Buffer {
     private long payloadResponseAsyncSize;
 
 
-    public InMemoryBuffer(LambdaClient lambdaClient, String functionName, String invocationType) {
-        this.lambdaClient = lambdaClient;
+    public InMemoryBuffer(LambdaAsyncClient lambdaAsyncClient, String functionName, String invocationType) {
+        this.lambdaAsyncClient = lambdaAsyncClient;
         this.functionName = functionName;
         this.invocationType = invocationType;
 
@@ -50,9 +51,9 @@ public class InMemoryBuffer implements Buffer {
         eventCount = 0;
         watch = new StopWatch();
         watch.start();
-        isCodecStarted = false;
         lambdaSyncLatencyWatch = new StopWatch();
         lambdaAsyncLatencyWatch = new StopWatch();
+        isCodecStarted = false;
         payloadRequestSyncSize = 0;
         payloadResponseSyncSize = 0;
         payloadRequestAsyncSize = 0;
@@ -73,10 +74,22 @@ public class InMemoryBuffer implements Buffer {
         return Duration.ofMillis(watch.getTime(TimeUnit.MILLISECONDS));
     }
 
+    public void reset() {
+        byteArrayOutputStream.reset();
+        eventCount = 0;
+        watch.reset();
+        watch.start();
+        lambdaSyncLatencyWatch.reset();
+        lambdaAsyncLatencyWatch.reset();
+        isCodecStarted = false;
+        payloadRequestSyncSize = 0;
+        payloadResponseSyncSize = 0;
+        payloadRequestAsyncSize = 0;
+        payloadResponseAsyncSize = 0;
+    }
 
     @Override
-    public InvokeResponse flushToLambdaAsync() {
-        InvokeResponse resp;
+    public CompletableFuture<InvokeResponse> flushToLambdaAsync(String invocationType) {
         SdkBytes payload = getPayload();
         payloadRequestAsyncSize = payload.asByteArray().length;
 
@@ -87,37 +100,33 @@ public class InMemoryBuffer implements Buffer {
                 .invocationType(invocationType)
                 .build();
 
+        if (lambdaAsyncLatencyWatch.isStarted()) {
+            lambdaAsyncLatencyWatch.reset();
+        }
         lambdaAsyncLatencyWatch.start();
-        resp = lambdaClient.invoke(request);
-        lambdaAsyncLatencyWatch.stop();
-        payloadResponseAsyncSize = resp.payload().asByteArray().length;
-        return resp;
+        // Use the async client to invoke the Lambda function
+        CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(request);
+
+        // When the future completes, stop the latency watch and set payload size
+        future = future.handle((resp, throwable) -> {
+            lambdaAsyncLatencyWatch.stop();
+            if (throwable == null) {
+                payloadResponseAsyncSize = resp.payload().asByteArray().length;
+                return resp;
+            } else {
+                // Rethrow the exception to propagate it
+                throw new CompletionException(throwable);
+            }
+        });
+        return future;
     }
 
     @Override
-    public InvokeResponse flushToLambdaSync() {
-        InvokeResponse resp = null;
-        SdkBytes payload = getPayload();
-        payloadRequestSyncSize = payload.asByteArray().length;
-
-        // Setup an InvokeRequest.
-        InvokeRequest request = InvokeRequest.builder()
-                .functionName(functionName)
-                .payload(payload)
-                .invocationType(invocationType)
-                .build();
-
-        lambdaSyncLatencyWatch.start();
-        try {
-            resp = lambdaClient.invoke(request);
-            payloadResponseSyncSize = resp.payload().asByteArray().length;
-            lambdaSyncLatencyWatch.stop();
-            return resp;
-        } catch (LambdaException e){
-            lambdaSyncLatencyWatch.stop();
-            throw new RuntimeException(e);
-        }
+    @Deprecated
+    public InvokeResponse flushToLambdaSync(String invocationType) {
+        return null;
     }
+
 
     private SdkBytes validatePayload(String payload_string) {
         ObjectMapper mapper = new ObjectMapper();

@@ -9,14 +9,22 @@ import static org.hamcrest.Matchers.equalTo;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.regions.Region;
 
+import java.time.Duration;
+
 public class LambdaProcessorConfigTest {
 
     public static final int DEFAULT_MAX_RETRIES = 3;
+    public static final Duration DEFAULT_SDK_TIMEOUT = Duration.ofSeconds(60);
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
     @Test
     void lambda_processor_default_max_connection_retries_test() {
         assertThat(new LambdaProcessorConfig().getMaxConnectionRetries(), equalTo(DEFAULT_MAX_RETRIES));
+    }
+
+    @Test
+    void lambda_processor_default_sdk_timeout_test() {
+        assertThat(new LambdaProcessorConfig().getSdkTimeout(), equalTo(DEFAULT_SDK_TIMEOUT));
     }
 
     @Test
