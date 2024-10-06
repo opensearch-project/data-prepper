@@ -23,7 +23,6 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 public class IssueItem implements Item {
   IssueBean issue;
   JiraConfiguration configuration;
-  InputStream inputStream;
   String projectKey;
   String projectName;
   String url;
@@ -45,7 +44,7 @@ public class IssueItem implements Item {
 
   @Override
   public InputStream getDocumentBody() {
-    return inputStream;
+    return null;
   }
 
   @Override

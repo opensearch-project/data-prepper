@@ -22,7 +22,7 @@ public interface SaasClient {
      * @param itemInfo metadata info the item that we are interested in
      * @return item information
      */
-    Optional<Item> getItem(ItemInfo itemInfo);
+//    Optional<Item> getItem(ItemInfo itemInfo);
 
     /**
      * This will be the main API called by crawler. This method assumes that {@link

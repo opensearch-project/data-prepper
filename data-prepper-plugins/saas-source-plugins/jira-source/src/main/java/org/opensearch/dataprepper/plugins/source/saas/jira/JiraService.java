@@ -25,7 +25,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -50,13 +49,11 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.DELIMITER;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EMPTY_STRING;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ERR_MSG;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EXPAND;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EXPAND_FIELD;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EXPAND_VALUE;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.FIFTY;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.GREATER_THAN_EQUALS;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ISSUE_KEY;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ISSUE_KEY_EQUALS;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ISSUE_TYPE_ID;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.JQL_FIELD;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.KEY;
@@ -332,7 +329,7 @@ public class JiraService {
    * @param configuration the configuration
    * @return the issue
    */
-  public IssueBean getIssue(String issueKey, JiraConfiguration configuration) {
+  public String getIssue(String issueKey, JiraConfiguration configuration) {
     log.info("Started to fetch issue information");
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
     HttpResponse<JsonNode> response;
@@ -363,8 +360,9 @@ public class JiraService {
               }
             }
 
-            Gson gson = new GsonBuilder().create();
-            return gson.fromJson(response.getBody().getObject().toString(), IssueBean.class);
+            //Gson gson = new GsonBuilder().create();
+            //return gson.fromJson(response.getBody().getObject().toString(), IssueBean.class);
+          return response.getBody().getObject().toString();
         } catch (UnirestException e) {
           log.error("An exception has occurred while connecting to Jira search API: {}", e.getMessage());
           throw new BadRequestException(e.getMessage(), e);
