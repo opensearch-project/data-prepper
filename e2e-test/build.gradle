@@ -52,7 +52,7 @@ subprojects {
     tasks.register('copyDataPrepperArchive', Copy) {
         dependsOn ':release:archives:linux:linuxx64DistTar'
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-        from project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archivePath
+        from project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archiveFile.get().asFile
         into("${project.buildDir}/docker/")
     }
 
