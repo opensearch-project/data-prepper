@@ -46,5 +46,5 @@ public abstract class ItemInfo {
 
     public abstract String getPartitionKey();
     public abstract String getId();
-    public abstract Map<String, Object> getKeyAttributes();
+    public abstract Map<String, String> getKeyAttributes();
 }

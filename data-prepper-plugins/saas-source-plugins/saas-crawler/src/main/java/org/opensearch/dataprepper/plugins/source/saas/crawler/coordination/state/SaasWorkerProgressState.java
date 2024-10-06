@@ -26,7 +26,7 @@ public class SaasWorkerProgressState {
     @JsonProperty("exportStartTime")
     private long exportStartTime;
 
-    private Map<String, Object> keyAttributes = new HashMap<>();
+    private Map<String, String> keyAttributes = new HashMap<>();
 
     @JsonProperty("itemIds")
     private List<String> itemIds;

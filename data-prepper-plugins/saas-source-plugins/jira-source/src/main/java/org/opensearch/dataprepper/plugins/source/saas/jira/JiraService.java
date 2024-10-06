@@ -71,6 +71,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_KEY;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_NAME;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.RATE_LIMIT;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.REST_API_FETCH_ISSUE;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.REST_API_SEARCH;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.RETRY_ATTEMPT;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.START_AT;
@@ -92,7 +93,7 @@ public class JiraService {
 
   private static final Logger log = org.slf4j.LoggerFactory.getLogger(JiraService.class);
   private static final List<Integer> waitTimeList =
-          Arrays.asList(1, 3, 5, 10, 20, 40, 60, 120, 240);
+          Arrays.asList(1, 3 );//,5, 10, 20, 40, 60, 120, 240);
   /**
    * The Jira project cache.
    */
@@ -333,20 +334,15 @@ public class JiraService {
    */
   public IssueBean getIssue(String issueKey, JiraConfiguration configuration) {
     log.info("Started to fetch issue information");
-    SearchResults searchResults = new SearchResults();
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
     HttpResponse<JsonNode> response;
     com.mashape.unirest.request.HttpRequest request;
-    boolean shouldContinue = Boolean.TRUE;
-    String jql = ISSUE_KEY_EQUALS + issueKey;
-    while (shouldContinue) {
-      request = Unirest.get(configuration.getJiraAccountUrl() + REST_API_SEARCH)
+//    boolean shouldContinue = Boolean.TRUE;
+//    String jql = ISSUE_KEY_EQUALS + issueKey;
+    while (true) {
+      request = Unirest.get(configuration.getJiraAccountUrl() + REST_API_FETCH_ISSUE +"/"+ issueKey)
               .basicAuth(configuration.getJiraId(), configuration.getJiraCredential())
-              .header(ACCEPT, Application_JSON)
-              .queryString(MAX_RESULTS, FIFTY)
-              .queryString(START_AT, 0)
-              .queryString(JQL_FIELD, jql)
-              .queryString(EXPAND_FIELD, Collections.singletonList(EXPAND));
+              .header(ACCEPT, Application_JSON);
       log.info("Search result api call request is : {}",
               new Gson().toJson(request, com.mashape.unirest.request.HttpRequest.class));
 
@@ -366,18 +362,13 @@ public class JiraService {
                 throw new BadRequestException(response.getBody().getObject().get(ERR_MSG).toString());
               }
             }
-            shouldContinue = Boolean.FALSE;
+
             Gson gson = new GsonBuilder().create();
-            searchResults = gson.fromJson(response.getBody().getObject().toString(), SearchResults.class);
+            return gson.fromJson(response.getBody().getObject().toString(), IssueBean.class);
         } catch (UnirestException e) {
           log.error("An exception has occurred while connecting to Jira search API: {}", e.getMessage());
           throw new BadRequestException(e.getMessage(), e);
         }
-    }
-    if (Objects.nonNull(searchResults.getIssues())) {
-      return searchResults.getIssues().get(0);
-    } else {
-      return new IssueBean();
     }
   }
 

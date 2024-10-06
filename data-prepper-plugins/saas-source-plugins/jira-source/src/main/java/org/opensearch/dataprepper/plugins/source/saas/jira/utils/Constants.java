@@ -181,6 +181,7 @@ public class Constants {
   public static final String ISSUE_KEY_EQUALS = "issuekey = ";
   public static final String JIRA_ACCOUNT_URL = "jiraAccountUrl";
   public static final String REST_API_SEARCH = "rest/api/3/search";
+  public static final String REST_API_FETCH_ISSUE = "rest/api/3/issue";
   public static final String VALUE = "value=";
   public static final String BASIC_AUTH = "basicAuth";
   public static final String HEAD = "startAt";

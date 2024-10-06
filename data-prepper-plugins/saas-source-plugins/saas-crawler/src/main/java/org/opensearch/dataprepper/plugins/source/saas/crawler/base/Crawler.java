@@ -49,10 +49,6 @@ public class Crawler {
         return startTime;
     }
 
-    public Optional<Item> getItem(ItemInfo itemInfo) {
-        return client.getItem(itemInfo);
-    }
-
     public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer) {
         client.executePartition(state, buffer);
     }

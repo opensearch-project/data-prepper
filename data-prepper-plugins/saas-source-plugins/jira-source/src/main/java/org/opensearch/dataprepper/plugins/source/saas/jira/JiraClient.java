@@ -15,9 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Named;
-import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,9 +36,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.CREATOR;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.DESCCRIPTION_FIELD;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.DISPLAY_NAME;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EMPTY_STRING;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.HEADING;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ISSUE_KEY;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ISSUE_STATUS;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ISSUE_SUMMARY;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.LISTITEM_TEXT;
@@ -117,8 +113,8 @@ public class JiraClient implements SaasClient {
         InputStream inputStream = service.buildTextInputStream(inputStreamString);
         Map<String, Object> customMetadata = null;// service.getCustomFieldMapping(issue, configuration);
         Boolean isCustomMetadataPresent = false; //isCustomMetadataPresent(customMetadata, itemInfo.getItemId());
-        String projectName = itemInfo.getMetadata().get(PROJECT_NAME);
-        String projectKey = itemInfo.getMetadata().get(PROJECT_KEY);
+        String projectName = (String)issue.getFields().get(PROJECT_NAME);
+        String projectKey = (String)issue.getFields().get(PROJECT_KEY);
         String url = configuration.getJiraAccountUrl() + BROWSE + issue.getKey();
         List<String> authors = new ArrayList<>();
         if (Objects.nonNull((issue.getFields().get(CREATOR)))
@@ -231,18 +227,20 @@ public class JiraClient implements SaasClient {
     @Override
     public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer) {
         List<String> itemIds = state.getItemIds();
-        Map<String, Object> keyAttributes = state.getKeyAttributes();
-        String project = (String)keyAttributes.get(PROJECT_KEY);
+        Map<String, String> keyAttributes = state.getKeyAttributes();
+        String project = keyAttributes.get(PROJECT_KEY);
         long eventTime = state.getExportStartTime();
-        //TODO: parallize this work
+        //TODO: parallelize this work
         for(String itemId : itemIds) {
             ItemInfo itemInfo = JiraItemInfo.builder()
                     .withId(itemId)
                     .withProject(project)
-                    .withEventTime(eventTime).build();
+                    .withEventTime(eventTime)
+                    .withMetadata(keyAttributes).build();
             Optional<Item> item = getItem(itemInfo);
             if(item.isPresent()) {
                 Item jiraItem = item.get();
+                log.info("Title {}", jiraItem.getDocumentTitle());
                 //TODO: write to buffer
                 //buffer.write(jiraItem.getDocumentTitle(), 1000);
             }

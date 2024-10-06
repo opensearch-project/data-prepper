@@ -33,7 +33,7 @@ public class JiraItemInfo extends ItemInfo {
     }
 
     @Override
-    public Map<String, Object> getKeyAttributes() {
+    public Map<String, String> getKeyAttributes() {
         return Map.of("project", project);
     }
 
