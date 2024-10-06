@@ -1,8 +1,12 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.internal.LinkedTreeMap;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasClient;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourceConfig;
@@ -16,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Named;
 import java.io.InputStream;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,6 +62,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 public class JiraClient implements SaasClient {
 
     private static final Logger log = LoggerFactory.getLogger(JiraClient.class);
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final JiraService service;
     private JiraConfiguration configuration;
@@ -125,16 +131,21 @@ public class JiraClient implements SaasClient {
         }
         String status = ((LinkedTreeMap) issue.getFields().get(ISSUE_STATUS)).get(NAME).toString();
 
-        return Optional.ofNullable(
-                IssueItem.builder().configuration(configuration).id(itemInfo.getItemId()).issue(issue)
-                        .createdAt(created).updatedAt(updated).url(url)
-                        .projectKey(projectKey)
-                        .status(status)
-                        .assignee(assignee).projectName(projectName).authors(authors)
-                        .inputStream(inputStream)
-                        .isCustomMetadataPresent(isCustomMetadataPresent)
-                        .customMetadata(customMetadata)
-                        .build());
+        try {
+            return Optional.ofNullable(
+                    IssueItem.builder().configuration(configuration).id(itemInfo.getItemId()).issue(issue)
+                            .createdAt(created).updatedAt(updated).url(url)
+                            .projectKey(projectKey)
+                            .status(status)
+                            .assignee(assignee).projectName(projectName).authors(authors)
+                            .inputStream(inputStream)
+                            .isCustomMetadataPresent(isCustomMetadataPresent)
+                            .customMetadata(customMetadata)
+                            .jsonString(objectMapper.writeValueAsString(issue))
+                            .build());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 
@@ -230,20 +241,33 @@ public class JiraClient implements SaasClient {
         Map<String, String> keyAttributes = state.getKeyAttributes();
         String project = keyAttributes.get(PROJECT_KEY);
         long eventTime = state.getExportStartTime();
-        //TODO: parallelize this work
-        for(String itemId : itemIds) {
-            ItemInfo itemInfo = JiraItemInfo.builder()
-                    .withId(itemId)
-                    .withProject(project)
-                    .withEventTime(eventTime)
-                    .withMetadata(keyAttributes).build();
-            Optional<Item> item = getItem(itemInfo);
-            if(item.isPresent()) {
-                Item jiraItem = item.get();
-                log.info("Title {}", jiraItem.getDocumentTitle());
-                //TODO: write to buffer
-                //buffer.write(jiraItem.getDocumentTitle(), 1000);
+        try {
+            //TODO: parallelize this work
+            List<Record<Event>> recordsToWrite = new ArrayList<>();
+            for(String itemId : itemIds) {
+                ItemInfo itemInfo = JiraItemInfo.builder()
+                        .withId(itemId)
+                        .withProject(project)
+                        .withEventTime(eventTime)
+                        .withMetadata(keyAttributes).build();
+                Optional<Item> item = getItem(itemInfo);
+                if(item.isPresent()) {
+                    Item jiraItem = item.get();
+                    IssueItem retrievedItem = (IssueItem) jiraItem;
+                    log.info("Entire Json {}", retrievedItem.getJsonString());
+
+                        Map<String, Object> eventData =
+                                objectMapper.readValue(retrievedItem.getJsonString(), new TypeReference<>() {});
+                    Event event = JacksonEvent.builder()
+                            .withEventType("Ticket")
+                            .withData(eventData)
+                            .build();
+                    recordsToWrite.add(new Record<>(event));
+                }
             }
+            buffer.writeAll(recordsToWrite, (int) Duration.ofSeconds(10).toMillis());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 }

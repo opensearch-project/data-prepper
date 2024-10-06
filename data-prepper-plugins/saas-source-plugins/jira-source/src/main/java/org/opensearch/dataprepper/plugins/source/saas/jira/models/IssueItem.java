@@ -35,6 +35,7 @@ public class IssueItem implements Item {
   long updatedAt;
   Map<String, Object> customMetadata;
   Boolean isCustomMetadataPresent;
+  String jsonString;
 
 
   @Override
