@@ -110,8 +110,9 @@ public class GrokProcessorConfig {
     private List<String> tagsOnTimeout = Collections.emptyList();
 
     @JsonProperty(INCLUDE_PERFORMANCE_METADATA)
-    @JsonPropertyDescription("A boolean value to determine whether or not to performance metadata into event metadata. " +
-            "If set to true, the events coming out of grok will have new fields such as <code>_total_grok_patterns_attempted</code> and <code>_total_grok_processing_time</code>.")
+    @JsonPropertyDescription("A boolean value to determine whether to include performance metadata into event metadata. " +
+            "If set to true, the events coming out of grok will have new fields such as <code>_total_grok_patterns_attempted</code> and <code>_total_grok_processing_time</code>." +
+            "You can use this metadata to perform performance testing and tuning of your grok patterns. By default, it is not included.")
     private boolean includePerformanceMetadata = false;
 
     public boolean isBreakOnMatch() {
