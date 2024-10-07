@@ -23,6 +23,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -46,6 +47,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.CLOSING_ROUND_BRACKET;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.CONTENT_TYPE;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.CREATED;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.DELIMITER;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EMPTY_STRING;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ERR_MSG;
@@ -145,7 +147,7 @@ public class JiraService {
         total = searchIssues.getTotal();
         startAt += searchIssues.getIssues().size();
         futureList.add(crawlerTaskExecutor.submit(
-                () -> addItemsToQueue(issueList, itemInfoQueue, configuration), false));
+                () -> addItemsToQueue(issueList, itemInfoQueue), false));
       } while (startAt < total);
     } catch (RuntimeException ex) {
       log.error("An exception has occurred while fetching"
@@ -158,10 +160,8 @@ public class JiraService {
    * Add items to queue.
    * @param issueList Issue list.
    * @param itemInfoQueue Item info queue.
-   * @param configuration Configuration.
    */
-  private void addItemsToQueue(List<IssueBean> issueList, Queue<ItemInfo> itemInfoQueue,
-                               JiraConfiguration configuration) {
+  private void addItemsToQueue(List<IssueBean> issueList, Queue<ItemInfo> itemInfoQueue) {
     issueList.forEach(issue -> {
       Map<String, String> issueMetadata = new HashMap<>();
       if (Objects.nonNull(((LinkedTreeMap) issue.getFields().get(PROJECT)).get(KEY))) {
@@ -172,6 +172,25 @@ public class JiraService {
         issueMetadata.put(PROJECT_NAME,
                 ((LinkedTreeMap) issue.getFields().get(PROJECT)).get(NAME).toString());
       }
+
+      long created = 0;
+      if (Objects.nonNull(issue.getFields()) && issue.getFields().get(CREATED)
+              .toString().length() >= 23) {
+        String charSequence = issue.getFields().get(CREATED).toString().substring(0, 23) + "Z";
+        OffsetDateTime offsetDateTime = OffsetDateTime.parse(charSequence);
+        new Date(offsetDateTime.toInstant().toEpochMilli());
+        created = offsetDateTime.toEpochSecond() * 1000;
+      }
+      issueMetadata.put(CREATED, String.valueOf(created));
+
+      long updated = 0;
+      if (issue.getFields().get(UPDATED).toString().length() >= 23) {
+        String charSequence = issue.getFields().get(UPDATED).toString().substring(0, 23) + "Z";
+        OffsetDateTime offsetDateTime = OffsetDateTime.parse(charSequence);
+        new Date(offsetDateTime.toInstant().toEpochMilli());
+        updated = offsetDateTime.toEpochSecond() * 1000;
+      }
+      issueMetadata.put(UPDATED, String.valueOf(updated));
 
       issueMetadata.put(ISSUE_KEY, issue.getKey());
       issueMetadata.put(CONTENT_TYPE, JiraContentType.ISSUE.getType());

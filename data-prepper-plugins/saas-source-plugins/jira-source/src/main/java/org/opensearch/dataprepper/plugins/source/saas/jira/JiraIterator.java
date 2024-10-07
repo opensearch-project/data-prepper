@@ -57,10 +57,10 @@ public class JiraIterator implements Iterator<ItemInfo> {
             }
         }
 
-        if (!isCrawlerRunning()
+        /*if (!isCrawlerRunning()
                 && !crawlerTaskExecutor.isTerminated()) {
             terminateExecutor();
-        }
+        }*/
         return !this.itemInfoQueue.isEmpty();
     }
 
@@ -111,6 +111,7 @@ public class JiraIterator implements Iterator<ItemInfo> {
     public void initialize(long jiraChangeLogToken) {
         this.itemInfoQueue = new ConcurrentLinkedQueue<>();
         this.lastPollTime = jiraChangeLogToken;
+        this.firstTime = true;
     }
 
 }

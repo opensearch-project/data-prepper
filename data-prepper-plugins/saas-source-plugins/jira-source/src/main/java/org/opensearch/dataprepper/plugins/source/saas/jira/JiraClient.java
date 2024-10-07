@@ -30,6 +30,7 @@ public class JiraClient implements SaasClient {
 
     private static final Logger log = LoggerFactory.getLogger(JiraClient.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
+    public static final String PROJECT = "project";
 
     private final JiraService service;
     private JiraConfiguration configuration;
@@ -71,19 +72,20 @@ public class JiraClient implements SaasClient {
     public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer) {
         List<String> itemIds = state.getItemIds();
         Map<String, String> keyAttributes = state.getKeyAttributes();
-        String project = keyAttributes.get(PROJECT_KEY);
+        String project = keyAttributes.get(PROJECT);
         long eventTime = state.getExportStartTime();
         try {
             //TODO: parallelize this work
             List<Record<Event>> recordsToWrite = new ArrayList<>();
             for(String itemId : itemIds) {
                 ItemInfo itemInfo = JiraItemInfo.builder()
+                        .withItemId(itemId)
                         .withId(itemId)
                         .withProject(project)
                         .withEventTime(eventTime)
                         .withMetadata(keyAttributes).build();
                 String issueJsonString = getItem(itemInfo);
-                    log.info("Entire Json {}", issueJsonString);
+//                    log.info("Entire Json {}", issueJsonString);
 
                         Map<String, Object> eventData =
                                 objectMapper.readValue(issueJsonString, new TypeReference<>() {});

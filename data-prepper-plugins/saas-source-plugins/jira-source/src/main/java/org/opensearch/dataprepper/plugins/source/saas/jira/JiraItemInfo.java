@@ -14,9 +14,16 @@ public class JiraItemInfo extends ItemInfo {
     private String project;
     private String issueType;
     private String id;
+    public static final String PROJECT = "project";
 
-    public JiraItemInfo(String id, String itemId, String project, String issueType) {
-        super(itemId);
+    public JiraItemInfo(String id,
+                        String itemId,
+                        String project,
+                        String issueType,
+                        Map<String, String> metadata,
+                        Long eventTime
+                        ) {
+        super(itemId, metadata, eventTime);
         this.id = id;
         this.project = project;
         this.issueType = issueType;
@@ -34,7 +41,7 @@ public class JiraItemInfo extends ItemInfo {
 
     @Override
     public Map<String, String> getKeyAttributes() {
-        return Map.of("project", project);
+        return Map.of(PROJECT, project);
     }
 
     public static JiraItemInfoBuilder builder() {
@@ -50,7 +57,7 @@ public class JiraItemInfo extends ItemInfo {
         Long eventTime;
 
         public JiraItemInfo build() {
-            return new JiraItemInfo(id, itemId, project, issueType);
+            return new JiraItemInfo(id, itemId, project, issueType, metadata, eventTime);
         }
         public JiraItemInfoBuilder withMetadata(Map<String, String> metadata) {
             this.metadata = metadata;
