@@ -54,14 +54,14 @@ public class FlattenProcessorConfig {
             "By default no keys are excluded.")
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
+    @JsonProperty("tags_on_failure")
+    @JsonPropertyDescription("A list of tags to add to the event metadata when the event fails to process.")
+    private List<String> tagsOnFailure;
+
     @JsonProperty("flatten_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
             "If specified, the <code>flatten</code> processor will only run on events when the expression evaluates to true. ")
     private String flattenWhen;
-
-    @JsonProperty("tags_on_failure")
-    @JsonPropertyDescription("A list of tags to add to the event metadata when the event fails to process.")
-    private List<String> tagsOnFailure;
 
     public String getSource() {
         return source;

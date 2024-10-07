@@ -27,7 +27,7 @@ public class GeoIPProcessorConfig {
     @NotNull
     @Size(min = 1)
     @JsonProperty("entries")
-    @JsonPropertyDescription("The list of entries marked for enrichment.")
+    @JsonPropertyDescription("The list of entries for enrichment. Each entry provides a source field with an IP address along with a target for the enriched geolocation data.")
     private List<EntryConfig> entries;
 
     @JsonProperty("tags_on_engine_failure")

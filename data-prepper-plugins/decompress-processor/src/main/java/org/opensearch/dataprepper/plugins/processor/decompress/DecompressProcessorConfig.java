@@ -33,13 +33,13 @@ public class DecompressProcessorConfig {
     @NotNull
     private DecompressionType decompressionType;
 
-    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, such as <code>'/is_compressed == true'</code>, that determines when the decompress processor will run on certain events.")
-    @JsonProperty("decompress_when")
-    private String decompressWhen;
-
     @JsonPropertyDescription("A list of strings with which to tag events when the processor fails to decompress the keys inside an event. Defaults to <code>_decompression_failure</code>.")
     @JsonProperty("tags_on_failure")
     private List<String> tagsOnFailure = List.of("_decompression_failure");
+
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, such as <code>'/is_compressed == true'</code>, that determines when the decompress processor will run on certain events.")
+    @JsonProperty("decompress_when")
+    private String decompressWhen;
 
     @JsonIgnore
     private final EncodingType encodingType = EncodingType.BASE64;

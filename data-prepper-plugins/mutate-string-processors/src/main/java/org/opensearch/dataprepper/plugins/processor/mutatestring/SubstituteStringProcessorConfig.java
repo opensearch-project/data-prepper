@@ -18,14 +18,17 @@ import java.util.List;
 @JsonClassDescription("The <code>substitute_string</code> processor matches a key’s value against a regular expression and " +
         "replaces all matches with a replacement string.")
 public class SubstituteStringProcessorConfig implements StringProcessorConfig<SubstituteStringProcessorConfig.Entry> {
+    @JsonPropertyOrder
     public static class Entry {
         @JsonPropertyDescription("The key of the field to modify.")
         private EventKey source;
+
         @JsonPropertyDescription("The regular expression to match on for replacement. Special regex characters such as <code>[</code> and <code>]</code> must " +
                 "be escaped using <code>\\\\</code> when using double quotes and <code>\\</code> when using single quotes. " +
                 "See <a href=\"https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/regex/Pattern.html\">Java Patterns</a>" +
                 "for more information.")
         private String from;
+
         @JsonPropertyDescription("The string to be substituted for each match of <code>from</code>.")
         private String to;
 

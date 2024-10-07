@@ -30,6 +30,10 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     @JsonPropertyDescription("Target type for the values. Default value is <code>integer.</code>")
     private TargetType type = TargetType.INTEGER;
 
+    @JsonProperty("null_values")
+    @JsonPropertyDescription("String representation of what constitutes a null value. If the field value equals one of these strings, then the value is considered null and is converted to null.")
+    private List<String> nullValues;
+
     /**
      * Optional scale value used only in the case of BigDecimal converter
      */
@@ -37,17 +41,13 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     @JsonPropertyDescription("Modifies the scale of the <code>big_decimal</code> when converting to a <code>big_decimal</code>. The default value is 0.")
     private int scale = 0;
 
-    @JsonProperty("convert_when")
-    @JsonPropertyDescription("Specifies a condition using a <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> for performing the <code>convert_entry_type</code> operation. If specified, the <code>convert_entry_type</code> operation runs only when the expression evaluates to true. Example: <code>/mykey != \"---\"</code>")
-    private String convertWhen;
-
-    @JsonProperty("null_values")
-    @JsonPropertyDescription("String representation of what constitutes a null value. If the field value equals one of these strings, then the value is considered null and is converted to null.")
-    private List<String> nullValues;
-
     @JsonProperty("tags_on_failure")
     @JsonPropertyDescription("A list of tags to be added to the event metadata when the event fails to convert.")
     private List<String> tagsOnFailure;
+
+    @JsonProperty("convert_when")
+    @JsonPropertyDescription("Specifies a condition using a <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> for performing the <code>convert_entry_type</code> operation. If specified, the <code>convert_entry_type</code> operation runs only when the expression evaluates to true. Example: <code>/mykey != \"---\"</code>")
+    private String convertWhen;
 
     public String getKey() {
         return key;

@@ -37,15 +37,6 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
             "If the JSON pointer is invalid then the entire source data is parsed into the outgoing event. If the key that is pointed to already exists in the event and the destination is the root, then the pointer uses the entire path of the key.")
     private String pointer;
 
-    @JsonProperty("parse_when")
-    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
-            "If specified, the <code>parse_json</code> processor will only run on events when the expression evaluates to true. ")
-    private String parseWhen;
-
-    @JsonProperty("tags_on_failure")
-    @JsonPropertyDescription("A list of strings specifying the tags to be set in the event when the processor fails or an unknown exception occurs during parsing.")
-    private List<String> tagsOnFailure;
-
     @JsonProperty("overwrite_if_destination_exists")
     @JsonPropertyDescription("Overwrites the destination if set to true. Set to false to prevent changing a destination value that exists. Defaults to true.")
     private boolean overwriteIfDestinationExists = true;
@@ -53,6 +44,15 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
     @JsonProperty
     @JsonPropertyDescription("If true, the configured <code>source</code> field will be deleted after the JSON data is parsed into separate fields.")
     private boolean deleteSource = false;
+
+    @JsonProperty("tags_on_failure")
+    @JsonPropertyDescription("A list of strings specifying the tags to be set in the event when the processor fails or an unknown exception occurs during parsing.")
+    private List<String> tagsOnFailure;
+
+    @JsonProperty("parse_when")
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
+            "If specified, the <code>parse_json</code> processor will only run on events when the expression evaluates to true. ")
+    private String parseWhen;
 
     @JsonProperty("handle_failed_events")
     @JsonPropertyDescription("Determines how to handle events with JSON processing errors. Options include 'skip', " +

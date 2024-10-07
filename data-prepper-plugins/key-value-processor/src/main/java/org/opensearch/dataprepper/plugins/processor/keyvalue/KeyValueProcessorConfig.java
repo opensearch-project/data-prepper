@@ -47,6 +47,13 @@ public class KeyValueProcessorConfig {
             "The default value is <code>parsed_message</code>.")
     private String destination = DEFAULT_DESTINATION;
 
+    @JsonProperty("field_split_characters")
+    @JsonPropertyDescription("A string of characters specifying the delimiter that separates key-value pairs. " +
+            "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
+            "This field cannot be defined along with <code>field_delimiter_regex</code>. " +
+            "The default value is <code>&amp;</code>.")
+    private String fieldSplitCharacters = DEFAULT_FIELD_SPLIT_CHARACTERS;
+
     @JsonProperty("field_delimiter_regex")
     @JsonPropertyDescription("A regular expression specifying the delimiter that separates key-value pairs. " +
             "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
@@ -54,12 +61,33 @@ public class KeyValueProcessorConfig {
             "If this option is not defined, the <code>key_value</code> processor will parse the source using <code>field_split_characters</code>.")
     private String fieldDelimiterRegex;
 
-    @JsonProperty("field_split_characters")
-    @JsonPropertyDescription("A string of characters specifying the delimiter that separates key-value pairs. " +
+    @JsonProperty("value_split_characters")
+    @JsonPropertyDescription("A string of characters specifying the delimiter that separates keys from their values within a key-value pair. " +
             "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
-            "This field cannot be defined along with <code>field_delimiter_regex</code>. " +
-            "The default value is <code>&amp;</code>.")
-    private String fieldSplitCharacters = DEFAULT_FIELD_SPLIT_CHARACTERS;
+            "This field cannot be defined along with <code>key_value_delimiter_regex</code>. " +
+            "The default value is <code>=</code>.")
+    private String valueSplitCharacters = DEFAULT_VALUE_SPLIT_CHARACTERS;
+
+    @JsonProperty("key_value_delimiter_regex")
+    @JsonPropertyDescription("A regular expression specifying the delimiter that separates keys from their values within a key-value pair. " +
+            "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
+            "This field cannot be defined along with <code>value_split_characters</code>. " +
+            "If this option is not defined, the <code>key_value</code> processor will parse the source using <code>value_split_characters</code>.")
+    private String keyValueDelimiterRegex;
+
+    @JsonProperty("default_values")
+    @JsonPropertyDescription("A map specifying the default keys and their values that should be added " +
+            "to the event in case these keys do not exist in the source field being parsed. " +
+            "If the key was parsed from the source field that value will remain and the default value is not used. " +
+            "If the default values includes keys which are not part of <code>include_keys</code> those keys and value will be added to the event.")
+    @NotNull
+    private Map<String, Object> defaultValues = DEFAULT_DEFAULT_VALUES;
+
+    @JsonProperty("non_match_value")
+    @JsonPropertyDescription("Configures a value to use when the processor cannot split a key-value pair. " +
+            "The value specified in this configuration is the value used in <code>destination</code> map. " +
+            "The default behavior is to drop the key-value pair.")
+    private Object nonMatchValue = DEFAULT_NON_MATCH_VALUE;
 
     @JsonProperty("include_keys")
     @JsonPropertyDescription("An array specifying the keys that should be included in the destination field. " +
@@ -72,34 +100,6 @@ public class KeyValueProcessorConfig {
             "By default, no keys will be excluded.")
     @NotNull
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
-
-    @JsonProperty("default_values")
-    @JsonPropertyDescription("A map specifying the default keys and their values that should be added " +
-            "to the event in case these keys do not exist in the source field being parsed. " +
-            "If the key was parsed from the source field that value will remain and the default value is not used. " +
-            "If the default values includes keys which are not part of <code>include_keys</code> those keys and value will be added to the event.")
-    @NotNull
-    private Map<String, Object> defaultValues = DEFAULT_DEFAULT_VALUES;
-
-    @JsonProperty("key_value_delimiter_regex")
-    @JsonPropertyDescription("A regular expression specifying the delimiter that separates keys from their values within a key-value pair. " +
-            "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
-            "This field cannot be defined along with <code>value_split_characters</code>. " +
-            "If this option is not defined, the <code>key_value</code> processor will parse the source using <code>value_split_characters</code>.")
-    private String keyValueDelimiterRegex;
-
-    @JsonProperty("value_split_characters")
-    @JsonPropertyDescription("A string of characters specifying the delimiter that separates keys from their values within a key-value pair. " +
-            "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
-            "This field cannot be defined along with <code>key_value_delimiter_regex</code>. " +
-            "The default value is <code>=</code>.")
-    private String valueSplitCharacters = DEFAULT_VALUE_SPLIT_CHARACTERS;
-
-    @JsonProperty("non_match_value")
-    @JsonPropertyDescription("Configures a value to use when the processor cannot split a key-value pair. " +
-            "The value specified in this configuration is the value used in <code>destination</code> map. " +
-            "The default behavior is to drop the key-value pair.")
-    private Object nonMatchValue = DEFAULT_NON_MATCH_VALUE;
 
     @JsonPropertyDescription("A prefix to append before all keys. By default no prefix is added.")
     @NotNull
@@ -168,11 +168,7 @@ public class KeyValueProcessorConfig {
             "<code>whitespace</code> will always be <code>\"strict\"</code>.")
     @NotNull
     private boolean recursive = DEFAULT_RECURSIVE;
-
-    @JsonProperty("tags_on_failure")
-    @JsonPropertyDescription("The tags to add to the event metadata if the <code>key_value</code> processor fails to parse the source string.")
-    private List<String> tagsOnFailure;
-
+    
     @JsonProperty("overwrite_if_destination_exists")
     @JsonPropertyDescription("Specifies whether to overwrite existing fields if there are key conflicts " +
             "when writing parsed fields to the event. Default is <code>true</code>.")
@@ -183,11 +179,6 @@ public class KeyValueProcessorConfig {
             "For example, if <code>drop_keys_with_no_value</code> is set to <code>true</code>, " +
             "then <code>{\"key1=value1&amp;key2\"}</code> parses to <code>{\"key1\": \"value1\"}</code>.")
     private boolean dropKeysWithNoValue = false;
-
-    @JsonProperty("key_value_when")
-    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
-            "If specified, the <code>key_value</code> processor will only run on events when the expression evaluates to true. ")
-    private String keyValueWhen;
 
     @JsonProperty("strict_grouping")
     @JsonPropertyDescription("When enabled, groups with unmatched end characters yield errors. " +
@@ -203,6 +194,15 @@ public class KeyValueProcessorConfig {
             "Default is <code>null</code>.")
     @Size(min = 0, max = 1, message = "string_literal_character may only have character")
     private String stringLiteralCharacter = null;
+
+    @JsonProperty("tags_on_failure")
+    @JsonPropertyDescription("The tags to add to the event metadata if the <code>key_value</code> processor fails to parse the source string.")
+    private List<String> tagsOnFailure;
+
+    @JsonProperty("key_value_when")
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
+            "If specified, the <code>key_value</code> processor will only run on events when the expression evaluates to true. ")
+    private String keyValueWhen;
 
     @AssertTrue(message = "Invalid Configuration. value_grouping option and field_delimiter_regex are mutually exclusive")
     boolean isValidValueGroupingAndFieldDelimiterRegex() {
