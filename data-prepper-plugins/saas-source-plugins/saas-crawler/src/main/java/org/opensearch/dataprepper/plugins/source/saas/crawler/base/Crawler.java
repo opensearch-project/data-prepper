@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 @Component
 public class Crawler {
     private static final Logger log = LoggerFactory.getLogger(Crawler.class);
-    private static final int maxItemsPerPage = 2;
+    private static final int maxItemsPerPage = 20;
     public static final String CREATED = "created";
     public static final String UPDATED = "updated";
 

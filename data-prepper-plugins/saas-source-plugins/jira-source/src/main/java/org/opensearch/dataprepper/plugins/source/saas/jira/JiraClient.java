@@ -20,8 +20,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_KEY;
-
 /**
  * This class represents a Jira client.
  */
@@ -41,7 +39,6 @@ public class JiraClient implements SaasClient {
         this.service = service;
         this.jiraIterator = jiraIterator;
     }
-
 
 
     //@Override

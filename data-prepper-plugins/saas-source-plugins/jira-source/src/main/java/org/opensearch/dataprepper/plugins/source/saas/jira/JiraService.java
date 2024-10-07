@@ -92,13 +92,11 @@ public class JiraService {
 
   private static final Logger log = org.slf4j.LoggerFactory.getLogger(JiraService.class);
   private static final List<Integer> waitTimeList =
-          Arrays.asList(1, 3 );//,5, 10, 20, 40, 60, 120, 240);
+          Arrays.asList(1, 3, 5, 10, 20, 40, 60, 120, 240);
   /**
    * The Jira project cache.
    */
   static Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
-
-  private static String url;
 
   /**
    * Get jira entities.
@@ -254,7 +252,7 @@ public class JiraService {
         int retryCount = 0;
         boolean shouldContinue = Boolean.TRUE;
         while (shouldContinue && (retryCount < RETRY_ATTEMPT)) {
-          request = Unirest.get(url + REST_API_SEARCH)
+          request = Unirest.get(REST_API_SEARCH)
                   .header(ACCEPT, Application_JSON)
                   .header(HttpHeaders.AUTHORIZATION, String
                           .format("%s %s", Constants.TOKEN_TYPE, JiraOauthConfig.accessToken))
