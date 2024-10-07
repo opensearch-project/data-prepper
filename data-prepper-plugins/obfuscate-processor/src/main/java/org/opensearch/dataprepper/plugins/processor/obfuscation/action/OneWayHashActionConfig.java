@@ -28,13 +28,13 @@ public class OneWayHashActionConfig {
     private String salt;
 
     @JsonProperty("format")
-    @Pattern(regexp = "SHA-512", message = "Valid values: SHA-512")
-    @JsonPropertyDescription("Format of one way hash to generate. Default to SHA-512.")
+    @Pattern(regexp = "SHA-512", message = "Valid values: <code>SHA-512</code>")
+    @JsonPropertyDescription("Format of one way hash to generate. Default to <code>SHA-512</code>.")
     private String format = "SHA-512";
 
     @JsonProperty("salt_key")
     @JsonPropertyDescription("A key to compute salt based on a value provided as part of a record. " +
-        "If key or value was not found in the record(s), a salt defined in the pipeline configuration will be used instead.")
+        "If key or value was not found in the event, a salt defined in the pipeline configuration will be used instead.")
     @EventKeyConfiguration(EventKeyFactory.EventAction.GET)
     private EventKey saltKey;
  

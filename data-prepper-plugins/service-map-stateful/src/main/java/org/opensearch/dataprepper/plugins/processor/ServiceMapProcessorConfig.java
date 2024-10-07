@@ -11,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `service_map` processor uses OpenTelemetry data to create a distributed service map for " +
+@JsonClassDescription("The <code>service_map</code> processor uses OpenTelemetry data to create a distributed service map for " +
         "visualization in OpenSearch Dashboards.")
 public class ServiceMapProcessorConfig {
     private static final String WINDOW_DURATION = "window_duration";
@@ -20,7 +20,7 @@ public class ServiceMapProcessorConfig {
 
     @JsonProperty(WINDOW_DURATION)
     @JsonPropertyDescription("Represents the fixed time window, in seconds, " +
-            "during which service map relationships are evaluated. Default value is 180.")
+            "during which service map relationships are evaluated. Default value is <code>180</code>.")
     private int windowDuration = DEFAULT_WINDOW_DURATION;
 
     public int getWindowDuration() {

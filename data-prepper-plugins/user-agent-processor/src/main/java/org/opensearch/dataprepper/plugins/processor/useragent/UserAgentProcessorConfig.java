@@ -18,8 +18,8 @@ import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `user_agent` processor parses any user agent (UA) string in an event and then adds the " +
-        "parsing results to the event’s write data.")
+@JsonClassDescription("The <code>user_agent</code> processor parses any user agent (UA) string in an event and then adds the " +
+        "parsed results to the event.")
 public class UserAgentProcessorConfig {
 
     private static final int DEFAULT_CACHE_SIZE = 1000;
