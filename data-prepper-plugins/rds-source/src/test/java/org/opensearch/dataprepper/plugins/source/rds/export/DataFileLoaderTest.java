@@ -148,7 +148,7 @@ class DataFileLoaderTest {
 
         verify(bufferAccumulator).add(any(Record.class));
         verify(bufferAccumulator).flush();
-        verify(acknowledgementSet).add(event);
+        verify(acknowledgementSet).add(event.getEventHandle());
         verify(acknowledgementSet).complete();
 
         verify(exportRecordsTotalCounter).increment();
@@ -198,7 +198,7 @@ class DataFileLoaderTest {
 
         verify(bufferAccumulator).add(any(Record.class));
         verify(bufferAccumulator).flush();
-        verify(acknowledgementSet).add(event);
+        verify(acknowledgementSet).add(event.getEventHandle());
         verify(acknowledgementSet, never()).complete();
 
         verify(exportRecordsTotalCounter).increment();

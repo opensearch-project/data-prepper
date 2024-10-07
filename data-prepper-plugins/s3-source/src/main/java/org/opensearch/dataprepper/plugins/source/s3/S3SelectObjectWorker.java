@@ -272,7 +272,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
                         // buffer contents before the event record is added
                         // to acknowledgement set
                         if (acknowledgementSet != null) {
-                            acknowledgementSet.add(eventRecord.getData());
+                            acknowledgementSet.add(((Event)eventRecord.getData()).getEventHandle());
                         }
                         bufferAccumulator.add(eventRecord);
                     } catch (final Exception ex) {

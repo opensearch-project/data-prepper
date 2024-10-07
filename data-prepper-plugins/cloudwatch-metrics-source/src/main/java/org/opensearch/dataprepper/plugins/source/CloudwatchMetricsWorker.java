@@ -202,7 +202,7 @@ public class CloudwatchMetricsWorker implements Runnable {
                 LOG.error("Exception while adding record events {0}", ex);
             }
             if (Objects.nonNull(acknowledgementSet)) {
-                acknowledgementSet.add(eventRecord.getData());
+                acknowledgementSet.add(((Event)eventRecord.getData()).getEventHandle());
             }
         });
 

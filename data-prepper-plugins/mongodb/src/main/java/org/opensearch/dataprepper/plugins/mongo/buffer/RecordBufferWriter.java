@@ -45,16 +45,16 @@ public class RecordBufferWriter {
      * Add event record to buffer
      *
      * @param acknowledgementSet      acknowledgmentSet keeps track of set of events
-     * @param record                  record to be written to buffer
+     * @param event                   event to be written to buffer
      * @throws Exception Exception if failed to write to buffer.
      */
     public void addToBuffer(final AcknowledgementSet acknowledgementSet,
-                            final Event record) throws Exception {
+                            final Event event) throws Exception {
         if (acknowledgementSet != null) {
-            acknowledgementSet.add(record);
+            acknowledgementSet.add(event.getEventHandle());
         }
 
-        bufferAccumulator.add(new Record<>(record));
+        bufferAccumulator.add(new Record<>(event));
     }
 
     public void writeToBuffer(final AcknowledgementSet acknowledgementSet,

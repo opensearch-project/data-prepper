@@ -128,7 +128,7 @@ public class InMemorySource implements Source<Record<Event>> {
                                     inMemorySourceAccessor.setAckReceived(result);
                                 },
                                 Duration.ofSeconds(15));
-                    records.stream().forEach((record) -> { ackSet.add(record.getData()); });
+                    records.stream().forEach((record) -> { ackSet.add(((Event)record.getData()).getEventHandle()); });
                     ackSet.complete();
                     writeToBuffer(records);
                 } catch (final Exception ex) {

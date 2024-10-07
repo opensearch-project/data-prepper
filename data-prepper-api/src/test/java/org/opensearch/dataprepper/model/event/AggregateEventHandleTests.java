@@ -9,11 +9,12 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.doNothing;
 import org.mockito.Mock;
 
 import java.lang.ref.WeakReference;
@@ -96,6 +97,22 @@ class AggregateEventHandleTests {
         verify(acknowledgementSet1, times(1)).release(eventHandle, true);
         verify(acknowledgementSet2, times(0)).release(eventHandle, true);
 
+    }
+
+    @Test
+    void testAddEventHandle() {
+        Instant now = Instant.now();
+        AggregateEventHandle eventHandle = new AggregateEventHandle(now);
+        acknowledgementSet1 = mock(AcknowledgementSet.class);
+        acknowledgementSet2 = mock(AcknowledgementSet.class);
+        eventHandle.addAcknowledgementSet(acknowledgementSet1);
+        eventHandle.addAcknowledgementSet(acknowledgementSet2);
+        AggregateEventHandle eventHandle2 = new AggregateEventHandle(now);
+        doNothing().when(acknowledgementSet1).add(any(EventHandle.class));
+        doNothing().when(acknowledgementSet2).add(any(EventHandle.class));
+	eventHandle.addEventHandle(eventHandle2);
+        verify(acknowledgementSet1).add(eventHandle2);
+        verify(acknowledgementSet2).add(eventHandle2);
     }
 
 }

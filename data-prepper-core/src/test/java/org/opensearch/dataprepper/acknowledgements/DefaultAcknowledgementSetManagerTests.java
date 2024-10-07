@@ -76,8 +76,8 @@ class DefaultAcknowledgementSetManagerTests {
         }).when(eventHandle2).release(any(Boolean.class));
         lenient().when(event2.getEventHandle()).thenReturn(eventHandle2);
 
-        acknowledgementSet1.add(event1);
-        acknowledgementSet1.add(event2);
+        acknowledgementSet1.add(eventHandle1);
+        acknowledgementSet1.add(eventHandle2);
         lenient().when(eventHandle1.getAcknowledgementSet()).thenReturn(acknowledgementSet1);
         lenient().when(eventHandle2.getAcknowledgementSet()).thenReturn(acknowledgementSet1);
         acknowledgementSet1.complete();
@@ -121,7 +121,7 @@ class DefaultAcknowledgementSetManagerTests {
         }).when(eventHandle3).release(any(Boolean.class));
         lenient().when(event3.getEventHandle()).thenReturn(eventHandle3);
 
-        acknowledgementSet2.add(event3);
+        acknowledgementSet2.add(eventHandle3);
         lenient().when(eventHandle3.getAcknowledgementSet()).thenReturn(acknowledgementSet2);
         acknowledgementSet2.complete();
 
@@ -173,10 +173,10 @@ class DefaultAcknowledgementSetManagerTests {
         lenient().when(event6.getEventHandle()).thenReturn(eventHandle6);
 
         acknowledgementSet2.addProgressCheck((progressCheck) -> {currentRatio = progressCheck.getRatio();}, Duration.ofSeconds(1));
-        acknowledgementSet2.add(event3);
-        acknowledgementSet2.add(event4);
-        acknowledgementSet2.add(event5);
-        acknowledgementSet2.add(event6);
+        acknowledgementSet2.add(eventHandle3);
+        acknowledgementSet2.add(eventHandle4);
+        acknowledgementSet2.add(eventHandle5);
+        acknowledgementSet2.add(eventHandle6);
         lenient().when(eventHandle3.getAcknowledgementSet()).thenReturn(acknowledgementSet2);
         lenient().when(eventHandle4.getAcknowledgementSet()).thenReturn(acknowledgementSet2);
         lenient().when(eventHandle5.getAcknowledgementSet()).thenReturn(acknowledgementSet2);
@@ -239,10 +239,10 @@ class DefaultAcknowledgementSetManagerTests {
         lenient().when(event6.getEventHandle()).thenReturn(eventHandle6);
 
         acknowledgementSet2.addProgressCheck((progressCheck) -> {currentRatio = progressCheck.getRatio();}, Duration.ofSeconds(1));
-        acknowledgementSet2.add(event3);
-        acknowledgementSet2.add(event4);
-        acknowledgementSet2.add(event5);
-        acknowledgementSet2.add(event6);
+        acknowledgementSet2.add(eventHandle3);
+        acknowledgementSet2.add(eventHandle4);
+        acknowledgementSet2.add(eventHandle5);
+        acknowledgementSet2.add(eventHandle6);
         lenient().when(eventHandle3.getAcknowledgementSet()).thenReturn(acknowledgementSet2);
         lenient().when(eventHandle4.getAcknowledgementSet()).thenReturn(acknowledgementSet2);
         lenient().when(eventHandle5.getAcknowledgementSet()).thenReturn(acknowledgementSet2);

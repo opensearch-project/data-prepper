@@ -132,7 +132,7 @@ public class DataFileLoader implements Runnable {
                             null);
 
                     if (acknowledgementSet != null) {
-                        acknowledgementSet.add(transformedEvent);
+                        acknowledgementSet.add(transformedEvent.getEventHandle());
                     }
 
                     bufferAccumulator.add(new Record<>(transformedEvent));

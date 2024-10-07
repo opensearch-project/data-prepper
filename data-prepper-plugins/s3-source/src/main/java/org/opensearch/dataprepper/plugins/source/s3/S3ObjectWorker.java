@@ -104,7 +104,7 @@ class S3ObjectWorker implements S3ObjectHandler {
                     // buffer contents before the event record is added
                     // to acknowledgement set
                     if (acknowledgementSet != null) {
-                        acknowledgementSet.add(record.getData());
+                        acknowledgementSet.add(((Event)record.getData()).getEventHandle());
                     }
                     bufferAccumulator.add(record);
 

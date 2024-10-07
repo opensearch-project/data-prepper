@@ -452,7 +452,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         // buffer contents before the event record is added
         // to acknowledgement set
         if (acknowledgementSet != null) {
-            acknowledgementSet.add(record.getData());
+            acknowledgementSet.add(((Event)record.getData()).getEventHandle());
         }
         long numRetries = 0;
         while (true) {
