@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugin;
 
-import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -13,7 +12,6 @@ import org.springframework.context.support.GenericApplicationContext;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import javax.inject.Provider;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -60,17 +58,17 @@ class PluginBeanFactoryProvider {
      * instead, a new isolated {@link ApplicationContext} should be created.
      * @return BeanFactory A BeanFactory that inherits from {@link PluginBeanFactoryProvider#sharedPluginApplicationContext}
      */
-    public BeanFactory initializePluginSpecificIsolatedContextCombinedWithShared(DataPrepperPlugin pluginAnnotation) {
-        AnnotationConfigApplicationContext pluginDIContext = new AnnotationConfigApplicationContext();
-        if(pluginAnnotation.packagesToScanForDI().length>0) {
+    public BeanFactory createPluginSpecificContext(Class[] markersToScan) {
+        AnnotationConfigApplicationContext isolatedPluginApplicationContext = new AnnotationConfigApplicationContext();
+        if(markersToScan !=null && markersToScan.length>0) {
             // If packages to scan is provided in this plugin annotation, which indicates
             // that this plugin is interested in using Dependency Injection isolated for its module
-            Arrays.stream(pluginAnnotation.packagesToScanForDI())
+            Arrays.stream(markersToScan)
                     .map(Class::getPackageName)
-                    .forEach(pluginDIContext::scan);
-            pluginDIContext.refresh();
+                    .forEach(isolatedPluginApplicationContext::scan);
+            isolatedPluginApplicationContext.refresh();
         }
-        pluginDIContext.setParent(sharedPluginApplicationContext);
-        return pluginDIContext.getBeanFactory();
+        isolatedPluginApplicationContext.setParent(sharedPluginApplicationContext);
+        return isolatedPluginApplicationContext.getBeanFactory();
     }
 }

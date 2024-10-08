@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.csv;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
@@ -14,6 +15,7 @@ import java.util.List;
 /**
  * Configuration class for {@link CsvProcessor}.
  */
+@JsonClassDescription("The <code>csv</code> processor parses comma-separated values (CSVs) strings into structured data.")
 public class CsvProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
     static final String DEFAULT_DELIMITER = ",";
@@ -21,45 +23,44 @@ public class CsvProcessorConfig {
     static final Boolean DEFAULT_DELETE_HEADERS = true;
 
     @JsonProperty("source")
-    @JsonPropertyDescription("The field in the event that will be parsed. Default value is `message`.")
+    @JsonPropertyDescription("The field in the event that will be parsed. Default value is <code>message</code>.")
     private String source = DEFAULT_SOURCE;
 
     @JsonProperty("delimiter")
-    @JsonPropertyDescription("The character separating each column. Default value is `,`.")
+    @JsonPropertyDescription("The character separating each column. Default value is <code>,</code>.")
     private String delimiter = DEFAULT_DELIMITER;
 
     @JsonProperty("delete_header")
-    @JsonPropertyDescription("If specified, the event header (`column_names_source_key`) is deleted after the event " +
+    @JsonPropertyDescription("If specified, the event header (<code>column_names_source_key</code>) is deleted after the event " +
             "is parsed. If there is no event header, no action is taken. Default value is true.")
     private Boolean deleteHeader = DEFAULT_DELETE_HEADERS;
 
     @JsonProperty("quote_character")
     @JsonPropertyDescription("The character used as a text qualifier for a single column of data. " +
-            "Default value is `\"`.")
+            "Default value is <code>\"</code>.")
     private String quoteCharacter = DEFAULT_QUOTE_CHARACTER;
 
     @JsonProperty("column_names_source_key")
     @JsonPropertyDescription("The field in the event that specifies the CSV column names, which will be " +
-            "automatically detected. If there need to be extra column names, the column names are automatically " +
-            "generated according to their index. If `column_names` is also defined, the header in " +
-            "`column_names_source_key` can also be used to generate the event fields. " +
+            "automatically detected. If there are additional columns in the <code>source</code>, the column names are automatically " +
+            "generated according to column index. If <code>column_names</code> is also defined, the header in " +
+            "<code>column_names_source_key</code> can also be used to generate the event fields. " +
             "If too few columns are specified in this field, the remaining column names are automatically generated. " +
             "If too many column names are specified in this field, the CSV processor omits the extra column names.")
     private String columnNamesSourceKey;
 
     @JsonProperty("column_names")
     @JsonPropertyDescription("User-specified names for the CSV columns. " +
-            "Default value is `[column1, column2, ..., columnN]` if there are no columns of data in the CSV " +
-            "record and `column_names_source_key` is not defined. If `column_names_source_key` is defined, " +
-            "the header in `column_names_source_key` generates the event fields. If too few columns are specified " +
+            "Default value is <code>[column1, column2, ..., columnN]</code> if there are no columns of data in the CSV " +
+            "record and <code>column_names_source_key</code> is not defined. If <code>column_names_source_key</code> is defined, " +
+            "the header in <code>column_names_source_key</code> generates the event fields. If too few columns are specified " +
             "in this field, the remaining column names are automatically generated. " +
             "If too many column names are specified in this field, the CSV processor omits the extra column names.")
     private List<String> columnNames;
 
     @JsonProperty("csv_when")
-    @JsonPropertyDescription("Allows you to specify a Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
-            "such as `/some-key == \"test\"`, that will be evaluated to determine whether " +
-            "the processor should be applied to the event.")
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
+            "If specified, the <code>csv</code> processor will only run on events when the expression evaluates to true. ")
     private String csvWhen;
 
     @JsonPropertyDescription("If true, the configured source field will be deleted after the CSV data is parsed into separate fields.")

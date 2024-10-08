@@ -17,7 +17,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `truncate` processor truncates a key’s value at the beginning, the end, " +
+@JsonClassDescription("The <code>truncate</code> processor truncates a key's value at the beginning, the end, " +
         "or on both sides of the value string, based on the processor’s configuration.")
 public class TruncateProcessorConfig {
     public static class Entry {
@@ -27,8 +27,8 @@ public class TruncateProcessorConfig {
         private List<String> sourceKeys;
 
         @JsonProperty("start_at")
-        @JsonPropertyDescription("Where in the string value to start truncation. " +
-                "Default is `0`, which specifies to start truncation at the beginning of each key's value.")
+        @JsonPropertyDescription("The index into the string value to start truncation. " +
+                "Default is <code>0</code>, which specifies to start truncation at the beginning of each key's value.")
         private Integer startAt;
 
         @JsonProperty("length")
@@ -37,11 +37,12 @@ public class TruncateProcessorConfig {
         private Integer length;
 
         @JsonProperty("recursive")
-        @JsonPropertyDescription("Recursively truncates the fields. If the value of a field is a map (json object), then it recursively applies truncate operation on the fields in the map.")
+        @JsonPropertyDescription("Recursively truncates the fields. If the value of a field is a map, then it recursively applies truncate operation on the fields in the map.")
         private Boolean recurse = false;
 
         @JsonProperty("truncate_when")
-        @JsonPropertyDescription("A condition that, when met, determines when the truncate operation is performed.")
+        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>'/test != false'</code>. " +
+                "If specified, the <code>truncate</code> processor will only run on events when the expression evaluates to true. ")
         private String truncateWhen;
 
         public Entry(final List<String> sourceKeys, final Integer startAt, final Integer length, final String truncateWhen, final Boolean recurse) {

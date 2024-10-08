@@ -17,8 +17,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `copy_values` processor copies values within an event and is a [mutate event]" +
-        "(https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/mutate-event/) processor.")
+@JsonClassDescription("The <code>copy_values</code> processor copies values within an event to other fields within the event.")
 public class CopyValueProcessorConfig {
     public static class Entry {
         @NotEmpty
@@ -34,13 +33,13 @@ public class CopyValueProcessorConfig {
         private String toKey;
 
         @JsonProperty("copy_when")
-        @JsonPropertyDescription("A [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
-                "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be run on the event.")
+        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
+                "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be run on the event.")
         private String copyWhen;
 
         @JsonProperty("overwrite_if_to_key_exists")
-        @JsonPropertyDescription("When set to `true`, the existing value is overwritten if `key` already exists in " +
-                "the event. The default value is `false`.")
+        @JsonPropertyDescription("When set to <code>true</code>, the existing value is overwritten if <code>key</code> already exists in " +
+                "the event. The default value is <code>false</code>.")
         private boolean overwriteIfToKeyExists = false;
 
         public String getFromKey() {
@@ -84,7 +83,7 @@ public class CopyValueProcessorConfig {
     private String toList;
 
     @JsonProperty("overwrite_if_to_list_exists")
-    @JsonPropertyDescription("When set to `true`, the existing value is overwritten if `key` already exists in the event. The default value is `false`.")
+    @JsonPropertyDescription("When set to <code>true</code>, the existing value is overwritten if <code>key</code> already exists in the event. The default value is <code>false</code>.")
     private boolean overwriteIfToListExists = false;
 
     @AssertTrue(message = "Both from_list and to_list should be specified when copying entries between lists.")

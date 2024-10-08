@@ -18,7 +18,7 @@ import java.util.Locale;
 import java.time.format.DateTimeFormatter;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `date` processor adds a default timestamp to an event, parses timestamp fields, " +
+@JsonClassDescription("The <code>date</code> processor adds a default timestamp to an event, parses timestamp fields, " +
         "and converts timestamp information to the International Organization for Standardization (ISO) 8601 format. " +
         "This timestamp information can be used as an event timestamp.")
 public class DateProcessorConfig {
@@ -32,13 +32,16 @@ public class DateProcessorConfig {
     public static class DateMatch {
         @JsonProperty("key")
         @JsonPropertyDescription("Represents the event key against which to match patterns. " +
-                "Required if `match` is configured. ")
+                "Required if <code>match</code> is configured.")
         private String key;
+
         @JsonProperty("patterns")
         @JsonPropertyDescription("A list of possible patterns that the timestamp value of the key can have. The patterns " +
-                "are based on a sequence of letters and symbols. The `patterns` support all the patterns listed in the " +
+                "are based on a sequence of letters and symbols. The <code>patterns</code> support all the patterns listed in the " +
                 "Java DateTimeFormatter (https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html) reference. " +
-                "The timestamp value also supports `epoch_second`, `epoch_milli`, and `epoch_nano` values, " +
+                "To match ISO 8601 formatted strings, use, <code>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</code>. " +
+                "To match Apache Common Log Format, use <code>dd/MMM/yyyy:HH:mm:ss Z</code>. " +
+                "The timestamp value also supports <code>epoch_second</code>, <code>epoch_milli</code>, and <code>epoch_nano</code> values, " +
                 "which represent the timestamp as the number of seconds, milliseconds, and nanoseconds since the epoch. " +
                 "Epoch values always use the UTC time zone.")
         private List<String> patterns;
@@ -98,29 +101,31 @@ public class DateProcessorConfig {
     }
 
     @JsonProperty("from_time_received")
-    @JsonPropertyDescription("When `true`, the timestamp from the event metadata, " +
+    @JsonPropertyDescription("When <code>true</code>, the timestamp from the event metadata, " +
             "which is the time at which the source receives the event, is added to the event data. " +
-            "This option cannot be defined at the same time as `match`. Default is `false`.")
+            "This option cannot be defined at the same time as <code>match</code>. Default is <code>false</code>.")
     private Boolean fromTimeReceived = DEFAULT_FROM_TIME_RECEIVED;
 
     @JsonProperty("to_origination_metadata")
-    @JsonPropertyDescription("When `true`, the matched time is also added to the event's metadata as an instance of " +
-            "`Instant`. Default is `false`.")
+    @JsonPropertyDescription("When <code>true</code>, the matched time is also added to the event's metadata as an instance of " +
+            "<code>Instant</code>. Default is <code>false</code>.")
     private Boolean toOriginationMetadata = DEFAULT_TO_ORIGINATION_METADATA;
 
     @JsonProperty("match")
     @JsonPropertyDescription("The date match configuration. " +
-            "This option cannot be defined at the same time as `from_time_received`. There is no default value.")
+            "This option cannot be defined at the same time as <code>from_time_received</code>. " +
+            "The date processor will use the first pattern that matches each event's timestamp field. " +
+            "You must provide at least one pattern unless you have <code>from_time_received</code>.")
     private List<DateMatch> match;
 
     @JsonProperty("destination")
     @JsonPropertyDescription("The field used to store the timestamp parsed by the date processor. " +
-            "Can be used with both `match` and `from_time_received`. Default is `@timestamp`.")
+            "Can be used with both <code>match</code> and <code>from_time_received</code>. Default is <code>@timestamp</code>.")
     private String destination = DEFAULT_DESTINATION;
 
     @JsonProperty("output_format")
     @JsonPropertyDescription("Determines the format of the timestamp added to an event. " +
-            "Default is `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`.")
+            "Default is <code>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</code>.")
     private String outputFormat = DEFAULT_OUTPUT_FORMAT;
 
     @JsonProperty("source_timezone")
@@ -131,23 +136,23 @@ public class DateProcessorConfig {
     private String sourceTimezone = DEFAULT_SOURCE_TIMEZONE;
 
     @JsonProperty("destination_timezone")
-    @JsonPropertyDescription("The time zone used for storing the timestamp in the `destination` field. " +
+    @JsonPropertyDescription("The time zone used for storing the timestamp in the <code>destination</code> field. " +
             "A list of all the available time zones is contained in the TZ database name column of " +
             "(https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List).")
     private String destinationTimezone = DEFAULT_DESTINATION_TIMEZONE;
 
     @JsonProperty("locale")
-    @JsonPropertyDescription("The location used for parsing dates. Commonly used for parsing month names (`MMM`). " +
-            "The value can contain language, country, or variant fields in IETF BCP 47, such as `en-US`, " +
+    @JsonPropertyDescription("The location used for parsing dates. Commonly used for parsing month names (<code>MMM</code>). " +
+            "The value can contain language, country, or variant fields in IETF BCP 47, such as <code>en-US</code>, " +
             "or a string representation of the " +
-            "locale (https://docs.oracle.com/javase/8/docs/api/java/util/Locale.html) object, such as `en_US`. " +
+            "locale (https://docs.oracle.com/javase/8/docs/api/java/util/Locale.html) object, such as <code>en_US</code>. " +
             "A full list of locale fields, including language, country, and variant, can be found in " +
             "(https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry). " +
-            "Default is `Locale.ROOT`.")
+            "Default is <code>Locale.ROOT</code>.")
     private String locale;
 
     @JsonProperty("date_when")
-    @JsonPropertyDescription("Specifies under what condition the `date` processor should perform matching. " +
+    @JsonPropertyDescription("Specifies under what condition the <code>date</code> processor should perform matching. " +
             "Default is no condition.")
     private String dateWhen;
 

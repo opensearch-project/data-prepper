@@ -13,7 +13,7 @@ raw-pipeline:
     pipeline:
       name: "entry-pipeline"
   processor:
-    - otel_trace_raw:
+    - otel_traces:
   sink:
     - opensearch:
         hosts: [ "https://<your-domain>.<region>.es.amazonaws.com" ]
@@ -26,7 +26,7 @@ service-map-pipeline:
     pipeline:
       name: "entry-pipeline"
   processor:
-    - service_map_stateful:
+    - service_map:
   sink:
     - opensearch:
         hosts: [ "https://<your-domain>.<region>.es.amazonaws.com" ]

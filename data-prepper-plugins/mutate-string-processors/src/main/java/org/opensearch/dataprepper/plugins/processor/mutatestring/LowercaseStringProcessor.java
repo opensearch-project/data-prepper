@@ -18,7 +18,7 @@ import java.util.Locale;
  * This processor takes in a key and changes its value to a lowercase string. If the value is not a string,
  * no action is performed.
  */
-@DataPrepperPlugin(name = "lowercase_string", pluginType = Processor.class, pluginConfigurationType = WithKeysConfig.class)
+@DataPrepperPlugin(name = "lowercase_string", pluginType = Processor.class, pluginConfigurationType = LowercaseStringProcessorConfig.class)
 public class LowercaseStringProcessor extends AbstractStringProcessor<EventKey> {
     @DataPrepperPluginConstructor
     public LowercaseStringProcessor(final PluginMetrics pluginMetrics, final WithKeysConfig config) {

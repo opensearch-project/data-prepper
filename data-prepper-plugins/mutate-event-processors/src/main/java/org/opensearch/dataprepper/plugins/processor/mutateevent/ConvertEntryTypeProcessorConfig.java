@@ -15,30 +15,30 @@ import java.util.List;
 import java.util.Optional;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `convert_entry_type` processor converts a value type associated with the specified key in " +
-        "a event to the specified type. It is a casting processor that changes the types of some fields in events.")
+@JsonClassDescription("The <code>convert_entry_type</code> processor converts a value associated with the specified key in " +
+        "a event to the specified type. It is a casting processor that changes the types of specified fields in events.")
 public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     @JsonProperty("key")
     @JsonPropertyDescription("Key whose value needs to be converted to a different type.")
     private String key;
 
     @JsonProperty("keys")
-    @JsonPropertyDescription("List of keys whose value needs to be converted to a different type.")
+    @JsonPropertyDescription("List of keys whose values needs to be converted to a different type.")
     private List<String> keys;
 
     @JsonProperty("type")
-    @JsonPropertyDescription("Target type for the key-value pair. Possible values are integer, long, double, big_decimal, string, and boolean. Default value is integer.")
+    @JsonPropertyDescription("Target type for the values. Default value is <code>integer.</code>")
     private TargetType type = TargetType.INTEGER;
 
     /**
      * Optional scale value used only in the case of BigDecimal converter
      */
     @JsonProperty("scale")
-    @JsonPropertyDescription("Modifies the scale of the big_decimal when converting to a big_decimal. The default value is 0.")
+    @JsonPropertyDescription("Modifies the scale of the <code>big_decimal</code> when converting to a <code>big_decimal</code>. The default value is 0.")
     private int scale = 0;
 
     @JsonProperty("convert_when")
-    @JsonPropertyDescription("Specifies a condition using a [Data Prepper expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/) for performing the convert_entry_type operation. If specified, the convert_entry_type operation runs only when the expression evaluates to true.")
+    @JsonPropertyDescription("Specifies a condition using a <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> for performing the <code>convert_entry_type</code> operation. If specified, the <code>convert_entry_type</code> operation runs only when the expression evaluates to true. Example: <code>/mykey != \"---\"</code>")
     private String convertWhen;
 
     @JsonProperty("null_values")

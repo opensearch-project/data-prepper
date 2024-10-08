@@ -59,6 +59,7 @@ dependencies {
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-plugins:blocking-buffer')
     testImplementation project(':data-prepper-core')
+    testImplementation project(':data-prepper-event')
     testImplementation project(':data-prepper-plugin-framework')
     testImplementation project(':data-prepper-pipeline-parser')
     testImplementation 'org.apache.kafka:kafka_2.13:3.6.1'

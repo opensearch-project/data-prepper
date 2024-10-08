@@ -19,7 +19,6 @@ import org.springframework.context.annotation.DependsOn;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -117,8 +116,8 @@ public class DefaultPluginFactory implements PluginFactory {
         final PluginConfigObservable pluginConfigObservable = pluginConfigurationObservableFactory
                 .createDefaultPluginConfigObservable(pluginConfigurationConverter, pluginConfigurationType, pluginSetting);
 
-        BeanFactory beanFactory =
-                pluginBeanFactoryProvider.initializePluginSpecificIsolatedContextCombinedWithShared(pluginAnnotation);
+        Class[] markersToScan = pluginAnnotation.packagesToScan();
+        BeanFactory beanFactory = pluginBeanFactoryProvider.createPluginSpecificContext(markersToScan);
 
         return new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)

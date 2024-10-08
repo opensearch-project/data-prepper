@@ -34,6 +34,12 @@ public class DecompressionTypeTest {
         assertThat(enumValue.getDecompressionEngine(), instanceOf(decompressionEngineClass));
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(EnumToStringNameArgumentsProvider.class)
+    void getOptionValue_returns_data_type_name(final DecompressionType decompressionType, final String optionValue) {
+        assertThat(decompressionType.getOptionValue(), equalTo(optionValue));
+    }
+
     private static class EnumToStringNameArgumentsProvider implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {

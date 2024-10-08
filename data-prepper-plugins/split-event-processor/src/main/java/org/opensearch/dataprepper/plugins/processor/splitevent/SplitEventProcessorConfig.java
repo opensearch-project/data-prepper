@@ -19,21 +19,21 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `split_event` processor is used to split events based on a delimiter and " +
+@JsonClassDescription("The <code>split_event</code> processor is used to split events based on a delimiter and " +
         "generates multiple events from a user-specified field.")
 public class SplitEventProcessorConfig {
     @NotEmpty
     @NotNull
     @JsonProperty("field")
-    @JsonPropertyDescription("The event field to be split")
+    @JsonPropertyDescription("The event field to be split.")
     private String field;
 
     @JsonProperty("delimiter_regex")
-    @JsonPropertyDescription("The regular expression used as the delimiter for splitting the field")
+    @JsonPropertyDescription("The regular expression used as the delimiter for splitting the field.")
     private String delimiterRegex;
 
     @Size(min = 1, max = 1)
-    @JsonPropertyDescription("The delimiter used for splitting the field. If not specified, the default delimiter is used")
+    @JsonPropertyDescription("The delimiter used for splitting the field. If not specified, the default delimiter is used.")
     private String delimiter;
 
     public String getField() {
