@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -117,7 +118,6 @@ public class LambdaCommonHandler {
         }
         codec.writeEvent(event, currentBuffer.getOutputStream());
         int count = currentBuffer.getEventCount() + 1;
-        LOG.info("CurrentBuffer event count: {}", count);
         currentBuffer.setEventCount(count);
 
         if(isSink) bufferedEventHandles.add(event.getEventHandle());
@@ -127,7 +127,7 @@ public class LambdaCommonHandler {
 
     public void flushToLambdaIfNeeded(List<Record<Event>> resultRecords, boolean forceFlush) {
 
-        LOG.info("currentBufferEventCount:{}, maxEvents:{}, maxBytes:{}, maxCollectionDuration:{}, isBatch:{}, forceFlush:{} ", currentBuffer.getEventCount(),maxEvents,maxBytes,maxCollectionDuration,isBatchEnabled, forceFlush);
+        LOG.debug("currentBufferEventCount:{}, maxEvents:{}, maxBytes:{}, maxCollectionDuration:{}, isBatch:{}, forceFlush:{} ", currentBuffer.getEventCount(),maxEvents,maxBytes,maxCollectionDuration,isBatchEnabled, forceFlush);
         if (forceFlush || ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration, isBatchEnabled)) {
             try {
                 codec.complete(currentBuffer.getOutputStream());
@@ -135,7 +135,6 @@ public class LambdaCommonHandler {
                 // Capture buffer before resetting
                 Buffer flushedBuffer = currentBuffer;
                 int eventCount = currentBuffer.getEventCount();
-                LOG.info("Event Count before calling lambda:{}",eventCount);
                 CompletableFuture<InvokeResponse> future = flushedBuffer.flushToLambdaAsync(invocationType);
 
                 // Handle future
@@ -153,7 +152,7 @@ public class LambdaCommonHandler {
                     if(isSink) releaseEventHandles(true);
 
                 }).exceptionally(throwable -> {
-                    LOG.error("Exception occurred while invoking Lambda. Function: {} | Exception: ", functionName, throwable);
+                    LOG.error(NOISY, "Exception occurred while invoking Lambda. Function: {} | Exception: ", functionName, throwable);
                     handleFailure(throwable);
                     if(isSink)  releaseEventHandles(false);
                     return null;
@@ -176,7 +175,7 @@ public class LambdaCommonHandler {
 
     public void resetBuffer() {
         try {
-            LOG.info("Resetting buffer");
+            LOG.debug("Resetting buffer");
             currentBuffer = bufferFactory.getBuffer(lambdaAsyncClient, functionName, invocationType);
         } catch (IOException e) {
             throw new RuntimeException("Failed to reset buffer", e);
@@ -239,7 +238,7 @@ public class LambdaCommonHandler {
                 return JacksonEvent.builder().withEventType("event").withData(jsonNode).build();
             }
         } catch (Exception e) {
-            LOG.error("Error converting Lambda response to Event", e);
+            LOG.error(NOISY, "Error converting Lambda response to Event", e);
             throw new RuntimeException("Error converting Lambda response to Event");
         }
         return null;
