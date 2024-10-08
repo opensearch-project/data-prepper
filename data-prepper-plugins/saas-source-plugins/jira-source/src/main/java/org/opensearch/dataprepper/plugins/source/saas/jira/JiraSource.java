@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.SaasCrawlerApplicationContextMarker;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.Crawler;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasPluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourcePlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,8 +33,9 @@ public class JiraSource extends SaasSourcePlugin {
                     final JiraSourceConfig jiraSourceConfig,
                     final PluginFactory pluginFactory,
                     final AcknowledgementSetManager acknowledgementSetManager,
-                    Crawler crawler) {
-    super(pluginMetrics, jiraSourceConfig, pluginFactory, acknowledgementSetManager, crawler);
+                    Crawler crawler,
+                    SaasPluginExecutorServiceProvider executorServiceProvider) {
+    super(pluginMetrics, jiraSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
     log.info("Create Jira Source Connector");
   }
 

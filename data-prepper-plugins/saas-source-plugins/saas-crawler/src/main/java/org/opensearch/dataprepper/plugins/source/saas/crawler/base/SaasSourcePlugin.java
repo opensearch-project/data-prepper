@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 
@@ -37,7 +36,7 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
 
 
   private static final Logger log = LoggerFactory.getLogger(SaasSourcePlugin.class);
-  private static final int DEFAULT_THREAD_COUNT = 20;
+  public static final int DEFAULT_THREAD_COUNT = 20;
   private final PluginMetrics pluginMetrics;
   private final PluginFactory pluginFactory;
 
@@ -59,7 +58,8 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
                           final SaasSourceConfig sourceConfig,
                           final PluginFactory pluginFactory,
                           final AcknowledgementSetManager acknowledgementSetManager,
-                          final Crawler crawler) {
+                          final Crawler crawler,
+                          final SaasPluginExecutorServiceProvider executorServiceProvider) {
     log.info("Create Jira Source Connector");
     this.pluginMetrics = pluginMetrics;
     this.sourceConfig = sourceConfig;
@@ -67,7 +67,7 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
     this.crawler = crawler;
 
     this.acknowledgementSetManager = acknowledgementSetManager;
-    this.executorService = Executors.newFixedThreadPool(DEFAULT_THREAD_COUNT);
+    this.executorService = executorServiceProvider.get();
   }
 
   @Override

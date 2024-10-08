@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira;
 
 import lombok.Setter;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasPluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourceConfig;
 import org.slf4j.Logger;
@@ -14,9 +15,7 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 @Named
 public class JiraIterator implements Iterator<ItemInfo> {
@@ -29,11 +28,13 @@ public class JiraIterator implements Iterator<ItemInfo> {
     private long lastPollTime;
     private boolean firstTime = true;
     private List<Future<Boolean>> futureList = new ArrayList<>();
-    private ExecutorService crawlerTaskExecutor = Executors.newFixedThreadPool(10);
+    private final ExecutorService crawlerTaskExecutor;
     public static final int HAS_NEXT_TIMEOUT = 7200;
 
-    public JiraIterator(final JiraService service) {
+    public JiraIterator(final JiraService service,
+                        SaasPluginExecutorServiceProvider executorServiceProvider) {
         this.service = service;
+        this.crawlerTaskExecutor = executorServiceProvider.get();
     }
 
     @Override
@@ -57,10 +58,6 @@ public class JiraIterator implements Iterator<ItemInfo> {
             }
         }
 
-        /*if (!isCrawlerRunning()
-                && !crawlerTaskExecutor.isTerminated()) {
-            terminateExecutor();
-        }*/
         return !this.itemInfoQueue.isEmpty();
     }
 
@@ -77,20 +74,7 @@ public class JiraIterator implements Iterator<ItemInfo> {
         return isRunning;
     }
 
-    private void terminateExecutor() {
-        try {
-            log.debug("Shutting down ExecutorService " + crawlerTaskExecutor);
-            crawlerTaskExecutor.shutdown();
-            boolean isExecutorTerminated = crawlerTaskExecutor
-                    .awaitTermination(30, TimeUnit.SECONDS);
-            log.debug("ExecutorService terminated : " + isExecutorTerminated);
-        } catch (InterruptedException e) {
-            log.error("Interrupted while terminating executor : " + e.getMessage());
-            Thread.currentThread().interrupt();
-        } finally {
-            crawlerTaskExecutor.shutdownNow();
-        }
-    }
+
 
     private void startCrawlerThreads() {
         futureList.add(crawlerTaskExecutor.submit(

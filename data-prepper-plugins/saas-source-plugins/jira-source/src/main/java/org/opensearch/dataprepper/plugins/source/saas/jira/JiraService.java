@@ -351,9 +351,8 @@ public class JiraService {
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
     HttpResponse<JsonNode> response;
     com.mashape.unirest.request.HttpRequest request;
-//    boolean shouldContinue = Boolean.TRUE;
-//    String jql = ISSUE_KEY_EQUALS + issueKey;
-    while (true) {
+
+    while(true) {
       request = Unirest.get(configuration.getJiraAccountUrl() + REST_API_FETCH_ISSUE +"/"+ issueKey)
               .basicAuth(configuration.getJiraId(), configuration.getJiraCredential())
               .header(ACCEPT, Application_JSON);
@@ -376,9 +375,6 @@ public class JiraService {
                 throw new BadRequestException(response.getBody().getObject().get(ERR_MSG).toString());
               }
             }
-
-            //Gson gson = new GsonBuilder().create();
-            //return gson.fromJson(response.getBody().getObject().toString(), IssueBean.class);
           return response.getBody().getObject().toString();
         } catch (UnirestException e) {
           log.error("An exception has occurred while connecting to Jira search API: {}", e.getMessage());
