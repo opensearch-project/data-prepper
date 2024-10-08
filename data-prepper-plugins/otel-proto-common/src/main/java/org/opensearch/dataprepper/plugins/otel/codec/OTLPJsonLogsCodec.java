@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Consumer;
 
-@DataPrepperPlugin(name = "otlp_json_logs", pluginType = InputCodec.class)
+@DataPrepperPlugin(name = "opentelemetry_logs", pluginType = InputCodec.class)
 public class OTLPJsonLogsCodec extends OTLPJsonLogsDecoder implements InputCodec {
     public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
         parse(inputStream, null, eventConsumer);
