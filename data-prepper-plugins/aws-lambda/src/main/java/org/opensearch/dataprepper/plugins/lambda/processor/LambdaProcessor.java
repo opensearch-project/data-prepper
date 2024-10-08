@@ -11,6 +11,7 @@ import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -101,7 +102,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         codecContext = new OutputCodecContext();
 
         if (payloadModel.equals(BATCH_EVENT)) {
-            LOG.info("Batching events");
             JsonOutputCodecConfig jsonOutputCodecConfig = new JsonOutputCodecConfig();
             jsonOutputCodecConfig.setKeyName(batchOptions.getKeyName());
             codec = new JsonOutputCodec(jsonOutputCodecConfig);
@@ -109,12 +109,12 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             maxBytes = batchOptions.getThresholdOptions().getMaximumSize(); // remove
             maxCollectionDuration = batchOptions.getThresholdOptions().getEventCollectTimeOut();
             isBatchEnabled = true;
-            LOG.info("maxEvents:" + maxEvents + " maxbytes:" + maxBytes + " maxDuration:" + maxCollectionDuration);
+            LOG.debug("maxEvents:" + maxEvents + " maxbytes:" + maxBytes + " maxDuration:" + maxCollectionDuration);
         } else if(payloadModel.equals(SINGLE_EVENT)) {
-            LOG.info("Single events");
             NdjsonOutputConfig ndjsonOutputCodecConfig = new NdjsonOutputConfig();
             codec = new NdjsonOutputCodec(ndjsonOutputCodecConfig);
             isBatchEnabled = false;
+            LOG.debug("isBatchEnabled:{}",isBatchEnabled);
         } else{
             throw new RuntimeException("invalid payload_model option");
         }
@@ -175,7 +175,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             return records;
         }
 
-        LOG.info("Received " + records.size() + "records to lambda Processor" );
         //lambda mutates event
         List<Record<Event>> resultRecords = new ArrayList<>();
 
@@ -189,13 +188,18 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             try {
                lambdaCommonHandler.processEvent(resultRecords, event);
             } catch (Exception e) {
-                LOG.error(EVENT, "There was an exception while processing Event [{}]" , event, e);
+                LOG.atError()
+                        .addMarker(EVENT)
+                        .addMarker(NOISY)
+                        .setMessage("There was an exception while processing Event [{}]")
+                        .setCause(e)
+                        .log();
                 lambdaCommonHandler.handleFailure(e);
                 lambdaCommonHandler.resetBuffer();
             }
         }
 
-        LOG.info("Force Flushing the remaining {} events in the buffer", lambdaCommonHandler.getCurrentBuffer().getEventCount());
+        LOG.debug("Force Flushing the remaining {} events in the buffer", lambdaCommonHandler.getCurrentBuffer().getEventCount());
         // Flush any remaining events in the buffer after processing all records
         if (lambdaCommonHandler.getCurrentBuffer().getEventCount() > 0) {
             try {
