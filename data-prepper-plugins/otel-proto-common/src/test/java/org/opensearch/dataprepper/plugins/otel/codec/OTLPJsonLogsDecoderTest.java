@@ -39,7 +39,7 @@ public class OTLPJsonLogsDecoderTest {
 
     @Test
     public void testParse() throws Exception {
-        InputStream inputStream = OTLPJsonLogsCodecTest.class.getClassLoader().getResourceAsStream(TEST_REQUEST_LOGS_FILE);
+        InputStream inputStream = OTLPJsonLogsDecoderTest.class.getClassLoader().getResourceAsStream(TEST_REQUEST_LOGS_FILE);
         createObjectUnderTest().parse(inputStream, Instant.now(), (record) -> {
             validateLog((OpenTelemetryLog)record.getData());
         });
