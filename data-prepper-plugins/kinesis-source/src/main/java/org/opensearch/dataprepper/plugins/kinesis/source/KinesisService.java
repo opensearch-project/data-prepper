@@ -116,20 +116,19 @@ public class KinesisService {
     public void shutDown() {
         LOG.info("Stop request received for Kinesis Source");
 
-        if (scheduler == null) {
-            LOG.info("Scheduler not initialized!!");
-            return;
+        if (scheduler != null) {
+            Future<Boolean> gracefulShutdownFuture = scheduler.startGracefulShutdown();
+            LOG.info("Waiting up to {} seconds for shutdown to complete.", GRACEFUL_SHUTDOWN_WAIT_INTERVAL_SECONDS);
+            try {
+                gracefulShutdownFuture.get(GRACEFUL_SHUTDOWN_WAIT_INTERVAL_SECONDS, TimeUnit.SECONDS);
+            } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+                LOG.error("Exception while executing kinesis consumer graceful shutdown, doing force shutdown", ex);
+                scheduler.shutdown();
+            }
+            LOG.info("Completed, shutting down now.");
+        } else {
+            LOG.info("The Kinesis Scheduler was not initialized.");
         }
-
-        Future<Boolean> gracefulShutdownFuture = scheduler.startGracefulShutdown();
-        LOG.info("Waiting up to {} seconds for shutdown to complete.", GRACEFUL_SHUTDOWN_WAIT_INTERVAL_SECONDS);
-        try {
-            gracefulShutdownFuture.get(GRACEFUL_SHUTDOWN_WAIT_INTERVAL_SECONDS, TimeUnit.SECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-            LOG.error("Exception while executing kinesis consumer graceful shutdown, doing force shutdown", ex);
-            scheduler.shutdown();
-        }
-        LOG.info("Completed, shutting down now.");
     }
 
     public Scheduler getScheduler(final Buffer<Record<Event>> buffer) {
