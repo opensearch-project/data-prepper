@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -44,7 +46,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
 class OtelLogsSourceConfigTests {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
     private static final String PLUGIN_NAME = "otel_logs_source";
     private static final String TEST_KEY_CERT = "test.crt";
     private static final String TEST_KEY = "test.key";
@@ -297,8 +299,8 @@ class OtelLogsSourceConfigTests {
 
 
         RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo();
-        assertThat(retryInfo.getMaxDelay(), equalTo(100));
-        assertThat(retryInfo.getMinDelay(), equalTo(50));
+        assertThat(retryInfo.getMaxDelay(), equalTo(Duration.ofMillis(100)));
+        assertThat(retryInfo.getMinDelay(), equalTo(Duration.ofMillis(50)));
     }
 
     private PluginSetting completePluginSettingForOtelLogsSource(final int requestTimeoutInMillis,
