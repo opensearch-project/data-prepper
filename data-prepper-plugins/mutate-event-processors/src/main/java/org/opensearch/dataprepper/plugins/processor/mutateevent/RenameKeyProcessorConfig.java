@@ -21,6 +21,7 @@ import java.util.List;
 @JsonPropertyOrder
 @JsonClassDescription("The <code>rename_keys</code> processor renames keys in an event.")
 public class RenameKeyProcessorConfig {
+    @JsonPropertyOrder
     public static class Entry {
         @NotEmpty
         @NotNull

@@ -20,8 +20,8 @@ import java.util.stream.Stream;
 @JsonPropertyOrder
 @JsonClassDescription("The <code>add_entries</code> processor adds entries to an event.")
 public class AddEntryProcessorConfig {
+    @JsonPropertyOrder
     public static class Entry {
-
         @JsonPropertyDescription("The key of the new entry to be added. Some examples of keys include <code>my_key</code>, " +
                 "<code>myKey</code>, and <code>object/sub_Key</code>. The key can also be a format expression, for example, <code>${/key1}</code> to " +
                 "use the value of field <code>key1</code> as the key.")
@@ -49,11 +49,6 @@ public class AddEntryProcessorConfig {
                 "information about keys, see <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">Expression syntax</a>.")
         private String valueExpression;
 
-        @JsonProperty("add_when")
-        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
-                "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be run on the event.")
-        private String addWhen;
-
         @JsonProperty("overwrite_if_key_exists")
         @JsonPropertyDescription("When set to <code>true</code>, the existing value is overwritten if <code>key</code> already exists " +
                 "in the event. The default value is <code>false</code>.")
@@ -63,6 +58,11 @@ public class AddEntryProcessorConfig {
         @JsonPropertyDescription("When set to <code>true</code>, the existing value will be appended if a <code>key</code> already " +
                 "exists in the event. An array will be created if the existing value is not an array. Default is <code>false</code>.")
         private boolean appendIfKeyExists = false;
+
+        @JsonProperty("add_when")
+        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
+                "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be run on the event.")
+        private String addWhen;
 
         public String getKey() {
             return key;

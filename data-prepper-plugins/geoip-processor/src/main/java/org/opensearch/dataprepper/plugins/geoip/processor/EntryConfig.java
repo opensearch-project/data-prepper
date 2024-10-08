@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.geoip.processor;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
@@ -15,6 +17,8 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("Defines a single entry for geolocation.")
 public class EntryConfig {
     static final String DEFAULT_TARGET = "geo";
 
