@@ -16,7 +16,10 @@ import org.opensearch.dataprepper.plugins.source.saas.jira.utils.AddressValidati
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.JiraContentType;
 import org.slf4j.Logger;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
 import javax.inject.Named;
 import java.io.ByteArrayInputStream;
@@ -93,10 +96,16 @@ public class JiraService {
   private static final Logger log = org.slf4j.LoggerFactory.getLogger(JiraService.class);
   private static final List<Integer> waitTimeList =
           Arrays.asList(1, 3, 5, 10, 20, 40, 60, 120, 240);
+
+  private final RestTemplate restTemplate;
   /**
    * The Jira project cache.
    */
   static Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
+
+  public JiraService(RestTemplate restTemplate) {
+    this.restTemplate = restTemplate;
+  }
 
   /**
    * Get jira entities.
@@ -349,37 +358,29 @@ public class JiraService {
   public String getIssue(String issueKey, JiraConfiguration configuration) {
     log.info("Started to fetch issue information");
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
-    HttpResponse<JsonNode> response;
-    com.mashape.unirest.request.HttpRequest request;
 
     while(true) {
-      request = Unirest.get(configuration.getJiraAccountUrl() + REST_API_FETCH_ISSUE +"/"+ issueKey)
-              .basicAuth(configuration.getJiraId(), configuration.getJiraCredential())
-              .header(ACCEPT, Application_JSON);
-      log.info("Search result api call request is : {}",
-              new Gson().toJson(request, com.mashape.unirest.request.HttpRequest.class));
-
-        try {
-            response = request.asJson();
-            if(response.getStatus() == RATE_LIMIT) {
-              String waitTime = String.valueOf(waitTimeQueue.remove());
-              log.info("Service responded with Rate Limit. We will retry after {} seconds.", waitTime);
-              handleThrottling(waitTime, Boolean.TRUE);
-            }
-            else if (response.getStatus() == BAD_RESPONSE) {
-              if (Objects.nonNull(response.getBody())
-                      && Objects.nonNull(response.getBody().getObject())) {
-                log.error("An exception has occurred while getting"
-                                + " response from Jira search API {} ",
-                        response.getBody().getObject().get(ERR_MSG).toString());
-                throw new BadRequestException(response.getBody().getObject().get(ERR_MSG).toString());
-              }
-            }
-          return response.getBody().getObject().toString();
-        } catch (UnirestException e) {
-          log.error("An exception has occurred while connecting to Jira search API: {}", e.getMessage());
-          throw new BadRequestException(e.getMessage(), e);
+      String url = configuration.getJiraAccountUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
+      log.info("Issue Fetching api call request is : {}", url);
+      ResponseEntity<String> response = null;
+      try {
+        response = restTemplate.getForEntity(url, String.class);
+        return response.getBody();
+      }catch (RestClientException rce) {
+        if (response.getStatusCodeValue() == RATE_LIMIT) {
+          String waitTime = String.valueOf(waitTimeQueue.remove());
+          log.info("Service responded with Rate Limit. We will retry after {} seconds.", waitTime);
+          handleThrottling(waitTime, Boolean.TRUE);
+        } else if (response.getStatusCodeValue() == BAD_RESPONSE) {
+          if (Objects.nonNull(response.getBody())
+                  && Objects.nonNull(response.getBody())) {
+            log.error("An exception has occurred while getting"
+                            + " response from Jira search API {} ",
+                    response.getBody().toString());
+            throw new BadRequestException(response.getBody());
+          }
         }
+      }
     }
   }
 
