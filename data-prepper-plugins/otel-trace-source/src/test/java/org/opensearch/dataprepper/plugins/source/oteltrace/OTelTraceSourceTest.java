@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
@@ -135,7 +136,7 @@ class OTelTraceSourceTest {
     private static final String USERNAME = "test_user";
     private static final String PASSWORD = "test_password";
     private static final String TEST_PATH = "${pipelineName}/v1/traces";
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
     private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(2000));
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()

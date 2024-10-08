@@ -11,6 +11,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -31,7 +33,7 @@ import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourc
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_THREAD_COUNT;
 
 class OtelTraceSourceConfigTests {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
     private static final String PLUGIN_NAME = "otel_trace_source";
     private static final String TEST_KEY_CERT = "test.crt";
     private static final String TEST_KEY = "test.key";
@@ -321,8 +323,8 @@ class OtelTraceSourceConfigTests {
         final OTelTraceSourceConfig otelTraceSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelTraceSourceConfig.class);
 
 
-        assertThat(otelTraceSourceConfig.getRetryInfo().getMaxDelay(), equalTo(100));
-        assertThat(otelTraceSourceConfig.getRetryInfo().getMinDelay(), equalTo(50));
+        assertThat(otelTraceSourceConfig.getRetryInfo().getMaxDelay(), equalTo(Duration.ofMillis(100)));
+        assertThat(otelTraceSourceConfig.getRetryInfo().getMinDelay(), equalTo(Duration.ofMillis(50)));
     }
 
     private PluginSetting completePluginSettingForOtelTraceSource(final int requestTimeoutInMillis,
