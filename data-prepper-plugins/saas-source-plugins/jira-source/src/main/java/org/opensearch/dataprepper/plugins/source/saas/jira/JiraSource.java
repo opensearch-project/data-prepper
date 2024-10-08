@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 @DataPrepperPlugin(name = "jira",
         pluginType = Source.class,
         pluginConfigurationType = JiraSourceConfig.class,
-        packagesToScanForDI = {SaasCrawlerApplicationContextMarker.class, JiraSource.class}
+        packagesToScan = {SaasCrawlerApplicationContextMarker.class, JiraSource.class}
 )
 public class JiraSource extends SaasSourcePlugin {
 
