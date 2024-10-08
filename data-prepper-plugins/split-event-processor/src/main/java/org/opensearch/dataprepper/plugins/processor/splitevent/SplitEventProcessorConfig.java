@@ -28,13 +28,13 @@ public class SplitEventProcessorConfig {
     @JsonPropertyDescription("The event field to be split.")
     private String field;
 
-    @JsonProperty("delimiter_regex")
-    @JsonPropertyDescription("The regular expression used as the delimiter for splitting the field.")
-    private String delimiterRegex;
-
     @Size(min = 1, max = 1)
-    @JsonPropertyDescription("The delimiter used for splitting the field. If not specified, the default delimiter is used.")
+    @JsonPropertyDescription("The delimiter character used for splitting the field. You must provide either the <code>delimiter</code> or the <code>delimiter_regex</code>.")
     private String delimiter;
+
+    @JsonProperty("delimiter_regex")
+    @JsonPropertyDescription("The regular expression used as the delimiter for splitting the field. You must provide either the <code>delimiter</code> or the <code>delimiter_regex</code>.")
+    private String delimiterRegex;
 
     public String getField() {
         return field;

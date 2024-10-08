@@ -106,11 +106,6 @@ public class DateProcessorConfig {
             "This option cannot be defined at the same time as <code>match</code>. Default is <code>false</code>.")
     private Boolean fromTimeReceived = DEFAULT_FROM_TIME_RECEIVED;
 
-    @JsonProperty("to_origination_metadata")
-    @JsonPropertyDescription("When <code>true</code>, the matched time is also added to the event's metadata as an instance of " +
-            "<code>Instant</code>. Default is <code>false</code>.")
-    private Boolean toOriginationMetadata = DEFAULT_TO_ORIGINATION_METADATA;
-
     @JsonProperty("match")
     @JsonPropertyDescription("The date match configuration. " +
             "This option cannot be defined at the same time as <code>from_time_received</code>. " +
@@ -127,6 +122,11 @@ public class DateProcessorConfig {
     @JsonPropertyDescription("Determines the format of the timestamp added to an event. " +
             "Default is <code>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</code>.")
     private String outputFormat = DEFAULT_OUTPUT_FORMAT;
+
+    @JsonProperty("to_origination_metadata")
+    @JsonPropertyDescription("When <code>true</code>, the matched time is also added to the event's metadata as an instance of " +
+            "<code>Instant</code>. Default is <code>false</code>.")
+    private Boolean toOriginationMetadata = DEFAULT_TO_ORIGINATION_METADATA;
 
     @JsonProperty("source_timezone")
     @JsonPropertyDescription("The time zone used to parse dates, including when the zone or offset cannot be extracted " +
