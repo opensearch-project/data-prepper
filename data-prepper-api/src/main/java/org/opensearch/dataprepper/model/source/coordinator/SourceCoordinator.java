@@ -64,6 +64,12 @@ public interface SourceCoordinator<T> {
     Optional<SourcePartition<T>> getNextPartition(final Function<Map<String, Object>, List<PartitionIdentifier>> partitionCreationSupplier, final boolean forceSupplier);
 
     /**
+     * Can be used to directly create partitions for source coordination, as an alternative to relying on getNextPartition to create partitions.
+     * @param partitionIdentifiers  - The partitions to be created.
+     */
+    void createPartitions(final List<PartitionIdentifier> partitionIdentifiers);
+
+    /**
      * Should be called by the source when it has fully processed a given partition
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException if the partition key could not be found in the distributed store
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException if the partition is not owned by this instance of SourceCoordinator
