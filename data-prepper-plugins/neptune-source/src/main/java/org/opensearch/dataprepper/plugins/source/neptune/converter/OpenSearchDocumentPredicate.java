@@ -1,9 +1,15 @@
 package org.opensearch.dataprepper.plugins.source.neptune.converter;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.Getter;
 
+import java.util.Objects;
+
+@Builder
+@Getter
 public class OpenSearchDocumentPredicate {
-    
+
     @JsonProperty("value")
     private String value;
 
@@ -13,10 +19,17 @@ public class OpenSearchDocumentPredicate {
     @JsonProperty("language")
     private String language;
 
-    OpenSearchDocumentPredicate(final String value, final String graph, final String language) {
-        this.value = value;
-        this.graph = graph;
-        this.language = language;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        OpenSearchDocumentPredicate that = (OpenSearchDocumentPredicate) o;
+        return Objects.equals(value, that.value) && Objects.equals(graph, that.graph) &&
+                Objects.equals(language, that.language);
     }
-    
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(value, graph, language);
+    }
 }

@@ -1,35 +1,33 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.opensearch.dataprepper.plugins.source.neptune.stream;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
 import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
-
 import org.opensearch.dataprepper.plugins.source.neptune.buffer.RecordBufferWriter;
-import org.opensearch.dataprepper.plugins.source.neptune.client.NeptuneConnection;
+import org.opensearch.dataprepper.plugins.source.neptune.client.NeptuneDataClientWrapper;
 import org.opensearch.dataprepper.plugins.source.neptune.configuration.NeptuneSourceConfig;
 import org.opensearch.dataprepper.plugins.source.neptune.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.neptune.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.neptune.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.neptune.model.S3PartitionStatus;
-import org.opensearch.dataprepper.plugins.source.neptune.stream.model.StreamRecord;
+import org.opensearch.dataprepper.plugins.source.neptune.stream.model.NeptuneStreamRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.neptunedata.model.ExpiredStreamException;
+import software.amazon.awssdk.services.neptunedata.model.InvalidParameterException;
+import software.amazon.awssdk.services.neptunedata.model.StreamRecordsNotFoundException;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,7 +37,6 @@ import java.util.concurrent.locks.ReentrantLock;
 public class StreamWorker {
     public static final String STREAM_PREFIX = "STREAM-";
     private static final Logger LOG = LoggerFactory.getLogger(StreamWorker.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     static final String SUCCESS_ITEM_COUNTER_NAME = "changeEventsProcessed";
     static final String FAILURE_ITEM_COUNTER_NAME = "changeEventsProcessingErrors";
@@ -142,7 +139,7 @@ public class StreamWorker {
         return s3PartitionStatus.isEmpty();
     }
 
-    public void processStream(final StreamPartition streamPartition) {
+    public void processStream(final StreamPartition streamPartition) throws IOException {
         // documentDBAggregateMetrics.getStreamApiInvocations().increment();
 
         while (shouldWaitForS3Partition() && !Thread.currentThread().isInterrupted()) {
@@ -166,62 +163,40 @@ public class StreamWorker {
         LOG.info("Starting to watch streams for change events.");
         setCheckpointInformation(streamPartition);
 
-        final HttpClient httpClient = NeptuneConnection.getHttpClient(sourceConfig);
-        HttpResponse response;
+        final NeptuneDataClientWrapper client = NeptuneDataClientWrapper.create(sourceConfig, STREAM_RECORDS_BATCH_SIZE);
         while (!Thread.currentThread().isInterrupted() && !stopWorker) {
+            final List<NeptuneStreamRecord> streamRecords;
             try {
-                 response = httpClient.execute(new HttpGet(getStreamEndpoint(sourceConfig, checkPointCommitNum, checkPointOpNum)));
-            } catch (Exception e) {
-                if (e.getMessage().contains("Connection refused")) {
-                    // Due to local SSH tunnel disconnection, try again
-                    // FIXME: clean up, this is for local testing only
-                    continue;
-                } else {
-                    LOG.info("Error fetching stream data, stopping processing");
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-
-            final Map<String, Object> responseData = parseResponse(response);
-            if (responseData == null) {
+               streamRecords = client.getStreamRecords(checkPointCommitNum, checkPointOpNum);
+            } catch (StreamRecordsNotFoundException | InvalidParameterException exception) {
                 LOG.warn("The change stream cursor didn't return any document. Stopping the change stream. New thread should restart the stream.");
                 stop();
                 partitionCheckpoint.resetCheckpoint();
-            }
-            if (response.getStatusLine().getStatusCode() != 200) {
-                final String errorCode = responseData.get("code").toString();
-                switch (errorCode) {
-                    case "ExpiredStreamException":
-                        // Reset checkpoint and start from TRIM_HORIZON iteration
-                        checkPointCommitNum = 0L;
-                        checkPointOpNum = 0L;
-                        continue;
-                    case "InvalidParameterException":
-                    case "StreamRecordsNotFoundException":
-                        LOG.warn("The change stream cursor didn't return any document. Stopping the change stream. New thread should restart the stream.");
-                        stop();
-                        partitionCheckpoint.resetCheckpoint();
-                        continue;
-                }
+                continue;
+            } catch (ExpiredStreamException exception) {
+                // Reset checkpoint and start from TRIM_HORIZON iteration
+                checkPointCommitNum = 0L;
+                checkPointOpNum = 0L;
+                continue;
+            } catch (Exception exception) {
+                LOG.info("Error fetching stream data, stopping processing");
+                Thread.currentThread().interrupt();
+                break;
             }
 
             // TODO: handle stream response size limit
             // There is also a size limit of 10 MB on the response that can't be modified and that takes precedence over the number of
             // records specified in the limit parameter. The response does include a threshold-breaching record if the 10 MB limit was reached.
 
-            final List<Object> recordList = (List<Object>) responseData.get("records");
-            for (int i = 0; i < recordList.size(); i++) {
-                final StreamRecord record = parseStreamRecord((Map<String, Object>) recordList.get(i));
-                final Event event = streamRecordConverter.convert(record);
+            for (int i = 0; i < streamRecords.size(); i++) {
+                final Event event =  streamRecordConverter.convert(streamRecords.get(i));
                 records.add(event);
                 // recordBytes.add(bytes);
-
                 lock.lock();
                 try {
                     recordCount += 1;
-                    checkPointCommitNum = record.getEventId().getCommitNum();
-                    checkPointOpNum = record.getEventId().getOpNum();
+                    checkPointCommitNum = streamRecords.get(i).getCommitNum();
+                    checkPointOpNum = streamRecords.get(i).getOpNum();
                     LOG.info("Process stream record - commitNum {}, opNum {}", checkPointCommitNum, checkPointOpNum);
 
                     if ((recordCount % recordFlushBatchSize == 0) || (System.currentTimeMillis() - lastBufferWriteTime >= bufferWriteIntervalInMs)) {
@@ -259,32 +234,6 @@ public class StreamWorker {
         }
     }
 
-    private Map<String, Object> parseResponse(final HttpResponse response) {
-        final BufferedReader bufferedReader;
-        StringBuffer responseBuffer = new StringBuffer();
-        try {
-            bufferedReader = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-            String line = "";
-            while ((line = bufferedReader.readLine()) != null) {
-                responseBuffer.append(line);
-            }
-        } catch (IOException e) {
-            LOG.error("Error reading response from stream", e);
-            return null;
-        }
-
-        try {
-            return objectMapper.readValue(responseBuffer.toString(), Map.class);
-        } catch (final JsonProcessingException e) {
-            LOG.error("Error converting json data into map");
-            return null;
-        }
-    }
-
-    private StreamRecord parseStreamRecord(final Map<String, Object> rawRecord) {
-        return objectMapper.convertValue(rawRecord, StreamRecord.class);
-    }
-
     private void setCheckpointInformation(final StreamPartition streamPartition) {
         Optional<Long> commitNum = streamPartition.getProgressState().map(StreamProgressState::getCommitNum);
         commitNum.ifPresent(num -> checkPointCommitNum = num);
@@ -292,16 +241,6 @@ public class StreamWorker {
         opNum.ifPresent(num -> checkPointOpNum = num);
         Optional<Long> loadedRecords = streamPartition.getProgressState().map(StreamProgressState::getLoadedRecords);
         loadedRecords.ifPresent(count -> recordCount = count);
-    }
-
-    private String getStreamEndpoint(final NeptuneSourceConfig sourceConfig, final long commitNum, final long opNum) {
-        final String baseUri = String.format("https://%s:%s/%s/stream", sourceConfig.getHost(), sourceConfig.getPort(), sourceConfig.getStreamType());
-        String iteratorType = "AFTER_SEQUENCE_NUMBER"; // DEFAULT
-        if (commitNum == 0L && opNum == 0L) {
-            iteratorType = "TRIM_HORIZON";
-            return baseUri + String.format("?iteratorType=%s&limit=%s", iteratorType, STREAM_RECORDS_BATCH_SIZE);
-        }
-        return baseUri + String.format("?iteratorType=%s&commitNum=%s&opNum=%s&limit=%s", iteratorType, commitNum, opNum, STREAM_RECORDS_BATCH_SIZE);
     }
 
     private void writeToBuffer(final List<Event> records, final long commitNum, final long opNum, final long recordCount) {
