@@ -14,4 +14,5 @@ public class MetadataKeyAttributes {
     public static final String KINESIS_STREAM_NAME_METADATA_ATTRIBUTE = "stream_name";
     public static final String KINESIS_PARTITION_KEY_METADATA_ATTRIBUTE = "partition_key";
     public static final String KINESIS_SEQUENCE_NUMBER_METADATA_ATTRIBUTE = "sequence_number";
+    public static final String KINESIS_SUB_SEQUENCE_NUMBER_METADATA_ATTRIBUTE = "sub_sequence_number";
 }

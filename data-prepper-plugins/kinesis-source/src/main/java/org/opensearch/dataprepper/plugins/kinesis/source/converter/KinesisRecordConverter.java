@@ -43,6 +43,7 @@ public class KinesisRecordConverter {
                         streamName.toLowerCase());
                 eventMetadata.setAttribute(MetadataKeyAttributes.KINESIS_PARTITION_KEY_METADATA_ATTRIBUTE, kinesisClientRecord.partitionKey());
                 eventMetadata.setAttribute(MetadataKeyAttributes.KINESIS_SEQUENCE_NUMBER_METADATA_ATTRIBUTE, kinesisClientRecord.sequenceNumber());
+                eventMetadata.setAttribute(MetadataKeyAttributes.KINESIS_SUB_SEQUENCE_NUMBER_METADATA_ATTRIBUTE, kinesisClientRecord.subSequenceNumber());
                 final Instant externalOriginationTime = kinesisClientRecord.approximateArrivalTimestamp();
                 event.getEventHandle().setExternalOriginationTime(externalOriginationTime);
                 event.getMetadata().setExternalOriginationTime(externalOriginationTime);
