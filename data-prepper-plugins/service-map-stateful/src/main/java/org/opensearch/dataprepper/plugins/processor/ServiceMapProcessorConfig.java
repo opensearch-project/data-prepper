@@ -27,7 +27,7 @@ public class ServiceMapProcessorConfig {
 
     @NotEmpty
     @JsonProperty(DB_PATH)
-    @JsonPropertyDescription("Represents folder path for database storing transient data off-heap " +
+    @JsonPropertyDescription("Represents folder path for creating database files storing transient data off heap memory" +
             "when processing service-map data. Default value is <code>data/service-map/</code>")
     private String dbPath = DEFAULT_DB_PATH;
 
