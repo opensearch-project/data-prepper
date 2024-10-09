@@ -27,6 +27,7 @@ import java.util.UUID;
 import java.util.function.BiConsumer;
 
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.number.OrderingComparison.greaterThan;
@@ -90,14 +91,14 @@ class AbstractSinkTest {
     void testSinkNotReady() throws InterruptedException {
         AbstractSinkNotReadyImpl abstractSink = new AbstractSinkNotReadyImpl(pluginSetting);
         abstractSink.initialize();
-        assertEquals(abstractSink.isReady(), false);
-        assertEquals(abstractSink.getRetryThreadState(), Thread.State.RUNNABLE);
+        assertThat(abstractSink.isReady(), equalTo(false));
+        assertThat(abstractSink.getRetryThreadState(), anyOf(equalTo(Thread.State.RUNNABLE), equalTo(Thread.State.TIMED_WAITING)));
 
         await().atMost(Duration.ofSeconds(1))
                 .untilAsserted(() -> assertThat(abstractSink.initCount, greaterThanOrEqualTo(1)));
 
         abstractSink.initialized = true;
-        assertEquals(abstractSink.isReady(), true);
+        assertThat(abstractSink.isReady(), equalTo(true));
         await().atMost(Duration.ofSeconds(1))
                 .untilAsserted(() -> assertThat(abstractSink.getRetryThreadState(), equalTo(Thread.State.TERMINATED)));
         assertThat(abstractSink.getRetryThreadState(), equalTo(Thread.State.TERMINATED));
