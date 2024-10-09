@@ -78,7 +78,7 @@ public class JiraIterator implements Iterator<ItemInfo> {
 
     private void startCrawlerThreads() {
         futureList.add(crawlerTaskExecutor.submit(
-                () -> service.getJiraEntities(JiraConfiguration.of((JiraSourceConfig) sourceConfig), lastPollTime, itemInfoQueue,
+                () -> service.getJiraEntities(((JiraSourceConfig) sourceConfig), lastPollTime, itemInfoQueue,
                         futureList, crawlerTaskExecutor), false));
     }
 

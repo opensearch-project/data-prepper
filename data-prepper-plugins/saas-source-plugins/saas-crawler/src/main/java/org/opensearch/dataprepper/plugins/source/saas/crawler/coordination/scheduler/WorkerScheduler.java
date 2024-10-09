@@ -48,7 +48,7 @@ public class WorkerScheduler implements Runnable {
                 Optional<EnhancedSourcePartition> partition = sourceCoordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE);
                 if (partition.isPresent()) {
                     // Process the partition (source extraction logic)
-                    processPartition(partition.get(), buffer);
+                    processPartition(partition.get(), buffer, sourceConfig);
 
                 } else {
                     log.info("No partition available. Going to Sleep for a while ");
@@ -71,13 +71,13 @@ public class WorkerScheduler implements Runnable {
         log.warn("SourceItemWorker Scheduler is interrupted, looks like shutdown has triggered");
     }
 
-    private void processPartition(EnhancedSourcePartition partition, Buffer<Record<Event>> buffer) {
+    private void processPartition(EnhancedSourcePartition partition, Buffer<Record<Event>> buffer, SaasSourceConfig sourceConfig) {
         log.info("Processing partition: {}", partition.getPartitionKey());
         // Implement your source extraction logic here
         // Update the partition state or commit the partition as needed
         // Commit the partition to mark it as processed
         if(partition.getProgressState().isPresent()) {
-            crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer);
+            crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer, sourceConfig);
         }
         sourceCoordinator.completePartition(partition);
     }

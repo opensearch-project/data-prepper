@@ -20,9 +20,10 @@ public class JiraServiceTest {
 
   }
 
-  private JiraConfiguration createJiraConfiguration() {
+  private JiraSourceConfig createJiraConfiguration() {
     JiraSourceConfig jiraSourceConfig = new JiraSourceConfig();
-    return JiraConfiguration.of(jiraSourceConfig);
+    jiraSourceConfig.getAuthType();
+    return jiraSourceConfig;
   }
 
 }

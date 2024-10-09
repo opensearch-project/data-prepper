@@ -53,5 +53,5 @@ public interface SaasClient {
 
     void setLastPollTime(long lastPollTime);
 
-    void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer);
+    void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, SaasSourceConfig sourceConfig);
 }

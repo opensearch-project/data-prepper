@@ -58,8 +58,8 @@ public class Crawler {
         return updatedPollTime!=0?updatedPollTime:startTime;
     }
 
-    public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer) {
-        client.executePartition(state, buffer);
+    public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, SaasSourceConfig sourceConfig) {
+        client.executePartition(state, buffer, sourceConfig);
     }
 
     private void createPartition(List<ItemInfo> itemInfoList, EnhancedSourceCoordinator coordinator) {

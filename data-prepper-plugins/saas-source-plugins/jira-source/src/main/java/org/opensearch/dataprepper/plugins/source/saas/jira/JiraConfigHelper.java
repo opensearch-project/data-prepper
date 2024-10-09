@@ -1,8 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira;
 
 
-import lombok.AllArgsConstructor;
-import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.plugins.source.saas.jira.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants;
@@ -10,6 +8,7 @@ import org.opensearch.dataprepper.plugins.source.saas.jira.utils.ErrorCodeEnum;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.ExceptionUtil;
 import org.springframework.util.CollectionUtils;
 
+import javax.inject.Named;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,9 +18,8 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
  * The type Jira configuration.
  */
 @Slf4j
-@Value
-@AllArgsConstructor(staticName = "of")
-public class JiraConfiguration {
+@Named
+public class JiraConfigHelper {
   /**
    * The constant JIRA_ACCOUNT_URL.
    */
@@ -46,10 +44,7 @@ public class JiraConfiguration {
    * The constant PROJECT_KEY_FILTER.
    */
   public static final String PROJECT_KEY_FILTER = "project";
-  /**
-   * The constant CRAWL_TYPE.
-   */
-  public static final String CRAWL_TYPE = "crawlType";
+
   /**
    * The constant AUTH_TYPE.
    */
@@ -71,8 +66,6 @@ public class JiraConfiguration {
    */
   public static final String JIRA_REFRESH_TOKEN = "jiraRefreshToken";
 
-
-  JiraSourceConfig repositoryConfiguration;
 
   /**
    * Fetch inclusion patterns from repository configuration.
@@ -183,9 +176,9 @@ public class JiraConfiguration {
    *
    * @return List Issue Status Filter.
    */
-  public List<String> getIssueStatusFilter() {
+  public List<String> getIssueStatusFilter(JiraSourceConfig repositoryConfiguration) {
     List<String> issueStatusFilter = (List<String>)
-            this.repositoryConfiguration.getAdditionalProperties().get(ISSUE_STATUS_FILTER);
+            repositoryConfiguration.getAdditionalProperties().get(ISSUE_STATUS_FILTER);
     if (!CollectionUtils.isEmpty(issueStatusFilter)) {
       if (issueStatusFilter.size() > 1000) {
         log.error(ExceptionUtil.getErrorMessage(
@@ -216,9 +209,9 @@ public class JiraConfiguration {
    *
    * @return List Issue Type Filter.
    */
-  public List<String> getIssueTypeFilter() {
+  public List<String> getIssueTypeFilter(JiraSourceConfig repositoryConfiguration) {
     List<String> issueTypeFilter = (List<String>)
-            this.repositoryConfiguration.getAdditionalProperties().get(ISSUE_TYPE_FILTER);
+            repositoryConfiguration.getAdditionalProperties().get(ISSUE_TYPE_FILTER);
     if (!CollectionUtils.isEmpty(issueTypeFilter)) {
       if (issueTypeFilter.size() > 1000) {
         log.error(ExceptionUtil.getErrorMessage(
@@ -250,8 +243,8 @@ public class JiraConfiguration {
    *
    * @return List Project Filter.
    */
-  public List<String> getProjectKeyFilter() {
-    List<String> projectKeyFilter = this.repositoryConfiguration.getProject();
+  public List<String> getProjectKeyFilter(JiraSourceConfig repositoryConfiguration) {
+    List<String> projectKeyFilter = repositoryConfiguration.getProject();
     if (!CollectionUtils.isEmpty(projectKeyFilter)) {
       if (projectKeyFilter.size() > 1000) {
         log.error(ExceptionUtil.getErrorMessage(
@@ -282,45 +275,41 @@ public class JiraConfiguration {
    *
    * @return get url.
    */
-  public String getJiraAccountUrl() {
+  /*public String getJiraAccountUrl() {
     return this.repositoryConfiguration.getAccountUrl();
-  }
+  }*/
 
   /**
    * Fetch Jira Oauth Url from repository configuration.
    *
    * @return get url.
    */
-  public String getJiraOauthUrl() {
+  /*public String getJiraOauthUrl() {
     return this.repositoryConfiguration.getAccountUrl();
-  }
+  }*/
 
   /**
    * Fetch Auth type from repository configuration.
    *
    * @return get token.
    */
-  public String getAuthType() {
-    return "Basic";
-  }
+
 
   /**
    * Fetch Jira Id from repository configuration.
    *
    * @return get token.
    */
-  public String getJiraId() {
-    return (String) this.repositoryConfiguration.getConnectorCredentials().get("jira_id");
-  }
+//  public String getJiraId() {
+//    return (String) this.repositoryConfiguration.getConnectorCredentials().get("jira_id");
+//  }
 
   /**
    * Fetch Jira Credentials from repository configuration.
    *
    * @return get token.
    */
-  public String getJiraCredential() {
-    return (String) this.repositoryConfiguration.getConnectorCredentials().get("jira_credential");
-  }
+
 
 
   /**
@@ -328,18 +317,18 @@ public class JiraConfiguration {
    *
    * @return get token.
    */
-  public String getJiraAccessToken() {
+  /*public String getJiraAccessToken() {
     return (String) this.repositoryConfiguration.getConnectorCredentials().get("jiraAccessToken");
-  }
+  }*/
 
   /**
    * Fetch Jira Refresh Token from repository configuration.
    *
    * @return get token.
    */
-  public String getJiraRefreshToken() {
+  /*public String getJiraRefreshToken() {
     return (String) this.repositoryConfiguration.getConnectorCredentials().get("jiraRefreshToken");
-  }
+  }*/
 
 
 }

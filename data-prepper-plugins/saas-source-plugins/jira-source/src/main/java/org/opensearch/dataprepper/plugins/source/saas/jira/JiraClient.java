@@ -39,7 +39,7 @@ public class JiraClient implements SaasClient {
     public static final String PROJECT = "project";
 
     private final JiraService service;
-    private JiraConfiguration configuration;
+    private SaasSourceConfig configuration;
     private final JiraIterator jiraIterator;
     private long lastPollTime;
     private final ExecutorService executorService;
@@ -54,8 +54,8 @@ public class JiraClient implements SaasClient {
 
 
     //@Override
-    public String getItem(ItemInfo itemInfo) {
-        return service.getIssue(itemInfo.getId(), configuration);
+    public String getItem(ItemInfo itemInfo, SaasSourceConfig configuration) {
+        return service.getIssue(itemInfo.getId(), (JiraSourceConfig) configuration);
     }
 
 
@@ -67,7 +67,7 @@ public class JiraClient implements SaasClient {
 
     @Override
     public void setConfiguration(SaasSourceConfig configuration) {
-        this.configuration = JiraConfiguration.of((JiraSourceConfig) configuration);
+        this.configuration = configuration;
         this.jiraIterator.setSourceConfig(configuration);
     }
 
@@ -78,7 +78,7 @@ public class JiraClient implements SaasClient {
     }
 
     @Override
-    public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer) {
+    public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, SaasSourceConfig configuration) {
         List<String> itemIds = state.getItemIds();
         Map<String, String> keyAttributes = state.getKeyAttributes();
         String project = keyAttributes.get(PROJECT);
@@ -99,7 +99,7 @@ public class JiraClient implements SaasClient {
 
         List<Record<Event>> recordsToWrite = itemInfos
                 .parallelStream()
-                .map(t -> (Supplier<String>) (() -> getItem(t)))
+                .map(t -> (Supplier<String>) (() -> getItem(t, configuration)))
                 .map(supplier -> supplyAsync(supplier, this.executorService))
                 .map(CompletableFuture::join)
                 .map(ticketJson -> {

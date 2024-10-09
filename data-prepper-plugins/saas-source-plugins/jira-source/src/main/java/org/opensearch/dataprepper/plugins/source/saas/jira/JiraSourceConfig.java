@@ -81,4 +81,15 @@ public class JiraSourceConfig implements SaasSourceConfig {
     @Setter(AccessLevel.NONE)
     Map<String, Object> additionalProperties = new HashMap<>();
 
+    public String getJiraId() {
+        return (String) this.getConnectorCredentials().get("jira_id");
+    }
+
+    public String getJiraCredential() {
+        return (String) this.getConnectorCredentials().get("jira_credential");
+    }
+
+    public String getAuthType() {
+        return "Basic";
+    }
 }

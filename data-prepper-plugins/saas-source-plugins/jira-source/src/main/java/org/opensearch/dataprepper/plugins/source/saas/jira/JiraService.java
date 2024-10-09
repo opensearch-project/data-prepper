@@ -1,5 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.internal.LinkedTreeMap;
@@ -18,6 +20,7 @@ import org.opensearch.dataprepper.plugins.source.saas.jira.utils.JiraContentType
 import org.slf4j.Logger;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -66,6 +69,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.MAX_RESULT;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.MAX_RESULTS;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.NAME;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.NOT_FOUND;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PREFIX;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT;
@@ -98,13 +102,16 @@ public class JiraService {
           Arrays.asList(1, 3, 5, 10, 20, 40, 60, 120, 240);
 
   private final RestTemplate restTemplate;
+
+  private final JiraConfigHelper configHelper;
   /**
    * The Jira project cache.
    */
   static Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
 
-  public JiraService(RestTemplate restTemplate) {
+  public JiraService(RestTemplate restTemplate, JiraConfigHelper configHelper) {
     this.restTemplate = restTemplate;
+    this.configHelper = configHelper;
   }
 
   /**
@@ -116,7 +123,7 @@ public class JiraService {
    * @param futureList Future list.
    * @param crawlerTaskExecutor Executor service.
    */
-  public void getJiraEntities(JiraConfiguration configuration, long timestamp,
+  public void getJiraEntities(JiraSourceConfig configuration, long timestamp,
                               Queue<ItemInfo> itemInfoQueue, List<Future<Boolean>> futureList,
                               ExecutorService crawlerTaskExecutor) {
     log.info("Started to fetch entities");
@@ -139,7 +146,7 @@ public class JiraService {
    * @param timestamp     Input Parameter
    * @return Item Info Queue
    */
-  private void buildIssueItemInfo(JiraConfiguration configuration, long timestamp,
+  private void buildIssueItemInfo(JiraSourceConfig configuration, long timestamp,
                                   Queue<ItemInfo> itemInfoQueue, List<Future<Boolean>> futureList,
                                   ExecutorService crawlerTaskExecutor) {
     log.info("Building issue item information");
@@ -223,7 +230,7 @@ public class JiraService {
    * @return InputStream input stream
    */
   public SearchResults getAllIssues(StringBuilder jql, int startAt,
-                                    JiraConfiguration configuration) {
+                                    JiraSourceConfig configuration) {
     log.info("Started to fetch all issues information");
     SearchResults results = null;
     HttpResponse<JsonNode> response;
@@ -231,9 +238,9 @@ public class JiraService {
     try {
       if (configuration.getAuthType().equals(BASIC.trim())) {
         AddressValidation.validateInetAddress(AddressValidation
-                .getInetAddress(configuration.getJiraAccountUrl()));
+                .getInetAddress(configuration.getAccountUrl()));
 
-        request = Unirest.get(configuration.getJiraAccountUrl() + REST_API_SEARCH)
+        request = Unirest.get(configuration.getAccountUrl() + REST_API_SEARCH)
                 .basicAuth(configuration.getJiraId(), configuration.getJiraCredential())
                 .header(ACCEPT, Application_JSON)
                 .queryString(MAX_RESULTS, FIFTY)
@@ -308,25 +315,25 @@ public class JiraService {
    * @param ts            Input Parameter
    * @return String Builder
    */
-  private StringBuilder createIssueFilterCriteria(JiraConfiguration configuration, long ts) {
+  private StringBuilder createIssueFilterCriteria(JiraSourceConfig configuration, long ts) {
 
     log.info("Creating issue filter criteria");
-    if (!CollectionUtils.isEmpty(configuration.getProjectKeyFilter())) {
+    if (!CollectionUtils.isEmpty(configHelper.getProjectKeyFilter(configuration))) {
       validateProjectFilters(configuration);
     }
     StringBuilder jiraQl = new StringBuilder(UPDATED + GREATER_THAN_EQUALS + ts);
-    if (!CollectionUtils.isEmpty(configuration.getProjectKeyFilter())) {
-      jiraQl.append(PROJECT_IN).append(configuration.getProjectKeyFilter().stream()
+    if (!CollectionUtils.isEmpty(configHelper.getProjectKeyFilter(configuration))) {
+      jiraQl.append(PROJECT_IN).append(configHelper.getProjectKeyFilter(configuration).stream()
                       .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
               .append(CLOSING_ROUND_BRACKET);
     }
-    if (!CollectionUtils.isEmpty(configuration.getIssueTypeFilter())) {
-      jiraQl.append(ISSUE_TYPE_ID).append(configuration.getIssueTypeFilter().stream()
+    if (!CollectionUtils.isEmpty(configHelper.getIssueTypeFilter(configuration))) {
+      jiraQl.append(ISSUE_TYPE_ID).append(configHelper.getIssueTypeFilter(configuration).stream()
                       .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
               .append(CLOSING_ROUND_BRACKET);
     }
-    if (!CollectionUtils.isEmpty(configuration.getIssueStatusFilter())) {
-      jiraQl.append(STATUS_IN).append(configuration.getIssueStatusFilter().stream()
+    if (!CollectionUtils.isEmpty(configHelper.getIssueStatusFilter(configuration))) {
+      jiraQl.append(STATUS_IN).append(configHelper.getIssueStatusFilter(configuration).stream()
                       .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
               .append(CLOSING_ROUND_BRACKET);
     }
@@ -355,30 +362,24 @@ public class JiraService {
    * @param configuration the configuration
    * @return the issue
    */
-  public String getIssue(String issueKey, JiraConfiguration configuration) {
+  public String getIssue(String issueKey, JiraSourceConfig configuration) {
     log.info("Started to fetch issue information");
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
 
     while(true) {
-      String url = configuration.getJiraAccountUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
+      String url = configuration.getAccountUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
       log.info("Issue Fetching api call request is : {}", url);
-      ResponseEntity<String> response = null;
       try {
-        response = restTemplate.getForEntity(url, String.class);
-        return response.getBody();
-      }catch (RestClientException rce) {
-        if (response.getStatusCodeValue() == RATE_LIMIT) {
+        return restTemplate.getForEntity(url, String.class).getBody();
+      } catch (HttpClientErrorException rce) {
+        if (rce.getRawStatusCode() == RATE_LIMIT) {
           String waitTime = String.valueOf(waitTimeQueue.remove());
           log.info("Service responded with Rate Limit. We will retry after {} seconds.", waitTime);
           handleThrottling(waitTime, Boolean.TRUE);
-        } else if (response.getStatusCodeValue() == BAD_RESPONSE) {
-          if (Objects.nonNull(response.getBody())
-                  && Objects.nonNull(response.getBody())) {
-            log.error("An exception has occurred while getting"
-                            + " response from Jira search API {} ",
-                    response.getBody().toString());
-            throw new BadRequestException(response.getBody());
-          }
+        } else {
+          log.error("An exception has occurred while getting response from Jira ticket {}. {} ",
+                  issueKey, rce.getMessage());
+          throw new BadRequestException(rce.getMessage());
         }
       }
     }
@@ -390,7 +391,7 @@ public class JiraService {
    * @param configuration the configuration
    * @return the issue search api
    */
-  public SearchResults getIssueSearchApi(JiraConfiguration configuration, String jql) {
+  public SearchResults getIssueSearchApi(JiraConfigHelper configuration, String jql) {
     //TODO: Fill this method body
     return null;
   }
@@ -400,11 +401,11 @@ public class JiraService {
    *
    * @param configuration Input Parameter
    */
-  private void validateProjectFilters(JiraConfiguration configuration) {
+  private void validateProjectFilters(JiraSourceConfig configuration) {
     log.info("Validating project filters");
     List<String> badFilters = new ArrayList<>();
     Pattern regex = Pattern.compile("[^A-Z0-9]");
-    configuration.getProjectKeyFilter().forEach(projectFilter -> {
+    configHelper.getProjectKeyFilter(configuration).forEach(projectFilter -> {
       Matcher matcher = regex.matcher(projectFilter);
       if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
         badFilters.add(projectFilter);
@@ -442,7 +443,7 @@ public class JiraService {
    * @param configuration the configuration
    * @return the boolean
    */
-  public static boolean reTestConnection(JiraConfiguration configuration) {
+  public static boolean reTestConnection(JiraConfigHelper configuration) {
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
     boolean shouldContinue = Boolean.TRUE;
     while (shouldContinue) {

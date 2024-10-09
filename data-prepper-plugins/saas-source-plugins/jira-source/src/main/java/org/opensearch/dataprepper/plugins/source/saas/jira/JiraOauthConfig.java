@@ -62,8 +62,8 @@ public class JiraOauthConfig {
   static synchronized void changeAccessAndRefreshToken(Object jiraConfiguration) {
     appLog.info("Setting access-refresh token for Jira Connector.");
     boolean configuaration = true;
-    if (jiraConfiguration instanceof JiraConfiguration) {
-      configuaration = JiraService.reTestConnection((JiraConfiguration) jiraConfiguration);
+    if (jiraConfiguration instanceof JiraConfigHelper) {
+      configuaration = JiraService.reTestConnection((JiraConfigHelper) jiraConfiguration);
     }
 
     if (!configuaration) {
