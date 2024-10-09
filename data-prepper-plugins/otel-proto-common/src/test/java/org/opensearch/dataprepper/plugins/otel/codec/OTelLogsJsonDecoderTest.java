@@ -6,18 +6,19 @@
 package org.opensearch.dataprepper.plugins.otel.codec;
 
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class OTLPJsonLogsCodecTest {
+public class OTelLogsJsonDecoderTest {
     private static final String TEST_REQUEST_LOGS_FILE = "test-request-multiple-logs.json";
     
-    public OTLPJsonLogsCodec createObjectUnderTest() {
-        return new OTLPJsonLogsCodec();
-    }    
+    public OTelLogsJsonDecoder createObjectUnderTest() {
+        return new OTelLogsJsonDecoder();
+    }
 
     private void validateLog(OpenTelemetryLog logRecord) {
         assertThat(logRecord.getServiceName(), is("service"));
@@ -38,10 +39,10 @@ public class OTLPJsonLogsCodecTest {
 
     @Test
     public void testParse() throws Exception {
-        InputStream inputStream = OTLPJsonLogsCodecTest.class.getClassLoader().getResourceAsStream(TEST_REQUEST_LOGS_FILE);
-        createObjectUnderTest().parse(inputStream, (record) -> {
+        InputStream inputStream = OTelLogsJsonDecoderTest.class.getClassLoader().getResourceAsStream(TEST_REQUEST_LOGS_FILE);
+        createObjectUnderTest().parse(inputStream, Instant.now(), (record) -> {
             validateLog((OpenTelemetryLog)record.getData());
         });
         
-    }    
+    }
 }

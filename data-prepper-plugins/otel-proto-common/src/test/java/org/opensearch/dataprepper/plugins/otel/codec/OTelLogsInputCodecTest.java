@@ -6,19 +6,32 @@
 package org.opensearch.dataprepper.plugins.otel.codec;
 
 import java.io.InputStream;
-import java.time.Instant;
 import java.util.Map;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class OTLPJsonLogsDecoderTest {
+public class OTelLogsInputCodecTest {
     private static final String TEST_REQUEST_LOGS_FILE = "test-request-multiple-logs.json";
-    
-    public OTLPJsonLogsDecoder createObjectUnderTest() {
-        return new OTLPJsonLogsDecoder();
+   
+    @Mock
+    private OTelLogsInputCodecConfig config;
+    @Mock   
+    private OTelLogsInputCodec otelLogsCodec;
+
+    @BeforeEach
+    void setup() {
+        config = new OTelLogsInputCodecConfig();
+        otelLogsCodec = createObjectUnderTest();
     }
+
+    public OTelLogsInputCodec createObjectUnderTest() {
+        return new OTelLogsInputCodec(config);
+    }    
 
     private void validateLog(OpenTelemetryLog logRecord) {
         assertThat(logRecord.getServiceName(), is("service"));
@@ -39,10 +52,10 @@ public class OTLPJsonLogsDecoderTest {
 
     @Test
     public void testParse() throws Exception {
-        InputStream inputStream = OTLPJsonLogsDecoderTest.class.getClassLoader().getResourceAsStream(TEST_REQUEST_LOGS_FILE);
-        createObjectUnderTest().parse(inputStream, Instant.now(), (record) -> {
+        InputStream inputStream = OTelLogsInputCodecTest.class.getClassLoader().getResourceAsStream(TEST_REQUEST_LOGS_FILE);
+        otelLogsCodec.parse(inputStream, (record) -> {
             validateLog((OpenTelemetryLog)record.getData());
         });
         
-    }
+    }    
 }

@@ -21,12 +21,13 @@ import java.io.Reader;
 import java.util.function.Consumer;
 import java.time.Instant;
  
- 
-public class OTLPJsonLogsDecoder implements ByteDecoder {
+public class OTelLogsJsonDecoder implements ByteDecoder {
     private final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder;
-    public OTLPJsonLogsDecoder() {
+    
+    public OTelLogsJsonDecoder() {
         otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
     }
+
     public void parse(InputStream inputStream, Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
         Reader reader = new InputStreamReader(inputStream);
         ExportLogsServiceRequest.Builder builder = ExportLogsServiceRequest.newBuilder();
@@ -37,5 +38,4 @@ public class OTLPJsonLogsDecoder implements ByteDecoder {
             eventConsumer.accept(new Record<>(log));
         }
     }
- 
 }
