@@ -539,6 +539,36 @@ class DateProcessorTests {
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"hh:mm:ss a", "KK:mm:ss a", "kk:mm:ss", "HH:mm:ss"})
+    void match_with_different_hours_formats(String pattern) {
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(pattern));
+
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.systemDefault());
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
+        when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
+        when(mockDateProcessorConfig.getToOriginationMetadata()).thenReturn(true);
+
+        dateProcessor = createObjectUnderTest();
+
+        Map<String, Object> testData = getTestData();
+        String formattedExpectedTime = expectedDateTime.format(DateTimeFormatter.ofPattern(pattern));
+        testData.put("logDate", formattedExpectedTime);
+
+        final Record<Event> record = buildRecordWithEvent(testData);
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
+
+        Event event = processedRecords.get(0).getData();
+        Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
+        Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
+        ZonedDateTime expectedZonedDatetime = expectedDateTime.atZone(mockDateProcessorConfig.getSourceZoneId()).truncatedTo(ChronoUnit.SECONDS);
+        Assertions.assertEquals(expectedZonedDatetime, event.getMetadata().getExternalOriginationTime().atZone(mockDateProcessorConfig.getSourceZoneId()));
+        verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+    }
+
     @Test
     void date_processor_catches_exceptions_instead_of_throwing() {
         final String dateWhen = UUID.randomUUID().toString();
