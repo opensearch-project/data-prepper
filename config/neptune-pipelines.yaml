@@ -1,0 +1,35 @@
+version: "2"
+neptune-pipeline:
+  source:
+    neptune:
+      port: 8182
+      region: "us-east-1"
+      iamAuth: true
+      aws:
+        sts_role_arn: "arn:aws:iam::160718075058:role/OSPipelineRole"
+      s3_bucket: "melzarei-data-prepper"
+      s3_region: "us-east-1"
+#      host: "localhost" # Set up SSH tunnel to remote Neptune cluster
+      host: "db-neptune-1.cluster-cilnxdzyusie.us-east-1.neptune.amazonaws.com"
+      trust_store_file_path: "config/InternalAndExternalAndAWSTrustStore.jks"
+      # trust_store_password: "amazon"
+      acknowledgments: false
+      export: false
+      stream: true
+      streamType: "propertygraph"
+  sink:
+    - opensearch:
+        hosts:
+          [
+            "https://search-testdomain2-vlb5qyr5jsv4ozhbvkmi24jzva.aos.us-east-1.on.aws"
+          ]
+        index: "neptune"
+        index_type: custom
+        document_id: "${getMetadata(\"id\")}"
+        action: "${getMetadata(\"opensearch_action\")}"
+        # Neptune record creation or event timestamp
+        document_version: "${getMetadata(\"document_version\")}"
+        document_version_type: "external"
+        aws:
+          sts_role_arn: "arn:aws:iam::160718075058:role/OSPipelineRole"
+          region: "us-east-1"
