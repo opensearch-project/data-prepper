@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 public class ServiceMapProcessorConfig {
     private static final String WINDOW_DURATION = "window_duration";
     static final int DEFAULT_WINDOW_DURATION = 180;
-    static final String DEFAULT_DB_PATH = "data/service-map/";
+    static final String DEFAULT_DB_PATH = "/tmp/data/service-map/";
 
     @JsonProperty(WINDOW_DURATION)
     @JsonPropertyDescription("Represents the fixed time window, in seconds, " +
