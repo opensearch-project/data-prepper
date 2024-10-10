@@ -9,6 +9,7 @@ application {
 
 dependencies {
     implementation project(':data-prepper-plugins')
+    implementation project(':data-prepper-plugin-framework')
     implementation project(':data-prepper-plugin-schema')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'org.reflections:reflections:0.10.2'

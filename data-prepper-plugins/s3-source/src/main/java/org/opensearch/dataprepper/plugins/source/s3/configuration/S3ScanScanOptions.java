@@ -22,6 +22,9 @@ import java.util.stream.Stream;
  */
 public class S3ScanScanOptions {
 
+    @JsonProperty("acknowledgment_timeout")
+    private Duration acknowledgmentTimeout = Duration.ofHours(2);
+
     @JsonProperty("folder_partitions")
     @Valid
     private FolderPartitioningOptions folderPartitioningOptions;
@@ -84,4 +87,6 @@ public class S3ScanScanOptions {
     }
 
     public FolderPartitioningOptions getPartitioningOptions() { return folderPartitioningOptions; }
+
+    public Duration getAcknowledgmentTimeout() { return acknowledgmentTimeout; }
 }

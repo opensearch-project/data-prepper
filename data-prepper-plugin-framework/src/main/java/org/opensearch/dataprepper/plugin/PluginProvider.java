@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import java.util.Collection;
 import java.util.Optional;
 
 /**
@@ -27,4 +28,15 @@ public interface PluginProvider {
      * @since 1.2
      */
     <T> Optional<Class<? extends T>> findPluginClass(Class<T> pluginType, String pluginName);
+
+    /**
+     * Finds the Java classes for a specific pluginType.
+     *
+     * @param pluginType The type of plugin which is being supported.
+     *                   e.g. {@link org.opensearch.dataprepper.model.sink.Sink}.
+     * @param <T> The type
+     * @return An {@link Collection} of Java classes for plugins
+     * @since 1.2
+     */
+    <T> Collection<Class<? extends T>> findPluginClasses(Class<T> pluginType);
 }

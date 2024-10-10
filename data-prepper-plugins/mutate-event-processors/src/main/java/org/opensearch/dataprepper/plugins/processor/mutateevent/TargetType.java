@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import org.opensearch.dataprepper.model.event.DataType;
 import org.opensearch.dataprepper.typeconverter.BigDecimalConverter;
 import org.opensearch.dataprepper.typeconverter.BooleanConverter;
@@ -27,9 +28,9 @@ public enum TargetType {
     LONG(DataType.LONG, new LongConverter()),
     BIG_DECIMAL(DataType.BIG_DECIMAL, new BigDecimalConverter());
 
-    private static final Map<String, TargetType> OPTIONS_MAP = Arrays.stream(TargetType.values())
+    private static final Map<DataType, TargetType> OPTIONS_MAP = Arrays.stream(TargetType.values())
             .collect(Collectors.toMap(
-                    value -> value.dataType.getTypeName(),
+                    value -> value.dataType,
                     value -> value
             ));
 
@@ -51,6 +52,11 @@ public enum TargetType {
 
     @JsonCreator
     static TargetType fromOptionValue(final String option) {
-        return OPTIONS_MAP.get(option.toLowerCase());
+        return OPTIONS_MAP.get(DataType.fromTypeName(option));
+    }
+
+    @JsonValue
+    public String getOptionValue() {
+        return dataType.getTypeName();
     }
 }

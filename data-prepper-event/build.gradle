@@ -19,5 +19,7 @@ dependencies {
     implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation libs.caffeine
     testImplementation libs.commons.lang3
 }

@@ -55,10 +55,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Set<String> excludeKeysSet = new HashSet<String>();
     private final HashMap<String, Object> defaultValuesMap = new HashMap<>();
     private final Set<String> defaultValuesSet = new HashSet<String>();
-    private final String lowercaseKey = "lowercase";
-    private final String uppercaseKey = "uppercase";
-    private final String capitalizeKey = "capitalize";
-    private final Set<String> validTransformOptionSet = Set.of("", lowercaseKey, uppercaseKey, capitalizeKey);
     private final String whitespaceStrict = "strict";
     private final String whitespaceLenient = "lenient";
     private final Set<String> validWhitespaceSet = Set.of(whitespaceLenient, whitespaceStrict);
@@ -166,14 +162,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         validateKeySets(includeKeysSet, excludeKeysSet, defaultValuesSet);
-
-        if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
-            throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
-        }
-
-        if (!(validWhitespaceSet.contains(keyValueProcessorConfig.getWhitespace()))) {
-            throw new IllegalArgumentException(String.format("The whitespace value: %s is not a valid option", keyValueProcessorConfig.getWhitespace()));
-        }
 
         final Pattern boolCheck = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
         final Matcher duplicateValueBoolMatch = boolCheck.matcher(String.valueOf(keyValueProcessorConfig.getSkipDuplicateValues()));
@@ -596,14 +584,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 value = ((String)value).replaceAll(keyValueProcessorConfig.getDeleteValueRegex(), "");
             }
 
-            if (keyValueProcessorConfig.getWhitespace().equals(whitespaceStrict)) {
+            if (keyValueProcessorConfig.getWhitespace() == WhitespaceOption.STRICT) {
                 String[] whitespace_arr = trimWhitespace(key, value);
                 key = whitespace_arr[0];
                 value = whitespace_arr[1];
             }
 
             if (keyValueProcessorConfig.getTransformKey() != null
-                    && !keyValueProcessorConfig.getTransformKey().isEmpty()) {
+                    && keyValueProcessorConfig.getTransformKey() != TransformOption.NONE) {
                 key = transformKey(key);
             }
 
@@ -636,14 +624,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     }
 
     private String transformKey(String key) {
-        if (keyValueProcessorConfig.getTransformKey().equals(lowercaseKey)) {
-            key = key.toLowerCase();
-        } else if (keyValueProcessorConfig.getTransformKey().equals(capitalizeKey)) {
-            key = key.substring(0, 1).toUpperCase() + key.substring(1);
-        } else if (keyValueProcessorConfig.getTransformKey().equals(uppercaseKey)) {
-            key = key.toUpperCase();
-        }
-        return key;
+        return keyValueProcessorConfig.getTransformKey().getTransformFunction().apply(key);
     }
 
     private boolean validKeyAndValue(String key, Object value) {

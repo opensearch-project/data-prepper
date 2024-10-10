@@ -42,6 +42,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:avro-codecs')
     testImplementation project(':data-prepper-plugins:in-memory-source-coordination-store')
     testImplementation project(':data-prepper-core')
+    testImplementation project(':data-prepper-event')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
     testImplementation project(':data-prepper-test-event')
     testImplementation libs.avro.core

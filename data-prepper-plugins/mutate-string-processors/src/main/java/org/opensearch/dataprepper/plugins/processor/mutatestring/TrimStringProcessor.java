@@ -16,7 +16,7 @@ import org.opensearch.dataprepper.model.processor.Processor;
  * This processor takes in a key and changes its value to a string with the leading and trailing spaces trimmed.
  * If the value is not a string, no action is performed.
  */
-@DataPrepperPlugin(name = "trim_string", pluginType = Processor.class, pluginConfigurationType = WithKeysConfig.class)
+@DataPrepperPlugin(name = "trim_string", pluginType = Processor.class, pluginConfigurationType = TrimStringProcessorConfig.class)
 public class TrimStringProcessor extends AbstractStringProcessor<EventKey> {
     @DataPrepperPluginConstructor
     public TrimStringProcessor(final PluginMetrics pluginMetrics, final WithKeysConfig config) {

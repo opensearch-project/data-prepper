@@ -11,6 +11,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
+import org.opensearch.dataprepper.core.event.EventConfiguration;
+import org.opensearch.dataprepper.core.event.EventConfigurationContainer;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.parser.config.MetricTagFilter;
@@ -29,7 +31,7 @@ import java.util.Objects;
 /**
  * Class to hold configuration for DataPrepper, including server port and Log4j settings
  */
-public class DataPrepperConfiguration implements ExtensionsConfiguration {
+public class DataPrepperConfiguration implements ExtensionsConfiguration, EventConfigurationContainer {
     static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(30L);
 
     private static final String DEFAULT_SOURCE_COORDINATION_STORE = "in_memory";
@@ -47,6 +49,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration {
     private CircuitBreakerConfig circuitBreakerConfig;
     private SourceCoordinationConfig sourceCoordinationConfig;
     private PipelineShutdownOption pipelineShutdown;
+    private EventConfiguration eventConfiguration;
     private Map<String, String> metricTags = new HashMap<>();
     private List<MetricTagFilter> metricTagFilters = new LinkedList<>();
     private PeerForwarderConfiguration peerForwarderConfiguration;
@@ -92,6 +95,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration {
             @JsonProperty("circuit_breakers") final CircuitBreakerConfig circuitBreakerConfig,
             @JsonProperty("source_coordination") final SourceCoordinationConfig sourceCoordinationConfig,
             @JsonProperty("pipeline_shutdown") final PipelineShutdownOption pipelineShutdown,
+            @JsonProperty("event") final EventConfiguration eventConfiguration,
             @JsonProperty("extensions")
             @JsonInclude(JsonInclude.Include.NON_NULL)
             @JsonSetter(nulls = Nulls.SKIP)
@@ -102,6 +106,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration {
                 ? new SourceCoordinationConfig(new PluginModel(DEFAULT_SOURCE_COORDINATION_STORE, Collections.emptyMap()), null)
                 : sourceCoordinationConfig;
         this.pipelineShutdown = pipelineShutdown != null ? pipelineShutdown : DEFAULT_PIPELINE_SHUTDOWN;
+        this.eventConfiguration = eventConfiguration != null ? eventConfiguration : EventConfiguration.defaultConfiguration();
         setSsl(ssl);
         this.keyStoreFilePath = keyStoreFilePath != null ? keyStoreFilePath : "";
         this.keyStorePassword = keyStorePassword != null ? keyStorePassword : "";
@@ -224,6 +229,10 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration {
 
     public PipelineShutdownOption getPipelineShutdown() {
         return pipelineShutdown;
+    }
+
+    public EventConfiguration getEventConfiguration() {
+        return eventConfiguration;
     }
 
     @Override

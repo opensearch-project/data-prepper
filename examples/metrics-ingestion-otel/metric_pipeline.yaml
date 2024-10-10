@@ -1,0 +1,13 @@
+metric-pipeline:
+  source:
+    otel_metrics_source:
+      ssl: false
+  processor:
+    - otel_metrics:
+  sink:
+    - opensearch:
+        hosts: [ "https://opensearch:9200" ]
+        insecure: true
+        username: admin
+        password: Developer@123
+        index: otel_metrics

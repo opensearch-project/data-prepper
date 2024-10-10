@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.codec.csv;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
@@ -13,14 +14,16 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `csv` processor parses comma-separated values (CSVs) from the event into columns.")
+@JsonClassDescription("The <code>csv</code> codec parses comma-separated values (CSVs) content into events from that content.")
 public class CsvOutputCodecConfig {
     static final String DEFAULT_DELIMITER = ",";
 
     @JsonProperty("delimiter")
+    @JsonPropertyDescription("The character separating each column. Default value is <code>,</code>.")
     private String delimiter = DEFAULT_DELIMITER;
 
     @JsonProperty("header")
+    @JsonPropertyDescription("User-specified names for the CSV columns.")
     private List<String> header;
 
     @Valid
@@ -32,10 +35,12 @@ public class CsvOutputCodecConfig {
     @Size(max = 0, message = "Header from file is not supported.")
     @JsonProperty("region")
     private String region;
+
     @Valid
     @Size(max = 0, message = "Header from file is not supported.")
     @JsonProperty("bucket_name")
     private String bucketName;
+
     @Valid
     @Size(max = 0, message = "Header from file is not supported.")
     @JsonProperty("fileKey")

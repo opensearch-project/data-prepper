@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.event;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -44,5 +45,10 @@ public enum HandleFailedEventsOption {
     @JsonCreator
     static HandleFailedEventsOption fromOptionValue(final String option) {
         return OPTIONS_MAP.get(option.toLowerCase());
+    }
+
+    @JsonValue
+    public String toOptionValue() {
+        return option;
     }
 }

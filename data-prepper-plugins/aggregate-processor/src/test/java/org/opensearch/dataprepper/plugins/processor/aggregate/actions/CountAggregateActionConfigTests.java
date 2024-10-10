@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 import org.junit.jupiter.api.extension.ExtendWith; 
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,7 +38,7 @@ public class CountAggregateActionConfigTests {
     void testDefault() {
         assertThat(countAggregateActionConfig.getCountKey(), equalTo(DEFAULT_COUNT_KEY));
         assertThat(countAggregateActionConfig.getStartTimeKey(), equalTo(DEFAULT_START_TIME_KEY));
-        assertThat(countAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS.toString()));
+        assertThat(countAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS));
         assertThat(countAggregateActionConfig.getMetricName(), equalTo(CountAggregateActionConfig.SUM_METRIC_NAME));
         assertThat(countAggregateActionConfig.getUniqueKeys(), equalTo(null));
     }
@@ -52,9 +51,9 @@ public class CountAggregateActionConfigTests {
         final String testStartTimeKey = UUID.randomUUID().toString();
         setField(CountAggregateActionConfig.class, countAggregateActionConfig, "startTimeKey", testStartTimeKey);
         assertThat(countAggregateActionConfig.getStartTimeKey(), equalTo(testStartTimeKey));
-        final String testOutputFormat = OutputFormat.OTEL_METRICS.toString();
+        final OutputFormat testOutputFormat = OutputFormat.OTEL_METRICS;
         setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", testOutputFormat);
-        assertThat(countAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS.toString()));
+        assertThat(countAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS));
         final String testName = UUID.randomUUID().toString();
         setField(CountAggregateActionConfig.class, countAggregateActionConfig, "metricName", testName);
         assertThat(countAggregateActionConfig.getMetricName(), equalTo(testName));
@@ -63,11 +62,5 @@ public class CountAggregateActionConfigTests {
         uniqueKeys.add(UUID.randomUUID().toString());
         setField(CountAggregateActionConfig.class, countAggregateActionConfig, "uniqueKeys", uniqueKeys);
         assertThat(countAggregateActionConfig.getUniqueKeys(), equalTo(uniqueKeys));
-    }
-
-    @Test
-    void testInvalidConfig() throws NoSuchFieldException, IllegalAccessException {
-        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", UUID.randomUUID().toString());
-        assertThrows(IllegalArgumentException.class, () -> countAggregateActionConfig.getOutputFormat());
     }
 }

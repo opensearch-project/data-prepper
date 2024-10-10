@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.obfuscation.action;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
@@ -15,10 +17,9 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import org.opensearch.dataprepper.model.event.EventKey;
-import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
-import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
-
+@JsonClassDescription("Obfuscates data by performing a one-way hash.")
+@JsonPropertyOrder
 public class OneWayHashActionConfig {
 
     @JsonProperty("salt")
@@ -27,17 +28,17 @@ public class OneWayHashActionConfig {
     @Size(max = 64, message = "Maximum size of salt string is 64")
     private String salt;
 
-    @JsonProperty("format")
-    @Pattern(regexp = "SHA-512", message = "Valid values: SHA-512")
-    @JsonPropertyDescription("Format of one way hash to generate. Default to SHA-512.")
-    private String format = "SHA-512";
-
     @JsonProperty("salt_key")
-    @JsonPropertyDescription("A key to compute salt based on a value provided as part of a record." + 
-        "If key or value was not found in the record(s), a salt defined in the pipeline configuration will be used instead.")    
+    @JsonPropertyDescription("A key to compute salt based on a value provided as part of a record. " +
+            "If key or value was not found in the event, a salt defined in the pipeline configuration will be used instead.")
     @EventKeyConfiguration(EventKeyFactory.EventAction.GET)
     private EventKey saltKey;
- 
+
+    @JsonProperty("format")
+    @Pattern(regexp = "SHA-512", message = "Valid values: <code>SHA-512</code>")
+    @JsonPropertyDescription("Format of one way hash to generate. Default to <code>SHA-512</code>.")
+    private String format = "SHA-512";
+
     public OneWayHashActionConfig(){
 
     }

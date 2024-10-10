@@ -95,7 +95,7 @@ public enum DataType {
     }
 
     @JsonCreator
-    static DataType fromTypeName(final String option) {
+    public static DataType fromTypeName(final String option) {
         return TYPES_MAP.get(option);
     }
 

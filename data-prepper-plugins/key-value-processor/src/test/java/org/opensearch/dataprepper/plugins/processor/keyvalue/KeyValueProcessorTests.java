@@ -778,7 +778,7 @@ public class KeyValueProcessorTests {
 
     @Test
     void testLowercaseTransformKvProcessor() {
-        when(mockConfig.getTransformKey()).thenReturn("lowercase");
+        when(mockConfig.getTransformKey()).thenReturn(TransformOption.LOWERCASE);
 
         final Record<Event> record = getMessage("Key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
@@ -790,7 +790,7 @@ public class KeyValueProcessorTests {
 
     @Test
     void testUppercaseTransformKvProcessor() {
-        when(mockConfig.getTransformKey()).thenReturn("uppercase");
+        when(mockConfig.getTransformKey()).thenReturn(TransformOption.UPPERCASE);
 
         final Record<Event> record = getMessage("key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
@@ -802,7 +802,7 @@ public class KeyValueProcessorTests {
 
     @Test
     void testCapitalizeTransformKvProcessor() {
-        when(mockConfig.getTransformKey()).thenReturn("capitalize");
+        when(mockConfig.getTransformKey()).thenReturn(TransformOption.CAPITALIZE);
 
         final Record<Event> record = getMessage("key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
@@ -814,7 +814,7 @@ public class KeyValueProcessorTests {
 
     @Test
     void testStrictWhitespaceKvProcessor() {
-        when(mockConfig.getWhitespace()).thenReturn("strict");
+        when(mockConfig.getWhitespace()).thenReturn(WhitespaceOption.STRICT);
 
         final Record<Event> record = getMessage("key1  =  value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
@@ -934,7 +934,7 @@ public class KeyValueProcessorTests {
     @Test
     void testTransformKeyRecursiveKvProcessor() {
         when(mockConfig.getRecursive()).thenReturn(true);
-        when(mockConfig.getTransformKey()).thenReturn("capitalize");
+        when(mockConfig.getTransformKey()).thenReturn(TransformOption.CAPITALIZE);
 
         final Record<Event> record = getMessage("item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=item1-subitem2-value]&item2=item2-value");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));

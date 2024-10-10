@@ -18,8 +18,8 @@ import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `user_agent` processor parses any user agent (UA) string in an event and then adds the " +
-        "parsing results to the event’s write data.")
+@JsonClassDescription("The <code>user_agent</code> processor parses any user agent (UA) string in an event and then adds the " +
+        "parsed results to the event.")
 public class UserAgentProcessorConfig {
 
     private static final int DEFAULT_CACHE_SIZE = 1000;
@@ -33,20 +33,20 @@ public class UserAgentProcessorConfig {
 
     @NotNull
     @JsonProperty("target")
-    @JsonPropertyDescription("The field to which the parsed event will write. Default is `user_agent`.")
+    @JsonPropertyDescription("The field to which the parsed event will write. Default is <code>user_agent</code>.")
     private String target = "user_agent";
 
     @NotNull
     @JsonProperty("exclude_original")
-    @JsonPropertyDescription("Determines whether to exclude the original UA string from the parsing result. Defaults to `false`. ")
+    @JsonPropertyDescription("Determines whether to exclude the original UA string from the parsing result. Defaults to <code>false</code>.")
     private boolean excludeOriginal = false;
 
     @JsonProperty("cache_size")
-    @JsonPropertyDescription("The cache size of the parser in megabytes. Defaults to `1000`.")
+    @JsonPropertyDescription("The cache size of the parser in megabytes. Defaults to <code>1000</code>.")
     private int cacheSize = DEFAULT_CACHE_SIZE;
 
     @JsonProperty("tags_on_parse_failure")
-    @JsonPropertyDescription("The tag to add to an event if the `user_agent` processor fails to parse the UA string.")
+    @JsonPropertyDescription("The tag to add to an event if the <code>user_agent</code> processor fails to parse the UA string.")
     private List<String> tagsOnParseFailure;
 
     public EventKey getSource() {

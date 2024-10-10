@@ -19,7 +19,7 @@ public class FileParameterConfig {
     private String fileName;
 
     @JsonProperty("aws")
-    @JsonPropertyDescription("The AWS configuration when the file is an S3 object. ")
+    @JsonPropertyDescription("The AWS configuration when the file is an S3 object.")
     @Valid
     private S3ObjectConfig awsConfig;
 

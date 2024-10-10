@@ -12,7 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.reflections.Reflections;
+import org.opensearch.dataprepper.plugin.PluginProvider;
 
 import java.util.Map;
 import java.util.Set;
@@ -40,7 +40,7 @@ class PluginConfigsJsonSchemaConverterTest {
     private JsonSchemaConverter jsonSchemaConverter;
 
     @Mock
-    private Reflections reflections;
+    private PluginProvider pluginProvider;
 
     @InjectMocks
     private PluginConfigsJsonSchemaConverter objectUnderTest;
@@ -67,7 +67,7 @@ class PluginConfigsJsonSchemaConverterTest {
 
     @Test
     void testConvertPluginConfigsIntoJsonSchemasHappyPath() throws JsonProcessingException {
-        when(reflections.getTypesAnnotatedWith(eq(DataPrepperPlugin.class))).thenReturn(Set.of(TestPlugin.class));
+        when(pluginProvider.findPluginClasses(eq(TestPluginType.class))).thenReturn(Set.of(TestPlugin.class));
         final ObjectNode objectNode = OBJECT_MAPPER.createObjectNode();
         when(jsonSchemaConverter.convertIntoJsonSchema(
                 any(SchemaVersion.class), any(OptionPreset.class), eq(TestPluginConfig.class))).thenReturn(objectNode);
@@ -84,7 +84,7 @@ class PluginConfigsJsonSchemaConverterTest {
 
     @Test
     void testConvertPluginConfigsIntoJsonSchemasWithError() throws JsonProcessingException {
-        when(reflections.getTypesAnnotatedWith(eq(DataPrepperPlugin.class))).thenReturn(Set.of(TestPlugin.class));
+        when(pluginProvider.findPluginClasses(eq(TestPluginType.class))).thenReturn(Set.of(TestPlugin.class));
         final JsonProcessingException jsonProcessingException = mock(JsonProcessingException.class);
         when(jsonSchemaConverter.convertIntoJsonSchema(
                 any(SchemaVersion.class), any(OptionPreset.class), eq(TestPluginConfig.class))).thenThrow(
@@ -96,7 +96,7 @@ class PluginConfigsJsonSchemaConverterTest {
 
     @DataPrepperPlugin(
             name = "test_plugin", pluginType = TestPluginType.class, pluginConfigurationType = TestPluginConfig.class)
-    static class TestPlugin {
+    static class TestPlugin extends TestPluginType {
 
     }
 

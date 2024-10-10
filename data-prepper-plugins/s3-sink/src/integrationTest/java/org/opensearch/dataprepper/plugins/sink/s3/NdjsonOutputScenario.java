@@ -56,6 +56,7 @@ public class NdjsonOutputScenario implements OutputScenario {
         assertThat(sampledData, equalTo(sampleEventData.size()));
     }
 
+    @Override
     public void validateDynamicPartition(int expectedRecords, int partitionNumber, final File actualContentFile, final CompressionScenario compressionScenario) throws IOException {
         final InputStream inputStream = new BufferedInputStream(new FileInputStream(actualContentFile), 64 * 1024);
 

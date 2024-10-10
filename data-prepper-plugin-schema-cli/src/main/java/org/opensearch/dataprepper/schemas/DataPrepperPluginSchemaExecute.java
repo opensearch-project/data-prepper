@@ -5,11 +5,9 @@ import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import com.github.victools.jsonschema.module.jakarta.validation.JakartaValidationModule;
 import com.github.victools.jsonschema.module.jakarta.validation.JakartaValidationOption;
+import org.opensearch.dataprepper.plugin.ClasspathPluginProvider;
+import org.opensearch.dataprepper.plugin.PluginProvider;
 import org.opensearch.dataprepper.schemas.module.CustomJacksonModule;
-import org.reflections.Reflections;
-import org.reflections.scanners.Scanners;
-import org.reflections.util.ClasspathHelper;
-import org.reflections.util.ConfigurationBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -25,6 +23,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.github.victools.jsonschema.module.jackson.JacksonOption.FLATTENED_ENUMS_FROM_JSONVALUE;
 import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_ORDER;
 import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_REQUIRED;
 
@@ -54,15 +53,13 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
     @Override
     public void run() {
         final List<Module> modules = List.of(
-                new CustomJacksonModule(RESPECT_JSONPROPERTY_REQUIRED, RESPECT_JSONPROPERTY_ORDER),
+                new CustomJacksonModule(RESPECT_JSONPROPERTY_REQUIRED, RESPECT_JSONPROPERTY_ORDER, FLATTENED_ENUMS_FROM_JSONVALUE),
                 new JakartaValidationModule(JakartaValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED,
                         JakartaValidationOption.INCLUDE_PATTERN_EXPRESSIONS)
         );
-        final Reflections reflections = new Reflections(new ConfigurationBuilder()
-                .setUrls(ClasspathHelper.forPackage(DEFAULT_PLUGINS_CLASSPATH))
-                .setScanners(Scanners.TypesAnnotated, Scanners.SubTypes));
+        final PluginProvider pluginProvider = new ClasspathPluginProvider();
         final PluginConfigsJsonSchemaConverter pluginConfigsJsonSchemaConverter = new PluginConfigsJsonSchemaConverter(
-                reflections, new JsonSchemaConverter(modules), siteUrl, siteBaseUrl);
+                pluginProvider, new JsonSchemaConverter(modules, pluginProvider), siteUrl, siteBaseUrl);
         final Class<?> pluginType = pluginConfigsJsonSchemaConverter.pluginTypeNameToPluginType(pluginTypeName);
         final Map<String, String> pluginNameToJsonSchemaMap = pluginConfigsJsonSchemaConverter.convertPluginConfigsIntoJsonSchemas(
                 SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, pluginType);

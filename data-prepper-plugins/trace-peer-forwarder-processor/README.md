@@ -1,7 +1,7 @@
 # Trace Peer Forwarder Processor
 
 This processor is used to reduce the number of Events that will be forwarded in a Trace Analytics pipeline by half when using [Peer Forwarder](https://github.com/opensearch-project/data-prepper/blob/main/docs/peer_forwarder.md). 
-It groups the events based on `trace_id` similar to `service_map_stateful` and `otel_trace_raw ` processors. 
+It groups the events based on `trace_id` similar to `service_map` and `otel_traces ` processors. 
 
 In [Trace Analytics pipeline](https://github.com/opensearch-project/data-prepper/blob/main/docs/trace_analytics.md#trace-analytics-pipeline) each event is duplicated, when it is sent from `otel-trace-pipeline` to `raw-pipeline` and `service-map-pipeline`.
 So, the event will be forwarded once in each pipeline. Using this processor event will be forwarded only once in `otel-trace-pipeline` to correct peer. 
@@ -26,7 +26,7 @@ raw-pipeline:
     pipeline:
       name: "entry-pipeline"
   processor:
-    - otel_trace_raw:
+    - otel_traces:
   sink:
     - opensearch:
 service-map-pipeline:
@@ -35,7 +35,7 @@ service-map-pipeline:
     pipeline:
       name: "entry-pipeline"
   processor:
-    - service_map_stateful:
+    - service_map:
   sink:
     - opensearch:
 ```

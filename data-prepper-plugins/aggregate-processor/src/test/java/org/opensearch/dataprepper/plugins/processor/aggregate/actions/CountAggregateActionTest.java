@@ -52,7 +52,7 @@ public class CountAggregateActionTest {
     void testCountAggregate(int testCount) throws NoSuchFieldException, IllegalAccessException {
         final String testName = UUID.randomUUID().toString();
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
-        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW);
         countAggregateAction = createObjectUnderTest(countAggregateActionConfig);
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
@@ -160,7 +160,7 @@ public class CountAggregateActionTest {
         String endTimeKey = UUID.randomUUID().toString();
         when(mockConfig.getStartTimeKey()).thenReturn(startTimeKey);
         when(mockConfig.getEndTimeKey()).thenReturn(endTimeKey);
-        when(mockConfig.getOutputFormat()).thenReturn(OutputFormat.OTEL_METRICS.toString());
+        when(mockConfig.getOutputFormat()).thenReturn(OutputFormat.OTEL_METRICS);
         countAggregateAction = createObjectUnderTest(mockConfig);
         final String key1 = "key-"+UUID.randomUUID().toString();
         final String value1 = UUID.randomUUID().toString();

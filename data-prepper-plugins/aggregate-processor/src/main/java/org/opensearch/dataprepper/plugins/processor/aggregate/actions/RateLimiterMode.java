@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -35,6 +36,11 @@ public enum RateLimiterMode {
     @JsonCreator
     static RateLimiterMode fromOptionValue(final String option) {
         return ACTIONS_MAP.get(option.toLowerCase());
+    }
+
+    @JsonValue
+    public String getOptionValue() {
+        return name;
     }
 
 }

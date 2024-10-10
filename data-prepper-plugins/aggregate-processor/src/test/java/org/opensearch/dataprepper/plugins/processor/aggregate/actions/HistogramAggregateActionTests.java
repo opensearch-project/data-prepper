@@ -61,7 +61,7 @@ public class HistogramAggregateActionTests {
     @ParameterizedTest
     @ValueSource(ints = {10, 20, 50, 100})
     void testHistogramAggregate(final int testCount) throws NoSuchFieldException, IllegalAccessException {
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "outputFormat", OutputFormat.RAW);
         final String testKeyPrefix = RandomStringUtils.randomAlphabetic(5)+"_";
         setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "generatedKeyPrefix", testKeyPrefix);
         setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "units", "ms");
@@ -255,7 +255,7 @@ public class HistogramAggregateActionTests {
         when(histogramAggregateActionConfig.getEndTimeKey()).thenReturn(endTimeKey);
         final String testName = UUID.randomUUID().toString();
         when(histogramAggregateActionConfig.getMetricName()).thenReturn(testName);
-        when(histogramAggregateActionConfig.getOutputFormat()).thenReturn(OutputFormat.OTEL_METRICS.toString());
+        when(histogramAggregateActionConfig.getOutputFormat()).thenReturn(OutputFormat.OTEL_METRICS);
         String keyPrefix = UUID.randomUUID().toString();
         final String testUnits = "ms";
         when(histogramAggregateActionConfig.getUnits()).thenReturn(testUnits);
@@ -381,7 +381,7 @@ public class HistogramAggregateActionTests {
         when(histogramAggregateActionConfig.getEndTimeKey()).thenReturn(endTimeKey);
         final String testName = UUID.randomUUID().toString();
         when(histogramAggregateActionConfig.getMetricName()).thenReturn(testName);
-        when(histogramAggregateActionConfig.getOutputFormat()).thenReturn(OutputFormat.OTEL_METRICS.toString());
+        when(histogramAggregateActionConfig.getOutputFormat()).thenReturn(OutputFormat.OTEL_METRICS);
         final String testUnits = "ms";
         when(histogramAggregateActionConfig.getUnits()).thenReturn(testUnits);
         when(histogramAggregateActionConfig.getRecordMinMax()).thenReturn(true);

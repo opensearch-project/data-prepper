@@ -33,9 +33,9 @@ The [OpenTelemetry source](../data-prepper-plugins/otel-trace-source/README.md) 
 ### Processor
 
 We have two processor for the Trace Analytics feature,
-* *otel_trace_raw* -  This is a processor that receives collection of [Span](../data-prepper-api/src/main/java/org/opensearch/dataprepper/model/trace/Span.java) records sent from [otel-trace-source](../data-prepper-plugins/otel-trace-source/README.md), does stateful processing on extracting and filling-in trace group related fields.
+* *otel_traces* -  This is a processor that receives collection of [Span](../data-prepper-api/src/main/java/org/opensearch/dataprepper/model/trace/Span.java) records sent from [otel-trace-source](../data-prepper-plugins/otel-trace-source/README.md), does stateful processing on extracting and filling-in trace group related fields.
 * *otel_trace_group* -  This is a processor that fills in the missing trace group related fields in the collection of [Span](../data-prepper-api/src/main/java/org/opensearch/dataprepper/model/trace/Span.java) records by looking up the opensearch backend.
-* *service_map_stateful* -  This processor performs the required preprocessing on the trace data and build metadata to display the service-map OpenSearch Dashboards dashboards.
+* *service_map* -  This processor performs the required preprocessing on the trace data and build metadata to display the service-map OpenSearch Dashboards dashboards.
 
 
 ### OpenSearch sink
@@ -118,7 +118,7 @@ raw-pipeline:
          # The raw processor does bulk request to your OpenSearch sink, so configure the batch_size higher.
          batch_size: 3200
   processor:
-    - otel_trace_raw:
+    - otel_traces:
     - otel_trace_group:
         hosts: [ "https://localhost:9200" ]
         # Change to your credentials
@@ -152,7 +152,7 @@ service-map-pipeline:
     pipeline:
       name: "otel-trace-pipeline"
   processor:
-    - service_map_stateful:
+    - service_map:
         # The window duration is the maximum length of time the data prepper stores the most recent trace data to evaluvate service-map relationships. 
         # The default is 3 minutes, this means we can detect relationships between services from spans reported in last 3 minutes.
         # Set higher value if your applications have higher latency. 
@@ -250,7 +250,7 @@ pipeline authors the ability to configure other processors to modify spans or tr
 
 To provide a migration path, Data Prepper 1.4 introduced the following changes.
 * The `otel_trace_source` has an optional parameter `record_type` which can be set to `event`. When configured, it will output event objects.
-* The `otel_trace_raw` replaces `otel_trace_raw_prepper` for event-based spans.
+* The `otel_traces` replaces `otel_trace_raw_prepper` for event-based spans.
 * The `otel_trace_group` replaces `otel_trace_group_prepper` for event-based spans.
 
 In Data Prepper 2.0, the `otel_trace_source` will only output Events. Data Prepper 2.0 also removes

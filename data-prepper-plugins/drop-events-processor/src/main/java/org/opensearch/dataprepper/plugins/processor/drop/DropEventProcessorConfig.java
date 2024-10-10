@@ -13,15 +13,16 @@ import jakarta.validation.constraints.NotEmpty;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `drop_events` processor drops all the events that are passed into it.")
+@JsonClassDescription("The <code>drop_events</code> processor conditionally drops events.")
 public class DropEventProcessorConfig {
 
-    @JsonPropertyDescription("Accepts a Data Prepper conditional expression string following the [Data Prepper Expression Syntax](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/). Configuring drop_events with drop_when: true drops all the events received.")
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>'/log_type == \"DEBUG\"'</code>. " +
+            "The <code>drop_when</code> processor will drop all events where the condition evaluates to true. Those events will not go to any further processors or sinks.")
     @JsonProperty("drop_when")
     @NotEmpty
     private String dropWhen;
 
-    @JsonPropertyDescription("Specifies how exceptions are handled when an exception occurs while evaluating an event. Default value is 'drop', which drops the event so that it is not sent to OpenSearch. Available options are 'drop', 'drop_silently', 'skip', and 'skip_silently'.")
+    @JsonPropertyDescription("Specifies how exceptions are handled when an exception occurs while evaluating an event. Default value is <code>skip</code>, which drops the event so that it is not sent to further processors or sinks.")
     @JsonProperty("handle_failed_events")
     private HandleFailedEventsOption handleFailedEventsOption = HandleFailedEventsOption.SKIP;
 

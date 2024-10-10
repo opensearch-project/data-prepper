@@ -69,7 +69,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME;
-import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.ACKNOWLEDGEMENT_SET_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.CHECKPOINT_OWNERSHIP_INTERVAL;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION;
@@ -125,10 +124,14 @@ class S3ScanObjectWorkerTest {
 
     private List<ScanOptions> scanOptionsList;
 
+    @Mock
+    private Duration acknowledgmentSetTimeout;
+
     @BeforeEach
     void setup() {
         scanOptionsList = new ArrayList<>();
         when(s3ScanScanOptions.getPartitioningOptions()).thenReturn(null);
+        when(s3ScanScanOptions.getAcknowledgmentTimeout()).thenReturn(acknowledgmentSetTimeout);
     }
 
     private ScanObjectWorker createObjectUnderTest() {
@@ -232,7 +235,7 @@ class S3ScanObjectWorkerTest {
 
         final InOrder inOrder = inOrder(sourceCoordinator, acknowledgementSet, s3ObjectDeleteWorker);
         inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, objectKey);
-        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, acknowledgmentSetTimeout);
         inOrder.verify(acknowledgementSet).complete();
         inOrder.verify(sourceCoordinator).renewPartitionOwnership(partitionKey);
         inOrder.verify(sourceCoordinator).completePartition(partitionKey, true);
@@ -289,7 +292,7 @@ class S3ScanObjectWorkerTest {
 
         final InOrder inOrder = inOrder(sourceCoordinator, acknowledgementSet, s3ObjectDeleteWorker);
         inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, objectKey);
-        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, acknowledgmentSetTimeout);
         inOrder.verify(acknowledgementSet).complete();
         inOrder.verify(sourceCoordinator).renewPartitionOwnership(partitionKey);
         inOrder.verify(sourceCoordinator).completePartition(partitionKey, true);
@@ -536,7 +539,7 @@ class S3ScanObjectWorkerTest {
         inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, firstObject.key());
         inOrder.verify(acknowledgementSet1).complete();
         inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, secondObject.key());
-        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, acknowledgmentSetTimeout);
         inOrder.verify(acknowledgementSet2).complete();
 
         final Consumer<Boolean> firstAckCallback = ackCallbacks.get(0);
@@ -616,7 +619,7 @@ class S3ScanObjectWorkerTest {
         final InOrder inOrder = inOrder(sourceCoordinator, acknowledgementSet1, s3ObjectDeleteWorker);
 
         inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, firstObject.key());
-        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, acknowledgmentSetTimeout);
         inOrder.verify(acknowledgementSet1).complete();
 
         final Consumer<Boolean> ackCallback = consumerArgumentCaptor.getValue();

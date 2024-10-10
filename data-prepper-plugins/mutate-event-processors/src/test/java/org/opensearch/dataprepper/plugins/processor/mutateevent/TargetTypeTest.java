@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -25,10 +26,18 @@ class TargetTypeTest {
     void fromTypeName_returns_expected_value(final TargetType targetType) {
         assertThat(TargetType.fromOptionValue(targetType.getDataType().getTypeName()), equalTo(targetType));
     }
+
     @ParameterizedTest
     @ArgumentsSource(DataTypeToTargetTypeArgumentsProvider.class)
     void fromTypeName_returns_expected_value_based_on_DataType(final String typeName, final TargetType targetType) {
         assertThat(TargetType.fromOptionValue(typeName), equalTo(targetType));
+    }
+
+
+    @ParameterizedTest
+    @ArgumentsSource(DataTypeToTargetTypeArgumentsProvider.class)
+    void getOptionValue_returns_data_type_name(final String typeName, final TargetType targetType) throws JsonProcessingException {
+        assertThat(targetType.getOptionValue(), equalTo(typeName));
     }
 
     static class DataTypeToTargetTypeArgumentsProvider implements ArgumentsProvider {

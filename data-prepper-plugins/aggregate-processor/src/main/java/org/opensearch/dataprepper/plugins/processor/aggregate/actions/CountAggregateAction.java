@@ -51,7 +51,7 @@ public class CountAggregateAction implements AggregateAction {
     public final String countKey;
     public final String startTimeKey;
     public final String endTimeKey;
-    public final String outputFormat;
+    public final OutputFormat outputFormat;
     private long startTimeNanos;
     private final String metricName;
     private final IdentificationKeysHasher uniqueKeysHasher;
@@ -141,7 +141,7 @@ public class CountAggregateAction implements AggregateAction {
         Instant endTime = (Instant)groupState.get(endTimeKey);
         groupState.remove(endTimeKey);
         groupState.remove(UNIQUE_KEYS_SETKEY);
-        if (outputFormat.equals(OutputFormat.RAW.toString())) {
+        if (outputFormat == OutputFormat.RAW) {
             groupState.put(startTimeKey, startTime.atZone(ZoneId.of(ZoneId.systemDefault().toString())).format(DateTimeFormatter.ofPattern(DATE_FORMAT)));
             event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)

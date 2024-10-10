@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.decompress;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.plugins.codec.GZipDecompressionEngine;
 
@@ -35,6 +36,11 @@ public enum DecompressionType implements DecompressionEngineFactory {
     @JsonCreator
     static DecompressionType fromOptionValue(final String option) {
         return OPTIONS_MAP.get(option);
+    }
+
+    @JsonValue
+    public String getOptionValue() {
+        return option;
     }
 
     @Override
