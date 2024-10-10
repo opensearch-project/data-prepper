@@ -69,6 +69,9 @@ public class HttpRequestExceptionHandler implements ExceptionHandlerFunction {
         } else if (e instanceof SizeOverflowException) {
             requestsTooLargeCounter.increment();
             return HttpStatus.REQUEST_ENTITY_TOO_LARGE;
+        } else if (e instanceof IllegalArgumentException) {
+            badRequestsCounter.increment();
+            return HttpStatus.BAD_REQUEST;
         }
 
         internalServerErrorCounter.increment();
