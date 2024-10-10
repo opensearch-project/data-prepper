@@ -130,6 +130,36 @@ public class ParseJsonProcessorTest {
         verifyNoInteractions(handleFailedEventsOption);
     }
 
+    @Test
+    void test_simple_depth_value_1() throws Exception {
+        final String source = "root_source";
+        when(processorConfig.getSource()).thenReturn(source);
+        when(processorConfig.getDestination()).thenReturn(source);
+        when(processorConfig.getDepth()).thenReturn(1);
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
+	
+	Map<String, Object> data = Map.of("key1", "value1", "key2", 1, "key3", Map.of("key5", Map.of("key6", "value6")));
+	Map<String, Object> expectedResult = Map.of("key1", "value1", "key2", 1, "key3", "{\"key5\":{\"key6\":\"value6\"}}");
+        final String serializedMessage = objectMapper.writeValueAsString(data);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+        assertThatKeyEquals(parsedEvent, source, expectedResult);
+    }
+
+    @Test
+    void test_simple_depth_value_2() throws Exception {
+        final String source = "root_source";
+        when(processorConfig.getSource()).thenReturn(source);
+        when(processorConfig.getDestination()).thenReturn(source);
+        when(processorConfig.getDepth()).thenReturn(2);
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
+	
+	Map<String, Object> data = Map.of("key1", "value1", "key2", 1, "key3", Map.of("key4", 4, "key5", Map.of("key6", "value6")));
+	Map<String, Object> expectedResult = Map.of("key1", "value1", "key2", 1, "key3", Map.of("key4", 4, "key5", "{\"key6\":\"value6\"}"));
+        final String serializedMessage = objectMapper.writeValueAsString(data);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+        assertThatKeyEquals(parsedEvent, source, expectedResult);
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {0,1,2,3,4,5,6,7,8,9,10})
     void test_depth_option_with_same_source_and_destination(int depth) throws Exception {
@@ -156,13 +186,8 @@ public class ParseJsonProcessorTest {
         }
 
         mapValue = prevMap;
-        final Map<String, Object> data = Map.of(
-                source, mapValue,
-                "key","value"
-        );
         final String serializedMessage = objectMapper.writeValueAsString(mapValue);
         final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
-        Object m1 = parsedEvent.get(source, Object.class);
         assertThatKeyEquals(parsedEvent, source, expectedResult);
 
     }

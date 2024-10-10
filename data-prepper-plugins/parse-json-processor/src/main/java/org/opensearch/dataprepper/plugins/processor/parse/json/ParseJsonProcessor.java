@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
@@ -50,9 +51,9 @@ public class ParseJsonProcessor extends AbstractParseProcessor {
     }
 
     @Override
-    protected Optional<HashMap<String, Object>> readValue(String message, Event context) {
+    protected Optional<Map<String, Object>> readValue(String message, Event context) {
         try {
-            HashMap<String, Object> map = objectMapper.readValue(message, new TypeReference<>() {});
+            final HashMap<String, Object> map = objectMapper.readValue(message, new TypeReference<>() {});
             if (depth == 0) {
                 return Optional.of(map);
             }

@@ -16,6 +16,9 @@ import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 import org.opensearch.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
@@ -83,15 +86,13 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
     /**
      * @return Optional HashMap of the parsed value - empty if the message was invalid (be sure to log the error)
      */
-    protected abstract Optional<HashMap<String, Object>> readValue(String message, Event context);
+    protected abstract Optional<Map<String, Object>> readValue(String message, Event context);
 
-    protected HashMap<String, Object> convertNestedObjectToString(Map<String, Object> map, int curDepth, int targetDepth) {
+    protected Map<String, Object> convertNestedObjectToString(Map<String, Object> map, int curDepth, int targetDepth) {
         HashMap<String, Object> resultMap = new HashMap<>();
         try {
             for (Map.Entry<String, Object> entry: map.entrySet()) {
                 if (entry.getValue() instanceof Map) {
-                    Map m1 = (Map<String, Object>) entry.getValue();
-                    String s1 = objectMapper.writeValueAsString(m1);
                     if (curDepth == targetDepth) {
                         resultMap.put(entry.getKey(), objectMapper.writeValueAsString((Map<String, Object>) entry.getValue()));
                     } else {
@@ -102,7 +103,12 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                 }
             }
         } catch (Exception e) {
-            LOG.error("Failed to convert to string", e);
+            LOG.atError()
+                        .addMarker(SENSITIVE)
+                        .addMarker(NOISY)
+                        .setMessage("Failed to convert to string while parsing")
+                        .setCause(e)
+                        .log();
         }
         return resultMap;
     }
@@ -125,7 +131,7 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                     continue;
                 }
 
-                final Optional<HashMap<String, Object>> parsedValueOptional = readValue(message, event);
+                final Optional<Map<String, Object>> parsedValueOptional = readValue(message, event);
                 if (parsedValueOptional.isEmpty()) {
                     event.getMetadata().addTags(tagsOnFailure);
                     continue;

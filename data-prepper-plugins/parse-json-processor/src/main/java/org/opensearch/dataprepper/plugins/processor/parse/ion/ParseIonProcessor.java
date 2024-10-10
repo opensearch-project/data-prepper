@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
@@ -56,10 +57,10 @@ public class ParseIonProcessor extends AbstractParseProcessor {
 
 
     @Override
-    protected Optional<HashMap<String, Object>> readValue(String message, Event context) {
+    protected Optional<Map<String, Object>> readValue(String message, Event context) {
         try {
             // We need to do a two-step process here, read the value in, then convert away any Ion types like Timestamp
-            HashMap<String, Object> map = objectMapper.convertValue(objectMapper.readValue(message, new TypeReference<>() {}), new TypeReference<>() {});
+            final HashMap<String, Object> map = objectMapper.convertValue(objectMapper.readValue(message, new TypeReference<>() {}), new TypeReference<>() {});
             if (depth == 0) {
                 return Optional.of(map);
             }
