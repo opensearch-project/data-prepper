@@ -25,7 +25,7 @@ class PluginErrorTest {
                 .exception(exception)
                 .build();
         assertThat(pluginError.getErrorMessage(), equalTo(
-                "test-pipeline:test-plugin-type:test-plugin: caused by: test error message"));
+                "test-pipeline.test-plugin-type.test-plugin: caused by: test error message"));
     }
 
     @Test
@@ -38,7 +38,7 @@ class PluginErrorTest {
                 .exception(exception)
                 .build();
         assertThat(pluginError.getErrorMessage(), equalTo(
-                "test-plugin-type:test-plugin: caused by: test error message"));
+                "test-plugin-type.test-plugin: caused by: test error message"));
     }
 
     @Test

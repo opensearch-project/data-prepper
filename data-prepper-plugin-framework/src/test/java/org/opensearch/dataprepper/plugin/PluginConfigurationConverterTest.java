@@ -7,13 +7,16 @@ package org.opensearch.dataprepper.plugin;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Path;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
 import java.util.Collections;
 import java.util.UUID;
@@ -31,11 +34,16 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class PluginConfigurationConverterTest {
     private PluginSetting pluginSetting;
     private Validator validator;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Mock
+    private PluginConfigurationErrorHandler pluginConfigurationErrorHandler;
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     static class TestConfiguration {
         @SuppressWarnings("unused")
@@ -55,7 +63,7 @@ class PluginConfigurationConverterTest {
     }
 
     private PluginConfigurationConverter createObjectUnderTest() {
-        return new PluginConfigurationConverter(validator, objectMapper);
+        return new PluginConfigurationConverter(validator, objectMapper, pluginConfigurationErrorHandler);
     }
 
     @Test
@@ -164,5 +172,45 @@ class PluginConfigurationConverterTest {
         assertThat(actualException.getMessage(), containsString(pipelineName));
         assertThat(actualException.getMessage(), containsString(propertyPathString));
         assertThat(actualException.getMessage(), containsString(errorMessage));
+    }
+
+    @Test
+    void convert_with_error_when_converting_with_object_mapper_calls_plugin_configuration_error_handler() {
+        objectMapper = mock(ObjectMapper.class);
+
+        final String value = UUID.randomUUID().toString();
+        given(pluginSetting.getSettings())
+                .willReturn(Collections.singletonMap("my_value", value));
+
+        final RuntimeException e = mock(RuntimeException.class);
+
+        when(objectMapper.convertValue(pluginSetting.getSettings(), TestConfiguration.class))
+                .thenThrow(e);
+
+        when(pluginConfigurationErrorHandler.handleException(pluginSetting, e)).thenReturn(new IllegalArgumentException());
+
+        final PluginConfigurationConverter objectUnderTest = createObjectUnderTest();
+
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.convert(TestConfiguration.class, pluginSetting));
+    }
+
+    @Test
+    void convert_with_error_when_throws_InvalidPluginConfiguration_when_plugin_configuration_error_handler_does_not_throw() {
+        objectMapper = mock(ObjectMapper.class);
+
+        final String value = UUID.randomUUID().toString();
+        given(pluginSetting.getSettings())
+                .willReturn(Collections.singletonMap("my_value", value));
+
+        final RuntimeException e = mock(RuntimeException.class);
+
+        when(objectMapper.convertValue(pluginSetting.getSettings(), TestConfiguration.class))
+                .thenThrow(e);
+
+        when(pluginConfigurationErrorHandler.handleException(pluginSetting, e)).thenReturn(new InvalidPluginConfigurationException(UUID.randomUUID().toString()));
+
+        final PluginConfigurationConverter objectUnderTest = createObjectUnderTest();
+
+        assertThrows(InvalidPluginConfigurationException.class, () -> objectUnderTest.convert(TestConfiguration.class, pluginSetting));
     }
 }
