@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.event.Event;
@@ -29,6 +30,7 @@ import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisStreamConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.converter.KinesisRecordConverter;
@@ -45,6 +47,8 @@ import software.amazon.kinesis.processor.RecordProcessorCheckpointer;
 import software.amazon.kinesis.retrieval.KinesisClientRecord;
 import software.amazon.kinesis.retrieval.kpl.ExtendedSequenceNumber;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -143,8 +147,11 @@ public class KinesisRecordProcessorTest {
     @Mock
     private KinesisCheckpointerTracker kinesisCheckpointerTracker;
 
+    @Mock
+    private DecompressionEngine decompressionEngine;
+
     @BeforeEach
-    public void setup() {
+    public void setup() throws IOException {
         MockitoAnnotations.initMocks(this);
         pluginMetrics = mock(PluginMetrics.class);
         pluginFactory = mock(PluginFactory.class);
@@ -156,6 +163,7 @@ public class KinesisRecordProcessorTest {
         when(initializationInput.shardId()).thenReturn(shardId);
         when(streamIdentifier.streamName()).thenReturn(streamId);
         when(kinesisStreamConfig.getName()).thenReturn(streamId);
+        when(kinesisStreamConfig.getCompression()).thenReturn(CompressionOption.NONE);
         PluginModel pluginModel = mock(PluginModel.class);
         when(pluginModel.getPluginName()).thenReturn(codec_plugin_name);
         when(pluginModel.getPluginSettings()).thenReturn(Collections.emptyMap());
@@ -171,6 +179,12 @@ public class KinesisRecordProcessorTest {
                 streamIdentifier.streamName())).thenReturn(acknowledgementSetSuccesses);
         when(pluginMetrics.counterWithTags(ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME, KINESIS_STREAM_TAG_KEY,
                 streamIdentifier.streamName())).thenReturn(acknowledgementSetFailures);
+
+        InputStream inputStream = mock(InputStream.class);
+        when(decompressionEngine.createInputStream(any(InputStream.class))).thenReturn(inputStream);
+        CompressionOption compressionOption = mock(CompressionOption.class);
+        when(kinesisStreamConfig.getCompression()).thenReturn(compressionOption);
+        when(compressionOption.getDecompressionEngine()).thenReturn(decompressionEngine);
 
         recordProcessed = mock(Counter.class);
         when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSED, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(recordProcessed);
@@ -193,7 +207,9 @@ public class KinesisRecordProcessorTest {
         event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamId);
         Record<Event> record = new Record<>(event);
         records.add(record);
-        when(kinesisRecordConverter.convert(eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
+        InputStream inputStream = mock(InputStream.class);
+        when(decompressionEngine.createInputStream(inputStream)).thenReturn(inputStream);
+        when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
 
         kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
                 acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
@@ -240,7 +256,7 @@ public class KinesisRecordProcessorTest {
         event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamId);
         Record<Event> record = new Record<>(event);
         records.add(record);
-        when(kinesisRecordConverter.convert(eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
+        when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
 
         kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
                 acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
@@ -291,7 +307,7 @@ public class KinesisRecordProcessorTest {
         event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamId);
         Record<Event> record = new Record<>(event);
         records.add(record);
-        when(kinesisRecordConverter.convert(eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
+        when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
 
         kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
                 acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
@@ -346,7 +362,7 @@ public class KinesisRecordProcessorTest {
         event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamId);
         Record<Event> record = new Record<>(event);
         records.add(record);
-        when(kinesisRecordConverter.convert(eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
+        when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
 
         kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
                 acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
@@ -389,7 +405,7 @@ public class KinesisRecordProcessorTest {
         event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamId);
         Record<Event> record = new Record<>(event);
         records.add(record);
-        when(kinesisRecordConverter.convert(eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
+        when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
         final Throwable exception = mock(RuntimeException.class);
         doThrow(exception).when(bufferAccumulator).add(any(Record.class));
 
@@ -414,7 +430,7 @@ public class KinesisRecordProcessorTest {
         event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamId);
         Record<Event> record = new Record<>(event);
         records.add(record);
-        when(kinesisRecordConverter.convert(eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
+        when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
         final Throwable exception = mock(RuntimeException.class);
         doThrow(exception).when(bufferAccumulator).flush();
 

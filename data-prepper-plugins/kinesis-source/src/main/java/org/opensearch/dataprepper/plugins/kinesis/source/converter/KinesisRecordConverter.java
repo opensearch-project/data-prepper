@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.kinesis.source.converter;
 
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
@@ -31,11 +32,12 @@ public class KinesisRecordConverter {
         this.codec = codec;
     }
 
-    public List<Record<Event>> convert(List<KinesisClientRecord> kinesisClientRecords,
+    public List<Record<Event>> convert(final DecompressionEngine decompressionEngine,
+                                       List<KinesisClientRecord> kinesisClientRecords,
                                        final String streamName) throws IOException {
         List<Record<Event>> records = new ArrayList<>();
         for (KinesisClientRecord kinesisClientRecord : kinesisClientRecords) {
-            processRecord(kinesisClientRecord, record -> {
+            processRecord(decompressionEngine, kinesisClientRecord, record -> {
                 records.add(record);
                 Event event = record.getData();
                 EventMetadata eventMetadata = event.getMetadata();
@@ -52,11 +54,14 @@ public class KinesisRecordConverter {
         return records;
     }
 
-    private void processRecord(KinesisClientRecord record, Consumer<Record<Event>> eventConsumer) throws IOException {
+    private void processRecord(final DecompressionEngine decompressionEngine,
+                               KinesisClientRecord record,
+                               Consumer<Record<Event>> eventConsumer) throws IOException {
         // Read bytebuffer
         byte[] arr = new byte[record.data().remaining()];
         record.data().get(arr);
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(arr);
-        codec.parse(byteArrayInputStream, eventConsumer);
+
+        codec.parse(decompressionEngine.createInputStream(byteArrayInputStream), eventConsumer);
     }
 }

@@ -13,13 +13,16 @@ package org.opensearch.dataprepper.plugins.kinesis.source.converter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.event.TestEventFactory;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonInputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonInputConfig;
 import software.amazon.kinesis.retrieval.KinesisClientRecord;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -40,6 +43,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class KinesisRecordConverterTest {
     private static final String streamId = "stream-1";
@@ -48,13 +52,15 @@ public class KinesisRecordConverterTest {
     void testRecordConverter() throws IOException {
         InputCodec codec = mock(InputCodec.class);
         KinesisRecordConverter kinesisRecordConverter = new KinesisRecordConverter(codec);
+        DecompressionEngine decompressionEngine = CompressionOption.NONE.getDecompressionEngine();
         doNothing().when(codec).parse(any(InputStream.class), any(Consumer.class));
 
         String sample_record_data = "sample record data";
         KinesisClientRecord kinesisClientRecord = KinesisClientRecord.builder()
                 .data(ByteBuffer.wrap(sample_record_data.getBytes()))
                 .build();
-        kinesisRecordConverter.convert(List.of(kinesisClientRecord), streamId);
+
+        kinesisRecordConverter.convert(decompressionEngine, List.of(kinesisClientRecord), streamId);
         verify(codec, times(1)).parse(any(InputStream.class), any(Consumer.class));
     }
 
@@ -89,7 +95,11 @@ public class KinesisRecordConverterTest {
                 .subSequenceNumber(subsequenceNumber)
                 .partitionKey(partitionKey)
                 .build();
-        List<Record<Event>> events = kinesisRecordConverter.convert(List.of(kinesisClientRecord), streamId);
+        DecompressionEngine decompressionEngine = mock(DecompressionEngine.class);
+        InputStream inputStream = new ByteArrayInputStream(writer.toString().getBytes());
+        when(decompressionEngine.createInputStream(any(InputStream.class))).thenReturn(inputStream);
+
+        List<Record<Event>> events = kinesisRecordConverter.convert(decompressionEngine, List.of(kinesisClientRecord), streamId);
 
         assertEquals(events.size(), numRecords);
         events.forEach(eventRecord -> {

@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.kinesis.common.InitialPositionInStream;
 
@@ -156,6 +157,7 @@ public class KinesisSourceConfigTest {
             assertTrue(kinesisStreamConfig.getName().contains("stream"));
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.TRIM_HORIZON);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), expectedCheckpointIntervals.get(kinesisStreamConfig.getName()));
+            assertEquals(kinesisStreamConfig.getCompression(), CompressionOption.GZIP);
         }
     }
 }
