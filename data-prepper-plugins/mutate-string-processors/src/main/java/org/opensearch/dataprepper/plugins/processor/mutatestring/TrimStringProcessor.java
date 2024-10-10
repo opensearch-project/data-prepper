@@ -19,7 +19,7 @@ import org.opensearch.dataprepper.model.processor.Processor;
 @DataPrepperPlugin(name = "trim_string", pluginType = Processor.class, pluginConfigurationType = TrimStringProcessorConfig.class)
 public class TrimStringProcessor extends AbstractStringProcessor<EventKey> {
     @DataPrepperPluginConstructor
-    public TrimStringProcessor(final PluginMetrics pluginMetrics, final WithKeysConfig config) {
+    public TrimStringProcessor(final PluginMetrics pluginMetrics, final TrimStringProcessorConfig config) {
         super(pluginMetrics, config);
     }
 

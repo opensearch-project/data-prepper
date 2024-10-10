@@ -9,6 +9,8 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.Collections;
 import java.util.List;
@@ -47,6 +49,8 @@ public class GrokProcessorConfig {
     static final String DEFAULT_TARGET_KEY = null;
 
     @JsonProperty(MATCH)
+    @NotEmpty
+    @NotNull
     @JsonPropertyDescription("Specifies which keys should match specific patterns. " +
             "Each key is a source field. The value is a list of possible grok patterns to match on. " +
             "The <code>grok</code> processor will extract values from the first match for each field. " +

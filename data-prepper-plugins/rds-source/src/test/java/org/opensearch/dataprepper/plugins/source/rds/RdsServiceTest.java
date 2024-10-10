@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TlsConfig;
@@ -79,6 +80,9 @@ class RdsServiceTest {
 
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
+
+    @Mock
+    private PluginConfigObservable pluginConfigObservable;
 
     @BeforeEach
     void setUp() {
@@ -186,6 +190,6 @@ class RdsServiceTest {
     }
 
     private RdsService createObjectUnderTest() {
-        return new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics, acknowledgementSetManager);
+        return new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
     }
 }

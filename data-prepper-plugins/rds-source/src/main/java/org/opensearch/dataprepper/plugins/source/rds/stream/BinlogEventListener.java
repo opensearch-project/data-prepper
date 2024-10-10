@@ -117,6 +117,16 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         eventProcessingTimer = pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME);
     }
 
+    public static BinlogEventListener create(final Buffer<Record<Event>> buffer,
+                                             final RdsSourceConfig sourceConfig,
+                                             final String s3Prefix,
+                                             final PluginMetrics pluginMetrics,
+                                             final BinaryLogClient binaryLogClient,
+                                             final StreamCheckpointer streamCheckpointer,
+                                             final AcknowledgementSetManager acknowledgementSetManager) {
+        return new BinlogEventListener(buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager);
+    }
+
     @Override
     public void onEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         final EventType eventType = event.getHeader().getEventType();

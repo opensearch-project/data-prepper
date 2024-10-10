@@ -49,7 +49,7 @@ public class HistogramAggregateAction implements AggregateAction {
     private final String bucketsKey;
     private final String startTimeKey;
     private final String endTimeKey;
-    private final String outputFormat;
+    private final OutputFormat outputFormat;
     private final String sumKey;
     private final String maxKey;
     private final String minKey;
@@ -217,7 +217,7 @@ public class HistogramAggregateAction implements AggregateAction {
         List<Exemplar> exemplarList = new ArrayList<>();
         exemplarList.add(createExemplar("min", minEvent, minValue));
         exemplarList.add(createExemplar("max", maxEvent, maxValue));
-        if (outputFormat.equals(OutputFormat.RAW.toString())) {
+        if (outputFormat == OutputFormat.RAW) {
             groupState.put(histogramKey, key);
             groupState.put(durationKey, endTimeNanos-startTimeNanos);
             groupState.put(bucketsKey, Arrays.copyOfRange(this.buckets, 1, this.buckets.length-1));

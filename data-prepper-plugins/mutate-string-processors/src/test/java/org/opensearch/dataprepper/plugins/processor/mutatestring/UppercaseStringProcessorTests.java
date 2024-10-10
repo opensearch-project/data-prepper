@@ -41,7 +41,7 @@ public class UppercaseStringProcessorTests {
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private WithKeysConfig config;
+    private UppercaseStringProcessorConfig config;
 
     @BeforeEach
     public void setup() {

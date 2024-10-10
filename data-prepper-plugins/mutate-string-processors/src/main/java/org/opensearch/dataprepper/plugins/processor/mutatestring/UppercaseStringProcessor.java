@@ -18,10 +18,10 @@ import java.util.Locale;
  * This processor takes in a key and changes its value to an uppercase string. If the value is not a string,
  * no action is performed.
  */
-@DataPrepperPlugin(name = "uppercase_string", pluginType = Processor.class, pluginConfigurationType = WithKeysConfig.class)
+@DataPrepperPlugin(name = "uppercase_string", pluginType = Processor.class, pluginConfigurationType = UppercaseStringProcessorConfig.class)
 public class UppercaseStringProcessor extends AbstractStringProcessor<EventKey> {
     @DataPrepperPluginConstructor
-    public UppercaseStringProcessor(final PluginMetrics pluginMetrics, final WithKeysConfig config) {
+    public UppercaseStringProcessor(final PluginMetrics pluginMetrics, final UppercaseStringProcessorConfig config) {
         super(pluginMetrics, config);
     }
 
