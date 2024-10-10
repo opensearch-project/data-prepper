@@ -128,6 +128,7 @@ public class PipelineTransformer {
                 try {
                     return pluginFactory.loadPlugin(Source.class, sourceSetting);
                 } catch (Exception e) {
+                    LOG.error("Failed to instantiate the plugin class", e);
                     final PluginError pluginError = PluginError.builder()
                             .componentType(PipelineModel.SOURCE_PLUGIN_TYPE)
                             .pipelineName(pipelineName)
