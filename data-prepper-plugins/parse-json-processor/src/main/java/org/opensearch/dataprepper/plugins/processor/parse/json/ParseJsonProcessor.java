@@ -36,6 +36,8 @@ public class ParseJsonProcessor extends AbstractParseProcessor {
     private final HandleFailedEventsOption handleFailedEventsOption;
     private final Counter parseErrorsCounter;
 
+    private final int depth;
+
     @DataPrepperPluginConstructor
     public ParseJsonProcessor(final PluginMetrics pluginMetrics,
                               final ParseJsonProcessorConfig parseJsonProcessorConfig,
@@ -43,13 +45,18 @@ public class ParseJsonProcessor extends AbstractParseProcessor {
                               final EventKeyFactory eventKeyFactory) {
         super(pluginMetrics, parseJsonProcessorConfig, expressionEvaluator, eventKeyFactory);
         this.handleFailedEventsOption = parseJsonProcessorConfig.getHandleFailedEventsOption();
+        this.depth = parseJsonProcessorConfig.getDepth();
         parseErrorsCounter = pluginMetrics.counter(PARSE_ERRORS);
     }
 
     @Override
     protected Optional<HashMap<String, Object>> readValue(String message, Event context) {
         try {
-            return Optional.of(objectMapper.readValue(message, new TypeReference<>() {}));
+            HashMap<String, Object> map = objectMapper.readValue(message, new TypeReference<>() {});
+            if (depth == 0) {
+                return Optional.of(map);
+            }
+            return Optional.of(convertNestedObjectToString(map, 1, depth));
         } catch (JsonProcessingException e) {
             if (handleFailedEventsOption.shouldLog()) {
                 LOG.error(SENSITIVE, "An exception occurred due to invalid JSON while parsing [{}] due to {}", message, e.getMessage());

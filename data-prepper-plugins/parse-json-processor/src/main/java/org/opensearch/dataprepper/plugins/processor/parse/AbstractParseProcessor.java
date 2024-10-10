@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.parse;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -35,6 +36,8 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractParseProcessor.class);
     private static final String PROCESSING_FAILURES = "processingFailures";
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final EventKey source;
     private final EventKey destination;
@@ -81,6 +84,28 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
      * @return Optional HashMap of the parsed value - empty if the message was invalid (be sure to log the error)
      */
     protected abstract Optional<HashMap<String, Object>> readValue(String message, Event context);
+
+    protected HashMap<String, Object> convertNestedObjectToString(Map<String, Object> map, int curDepth, int targetDepth) {
+        HashMap<String, Object> resultMap = new HashMap<>();
+        try {
+            for (Map.Entry<String, Object> entry: map.entrySet()) {
+                if (entry.getValue() instanceof Map) {
+                    Map m1 = (Map<String, Object>) entry.getValue();
+                    String s1 = objectMapper.writeValueAsString(m1);
+                    if (curDepth == targetDepth) {
+                        resultMap.put(entry.getKey(), objectMapper.writeValueAsString((Map<String, Object>) entry.getValue()));
+                    } else {
+                        resultMap.put(entry.getKey(), convertNestedObjectToString((Map<String, Object>) entry.getValue(), curDepth + 1, targetDepth));
+                    }
+                } else {
+                    resultMap.put(entry.getKey(), entry.getValue());
+                }
+            }
+        } catch (Exception e) {
+            LOG.error("Failed to convert to string", e);
+        }
+        return resultMap;
+    }
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {

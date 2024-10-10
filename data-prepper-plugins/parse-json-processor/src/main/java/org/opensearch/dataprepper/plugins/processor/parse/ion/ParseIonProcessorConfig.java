@@ -9,9 +9,11 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 
@@ -39,6 +41,12 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
     @JsonProperty("parse_when")
     @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as '/some-key == \"test\"', that will be evaluated to determine whether the processor will be run on the event.")
     private String parseWhen;
+
+    @JsonProperty("depth")
+    @Min(0)
+    @Max(10)
+    @JsonPropertyDescription("Indicates the depth at which the nested values of the event are not parsed any more. Default is 0, which means all levels of nested values are parsed. If the depth is 1, only the top level keys are parsed and all its nested values are represented as strings")
+    private int depth = 0;
 
     @JsonProperty("tags_on_failure")
     @JsonPropertyDescription("A list of strings specifying the tags to be set in the event that the processor fails or an unknown exception occurs during parsing.")
@@ -78,6 +86,11 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
     @Override
     public List<String> getTagsOnFailure() {
         return tagsOnFailure;
+    }
+
+    @Override
+    public int getDepth() {
+        return depth;
     }
 
     @Override
