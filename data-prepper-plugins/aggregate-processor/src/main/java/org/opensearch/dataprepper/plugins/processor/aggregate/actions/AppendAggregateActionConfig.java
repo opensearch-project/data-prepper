@@ -7,9 +7,13 @@ package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+@JsonPropertyOrder
+@JsonClassDescription("Appends multiple events into a single event.")
 public class AppendAggregateActionConfig {
 
     @JsonProperty("keys_to_append")

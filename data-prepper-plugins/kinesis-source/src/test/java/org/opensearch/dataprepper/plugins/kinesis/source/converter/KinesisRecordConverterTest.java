@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -44,7 +45,7 @@ public class KinesisRecordConverterTest {
     private static final String streamId = "stream-1";
 
     @Test
-    void setup() throws IOException {
+    void testRecordConverter() throws IOException {
         InputCodec codec = mock(InputCodec.class);
         KinesisRecordConverter kinesisRecordConverter = new KinesisRecordConverter(codec);
         doNothing().when(codec).parse(any(InputStream.class), any(Consumer.class));
@@ -77,12 +78,25 @@ public class KinesisRecordConverterTest {
         KinesisRecordConverter kinesisRecordConverter = new KinesisRecordConverter(
                 new NdjsonInputCodec(new NdjsonInputConfig(), TestEventFactory.getTestEventFactory()));
 
+        final String partitionKey = UUID.randomUUID().toString();
+        final String sequenceNumber = UUID.randomUUID().toString();
+        final Random random = new Random();
+        final long subsequenceNumber = random.nextLong();
+
         KinesisClientRecord kinesisClientRecord = KinesisClientRecord.builder()
                 .data(ByteBuffer.wrap(writer.toString().getBytes()))
+                .sequenceNumber(sequenceNumber)
+                .subSequenceNumber(subsequenceNumber)
+                .partitionKey(partitionKey)
                 .build();
         List<Record<Event>> events = kinesisRecordConverter.convert(List.of(kinesisClientRecord), streamId);
 
         assertEquals(events.size(), numRecords);
+        events.forEach(eventRecord -> {
+            assertEquals(eventRecord.getData().getMetadata().getAttribute(MetadataKeyAttributes.KINESIS_PARTITION_KEY_METADATA_ATTRIBUTE), partitionKey);
+            assertEquals(eventRecord.getData().getMetadata().getAttribute(MetadataKeyAttributes.KINESIS_SEQUENCE_NUMBER_METADATA_ATTRIBUTE), sequenceNumber);
+            assertEquals(eventRecord.getData().getMetadata().getAttribute(MetadataKeyAttributes.KINESIS_SUB_SEQUENCE_NUMBER_METADATA_ATTRIBUTE), subsequenceNumber);
+        });
     }
 
     private static Map<String, Object> generateJson() {

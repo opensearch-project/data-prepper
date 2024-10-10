@@ -23,7 +23,6 @@ import java.util.List;
         "Then, the processor performs an action on each group, helping reduce unnecessary log volume and " +
         "creating aggregated logs over time.")
 public class AggregateProcessorConfig {
-
     static int DEFAULT_GROUP_DURATION_SECONDS = 180;
 
     @JsonPropertyDescription("An unordered list by which to group events. Events with the same values as these keys are put into the same group. " +
@@ -33,15 +32,15 @@ public class AggregateProcessorConfig {
     @NotEmpty
     private List<String> identificationKeys;
 
-    @JsonPropertyDescription("The amount of time that a group should exist before it is concluded automatically. Supports ISO_8601 notation strings (\"PT20.345S\", \"PT15M\", etc.) as well as simple notation for seconds (\"60s\") and milliseconds (\"1500ms\"). Default value is 180s.")
-    @JsonProperty("group_duration")
-    private Duration groupDuration = Duration.ofSeconds(DEFAULT_GROUP_DURATION_SECONDS);
-
     @JsonPropertyDescription("The action to be performed on each group. One of the available aggregate actions must be provided.")
     @JsonProperty("action")
     @NotNull
     @UsesDataPrepperPlugin(pluginType = AggregateAction.class)
     private PluginModel aggregateAction;
+
+    @JsonPropertyDescription("The amount of time that a group should exist before it is concluded automatically. Supports ISO_8601 notation strings (\"PT20.345S\", \"PT15M\", etc.) as well as simple notation for seconds (\"60s\") and milliseconds (\"1500ms\"). Default value is 180s.")
+    @JsonProperty("group_duration")
+    private Duration groupDuration = Duration.ofSeconds(DEFAULT_GROUP_DURATION_SECONDS);
 
     @JsonPropertyDescription("When <code>local_mode<code> is set to true, the aggregation is performed locally on each node instead of forwarding events to a specific node based on the <code>identification_keys</code> using a hash function. Default is false.")
     @JsonProperty("local_mode")
