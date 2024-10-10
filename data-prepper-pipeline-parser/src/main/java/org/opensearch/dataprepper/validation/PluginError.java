@@ -37,8 +37,10 @@ public class PluginError {
         Throwable throwable = exception;
 
         while (throwable != null) {
-            message.append(delimiter);
-            message.append(throwable.getMessage());
+            if (throwable.getMessage() != null) {
+                message.append(delimiter);
+                message.append(throwable.getMessage());
+            }
             throwable = throwable.getCause();
         }
 

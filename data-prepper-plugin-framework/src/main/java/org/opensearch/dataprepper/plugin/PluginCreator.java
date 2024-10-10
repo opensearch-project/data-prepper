@@ -54,10 +54,10 @@ class PluginCreator {
         } catch (final IllegalAccessException | InstantiationException ex) {
             LOG.error("Encountered exception while instantiating the plugin {}", pluginClass.getSimpleName(), ex);
             throw new InvalidPluginDefinitionException(
-                    "Unable to access or instantiate the plugin '" + pluginClass.getSimpleName() + ".'", ex);
+                    "Unable to access or instantiate the plugin \"" + pluginName + "\".", ex);
         } catch (final InvocationTargetException ex) {
             LOG.error("Encountered exception while instantiating the plugin {}", pluginClass.getSimpleName(), ex);
-            throw new PluginInvocationException("Exception throw from the plugin'" + pluginClass.getSimpleName() + "'." , ex);
+            throw new PluginInvocationException("Exception thrown from plugin \"" + pluginName + "\".", ex.getTargetException());
         }
     }
 

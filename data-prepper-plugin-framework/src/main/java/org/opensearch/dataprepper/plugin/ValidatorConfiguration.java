@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugin;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.springframework.context.annotation.Bean;
 
@@ -25,5 +26,10 @@ class ValidatorConfiguration {
                 .messageInterpolator(new ParameterMessageInterpolator())
                 .buildValidatorFactory();
         return validationFactory.getValidator();
+    }
+
+    @Bean
+    LevenshteinDistance levenshteinDistance() {
+        return new LevenshteinDistance();
     }
 }
