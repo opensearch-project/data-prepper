@@ -6,12 +6,12 @@
 package org.opensearch.dataprepper.plugins.sink.s3;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-public class PredefinedObjectMetadata {
-    @JsonProperty("number_of_objects")
-    private String numberOfObjects;
+public class ObjectMetadata {
+    @JsonProperty("number_of_events_key")
+    private String numberOfEventsKey;
 
-    public String getNumberOfObjects() {
-        return numberOfObjects;
+    public String getNumberOfEventsKey() {
+        return numberOfEventsKey;
     }
 
 }
