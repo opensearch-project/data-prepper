@@ -12,6 +12,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 
@@ -31,6 +33,12 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
     @JsonProperty("destination")
     @JsonPropertyDescription("The destination field of the structured object from the parsed JSON. Defaults to the root of the event. Cannot be an empty string, <code>/</code>, or any whitespace-only string because these are not valid event fields.")
     private String destination;
+
+    @JsonProperty("depth")
+    @Min(0)
+    @Max(10)
+    @JsonPropertyDescription("Indicates the depth at which the nested values of the event are not parsed any more. Default is 0, which means all levels of nested values are parsed. If the depth is 1, only the top level keys are parsed and all its nested values are represented as strings")
+    private int depth = 0;
 
     @JsonProperty("pointer")
     @JsonPropertyDescription("A JSON pointer to the field to be parsed. There is no pointer by default, meaning the entire source is parsed. The pointer can access JSON array indexes as well. " +
@@ -65,6 +73,11 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
     @Override
     public String getSource() {
         return source;
+    }
+
+    @Override
+    public int getDepth() {
+        return depth;
     }
 
     @Override

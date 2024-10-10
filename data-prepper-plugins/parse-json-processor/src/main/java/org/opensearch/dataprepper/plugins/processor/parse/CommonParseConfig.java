@@ -66,4 +66,9 @@ public interface CommonParseConfig {
      * and passing the failed Event downstream to the next processor.
      */
     HandleFailedEventsOption getHandleFailedEventsOption();
+
+    /**
+     * An optional setting used to determine the depth of the input to handle
+     */
+    int getDepth();
 }

@@ -73,6 +73,9 @@ public class ParseXmlProcessorConfig implements CommonParseConfig {
     }
 
     @Override
+    public int getDepth() { return 0; }
+
+    @Override
     public List<String> getTagsOnFailure() {
         return tagsOnFailure;
     }

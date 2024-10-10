@@ -9,9 +9,11 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 
@@ -37,6 +39,20 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
             "If the JSON pointer is invalid then the entire source data is parsed into the outgoing event. If the key that is pointed to already exists in the event and the destination is the root, then the pointer uses the entire path of the key.")
     private String pointer;
 
+    @JsonProperty("parse_when")
+    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as '/some-key == \"test\"', that will be evaluated to determine whether the processor will be run on the event.")
+    private String parseWhen;
+
+    @JsonProperty("depth")
+    @Min(0)
+    @Max(10)
+    @JsonPropertyDescription("Indicates the depth at which the nested values of the event are not parsed any more. Default is 0, which means all levels of nested values are parsed. If the depth is 1, only the top level keys are parsed and all its nested values are represented as strings")
+    private int depth = 0;
+
+    @JsonProperty("tags_on_failure")
+    @JsonPropertyDescription("A list of strings specifying the tags to be set in the event that the processor fails or an unknown exception occurs during parsing.")
+    private List<String> tagsOnFailure;
+
     @JsonProperty("overwrite_if_destination_exists")
     @JsonPropertyDescription("Overwrites the destination if set to true. Set to false to prevent changing a destination value that exists. Defaults to true.")
     private boolean overwriteIfDestinationExists = true;
@@ -44,15 +60,6 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
     @JsonProperty
     @JsonPropertyDescription("If true, the configured <code>source</code> field will be deleted after the ION data is parsed into separate fields.")
     private boolean deleteSource = false;
-
-    @JsonProperty("tags_on_failure")
-    @JsonPropertyDescription("A list of strings specifying the tags to be set in the event when the processor fails or an unknown exception occurs during parsing.")
-    private List<String> tagsOnFailure;
-
-    @JsonProperty("parse_when")
-    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
-            "If specified, the <code>parse_ion</code> processor will only run on events when the expression evaluates to true. ")
-    private String parseWhen;
 
     @JsonProperty("handle_failed_events")
     @JsonPropertyDescription("Determines how to handle events with ION processing errors. Options include 'skip', " +
@@ -80,6 +87,11 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
     @Override
     public List<String> getTagsOnFailure() {
         return tagsOnFailure;
+    }
+
+    @Override
+    public int getDepth() {
+        return depth;
     }
 
     @Override
