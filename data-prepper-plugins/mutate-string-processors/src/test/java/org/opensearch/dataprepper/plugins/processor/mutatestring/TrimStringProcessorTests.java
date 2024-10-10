@@ -40,7 +40,7 @@ public class TrimStringProcessorTests {
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private WithKeysConfig config;
+    private TrimStringProcessorConfig config;
 
     @BeforeEach
     public void setup() {
