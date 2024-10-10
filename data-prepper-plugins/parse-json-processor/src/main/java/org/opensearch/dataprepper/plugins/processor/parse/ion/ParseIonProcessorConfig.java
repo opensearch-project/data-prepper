@@ -9,9 +9,11 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 
@@ -36,6 +38,12 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
     @JsonPropertyDescription("A JSON pointer to the field to be parsed. There is no pointer by default, meaning the entire source is parsed. The pointer can access JSON array indexes as well. " +
             "If the JSON pointer is invalid then the entire source data is parsed into the outgoing event. If the key that is pointed to already exists in the event and the destination is the root, then the pointer uses the entire path of the key.")
     private String pointer;
+
+    @JsonProperty("depth")
+    @Min(0)
+    @Max(10)
+    @JsonPropertyDescription("Indicates the depth at which the nested values of the event are not parsed any more. Default is 0, which means all levels of nested values are parsed. If the depth is 1, only the top level keys are parsed and all its nested values are represented as strings")
+    private int depth = 0;
 
     @JsonProperty("overwrite_if_destination_exists")
     @JsonPropertyDescription("Overwrites the destination if set to true. Set to false to prevent changing a destination value that exists. Defaults to true.")
@@ -80,6 +88,11 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
     @Override
     public List<String> getTagsOnFailure() {
         return tagsOnFailure;
+    }
+
+    @Override
+    public int getDepth() {
+        return depth;
     }
 
     @Override
