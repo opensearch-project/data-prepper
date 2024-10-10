@@ -43,8 +43,8 @@ public class S3SinkConfig {
     @JsonProperty("bucket_selector")
     private PluginModel bucketSelector;
 
-    @JsonProperty("predefined_object_metadata")
-    private PredefinedObjectMetadata predefinedObjectMetadata;
+    @JsonProperty("object_metadata")
+    private ObjectMetadata objectMetadata;
 
     @AssertTrue(message = "You may not use both bucket and bucket_selector together in one S3 sink.")
     private boolean isValidBucketConfig() {
@@ -142,8 +142,8 @@ public class S3SinkConfig {
         return objectKeyOptions;
     }
 
-    public PredefinedObjectMetadata getPredefinedObjectMetadata() {
-        return predefinedObjectMetadata;
+    public ObjectMetadata getObjectMetadata() {
+        return objectMetadata;
     }
 
     /**
