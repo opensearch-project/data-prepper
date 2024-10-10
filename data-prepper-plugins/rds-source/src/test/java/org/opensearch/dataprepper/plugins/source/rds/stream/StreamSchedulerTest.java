@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
@@ -99,7 +100,7 @@ class StreamSchedulerTest {
         executorService.submit(() -> {
             try (MockedStatic<StreamWorkerTaskRefresher> streamWorkerTaskRefresherMockedStatic = mockStatic(StreamWorkerTaskRefresher.class)) {
                 streamWorkerTaskRefresherMockedStatic.when(() -> StreamWorkerTaskRefresher.create(eq(sourceCoordinator), eq(streamPartition), any(StreamCheckpointer.class),
-                                eq(s3Prefix), eq(binlogClientFactory), eq(buffer), eq(acknowledgementSetManager), any(ExecutorService.class), eq(pluginMetrics)))
+                                eq(s3Prefix), eq(binlogClientFactory), eq(buffer), any(Supplier.class), eq(acknowledgementSetManager), eq(pluginMetrics)))
                         .thenReturn(streamWorkerTaskRefresher);
                 objectUnderTest.run();
             }
@@ -115,12 +116,13 @@ class StreamSchedulerTest {
     }
 
     @Test
-    void test_shutdown() {
+    void test_shutdown() throws InterruptedException {
         lenient().when(sourceCoordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).thenReturn(Optional.empty());
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(objectUnderTest);
         objectUnderTest.shutdown();
+        Thread.sleep(100);
         verifyNoMoreInteractions(sourceCoordinator);
         executorService.shutdownNow();
     }

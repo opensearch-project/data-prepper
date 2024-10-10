@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -19,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
@@ -40,7 +40,6 @@ public class StreamScheduler implements Runnable {
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final PluginConfigObservable pluginConfigObservable;
     private StreamWorkerTaskRefresher streamWorkerTaskRefresher;
-    private ExecutorService executorService;
 
     private volatile boolean shutdownRequested = false;
 
@@ -60,7 +59,6 @@ public class StreamScheduler implements Runnable {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginConfigObservable = pluginConfigObservable;
-        executorService = Executors.newCachedThreadPool();
     }
 
     @Override
@@ -82,7 +80,9 @@ public class StreamScheduler implements Runnable {
                     final StreamCheckpointer streamCheckpointer = new StreamCheckpointer(sourceCoordinator, streamPartition, pluginMetrics);
 
                     streamWorkerTaskRefresher = StreamWorkerTaskRefresher.create(
-                            sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, binlogClientFactory, buffer, acknowledgementSetManager, executorService, pluginMetrics);
+                            sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, binlogClientFactory, buffer,
+                            () -> Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-stream-worker")),
+                            acknowledgementSetManager, pluginMetrics);
 
                     streamWorkerTaskRefresher.initialize(sourceConfig);
 
@@ -118,7 +118,9 @@ public class StreamScheduler implements Runnable {
     }
 
     public void shutdown() {
-        executorService.shutdownNow();
+        if (streamWorkerTaskRefresher != null) {
+            streamWorkerTaskRefresher.shutdown();
+        }
         shutdownRequested = true;
     }
 }

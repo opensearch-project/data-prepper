@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSourceConfig> {
 
@@ -35,6 +35,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
     private final String s3Prefix;
     private final BinlogClientFactory binlogClientFactory;
     private final Buffer<Record<Event>> buffer;
+    private final Supplier<ExecutorService> executorServiceSupplier;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final Counter credentialsChangeCounter;
@@ -49,18 +50,19 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
                                      final String s3Prefix,
                                      final BinlogClientFactory binlogClientFactory,
                                      final Buffer<Record<Event>> buffer,
+                                     final Supplier<ExecutorService> executorServiceSupplier,
                                      final AcknowledgementSetManager acknowledgementSetManager,
-                                     final ExecutorService executorService,
                                      final PluginMetrics pluginMetrics) {
         this.sourceCoordinator = sourceCoordinator;
         this.streamPartition = streamPartition;
         this.streamCheckpointer = streamCheckpointer;
         this.s3Prefix = s3Prefix;
         this.buffer = buffer;
+        this.executorServiceSupplier = executorServiceSupplier;
+        executorService = executorServiceSupplier.get();
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.binlogClientFactory = binlogClientFactory;
-        this.executorService = executorService;
         this.credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
         this.taskRefreshErrorsCounter = pluginMetrics.counter(TASK_REFRESH_ERRORS);
     }
@@ -71,11 +73,11 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
                                                    final String s3Prefix,
                                                    final BinlogClientFactory binlogClientFactory,
                                                    final Buffer<Record<Event>> buffer,
+                                                   final Supplier<ExecutorService> executorServiceSupplier,
                                                    final AcknowledgementSetManager acknowledgementSetManager,
-                                                   final ExecutorService executorService,
                                                    final PluginMetrics pluginMetrics) {
         return new StreamWorkerTaskRefresher(sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix,
-                binlogClientFactory, buffer, acknowledgementSetManager, executorService, pluginMetrics);
+                binlogClientFactory, buffer, executorServiceSupplier, acknowledgementSetManager, pluginMetrics);
     }
 
     public void initialize(RdsSourceConfig sourceConfig) {
@@ -90,7 +92,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
             credentialsChangeCounter.increment();
             try {
                 executorService.shutdownNow();
-                executorService = Executors.newSingleThreadExecutor();
+                executorService = executorServiceSupplier.get();
                 binlogClientFactory.setCredentials(
                         sourceConfig.getAuthenticationConfig().getUsername(), sourceConfig.getAuthenticationConfig().getPassword());
 
@@ -103,6 +105,10 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
             }
         }
         LOG.debug("Database credentials were not changed. Skipping...");
+    }
+
+    public void shutdown() {
+        executorService.shutdownNow();
     }
 
     private void refreshTask(RdsSourceConfig sourceConfig) {
