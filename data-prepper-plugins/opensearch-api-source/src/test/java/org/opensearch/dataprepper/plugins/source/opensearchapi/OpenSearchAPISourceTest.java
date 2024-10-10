@@ -51,7 +51,6 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.plugins.source.file.FileSourceConfig;
 import org.opensearch.dataprepper.plugins.source.opensearchapi.model.BulkAPIEventMetadataKeyAttributes;
 
 import java.io.ByteArrayOutputStream;
