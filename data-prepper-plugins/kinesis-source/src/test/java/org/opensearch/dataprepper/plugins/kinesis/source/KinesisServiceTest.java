@@ -75,6 +75,7 @@ public class KinesisServiceTest {
     private static final int NUMBER_OF_RECORDS_TO_ACCUMULATE = 10;
     private static final int DEFAULT_MAX_RECORDS = 10000;
     private static final int IDLE_TIME_BETWEEN_READS_IN_MILLIS = 250;
+    private static final int DEFAULT_INITIALIZATION_ATTEMPTS = 10;
     private static final String awsAccountId = "123456789012";
     private static final String streamArnFormat = "arn:aws:kinesis:us-east-1:%s:stream/%s";
     private static final Instant streamCreationTime = Instant.now();
@@ -189,6 +190,7 @@ public class KinesisServiceTest {
         streamConfigs.add(kinesisStreamConfig);
         when(kinesisSourceConfig.getStreams()).thenReturn(streamConfigs);
         when(kinesisSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(NUMBER_OF_RECORDS_TO_ACCUMULATE);
+        when(kinesisSourceConfig.getMaxInitializationAttempts()).thenReturn(DEFAULT_INITIALIZATION_ATTEMPTS);
 
         PluginModel pluginModel = mock(PluginModel.class);
         when(pluginModel.getPluginName()).thenReturn(codec_plugin_name);

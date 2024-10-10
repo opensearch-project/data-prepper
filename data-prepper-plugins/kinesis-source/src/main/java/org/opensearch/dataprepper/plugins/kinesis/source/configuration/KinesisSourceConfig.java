@@ -24,6 +24,8 @@ public class KinesisSourceConfig {
     static final Duration DEFAULT_TIME_OUT_IN_MILLIS = Duration.ofMillis(1000);
     static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 100;
     static final Duration DEFAULT_SHARD_ACKNOWLEDGEMENT_TIMEOUT = Duration.ofMinutes(10);
+    static final Duration DEFAULT_INITIALIZATION_BACKOFF_TIME = Duration.ofMillis(1000);
+    static final int DEFAULT_MAX_INITIALIZATION_ATTEMPTS = Integer.MAX_VALUE;
 
     @Getter
     @JsonProperty("streams")
@@ -69,6 +71,14 @@ public class KinesisSourceConfig {
     public Duration getShardAcknowledgmentTimeout() {
         return shardAcknowledgmentTimeout;
     }
+
+    @Getter
+    @JsonProperty("max_initialization_attempts")
+    private int maxInitializationAttempts = DEFAULT_MAX_INITIALIZATION_ATTEMPTS;
+
+    @Getter
+    @JsonProperty("initialization_backoff_time")
+    private Duration initializationBackoffTime = DEFAULT_INITIALIZATION_BACKOFF_TIME;
 }
 
 
