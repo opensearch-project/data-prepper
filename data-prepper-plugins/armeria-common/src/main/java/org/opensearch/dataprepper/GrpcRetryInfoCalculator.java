@@ -17,7 +17,8 @@ class GrpcRetryInfoCalculator {
     GrpcRetryInfoCalculator(Duration minimumDelay, Duration maximumDelay) {
         this.minimumDelay = minimumDelay;
         this.maximumDelay = maximumDelay;
-        this.lastTimeCalled = new AtomicReference<>(Instant.now());
+        // Create a cushion so that the calculator treats a first quick exception (after prepper startup) as normal request (e.g. does not calculate a backoff)
+        this.lastTimeCalled = new AtomicReference<>(Instant.now().minus(maximumDelay));
         this.nextDelay = new AtomicReference<>(minimumDelay);
     }
 
