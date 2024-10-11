@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.s3.grouping;
 
 import org.opensearch.dataprepper.plugins.sink.s3.ObjectMetadata;
+import org.opensearch.dataprepper.plugins.sink.s3.ObjectMetadataConfig;
 import java.util.Map;
 import java.util.Objects;
 
@@ -13,16 +14,16 @@ class S3GroupIdentifier {
     private final Map<String, Object> groupIdentifierHash;
     private final String groupIdentifierFullObjectKey;
 
-    private final ObjectMetadata objectMetadata;
+    private final ObjectMetadataConfig objectMetadataConfig;
     private final String fullBucketName;
 
     public S3GroupIdentifier(final Map<String, Object> groupIdentifierHash,
                              final String groupIdentifierFullObjectKey,
-                             final ObjectMetadata objectMetadata,
+                             final ObjectMetadataConfig objectMetadataConfig,
                              final String fullBucketName) {
         this.groupIdentifierHash = groupIdentifierHash;
         this.groupIdentifierFullObjectKey = groupIdentifierFullObjectKey;
-        this.objectMetadata = objectMetadata;
+        this.objectMetadataConfig = objectMetadataConfig;
         this.fullBucketName = fullBucketName;
     }
 
@@ -43,6 +44,13 @@ class S3GroupIdentifier {
 
     public Map<String, Object> getGroupIdentifierHash() { return groupIdentifierHash; }
 
-    public Map<String, String> getMetadata(int eventCount) { return objectMetadata != null ? Map.of(objectMetadata.getNumberOfEventsKey(), Integer.toString(eventCount)) : null; }
+    public Map<String, String> getMetadata(int eventCount) {
+        if (objectMetadataConfig == null) {
+            return null;
+        }
+        ObjectMetadata objectMetadata = new ObjectMetadata(objectMetadataConfig);
+	objectMetadata.setEventCount(eventCount);
+	return objectMetadata.get();
+    }
     public String getFullBucketName() { return fullBucketName; }
 }

@@ -5,13 +5,26 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-public class ObjectMetadata {
-    @JsonProperty("number_of_events_key")
-    private String numberOfEventsKey;
+import java.util.Map;
 
-    public String getNumberOfEventsKey() {
-        return numberOfEventsKey;
+public class ObjectMetadata {
+    private Map<String, String> metadata;
+    private ObjectMetadataConfig objectMetadataConfig;
+
+    public ObjectMetadata(final ObjectMetadataConfig objectMetadataConfig) {
+        this.objectMetadataConfig = objectMetadataConfig;
+    }
+   
+    public void setEventCount(int eventCount) {
+       String numberOfEventsKey = objectMetadataConfig.getNumberOfEventsKey();
+       if (numberOfEventsKey != null) {
+           metadata.put(numberOfEventsKey, Integer.toString(eventCount));
+       }
     }
 
+    public Map<String, String> get() {
+        return metadata;
+    }
 }
+
+
