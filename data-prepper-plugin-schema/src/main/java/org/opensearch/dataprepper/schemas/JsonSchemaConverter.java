@@ -14,7 +14,7 @@ import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigPart;
 import com.github.victools.jsonschema.generator.SchemaGeneratorGeneralConfigPart;
 import com.github.victools.jsonschema.generator.SchemaVersion;
-import org.opensearch.dataprepper.model.annotations.AlsoRequires;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
@@ -117,8 +117,8 @@ public class JsonSchemaConverter {
     private void resolveDependentRequiresFields(
             final SchemaGeneratorConfigPart<FieldScope> scopeSchemaGeneratorConfigPart) {
         scopeSchemaGeneratorConfigPart.withDependentRequiresResolver(field -> Optional
-                .ofNullable(field.getAnnotationConsideringFieldAndGetter(AlsoRequires.class))
-                .map(alsoRequires -> Arrays.stream(alsoRequires.values())
+                .ofNullable(field.getAnnotationConsideringFieldAndGetter(AlsoRequired.class))
+                .map(alsoRequired -> Arrays.stream(alsoRequired.values())
                         .map(required -> {
                             final String property = required.name();
                             final String[] allowedValues = required.allowedValues();

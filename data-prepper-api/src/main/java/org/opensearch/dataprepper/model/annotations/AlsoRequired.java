@@ -13,9 +13,24 @@ import java.lang.annotation.Target;
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD})
-public @interface AlsoRequires {
+public @interface AlsoRequired {
     /**
      * Array of Required annotations, each representing a required property with its allowed values.
      */
     Required[] values();
+
+    /**
+     * Annotation to represent a required property and its allowed values.
+     */
+    @interface Required {
+        /**
+         * Name of the required property.
+         */
+        String name();
+
+        /**
+         * Allowed values for the required property. The default value of {} means any non-null value is allowed.
+         */
+        String[] allowedValues() default {};
+    }
 }

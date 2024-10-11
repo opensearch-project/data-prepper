@@ -11,8 +11,7 @@ import com.github.victools.jsonschema.generator.Module;
 import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.model.annotations.AlsoRequires;
-import org.opensearch.dataprepper.model.annotations.Required;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -107,16 +106,16 @@ class JsonSchemaConverterTest {
         private String testAttributeWithDefaultValue;
 
         @JsonProperty
-        @AlsoRequires(values = {
-                @Required(name="test_mutually_exclusive_attribute_b", allowedValues = {"null", "\"test_value\""})
+        @AlsoRequired(values = {
+                @AlsoRequired.Required(name="test_mutually_exclusive_attribute_b", allowedValues = {"null", "\"test_value\""})
         })
         private String testMutuallyExclusiveAttributeA;
 
         private String testMutuallyExclusiveAttributeB;
 
         @JsonProperty
-        @AlsoRequires(values = {
-                @Required(name="test_mutually_exclusive_attribute_a")
+        @AlsoRequired(values = {
+                @AlsoRequired.Required(name="test_mutually_exclusive_attribute_a")
         })
         private String testDependentRequiredPropertyWithDefaultAllowedValues;
 
