@@ -139,5 +139,12 @@ public interface SourceCoordinator<T> {
      */
     void updatePartitionForAcknowledgmentWait(final String partitionKey, final Duration ackowledgmentTimeout);
 
+    /**
+     * Should be called by the source to keep ownership of the partition
+     * before another instance of Data Prepper can pick it up for processing.
+     * @param partitionKey - the partition to renew ownership for
+     */
+    void renewPartitionOwnership(final String partitionKey);
+
     void deletePartition(final String partitionKey);
 }

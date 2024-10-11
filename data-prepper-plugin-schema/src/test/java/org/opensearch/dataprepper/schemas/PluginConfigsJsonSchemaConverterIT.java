@@ -13,10 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.reflections.Reflections;
-import org.reflections.scanners.Scanners;
-import org.reflections.util.ClasspathHelper;
-import org.reflections.util.ConfigurationBuilder;
+import org.opensearch.dataprepper.plugin.ClasspathPluginProvider;
+import org.opensearch.dataprepper.plugin.PluginProvider;
 
 import java.util.List;
 import java.util.Map;
@@ -46,11 +44,9 @@ class PluginConfigsJsonSchemaConverterIT {
                 new JakartaValidationModule(JakartaValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED,
                         JakartaValidationOption.INCLUDE_PATTERN_EXPRESSIONS)
         );
-        final Reflections reflections = new Reflections(new ConfigurationBuilder()
-                .setUrls(ClasspathHelper.forPackage(DEFAULT_PLUGINS_CLASSPATH))
-                .setScanners(Scanners.TypesAnnotated, Scanners.SubTypes));
+        final PluginProvider pluginProvider = new ClasspathPluginProvider();
         objectUnderTest = new PluginConfigsJsonSchemaConverter(
-                reflections, new JsonSchemaConverter(modules), TEST_URL, TEST_BASE_URL);
+                pluginProvider, new JsonSchemaConverter(modules, pluginProvider), TEST_URL, TEST_BASE_URL);
     }
 
     @ParameterizedTest

@@ -14,7 +14,18 @@ public class ExportConfig {
     @NotNull
     private String kmsKeyId;
 
+    /**
+     * The ARN of the IAM role that will be passed to RDS for export.
+     */
+    @JsonProperty("iam_role_arn")
+    @NotNull
+    private String iamRoleArn;
+
     public String getKmsKeyId() {
         return kmsKeyId;
+    }
+
+    public String getIamRoleArn() {
+        return iamRoleArn;
     }
 }

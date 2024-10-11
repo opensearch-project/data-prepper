@@ -84,7 +84,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
             final PluginMetrics pluginMetrics,
             final PipelineDescription pipelineDescription) {
         this((long) serviceMapProcessorConfig.getWindowDuration() * TO_MILLIS,
-                new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH),
+                new File(serviceMapProcessorConfig.getDbPath()),
                 Clock.systemUTC(),
                 pipelineDescription.getNumberOfProcessWorkers(),
                 pluginMetrics);

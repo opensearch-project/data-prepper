@@ -12,6 +12,8 @@ import io.krakens.grok.api.Match;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -21,6 +23,8 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,10 +57,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
-
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
-import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.TOTAL_PATTERNS_ATTEMPTED_METADATA_KEY;
-import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.TOTAL_TIME_SPENT_IN_GROK_METADATA_KEY;
 
 
 @SingleThread
@@ -153,11 +153,25 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
             } catch (final TimeoutException e) {
                 event.getMetadata().addTags(tagsOnTimeout);
-                LOG.error(EVENT, "Matching on record [{}] took longer than [{}] and timed out", record.getData(), grokProcessorConfig.getTimeoutMillis());
+                LOG.atError()
+                        .addMarker(EVENT)
+                        .addMarker(NOISY)
+                        .setMessage("Matching on record [{}] took longer than [{}] and timed out")
+                        .addArgument(record.getData())
+                        .addArgument(grokProcessorConfig.getTimeoutMillis())
+                        .log();
+
                 grokProcessingTimeoutsCounter.increment();
             } catch (final ExecutionException | InterruptedException | RuntimeException e) {
                 event.getMetadata().addTags(tagsOnMatchFailure);
-                LOG.error(EVENT, "An exception occurred when matching record [{}]", record.getData(), e);
+                LOG.atError()
+                        .addMarker(EVENT)
+                        .addMarker(NOISY)
+                        .setMessage("An exception occurred when matching record [{}]")
+                        .addArgument(record.getData())
+                        .setCause(e)
+                        .log();
+
                 grokProcessingErrorsCounter.increment();
             }
 

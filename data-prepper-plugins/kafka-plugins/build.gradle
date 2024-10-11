@@ -59,6 +59,7 @@ dependencies {
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-plugins:blocking-buffer')
     testImplementation project(':data-prepper-core')
+    testImplementation project(':data-prepper-event')
     testImplementation project(':data-prepper-plugin-framework')
     testImplementation project(':data-prepper-pipeline-parser')
     testImplementation 'org.apache.kafka:kafka_2.13:3.6.1'
@@ -134,6 +135,7 @@ task integrationTest(type: Test) {
     systemProperty 'tests.kafka.confluent.registry_url', System.getProperty('tests.kafka.confluent.registry_url')
     systemProperty 'tests.kafka.authconfig.username', System.getProperty('tests.kafka.authconfig.username')
     systemProperty 'tests.kafka.authconfig.password', System.getProperty('tests.kafka.authconfig.password')
+    systemProperty 'tests.kafka.authconfig.mechanism', System.getProperty('tests.kafka.authconfig.mechanism')
     systemProperty 'tests.kafka.kms_key', System.getProperty('tests.kafka.kms_key')
 
     filter {

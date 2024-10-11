@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
+import org.opensearch.dataprepper.plugins.kafka.configuration.ScramAuthConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 
 import software.amazon.awssdk.services.kafka.KafkaClient;
@@ -123,6 +124,21 @@ public class KafkaSecurityConfigurer {
         final String password = plainTextAuthConfig.getPassword();
         properties.put(SASL_MECHANISM, "PLAIN");
         properties.put(SASL_JAAS_CONFIG, "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"" + username + "\" password=\"" + password + "\";");
+        if (checkEncryptionType(encryptionConfig, EncryptionType.SSL)) {
+            properties.put(SECURITY_PROTOCOL, "SASL_SSL");
+            setSecurityProtocolSSLProperties(properties, encryptionConfig);
+        } else { // EncryptionType.NONE
+            properties.put(SECURITY_PROTOCOL, "SASL_PLAINTEXT");
+        }
+    }
+
+    private static void setScramAuthProperties(final Properties properties, final ScramAuthConfig scramAuthConfig,
+                                                   final EncryptionConfig encryptionConfig) {
+        final String username = scramAuthConfig.getUsername();
+        final String password = scramAuthConfig.getPassword();
+        final String mechanism = scramAuthConfig.getMechanism();
+        properties.put(SASL_MECHANISM, mechanism);
+        properties.put(SASL_JAAS_CONFIG, "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"" + username + "\" password=\"" + password + "\";");
         if (checkEncryptionType(encryptionConfig, EncryptionType.SSL)) {
             properties.put(SECURITY_PROTOCOL, "SASL_SSL");
             setSecurityProtocolSSLProperties(properties, encryptionConfig);
@@ -329,6 +345,7 @@ public class KafkaSecurityConfigurer {
             final AuthConfig.SaslAuthConfig saslAuthConfig = authConfig.getSaslAuthConfig();
             if (Objects.nonNull(saslAuthConfig)) {
                 final AwsIamAuthConfig awsIamAuthConfig = saslAuthConfig.getAwsIamAuthConfig();
+                final ScramAuthConfig scramAuthConfig = saslAuthConfig.getScramAuthConfig();
                 final PlainTextAuthConfig plainTextAuthConfig = saslAuthConfig.getPlainTextAuthConfig();
 
                 if (Objects.nonNull(awsIamAuthConfig)) {
@@ -338,7 +355,9 @@ public class KafkaSecurityConfigurer {
                     setAwsIamAuthProperties(properties, awsIamAuthConfig, awsConfig);
                 } else if (Objects.nonNull(saslAuthConfig.getOAuthConfig())) {
                     setOauthProperties(kafkaClusterAuthConfig, properties);
-                } else if (Objects.nonNull(plainTextAuthConfig) && Objects.nonNull(kafkaClusterAuthConfig.getEncryptionConfig())) {
+                } else if (Objects.nonNull(scramAuthConfig) && Objects.nonNull(kafkaClusterAuthConfig.getEncryptionConfig())) {
+                    setScramAuthProperties(properties, scramAuthConfig, kafkaClusterAuthConfig.getEncryptionConfig());
+                }  else if (Objects.nonNull(plainTextAuthConfig) && Objects.nonNull(kafkaClusterAuthConfig.getEncryptionConfig())) {
                     setPlainTextAuthProperties(properties, plainTextAuthConfig, kafkaClusterAuthConfig.getEncryptionConfig());
                 } else {
                     throw new RuntimeException("No SASL auth config specified");

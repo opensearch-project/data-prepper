@@ -17,6 +17,8 @@ import com.jayway.jsonpath.PathNotFoundException;
 import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import static java.lang.String.format;
+import static org.opensearch.dataprepper.plugins.source.rds.RdsService.MAX_SOURCE_IDENTIFIER_LENGTH;
+
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
@@ -24,6 +26,7 @@ import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluatorResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.opensearch.dataprepper.plugins.source.rds.utils.IdentifierShortener;
 import software.amazon.awssdk.arns.Arn;
 
 import javax.xml.transform.TransformerException;
@@ -77,6 +80,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     private static final String SINK_SUBPIPELINE_PLUGIN_NAME = "pipeline";
     private static final String SUBPIPELINE_PATH = "$.source.pipeline";
 
+    private static final String S3_BUFFER_PREFIX = "/buffer";
 
     Configuration parseConfigWithJsonNode = Configuration.builder()
             .jsonProvider(new JacksonJsonNodeJsonProvider())
@@ -402,15 +406,28 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     }
 
     /**
-     * Specific to DocDB depth field.
-     * @param s3Prefix
-     * @return
+     * Calculate s3 folder scan depth for DocDB source pipeline
+     * @param s3Prefix: s3 prefix defined in the source configuration
+     * @return s3 folder scan depth
      */
     public String calculateDepth(String s3Prefix) {
+        return Integer.toString(getDepth(s3Prefix, 4));
+    }
+
+    /**
+     * Calculate s3 folder scan depth for RDS source pipeline
+     * @param s3Prefix: s3 prefix defined in the source configuration
+     * @return s3 folder scan depth
+     */
+    public String calculateDepthForRdsSource(String s3Prefix) {
+        return Integer.toString(getDepth(s3Prefix, 3));
+    }
+
+    private int getDepth(String s3Prefix, int baseDepth) {
         if(s3Prefix == null){
-            return Integer.toString(4);
+            return baseDepth;
         }
-        return Integer.toString(s3Prefix.split("/").length + 4);
+        return s3Prefix.split("/").length + baseDepth;
     }
 
     public String getSourceCoordinationIdentifierEnvVariable(String s3Prefix){
@@ -419,6 +436,25 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             return envSourceCoordinationIdentifier;
         }
         return s3Prefix+"/"+envSourceCoordinationIdentifier;
+    }
+
+    /**
+     * Get the include_prefix in s3 scan source. This is a function specific to RDS source.
+     * @param s3Prefix: s3 prefix defined in the source configuration
+     * @return the actual include_prefix
+     */
+    public String getIncludePrefixForRdsSource(String s3Prefix) {
+        final String envSourceCoordinationIdentifier = System.getenv(SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE);
+        final String shortenedSourceIdentifier = envSourceCoordinationIdentifier != null ?
+                IdentifierShortener.shortenIdentifier(envSourceCoordinationIdentifier, MAX_SOURCE_IDENTIFIER_LENGTH) : null;
+        if (s3Prefix == null && envSourceCoordinationIdentifier == null) {
+            return S3_BUFFER_PREFIX;
+        } else if (s3Prefix == null) {
+            return shortenedSourceIdentifier + S3_BUFFER_PREFIX;
+        } else if (envSourceCoordinationIdentifier == null) {
+            return s3Prefix + S3_BUFFER_PREFIX;
+        }
+        return s3Prefix + "/" + shortenedSourceIdentifier + S3_BUFFER_PREFIX;
     }
 
     public String getAccountIdFromRole(final String roleArn) {

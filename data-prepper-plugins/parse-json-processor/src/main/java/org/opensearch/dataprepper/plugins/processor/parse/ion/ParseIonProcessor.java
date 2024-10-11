@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
@@ -35,6 +36,8 @@ public class ParseIonProcessor extends AbstractParseProcessor {
 
     private final Counter parseErrorsCounter;
 
+    private final int depth;
+
     private final HandleFailedEventsOption handleFailedEventsOption;
 
     @DataPrepperPluginConstructor
@@ -44,6 +47,7 @@ public class ParseIonProcessor extends AbstractParseProcessor {
                              final EventKeyFactory eventKeyFactory) {
         super(pluginMetrics, parseIonProcessorConfig, expressionEvaluator, eventKeyFactory);
 
+        this.depth = parseIonProcessorConfig.getDepth();
         // Convert Timestamps to ISO-8601 Z strings
         objectMapper.registerModule(new IonTimestampConverterModule());
 
@@ -51,11 +55,16 @@ public class ParseIonProcessor extends AbstractParseProcessor {
         parseErrorsCounter = pluginMetrics.counter(PARSE_ERRORS);
     }
 
+
     @Override
-    protected Optional<HashMap<String, Object>> readValue(String message, Event context) {
+    protected Optional<Map<String, Object>> readValue(String message, Event context) {
         try {
             // We need to do a two-step process here, read the value in, then convert away any Ion types like Timestamp
-            return Optional.of(objectMapper.convertValue(objectMapper.readValue(message, new TypeReference<>() {}), new TypeReference<>() {}));
+            final HashMap<String, Object> map = objectMapper.convertValue(objectMapper.readValue(message, new TypeReference<>() {}), new TypeReference<>() {});
+            if (depth == 0) {
+                return Optional.of(map);
+            }
+            return Optional.of(objectMapper.convertValue(convertNestedObjectToString(map, 1, depth), new TypeReference<>() {}));
         } catch (JsonProcessingException e) {
             if (handleFailedEventsOption.shouldLog()) {
                 LOG.error(SENSITIVE, "An exception occurred due to invalid Ion while parsing [{}] due to {}", message, e.getMessage());

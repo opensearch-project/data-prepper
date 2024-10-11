@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.write_json;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.micrometer.core.instrument.Counter;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -52,7 +53,7 @@ public class WriteJsonProcessor extends AbstractProcessor<Record<Event>, Record<
                 try {
                     event.put(target, objectMapper.writeValueAsString(value));
                 } catch (Exception e) {
-                    LOG.error("Failed to convert source to json string", e);
+                    LOG.error(NOISY, "Failed to convert source to json string", e);
                     writeJsonFailedCounter.increment();
                 }
             }

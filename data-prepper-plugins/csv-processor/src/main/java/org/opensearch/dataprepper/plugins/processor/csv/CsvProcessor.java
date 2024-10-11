@@ -5,7 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.processor.csv;
 
+import com.fasterxml.jackson.databind.MappingIterator;
+import com.fasterxml.jackson.dataformat.csv.CsvMapper;
+import com.fasterxml.jackson.dataformat.csv.CsvParser;
+import com.fasterxml.jackson.dataformat.csv.CsvSchema;
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -14,11 +21,6 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import com.fasterxml.jackson.databind.MappingIterator;
-import com.fasterxml.jackson.dataformat.csv.CsvMapper;
-import com.fasterxml.jackson.dataformat.csv.CsvParser;
-import com.fasterxml.jackson.dataformat.csv.CsvSchema;
-import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,8 +29,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 /**
  * Processor to parse CSV data in Events.
@@ -46,6 +46,9 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
 
     private final ExpressionEvaluator expressionEvaluator;
 
+    private final CsvMapper mapper;
+    private final CsvSchema schema;
+
     @DataPrepperPluginConstructor
     public CsvProcessor(final PluginMetrics pluginMetrics,
                         final CsvProcessorConfig config,
@@ -61,13 +64,12 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
                     String.format("csv_when value of %s is not a valid expression statement. " +
                             "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.", config.getCsvWhen()));
         }
+        this.mapper = createCsvMapper();
+        this.schema = createCsvSchema();
     }
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
-        final CsvMapper mapper = createCsvMapper();
-        final CsvSchema schema = createCsvSchema();
-
         for (final Record<Event> record : records) {
 
             final Event event = record.getData();
@@ -105,7 +107,13 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
                 }
             } catch (final IOException e) {
                 csvInvalidEventsCounter.increment();
-                LOG.error(EVENT, "An exception occurred while reading event [{}]", event, e);
+                LOG.atError()
+                        .addMarker(EVENT)
+                        .addMarker(NOISY)
+                        .setMessage("An exception occurred while reading event [{}]")
+                        .addArgument(event)
+                        .setCause(e)
+                        .log();
             }
         }
         return records;

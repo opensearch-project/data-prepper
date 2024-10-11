@@ -71,9 +71,6 @@ class AwsSecretPluginIT {
     @Mock
     private ScheduledExecutorService scheduledExecutorService;
 
-    @Mock
-    private Runtime runtime;
-
     @Captor
     private ArgumentCaptor<Long> initialDelayCaptor;
 
@@ -92,12 +89,9 @@ class AwsSecretPluginIT {
         when(awsSecretManagerConfiguration.createGetSecretValueRequest()).thenReturn(getSecretValueRequest);
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
         when(getSecretValueResponse.secretString()).thenReturn(UUID.randomUUID().toString());
-        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
-             final MockedStatic<Runtime> runtimeMockedStatic = mockStatic(Runtime.class)
-        ) {
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
                     .thenReturn(scheduledExecutorService);
-            runtimeMockedStatic.when(Runtime::getRuntime).thenReturn(runtime);
             objectUnderTest = new AwsSecretPlugin(awsSecretPluginConfig);
             objectUnderTest.apply(extensionPoints);
         }
@@ -118,7 +112,6 @@ class AwsSecretPluginIT {
                 any(), initialDelayCaptor.capture(), periodCaptor.capture(), eq(TimeUnit.SECONDS));
         assertThat(initialDelayCaptor.getValue() >= testInterval.toSeconds(), is(true));
         assertThat(periodCaptor.getValue(), equalTo(testInterval.toSeconds()));
-        verify(runtime).addShutdownHook(any());
     }
 
     @Test
@@ -130,12 +123,9 @@ class AwsSecretPluginIT {
         when(awsSecretManagerConfiguration.createGetSecretValueRequest()).thenReturn(getSecretValueRequest);
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
         when(getSecretValueResponse.secretString()).thenReturn(UUID.randomUUID().toString());
-        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
-             final MockedStatic<Runtime> runtimeMockedStatic = mockStatic(Runtime.class)
-        ) {
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
                     .thenReturn(scheduledExecutorService);
-            runtimeMockedStatic.when(Runtime::getRuntime).thenReturn(runtime);
             objectUnderTest = new AwsSecretPlugin(awsSecretPluginConfig);
             objectUnderTest.apply(extensionPoints);
         }
@@ -153,7 +143,6 @@ class AwsSecretPluginIT {
                 actualExtensionProviders.get(1).provideInstance(context);
         assertThat(optionalPluginConfigPublisher.isPresent(), is(true));
         verifyNoInteractions(scheduledExecutorService);
-        verify(runtime).addShutdownHook(any());
     }
 
     @Test
@@ -178,12 +167,9 @@ class AwsSecretPluginIT {
     void testShutdownAwaitTerminationSuccess() throws InterruptedException {
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Collections.emptyMap());
-        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
-             final MockedStatic<Runtime> runtimeMockedStatic = mockStatic(Runtime.class)
-        ) {
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
                     .thenReturn(scheduledExecutorService);
-            runtimeMockedStatic.when(Runtime::getRuntime).thenReturn(runtime);
             objectUnderTest = new AwsSecretPlugin(awsSecretPluginConfig);
         }
         when(scheduledExecutorService.awaitTermination(anyLong(), any(TimeUnit.class))).thenReturn(true);
@@ -199,12 +185,9 @@ class AwsSecretPluginIT {
     void testShutdownAwaitTerminationTimeout() throws InterruptedException {
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Collections.emptyMap());
-        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
-             final MockedStatic<Runtime> runtimeMockedStatic = mockStatic(Runtime.class)
-        ) {
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
                     .thenReturn(scheduledExecutorService);
-            runtimeMockedStatic.when(Runtime::getRuntime).thenReturn(runtime);
             objectUnderTest = new AwsSecretPlugin(awsSecretPluginConfig);
         }
         when(scheduledExecutorService.awaitTermination(anyLong(), any(TimeUnit.class))).thenReturn(false);
@@ -220,12 +203,9 @@ class AwsSecretPluginIT {
     void testShutdownAwaitTerminationInterrupted() throws InterruptedException {
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Collections.emptyMap());
-        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
-             final MockedStatic<Runtime> runtimeMockedStatic = mockStatic(Runtime.class)
-        ) {
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
                     .thenReturn(scheduledExecutorService);
-            runtimeMockedStatic.when(Runtime::getRuntime).thenReturn(runtime);
             objectUnderTest = new AwsSecretPlugin(awsSecretPluginConfig);
         }
         when(scheduledExecutorService.awaitTermination(anyLong(), any(TimeUnit.class)))
@@ -240,12 +220,9 @@ class AwsSecretPluginIT {
 
     @Test
     void testShutdownWithNullScheduledExecutorService() {
-        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
-             final MockedStatic<Runtime> runtimeMockedStatic = mockStatic(Runtime.class)
-        ) {
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
                     .thenReturn(scheduledExecutorService);
-            runtimeMockedStatic.when(Runtime::getRuntime).thenReturn(runtime);
             objectUnderTest = new AwsSecretPlugin(null);
         }
         objectUnderTest.shutdown();

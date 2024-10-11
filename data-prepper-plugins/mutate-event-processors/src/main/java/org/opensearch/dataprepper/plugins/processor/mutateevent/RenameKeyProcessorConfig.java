@@ -19,18 +19,21 @@ import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `rename_keys` processor renames keys in an event.")
+@JsonClassDescription("The <code>rename_keys</code> processor renames keys in an event.")
 public class RenameKeyProcessorConfig {
+    @JsonPropertyOrder
     public static class Entry {
         @NotEmpty
         @NotNull
         @JsonProperty("from_key")
+        @JsonPropertyDescription("The key of the entry to be renamed.")
         @EventKeyConfiguration({EventKeyFactory.EventAction.GET, EventKeyFactory.EventAction.DELETE})
         private EventKey fromKey;
 
         @NotEmpty
         @NotNull
         @JsonProperty("to_key")
+        @JsonPropertyDescription("The new key of the entry.")
         @EventKeyConfiguration(EventKeyFactory.EventAction.PUT)
         private EventKey toKey;
 
@@ -39,9 +42,9 @@ public class RenameKeyProcessorConfig {
         private boolean overwriteIfToKeyExists = false;
 
         @JsonProperty("rename_when")
-        @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
-                "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be " +
-                "run on the event. Default is `null`. All events will be processed unless otherwise stated.")
+        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
+                "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be " +
+                "run on the event. By default, all events will be processed unless otherwise stated.")
         private String renameWhen;
 
         public EventKey getFromKey() {

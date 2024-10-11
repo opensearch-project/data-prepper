@@ -98,7 +98,7 @@ public class StreamRecordConverter extends RecordConverter {
             try {
                 bytesReceivedSummary.record(bytes);
                 final long eventCreationTimeMillis = calculateTieBreakingVersionFromTimestamp(record.dynamodb().approximateCreationDateTime());
-                addToBuffer(acknowledgementSet, data, keys, record.dynamodb().approximateCreationDateTime().toEpochMilli(), eventCreationTimeMillis, record.eventNameAsString());
+                addToBuffer(acknowledgementSet, data, keys, record.dynamodb().approximateCreationDateTime().toEpochMilli(), eventCreationTimeMillis, record.eventNameAsString(), record.userIdentity());
                 bytesProcessedSummary.record(bytes);
                 eventCount++;
             } catch (Exception e) {

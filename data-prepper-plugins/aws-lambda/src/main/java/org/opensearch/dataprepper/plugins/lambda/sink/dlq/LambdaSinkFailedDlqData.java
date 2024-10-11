@@ -4,7 +4,6 @@
  */
 package org.opensearch.dataprepper.plugins.lambda.sink.dlq;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import software.amazon.awssdk.core.SdkBytes;
 
 
@@ -16,7 +15,7 @@ public class LambdaSinkFailedDlqData {
 
     private int status;
 
-    public LambdaSinkFailedDlqData(SdkBytes payload, String message, int status) throws JsonProcessingException {
+    public LambdaSinkFailedDlqData(SdkBytes payload, String message, int status)  {
         this.payload = payload;
         this.message = message;
         this.status = status;

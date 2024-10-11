@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -17,6 +18,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TlsConfig;
@@ -24,6 +26,7 @@ import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.leader.LeaderScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
+import org.opensearch.dataprepper.plugins.source.rds.utils.IdentifierShortener;
 import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.rds.model.DBInstance;
 import software.amazon.awssdk.services.rds.model.DescribeDbInstancesRequest;
@@ -34,14 +37,19 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.rds.RdsService.MAX_SOURCE_IDENTIFIER_LENGTH;
+import static org.opensearch.dataprepper.plugins.source.rds.RdsService.S3_PATH_DELIMITER;
 
 @ExtendWith(MockitoExtension.class)
 class RdsServiceTest {
@@ -72,6 +80,9 @@ class RdsServiceTest {
 
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
+
+    @Mock
+    private PluginConfigObservable pluginConfigObservable;
 
     @BeforeEach
     void setUp() {
@@ -131,12 +142,21 @@ class RdsServiceTest {
         when(sourceConfig.getAuthenticationConfig()).thenReturn(authConfig);
         when(sourceConfig.getTlsConfig()).thenReturn(mock(TlsConfig.class));
 
+        final String s3Prefix = UUID.randomUUID().toString();
+        final String partitionPrefix = UUID.randomUUID().toString();
+        when(sourceConfig.getS3Prefix()).thenReturn(s3Prefix);
+        when(sourceCoordinator.getPartitionPrefix()).thenReturn(partitionPrefix);
+
         final RdsService rdsService = createObjectUnderTest();
-        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
+        final String[] s3PrefixArray = new String[1];
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
+             final MockedConstruction<LeaderScheduler> leaderSchedulerMockedConstruction = mockConstruction(LeaderScheduler.class,
+                     (mock, context) -> s3PrefixArray[0] = (String) context.arguments().get(2))) {
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executor);
             rdsService.start(buffer);
         }
 
+        assertThat(s3PrefixArray[0], equalTo(s3Prefix + S3_PATH_DELIMITER + IdentifierShortener.shortenIdentifier(partitionPrefix, MAX_SOURCE_IDENTIFIER_LENGTH)));
         verify(executor).submit(any(LeaderScheduler.class));
         verify(executor).submit(any(StreamScheduler.class));
         verify(executor, never()).submit(any(ExportScheduler.class));
@@ -170,6 +190,6 @@ class RdsServiceTest {
     }
 
     private RdsService createObjectUnderTest() {
-        return new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics, acknowledgementSetManager);
+        return new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
     }
 }

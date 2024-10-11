@@ -117,6 +117,7 @@ class CsvProcessorTest {
     @Test
     void test_when_delimiterIsTab_then_parsedCorrectly() {
         when(processorConfig.getDelimiter()).thenReturn("\t");
+        csvProcessor = createObjectUnderTest();
 
         Record<Event> eventUnderTest = createMessageEvent("1\t2\t3");
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
@@ -293,6 +294,7 @@ class CsvProcessorTest {
     @Test
     void test_when_differentQuoteCharacter_then_parsesCorrectly() {
         when(processorConfig.getQuoteCharacter()).thenReturn("\'");
+        csvProcessor = createObjectUnderTest();
 
         final Record<Event> eventUnderTest = createMessageEvent("'1','2','3'");
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));

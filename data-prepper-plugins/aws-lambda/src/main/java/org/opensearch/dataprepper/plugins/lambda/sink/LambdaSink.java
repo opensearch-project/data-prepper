@@ -6,19 +6,21 @@
 package org.opensearch.dataprepper.plugins.lambda.sink;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
+import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,12 +44,15 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                       final LambdaSinkConfig lambdaSinkConfig,
                       final PluginFactory pluginFactory,
                       final SinkContext sinkContext,
-                      final AwsCredentialsSupplier awsCredentialsSupplier
+                      final AwsCredentialsSupplier awsCredentialsSupplier,
+                      final ExpressionEvaluator expressionEvaluator
     ) {
         super(pluginSetting);
         sinkInitialized = Boolean.FALSE;
         OutputCodecContext outputCodecContext = OutputCodecContext.fromSinkContext(sinkContext);
-        LambdaClient lambdaClient = LambdaClientFactory.createLambdaClient(lambdaSinkConfig, awsCredentialsSupplier);
+        LambdaClient lambdaClient = LambdaClientFactory.createLambdaClient(lambdaSinkConfig.getAwsAuthenticationOptions(),
+                lambdaSinkConfig.getMaxConnectionRetries()
+                , awsCredentialsSupplier);
         if(lambdaSinkConfig.getDlqPluginSetting() != null) {
             this.dlqPushHandler = new DlqPushHandler(pluginFactory,
                     String.valueOf(lambdaSinkConfig.getDlqPluginSetting().get(BUCKET)),
@@ -55,6 +60,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                     , lambdaSinkConfig.getDlqStsRegion(),
                     String.valueOf(lambdaSinkConfig.getDlqPluginSetting().get(KEY_PATH)));
         }
+
         this.bufferFactory = new InMemoryBufferFactory();
 
         lambdaSinkService = new LambdaSinkService(lambdaClient,
@@ -65,7 +71,8 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                 outputCodecContext,
                 awsCredentialsSupplier,
                 dlqPushHandler,
-                bufferFactory);
+                bufferFactory,
+                expressionEvaluator);
 
     }
 

@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.acknowledgements.ProgressCheck;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException;
@@ -68,9 +69,10 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME;
-import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.ACKNOWLEDGEMENT_SET_TIMEOUT;
+import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.CHECKPOINT_OWNERSHIP_INTERVAL;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION;
+import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.PARTITION_OWNERSHIP_UPDATE_ERRORS;
 
 @ExtendWith(MockitoExtension.class)
 class S3ScanObjectWorkerTest {
@@ -115,14 +117,21 @@ class S3ScanObjectWorkerTest {
     private Counter counter;
 
     @Mock
+    private Counter partitionOwnershipUpdateErrorCounter;
+
+    @Mock
     private Counter noObjectsFoundForFolderPartitionCounter;
 
     private List<ScanOptions> scanOptionsList;
+
+    @Mock
+    private Duration acknowledgmentSetTimeout;
 
     @BeforeEach
     void setup() {
         scanOptionsList = new ArrayList<>();
         when(s3ScanScanOptions.getPartitioningOptions()).thenReturn(null);
+        when(s3ScanScanOptions.getAcknowledgmentTimeout()).thenReturn(acknowledgmentSetTimeout);
     }
 
     private ScanObjectWorker createObjectUnderTest() {
@@ -130,6 +139,7 @@ class S3ScanObjectWorkerTest {
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
         when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME)).thenReturn(counter);
         when(pluginMetrics.counter(NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION)).thenReturn(noObjectsFoundForFolderPartitionCounter);
+        when(pluginMetrics.counter(PARTITION_OWNERSHIP_UPDATE_ERRORS)).thenReturn(partitionOwnershipUpdateErrorCounter);
         final ScanObjectWorker objectUnderTest = new ScanObjectWorker(s3Client, scanOptionsList, s3ObjectHandler, bucketOwnerProvider,
                 sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, 30000, pluginMetrics);
         verify(sourceCoordinator).initialize();
@@ -207,22 +217,88 @@ class S3ScanObjectWorkerTest {
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
 
         when(acknowledgementSetManager.create(any(Consumer.class), any(Duration.class))).thenReturn(acknowledgementSet);
+        doNothing().when(acknowledgementSet).addProgressCheck(any(Consumer.class), any(Duration.class));
 
         scanObjectWorker.runWithoutInfiniteLoop();
 
         final ArgumentCaptor<Consumer> consumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
         verify(acknowledgementSetManager).create(consumerArgumentCaptor.capture(), any(Duration.class));
 
+        final ArgumentCaptor<Consumer> progressCheckArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(acknowledgementSet).addProgressCheck(progressCheckArgumentCaptor.capture(), eq(CHECKPOINT_OWNERSHIP_INTERVAL));
+
+        final Consumer<ProgressCheck> progressCheckConsumer = progressCheckArgumentCaptor.getValue();
+        progressCheckConsumer.accept(mock(ProgressCheck.class));
+
         final Consumer<Boolean> ackCallback = consumerArgumentCaptor.getValue();
         ackCallback.accept(true);
 
         final InOrder inOrder = inOrder(sourceCoordinator, acknowledgementSet, s3ObjectDeleteWorker);
         inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, objectKey);
-        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, acknowledgmentSetTimeout);
         inOrder.verify(acknowledgementSet).complete();
+        inOrder.verify(sourceCoordinator).renewPartitionOwnership(partitionKey);
         inOrder.verify(sourceCoordinator).completePartition(partitionKey, true);
 
         verify(counter).increment();
+
+        final S3ObjectReference processedObject = objectReferenceArgumentCaptor.getValue();
+        assertThat(processedObject.getBucketName(), equalTo(bucket));
+        assertThat(processedObject.getKey(), equalTo(objectKey));
+    }
+
+    @ParameterizedTest
+    @MethodSource("exceptionProvider")
+    void acknowledgment_progress_check_increments_ownership_error_metric_when_partition_fails_to_update(final Class<Throwable> exception) throws IOException {
+        final String bucket = UUID.randomUUID().toString();
+        final String objectKey = UUID.randomUUID().toString();
+        final String partitionKey = bucket + "|" + objectKey;
+
+
+        when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
+        when(s3SourceConfig.isDeleteS3ObjectsOnRead()).thenReturn(true);
+        when(s3ObjectDeleteWorker.buildDeleteObjectRequest(bucket, objectKey)).thenReturn(deleteObjectRequest);
+
+        final SourcePartition<S3SourceProgressState> partitionToProcess = SourcePartition.builder(S3SourceProgressState.class)
+                .withPartitionKey(partitionKey)
+                .withPartitionClosedCount(0L)
+                .build();
+
+        given(sourceCoordinator.getNextPartition(any(Function.class), eq(false))).willReturn(Optional.of(partitionToProcess));
+
+        final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
+        doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(acknowledgementSet), eq(sourceCoordinator), eq(partitionKey));
+        doNothing().when(sourceCoordinator).completePartition(anyString(), eq(true));
+
+        final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
+
+        when(acknowledgementSetManager.create(any(Consumer.class), any(Duration.class))).thenReturn(acknowledgementSet);
+        doNothing().when(acknowledgementSet).addProgressCheck(any(Consumer.class), any(Duration.class));
+
+        scanObjectWorker.runWithoutInfiniteLoop();
+
+        final ArgumentCaptor<Consumer> consumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(acknowledgementSetManager).create(consumerArgumentCaptor.capture(), any(Duration.class));
+
+        final ArgumentCaptor<Consumer> progressCheckArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(acknowledgementSet).addProgressCheck(progressCheckArgumentCaptor.capture(), eq(CHECKPOINT_OWNERSHIP_INTERVAL));
+
+        final Consumer<ProgressCheck> progressCheckConsumer = progressCheckArgumentCaptor.getValue();
+        doThrow(exception).when(sourceCoordinator).renewPartitionOwnership(partitionKey);
+        progressCheckConsumer.accept(mock(ProgressCheck.class));
+
+        final Consumer<Boolean> ackCallback = consumerArgumentCaptor.getValue();
+        ackCallback.accept(true);
+
+        final InOrder inOrder = inOrder(sourceCoordinator, acknowledgementSet, s3ObjectDeleteWorker);
+        inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, objectKey);
+        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, acknowledgmentSetTimeout);
+        inOrder.verify(acknowledgementSet).complete();
+        inOrder.verify(sourceCoordinator).renewPartitionOwnership(partitionKey);
+        inOrder.verify(sourceCoordinator).completePartition(partitionKey, true);
+
+        verify(counter).increment();
+        verify(partitionOwnershipUpdateErrorCounter).increment();
 
         final S3ObjectReference processedObject = objectReferenceArgumentCaptor.getValue();
         assertThat(processedObject.getBucketName(), equalTo(bucket));
@@ -441,6 +517,9 @@ class S3ScanObjectWorkerTest {
                 .thenReturn(acknowledgementSet1)
                 .thenReturn(acknowledgementSet2);
 
+        doNothing().when(acknowledgementSet1).addProgressCheck(any(Consumer.class), eq(CHECKPOINT_OWNERSHIP_INTERVAL));
+        doNothing().when(acknowledgementSet2).addProgressCheck(any(Consumer.class), eq(CHECKPOINT_OWNERSHIP_INTERVAL));
+
         doNothing().when(s3ObjectDeleteWorker).deleteS3Object(any(DeleteObjectRequest.class));
         doNothing().when(s3ObjectHandler).parseS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class), eq(sourceCoordinator), eq(partitionKey));
 
@@ -460,7 +539,7 @@ class S3ScanObjectWorkerTest {
         inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, firstObject.key());
         inOrder.verify(acknowledgementSet1).complete();
         inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, secondObject.key());
-        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, acknowledgmentSetTimeout);
         inOrder.verify(acknowledgementSet2).complete();
 
         final Consumer<Boolean> firstAckCallback = ackCallbacks.get(0);
@@ -516,6 +595,7 @@ class S3ScanObjectWorkerTest {
 
         when(acknowledgementSetManager.create(any(Consumer.class), any(Duration.class)))
                 .thenReturn(acknowledgementSet1);
+        doNothing().when(acknowledgementSet1).addProgressCheck(any(Consumer.class), eq(CHECKPOINT_OWNERSHIP_INTERVAL));
 
         doNothing().when(s3ObjectDeleteWorker).deleteS3Object(any(DeleteObjectRequest.class));
         doNothing().when(s3ObjectHandler).parseS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class), eq(sourceCoordinator), eq(partitionKey));
@@ -528,11 +608,18 @@ class S3ScanObjectWorkerTest {
         final ArgumentCaptor<Consumer> consumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
         verify(acknowledgementSetManager, times(1)).create(consumerArgumentCaptor.capture(), any(Duration.class));
 
+        final ArgumentCaptor<Consumer> progressCheckArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(acknowledgementSet1).addProgressCheck(progressCheckArgumentCaptor.capture(), eq(CHECKPOINT_OWNERSHIP_INTERVAL));
+
+        final Consumer<ProgressCheck> progressCheckConsumer = progressCheckArgumentCaptor.getValue();
+        progressCheckConsumer.accept(mock(ProgressCheck.class));
+        verify(sourceCoordinator).renewPartitionOwnership(partitionKey);
+
 
         final InOrder inOrder = inOrder(sourceCoordinator, acknowledgementSet1, s3ObjectDeleteWorker);
 
         inOrder.verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, firstObject.key());
-        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        inOrder.verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, acknowledgmentSetTimeout);
         inOrder.verify(acknowledgementSet1).complete();
 
         final Consumer<Boolean> ackCallback = consumerArgumentCaptor.getValue();

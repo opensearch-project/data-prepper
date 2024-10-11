@@ -18,6 +18,8 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.plugins.test.TestDISource;
 import org.opensearch.dataprepper.plugins.test.TestSink;
 import org.springframework.beans.factory.BeanFactory;
 
@@ -193,6 +195,25 @@ class DefaultPluginFactoryTest {
         }
 
         @Test
+        void loadPlugin_should_create_a_new_instance_of_the_plugin_with_di_initialized() {
+
+            final TestDISource expectedInstance = mock(TestDISource.class);
+            final Object convertedConfiguration = mock(Object.class);
+            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+                    .willReturn(convertedConfiguration);
+            given(firstPluginProvider.findPluginClass(Source.class, pluginName))
+                    .willReturn(Optional.of(TestDISource.class));
+            given(pluginCreator.newPluginInstance(eq(TestDISource.class), any(ComponentPluginArgumentsContext.class), eq(pluginName)))
+                    .willReturn(expectedInstance);
+
+            assertThat(createObjectUnderTest().loadPlugin(Source.class, pluginSetting),
+                    equalTo(expectedInstance));
+            verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
+                    eq(PluginSetting.class), eq(pluginSetting));
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{TestDISource.class});
+        }
+
+        @Test
         void loadPlugin_should_create_a_new_instance_of_the_first_plugin_found() {
 
             final TestSink expectedInstance = mock(TestSink.class);
@@ -206,7 +227,7 @@ class DefaultPluginFactoryTest {
                     equalTo(expectedInstance));
             verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
                     eq(PluginSetting.class), eq(pluginSetting));
-            verify(beanFactoryProvider).get();
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{});
         }
 
         @Test
@@ -240,7 +261,7 @@ class DefaultPluginFactoryTest {
             assertThat(plugins, notNullValue());
             assertThat(plugins.size(), equalTo(0));
 
-            verify(beanFactoryProvider).get();
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{});
             verifyNoInteractions(pluginCreator);
         }
 
@@ -256,7 +277,7 @@ class DefaultPluginFactoryTest {
             final List<?> plugins = createObjectUnderTest().loadPlugins(
                     baseClass, pluginSetting, c -> 1);
 
-            verify(beanFactoryProvider).get();
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{});
             verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
                     eq(PluginSetting.class), eq(pluginSetting));
             final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
@@ -285,7 +306,7 @@ class DefaultPluginFactoryTest {
 
             final Object plugin = createObjectUnderTest().loadPlugin(baseClass, pluginSetting, object);
 
-            verify(beanFactoryProvider).get();
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{});
             verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
                     eq(PluginSetting.class), eq(pluginSetting));
             final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
@@ -320,7 +341,7 @@ class DefaultPluginFactoryTest {
             final List<?> plugins = createObjectUnderTest().loadPlugins(
                     baseClass, pluginSetting, c -> 3);
 
-            verify(beanFactoryProvider).get();
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{});
             final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
             verify(pluginCreator, times(3)).newPluginInstance(eq(expectedPluginClass), pluginArgumentsContextArgCapture.capture(), eq(pluginName));
             final List<ComponentPluginArgumentsContext> actualPluginArgumentsContextList = pluginArgumentsContextArgCapture.getAllValues();
@@ -356,7 +377,7 @@ class DefaultPluginFactoryTest {
             final List<?> plugins = createObjectUnderTest().loadPlugins(
                     baseClass, pluginSetting, c -> 1);
 
-            verify(beanFactoryProvider).get();
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{});
             final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
             verify(pluginCreator).newPluginInstance(eq(expectedPluginClass), pluginArgumentsContextArgCapture.capture(), eq(pluginName));
             final ComponentPluginArgumentsContext actualPluginArgumentsContext = pluginArgumentsContextArgCapture.getValue();
@@ -398,7 +419,36 @@ class DefaultPluginFactoryTest {
 
             assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting), equalTo(expectedInstance));
             MatcherAssert.assertThat(expectedInstance.getClass().getAnnotation(DataPrepperPlugin.class).deprecatedName(), equalTo(TEST_SINK_DEPRECATED_NAME));
-            verify(beanFactoryProvider).get();
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{});
+        }
+    }
+
+    @Nested
+    class WithAlternatePluginName {
+        private static final String TEST_SINK_ALTERNATE_NAME = "test_sink_alternate_name";
+        private Class expectedPluginClass;
+
+        @BeforeEach
+        void setUp() {
+            expectedPluginClass = TestSink.class;
+            given(pluginSetting.getName()).willReturn(TEST_SINK_ALTERNATE_NAME);
+
+            given(firstPluginProvider.findPluginClass(baseClass, TEST_SINK_ALTERNATE_NAME))
+                    .willReturn(Optional.of(expectedPluginClass));
+        }
+
+        @Test
+        void loadPlugin_should_create_a_new_instance_of_the_first_plugin_found_with_correct_name_and_alternate_name() {
+            final TestSink expectedInstance = mock(TestSink.class);
+            final Object convertedConfiguration = mock(Object.class);
+            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+                    .willReturn(convertedConfiguration);
+            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(TEST_SINK_ALTERNATE_NAME)))
+                    .willReturn(expectedInstance);
+
+            assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting), equalTo(expectedInstance));
+            MatcherAssert.assertThat(expectedInstance.getClass().getAnnotation(DataPrepperPlugin.class).alternateNames(), equalTo(new String[]{TEST_SINK_ALTERNATE_NAME}));
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{});
         }
     }
 }

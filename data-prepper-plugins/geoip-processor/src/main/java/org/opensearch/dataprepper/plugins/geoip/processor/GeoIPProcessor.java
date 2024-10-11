@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.geoip.processor;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.logging.DataPrepperMarkers;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -107,7 +108,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
     try (final GeoIPDatabaseReader geoIPDatabaseReader = BatchGeoIPDatabaseReader.decorate(geoIPProcessorService.getGeoIPDatabaseReader())) {
        processRecords(records, geoIPDatabaseReader);
     } catch (final Exception e) {
-      LOG.error("Encountered exception in geoip processor.", e);
+      LOG.error(NOISY, "Encountered exception in geoip processor.", e);
     }
     return records;
   }

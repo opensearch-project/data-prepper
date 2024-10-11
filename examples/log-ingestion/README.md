@@ -8,10 +8,10 @@ Fluent Bit → Data Prepper → OpenSearch. This log ingestion flow is shown in 
 
 ## List of Components
 
-- An OpenSearch domain running through Docker
-- A FluentBit agent running through Docker
-- Data Prepper, which includes a `log_pipeline.yaml`
-- An Apache Log Generator in the form of a python script
+- An OpenSearch domain running through Docker.
+- A FluentBit agent running through Docker using `fluent-bit.conf`.
+- Data Prepper, which includes a `log_pipeline.yaml` and `data-prepper-config.yaml`for data-prepper server configuration running through Docker.
+- An Apache Log Generator in the form of a python script.
 
 ### FluentBit And OpenSearch Setup
 
@@ -29,35 +29,38 @@ FluentBit is tailing to collect logs from.
 4. Now that you understand a bit more about how FluentBit and OpenSearch are set up, run them with:
 
 ```
-docker-compose --project-name data-prepper up
+docker compose --project-name data-prepper up
 ```
+This we can verify using http://127.0.0.1:5601/
+
+Once we are able to access our opensearch-dashboard we can run data-prepper. 
 
 ### Data Prepper Setup
-
-1. Pull down the latest Data Prepper Docker image.
-
-```
-docker pull opensearchproject/data-prepper:2
-```
  
-2. Take a look at [log_pipeline.yaml](log_pipeline.yaml). This configuration will take logs sent to the [http source](../../data-prepper-plugins/http-source), 
+1. Take a look at [log_pipeline.yaml](log_pipeline.yaml). This configuration will take logs sent to the [http source](../../data-prepper-plugins/http-source), 
 process them with the [Grok Processor](../../data-prepper-plugins/grok-prepper) by matching against the `COMMONAPACHELOG` pattern, 
 and send the processed logs to a local [OpenSearch sink](../../data-prepper-plugins/opensearch) to an index named `apache_logs`.
 
+2. And [data-prepper-config.yaml](data-prepper-config.yaml) is also mounted in [docker-compose-dataprepper.yaml](docker-compose-dataprepper.yaml) which will help us to configure our data-prepper server. 
 
-3. Run the Data Prepper docker image with the `log_pipeline.yaml` from step 2 passed in. This command attaches the Data Prepper Docker image to the Docker network `log-ingestion_opensearch_net` so that 
-FluentBit is able to send logs to the http source of Data Prepper.
+
+3. Run the Data Prepper docker compose file where we are using `log_pipeline.yaml`. Now FluentBit is able to send logs to the http source of Data Prepper.
 
 Run the following to start Data Prepper:
 
 ```
-docker run --name data-prepper -v ${PWD}/log_pipeline.yaml:/usr/share/data-prepper/pipelines/log_pipeline.yaml --network "data-prepper_opensearch-net" opensearchproject/data-prepper:2
+docker compose -f docker-compose-dataprepper.yaml up
 ```
 
 If Data Prepper is running correctly, you should see something similar to the following line as the latest output in your terminal.
 
 ```
-INFO  org.opensearch.dataprepper.pipeline.server.DataPrepperServer - Data Prepper server running at :4900
+INFO org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink - Initialized OpenSearch sink  
+INFO org.opensearch.dataprepper.pipeline.Pipeline - Pipeline [log-pipeline] Sink is ready, starting source...  
+
+
+INFO org.opensearch.dataprepper.plugins.source.loghttp.HTTPSource - Started http source on port 2021...  
+INFO org.opensearch.dataprepper.pipeline.Pipeline - Pipeline [log-pipeline] - Submitting request to initiate the pipeline processing
 ```
 
 ### Apache Log Generator
@@ -88,7 +91,7 @@ Additionally, if you just want to test a single log, you can send it to `test.lo
 echo '63.173.168.120 - - [04/Nov/2021:15:07:25 -0500] "GET /search/tag/list HTTP/1.0" 200 5003' >> test.log
 ```
 
-In order to simulate an application generating logs, a simple python script will be used. This script only runs with python 2. You can download this script by running
+In order to simulate an application generating logs, a simple python script will be used. This script only runs with python 2. You can download this script by running.
 
 ```
 git clone https://github.com/graytaylor0/Fake-Apache-Log-Generator.git
@@ -109,11 +112,15 @@ python apache-fake-log-gen.py -n 0 -s 2 -l "CLF" -o "LOG" -f "/full/path/to/test
 
 You should now be able to check your terminal output for FluentBit and Data Prepper to verify that they are processing logs.
 
-The following FluentBit ouptut means that FluentBit was able to forward logs to the Data Prepper http source
+The following FluentBit ouptut means that FluentBit was able to forward logs to the Data Prepper http source.
 
 ```
-fluent-bit  | [2021/10/30 17:16:39] [ info] [output:http:http.0] host.docker.internal:2021, HTTP status=200
+fluent-bit  | [ info] [output:http:http.0] data-prepper:2021, HTTP status=200
+200 OK
 ```
 
-Finally, head into OpenSearch Dashboards ([http://localhost:5601](http://localhost:5601)) to view your processed logs.
-You will need to create an index pattern for the index provided in your `pipeline.yaml` in order to see them. You can do this by selecting the `Manage` menu with the gear icon at the top of the home page and then the `Index Patterns` menu on the left side of the page. Select the `Create index pattern` button and then start typing in the name of the index you sent logs to in the `Index pattern name` field (in this guide it was `apache_logs`). You should see that the index pattern matches 1 source. Click `Next Step` and then `Create index pattern`. After, you should be able to go to the `Discover` page with a link on the menu to the left, and see your processed logs.
+Finally, head into OpenSearch Dashboards ([http://localhost:5601](http://localhost:5601)) (login with credentials) to view your processed logs.
+You will need to create an index pattern for the index provided in your `pipeline.yaml` (i.e. `apache_logs`) in order to see them. You can do this by selecting the `Manage` menu with the gear icon at the top of the home page and then the `Index Patterns` menu on the left side of the page. Select the `Create index pattern` button and then start typing in the name of the index you sent logs to in the `Index pattern name` field (in this guide it was `apache_logs`). You should see that the index pattern matches 1 source (This will only be seen if data-prepper is working well with the opensource).
+
+Click `Next Step` and then `Create index pattern`. After, you should be able to go to the `Discover` page with a link on the menu to the left, and see your processed logs.
+

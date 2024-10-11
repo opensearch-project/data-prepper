@@ -54,7 +54,7 @@ dependencyResolutionManagement {
             library('bouncycastle-bcpkix', 'org.bouncycastle', 'bcpkix-jdk18on').versionRef('bouncycastle')
             version('guava', '32.1.2-jre')
             library('guava-core', 'com.google.guava', 'guava').versionRef('guava')
-            version('reflections', '0.9.12')
+            version('reflections', '0.10.2')
             library('reflections-core', 'org.reflections', 'reflections').versionRef('reflections')
             library('commons-lang3', 'org.apache.commons', 'commons-lang3').version('3.14.0')
             library('commons-io', 'commons-io', 'commons-io').version('2.15.1')
@@ -183,4 +183,5 @@ include 'data-prepper-plugins:http-common'
 include 'data-prepper-plugins:aws-lambda'
 //include 'data-prepper-plugins:dummy-plugin'
 include 'data-prepper-plugin-schema'
-
+include 'data-prepper-plugins:kinesis-source'
+include 'data-prepper-plugins:opensearch-api-source'

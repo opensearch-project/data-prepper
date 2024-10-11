@@ -41,6 +41,10 @@ log-pipeline:
           plaintext:
             username: 5UH4NID4OENKDIBI
             password: jCmncn77F9asfox3yhgZLCEwQ5fx8pKiXnszMqdt0y1GLrdZO1V1iz95aIe1UubX
+          scram:
+            username: 5UH4NID4OENKDIBI
+            password: jCmncn77F9asfox3yhgZLCEwQ5fx8pKiXnszMqdt0y1GLrdZO1V1iz95aIe1UubX
+            mechanism: SCRAM-SHA-512
           oauth:
             oauth_client_id: 0oa9wc21447Pc5vsV5d7
             oauth_client_secret: aGmOfHqIEvBJGDxXAOOcatiE9PvsPgoEePx8IPPa
