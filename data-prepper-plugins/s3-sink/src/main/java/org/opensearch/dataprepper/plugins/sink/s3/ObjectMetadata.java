@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class ObjectMetadata {
@@ -13,6 +14,7 @@ public class ObjectMetadata {
 
     public ObjectMetadata(final ObjectMetadataConfig objectMetadataConfig) {
         this.objectMetadataConfig = objectMetadataConfig;
+        this.metadata = new HashMap<String, String>();
     }
    
     public void setEventCount(int eventCount) {
