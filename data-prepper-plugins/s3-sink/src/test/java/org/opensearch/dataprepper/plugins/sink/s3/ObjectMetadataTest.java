@@ -19,25 +19,38 @@ import java.util.UUID;
 public class ObjectMetadataTest {
     private ObjectMetadata objectMetadata;
     @Mock
-    ObjectMetadataConfig objectMetadataConfig;
+    private ObjectMetadataConfig objectMetadataConfig;
+    @Mock
+    private PredefinedObjectMetadata predefinedObjectMetadata;
     private String numberOfEventsKey;
 
-    private ObjectMetadata createObjectUnderTest() {
-        return new ObjectMetadata(objectMetadataConfig);
+    private ObjectMetadata createObjectUnderTest(Object metadataConfig) {
+        return new ObjectMetadata(metadataConfig);
     }
 
     @BeforeEach
-    void setup() {
+    public void setup() {
         objectMetadataConfig = mock(ObjectMetadataConfig.class);
+        predefinedObjectMetadata = mock(PredefinedObjectMetadata.class);
         numberOfEventsKey = UUID.randomUUID().toString();
         when(objectMetadataConfig.getNumberOfEventsKey()).thenReturn(numberOfEventsKey);
-        objectMetadata = createObjectUnderTest();
+        when(predefinedObjectMetadata.getNumberOfObjects()).thenReturn(numberOfEventsKey);
     }
 
     @Test
-    void test_setEventCount() {
+    public void test_setEventCount_with_PredefinedObjectMetadata() {
+        objectMetadata = createObjectUnderTest(predefinedObjectMetadata);
         Random random = new Random();
-	Integer numEvents = random.nextInt();
+        Integer numEvents = Math.abs(random.nextInt());
+        objectMetadata.setEventCount(numEvents);
+        assertThat(objectMetadata.get().get(numberOfEventsKey), equalTo(Integer.toString(numEvents)));
+    }
+
+    @Test
+    void test_setEventCount_with_ObjectMetadata() {
+        objectMetadata = createObjectUnderTest(objectMetadataConfig);
+        Random random = new Random();
+	    Integer numEvents = Math.abs(random.nextInt());
         objectMetadata.setEventCount(numEvents);
         assertThat(objectMetadata.get().get(numberOfEventsKey), equalTo(Integer.toString(numEvents)));
     }
