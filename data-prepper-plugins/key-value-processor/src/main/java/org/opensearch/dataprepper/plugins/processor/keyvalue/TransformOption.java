@@ -45,7 +45,7 @@ public enum TransformOption {
 
     @JsonCreator
     public static TransformOption fromTransformName(final String transformName) {
-        if(Objects.equals(transformName, ""))
+        if (Objects.equals(transformName, ""))
             return NONE;
         return NAMES_MAP.get(transformName);
     }

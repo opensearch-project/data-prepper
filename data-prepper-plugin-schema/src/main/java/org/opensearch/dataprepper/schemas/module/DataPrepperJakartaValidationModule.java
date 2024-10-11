@@ -23,8 +23,8 @@ class DataPrepperJakartaValidationModule extends JakartaValidationModule {
     @Override
     protected boolean isRequired(final MemberScope<?, ?> member) {
         final JsonProperty jsonPropertyAnnotation = member.getAnnotationConsideringFieldAndGetter(JsonProperty.class);
-        if(jsonPropertyAnnotation != null) {
-            if(jsonPropertyAnnotation.defaultValue() != null && !jsonPropertyAnnotation.defaultValue().isEmpty()) {
+        if (jsonPropertyAnnotation != null) {
+            if (jsonPropertyAnnotation.defaultValue() != null && !jsonPropertyAnnotation.defaultValue().isEmpty()) {
                 return false;
             }
         }
