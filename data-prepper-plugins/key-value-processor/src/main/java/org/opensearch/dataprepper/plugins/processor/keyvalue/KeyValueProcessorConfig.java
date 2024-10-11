@@ -129,7 +129,7 @@ public class KeyValueProcessorConfig {
     @JsonProperty("whitespace")
     @JsonPropertyDescription("Specifies whether to be lenient or strict with the acceptance of " +
             "unnecessary white space surrounding the configured value-split sequence. " +
-            "In this case, strict means that whitespace is trimmed and lenient means it is retained in the key name and in the value." +
+            "In this case, strict means that whitespace is trimmed and lenient means it is retained in the key name and in the value. " +
             "Default is <code>lenient</code>.")
     @NotNull
     private WhitespaceOption whitespace = DEFAULT_WHITESPACE;
@@ -183,7 +183,7 @@ public class KeyValueProcessorConfig {
     @JsonProperty("strict_grouping")
     @JsonPropertyDescription("When enabled, groups with unmatched end characters yield errors. " +
             "The event is ignored after the errors are logged. " +
-            "Specifies whether strict grouping should be enabled when the <code>value_grouping</code>" +
+            "Specifies whether strict grouping should be enabled when the <code>value_grouping</code> " +
             "or <code>string_literal_character</code> options are used. Default is <code>false</code>.")
     private boolean strictGrouping = false;
 

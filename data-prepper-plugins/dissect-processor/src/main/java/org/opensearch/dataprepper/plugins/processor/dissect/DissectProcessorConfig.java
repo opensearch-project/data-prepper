@@ -18,8 +18,8 @@ public class DissectProcessorConfig {
     @JsonProperty("map")
     @JsonPropertyDescription("Defines the <code>dissect</code> patterns for specific keys. " +
             "Each key is a field name, and the value is the dissect pattern to use for dissecting it. " +
-            "For details on how to define fields " +
-            "in the <code>dissect</code> pattern, see (https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/dissect/#field-notations). " +
+            "For details on how to define fields in the <code>dissect</code> pattern, see " + 
+            "<a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/dissect/#field-notations>here</a>. " +
             "An example dissect pattern is <code>%{Date} %{Time} %{Log_Type}: %{Message}</code>, which will dissect into four fields.")
     private Map<String, String> map;
 
