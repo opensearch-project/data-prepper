@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
 
@@ -29,6 +30,7 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
     private String source = DEFAULT_SOURCE;
 
     @JsonProperty("destination")
+    @Pattern(regexp = "^(?!\\s*$)(?!^/$).+", message = "Cannot be an empty string, <code>/</code>, or any whitespace-only string")
     @JsonPropertyDescription("The destination field of the structured object from the parsed JSON. Defaults to the root of the event. Cannot be an empty string, <code>/</code>, or any whitespace-only string because these are not valid event fields.")
     private String destination;
 
@@ -37,7 +39,7 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
             "If the JSON pointer is invalid then the entire source data is parsed into the outgoing event. If the key that is pointed to already exists in the event and the destination is the root, then the pointer uses the entire path of the key.")
     private String pointer;
 
-    @JsonProperty("overwrite_if_destination_exists")
+    @JsonProperty(value = "overwrite_if_destination_exists", defaultValue = "true")
     @JsonPropertyDescription("Overwrites the destination if set to true. Set to false to prevent changing a destination value that exists. Defaults to true.")
     private boolean overwriteIfDestinationExists = true;
 
