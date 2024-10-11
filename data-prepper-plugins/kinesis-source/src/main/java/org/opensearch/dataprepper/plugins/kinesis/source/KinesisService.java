@@ -116,20 +116,38 @@ public class KinesisService {
     public void shutDown() {
         LOG.info("Stop request received for Kinesis Source");
 
-        Future<Boolean> gracefulShutdownFuture = scheduler.startGracefulShutdown();
-        LOG.info("Waiting up to {} seconds for shutdown to complete.", GRACEFUL_SHUTDOWN_WAIT_INTERVAL_SECONDS);
-        try {
-            gracefulShutdownFuture.get(GRACEFUL_SHUTDOWN_WAIT_INTERVAL_SECONDS, TimeUnit.SECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-            LOG.error("Exception while executing kinesis consumer graceful shutdown, doing force shutdown", ex);
-            scheduler.shutdown();
+        if (scheduler != null) {
+            Future<Boolean> gracefulShutdownFuture = scheduler.startGracefulShutdown();
+            LOG.info("Waiting up to {} seconds for shutdown to complete.", GRACEFUL_SHUTDOWN_WAIT_INTERVAL_SECONDS);
+            try {
+                gracefulShutdownFuture.get(GRACEFUL_SHUTDOWN_WAIT_INTERVAL_SECONDS, TimeUnit.SECONDS);
+            } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+                LOG.error("Exception while executing kinesis consumer graceful shutdown, doing force shutdown", ex);
+                scheduler.shutdown();
+            }
+            LOG.info("Completed, shutting down now.");
+        } else {
+            LOG.info("The Kinesis Scheduler was not initialized.");
         }
-        LOG.info("Completed, shutting down now.");
     }
 
     public Scheduler getScheduler(final Buffer<Record<Event>> buffer) {
-        if (scheduler == null) {
-            return createScheduler(buffer);
+
+        int numRetries = 0;
+        while (scheduler == null && numRetries++ < kinesisSourceConfig.getMaxInitializationAttempts()) {
+            try {
+                scheduler = createScheduler(buffer);
+            } catch (Exception ex) {
+                LOG.error("Caught exception when initializing KCL Scheduler. Will retry");
+            }
+
+            if (scheduler == null) {
+                try {
+                    Thread.sleep(kinesisSourceConfig.getInitializationBackoffTime().toMillis());
+                } catch (InterruptedException e){
+                    LOG.debug("Interrupted exception!");
+                }
+            }
         }
         return scheduler;
     }
@@ -158,7 +176,9 @@ public class KinesisService {
 
         return new Scheduler(
                 configsBuilder.checkpointConfig(),
-                configsBuilder.coordinatorConfig(),
+                configsBuilder.coordinatorConfig()
+                        .schedulerInitializationBackoffTimeMillis(kinesisSourceConfig.getInitializationBackoffTime().toMillis())
+                        .maxInitializationAttempts(kinesisSourceConfig.getMaxInitializationAttempts()),
                 configsBuilder.leaseManagementConfig().billingMode(BillingMode.PAY_PER_REQUEST),
                 configsBuilder.lifecycleConfig(),
                 configsBuilder.metricsConfig(),
