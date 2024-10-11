@@ -169,7 +169,7 @@ public class KeyValueProcessorConfig {
     @NotNull
     private boolean recursive = DEFAULT_RECURSIVE;
     
-    @JsonProperty("overwrite_if_destination_exists")
+    @JsonProperty(value = "overwrite_if_destination_exists", defaultValue = "true")
     @JsonPropertyDescription("Specifies whether to overwrite existing fields if there are key conflicts " +
             "when writing parsed fields to the event. Default is <code>true</code>.")
     private boolean overwriteIfDestinationExists = true;

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotBlank;
 
 import java.util.List;
 
@@ -24,6 +25,7 @@ public class CsvProcessorConfig {
 
     @JsonProperty("source")
     @JsonPropertyDescription("The field in the event that will be parsed. Default value is <code>message</code>.")
+    @NotBlank
     private String source = DEFAULT_SOURCE;
 
     @JsonProperty("delimiter")

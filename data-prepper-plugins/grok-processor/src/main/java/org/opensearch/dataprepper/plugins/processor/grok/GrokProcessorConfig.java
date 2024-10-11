@@ -61,7 +61,7 @@ public class GrokProcessorConfig {
     @JsonPropertyDescription("Specifies a parent-level key used to store all captures. Default value is <code>null</code> which will write captures into the root of the event.")
     private String targetKey = DEFAULT_TARGET_KEY;
 
-    @JsonProperty(BREAK_ON_MATCH)
+    @JsonProperty(value = BREAK_ON_MATCH, defaultValue = true)
     @JsonPropertyDescription("Specifies whether to match all patterns (<code>false</code>) or stop once the first successful " +
             "match is found (<code>true</code>). Default is <code>true</code>.")
     private boolean breakOnMatch = DEFAULT_BREAK_ON_MATCH;
@@ -70,7 +70,7 @@ public class GrokProcessorConfig {
     @JsonPropertyDescription("Enables the preservation of <code>null</code> captures from the processed output. Default is <code>false</code>.")
     private boolean keepEmptyCaptures = DEFAULT_KEEP_EMPTY_CAPTURES;
 
-    @JsonProperty(NAMED_CAPTURES_ONLY)
+    @JsonProperty(value = NAMED_CAPTURES_ONLY, defaultValue = true)
     @JsonPropertyDescription("Specifies whether to keep only named captures. Default is <code>true</code>.")
     private boolean namedCapturesOnly = DEFAULT_NAMED_CAPTURES_ONLY;
 

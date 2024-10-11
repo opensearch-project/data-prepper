@@ -42,7 +42,7 @@ public class AggregateProcessorConfig {
     @JsonProperty("group_duration")
     private Duration groupDuration = Duration.ofSeconds(DEFAULT_GROUP_DURATION_SECONDS);
 
-    @JsonPropertyDescription("When <code>local_mode<code> is set to true, the aggregation is performed locally on each node instead of forwarding events to a specific node based on the <code>identification_keys</code> using a hash function. Default is false.")
+    @JsonPropertyDescription("When <code>local_mode</code> is set to true, the aggregation is performed locally on each node instead of forwarding events to a specific node based on the <code>identification_keys</code> using a hash function. Default is false.")
     @JsonProperty("local_mode")
     @NotNull
     private Boolean localMode = false;
