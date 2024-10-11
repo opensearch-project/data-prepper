@@ -51,21 +51,26 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class JsonInputCodecTest {
 
     private ObjectMapper objectMapper;
+    private JsonInputCodecConfig jsonInputCodecConfig;
     private Consumer<Record<Event>> eventConsumer;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-
+        jsonInputCodecConfig = mock(JsonInputCodecConfig.class);
+        when(jsonInputCodecConfig.getIncludeKeysMetadata()).thenReturn(Collections.emptyList());
+        when(jsonInputCodecConfig.getIncludeKeys()).thenReturn(Collections.emptyList());
+        when(jsonInputCodecConfig.getKeyName()).thenReturn(null);
         eventConsumer = mock(Consumer.class);
     }
 
     private JsonInputCodec createObjectUnderTest() {
-        return new JsonInputCodec();
+        return new JsonInputCodec(jsonInputCodecConfig);
     }
 
     @Test
@@ -216,6 +221,38 @@ class JsonInputCodecTest {
     }
 
     @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 100})
+    void parse_with_InputStream_calls_Consumer_with_EventConfig(final int numberOfObjects) throws IOException {
+
+        List<String> includeKeys = new ArrayList<>();
+        for (int i=0; i<numberOfObjects; i++) {
+            includeKeys.add(UUID.randomUUID().toString());
+        }
+        final String objectKey = "key";
+        final Map<String, Object> jsonObjects = generateJsonWithSpecificKeys(includeKeys, objectKey, numberOfObjects);
+        when(jsonInputCodecConfig.getIncludeKeysMetadata()).thenReturn(includeKeys);
+        when(jsonInputCodecConfig.getIncludeKeys()).thenReturn(includeKeys);
+        when(jsonInputCodecConfig.getKeyName()).thenReturn(objectKey);
+
+        createObjectUnderTest().parse(createInputStream(jsonObjects), eventConsumer);
+
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        verify(eventConsumer, times(numberOfObjects)).accept(recordArgumentCaptor.capture());
+
+        final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
+
+        assertThat(actualRecords.size(), equalTo(numberOfObjects));
+        for (int i = 0; i < actualRecords.size(); i++) {
+
+            final Record<Event> actualRecord = actualRecords.get(i);
+            assertThat(actualRecord, notNullValue());
+            assertThat(actualRecord.getData(), notNullValue());
+            assertThat(actualRecord.getData().getMetadata(), notNullValue());
+            assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
+        }
+    }
+
+    @ParameterizedTest
     @ArgumentsSource(JsonPermutations.class)
     void parse_with_InputStream_calls_Consumer_for_arrays_in_Json_permutations(final Function<List<Map<String, Object>>, Map<String, Object>> rootJsonGenerator) throws IOException {
         final int numberOfObjects = 10;
@@ -334,6 +371,20 @@ class JsonInputCodecTest {
         }
         jsonObject.put(UUID.randomUUID().toString(), Arrays.asList(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString()));
 
+        return jsonObject;
+    }
+
+    private static Map<String, Object> generateJsonWithSpecificKeys(final List<String> innerKeys, final String key, final int numRecords) {
+        final Map<String, Object> jsonObject = new LinkedHashMap<>();
+        final List<Map<String, Object>> innerObjects = new ArrayList<>();
+        for (int i=0; i<numRecords; i++) {
+            final Map<String, Object> innerJsonMap = new LinkedHashMap<>();
+            for (String innerKey: innerKeys) {
+                innerJsonMap.put(innerKey, UUID.randomUUID().toString());
+            }
+            innerObjects.add(innerJsonMap);
+        }
+        jsonObject.put(key, innerObjects);
         return jsonObject;
     }
 }
