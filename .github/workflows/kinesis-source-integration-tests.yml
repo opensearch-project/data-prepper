@@ -1,0 +1,82 @@
+name: kinesis-source-integration-tests
+
+on:
+  push:
+    paths:
+      - 'data-prepper-plugins/kinesis-source/**'
+      - '*gradle*'
+  pull_request:
+    paths:
+      - 'data-prepper-plugins/kinesis-source/**'
+      - '*gradle*'
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        java: [ 11, 17, 21, docker ]
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Git clone the repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: configure aws credentials
+        id: creds
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.TEST_IAM_ROLE_ARN }}
+          aws-region: ${{ secrets.TEST_REGION }}
+          output-credentials: true
+
+      - name: get caller identity 1
+        run: |
+          aws sts get-caller-identity
+      - name: Configure AWS Credentials file
+        run: |
+          aws configure set default.region ${{ secrets.TEST_REGION }}
+          aws configure set default.aws_access_key_id ${{ steps.creds.outputs.aws-access-key-id }}
+          aws configure set default.aws_secret_access_key ${{ steps.creds.outputs.aws-secret-access-key }}
+          aws configure set default.aws_session_token ${{ steps.creds.outputs.aws-session-token }}
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+
+      - name: Checkout Data Prepper
+        uses: actions/checkout@v2
+
+      - name: Run Kinesis Source integration tests
+        run: |
+          ./gradlew data-prepper-plugins:kinesis-source:integrationTest \
+            -Dtests.kinesis.source.aws.region=us-east-1 --tests KinesisSourceIT
+      - name: Upload Unit Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: data-prepper-kinesis-source-integration-tests-java-${{ matrix.java }}
+          path: '**/test-results/**/*.xml'
+
+  publish-test-results:
+    name: "Publish Unit Tests Results"
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: test-results
+
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: "test-results/**/*.xml"
