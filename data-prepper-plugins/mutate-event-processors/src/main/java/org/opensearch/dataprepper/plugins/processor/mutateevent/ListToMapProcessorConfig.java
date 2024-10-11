@@ -61,6 +61,11 @@ public class ListToMapProcessorConfig {
             "placed in the root node.")
     private String target = null;
 
+    @JsonProperty("use_source_key")
+    @JsonPropertyDescription("When <code>true</code>, keys in the generated map will use original keys from the source. " +
+            "Default is <code>false</code>.")
+    private boolean useSourceKey = false;
+
     @JsonProperty("key")
     @JsonPropertyDescription("The key of the fields to be extracted as keys in the generated mappings. Must be " +
             "specified if <code>use_source_key</code> is <code>false</code>.")
@@ -72,11 +77,6 @@ public class ListToMapProcessorConfig {
             "When not specified, objects contained in the source list retain their original value when mapped.")
     private String valueKey = null;
 
-    @JsonProperty("use_source_key")
-    @JsonPropertyDescription("When <code>true</code>, keys in the generated map will use original keys from the source. " +
-            "Default is <code>false</code>.")
-    private boolean useSourceKey = false;
-
     @JsonProperty("extract_value")
     @JsonPropertyDescription("When <code>true</code>, object values from the source list will be extracted and added to " +
             "the generated map. When <code>false</code>, object values from the source list are added to the generated map " +
@@ -86,7 +86,8 @@ public class ListToMapProcessorConfig {
     @NotNull
     @JsonProperty("flatten")
     @JsonPropertyDescription("When <code>true</code>, values in the generated map output flatten into single items based on " +
-            "the <code>flattened_element</code>. Otherwise, objects mapped to values from the generated map appear as lists.")
+            "the <code>flattened_element</code>. Otherwise, objects mapped to values from the generated map appear as lists. " +
+            "Default is <code>false</code>.")
     private boolean flatten = false;
 
     @NotNull
