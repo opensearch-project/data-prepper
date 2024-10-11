@@ -26,7 +26,7 @@ public class OTelLogsInputCodec implements InputCodec {
         this.config = config;
     }    
     public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
-        if (OTelLogsInputCodecConfig.JSON_FORMAT.equals(config.getFormat())) {
+        if (config.getFormat() == OTelLogsFormatOption.JSON) {
             OTelLogsJsonDecoder decoder = new OTelLogsJsonDecoder();
             decoder.parse(inputStream, null, eventConsumer);
         } 
