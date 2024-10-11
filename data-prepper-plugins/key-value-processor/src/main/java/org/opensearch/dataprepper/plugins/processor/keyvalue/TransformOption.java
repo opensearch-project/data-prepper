@@ -10,11 +10,12 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public enum TransformOption {
-    NONE("", key -> key),
+    NONE("none", key -> key),
     LOWERCASE("lowercase", String::toLowerCase),
     UPPERCASE("uppercase", String::toUpperCase),
     CAPITALIZE("capitalize", key -> key.substring(0, 1).toUpperCase() + key.substring(1));
@@ -44,6 +45,8 @@ public enum TransformOption {
 
     @JsonCreator
     public static TransformOption fromTransformName(final String transformName) {
+        if(Objects.equals(transformName, ""))
+            return NONE;
         return NAMES_MAP.get(transformName);
     }
 }

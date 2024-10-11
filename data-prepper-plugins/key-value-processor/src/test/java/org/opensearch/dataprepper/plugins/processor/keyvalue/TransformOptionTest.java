@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.keyvalue;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -28,6 +29,11 @@ class TransformOptionTest {
         assertThat(TransformOption.fromTransformName(transformOption.getTransformName()), equalTo(transformOption));
     }
 
+    @Test
+    void fromTransformName_returns_none_if_empty_string() {
+        assertThat(TransformOption.fromTransformName(""), equalTo(TransformOption.NONE));
+    }
+
     @ParameterizedTest
     @EnumSource(TransformOption.class)
     void getTransformName_returns_non_empty_null_for_all_types(final TransformOption transformOption) {
@@ -35,7 +41,7 @@ class TransformOptionTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = TransformOption.class, mode = EnumSource.Mode.EXCLUDE, names = {"NONE"})
+    @EnumSource(value = TransformOption.class)
     void getTransformName_returns_non_empty_string_for_all_types_except_none(final TransformOption transformOption) {
         assertThat(transformOption.getTransformName(), notNullValue());
         assertThat(transformOption.getTransformName(), not(emptyString()));
@@ -51,7 +57,7 @@ class TransformOptionTest {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext extensionContext) {
             return Stream.of(
-                    arguments(TransformOption.NONE, ""),
+                    arguments(TransformOption.NONE, "none"),
                     arguments(TransformOption.UPPERCASE, "uppercase"),
                     arguments(TransformOption.LOWERCASE, "lowercase"),
                     arguments(TransformOption.CAPITALIZE, "capitalize")
