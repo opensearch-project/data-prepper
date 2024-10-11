@@ -21,23 +21,23 @@ import java.util.List;
 @JsonPropertyOrder
 @JsonClassDescription("The <code>split_string</code> processor splits a field into an array using a delimiting character.")
 public class SplitStringProcessorConfig implements StringProcessorConfig<SplitStringProcessorConfig.Entry> {
+    @JsonPropertyOrder
     public static class Entry {
-
         @NotEmpty
         @NotNull
         @JsonPropertyDescription("The key name of the field to split.")
         private EventKey source;
-
-        @JsonProperty("delimiter_regex")
-        @JsonPropertyDescription("The regex string responsible for the split. Cannot be defined at the same time as <code>delimiter</code>. " +
-                "At least <code>delimiter</code> or <code>delimiter_regex</code> must be defined.")
-        private String delimiterRegex;
 
         @Size(min = 1, max = 1)
         @JsonPropertyDescription("The separator character responsible for the split. " +
                 "Cannot be defined at the same time as <code>delimiter_regex</code>. " +
                 "At least <code>delimiter</code> or <code>delimiter_regex</code> must be defined.")
         private String delimiter;
+
+        @JsonProperty("delimiter_regex")
+        @JsonPropertyDescription("The regex string responsible for the split. Cannot be defined at the same time as <code>delimiter</code>. " +
+                "At least <code>delimiter</code> or <code>delimiter_regex</code> must be defined.")
+        private String delimiterRegex;
 
         @JsonProperty("split_when")
         @JsonPropertyDescription("Specifies under what condition the <code>split_string</code> processor should perform splitting. " +

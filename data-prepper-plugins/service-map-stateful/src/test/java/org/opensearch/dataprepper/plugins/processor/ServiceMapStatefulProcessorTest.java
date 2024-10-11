@@ -130,6 +130,7 @@ public class ServiceMapStatefulProcessorTest {
     @Test
     public void testDataPrepperConstructor() {
         when(pipelineDescription.getNumberOfProcessWorkers()).thenReturn(4);
+        when(serviceMapProcessorConfig.getDbPath()).thenReturn(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
         //Nothing is accessible to validate, so just verify that no exception is thrown.
         final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(
                 serviceMapProcessorConfig, pluginMetrics, pipelineDescription);
@@ -426,6 +427,7 @@ public class ServiceMapStatefulProcessorTest {
     @Test
     public void testGetIdentificationKeys() {
         when(pipelineDescription.getNumberOfProcessWorkers()).thenReturn(4);
+        when(serviceMapProcessorConfig.getDbPath()).thenReturn(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
         final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(
                 serviceMapProcessorConfig, pluginMetrics, pipelineDescription);
         final Collection<String> expectedIdentificationKeys = serviceMapStatefulProcessor.getIdentificationKeys();

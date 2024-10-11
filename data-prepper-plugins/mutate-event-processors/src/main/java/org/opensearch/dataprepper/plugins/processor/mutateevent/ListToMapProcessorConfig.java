@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.annotation.JsonValue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
@@ -22,7 +23,7 @@ import java.util.stream.Collectors;
 @JsonClassDescription("The <code>list_to_map</code> processor converts a list of objects from an event, " +
         "where each object contains a <code>key</code> field, into a map of target keys.")
 public class ListToMapProcessorConfig {
-    enum FlattenedElement {
+    public enum FlattenedElement {
         FIRST("first"),
         LAST("last");
 
@@ -41,6 +42,11 @@ public class ListToMapProcessorConfig {
         @JsonCreator
         static FlattenedElement fromOptionValue(final String option) {
             return ACTIONS_MAP.get(option);
+        }
+
+        @JsonValue
+        public String getOptionValue() {
+            return name;
         }
     }
 
@@ -88,15 +94,15 @@ public class ListToMapProcessorConfig {
     @JsonPropertyDescription("The element to keep, either <code>first</code> or <code>last</code>, when <code>flatten</code> is set to <code>true</code>.")
     private FlattenedElement flattenedElement = FlattenedElement.FIRST;
 
+    @JsonProperty("tags_on_failure")
+    @JsonPropertyDescription("A list of tags to add to the event metadata when the event fails to process.")
+    private List<String> tagsOnFailure;
+
     @JsonProperty("list_to_map_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
             "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be " +
             "run on the event. By default, all events will be processed unless otherwise stated.")
     private String listToMapWhen;
-
-    @JsonProperty("tags_on_failure")
-    @JsonPropertyDescription("A list of tags to add to the event metadata when the event fails to process.")
-    private List<String> tagsOnFailure;
 
     public String getSource() {
         return source;

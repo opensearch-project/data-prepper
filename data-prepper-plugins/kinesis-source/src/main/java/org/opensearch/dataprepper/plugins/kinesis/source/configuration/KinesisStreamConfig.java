@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import software.amazon.kinesis.common.InitialPositionInStream;
 
 import java.time.Duration;
@@ -38,4 +39,9 @@ public class KinesisStreamConfig {
     public InitialPositionInStream getInitialPosition() {
         return initialPosition.getPositionInStream();
     }
+
+    @Getter
+    @JsonProperty("compression")
+    private CompressionOption compression = CompressionOption.NONE;
+
 }

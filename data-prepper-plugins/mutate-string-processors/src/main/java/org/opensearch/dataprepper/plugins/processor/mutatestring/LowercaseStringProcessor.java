@@ -21,7 +21,7 @@ import java.util.Locale;
 @DataPrepperPlugin(name = "lowercase_string", pluginType = Processor.class, pluginConfigurationType = LowercaseStringProcessorConfig.class)
 public class LowercaseStringProcessor extends AbstractStringProcessor<EventKey> {
     @DataPrepperPluginConstructor
-    public LowercaseStringProcessor(final PluginMetrics pluginMetrics, final WithKeysConfig config) {
+    public LowercaseStringProcessor(final PluginMetrics pluginMetrics, final LowercaseStringProcessorConfig config) {
         super(pluginMetrics, config);
     }
 

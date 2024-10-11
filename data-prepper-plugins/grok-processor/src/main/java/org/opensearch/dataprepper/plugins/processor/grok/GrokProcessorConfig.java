@@ -9,13 +9,15 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `grok` processor uses pattern matching to structure and extract important keys from " +
+@JsonClassDescription("The <code>grok</code> processor uses pattern matching to structure and extract important keys from " +
         "unstructured data.")
 public class GrokProcessorConfig {
 
@@ -46,56 +48,75 @@ public class GrokProcessorConfig {
     static final int DEFAULT_TIMEOUT_MILLIS = 30000;
     static final String DEFAULT_TARGET_KEY = null;
 
+    @JsonProperty(MATCH)
+    @NotEmpty
+    @NotNull
+    @JsonPropertyDescription("Specifies which keys should match specific patterns. " +
+            "Each key is a source field. The value is a list of possible grok patterns to match on. " +
+            "The <code>grok</code> processor will extract values from the first match for each field. " +
+            "Default is an empty response body.")
+    private Map<String, List<String>> match = Collections.emptyMap();
+
+    @JsonProperty(TARGET_KEY)
+    @JsonPropertyDescription("Specifies a parent-level key used to store all captures. Default value is <code>null</code> which will write captures into the root of the event.")
+    private String targetKey = DEFAULT_TARGET_KEY;
+
     @JsonProperty(BREAK_ON_MATCH)
     @JsonPropertyDescription("Specifies whether to match all patterns (<code>false</code>) or stop once the first successful " +
             "match is found (<code>true</code>). Default is <code>true</code>.")
     private boolean breakOnMatch = DEFAULT_BREAK_ON_MATCH;
+
     @JsonProperty(KEEP_EMPTY_CAPTURES)
     @JsonPropertyDescription("Enables the preservation of <code>null</code> captures from the processed output. Default is <code>false</code>.")
     private boolean keepEmptyCaptures = DEFAULT_KEEP_EMPTY_CAPTURES;
-    @JsonProperty(MATCH)
-    @JsonPropertyDescription("Specifies which keys should match specific patterns. Default is an empty response body.")
-    private Map<String, List<String>> match = Collections.emptyMap();
+
     @JsonProperty(NAMED_CAPTURES_ONLY)
     @JsonPropertyDescription("Specifies whether to keep only named captures. Default is <code>true</code>.")
     private boolean namedCapturesOnly = DEFAULT_NAMED_CAPTURES_ONLY;
+
     @JsonProperty(KEYS_TO_OVERWRITE)
     @JsonPropertyDescription("Specifies which existing keys will be overwritten if there is a capture with the same key value. " +
-            "Default is <code>[]</code>.")
+            "Default is an empty list.")
     private List<String> keysToOverwrite = Collections.emptyList();
-    @JsonProperty(PATTERNS_DIRECTORIES)
-    @JsonPropertyDescription("Specifies which directory paths contain the custom pattern files. Default is an empty list.")
-    private List<String> patternsDirectories = Collections.emptyList();
-    @JsonProperty(PATTERNS_FILES_GLOB)
-    @JsonPropertyDescription("Specifies which pattern files to use from the directories specified for " +
-            "<code>pattern_directories</code>. Default is <code>*</code>.")
-    private String patternsFilesGlob = DEFAULT_PATTERNS_FILES_GLOB;
+
     @JsonProperty(PATTERN_DEFINITIONS)
     @JsonPropertyDescription("Allows for a custom pattern that can be used inline inside the response body. " +
             "Default is an empty response body.")
     private Map<String, String> patternDefinitions = Collections.emptyMap();
+
+    @JsonProperty(PATTERNS_DIRECTORIES)
+    @JsonPropertyDescription("Specifies which directory paths contain the custom pattern files. Default is an empty list.")
+    private List<String> patternsDirectories = Collections.emptyList();
+
+    @JsonProperty(PATTERNS_FILES_GLOB)
+    @JsonPropertyDescription("Specifies which pattern files to use from the directories specified for " +
+            "<code>pattern_directories</code>. Default is <code>*</code>.")
+    private String patternsFilesGlob = DEFAULT_PATTERNS_FILES_GLOB;
+
     @JsonProperty(TIMEOUT_MILLIS)
     @JsonPropertyDescription("The maximum amount of time during which matching occurs. " +
-            "Setting to <code>0</code> prevents any matching from occurring. Default is <code>30,000</code>.")
+            "Setting to <code>0</code> prevents any matching from occurring. Default is <code>30000</code>.")
     private int timeoutMillis = DEFAULT_TIMEOUT_MILLIS;
-    @JsonProperty(TARGET_KEY)
-    @JsonPropertyDescription("Specifies a parent-level key used to store all captures. Default value is <code>null</code>.")
-    private String targetKey = DEFAULT_TARGET_KEY;
-    @JsonProperty(GROK_WHEN)
-    @JsonPropertyDescription("Specifies under what condition the <code>grok</code> processor should perform matching. " +
-            "Default is no condition.")
-    private String grokWhen;
+
     @JsonProperty(TAGS_ON_MATCH_FAILURE)
     @JsonPropertyDescription("A <code>List</code> of <code>String</code>s that specifies the tags to be set in the event when grok fails to " +
             "match or an unknown exception occurs while matching. This tag may be used in conditional expressions in " +
             "other parts of the configuration")
     private List<String> tagsOnMatchFailure = Collections.emptyList();
+
     @JsonProperty(TAGS_ON_TIMEOUT)
-    @JsonPropertyDescription("A <code>List</code> of <code>String</code>s that specifies the tags to be set in the event when grok match times out.")
+    @JsonPropertyDescription("The tags to add to the event metadata if the grok match times out.")
     private List<String> tagsOnTimeout = Collections.emptyList();
+
+    @JsonProperty(GROK_WHEN)
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>'/test != false'</code>. " +
+            "If specified, the <code>grok</code> processor will only run on events when the expression evaluates to true. ")
+    private String grokWhen;
+
     @JsonProperty(INCLUDE_PERFORMANCE_METADATA)
-    @JsonPropertyDescription("A <code>Boolean</code> on whether to include performance metadata into event metadata, " +
-            "e.g. _total_grok_patterns_attempted, _total_grok_processing_time.")
+    @JsonPropertyDescription("A boolean value to determine whether to include performance metadata into event metadata. " +
+            "If set to true, the events coming out of grok will have new fields such as <code>_total_grok_patterns_attempted</code> and <code>_total_grok_processing_time</code>." +
+            "You can use this metadata to perform performance testing and tuning of your grok patterns. By default, it is not included.")
     private boolean includePerformanceMetadata = false;
 
     public boolean isBreakOnMatch() {

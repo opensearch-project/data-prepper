@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `flatten` processor transforms nested objects inside of events into flattened structures.")
+@JsonClassDescription("The <code>flatten</code> processor transforms nested objects inside of events into flattened structures.")
 public class FlattenProcessorConfig {
 
     private static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
@@ -35,7 +35,8 @@ public class FlattenProcessorConfig {
     private String target;
 
     @JsonProperty("remove_processed_fields")
-    @JsonPropertyDescription("When <code>true</code>, the processor removes all processed fields from the source. Default is <code>false</code>.")
+    @JsonPropertyDescription("When <code>true</code>, the processor removes all processed fields from the source. " +
+            "The default is <code>false</code> which leaves the source fields.")
     private boolean removeProcessedFields = false;
 
     @JsonProperty("remove_list_indices")
@@ -50,18 +51,17 @@ public class FlattenProcessorConfig {
 
     @JsonProperty("exclude_keys")
     @JsonPropertyDescription("The keys from the source field that should be excluded from processing. " +
-            "Default is an empty list (<code>[]</code>).")
+            "By default no keys are excluded.")
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
-
-    @JsonProperty("flatten_when")
-    @JsonPropertyDescription("A Data Prepper <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
-            "such as <code>/some-key == \"test\"'</code>, that determines whether the <code>flatten</code> processor will be run on the " +
-            "event. Default is <code>null</code>, which means that all events will be processed unless otherwise stated.")
-    private String flattenWhen;
 
     @JsonProperty("tags_on_failure")
     @JsonPropertyDescription("A list of tags to add to the event metadata when the event fails to process.")
     private List<String> tagsOnFailure;
+
+    @JsonProperty("flatten_when")
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
+            "If specified, the <code>flatten</code> processor will only run on events when the expression evaluates to true. ")
+    private String flattenWhen;
 
     public String getSource() {
         return source;

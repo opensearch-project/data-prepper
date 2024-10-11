@@ -30,14 +30,14 @@ public class TargetsParameterConfig {
     @JsonProperty("map")
     @JsonPropertyDescription("A list of key-value pairs that define the translations. Each key represents a possible " +
             "value in the source field, and the corresponding value represents what it should be translated to. " +
-            "For examples, see <a href=\"#map-option\">map option</a>. At least one of <code>map</code> and <code>regex</code> should be configured.")
+            "At least one of <code>map</code> and <code>regex</code> should be configured.")
     private Map<String, Object> map;
     @JsonProperty("translate_when")
-    @JsonPropertyDescription("Uses a <a href=\"{{site.url}}{{site.baseurl}}/data-prepper/pipelines/expression-syntax/\">Data Prepper expression</a> " +
+    @JsonPropertyDescription("Uses a <a href=\"{{site.url}}{{site.baseurl}}/data-prepper/pipelines/expression-syntax/\">conditional expression</a> " +
             "to specify a condition for performing the translation. When specified, the expression will only translate when the condition is met.")
     private String translateWhen;
     @JsonProperty("regex")
-    @JsonPropertyDescription("A map of keys that defines the translation map. For more options, see <a href=\"#regex-option\">regex option</a>. " +
+    @JsonPropertyDescription("A map of keys that defines the translation map. " +
             "At least one of <code>map</code> and <code>regex</code> should be configured.")
     private RegexParameterConfiguration regexParameterConfig;
     @JsonProperty("default")

@@ -31,7 +31,7 @@ import java.util.Map;
  */
 @JsonPropertyOrder
 @JsonClassDescription("The key-value pair defines routing condition, where the key is the name of a route and the " +
-        "value is a Data Prepper expression representing the routing condition.")
+        "value is an expression representing the routing condition.")
 @JsonSerialize(using = ConditionalRoute.ConditionalRouteSerializer.class)
 @JsonDeserialize(using = ConditionalRoute.ConditionalRouteDeserializer.class)
 public class ConditionalRoute {

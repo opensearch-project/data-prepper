@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.util.Random;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -23,6 +24,7 @@ class ServiceMapProcessorConfigTest {
     @Test
     void testDefaultConfig() {
         assertThat(serviceMapProcessorConfig.getWindowDuration(), equalTo(DEFAULT_WINDOW_DURATION));
+        assertThat(serviceMapProcessorConfig.getDbPath(), equalTo(ServiceMapProcessorConfig.DEFAULT_DB_PATH));
     }
 
     @Test
@@ -33,6 +35,12 @@ class ServiceMapProcessorConfigTest {
                 serviceMapProcessorConfig,
                 "windowDuration",
                 windowDuration);
-        assertThat(serviceMapProcessorConfig.getWindowDuration(), equalTo(windowDuration));
+        final String testDbPath = UUID.randomUUID().toString();
+        ReflectivelySetField.setField(
+                ServiceMapProcessorConfig.class,
+                serviceMapProcessorConfig,
+                "dbPath",
+                testDbPath);
+        assertThat(serviceMapProcessorConfig.getDbPath(), equalTo(testDbPath));
     }
 }

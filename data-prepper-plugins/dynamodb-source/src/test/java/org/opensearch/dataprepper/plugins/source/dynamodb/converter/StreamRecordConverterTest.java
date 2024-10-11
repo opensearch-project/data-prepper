@@ -28,6 +28,8 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.OperationType;
 import software.amazon.awssdk.services.dynamodb.model.StreamRecord;
 import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
+import software.amazon.awssdk.services.dynamodb.model.Identity;
+
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -57,6 +59,7 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.Metad
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.SORT_KEY_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_IS_TTL_DELETE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.BYTES_PROCESSED;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.BYTES_RECEIVED;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.CHANGE_EVENTS_PROCESSED_COUNT;
@@ -95,6 +98,8 @@ class StreamRecordConverterTest {
 
     private final String partitionKeyAttrName = "PK";
     private final String sortKeyAttrName = "SK";
+    private final String principalId = "dynamodb.amazonaws.com";
+    private final String userIdentityType = "Service";
 
 
     @BeforeEach
@@ -211,6 +216,7 @@ class StreamRecordConverterTest {
         assertThat(event.getMetadata().getAttribute(EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE), equalTo(OpenSearchBulkActions.INDEX.toString()));
         assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE), equalTo("INSERT"));
         assertThat(event.getMetadata().getAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE), equalTo(record.dynamodb().approximateCreationDateTime().toEpochMilli()));
+        assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_IS_TTL_DELETE), equalTo(false));
 
         assertThat(event.get(partitionKeyAttrName, String.class), notNullValue());
         assertThat(event.get(sortKeyAttrName, String.class), notNullValue());
@@ -355,7 +361,7 @@ class StreamRecordConverterTest {
 
         final Map<String, AttributeValue> newImage = Map.of(newImageKey, AttributeValue.builder().s(newImageValue).build());
         final Map<String, AttributeValue> oldImage = Map.of(oldImageKey, AttributeValue.builder().s(oldImageValue).build());
-        List<software.amazon.awssdk.services.dynamodb.model.Record> records = Collections.singletonList(buildRecord(Instant.now(), newImage, oldImage, OperationType.REMOVE));
+        List<software.amazon.awssdk.services.dynamodb.model.Record> records = Collections.singletonList(buildRecord(Instant.now(), newImage, oldImage, OperationType.REMOVE, null));
         final ArgumentCaptor<Record> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
         software.amazon.awssdk.services.dynamodb.model.Record record = records.get(0);
         final StreamRecordConverter objectUnderTest = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics, streamConfig);
@@ -397,7 +403,7 @@ class StreamRecordConverterTest {
         final String newImageValue = UUID.randomUUID().toString();
 
         final Map<String, AttributeValue> newImage = Map.of(newImageKey, AttributeValue.builder().s(newImageValue).build());
-        List<software.amazon.awssdk.services.dynamodb.model.Record> records = Collections.singletonList(buildRecord(Instant.now(), newImage, null, OperationType.REMOVE));
+        List<software.amazon.awssdk.services.dynamodb.model.Record> records = Collections.singletonList(buildRecord(Instant.now(), newImage, null, OperationType.REMOVE, null));
         final ArgumentCaptor<Record> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
         software.amazon.awssdk.services.dynamodb.model.Record record = records.get(0);
         final StreamRecordConverter objectUnderTest = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics, streamConfig);
@@ -442,7 +448,7 @@ class StreamRecordConverterTest {
 
         final Map<String, AttributeValue> newImage = Map.of(newImageKey, AttributeValue.builder().s(newImageValue).build());
         final Map<String, AttributeValue> oldImage = Map.of(oldImageKey, AttributeValue.builder().s(oldImageValue).build());
-        List<software.amazon.awssdk.services.dynamodb.model.Record> records = Collections.singletonList(buildRecord(Instant.now(), newImage, oldImage, OperationType.REMOVE));
+        List<software.amazon.awssdk.services.dynamodb.model.Record> records = Collections.singletonList(buildRecord(Instant.now(), newImage, oldImage, OperationType.REMOVE, null));
         final ArgumentCaptor<Record> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
         software.amazon.awssdk.services.dynamodb.model.Record record = records.get(0);
         final StreamRecordConverter objectUnderTest = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics, streamConfig);
@@ -476,6 +482,72 @@ class StreamRecordConverterTest {
         verify(bytesProcessedSummary).record(record.dynamodb().sizeBytes());
     }
 
+    @Test
+    void test_writeSingleRecordToBuffer_with_userIdentity() throws Exception {
+
+        when(streamConfig.getStreamViewForRemoves()).thenReturn(StreamViewType.OLD_IMAGE);
+
+        final Identity userIdentity = Identity.builder()
+                .principalId(principalId)
+                .type(userIdentityType)
+                .build();
+
+        final String newImageKey = UUID.randomUUID().toString();
+        final String newImageValue = UUID.randomUUID().toString();
+
+        final Map<String, AttributeValue> newImage = Map.of(newImageKey, AttributeValue.builder().s(newImageValue).build());
+        List<software.amazon.awssdk.services.dynamodb.model.Record> records = Collections.singletonList(buildRecord(Instant.now(), newImage, null, OperationType.REMOVE, userIdentity));
+        final ArgumentCaptor<Record> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        software.amazon.awssdk.services.dynamodb.model.Record record = records.get(0);
+        final StreamRecordConverter objectUnderTest = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics, streamConfig);
+        doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
+
+        objectUnderTest.writeToBuffer(null, records);
+
+        verify(bufferAccumulator).add(any(Record.class));
+        verify(bufferAccumulator).flush();
+        verify(changeEventSuccessCounter).increment(anyDouble());
+        assertThat(recordArgumentCaptor.getValue().getData(), notNullValue());
+        JacksonEvent event = (JacksonEvent) recordArgumentCaptor.getValue().getData();
+
+        assertThat(event.getMetadata(), notNullValue());
+        assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_IS_TTL_DELETE), equalTo(Boolean.TRUE));
+
+    }
+
+    @Test
+    void test_writeSingleRecordToBuffer_with_wrong_userIdentity() throws Exception {
+
+        when(streamConfig.getStreamViewForRemoves()).thenReturn(StreamViewType.OLD_IMAGE);
+
+        final Identity userIdentity = Identity.builder()
+                .principalId("lambda.amazonaws.com")
+                .type(userIdentityType)
+                .build();
+
+        final String newImageKey = UUID.randomUUID().toString();
+        final String newImageValue = UUID.randomUUID().toString();
+
+        final Map<String, AttributeValue> newImage = Map.of(newImageKey, AttributeValue.builder().s(newImageValue).build());
+        List<software.amazon.awssdk.services.dynamodb.model.Record> records = Collections.singletonList(buildRecord(Instant.now(), newImage, null, OperationType.REMOVE, userIdentity));
+        final ArgumentCaptor<Record> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        software.amazon.awssdk.services.dynamodb.model.Record record = records.get(0);
+        final StreamRecordConverter objectUnderTest = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics, streamConfig);
+        doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
+
+        objectUnderTest.writeToBuffer(null, records);
+
+        verify(bufferAccumulator).add(any(Record.class));
+        verify(bufferAccumulator).flush();
+        verify(changeEventSuccessCounter).increment(anyDouble());
+        assertThat(recordArgumentCaptor.getValue().getData(), notNullValue());
+        JacksonEvent event = (JacksonEvent) recordArgumentCaptor.getValue().getData();
+
+        assertThat(event.getMetadata(), notNullValue());
+        assertThat(event.getMetadata().getAttribute(DDB_STREAM_EVENT_IS_TTL_DELETE), equalTo(Boolean.FALSE));
+
+    }
+
     private List<software.amazon.awssdk.services.dynamodb.model.Record> buildRecords(int count, final Instant creationTime) {
         return buildRecords(count, creationTime, Collections.emptyMap());
     }
@@ -486,20 +558,34 @@ class StreamRecordConverterTest {
             final Map<String, AttributeValue> additionalData) {
         List<software.amazon.awssdk.services.dynamodb.model.Record> records = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            records.add(buildRecord(creationTime, additionalData, null, OperationType.INSERT));
+            records.add(buildRecord(creationTime, additionalData, null, OperationType.INSERT, null));
+        }
+
+        return records;
+    }
+
+    private List<software.amazon.awssdk.services.dynamodb.model.Record> buildRecords(
+            int count,
+            final Instant creationTime,
+            final Map<String, AttributeValue> additionalData,
+            final Identity userIdentity) {
+        List<software.amazon.awssdk.services.dynamodb.model.Record> records = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            records.add(buildRecord(creationTime, additionalData, null, OperationType.INSERT, userIdentity));
         }
 
         return records;
     }
 
     private software.amazon.awssdk.services.dynamodb.model.Record buildRecord(final Instant creationTime) {
-        return buildRecord(creationTime, Collections.emptyMap(), null, OperationType.INSERT);
+        return buildRecord(creationTime, Collections.emptyMap(), null, OperationType.INSERT, null);
     }
 
     private software.amazon.awssdk.services.dynamodb.model.Record buildRecord(final Instant creationTime,
                                                                               Map<String, AttributeValue> additionalData,
                                                                               Map<String, AttributeValue> oldImage,
-                                                                              final OperationType operationType) {
+                                                                              final OperationType operationType,
+                                                                              final Identity userIdentity) {
         Map<String, AttributeValue> keysData = Map.of(
                 partitionKeyAttrName, AttributeValue.builder().s(UUID.randomUUID().toString()).build(),
                 sortKeyAttrName, AttributeValue.builder().s(UUID.randomUUID().toString()).build());
@@ -526,6 +612,7 @@ class StreamRecordConverterTest {
         software.amazon.awssdk.services.dynamodb.model.Record record = software.amazon.awssdk.services.dynamodb.model.Record.builder()
                 .dynamodb(streamRecord)
                 .eventName(operationType)
+                .userIdentity(userIdentity)
                 .build();
         return record;
     }

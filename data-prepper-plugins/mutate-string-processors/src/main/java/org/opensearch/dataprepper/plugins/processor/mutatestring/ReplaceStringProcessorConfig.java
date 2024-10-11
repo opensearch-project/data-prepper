@@ -17,6 +17,7 @@ import java.util.List;
 @JsonClassDescription("The <code>replace_string</code> processor replaces all occurrence of substring in key’s value with a " +
         "replacement string.")
 public class ReplaceStringProcessorConfig implements StringProcessorConfig<ReplaceStringProcessorConfig.Entry> {
+    @JsonPropertyOrder
     public static class Entry {
         @JsonPropertyDescription("The key of the field to modify.")
         private EventKey source;

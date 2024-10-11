@@ -42,7 +42,7 @@ public class HistogramAggregateActionConfigTests {
     void testDefault() {
         assertThat(histogramAggregateActionConfig.getGeneratedKeyPrefix(), equalTo(DEFAULT_GENERATED_KEY_PREFIX));
         assertThat(histogramAggregateActionConfig.getRecordMinMax(), equalTo(false));
-        assertThat(histogramAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS.toString()));
+        assertThat(histogramAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS));
         assertThat(histogramAggregateActionConfig.getMetricName(), equalTo(HistogramAggregateActionConfig.HISTOGRAM_METRIC_NAME));
     }
 
@@ -53,9 +53,9 @@ public class HistogramAggregateActionConfigTests {
         assertThat(histogramAggregateActionConfig.getGeneratedKeyPrefix(), equalTo(testGeneratedKeyPrefix));
         setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "recordMinMax", true);
         assertThat(histogramAggregateActionConfig.getRecordMinMax(), equalTo(true));
-        final String testOutputFormat = OutputFormat.OTEL_METRICS.toString();
+        final OutputFormat testOutputFormat = OutputFormat.OTEL_METRICS;
         setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "outputFormat", testOutputFormat);
-        assertThat(histogramAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS.toString()));
+        assertThat(histogramAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS));
         final String testKey = RandomStringUtils.randomAlphabetic(10);
         setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "key", testKey);
         assertThat(histogramAggregateActionConfig.getKey(), equalTo(testKey));
@@ -112,12 +112,6 @@ public class HistogramAggregateActionConfigTests {
         final String testName = UUID.randomUUID().toString();
         setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "metricName", testName);
         assertThat(histogramAggregateActionConfig.getMetricName(), equalTo(testName));
-    }
-
-    @Test
-    void testInvalidOutputFormatConfig() throws NoSuchFieldException, IllegalAccessException {
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "outputFormat", RandomStringUtils.randomAlphabetic(10));
-        assertThrows(IllegalArgumentException.class, () -> histogramAggregateActionConfig.getOutputFormat());
     }
 
     @Test

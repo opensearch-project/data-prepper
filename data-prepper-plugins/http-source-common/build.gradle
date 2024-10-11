@@ -9,7 +9,10 @@ plugins {
 
 dependencies {
     implementation project(':data-prepper-plugins:common')
+    implementation project(':data-prepper-plugins:armeria-common')
+    implementation project(':data-prepper-plugins:blocking-buffer')
     implementation libs.armeria.core
+    implementation libs.commons.io
     implementation 'software.amazon.awssdk:acm'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
