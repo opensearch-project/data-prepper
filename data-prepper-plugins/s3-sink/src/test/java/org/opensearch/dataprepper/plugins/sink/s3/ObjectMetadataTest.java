@@ -50,7 +50,7 @@ public class ObjectMetadataTest {
     void test_setEventCount_with_ObjectMetadata() {
         objectMetadata = createObjectUnderTest(objectMetadataConfig);
         Random random = new Random();
-	    Integer numEvents = Math.abs(random.nextInt());
+        Integer numEvents = Math.abs(random.nextInt());
         objectMetadata.setEventCount(numEvents);
         assertThat(objectMetadata.get().get(numberOfEventsKey), equalTo(Integer.toString(numEvents)));
     }
