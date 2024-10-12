@@ -21,6 +21,8 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -83,35 +85,44 @@ public class JsonDecoderTest {
     @Nested
     class JsonDecoderWithInputConfig {
         private ObjectMapper objectMapper;
-        final List<String> include_keys = new ArrayList<>();
+        private final List<String> includeKeys = new ArrayList<>();
+        private final List<String> includeMetadataKeys = new ArrayList<>();
+        private static final int numKeyRecords = 10;
+        private static final int numKeyPerRecord = 3;
+        private Map<String, Object> jsonObject;
+        private final String key_name = "logEvents";
 
         @BeforeEach
         void setup() {
             objectMapper = new ObjectMapper();
+            for (int i=0; i<10; i++) {
+                includeKeys.add(UUID.randomUUID().toString());
+                includeMetadataKeys.add(UUID.randomUUID().toString());
+            }
+            jsonObject = generateJsonWithSpecificKeys(includeKeys, includeMetadataKeys, key_name, numKeyRecords, numKeyPerRecord);
         }
         @Test
         void test_basicJsonDecoder_withInputConfig() throws IOException {
-            Random r = new Random();
             final Instant now = Instant.now();
             List<Record<Event>> records = new ArrayList<>();
-            for (int i=0; i<10; i++) {
-                include_keys.add(UUID.randomUUID().toString());
-            }
-            final String key_name = "logEvents";
-            Map<String, Object> jsonObject = generateJsonWithSpecificKeys(include_keys, key_name, 10);
-            jsonDecoder = new JsonDecoder(key_name, include_keys, include_keys);
+            jsonDecoder = new JsonDecoder(key_name, includeKeys, includeMetadataKeys);
             jsonDecoder.parse(createInputStream(jsonObject), now, (record) -> {
                 records.add(record);
-                receivedTime = ((Event)record.getData()).getEventHandle().getInternalOriginationTime();
+                receivedTime = record.getData().getEventHandle().getInternalOriginationTime();
             });
+
+            assertFalse(records.isEmpty());
+            assertEquals(numKeyRecords, records.size());
 
             records.forEach(record -> {
                 Map<String, Object> dataMap = record.getData().toMap();
                 Map<String, Object> metadataMap = record.getData().getMetadata().getAttributes();
 
-                for (String include_key: include_keys) {
-                    assertThat(dataMap.get(include_key), equalTo(jsonObject.get(include_key)));
-                    assertThat(metadataMap.get(include_key), equalTo(jsonObject.get(include_key)));
+                for (String includeKey: includeKeys) {
+                    assertThat(dataMap.get(includeKey), equalTo(jsonObject.get(includeKey)));
+                }
+                for (String includeMetadataKey: includeMetadataKeys) {
+                    assertThat(metadataMap.get(includeMetadataKey), equalTo(jsonObject.get(includeMetadataKey)));
                 }
             });
 
@@ -119,30 +130,74 @@ public class JsonDecoderTest {
         }
 
         @Test
-        void test_basicJsonDecoder_withInputConfig_withoutEvents() throws IOException {
-            Random r = new Random();
+        void test_basicJsonDecoder_withInputConfig_withoutEvents_empty_metadata_keys() throws IOException {
             final Instant now = Instant.now();
             List<Record<Event>> records = new ArrayList<>();
-            Map<String, Object> jsonObject = generateJsonWithSpecificKeys(include_keys, "logEvents", 10);
-            jsonDecoder = new JsonDecoder("", include_keys, Collections.emptyList());
+            jsonDecoder = new JsonDecoder("", includeKeys, Collections.emptyList());
             jsonDecoder.parse(createInputStream(jsonObject), now, (record) -> {
                 records.add(record);
-                receivedTime = ((Event)record.getData()).getEventHandle().getInternalOriginationTime();
+                receivedTime = record.getData().getEventHandle().getInternalOriginationTime();
+            });
+            assertTrue(records.isEmpty());
+        }
+
+        @Test
+        void test_basicJsonDecoder_withInputConfig_withoutEvents_null_include_metadata_keys() throws IOException {
+            final Instant now = Instant.now();
+            List<Record<Event>> records = new ArrayList<>();
+            jsonDecoder = new JsonDecoder("", includeKeys, null);
+            jsonDecoder.parse(createInputStream(jsonObject), now, (record) -> {
+                records.add(record);
+                receivedTime = record.getData().getEventHandle().getInternalOriginationTime();
             });
 
             assertTrue(records.isEmpty());
         }
 
-        private Map<String, Object> generateJsonWithSpecificKeys(final List<String> outerKeys, final String key, final int numRecords) {
+        @Test
+        void test_basicJsonDecoder_withInputConfig_withoutEvents_empty_include_keys() throws IOException {
+            final Instant now = Instant.now();
+            List<Record<Event>> records = new ArrayList<>();
+            jsonDecoder = new JsonDecoder("", Collections.emptyList(), includeMetadataKeys);
+            jsonDecoder.parse(createInputStream(jsonObject), now, (record) -> {
+                records.add(record);
+                receivedTime = record.getData().getEventHandle().getInternalOriginationTime();
+            });
+            assertTrue(records.isEmpty());
+        }
+
+        @Test
+        void test_basicJsonDecoder_withInputConfig_withoutEvents_null_include_keys() throws IOException {
+            final Instant now = Instant.now();
+            List<Record<Event>> records = new ArrayList<>();
+            jsonDecoder = new JsonDecoder("", null, includeMetadataKeys);
+            jsonDecoder.parse(createInputStream(jsonObject), now, (record) -> {
+                records.add(record);
+                receivedTime = record.getData().getEventHandle().getInternalOriginationTime();
+            });
+
+            assertTrue(records.isEmpty());
+        }
+
+        private Map<String, Object> generateJsonWithSpecificKeys(final List<String> includeKeys,
+                                                                 final List<String> includeMetadataKeys,
+                                                                 final String key,
+                                                                 final int numKeyRecords,
+                                                                 final int numKeyPerRecord) {
             final Map<String, Object> jsonObject = new LinkedHashMap<>();
             final List<Map<String, Object>> innerObjects = new ArrayList<>();
 
-            for (String outerKey: outerKeys) {
-                jsonObject.put(outerKey, UUID.randomUUID().toString());
+            for (String includeKey: includeKeys) {
+                jsonObject.put(includeKey, UUID.randomUUID().toString());
             }
-            for (int i=0; i<numRecords; i++) {
+
+            for (String includeMetadataKey: includeMetadataKeys) {
+                jsonObject.put(includeMetadataKey, UUID.randomUUID().toString());
+            }
+
+            for (int i=0; i<numKeyRecords; i++) {
                 final Map<String, Object> innerJsonMap = new LinkedHashMap<>();
-                for (int j=0; j<3; j++) {
+                for (int j=0; j<numKeyPerRecord; j++) {
                     innerJsonMap.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
                 }
                 innerObjects.add(innerJsonMap);

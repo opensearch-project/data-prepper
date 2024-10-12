@@ -46,7 +46,9 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -63,8 +65,8 @@ class JsonInputCodecTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         jsonInputCodecConfig = mock(JsonInputCodecConfig.class);
-        when(jsonInputCodecConfig.getIncludeKeysMetadata()).thenReturn(Collections.emptyList());
-        when(jsonInputCodecConfig.getIncludeKeys()).thenReturn(Collections.emptyList());
+        when(jsonInputCodecConfig.getIncludeKeysMetadata()).thenReturn(null);
+        when(jsonInputCodecConfig.getIncludeKeys()).thenReturn(null);
         when(jsonInputCodecConfig.getKeyName()).thenReturn(null);
         eventConsumer = mock(Consumer.class);
     }
@@ -222,17 +224,66 @@ class JsonInputCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 10, 100})
-    void parse_with_InputStream_calls_Consumer_with_EventConfig(final int numberOfObjects) throws IOException {
+    void parse_with_InputStream_calls_Consumer_with_EventConfig_validKey(final int numberOfObjects) throws IOException {
+        parse_InputStream_withEventConfig(numberOfObjects, "key", Collections.emptyList(), Collections.emptyList());
+    }
 
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 100})
+    void parse_with_InputStream_calls_Consumer_with_EventConfig_validKey_includeKeys(final int numberOfObjects) throws IOException {
         List<String> includeKeys = new ArrayList<>();
         for (int i=0; i<numberOfObjects; i++) {
             includeKeys.add(UUID.randomUUID().toString());
         }
-        final String objectKey = "key";
-        final Map<String, Object> jsonObjects = generateJsonWithSpecificKeys(includeKeys, objectKey, numberOfObjects);
-        when(jsonInputCodecConfig.getIncludeKeysMetadata()).thenReturn(includeKeys);
+        parse_InputStream_withEventConfig(numberOfObjects, "key", includeKeys, Collections.emptyList());
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 100})
+    void parse_with_InputStream_calls_Consumer_with_EventConfig_validKey_includeKeys_and_MetadataKeys(final int numberOfObjects) throws IOException {
+        List<String> includeKeys = new ArrayList<>();
+        List<String> includeMetadataKeys = new ArrayList<>();
+        for (int i=0; i<numberOfObjects; i++) {
+            includeKeys.add(UUID.randomUUID().toString());
+            includeMetadataKeys.add(UUID.randomUUID().toString());
+        }
+        parse_InputStream_withEventConfig(numberOfObjects, "key", includeKeys, includeMetadataKeys);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 100})
+    void parse_with_InputStream_calls_Consumer_with_EventConfig_validKey_includeMetadataKeys(final int numberOfObjects) throws IOException {
+        List<String> includeMetadataKeys = new ArrayList<>();
+        for (int i=0; i<numberOfObjects; i++) {
+            includeMetadataKeys.add(UUID.randomUUID().toString());
+        }
+        parse_InputStream_withEventConfig(numberOfObjects, "key", Collections.emptyList(), includeMetadataKeys);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 100})
+    void parse_with_InputStream_calls_Consumer_with_EventConfig_notMatchKey(final int numberOfObjects) throws IOException {
+        List<String> includeMetadataKeys = null;
+        List<String> includeKeys = null;
+        final Map<String, Object> jsonObjects = generateJsonWithSpecificKeys(includeKeys, includeMetadataKeys, "key", numberOfObjects, 2);
+        when(jsonInputCodecConfig.getIncludeKeysMetadata()).thenReturn(includeMetadataKeys);
         when(jsonInputCodecConfig.getIncludeKeys()).thenReturn(includeKeys);
-        when(jsonInputCodecConfig.getKeyName()).thenReturn(objectKey);
+        when(jsonInputCodecConfig.getKeyName()).thenReturn("key2");
+
+        createObjectUnderTest().parse(createInputStream(jsonObjects), eventConsumer);
+
+        verify(eventConsumer, times(0)).accept(any(Record.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 100})
+    void parse_with_InputStream_calls_Consumer_with_EventConfig_NullKey(final int numberOfObjects) throws IOException {
+        List<String> includeMetadataKeys = null;
+        List<String> includeKeys = null;
+        final Map<String, Object> jsonObjects = generateJsonWithSpecificKeys(includeKeys, includeMetadataKeys, "key", numberOfObjects, 2);
+        when(jsonInputCodecConfig.getIncludeKeysMetadata()).thenReturn(includeMetadataKeys);
+        when(jsonInputCodecConfig.getIncludeKeys()).thenReturn(includeKeys);
+        when(jsonInputCodecConfig.getKeyName()).thenReturn(null);
 
         createObjectUnderTest().parse(createInputStream(jsonObjects), eventConsumer);
 
@@ -374,17 +425,67 @@ class JsonInputCodecTest {
         return jsonObject;
     }
 
-    private static Map<String, Object> generateJsonWithSpecificKeys(final List<String> innerKeys, final String key, final int numRecords) {
+    private Map<String, Object> generateJsonWithSpecificKeys(final List<String> includeKeys,
+                                                             final List<String> includeMetadataKeys,
+                                                             final String key,
+                                                             final int numKeyRecords,
+                                                             final int numKeyPerRecord) {
         final Map<String, Object> jsonObject = new LinkedHashMap<>();
         final List<Map<String, Object>> innerObjects = new ArrayList<>();
-        for (int i=0; i<numRecords; i++) {
+
+        if (includeKeys != null && !includeKeys.isEmpty()) {
+            for (String includeKey : includeKeys) {
+                jsonObject.put(includeKey, UUID.randomUUID().toString());
+            }
+        }
+
+        if (includeMetadataKeys != null && !includeMetadataKeys.isEmpty()) {
+            for (String includeMetadataKey : includeMetadataKeys) {
+                jsonObject.put(includeMetadataKey, UUID.randomUUID().toString());
+            }
+        }
+
+        for (int i=0; i<numKeyRecords; i++) {
             final Map<String, Object> innerJsonMap = new LinkedHashMap<>();
-            for (String innerKey: innerKeys) {
-                innerJsonMap.put(innerKey, UUID.randomUUID().toString());
+            for (int j=0; j<numKeyPerRecord; j++) {
+                innerJsonMap.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
             }
             innerObjects.add(innerJsonMap);
         }
         jsonObject.put(key, innerObjects);
         return jsonObject;
+    }
+
+    private void parse_InputStream_withEventConfig(final int numberOfObjects, final String objectKey, final List<String> includeKeys, final List<String> includeMetadataKeys) throws IOException {
+        final Map<String, Object> jsonObjects = generateJsonWithSpecificKeys(includeKeys, includeMetadataKeys, objectKey, numberOfObjects, 2);
+        when(jsonInputCodecConfig.getIncludeKeysMetadata()).thenReturn(includeMetadataKeys);
+        when(jsonInputCodecConfig.getIncludeKeys()).thenReturn(includeKeys);
+        when(jsonInputCodecConfig.getKeyName()).thenReturn(objectKey);
+
+        createObjectUnderTest().parse(createInputStream(jsonObjects), eventConsumer);
+
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        verify(eventConsumer, times(numberOfObjects)).accept(recordArgumentCaptor.capture());
+
+        final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
+
+        assertThat(actualRecords.size(), equalTo(numberOfObjects));
+        for (final Record<Event> actualRecord : actualRecords) {
+
+            assertThat(actualRecord, notNullValue());
+            assertThat(actualRecord.getData(), notNullValue());
+            assertThat(actualRecord.getData().getMetadata(), notNullValue());
+
+            Map<String, Object> dataMap = actualRecord.getData().toMap();
+            for (String includeKey : includeKeys) {
+                assertTrue(dataMap.containsKey(includeKey));
+            }
+
+            Map<String, Object> metadataMap = actualRecord.getData().getMetadata().getAttributes();
+            for (String includeMetadataKey: includeMetadataKeys) {
+                assertTrue(metadataMap.containsKey(includeMetadataKey));
+            }
+            assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
+        }
     }
 }

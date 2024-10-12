@@ -17,8 +17,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -27,10 +27,10 @@ public class JsonDecoder implements ByteDecoder {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final JsonFactory jsonFactory = new JsonFactory();
     private String keyName;
-    private List<String> includeKeys;
-    private List<String> includeKeysMetadata;
+    private Collection<String> includeKeys;
+    private Collection<String> includeKeysMetadata;
 
-    public JsonDecoder(String keyName, List<String> includeKeys, List<String> includeKeysMetadata) {
+    public JsonDecoder(String keyName, Collection<String> includeKeys, Collection<String> includeKeysMetadata) {
         this.keyName = keyName;
         this.includeKeys = includeKeys;
         this.includeKeysMetadata = includeKeysMetadata;
@@ -56,10 +56,10 @@ public class JsonDecoder implements ByteDecoder {
             if (includeKeys != null && includeKeys.contains(nodeName) ||
                     (includeKeysMetadata != null && includeKeysMetadata.contains(nodeName))) {
                 jsonParser.nextToken();
-                if (includeKeys.contains(nodeName)) {
+                if (includeKeys != null && includeKeys.contains(nodeName)) {
                     includeKeysMap.put(nodeName, jsonParser.getValueAsString());
                 }
-                if (includeKeysMetadata.contains(nodeName)) {
+                if (includeKeysMetadata != null && includeKeysMetadata.contains(nodeName)) {
                     includeMetadataKeysMap.put(nodeName, jsonParser.getValueAsString());
                 }
                 continue;
@@ -77,8 +77,8 @@ public class JsonDecoder implements ByteDecoder {
     private void parseRecordsArray(final JsonParser jsonParser,
                                    final Instant timeReceived,
                                    final Consumer<Record<Event>> eventConsumer,
-                                   Map<String, Object> includeKeysMap,
-                                   Map<String, Object> includeMetadataKeysMap
+                                   final Map<String, Object> includeKeysMap,
+                                   final Map<String, Object> includeMetadataKeysMap
     ) throws IOException {
         while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
             final Map<String, Object> innerJson = objectMapper.readValue(jsonParser, Map.class);
