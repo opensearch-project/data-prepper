@@ -77,7 +77,7 @@ public class Constants {
   public static final String UPDATE_AUTHOR = "updateAuthor";
   public static final String TIME_SPENT = "timeSpent";
   public static final String LOGGED = " logged ";
-  public static final String BASIC = "Basic ";
+  public static final String BASIC = "Basic";
   public static final String CID = "c_id";
   public static final String WID = "w_id";
   public static final String BROWSE = "browse/";
