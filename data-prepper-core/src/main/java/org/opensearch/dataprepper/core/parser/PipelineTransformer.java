@@ -32,9 +32,9 @@ import org.opensearch.dataprepper.pipeline.parser.model.SinkContextPluginSetting
 import org.opensearch.dataprepper.core.pipeline.router.Router;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
-import org.opensearch.dataprepper.validation.PluginError;
-import org.opensearch.dataprepper.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.validation.PluginErrorsHandler;
+import org.opensearch.dataprepper.core.validation.PluginError;
+import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.core.validation.PluginErrorsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -31,9 +31,9 @@ import org.opensearch.dataprepper.plugin.ObjectMapperConfiguration;
 import org.opensearch.dataprepper.plugin.TestPluggableInterface;
 import org.opensearch.dataprepper.plugins.test.TestExtension;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
-import org.opensearch.dataprepper.validation.LoggingPluginErrorsHandler;
-import org.opensearch.dataprepper.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.validation.PluginErrorsHandler;
+import org.opensearch.dataprepper.core.validation.LoggingPluginErrorsHandler;
+import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.core.validation.PluginErrorsHandler;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.ArrayList;

@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.validation;
+package org.opensearch.dataprepper.core.validation;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

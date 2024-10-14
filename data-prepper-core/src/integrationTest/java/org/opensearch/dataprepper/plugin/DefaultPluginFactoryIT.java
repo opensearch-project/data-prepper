@@ -20,9 +20,9 @@ import org.opensearch.dataprepper.plugins.TestObjectPlugin;
 import org.opensearch.dataprepper.plugins.test.TestComponent;
 import org.opensearch.dataprepper.plugins.test.TestDISource;
 import org.opensearch.dataprepper.plugins.test.TestPlugin;
-import org.opensearch.dataprepper.validation.LoggingPluginErrorsHandler;
-import org.opensearch.dataprepper.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.validation.PluginErrorsHandler;
+import org.opensearch.dataprepper.core.validation.LoggingPluginErrorsHandler;
+import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.core.validation.PluginErrorsHandler;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.HashMap;
