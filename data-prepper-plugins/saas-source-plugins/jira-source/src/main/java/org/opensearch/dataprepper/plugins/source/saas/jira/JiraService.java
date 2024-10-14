@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.springframework.security.oauth2.client.ClientAuthorizationRequiredException;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestTemplate;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 import javax.inject.Named;
 import java.io.ByteArrayInputStream;
@@ -353,12 +354,11 @@ public class JiraService {
    * @return the issue
    */
   public String getIssue(String issueKey, JiraSourceConfig configuration) {
-    log.info("Started to fetch issue information");
+    log.debug("Started to fetch issue information");
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
 
     while(true) {
       String url = configuration.getAccountUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
-      log.info("Issue Fetching api call request is : {}", url);
       try {
         return restTemplate.getForEntity(url, String.class).getBody();
       } catch (ClientAuthorizationRequiredException ex) {
