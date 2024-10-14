@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.source.saas.jira.utils.JiraContentType
 import org.slf4j.Logger;
 import org.springframework.security.oauth2.client.ClientAuthorizationRequiredException;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
@@ -358,12 +359,13 @@ public class JiraService {
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
 
     while(true) {
-      String url = configuration.getAccountUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
+      String url = configuration.getAccountUrl() + REST_API_FETCH_ISSUE + "/";
       try {
         return restTemplate.getForEntity(url, String.class).getBody();
       } catch (ClientAuthorizationRequiredException ex) {
 
-        log.error("Failed to execute the rest call ",ex);
+        log.error(NOISY, "Failed to execute the rest call ",ex);
+
 
       }
     }
