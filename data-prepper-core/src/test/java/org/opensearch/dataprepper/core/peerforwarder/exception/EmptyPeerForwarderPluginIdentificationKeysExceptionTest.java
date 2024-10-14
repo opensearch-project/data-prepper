@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.core.peerforwarder.exception;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.core.peerforwarder.exception.EmptyPeerForwarderPluginIdentificationKeysException;
 
 import java.util.UUID;
 

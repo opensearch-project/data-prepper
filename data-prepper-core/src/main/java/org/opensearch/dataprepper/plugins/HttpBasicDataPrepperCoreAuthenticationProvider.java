@@ -5,12 +5,12 @@
 
 package org.opensearch.dataprepper.plugins;
 
-import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.core.pipeline.server.DataPrepperCoreAuthenticationProvider;
-import org.opensearch.dataprepper.core.pipeline.server.HttpBasicAuthenticationConfig;
 import com.sun.net.httpserver.Authenticator;
 import com.sun.net.httpserver.BasicAuthenticator;
+import org.opensearch.dataprepper.core.pipeline.server.DataPrepperCoreAuthenticationProvider;
+import org.opensearch.dataprepper.core.pipeline.server.HttpBasicAuthenticationConfig;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 
 import java.util.Objects;
 

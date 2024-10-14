@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.core.peerforwarder.discovery;
 
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import java.util.Objects;
 import java.util.function.BiFunction;

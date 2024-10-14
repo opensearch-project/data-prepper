@@ -10,10 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.TestDataProvider;
-import org.opensearch.dataprepper.core.parser.config.DataPrepperAppConfiguration;
-import org.opensearch.dataprepper.core.parser.config.FileStructurePathProvider;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 import java.io.File;
 import java.io.IOException;

@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.core.pipeline.server;
 
-import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
@@ -14,7 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.pipeline.server.HttpServerProvider;
+import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 
 import java.io.IOException;
 import java.net.DatagramSocket;

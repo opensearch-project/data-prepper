@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.core.pipeline.common;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
 
 import java.util.ArrayList;
 import java.util.Collections;

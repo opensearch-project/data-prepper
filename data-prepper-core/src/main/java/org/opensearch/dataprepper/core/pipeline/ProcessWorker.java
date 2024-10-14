@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.core.pipeline;
 
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.core.pipeline.common.FutureHelper;
+import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -16,7 +17,6 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

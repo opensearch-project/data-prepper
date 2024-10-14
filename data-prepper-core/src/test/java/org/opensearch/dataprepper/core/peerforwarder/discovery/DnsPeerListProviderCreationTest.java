@@ -14,10 +14,8 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.peerforwarder.discovery.DnsPeerListProvider;
-import org.opensearch.dataprepper.core.peerforwarder.discovery.PeerListProvider;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import java.util.concurrent.CompletableFuture;
 

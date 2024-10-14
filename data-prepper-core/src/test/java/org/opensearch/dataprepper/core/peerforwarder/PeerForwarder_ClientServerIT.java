@@ -17,31 +17,25 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.opensearch.dataprepper.core.peerforwarder.DefaultPeerForwarderProvider;
-import org.opensearch.dataprepper.core.peerforwarder.ForwardingAuthentication;
-import org.opensearch.dataprepper.core.peerforwarder.PeerClientPool;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderClientFactory;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderReceiveBuffer;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.CheckpointState;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.core.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient;
-import org.opensearch.dataprepper.core.peerforwarder.codec.PeerForwarderCodecAppConfig;
 import org.opensearch.dataprepper.core.peerforwarder.codec.JacksonPeerForwarderCodec;
 import org.opensearch.dataprepper.core.peerforwarder.codec.JavaPeerForwarderCodec;
 import org.opensearch.dataprepper.core.peerforwarder.codec.PeerForwarderCodec;
+import org.opensearch.dataprepper.core.peerforwarder.codec.PeerForwarderCodecAppConfig;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.DiscoveryMode;
 import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderHttpServerProvider;
 import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderHttpService;
 import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderServer;
 import org.opensearch.dataprepper.core.peerforwarder.server.RemotePeerForwarderServer;
 import org.opensearch.dataprepper.core.peerforwarder.server.ResponseHandler;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import javax.net.ssl.SSLHandshakeException;
@@ -66,7 +60,6 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 /**
  * Integration tests that verify that Peer Forwarder client-server communication

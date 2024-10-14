@@ -13,12 +13,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.certificate.CertificateProviderFactory;
-import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderHttpServerProvider;
-import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderHttpService;
 
-import static org.mockito.Mockito.when;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderHttpServerProviderTest {

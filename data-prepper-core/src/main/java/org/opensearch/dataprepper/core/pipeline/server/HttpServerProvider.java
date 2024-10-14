@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.core.pipeline.server;
 
-import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
+import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

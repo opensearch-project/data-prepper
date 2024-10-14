@@ -13,13 +13,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.pipeline.server.GetPipelinesHandler;
+import org.opensearch.dataprepper.core.pipeline.PipelinesProvider;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
-import org.opensearch.dataprepper.core.pipeline.PipelinesProvider;
 
 import javax.ws.rs.HttpMethod;
 import java.io.IOException;

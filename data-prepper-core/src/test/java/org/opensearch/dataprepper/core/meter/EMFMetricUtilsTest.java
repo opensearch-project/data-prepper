@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.core.meter;
 
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.core.meter.EMFMetricUtils;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;

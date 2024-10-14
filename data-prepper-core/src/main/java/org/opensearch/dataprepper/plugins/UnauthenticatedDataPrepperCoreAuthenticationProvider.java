@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.plugins;
 
-import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.core.pipeline.server.DataPrepperCoreAuthenticationProvider;
 import com.sun.net.httpserver.Authenticator;
+import org.opensearch.dataprepper.core.pipeline.server.DataPrepperCoreAuthenticationProvider;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 
 /**
  * The plugin for unauthenticated core Data Prepper APIs.

@@ -5,15 +5,15 @@
 
 package org.opensearch.dataprepper.core.pipeline.router;
 
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.core.parser.DataFlowComponent;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 

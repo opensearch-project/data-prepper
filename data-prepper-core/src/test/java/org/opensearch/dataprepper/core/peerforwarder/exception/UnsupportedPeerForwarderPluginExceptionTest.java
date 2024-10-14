@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.core.peerforwarder.exception;
 
-import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
 import java.util.UUID;
 

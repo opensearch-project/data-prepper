@@ -6,14 +6,13 @@
 package org.opensearch.dataprepper.core.acknowledgements;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.Set;
-import java.util.HashSet;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 /**
  * AcknowledgementSetMonitor - monitors the acknowledgement sets for completion/expiration
  * <p>

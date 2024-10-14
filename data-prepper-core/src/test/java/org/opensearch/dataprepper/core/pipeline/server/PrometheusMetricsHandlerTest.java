@@ -15,7 +15,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.pipeline.server.PrometheusMetricsHandler;
 
 import javax.ws.rs.HttpMethod;
 import java.io.IOException;

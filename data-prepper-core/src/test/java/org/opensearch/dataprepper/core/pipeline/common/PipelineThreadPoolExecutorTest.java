@@ -5,14 +5,12 @@
 
 package org.opensearch.dataprepper.core.pipeline.common;
 
-import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.pipeline.common.PipelineThreadFactory;
-import org.opensearch.dataprepper.core.pipeline.common.PipelineThreadPoolExecutor;
+import org.opensearch.dataprepper.core.pipeline.Pipeline;
 
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;

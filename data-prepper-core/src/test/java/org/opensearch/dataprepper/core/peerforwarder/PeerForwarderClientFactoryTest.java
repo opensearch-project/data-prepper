@@ -15,14 +15,9 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.peerforwarder.ForwardingAuthentication;
-import org.opensearch.dataprepper.core.peerforwarder.HashRing;
-import org.opensearch.dataprepper.core.peerforwarder.PeerClientPool;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderClientFactory;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.core.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.DiscoveryMode;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 

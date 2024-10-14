@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.core.breaker;
 
-import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.core.parser.model.CircuitBreakerConfig;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

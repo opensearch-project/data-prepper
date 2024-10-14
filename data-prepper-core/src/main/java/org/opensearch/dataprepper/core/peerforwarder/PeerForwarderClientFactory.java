@@ -6,10 +6,10 @@
 package org.opensearch.dataprepper.core.peerforwarder;
 
 
+import org.opensearch.dataprepper.core.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.DiscoveryMode;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.PeerListProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.core.peerforwarder.certificate.CertificateProviderFactory;
 
 public class PeerForwarderClientFactory {
     public static final int NUM_VIRTUAL_NODES = 128;

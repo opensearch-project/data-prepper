@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.core.pipeline.router;
 
-import org.opensearch.dataprepper.model.configuration.ConditionalRoute;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.configuration.ConditionalRoute;
 
 import java.util.Objects;
 import java.util.Set;

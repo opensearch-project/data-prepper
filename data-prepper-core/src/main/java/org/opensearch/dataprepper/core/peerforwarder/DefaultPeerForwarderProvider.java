@@ -5,12 +5,12 @@
 
 package org.opensearch.dataprepper.core.peerforwarder;
 
+import org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.DiscoveryMode;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.processor.Processor;
-import org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.HashMap;
 import java.util.Map;

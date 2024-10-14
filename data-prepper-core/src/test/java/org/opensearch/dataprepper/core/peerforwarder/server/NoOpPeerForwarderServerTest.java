@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.core.peerforwarder.server;
 
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.core.peerforwarder.server.NoOpPeerForwarderServer;
 
 class NoOpPeerForwarderServerTest {
 

@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.core.pipeline.router;
 
 import org.opensearch.dataprepper.model.record.Record;
+
 import java.util.Collection;
 
 public interface RouterGetRecordStrategy {

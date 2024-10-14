@@ -8,10 +8,13 @@ package org.opensearch.dataprepper.core.pipeline;
 import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.core.acknowledgements.InactiveAcknowledgementSetManager;
+import org.opensearch.dataprepper.core.parser.DataFlowComponent;
 import org.opensearch.dataprepper.core.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.core.pipeline.common.PipelineThreadPoolExecutor;
 import org.opensearch.dataprepper.core.pipeline.router.Router;
+import org.opensearch.dataprepper.core.pipeline.router.RouterCopyRecordStrategy;
 import org.opensearch.dataprepper.core.pipeline.router.RouterGetRecordStrategy;
+import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.EventFactory;
@@ -25,9 +28,6 @@ import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordinatio
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
-import org.opensearch.dataprepper.core.parser.DataFlowComponent;
-import org.opensearch.dataprepper.core.pipeline.router.RouterCopyRecordStrategy;
-import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

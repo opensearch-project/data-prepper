@@ -10,7 +10,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.opensearch.dataprepper.core.pipeline.server.CloudWatchMeterRegistryProvider;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 
 import static org.hamcrest.CoreMatchers.notNullValue;

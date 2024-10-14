@@ -7,13 +7,12 @@ package org.opensearch.dataprepper.core.acknowledgements;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.core.acknowledgements.InactiveAcknowledgementSetManager;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Duration;
+
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class InactiveAcknowledgementSetManagerTests {
     InactiveAcknowledgementSetManager acknowledgementSetManager;

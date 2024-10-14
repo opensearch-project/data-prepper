@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.core.sourcecoordination;
 
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.core.parser.model.SourceCoordinationConfig;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

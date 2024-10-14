@@ -5,21 +5,17 @@
 
 package org.opensearch.dataprepper.core.peerforwarder;
 
-import static org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration.DEFAULT_DRAIN_TIMEOUT;
-
-import org.opensearch.dataprepper.TestDataProvider;
-import org.opensearch.dataprepper.core.peerforwarder.ForwardingAuthentication;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.core.peerforwarder.discovery.DiscoveryMode;
-import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
-import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
-import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.TestDataProvider;
+import org.opensearch.dataprepper.core.peerforwarder.discovery.DiscoveryMode;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,6 +26,7 @@ import java.util.ArrayList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration.DEFAULT_DRAIN_TIMEOUT;
 import static org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration.DEFAULT_FORWARDING_BATCH_TIMEOUT;
 import static org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration.DEFAULT_PRIVATE_KEY_FILE_PATH;
 

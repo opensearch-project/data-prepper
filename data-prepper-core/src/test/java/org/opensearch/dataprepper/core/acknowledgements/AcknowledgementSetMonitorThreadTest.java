@@ -10,8 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.acknowledgements.AcknowledgementSetMonitor;
-import org.opensearch.dataprepper.core.acknowledgements.AcknowledgementSetMonitorThread;
 
 import java.time.Duration;
 

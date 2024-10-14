@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.core.pipeline.router;
 
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.core.parser.DataFlowComponent;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
 import java.util.Collection;

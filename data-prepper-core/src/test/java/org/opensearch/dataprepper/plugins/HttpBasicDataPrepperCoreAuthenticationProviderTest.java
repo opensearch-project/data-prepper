@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.plugins;
 
-import org.opensearch.dataprepper.core.pipeline.server.HttpBasicAuthenticationConfig;
 import com.sun.net.httpserver.Authenticator;
 import com.sun.net.httpserver.BasicAuthenticator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.core.pipeline.server.HttpBasicAuthenticationConfig;
 
 import java.util.UUID;
 

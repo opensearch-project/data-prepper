@@ -11,9 +11,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.peerforwarder.discovery.StaticPeerListProvider;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.core.peerforwarder.HashRing;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import java.util.Arrays;
 import java.util.Collections;

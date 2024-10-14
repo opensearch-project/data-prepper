@@ -5,6 +5,10 @@
 
 package org.opensearch.dataprepper.core.peerforwarder.client;
 
+import com.linecorp.armeria.client.WebClient;
+import com.linecorp.armeria.common.AggregatedHttpResponse;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.core.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderClientFactory;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
@@ -13,10 +17,6 @@ import org.opensearch.dataprepper.core.peerforwarder.model.PeerForwardingEvents;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import com.linecorp.armeria.client.WebClient;
-import com.linecorp.armeria.common.AggregatedHttpResponse;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
