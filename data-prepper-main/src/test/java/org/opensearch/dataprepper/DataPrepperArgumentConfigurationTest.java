@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.core.DataPrepperArgs;
+import org.opensearch.dataprepper.core.DataPrepperArgumentConfiguration;
 import org.springframework.core.env.Environment;
 
 import static org.hamcrest.MatcherAssert.assertThat;

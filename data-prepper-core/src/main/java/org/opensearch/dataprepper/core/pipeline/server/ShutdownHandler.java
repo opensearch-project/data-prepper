@@ -9,7 +9,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
-import org.opensearch.dataprepper.DataPrepper;
+import org.opensearch.dataprepper.core.DataPrepper;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationParser;
 import org.slf4j.Logger;

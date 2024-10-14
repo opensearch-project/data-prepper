@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.core.pipeline.server.config;
 
-import org.opensearch.dataprepper.DataPrepper;
+import org.opensearch.dataprepper.core.DataPrepper;
 import org.opensearch.dataprepper.core.pipeline.PipelinesProvider;
 import org.opensearch.dataprepper.core.pipeline.server.DataPrepperCoreAuthenticationProvider;
 import org.opensearch.dataprepper.core.pipeline.server.ShutdownHandler;

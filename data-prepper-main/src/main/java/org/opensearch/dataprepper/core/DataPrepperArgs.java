@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper;
+package org.opensearch.dataprepper.core;
 
 import org.opensearch.dataprepper.logstash.LogstashConfigConverter;
 import org.opensearch.dataprepper.core.parser.config.FileStructurePathProvider;

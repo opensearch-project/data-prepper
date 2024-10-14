@@ -5,8 +5,7 @@
 
 package org.opensearch.dataprepper.core.pipeline.server.config;
 
-import org.opensearch.dataprepper.DataPrepper;
-import org.opensearch.dataprepper.core.pipeline.server.config.DataPrepperServerConfiguration;
+import org.opensearch.dataprepper.core.DataPrepper;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;

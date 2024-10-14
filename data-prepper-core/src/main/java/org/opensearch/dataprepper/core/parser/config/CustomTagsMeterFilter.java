@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.opensearch.dataprepper.DataPrepper.getServiceNameForMetrics;
+import static org.opensearch.dataprepper.core.DataPrepper.getServiceNameForMetrics;
 import static org.opensearch.dataprepper.metrics.MetricNames.DELIMITER;
 import static org.opensearch.dataprepper.metrics.MetricNames.SERVICE_NAME;
 

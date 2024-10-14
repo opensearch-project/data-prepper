@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper;
+package org.opensearch.dataprepper.core;
 
 import io.micrometer.core.instrument.util.StringUtils;
+import org.opensearch.dataprepper.DataPrepperShutdownListener;
+import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.core.parser.PipelineTransformer;

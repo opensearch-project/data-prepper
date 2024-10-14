@@ -10,8 +10,6 @@ import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.opensearch.dataprepper.core.parser.config.CustomTagsMeterFilter;
-import org.opensearch.dataprepper.core.parser.config.MetricTagFilter;
 
 import java.util.List;
 import java.util.Map;
@@ -21,7 +19,7 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.opensearch.dataprepper.DataPrepper.getServiceNameForMetrics;
+import static org.opensearch.dataprepper.core.DataPrepper.getServiceNameForMetrics;
 import static org.opensearch.dataprepper.metrics.MetricNames.SERVICE_NAME;
 
 class CustomTagsMeterFilterTest {

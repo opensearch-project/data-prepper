@@ -17,9 +17,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.DataPrepper;
+import org.opensearch.dataprepper.core.DataPrepper;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
-import org.opensearch.dataprepper.core.pipeline.server.ShutdownHandler;
 
 import javax.ws.rs.HttpMethod;
 import java.io.IOException;
