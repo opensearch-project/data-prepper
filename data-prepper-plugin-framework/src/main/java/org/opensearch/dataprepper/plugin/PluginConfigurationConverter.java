@@ -32,11 +32,15 @@ class PluginConfigurationConverter {
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
+    private final PluginConfigurationErrorHandler pluginConfigurationErrorHandler;
+
     PluginConfigurationConverter(final Validator validator,
                                  @Named("pluginConfigObjectMapper")
-                                 final ObjectMapper objectMapper) {
+                                 final ObjectMapper objectMapper,
+                                 final PluginConfigurationErrorHandler pluginConfigurationErrorHandler) {
         this.objectMapper = objectMapper;
         this.validator = validator;
+        this.pluginConfigurationErrorHandler = pluginConfigurationErrorHandler;
     }
 
     /**
@@ -80,6 +84,12 @@ class PluginConfigurationConverter {
         Map<String, Object> settingsMap = pluginSetting.getSettings();
         if (settingsMap == null)
             settingsMap = Collections.emptyMap();
-        return objectMapper.convertValue(settingsMap, pluginConfigurationType);
+
+        try {
+            return objectMapper.convertValue(settingsMap, pluginConfigurationType);
+        } catch (final Exception e) {
+            throw pluginConfigurationErrorHandler.handleException(pluginSetting, e);
+        }
     }
+
 }
