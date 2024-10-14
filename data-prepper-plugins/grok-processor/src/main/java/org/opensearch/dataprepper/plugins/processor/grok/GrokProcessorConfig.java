@@ -70,7 +70,7 @@ public class GrokProcessorConfig {
     @JsonPropertyDescription("Enables the preservation of <code>null</code> captures from the processed output. Default is <code>false</code>.")
     private boolean keepEmptyCaptures = DEFAULT_KEEP_EMPTY_CAPTURES;
 
-    @JsonProperty(value = NAMED_CAPTURES_ONLY, defaultValue = true)
+    @JsonProperty(value = NAMED_CAPTURES_ONLY, defaultValue = "true")
     @JsonPropertyDescription("Specifies whether to keep only named captures. Default is <code>true</code>.")
     private boolean namedCapturesOnly = DEFAULT_NAMED_CAPTURES_ONLY;
 
