@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.core.logging;
+package org.opensearch.dataprepper.logging;
 
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.LogEvent;
