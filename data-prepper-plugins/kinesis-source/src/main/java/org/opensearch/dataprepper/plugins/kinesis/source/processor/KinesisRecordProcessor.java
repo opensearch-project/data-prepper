@@ -161,7 +161,9 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
 
             // Track the records for checkpoint purpose
             kinesisCheckpointerTracker.addRecordForCheckpoint(extendedSequenceNumber, processRecordsInput.checkpointer());
-            List<Record<Event>> records = kinesisRecordConverter.convert(processRecordsInput.records(), streamIdentifier.streamName());
+            List<Record<Event>> records = kinesisRecordConverter.convert(
+                    kinesisStreamConfig.getCompression().getDecompressionEngine(),
+                    processRecordsInput.records(), streamIdentifier.streamName());
 
             int eventCount = 0;
             for (Record<Event> record: records) {

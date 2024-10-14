@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>convert_entry_type</code> processor converts a value associated with the specified key in " +
+@JsonClassDescription("The <code>convert_type</code> processor converts a value associated with the specified key in " +
         "a event to the specified type. It is a casting processor that changes the types of specified fields in events.")
 public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     @JsonProperty("key")

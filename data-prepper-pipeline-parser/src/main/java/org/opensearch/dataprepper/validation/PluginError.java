@@ -7,7 +7,8 @@ import lombok.NonNull;
 @Getter
 @Builder
 public class PluginError {
-    static final String PIPELINE_DELIMITER = ":";
+    static final String PIPELINE_DELIMITER = ".";
+    static final String PATH_TO_CAUSE_DELIMITER = ":";
     static final String CAUSED_BY_DELIMITER = " caused by: ";
     private final String pipelineName;
     private final String componentType;
@@ -27,7 +28,7 @@ public class PluginError {
             message.append(PIPELINE_DELIMITER);
         }
         message.append(pluginName);
-        message.append(PIPELINE_DELIMITER);
+        message.append(PATH_TO_CAUSE_DELIMITER);
         message.append(getFlattenedExceptionMessage(CAUSED_BY_DELIMITER));
         return message.toString();
     }
@@ -37,8 +38,10 @@ public class PluginError {
         Throwable throwable = exception;
 
         while (throwable != null) {
-            message.append(delimiter);
-            message.append(throwable.getMessage());
+            if (throwable.getMessage() != null) {
+                message.append(delimiter);
+                message.append(throwable.getMessage());
+            }
             throwable = throwable.getCause();
         }
 

@@ -27,7 +27,7 @@ public class OtelTraceRawProcessorConfig {
 
     @JsonProperty("trace_group_cache_ttl")
     @JsonPropertyDescription("Represents the time-to-live to cache a trace group details. " +
-            "The value may be an ISO 8601 notation such as <code>PT1M30S</code> or a duration and unit such as <code>45s</code>" +
+            "The value may be an ISO 8601 notation such as <code>PT1M30S</code> or a duration and unit such as <code>45s</code>. " +
             "Default is 15 seconds.")
     private Duration traceGroupCacheTimeToLive = DEFAULT_TRACE_ID_TTL;
 
