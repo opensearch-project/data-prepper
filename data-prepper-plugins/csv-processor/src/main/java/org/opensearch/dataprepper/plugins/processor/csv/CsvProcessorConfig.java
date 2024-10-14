@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.csv;
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 
 import java.util.List;
@@ -15,6 +16,8 @@ import java.util.List;
 /**
  * Configuration class for {@link CsvProcessor}.
  */
+
+@JsonPropertyOrder
 @JsonClassDescription("The <code>csv</code> processor parses comma-separated values (CSVs) strings into structured data.")
 public class CsvProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
