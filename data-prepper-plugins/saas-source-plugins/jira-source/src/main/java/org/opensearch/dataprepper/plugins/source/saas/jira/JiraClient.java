@@ -46,10 +46,12 @@ public class JiraClient implements SaasClient {
 
     public JiraClient(JiraService service,
                       JiraIterator jiraIterator,
-                      SaasPluginExecutorServiceProvider executorServiceProvider) {
+                      SaasPluginExecutorServiceProvider executorServiceProvider,
+                      JiraSourceConfig sourceConfig) {
         this.service = service;
         this.jiraIterator = jiraIterator;
         this.executorService = executorServiceProvider.get();
+        this.configuration = JiraConfiguration.of(sourceConfig);
     }
 
 
