@@ -359,7 +359,7 @@ public class JiraService {
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
 
     while(true) {
-      String url = configuration.getAccountUrl() + REST_API_FETCH_ISSUE + "/";
+      String url = configuration.getAccountUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
       try {
         return restTemplate.getForEntity(url, String.class).getBody();
       } catch (ClientAuthorizationRequiredException ex) {
