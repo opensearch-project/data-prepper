@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper;
 
 import org.opensearch.dataprepper.logstash.LogstashConfigConverter;
-import org.opensearch.dataprepper.parser.config.FileStructurePathProvider;
+import org.opensearch.dataprepper.core.parser.config.FileStructurePathProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

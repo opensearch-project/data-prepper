@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper;
 
-import org.opensearch.dataprepper.parser.config.DataPrepperAppConfiguration;
+import org.opensearch.dataprepper.core.parser.config.DataPrepperAppConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;

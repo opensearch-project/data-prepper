@@ -13,11 +13,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.parser.PipelineTransformer;
-import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
-import org.opensearch.dataprepper.pipeline.Pipeline;
-import org.opensearch.dataprepper.pipeline.PipelineObserver;
-import org.opensearch.dataprepper.pipeline.server.DataPrepperServer;
+import org.opensearch.dataprepper.core.parser.PipelineTransformer;
+import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderServer;
+import org.opensearch.dataprepper.core.pipeline.Pipeline;
+import org.opensearch.dataprepper.core.pipeline.PipelineObserver;
+import org.opensearch.dataprepper.core.pipeline.server.DataPrepperServer;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
