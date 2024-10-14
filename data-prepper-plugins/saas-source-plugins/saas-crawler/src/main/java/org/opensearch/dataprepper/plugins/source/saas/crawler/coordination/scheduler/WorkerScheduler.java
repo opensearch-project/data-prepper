@@ -42,6 +42,7 @@ public class WorkerScheduler implements Runnable {
     @Override
     public void run() {
         log.info("Worker thread started");
+        log.info("Processing Partitions");
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 // Get the next available partition from the coordinator
@@ -72,7 +73,6 @@ public class WorkerScheduler implements Runnable {
     }
 
     private void processPartition(EnhancedSourcePartition partition, Buffer<Record<Event>> buffer, SaasSourceConfig sourceConfig) {
-        log.info("Processing partition: {}", partition.getPartitionKey());
         // Implement your source extraction logic here
         // Update the partition state or commit the partition as needed
         // Commit the partition to mark it as processed

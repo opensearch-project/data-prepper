@@ -208,7 +208,6 @@ public class JiraService {
       issueMetadata.put(CONTENT_TYPE, JiraContentType.ISSUE.getType());
       String id = _ISSUE + issueMetadata.get(PROJECT_KEY) + "-" + issue.getKey();
 
-      log.info("Creating issue information {}", id);
       itemInfoQueue.add(createItemInfo(id, issueMetadata));
 
       if (Objects.nonNull(issueMetadata.get(PROJECT_KEY)) && !jiraProjectCache
@@ -229,7 +228,6 @@ public class JiraService {
    */
   public SearchResults getAllIssues(StringBuilder jql, int startAt,
                                     JiraSourceConfig configuration) {
-    log.info("Started to fetch all issues information");
     SearchResults results = null;
     HttpResponse<JsonNode> response;
     com.mashape.unirest.request.HttpRequest request;
@@ -245,8 +243,6 @@ public class JiraService {
                 .queryString(START_AT, startAt)
                 .queryString(JQL_FIELD, jql)
                 .queryString(EXPAND_FIELD, EXPAND_VALUE);
-        log.info("Search result api call request is : {}",
-                new Gson().toJson(request, com.mashape.unirest.request.HttpRequest.class));
 
         response = request.asJson();
         /*appLog.info("Search result api call response is: {}",
@@ -274,11 +270,7 @@ public class JiraService {
                   .queryString(START_AT, startAt)
                   .queryString(JQL_FIELD, jql)
                   .queryString(EXPAND_FIELD, EXPAND_VALUE);
-          log.info("Search result api call request is :",
-                  new Gson().toJson(request, com.mashape.unirest.request.HttpRequest.class));
           response = request.asJson();
-          log.info("Search result api call response is:",
-                  new Gson().toJson(response, com.mashape.unirest.http.HttpResponse.class));
           if (response.getStatus() == TOKEN_EXPIRED) {
             JiraOauthConfig.changeAccessAndRefreshToken(configuration);
             retryCount++;

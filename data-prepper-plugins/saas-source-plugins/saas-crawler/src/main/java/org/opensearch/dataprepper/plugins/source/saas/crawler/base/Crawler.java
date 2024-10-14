@@ -38,6 +38,7 @@ public class Crawler {
         Iterator<ItemInfo> itemInfoIterator = client.listItems();
         log.info("Starting to crawl the source");
         long updatedPollTime = 0;
+        log.info("Creating Partitions");
         do {
             final List<ItemInfo> itemInfoList = new ArrayList<>();
             for (int i = 0; i < maxItemsPerPage && itemInfoIterator.hasNext(); i++) {
@@ -74,7 +75,6 @@ public class Crawler {
         state.setItemIds(itemIds);
         state.setExportStartTime(System.currentTimeMillis());
         state.setLoadedItems(itemInfoList.size());
-        log.info("Creating a new partition");
         SaasSourcePartition sourcePartition = new SaasSourcePartition(state, partitionKey);
         coordinator.createPartition(sourcePartition);
     }
