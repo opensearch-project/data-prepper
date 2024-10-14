@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.core.validation;
+package org.opensearch.dataprepper.validation;
 
 import java.util.Collection;
 

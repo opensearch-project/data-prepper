@@ -25,7 +25,7 @@ import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.core.validation.LoggingPluginErrorsHandler;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.core.validation.PluginErrorsHandler;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.EventFactory;

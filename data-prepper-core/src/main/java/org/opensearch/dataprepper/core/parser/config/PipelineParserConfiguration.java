@@ -12,7 +12,7 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.core.validation.PluginErrorsHandler;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.event.EventFactory;
