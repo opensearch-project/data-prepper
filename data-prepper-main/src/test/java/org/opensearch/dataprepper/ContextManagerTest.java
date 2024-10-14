@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.core.DataPrepper;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;

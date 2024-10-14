@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.pipeline.parser.ByteCountDeserializer;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
+import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.MskBrokerConnectionType;

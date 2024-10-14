@@ -12,7 +12,7 @@ import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
+import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import software.amazon.awssdk.regions.Region;
 
 import java.io.File;
