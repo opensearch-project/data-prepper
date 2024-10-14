@@ -99,7 +99,7 @@ public class JiraSourceConfig implements SaasSourceConfig {
     }
 
     public String getAuthType() {
-        return "Basic";
+        return this.getConnectorCredentials().get("auth_type");
     }
 
     public String getAccessToken() {

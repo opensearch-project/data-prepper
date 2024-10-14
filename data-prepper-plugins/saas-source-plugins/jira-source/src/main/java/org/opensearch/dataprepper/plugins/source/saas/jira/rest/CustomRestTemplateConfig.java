@@ -14,9 +14,8 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 public class CustomRestTemplateConfig {
 
     @Bean
-    public RestTemplate basicAuthRestTemplate() {
+    public RestTemplate basicAuthRestTemplate(JiraSourceConfig config) {
         RestTemplate restTemplate = new RestTemplate();
-        JiraSourceConfig config = new JiraSourceConfig();
         restTemplate.setRequestFactory(new HttpComponentsClientHttpRequestFactory());
         ClientHttpRequestInterceptor httpInterceptor;
         if(OAUTH2.equals(config.getAuthType())) {
