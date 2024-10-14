@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira.rest;
 
+import org.opensearch.dataprepper.plugins.source.saas.jira.JiraSourceConfig;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
@@ -15,9 +16,9 @@ public class BasicAuthInterceptor implements ClientHttpRequestInterceptor {
     private final String username;
     private final String password;
 
-    public BasicAuthInterceptor(String username, String password) {
-        this.username = username;
-        this.password = password;
+    public BasicAuthInterceptor(JiraSourceConfig config) {
+        this.username = config.getJiraId();
+        this.password = config.getJiraCredential();
     }
 
     @Override

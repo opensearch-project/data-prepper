@@ -9,4 +9,6 @@ public interface SaasSourceConfig {
 
     public final int DEFAULT_NUMBER_OF_WORKERS = 1;
     public static final Duration DEFAULT_BACKOFF_MILLIS = Duration.ofMillis(30000);
+
+    public boolean isValid();
 }

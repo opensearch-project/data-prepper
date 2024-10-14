@@ -1,7 +1,5 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.internal.LinkedTreeMap;
@@ -14,14 +12,13 @@ import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.saas.jira.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.saas.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.saas.jira.models.SearchResults;
+import org.opensearch.dataprepper.plugins.source.saas.jira.rest.CustomRestTemplateConfig;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.AddressValidation;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.JiraContentType;
 import org.slf4j.Logger;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.client.ClientAuthorizationRequiredException;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.inject.Named;
@@ -69,14 +66,12 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.MAX_RESULT;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.MAX_RESULTS;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.NAME;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.NOT_FOUND;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PREFIX;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_IN;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_KEY;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_NAME;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.RATE_LIMIT;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.REST_API_FETCH_ISSUE;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.REST_API_SEARCH;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.RETRY_ATTEMPT;
@@ -104,14 +99,17 @@ public class JiraService {
   private final RestTemplate restTemplate;
 
   private final JiraConfigHelper configHelper;
+
+  private final CustomRestTemplateConfig customRestTemplateConfig;
   /**
    * The Jira project cache.
    */
   static Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
 
-  public JiraService(RestTemplate restTemplate, JiraConfigHelper configHelper) {
+  public JiraService(RestTemplate restTemplate, JiraConfigHelper configHelper, CustomRestTemplateConfig customRestTemplateConfig) {
     this.restTemplate = restTemplate;
     this.configHelper = configHelper;
+    this.customRestTemplateConfig = customRestTemplateConfig;
   }
 
   /**
@@ -371,19 +369,14 @@ public class JiraService {
       log.info("Issue Fetching api call request is : {}", url);
       try {
         return restTemplate.getForEntity(url, String.class).getBody();
-      } catch (HttpClientErrorException rce) {
-        if (rce.getRawStatusCode() == RATE_LIMIT) {
-          String waitTime = String.valueOf(waitTimeQueue.remove());
-          log.info("Service responded with Rate Limit. We will retry after {} seconds.", waitTime);
-          handleThrottling(waitTime, Boolean.TRUE);
-        } else {
-          log.error("An exception has occurred while getting response from Jira ticket {}. {} ",
-                  issueKey, rce.getMessage());
-          throw new BadRequestException(rce.getMessage());
-        }
+      } catch (ClientAuthorizationRequiredException ex) {
+
+        log.error("Failed to execute the rest call ",ex);
+
       }
     }
   }
+
 
   /**
    * Gets issue search api.
@@ -449,7 +442,7 @@ public class JiraService {
     while (shouldContinue) {
       try {
         //TODO: replace below line
-        //getMyselfApi(configuration).getCurrentUser(EMPTY_STRING);
+//        getMyselfApi(configuration).getCurrentUser(EMPTY_STRING);
         shouldContinue = Boolean.FALSE;
       } catch (RuntimeException ex) {
         if (/*ex.status() == RATE_LIMIT &&*/ !CollectionUtils.isEmpty(waitTimeQueue)) {

@@ -5,12 +5,16 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourceConfig;
+import org.opensearch.dataprepper.plugins.source.saas.jira.rest.OAuth2RestHelper;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.BASIC;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAUTH2;
 
 @Getter
 public class JiraSourceConfig implements SaasSourceConfig {
@@ -25,7 +29,7 @@ public class JiraSourceConfig implements SaasSourceConfig {
      * A map of connector credentials specific to this connector
      */
     @JsonProperty("connector_credentials")
-    private Map<String, Object> connectorCredentials;
+    private Map<String, String> connectorCredentials;
 
     /**
      * List of projects to ingest
@@ -81,15 +85,66 @@ public class JiraSourceConfig implements SaasSourceConfig {
     @Setter(AccessLevel.NONE)
     Map<String, Object> additionalProperties = new HashMap<>();
 
+    /**
+     * We will intialize this variable only in the case of Authentication Type OAuth2
+     */
+    private String cloudId;
+
     public String getJiraId() {
-        return (String) this.getConnectorCredentials().get("jira_id");
+        return this.getConnectorCredentials().get("jira_id");
     }
 
     public String getJiraCredential() {
-        return (String) this.getConnectorCredentials().get("jira_credential");
+        return this.getConnectorCredentials().get("jira_credential");
     }
 
     public String getAuthType() {
         return "Basic";
     }
+
+    public String getAccessToken() {
+        if(!OAUTH2.equals(getAuthType())) {
+            throw new RuntimeException("Authentication Type is not OAuth2.");
+        }
+        return this.getConnectorCredentials().get("access_token");
+    }
+
+    public String getRefreshToken() {
+        if(!OAUTH2.equals(getAuthType())) {
+            throw new RuntimeException("Authentication Type is not OAuth2.");
+        }
+        return this.getConnectorCredentials().get("refresh_token");
+    }
+
+    @Override
+    public boolean isValid() {
+        if(accountUrl==null) {
+            throw new RuntimeException("Account URL is missing.");
+        }
+        //At least one of the AuthType should be present
+        if(getAuthType() == null) {
+            throw new RuntimeException("Authentication Type is missing.");
+        }
+        String authType = getAuthType();
+        if(!OAUTH2.equals(authType) && !BASIC.equals(authType)) {
+            throw new RuntimeException("Invalid AuthType is given");
+        }
+
+        if(BASIC.equals(authType)) {
+            if(getJiraId() == null || getJiraCredential() == null) {
+                throw new RuntimeException("Jira ID or Credential are required for Basic AuthType");
+            }
+        }
+
+        if(OAUTH2.equals(authType)) {
+            if(getAccessToken() == null || getRefreshToken() == null) {
+                throw new RuntimeException("Access Token or Refresh Token are required for OAuth2 AuthType");
+            } else {
+                //validate if the given credentials are good to use
+                this.cloudId = OAuth2RestHelper.getJiraAccountCloudId(this);
+            }
+        }
+        return true;
+    }
+
 }
