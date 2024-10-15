@@ -158,7 +158,7 @@ public class KeyValueProcessorConfig {
             "<code>whitespace</code> will always be <code>\"strict\"</code>.")
     private boolean recursive = false;
     
-    @JsonProperty("overwrite_if_destination_exists")
+    @JsonProperty(value = "overwrite_if_destination_exists", defaultValue = "true")
     @JsonPropertyDescription("Specifies whether to overwrite existing fields if there are key conflicts " +
             "when writing parsed fields to the event. Default is <code>true</code>.")
     private boolean overwriteIfDestinationExists = true;

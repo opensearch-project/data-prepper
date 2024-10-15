@@ -25,7 +25,7 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
 
         @JsonPropertyDescription("The regular expression to match on for replacement. Special regex characters such as <code>[</code> and <code>]</code> must " +
                 "be escaped using <code>\\\\</code> when using double quotes and <code>\\</code> when using single quotes. " +
-                "See <a href=\"https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/regex/Pattern.html\">Java Patterns</a>" +
+                "See <a href=\"https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/regex/Pattern.html\">Java Patterns</a> " +
                 "for more information.")
         private String from;
 
@@ -34,7 +34,7 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
 
         @JsonProperty("substitute_when")
         @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
-                "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be " +
+                "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be " +
                 "run on the event. By default, all events will be processed unless otherwise stated.")
         private String substituteWhen;
 

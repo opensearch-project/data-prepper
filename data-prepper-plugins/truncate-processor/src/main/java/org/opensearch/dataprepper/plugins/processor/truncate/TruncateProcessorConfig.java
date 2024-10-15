@@ -41,7 +41,7 @@ public class TruncateProcessorConfig {
         private Boolean recurse = false;
 
         @JsonProperty("truncate_when")
-        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>'/test != false'</code>. " +
+        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/test != false</code>. " +
                 "If specified, the <code>truncate</code> processor will only run on events when the expression evaluates to true. ")
         private String truncateWhen;
 
