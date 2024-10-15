@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.parser.config;
 
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.event.EventFactory;
@@ -32,7 +33,8 @@ import org.springframework.context.annotation.Primary;
 @Configuration
 @ComponentScan(basePackages = {
         "org.opensearch.dataprepper.pipeline.parser",
-        "org.opensearch.dataprepper.plugin"
+        "org.opensearch.dataprepper.plugin",
+        "org.opensearch.dataprepper.expression"
 })
 public class PipelineParserConfiguration {
 
@@ -48,7 +50,8 @@ public class PipelineParserConfiguration {
             final AcknowledgementSetManager acknowledgementSetManager,
             final SourceCoordinatorFactory sourceCoordinatorFactory,
             final PluginErrorCollector pluginErrorCollector,
-            final PluginErrorsHandler pluginErrorsHandler
+            final PluginErrorsHandler pluginErrorsHandler,
+            final ExpressionEvaluator expressionEvaluator
             ) {
         return new PipelineTransformer(pipelinesDataFlowModel,
                 pluginFactory,
@@ -60,7 +63,8 @@ public class PipelineParserConfiguration {
                 acknowledgementSetManager,
                 sourceCoordinatorFactory,
                 pluginErrorCollector,
-                pluginErrorsHandler);
+                pluginErrorsHandler,
+                expressionEvaluator);
     }
 
     @Bean

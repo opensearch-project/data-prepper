@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.parser;
 
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
@@ -53,6 +54,9 @@ import static java.lang.String.format;
 @SuppressWarnings("rawtypes")
 public class PipelineTransformer {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineTransformer.class);
+
+    static final String CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT = "Route %s contains an invalid conditional expression '%s'. " +
+            "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.";
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
     private final PipelinesDataFlowModel pipelinesDataFlowModel;
@@ -68,6 +72,8 @@ public class PipelineTransformer {
     private final PluginErrorCollector pluginErrorCollector;
     private final PluginErrorsHandler pluginErrorsHandler;
 
+    private final ExpressionEvaluator expressionEvaluator;
+
     public PipelineTransformer(final PipelinesDataFlowModel pipelinesDataFlowModel,
                                final PluginFactory pluginFactory,
                                final PeerForwarderProvider peerForwarderProvider,
@@ -78,7 +84,8 @@ public class PipelineTransformer {
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final SourceCoordinatorFactory sourceCoordinatorFactory,
                                final PluginErrorCollector pluginErrorCollector,
-                               final PluginErrorsHandler pluginErrorsHandler) {
+                               final PluginErrorsHandler pluginErrorsHandler,
+                               final ExpressionEvaluator expressionEvaluator) {
         this.pipelinesDataFlowModel = pipelinesDataFlowModel;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
@@ -90,6 +97,7 @@ public class PipelineTransformer {
         this.sourceCoordinatorFactory = sourceCoordinatorFactory;
         this.pluginErrorCollector = pluginErrorCollector;
         this.pluginErrorsHandler = pluginErrorsHandler;
+        this.expressionEvaluator = expressionEvaluator;
     }
 
     public Map<String, Pipeline> transformConfiguration() {
@@ -168,7 +176,19 @@ public class PipelineTransformer {
             final List<PluginError> subPipelinePluginErrors = pluginErrorCollector.getPluginErrors()
                     .stream().filter(pluginError -> pipelineName.equals(pluginError.getPipelineName()))
                     .collect(Collectors.toList());
-            if (!subPipelinePluginErrors.isEmpty()) {
+
+            final List<PluginError> invalidRouteExpressions = pipelineConfiguration.getRoutes()
+                    .stream().filter(route -> !expressionEvaluator.isValidExpressionStatement(route.getCondition()))
+                    .map(route -> PluginError.builder()
+                            .componentType(PipelineModel.ROUTE_PLUGIN_TYPE)
+                            .pipelineName(pipelineName)
+                            .exception(new InvalidPluginConfigurationException(
+                                    String.format(CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT, route.getName(), route.getCondition())))
+                            .build())
+                    .collect(Collectors.toList());
+
+            if (!subPipelinePluginErrors.isEmpty() || !invalidRouteExpressions.isEmpty()) {
+                subPipelinePluginErrors.addAll(invalidRouteExpressions);
                 pluginErrorsHandler.handleErrors(subPipelinePluginErrors);
                 throw new InvalidPluginConfigurationException(
                         String.format("One or more plugins are not configured correctly in the pipeline: %s.\n",
