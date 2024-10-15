@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins;
 
+import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactoryTest;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
@@ -13,7 +14,6 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
-import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactoryTest;
 
 import java.util.Iterator;
 import java.util.List;

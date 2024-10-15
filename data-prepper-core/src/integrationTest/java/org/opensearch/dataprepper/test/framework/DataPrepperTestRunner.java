@@ -6,8 +6,8 @@
 package org.opensearch.dataprepper.test.framework;
 
 import org.opensearch.dataprepper.AbstractContextManager;
-import org.opensearch.dataprepper.DataPrepper;
-import org.opensearch.dataprepper.parser.config.FileStructurePathProvider;
+import org.opensearch.dataprepper.core.DataPrepper;
+import org.opensearch.dataprepper.core.parser.config.FileStructurePathProvider;
 import org.opensearch.dataprepper.plugins.InMemorySinkAccessor;
 import org.opensearch.dataprepper.plugins.InMemorySourceAccessor;
 import org.slf4j.Logger;

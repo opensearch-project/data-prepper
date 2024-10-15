@@ -11,7 +11,7 @@ import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import org.opensearch.dataprepper.validation.PluginError;
-import org.opensearch.dataprepper.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
 import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 
 import javax.inject.Inject;

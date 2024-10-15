@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper;
 
+import org.opensearch.dataprepper.core.DataPrepper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -24,7 +25,11 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 public abstract class AbstractContextManager {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractContextManager.class);
     private static final String BASE_DATA_PREPPER_PACKAGE = "org.opensearch.dataprepper";
-    private static final String EXPRESSION_PACKAGE = BASE_DATA_PREPPER_PACKAGE + ".expression";
+    private static final String[] BASE_DATA_PREPPER_PACKAGES = {
+            BASE_DATA_PREPPER_PACKAGE + ".core",
+            BASE_DATA_PREPPER_PACKAGE + ".plugin"
+    };
+    private static final String EXPRESSION_PACKAGE =   BASE_DATA_PREPPER_PACKAGE + ".expression";
 
     private final AnnotationConfigApplicationContext publicApplicationContext;
     private final AnnotationConfigApplicationContext coreApplicationContext;
@@ -53,7 +58,7 @@ public abstract class AbstractContextManager {
 
         publicApplicationContext.refresh();
         coreApplicationContext.setParent(publicApplicationContext);
-        coreApplicationContext.scan(BASE_DATA_PREPPER_PACKAGE);
+        coreApplicationContext.scan(BASE_DATA_PREPPER_PACKAGES);
         preRefreshCoreApplicationContext(coreApplicationContext);
 
         coreApplicationContext.refresh();
