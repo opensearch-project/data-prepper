@@ -283,6 +283,9 @@ public class Pipeline {
      * 4. Stopping the ProcessWorkers if they are unable to exit gracefully
      * 5. Shutting down processors and sinks
      * 6. Stopping the sink ExecutorService
+     *
+     * @param dataPrepperShutdownOptions options for shutdown behavior
+     * @see DataPrepperShutdownOptions
      */
     public synchronized void shutdown(final DataPrepperShutdownOptions dataPrepperShutdownOptions) {
         LOG.info("Pipeline [{}] - Received shutdown signal with buffer drain timeout {}, processor shutdown timeout {}, " +

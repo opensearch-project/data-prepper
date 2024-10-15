@@ -108,6 +108,8 @@ public class DataPrepper implements PipelinesProvider {
 
     /**
      * Triggers the shutdown of all configured valid pipelines.
+     * @param shutdownOptions {@link DataPrepperShutdownOptions} to control the behavior of the shutdown process
+     *                        e.g. timeout, graceful shutdown, etc.
      */
     public void shutdownPipelines(final DataPrepperShutdownOptions shutdownOptions) {
         transformationPipelines.forEach((name, pipeline) -> {
