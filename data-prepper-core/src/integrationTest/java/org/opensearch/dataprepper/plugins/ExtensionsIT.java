@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.core.validation.LoggingPluginErrorsHandler;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.expression.StartsWithExpressionFunction;
 import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -92,6 +93,7 @@ public class ExtensionsIT {
         coreContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
 
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
+        coreContext.scan(StartsWithExpressionFunction.class.getPackage().getName());
 
         when(fileStructurePathProvider.getPipelineConfigFileLocation()).thenReturn(
                 "src/test/resources/valid_pipeline.yml"
