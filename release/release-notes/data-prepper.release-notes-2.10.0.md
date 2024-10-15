@@ -9,15 +9,16 @@
 * Kafka source: support SASL/SCRAM mechanisms ([#4241](https://github.com/opensearch-project/data-prepper/issues/4241))
 * OpenSearch Bulk API Source ([#248](https://github.com/opensearch-project/data-prepper/issues/248))
 * Support AWS Kinesis Data Streams as a Source ([#1082](https://github.com/opensearch-project/data-prepper/issues/1082))
+* Support OpenTelemetry logs in S3 source ([#5028](https://github.com/opensearch-project/data-prepper/issues/5028))
 
 ### Enhancements
 
-* Support OpenTelemetry logs in S3 source ([#5028](https://github.com/opensearch-project/data-prepper/issues/5028))
 * Use HTML in JsonPropertyDescription instead of Markdown ([#4984](https://github.com/opensearch-project/data-prepper/issues/4984))
 * Variable drain time when shutting down via shutdown API ([#4966](https://github.com/opensearch-project/data-prepper/issues/4966))
 * Make max connections and acquire timeout configurable on S3 sink client ([#4949](https://github.com/opensearch-project/data-prepper/issues/4949))
 * Support BigDecimal data type in expressions ([#4817](https://github.com/opensearch-project/data-prepper/issues/4817))
 * Caching implementation of EventKeyFactory ([#4843](https://github.com/opensearch-project/data-prepper/pull/4843))
+* Json codec changes with specific json input codec config ([#5054](https://github.com/opensearch-project/data-prepper/pull/5054))
 
 ### Bug Fixes
 
