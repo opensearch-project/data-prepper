@@ -77,7 +77,7 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
     this.buffer = buffer;
 
     log.info("Validate the source config");
-    sourceConfig.isValid();
+    //sourceConfig.isValid();
 
     boolean isPartitionCreated = coordinator.createPartition(new LeaderPartition());
     log.info("Leader partition creation status: {}", isPartitionCreated);

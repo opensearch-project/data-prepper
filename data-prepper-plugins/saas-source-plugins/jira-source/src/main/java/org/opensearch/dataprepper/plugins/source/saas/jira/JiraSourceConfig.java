@@ -15,6 +15,8 @@ import java.util.Map;
 
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAUTH2;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAuth2_URL;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.REST_API_FETCH_ISSUE;
 
 @Getter
 public class JiraSourceConfig implements SaasSourceConfig {
@@ -102,49 +104,27 @@ public class JiraSourceConfig implements SaasSourceConfig {
         return this.getConnectorCredentials().get("auth_type");
     }
 
+
     public String getAccessToken() {
         if(!OAUTH2.equals(getAuthType())) {
             throw new RuntimeException("Authentication Type is not OAuth2.");
         }
-        return this.getConnectorCredentials().get("access_token");
+        String accessToken = this.getConnectorCredentials().get("access_token");
+        if(accessToken == null || accessToken.isEmpty()) {
+            throw new RuntimeException("Access Token is required for OAuth2 AuthType");
+        }
+        return accessToken;
     }
 
     public String getRefreshToken() {
         if(!OAUTH2.equals(getAuthType())) {
             throw new RuntimeException("Authentication Type is not OAuth2.");
         }
-        return this.getConnectorCredentials().get("refresh_token");
-    }
-
-    @Override
-    public boolean isValid() {
-        if(accountUrl==null) {
-            throw new RuntimeException("Account URL is missing.");
+        String refreshToken = this.getConnectorCredentials().get("refresh_token");
+        if(refreshToken == null || refreshToken.isEmpty()) {
+            throw new RuntimeException("Refresh Token is required for OAuth2 AuthType");
         }
-        //At least one of the AuthType should be present
-        if(getAuthType() == null) {
-            throw new RuntimeException("Authentication Type is missing.");
-        }
-        String authType = getAuthType();
-        if(!OAUTH2.equals(authType) && !BASIC.equals(authType)) {
-            throw new RuntimeException("Invalid AuthType is given");
-        }
-
-        if(BASIC.equals(authType)) {
-            if(getJiraId() == null || getJiraCredential() == null) {
-                throw new RuntimeException("Jira ID or Credential are required for Basic AuthType");
-            }
-        }
-
-        if(OAUTH2.equals(authType)) {
-            if(getAccessToken() == null || getRefreshToken() == null) {
-                throw new RuntimeException("Access Token or Refresh Token are required for OAuth2 AuthType");
-            } else {
-                //validate if the given credentials are good to use
-                this.cloudId = OAuth2RestHelper.getJiraAccountCloudId(this);
-            }
-        }
-        return true;
+        return refreshToken;
     }
 
 }

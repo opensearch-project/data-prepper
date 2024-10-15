@@ -34,9 +34,13 @@ public class JiraSource extends SaasSourcePlugin {
                     final PluginFactory pluginFactory,
                     final AcknowledgementSetManager acknowledgementSetManager,
                     Crawler crawler,
-                    SaasPluginExecutorServiceProvider executorServiceProvider) {
+                    SaasPluginExecutorServiceProvider executorServiceProvider,
+                    JiraService service) {
     super(pluginMetrics, jiraSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
     log.info("Create Jira Source Connector");
+
+    //Handshake with the service
+    service.handShakeWithService(jiraSourceConfig);
   }
 
 }

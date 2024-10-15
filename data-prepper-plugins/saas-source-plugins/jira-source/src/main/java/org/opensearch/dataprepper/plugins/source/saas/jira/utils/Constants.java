@@ -102,7 +102,7 @@ public class Constants {
   public static final int BAD_RESPONSE = 400;
   public static final int NOT_FOUND = 403;
   public static final int RETRY_ATTEMPT = 6;
-  public static final String OAuth2_URL = "https://api.atlassian.com/ex/jira/${app.cloudId}/rest/api/3";
+  public static final String OAuth2_URL = "https://api.atlassian.com/ex/jira/";
   public static final String ACCESSIBLE_RESOURCES = "https://api.atlassian.com/oauth/token/accessible-resources";
   public static final String SUMMARY = "summary";
   public static final String CONNECTION_ERROR = "Unable to connect Atlassian Jira account";
