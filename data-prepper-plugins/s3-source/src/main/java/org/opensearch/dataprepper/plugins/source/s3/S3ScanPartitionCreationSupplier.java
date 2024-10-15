@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.FolderPartitioningOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanKeyPathOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanSchedulingOptions;
@@ -50,17 +51,21 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
 
     private final FolderPartitioningOptions folderPartitioningOptions;
 
+    private final SourceCoordinator<S3SourceProgressState> sourceCoordinator;
+
     public S3ScanPartitionCreationSupplier(final S3Client s3Client,
                                            final BucketOwnerProvider bucketOwnerProvider,
                                            final List<ScanOptions> scanOptionsList,
                                            final S3ScanSchedulingOptions schedulingOptions,
-                                           final FolderPartitioningOptions folderPartitioningOptions) {
+                                           final FolderPartitioningOptions folderPartitioningOptions,
+                                           final SourceCoordinator<S3SourceProgressState> sourceCoordinator) {
 
         this.s3Client = s3Client;
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.scanOptionsList = scanOptionsList;
         this.schedulingOptions = schedulingOptions;
         this.folderPartitioningOptions = folderPartitioningOptions;
+        this.sourceCoordinator = sourceCoordinator;
     }
 
     @Override
@@ -73,8 +78,6 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
         if (shouldScanBeSkipped(globalStateMap)) {
             return Collections.emptyList();
         }
-
-        final List<PartitionIdentifier> objectsToProcess = new ArrayList<>();
 
         for (final ScanOptions scanOptions : scanOptionsList) {
             final List<String> excludeItems = new ArrayList<>();
@@ -91,12 +94,12 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
             if (Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3scanIncludePrefixOptions()))
                 s3ScanKeyPathOption.getS3scanIncludePrefixOptions().forEach(includePath -> {
                     listObjectsV2Request.prefix(includePath);
-                    objectsToProcess.addAll(listFilteredS3ObjectsForBucket(excludeItems, listObjectsV2Request,
-                            scanOptions.getBucketOption().getName(), scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime(), globalStateMap));
+                    createFilteredS3ObjectPartitionsForBucket(excludeItems, listObjectsV2Request,
+                            scanOptions.getBucketOption().getName(), scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime(), globalStateMap);
                 });
             else
-                objectsToProcess.addAll(listFilteredS3ObjectsForBucket(excludeItems, listObjectsV2Request,
-                        scanOptions.getBucketOption().getName(), scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime(), globalStateMap));
+                createFilteredS3ObjectPartitionsForBucket(excludeItems, listObjectsV2Request,
+                        scanOptions.getBucketOption().getName(), scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime(), globalStateMap);
 
             globalStateMap.put(scanOptions.getBucketOption().getName(), updatedScanTime.toString());
         }
@@ -104,10 +107,11 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
         globalStateMap.put(SCAN_COUNT, (Integer) globalStateMap.get(SCAN_COUNT) + 1);
         globalStateMap.put(LAST_SCAN_TIME, Instant.now().toEpochMilli());
 
-        return objectsToProcess;
+        // Partitions are created by the supplier, so source coordinator does not need to attempt to create any partitions
+        return Collections.emptyList();
     }
 
-    private List<PartitionIdentifier> listFilteredS3ObjectsForBucket(final List<String> excludeKeyPaths,
+    private void createFilteredS3ObjectPartitionsForBucket(final List<String> excludeKeyPaths,
                                                                      final ListObjectsV2Request.Builder listObjectsV2Request,
                                                                      final String bucket,
                                                                      final LocalDateTime startDateTime,
@@ -115,11 +119,11 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
                                                                      final Map<String, Object> globalStateMap) {
         final Instant previousScanTime = globalStateMap.get(bucket) != null ? Instant.parse((String) globalStateMap.get(bucket)) : null;
         final boolean isFirstScan = previousScanTime == null;
-        final List<PartitionIdentifier> allPartitionIdentifiers = new ArrayList<>();
         ListObjectsV2Response listObjectsV2Response = null;
+
         do {
             listObjectsV2Response = s3Client.listObjectsV2(listObjectsV2Request.fetchOwner(true).continuationToken(Objects.nonNull(listObjectsV2Response) ? listObjectsV2Response.nextContinuationToken() : null).build());
-            allPartitionIdentifiers.addAll(listObjectsV2Response.contents().stream()
+            final List<PartitionIdentifier> partitionsForPage = listObjectsV2Response.contents().stream()
                     .filter(s3Object -> isLastModifiedTimeAfterMostRecentScanForBucket(previousScanTime, s3Object))
                     .map(s3Object -> Pair.of(s3Object.key(), instantToLocalDateTime(s3Object.lastModified())))
                     .filter(keyTimestampPair -> !keyTimestampPair.left().endsWith("/"))
@@ -128,32 +132,17 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
                     .filter(keyTimestampPair -> isKeyMatchedBetweenTimeRange(keyTimestampPair.right(), startDateTime, endDateTime, isFirstScan))
                     .map(Pair::left)
                     .map(objectKey -> PartitionIdentifier.builder().withPartitionKey(String.format(BUCKET_OBJECT_PARTITION_KEY_FORMAT, bucket, objectKey)).build())
-                    .collect(Collectors.toList()));
-
+                    .collect(Collectors.toList());
             LOG.info("Found page of {} objects from bucket {}", listObjectsV2Response.keyCount(), bucket);
+
+            if (folderPartitioningOptions != null) {
+                final List<PartitionIdentifier> folderPartitionsForPage = getFolderPartitionIdentifiers(partitionsForPage);
+                sourceCoordinator.createPartitions(folderPartitionsForPage);
+            } else {
+                LOG.info("Creating partitions for {} S3 objects from bucket {}", partitionsForPage.size(), bucket);
+                sourceCoordinator.createPartitions(partitionsForPage);
+            }
         } while (listObjectsV2Response.isTruncated());
-
-        if (folderPartitioningOptions != null) {
-            final Set<PartitionIdentifier> folderPartitions = allPartitionIdentifiers.stream()
-                    .map(partitionIdentifier -> {
-                        final String fullObjectKey = partitionIdentifier.getPartitionKey();
-                        final String prefix = getPrefixWithDepth(fullObjectKey);
-                        if (prefix == null) {
-                            return null;
-                        }
-                        return PartitionIdentifier.builder().withPartitionKey(prefix).build();
-                    })
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-
-            LOG.info("Running in folder_partitions mode at depth {}, found {} unique prefixes from {} objects", folderPartitioningOptions.getFolderDepth(), folderPartitions.size(), allPartitionIdentifiers.size());
-
-            return new ArrayList<>(folderPartitions);
-        } else {
-            LOG.info("Returning partitions for {} S3 objects from bucket {}", allPartitionIdentifiers.size(), bucket);
-        }
-
-        return allPartitionIdentifiers;
     }
 
     private LocalDateTime instantToLocalDateTime(final Instant instant) {
@@ -247,5 +236,24 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
         }
         int actualDepth = min(folderPartitioningOptions.getFolderDepth(), folders.length - 1);
         return String.join("/", Arrays.copyOfRange(folders, 0, actualDepth)) + "/";
+    }
+
+    private List<PartitionIdentifier> getFolderPartitionIdentifiers(final List<PartitionIdentifier> objectPartitionIdentifiers) {
+
+        final Set<PartitionIdentifier> folderPartitions = objectPartitionIdentifiers.stream()
+                .map(partitionIdentifier -> {
+                    final String fullObjectKey = partitionIdentifier.getPartitionKey();
+                    final String prefix = getPrefixWithDepth(fullObjectKey);
+                    if (prefix == null) {
+                        return null;
+                    }
+                    return PartitionIdentifier.builder().withPartitionKey(prefix).build();
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        LOG.info("Running in folder_partitions mode at depth {}, found {} unique prefixes from {} objects", folderPartitioningOptions.getFolderDepth(), folderPartitions.size(), objectPartitionIdentifiers.size());
+
+        return new ArrayList<>(folderPartitions);
     }
 }
