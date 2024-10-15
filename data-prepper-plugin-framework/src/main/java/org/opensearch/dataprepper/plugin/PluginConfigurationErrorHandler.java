@@ -38,7 +38,6 @@ public class PluginConfigurationErrorHandler {
         return new InvalidPluginConfigurationException(
                 String.format(GENERIC_PLUGIN_EXCEPTION_FORMAT, pluginSetting.getName(), e.getMessage()));
     }
-
     private RuntimeException handleJsonMappingException(final JsonMappingException e, final PluginSetting pluginSetting) {
         final String parameterPath = getParameterPath(e.getPath());
 

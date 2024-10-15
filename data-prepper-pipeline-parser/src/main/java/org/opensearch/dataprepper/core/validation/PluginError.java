@@ -12,8 +12,8 @@ public class PluginError {
     static final String CAUSED_BY_DELIMITER = " caused by: ";
     private final String pipelineName;
     private final String componentType;
-    @NonNull
     private final String pluginName;
+
     @NonNull
     private final Exception exception;
 
@@ -27,8 +27,11 @@ public class PluginError {
             message.append(componentType);
             message.append(PIPELINE_DELIMITER);
         }
-        message.append(pluginName);
-        message.append(PATH_TO_CAUSE_DELIMITER);
+
+        if (pluginName != null) {
+            message.append(pluginName);
+            message.append(PATH_TO_CAUSE_DELIMITER);
+        }
         message.append(getFlattenedExceptionMessage(CAUSED_BY_DELIMITER));
         return message.toString();
     }
