@@ -9,7 +9,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Path;
+import jakarta.validation.Payload;
 import jakarta.validation.Validator;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.metadata.ConstraintDescriptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +21,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
+import javax.annotation.Nonnull;
+import javax.annotation.meta.When;
+import java.lang.annotation.Annotation;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -138,7 +144,7 @@ class PluginConfigurationConverterTest {
     }
 
     @Test
-    void convert_with_other_target_should_throw_exception_when_there_are_constraint_violations() {
+    void convert_with_other_target_should_throw_exception_when_there_are_constraint_violations_with_for_non_assert_true() {
 
         final String value = UUID.randomUUID().toString();
         given(pluginSetting.getSettings())
@@ -160,6 +166,23 @@ class PluginConfigurationConverterTest {
         given(propertyPath.toString()).willReturn(propertyPathString);
         given(constraintViolation.getPropertyPath()).willReturn(propertyPath);
 
+        final ConstraintDescriptor constraintDescriptor = mock(ConstraintDescriptor.class);
+        given(constraintViolation.getConstraintDescriptor()).willReturn(constraintDescriptor);
+
+        Nonnull annotation = new Nonnull() {
+            @Override
+            public When when() {
+                return null;
+            }
+
+            @Override
+            public Class<? extends Annotation> annotationType() {
+                return Nonnull.class;
+            }
+        };
+
+        when(constraintDescriptor.getAnnotation()).thenReturn(annotation);
+
         given(validator.validate(any()))
                 .willReturn(Collections.singleton(constraintViolation));
 
@@ -171,6 +194,65 @@ class PluginConfigurationConverterTest {
         assertThat(actualException.getMessage(), containsString(pluginName));
         assertThat(actualException.getMessage(), containsString(pipelineName));
         assertThat(actualException.getMessage(), containsString(propertyPathString));
+        assertThat(actualException.getMessage(), containsString(errorMessage));
+    }
+
+    @Test
+    void convert_with_other_target_should_throw_exception_when_there_are_constraint_violations_with_assert_true_annotation() {
+
+        final String value = UUID.randomUUID().toString();
+        given(pluginSetting.getSettings())
+                .willReturn(Collections.singletonMap("my_value", value));
+
+        final String pluginName = UUID.randomUUID().toString();
+        given(pluginSetting.getName())
+                .willReturn(pluginName);
+
+        final String pipelineName = UUID.randomUUID().toString();
+        given(pluginSetting.getPipelineName())
+                .willReturn(pipelineName);
+
+        @SuppressWarnings("unchecked") final ConstraintViolation<Object> constraintViolation = mock(ConstraintViolation.class);
+        final String errorMessage = UUID.randomUUID().toString();
+        given(constraintViolation.getMessage()).willReturn(errorMessage);
+
+        final ConstraintDescriptor constraintDescriptor = mock(ConstraintDescriptor.class);
+        given(constraintViolation.getConstraintDescriptor()).willReturn(constraintDescriptor);
+
+        AssertTrue annotation = new AssertTrue() {
+            @Override
+            public String message() {
+                return null;
+            }
+
+            @Override
+            public Class<?>[] groups() {
+                return new Class[0];
+            }
+
+            @Override
+            public Class<? extends Payload>[] payload() {
+                return new Class[0];
+            }
+
+            @Override
+            public Class<? extends Annotation> annotationType() {
+                return AssertTrue.class;
+            }
+        };
+
+        when(constraintDescriptor.getAnnotation()).thenReturn(annotation);
+
+        given(validator.validate(any()))
+                .willReturn(Collections.singleton(constraintViolation));
+
+        final PluginConfigurationConverter objectUnderTest = createObjectUnderTest();
+
+        final InvalidPluginConfigurationException actualException = assertThrows(InvalidPluginConfigurationException.class,
+                () -> objectUnderTest.convert(TestConfiguration.class, pluginSetting));
+
+        assertThat(actualException.getMessage(), containsString(pluginName));
+        assertThat(actualException.getMessage(), containsString(pipelineName));
         assertThat(actualException.getMessage(), containsString(errorMessage));
     }
 

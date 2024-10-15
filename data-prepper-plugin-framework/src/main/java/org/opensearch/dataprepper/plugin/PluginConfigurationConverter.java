@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
@@ -69,7 +70,7 @@ class PluginConfigurationConverter {
 
         if (!constraintViolations.isEmpty()) {
             final String violationsString = constraintViolations.stream()
-                    .map(v -> v.getPropertyPath().toString() + " " + v.getMessage())
+                    .map(this::constructConstrainViolationMessage)
                     .collect(Collectors.joining(". "));
 
             final String exceptionMessage = String.format("Plugin %s in pipeline %s is configured incorrectly: %s",
@@ -90,6 +91,14 @@ class PluginConfigurationConverter {
         } catch (final Exception e) {
             throw pluginConfigurationErrorHandler.handleException(pluginSetting, e);
         }
+    }
+
+    private String constructConstrainViolationMessage(final ConstraintViolation<Object> constraintViolation) {
+        if (constraintViolation.getConstraintDescriptor().getAnnotation().annotationType().equals(AssertTrue.class)) {
+            return constraintViolation.getMessage();
+        }
+
+        return constraintViolation.getPropertyPath().toString() + " " + constraintViolation.getMessage();
     }
 
 }

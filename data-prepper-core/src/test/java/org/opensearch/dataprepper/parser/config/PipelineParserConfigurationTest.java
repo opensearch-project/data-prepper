@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.parser.config;
 
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.PipelineTransformer;
@@ -63,12 +64,15 @@ class PipelineParserConfigurationTest {
     @Mock
     private PluginErrorsHandler pluginErrorsHandler;
 
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
+
     @Test
     void pipelineParser() {
         final PipelineTransformer pipelineTransformer = pipelineParserConfiguration.pipelineParser(
                 pipelinesDataFlowModel, pluginFactory, peerForwarderProvider, routerFactory,
                 dataPrepperConfiguration, circuitBreakerManager, eventFactory, acknowledgementSetManager,
-                sourceCoordinatorFactory, pluginErrorCollector, pluginErrorsHandler);
+                sourceCoordinatorFactory, pluginErrorCollector, pluginErrorsHandler, expressionEvaluator);
 
         assertThat(pipelineTransformer, is(notNullValue()));
     }

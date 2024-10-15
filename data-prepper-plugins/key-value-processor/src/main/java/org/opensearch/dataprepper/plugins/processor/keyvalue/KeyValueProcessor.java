@@ -62,6 +62,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Set<Character> bracketSet = Set.of('[', ']', '(', ')', '<', '>');
     private final List<String> tagsOnFailure;
     private final Character stringLiteralCharacter;
+    private final String keyPrefix;
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics,
@@ -190,6 +191,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             throw new InvalidPluginConfigurationException(
                     String.format("key_value_when %s is not a valid expression statement", keyValueProcessorConfig.getKeyValueWhen()));
         }
+
+        keyPrefix = keyValueProcessorConfig.getPrefix() != null ? keyValueProcessorConfig.getPrefix() : "";
     }
 
     private String buildRegexFromCharacters(String s) {
@@ -575,7 +578,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             if (keyValueProcessorConfig.getDeleteKeyRegex() != null && !Objects.equals(keyValueProcessorConfig.getDeleteKeyRegex(), "")) {
                 key = key.replaceAll(keyValueProcessorConfig.getDeleteKeyRegex(), "");
             }
-            key = keyValueProcessorConfig.getPrefix() + key;
+            key = keyPrefix + key;
 
             if (value != null
                     && value instanceof String
