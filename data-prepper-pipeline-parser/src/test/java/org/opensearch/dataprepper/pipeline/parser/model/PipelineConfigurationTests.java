@@ -8,11 +8,11 @@ package org.opensearch.dataprepper.pipeline.parser.model;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.pipeline.parser.TestConfigurationProvider;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
+import org.opensearch.dataprepper.pipeline.parser.TestConfigurationProvider;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 
 import java.util.ArrayList;

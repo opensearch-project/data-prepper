@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.core.acknowledgements;
 
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 public class DefaultAcknowledgementSetMetrics {
     static final String CREATED_METRIC_NAME = "numberOfAcknowledgementSetsCreated";

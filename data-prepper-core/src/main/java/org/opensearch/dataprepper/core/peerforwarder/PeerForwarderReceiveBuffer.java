@@ -5,17 +5,17 @@
 
 package org.opensearch.dataprepper.core.peerforwarder;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.util.concurrent.AtomicDouble;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.AbstractBuffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.record.Record;
-import com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;

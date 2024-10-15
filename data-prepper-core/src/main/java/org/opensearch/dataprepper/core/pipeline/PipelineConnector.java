@@ -21,7 +21,6 @@ import static java.lang.String.format;
 /**
  * PipelineConnector is a special type of Plugin which connects two pipelines acting both as Sink and Source.
  *
- * @param <T>
  */
 public final class PipelineConnector<T extends Record<?>> implements Source<T>, Sink<T> {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineConnector.class);

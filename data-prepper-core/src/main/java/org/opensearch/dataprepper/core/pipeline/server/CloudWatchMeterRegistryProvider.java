@@ -46,6 +46,7 @@ public class CloudWatchMeterRegistryProvider {
 
     /**
      * Returns the CloudWatchMeterRegistry created using the default aws credentials
+     * @return CloudWatchMeterRegistry
      */
     public CloudWatchMeterRegistry getCloudWatchMeterRegistry() {
         return this.cloudWatchMeterRegistry;

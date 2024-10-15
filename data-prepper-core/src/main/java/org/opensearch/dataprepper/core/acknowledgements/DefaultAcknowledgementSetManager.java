@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.core.acknowledgements;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import javax.inject.Inject;
 import javax.inject.Named;

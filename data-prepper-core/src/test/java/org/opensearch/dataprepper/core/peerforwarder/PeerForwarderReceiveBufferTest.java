@@ -5,14 +5,14 @@
 
 package org.opensearch.dataprepper.core.peerforwarder;
 
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.record.Record;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Collection;

@@ -12,8 +12,8 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 
 import java.util.Optional;
 
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 
 public class PartitionManagerTest {

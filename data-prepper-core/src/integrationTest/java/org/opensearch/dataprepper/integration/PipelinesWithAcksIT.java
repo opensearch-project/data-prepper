@@ -7,26 +7,26 @@ package org.opensearch.dataprepper.integration;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.test.framework.DataPrepperTestRunner;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.InMemorySinkAccessor;
 import org.opensearch.dataprepper.plugins.InMemorySourceAccessor;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.Assert.assertFalse;
+import org.opensearch.dataprepper.test.framework.DataPrepperTestRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.time.Instant;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PipelinesWithAcksIT {
     private static final Logger LOG = LoggerFactory.getLogger(PipelinesWithAcksIT.class);

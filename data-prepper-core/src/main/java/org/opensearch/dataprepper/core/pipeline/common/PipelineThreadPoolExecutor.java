@@ -56,8 +56,9 @@ public class PipelineThreadPoolExecutor extends ThreadPoolExecutor {
      * of execution of the given processWorker Runnable. This method is invoked by the thread that executed the task. If
      * non-null, the Throwable is the uncaught {@code RuntimeException} or {@code Error} that caused execution to
      * terminate abruptly.
-     * @param runnable
-     * @param throwable
+     * @param runnable the processor worker that has been executed
+     * @param throwable the exception that caused the termination, or null if execution completed normally or has not yet
+     *        terminated
      */
     @Override
     public void afterExecute(final Runnable runnable, final Throwable throwable) {

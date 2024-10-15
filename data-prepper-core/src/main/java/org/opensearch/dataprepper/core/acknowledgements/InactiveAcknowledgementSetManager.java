@@ -5,10 +5,11 @@
 
 package org.opensearch.dataprepper.core.acknowledgements;
 
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import java.util.function.Consumer;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+
 import java.time.Duration;
+import java.util.function.Consumer;
 
 public class InactiveAcknowledgementSetManager implements AcknowledgementSetManager {
     private static InactiveAcknowledgementSetManager theInstance;
