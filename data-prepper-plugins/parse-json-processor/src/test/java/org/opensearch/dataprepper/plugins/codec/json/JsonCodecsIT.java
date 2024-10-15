@@ -36,21 +36,26 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class JsonCodecsIT {
 
     private ObjectMapper objectMapper;
     private Consumer<Record<Event>> eventConsumer;
+    private JsonInputCodecConfig jsonInputCodecConfig;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-
+        jsonInputCodecConfig = mock(JsonInputCodecConfig.class);
+        when(jsonInputCodecConfig.getIncludeKeysMetadata()).thenReturn(Collections.emptyList());
+        when(jsonInputCodecConfig.getIncludeKeys()).thenReturn(Collections.emptyList());
+        when(jsonInputCodecConfig.getKeyName()).thenReturn(null);
         eventConsumer = mock(Consumer.class);
     }
 
     private JsonInputCodec createJsonInputCodecObjectUnderTest() {
-        return new JsonInputCodec();
+        return new JsonInputCodec(jsonInputCodecConfig);
     }
 
     private JsonOutputCodec createJsonOutputCodecObjectUnderTest() {

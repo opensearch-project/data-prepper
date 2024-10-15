@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.core.parser.config;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.core.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.core.parser.PipelineTransformer;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
@@ -48,7 +49,8 @@ public class PipelineParserConfiguration {
             final AcknowledgementSetManager acknowledgementSetManager,
             final SourceCoordinatorFactory sourceCoordinatorFactory,
             final PluginErrorCollector pluginErrorCollector,
-            final PluginErrorsHandler pluginErrorsHandler
+            final PluginErrorsHandler pluginErrorsHandler,
+            final ExpressionEvaluator expressionEvaluator
             ) {
         return new PipelineTransformer(pipelinesDataFlowModel,
                 pluginFactory,
@@ -60,7 +62,8 @@ public class PipelineParserConfiguration {
                 acknowledgementSetManager,
                 sourceCoordinatorFactory,
                 pluginErrorCollector,
-                pluginErrorsHandler);
+                pluginErrorsHandler,
+                expressionEvaluator);
     }
 
     @Bean

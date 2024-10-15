@@ -29,20 +29,22 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
-import org.opensearch.dataprepper.validation.PluginError;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.validation.PluginErrorsHandler;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
+import org.opensearch.dataprepper.validation.PluginError;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.Duration;
@@ -64,12 +66,15 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.parser.PipelineTransformer.CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT;
 
 @ExtendWith(MockitoExtension.class)
 class PipelineTransformerTests {
@@ -93,6 +98,9 @@ class PipelineTransformerTests {
     private CircuitBreakerManager circuitBreakerManager;
     @Mock
     private PluginErrorsHandler pluginErrorsHandler;
+
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
     @Captor
     private ArgumentCaptor<Collection<PluginError>> pluginErrorsArgumentCaptor;
 
@@ -143,7 +151,7 @@ class PipelineTransformerTests {
                 pipelinesDataFlowModel, pluginFactory, peerForwarderProvider,
                 routerFactory, dataPrepperConfiguration, circuitBreakerManager, eventFactory,
                 acknowledgementSetManager, sourceCoordinatorFactory, pluginErrorCollector,
-                pluginErrorsHandler);
+                pluginErrorsHandler, expressionEvaluator);
     }
 
     @Test
@@ -345,6 +353,7 @@ class PipelineTransformerTests {
     @Test
     void parseConfiguration_with_routes_creates_correct_pipeline() {
         mockDataPrepperConfigurationAccesses();
+        when(expressionEvaluator.isValidExpressionStatement(anyString())).thenReturn(true);
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest("src/test/resources/valid_multiple_sinks_with_routes.yml");
         final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
@@ -355,6 +364,34 @@ class PipelineTransformerTests {
         assertThat(entryPipeline, notNullValue());
         assertThat(entryPipeline.getSinks(), notNullValue());
         assertThat(entryPipeline.getSinks().size(), equalTo(2));
+        verify(dataPrepperConfiguration).getPipelineExtensions();
+    }
+
+    @Test
+    void parseConfiguration_with_invalid_route_expressions_handles_errors_and_returns_empty_pipeline_map() {
+        when(expressionEvaluator.isValidExpressionStatement("/value == raw")).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement("/value == service")).thenReturn(false);
+
+        final ArgumentCaptor<Collection<PluginError>> pluginErrorArgumentCaptor = ArgumentCaptor.forClass(Collection.class);
+        doNothing().when(pluginErrorsHandler).handleErrors(pluginErrorArgumentCaptor.capture());
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest("src/test/resources/valid_multiple_sinks_with_routes.yml");
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
+        assertThat(pipelineMap.keySet().isEmpty(), equalTo(true));
+
+        final Collection<PluginError> pluginErrorCollection = pluginErrorArgumentCaptor.getValue();
+        assertThat(pluginErrorCollection, notNullValue());
+        assertThat(pluginErrorCollection.size(), equalTo(1));
+
+        final PluginError pluginError = pluginErrorCollection.stream().findAny().orElseThrow();
+        final String expectedErrorMessage = String.format(CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT, "service", "/value == service");
+        assertThat(pluginError.getPluginName(), equalTo(null));
+        assertThat(pluginError.getPipelineName(), equalTo("entry-pipeline"));
+        assertThat(pluginError.getComponentType(), equalTo(PipelineModel.ROUTE_PLUGIN_TYPE));
+        assertThat(pluginError.getException(), notNullValue());
+        assertThat(pluginError.getException() instanceof InvalidPluginConfigurationException, equalTo(true));
+        assertThat(pluginError.getException().getMessage(), equalTo(expectedErrorMessage));
+
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 
