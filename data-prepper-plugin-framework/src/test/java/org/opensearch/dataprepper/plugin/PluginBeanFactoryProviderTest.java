@@ -19,6 +19,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -115,5 +116,29 @@ class PluginBeanFactoryProviderTest {
         BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{}, null);
         assertThat(beanFactory, notNullValue());
         assertThrows(NoSuchBeanDefinitionException.class, ()->beanFactory.getBean(TestComponent.class));
+    }
+
+    @Test
+    void testCreatePluginSpecificContext_with_empty_array_with_plugin_config() {
+        when(context.getParent()).thenReturn(context);
+        final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
+        TestPluginConfiguration config = new TestPluginConfiguration();
+        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{}, config);
+        assertThat(beanFactory, notNullValue());
+        assertThrows(NoSuchBeanDefinitionException.class, ()->beanFactory.getBean(TestComponent.class));
+        assertThrows(NoSuchBeanDefinitionException.class, ()->beanFactory.getBean(TestPluginConfiguration.class));
+    }
+
+    @Test
+    void testCreatePluginSpecificContext_with_plugin_config() {
+        when(context.getParent()).thenReturn(context);
+        final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
+        TestPluginConfiguration config = new TestPluginConfiguration();
+        config.setRequiredString("required_string_value");
+        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{TestComponent.class}, config);
+        assertThat(beanFactory, notNullValue());
+        assertThat(beanFactory.getBean(TestComponent.class), notNullValue());
+        assertThat(beanFactory.getBean(TestPluginConfiguration.class), notNullValue());
+        assertEquals("required_string_value", beanFactory.getBean(TestPluginConfiguration.class).getRequiredString());
     }
 }
