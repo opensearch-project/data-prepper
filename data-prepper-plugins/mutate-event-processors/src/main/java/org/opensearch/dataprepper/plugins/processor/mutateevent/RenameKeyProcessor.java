@@ -12,8 +12,6 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventKey;
-import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -49,10 +47,10 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
                                 entry.getRenameWhen()));
             }
             if (entry.getFromKey() == null && entry.getFromKeyPattern() == null) {
-                throw new InvalidPluginConfigurationException("Either from_key or from_key_pattern must be specified");
+                throw new InvalidPluginConfigurationException("Either from_key or from_key_pattern must be specified. Both cannot be set together.");
             }
             if (entry.getFromKey() != null && entry.getFromKeyPattern()  != null) {
-                throw new InvalidPluginConfigurationException("Only one of from_key or from_key_pattern - should be specified");
+                throw new InvalidPluginConfigurationException("Only one of from_key or from_key_pattern should be specified.");
             }
         });
     }
@@ -78,15 +76,16 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
                             recordEvent.put(entry.getToKey(), source);
                             recordEvent.delete(entry.getFromKey());
                         }
-                        if(Objects.nonNull(entry.getFromKeyPattern())) {
+                        if(Objects.nonNull(entry.getFromKeyCompiledPattern())) {
                             Map<String,Object> eventMap = recordEvent.toMap();
-                            Pattern pattern = Pattern.compile(entry.getFromKeyPattern());
+                            Pattern fromKeyCompiledPattern = entry.getFromKeyCompiledPattern();
                             for (Map.Entry<String, Object> eventEntry : eventMap.entrySet()) {
                                 final String key = eventEntry.getKey();
                                 final Object value = eventEntry.getValue();
-                                if (pattern.matcher(key).matches()) {
+                                if (fromKeyCompiledPattern.matcher(key).matches()) {
                                     recordEvent.put(entry.getToKey(), value);
                                     recordEvent.delete(key);
+                                    if(!entry.getOverwriteIfToKeyExists()) break;
                                 }
                             }
                         }

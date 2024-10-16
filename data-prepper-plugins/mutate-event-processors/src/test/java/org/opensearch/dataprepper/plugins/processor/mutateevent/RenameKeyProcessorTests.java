@@ -109,6 +109,7 @@ public class RenameKeyProcessorTests {
         final RenameKeyProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
         record.getData().put("detailed_timestamp_1004", "test2");
+        record.getData().put("test_key","test_value");
         final Record<Event> second_record = getEvent("thisisanewmessage");
         second_record.getData().put("detail_timestamp-123", "test3");
         Collection<Record<Event>> records = new ArrayList<>();
@@ -116,6 +117,7 @@ public class RenameKeyProcessorTests {
         records.add(second_record);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(records);
         assertThat(editedRecords.get(0).getData().containsKey("detailed_timestamp"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("test_key"), is(true));
         assertThat(editedRecords.get(1).getData().containsKey("detailed_timestamp"), is(true));
         assertThat(editedRecords.get(0).getData().containsKey("detailed_timestamp_1004"), is(false));
         assertThat(editedRecords.get(1).getData().containsKey("detail_timestamp-123"), is(false));
