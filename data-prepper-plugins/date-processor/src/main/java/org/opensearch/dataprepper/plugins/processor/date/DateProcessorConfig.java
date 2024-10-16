@@ -147,7 +147,7 @@ public class DateProcessorConfig {
             "or a string representation of the " +
             "<a href=\"https://docs.oracle.com/javase/8/docs/api/java/util/Locale.html\">locale</a> object, such as <code>en_US</code>. " +
             "A full list of locale fields, including language, country, and variant, can be found " +
-            "<a href=\"https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry\">here</a>."
+            "<a href=\"https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry\">here</a>." +
             "Default is <code>Locale.ROOT</code>.")
     private String locale;
 
