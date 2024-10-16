@@ -22,6 +22,10 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import javax.inject.Named;
 import java.io.ByteArrayInputStream;
@@ -103,15 +107,25 @@ public class JiraService {
   private final JiraConfigHelper configHelper;
 
   private final CustomRestTemplateConfig customRestTemplateConfig;
+
+  public static final String ISSUES_REQUESTED = "issuesRequested";
+
+  private final Counter issuesRequestedCounter;
+  private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
+
   /**
    * The Jira project cache.
    */
   static Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
 
+
   public JiraService(RestTemplate restTemplate, JiraConfigHelper configHelper, CustomRestTemplateConfig customRestTemplateConfig) {
     this.restTemplate = restTemplate;
     this.configHelper = configHelper;
     this.customRestTemplateConfig = customRestTemplateConfig;
+
+    issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
+
   }
 
   /**
@@ -357,7 +371,7 @@ public class JiraService {
   public String getIssue(String issueKey, JiraSourceConfig configuration) {
     log.debug("Started to fetch issue information");
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
-
+    issuesRequestedCounter.increment();
     while(true) {
       String url = configuration.getAccountUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
       try {
@@ -365,7 +379,6 @@ public class JiraService {
       } catch (ClientAuthorizationRequiredException ex) {
 
         log.error(NOISY, "Failed to execute the rest call ",ex);
-
 
       }
     }
