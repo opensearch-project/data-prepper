@@ -10,11 +10,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
 import java.util.List;
 
@@ -23,12 +25,14 @@ import java.util.List;
 public class RenameKeyProcessorConfig {
     @JsonPropertyOrder
     public static class Entry {
-        @NotEmpty
-        @NotNull
         @JsonProperty("from_key")
         @JsonPropertyDescription("The key of the entry to be renamed.")
         @EventKeyConfiguration({EventKeyFactory.EventAction.GET, EventKeyFactory.EventAction.DELETE})
         private EventKey fromKey;
+
+        @JsonProperty("from_key_pattern")
+        @JsonPropertyDescription("The regex pattern of the key of the entry to be renamed.")
+        private String fromKeyPattern;
 
         @NotEmpty
         @NotNull
@@ -51,6 +55,10 @@ public class RenameKeyProcessorConfig {
             return fromKey;
         }
 
+        public String getFromKeyPattern() {
+            return fromKeyPattern;
+        }
+
         public EventKey getToKey() {
             return toKey;
         }
@@ -61,8 +69,11 @@ public class RenameKeyProcessorConfig {
 
         public String getRenameWhen() { return renameWhen; }
 
-        public Entry(final EventKey fromKey, final EventKey toKey, final boolean overwriteIfKeyExists, final String renameWhen) {
+
+
+        public Entry(final EventKey fromKey, final String fromKeyPattern ,final EventKey toKey, final boolean overwriteIfKeyExists, final String renameWhen) {
             this.fromKey = fromKey;
+            this.fromKeyPattern = fromKeyPattern;
             this.toKey = toKey;
             this.overwriteIfToKeyExists = overwriteIfKeyExists;
             this.renameWhen = renameWhen;
