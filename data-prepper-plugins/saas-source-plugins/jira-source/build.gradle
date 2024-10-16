@@ -12,7 +12,12 @@ dependencies {
     implementation project(path: ':data-prepper-api')
     implementation project(path: ':data-prepper-plugins:aws-plugin-api')
     implementation project(path: ':data-prepper-plugins:buffer-common')
+    implementation project(path: ':data-prepper-plugins:common')
 
+
+
+    implementation libs.commons.io
+    implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.mashape.unirest:unirest-java:1.4.9'
