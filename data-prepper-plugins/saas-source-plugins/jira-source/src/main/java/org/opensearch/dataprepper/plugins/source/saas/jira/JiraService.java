@@ -41,10 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -109,8 +106,10 @@ public class JiraService {
   private final CustomRestTemplateConfig customRestTemplateConfig;
 
   public static final String ISSUES_REQUESTED = "issuesRequested";
+  public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
   private final Counter issuesRequestedCounter;
+  private final Timer requestProcessDuration;
   private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
 
   /**
@@ -125,6 +124,7 @@ public class JiraService {
     this.customRestTemplateConfig = customRestTemplateConfig;
 
     issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
+    requestProcessDuration = jiraPluginMetrics.timer(REQUEST_PROCESS_DURATION);
 
   }
 
@@ -372,14 +372,15 @@ public class JiraService {
     log.debug("Started to fetch issue information");
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
     issuesRequestedCounter.increment();
+
     while(true) {
       String url = configuration.getAccountUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
       try {
-        return restTemplate.getForEntity(url, String.class).getBody();
+        return requestProcessDuration.recordCallable(() -> restTemplate.getForEntity(url, String.class).getBody());
       } catch (ClientAuthorizationRequiredException ex) {
-
         log.error(NOISY, "Failed to execute the rest call ",ex);
-
+      } catch (Exception ex) {
+        log.error(NOISY, "Failed to execute the rest call ", ex);
       }
     }
   }
