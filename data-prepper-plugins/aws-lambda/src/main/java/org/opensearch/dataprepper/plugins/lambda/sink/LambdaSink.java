@@ -24,7 +24,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFacto
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.lambda.LambdaClient;
+import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 
 import java.util.Collection;
 
@@ -50,9 +50,12 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
         super(pluginSetting);
         sinkInitialized = Boolean.FALSE;
         OutputCodecContext outputCodecContext = OutputCodecContext.fromSinkContext(sinkContext);
-        LambdaClient lambdaClient = LambdaClientFactory.createLambdaClient(lambdaSinkConfig.getAwsAuthenticationOptions(),
-                lambdaSinkConfig.getMaxConnectionRetries()
-                , awsCredentialsSupplier);
+        LambdaAsyncClient lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(
+                lambdaSinkConfig.getAwsAuthenticationOptions(),
+                lambdaSinkConfig.getMaxConnectionRetries(),
+                awsCredentialsSupplier,
+                lambdaSinkConfig.getSdkTimeout()
+        );
         if(lambdaSinkConfig.getDlqPluginSetting() != null) {
             this.dlqPushHandler = new DlqPushHandler(pluginFactory,
                     String.valueOf(lambdaSinkConfig.getDlqPluginSetting().get(BUCKET)),
@@ -63,7 +66,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
 
         this.bufferFactory = new InMemoryBufferFactory();
 
-        lambdaSinkService = new LambdaSinkService(lambdaClient,
+        lambdaSinkService = new LambdaSinkService(lambdaAsyncClient,
                 lambdaSinkConfig,
                 pluginMetrics,
                 pluginFactory,
@@ -110,5 +113,5 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
             return;
         }
         lambdaSinkService.output(records);
-    }    
+    }
 }
