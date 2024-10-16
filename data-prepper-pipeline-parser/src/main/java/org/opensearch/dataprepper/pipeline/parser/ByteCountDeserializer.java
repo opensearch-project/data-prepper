@@ -34,7 +34,7 @@ public class ByteCountDeserializer extends StdDeserializer<ByteCount> {
         try {
             return ByteCount.parse(byteString);
         } catch (final Exception ex) {
-            throw new IllegalArgumentException(ex);
+            throw new IllegalArgumentException(ex.getMessage());
         }
     }
 }
