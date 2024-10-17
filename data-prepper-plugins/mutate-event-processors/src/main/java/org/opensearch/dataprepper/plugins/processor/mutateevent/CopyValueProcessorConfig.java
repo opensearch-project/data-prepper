@@ -76,11 +76,11 @@ public class CopyValueProcessorConfig {
     private List<Entry> entries;
 
     @JsonProperty("from_list")
-    @JsonPropertyDescription("The key of the source list to copy values from.")
+    @JsonPropertyDescription("The key of the list of objects to be copied.")
     private String fromList;
 
     @JsonProperty("to_list")
-    @JsonPropertyDescription("The key of the target list to copy values to.")
+    @JsonPropertyDescription("The key of the new list to be added.")
     private String toList;
 
     @JsonProperty("overwrite_if_to_list_exists")
