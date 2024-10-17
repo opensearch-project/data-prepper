@@ -109,7 +109,7 @@ public class GrokProcessorConfig {
     private List<String> tagsOnTimeout = Collections.emptyList();
 
     @JsonProperty(GROK_WHEN)
-    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>'/test != false'</code>. " +
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/test != false</code>. " +
             "If specified, the <code>grok</code> processor will only run on events when the expression evaluates to true. ")
     private String grokWhen;
 

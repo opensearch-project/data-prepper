@@ -56,7 +56,7 @@ public class ObfuscationProcessorConfig {
     private List<String> tagsOnMatchFailure;
 
     @JsonProperty("obfuscate_when")
-    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>'/is_testing_data == true'</code>. " +
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/is_testing_data == true</code>. " +
             "If specified, the <code>obfuscate</code> processor will only run on events when the expression evaluates to true. ")
     private String obfuscateWhen;
 

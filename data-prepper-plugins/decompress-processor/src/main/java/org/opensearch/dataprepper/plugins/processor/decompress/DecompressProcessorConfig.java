@@ -37,7 +37,7 @@ public class DecompressProcessorConfig {
     @JsonProperty("tags_on_failure")
     private List<String> tagsOnFailure = List.of("_decompression_failure");
 
-    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, such as <code>'/is_compressed == true'</code>, that determines when the decompress processor will run on certain events.")
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, such as <code>/is_compressed == true</code>, that determines when the decompress processor will run on certain events.")
     @JsonProperty("decompress_when")
     private String decompressWhen;
 
