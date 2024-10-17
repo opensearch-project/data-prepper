@@ -7,11 +7,8 @@ package org.opensearch.dataprepper.core.acknowledgements;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.ProgressCheck;
-import org.opensearch.dataprepper.model.event.DefaultEventHandle;
-import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.InternalEventHandle;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

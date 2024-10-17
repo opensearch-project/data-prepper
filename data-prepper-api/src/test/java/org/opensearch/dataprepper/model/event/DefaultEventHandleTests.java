@@ -13,7 +13,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
 import org.mockito.Mock;
 
 import java.time.Instant;
@@ -39,7 +38,6 @@ class DefaultEventHandleTests {
     void testWithAcknowledgementSet() {
         acknowledgementSet = mock(AcknowledgementSet.class);
         when(acknowledgementSet.release(any(EventHandle.class), any(Boolean.class))).thenReturn(true);
-        doNothing().when(acknowledgementSet).acquire(any(EventHandle.class));
         Instant now = Instant.now();
         DefaultEventHandle eventHandle = new DefaultEventHandle(now);
         assertThat(eventHandle.getAcknowledgementSet(), equalTo(null));
@@ -83,7 +81,6 @@ class DefaultEventHandleTests {
         acknowledgementSet = mock(AcknowledgementSet.class);
         eventHandle.addAcknowledgementSet(acknowledgementSet);
         DefaultEventHandle eventHandle2 = new DefaultEventHandle(now);
-        doNothing().when(acknowledgementSet).add(any(EventHandle.class));
         eventHandle.addEventHandle(eventHandle2);
         verify(acknowledgementSet).add(eventHandle2);
     }

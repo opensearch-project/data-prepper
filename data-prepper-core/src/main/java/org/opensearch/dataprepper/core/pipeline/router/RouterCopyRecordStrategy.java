@@ -9,7 +9,6 @@ import org.opensearch.dataprepper.core.acknowledgements.InactiveAcknowledgementS
 import org.opensearch.dataprepper.core.parser.DataFlowComponent;
 import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventFactory;
@@ -20,7 +19,6 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.model.trace.Span;
-import org.opensearch.dataprepper.acknowledgements.InactiveAcknowledgementSetManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
