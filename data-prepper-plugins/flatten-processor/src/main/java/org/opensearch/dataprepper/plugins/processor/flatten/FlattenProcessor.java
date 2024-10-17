@@ -45,7 +45,9 @@ public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Ev
 
         if (config.getFlattenWhen() != null &&
                 (!expressionEvaluator.isValidExpressionStatement(config.getFlattenWhen()))) {
-            throw new InvalidPluginConfigurationException("flatten_when {} is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax");
+            throw new InvalidPluginConfigurationException(
+                    String.format("flatten_when \"%s\" is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                            config.getFlattenWhen()));
         }
     }
 

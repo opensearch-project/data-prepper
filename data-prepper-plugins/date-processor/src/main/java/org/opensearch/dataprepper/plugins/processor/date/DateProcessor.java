@@ -67,7 +67,9 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
             extractKeyAndFormatters();
 
         if (dateProcessorConfig.getDateWhen() != null && (!expressionEvaluator.isValidExpressionStatement(dateProcessorConfig.getDateWhen()))) {
-            throw new InvalidPluginConfigurationException("date_when {} is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax");
+            throw new InvalidPluginConfigurationException(
+                    String.format("date_when \"%s\" is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                            dateProcessorConfig.getDateWhen()));
         }
     }
 

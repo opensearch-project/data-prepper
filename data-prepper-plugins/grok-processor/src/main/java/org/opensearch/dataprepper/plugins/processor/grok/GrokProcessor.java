@@ -123,7 +123,9 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
         if (grokProcessorConfig.getGrokWhen() != null &&
                 (!expressionEvaluator.isValidExpressionStatement(grokProcessorConfig.getGrokWhen()))) {
-            throw new InvalidPluginConfigurationException("grok_when {} is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax");
+            throw new InvalidPluginConfigurationException(
+                    String.format("grok_when \"%s\" is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                            grokProcessorConfig.getGrokWhen()));
         }
     }
 
